@@ -1,0 +1,8 @@
+# This CODEOWNERS file is auto-generated. See the script at <https://github.com/ai-cfia/devops/blob/main/github-management-script/codeowners-file-creation.sh> for modification details.
+
+* @ai-cfia/backend
+* @ai-cfia/nachet
+/.github/ @ai-cfia/devops
+Dockerfile @ai-cfia/devops
+docker-compose.yml @ai-cfia/devops
+docker-compose.*.yml @ai-cfia/devops

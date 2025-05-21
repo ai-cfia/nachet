@@ -1,0 +1,32 @@
+---
+version:
+
+date:
+
+pipelines:
+  - models:
+    pipeline_name:
+    created_by:
+    creation_date:
+    version:
+    description:
+    job_name:
+    dataset_description:
+    accuracy:
+    default:
+
+models:
+  - tasks:
+    endpoint:
+    api_key:
+    content_type:
+    deployment_platform:
+    endpoint_name:
+    model_name:
+    created_by:
+    creation_date:
+    version:
+    description:
+    job_name:
+    dataset_description:
+    accuracy:
