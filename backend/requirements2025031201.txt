@@ -1,0 +1,16 @@
+nachet-datastore @git+https://github.com/ai-cfia/ailab-datastore.git@231-split-nachet-config-secrets
+numpy==1.26.4
+azure-storage-blob
+azure-identity
+flask==3.0.3
+quart==0.19.6
+quart-cors
+python-dotenv
+hypercorn
+Pillow==10.3.0
+cryptography
+pyyaml
+pydantic==2.7.1
+pydantic-core==2.18.2
+python-magic
+PyJWT

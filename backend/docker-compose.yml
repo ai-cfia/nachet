@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: ghcr.io/ai-cfia/nginx:latest
+    ports:
+      - "80:80"
+    environment:
+      - BACKEND_PORT=8080
+      - FRONTEND_PORT=3000
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - nachet-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["/bin/sh", "-c", "hypercorn -b :8080 app:app"]
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - PORT=8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - nachet-network
+
+  frontend:
+    image: ghcr.io/ai-cfia/nachet-frontend:main
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - nachet-network
+
+networks:
+  nachet-network:
+    driver: bridge

@@ -1,0 +1,15 @@
+.env
+.vscode/settings.json
+*.pyc
+.vscode/settings.json
+output.*
+
+bin/
+lib64/
+lib64
+**/*pyvenv.cfg
+share/
+lib/
+include/
+__pycache__/
+**/*.local
