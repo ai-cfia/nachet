@@ -1,0 +1,86 @@
+[
+  {
+      "endpoint_name": "nachet-6seeds",
+      "model_name": "Seed Classification",
+      "created_by": "Amir Ardalan Kalantari Dehaghi",
+      "creation_date": "2023-04-27",
+      "version": "1",
+      "description": "Trained using 6 seed images per image of 14of15 tagarno",
+      "job_name": "neat_cartoon_k0y4m0vz",
+      "dataset": "",
+      "metrics": [],
+      "identifiable": []
+  },
+  {
+    "endpoint_name": "nachet-6seeds",
+    "model_name": "Model 2",
+    "created_by": "Developer 2",
+    "creation_date": "2023-06-14",
+    "version": "1",
+    "description": "Model 2 Description",
+    "job_name": "neat_cartoon_k0y4m0vz",
+    "dataset": "",
+    "metrics": [],
+    "identifiable": []
+  },
+  {
+    "endpoint_name": "nachet-6seeds",
+    "model_name": "Model 3",
+    "created_by": "Developer 3",
+    "creation_date": "2023-09-24",
+    "version": "1",
+    "description": "Model 3 Description",
+    "job_name": "neat_cartoon_k0y4m0vz",
+    "dataset": "",
+    "metrics": [],
+    "identifiable": []
+  },
+  {
+    "endpoint_name": "nachet-6seeds",
+    "model_name": "Model 4",
+    "created_by": "Developer 2",
+    "creation_date": "2023-06-14",
+    "version": "1",
+    "description": "Model 4 Description",
+    "job_name": "neat_cartoon_k0y4m0vz",
+    "dataset": "",
+    "metrics": [],
+    "identifiable": []
+  },
+  {
+    "endpoint_name": "nachet-6seeds",
+    "model_name": "Model 5",
+    "created_by": "Developer 3",
+    "creation_date": "2023-09-24",
+    "version": "1",
+    "description": "Model 5 Description",
+    "job_name": "neat_cartoon_k0y4m0vz",
+    "dataset": "",
+    "metrics": [],
+    "identifiable": []
+  },
+  {
+    "endpoint_name": "nachet-6seeds",
+    "model_name": "Model 6",
+    "created_by": "Developer 2",
+    "creation_date": "2023-06-14",
+    "version": "1",
+    "description": "Model 6 Description",
+    "job_name": "neat_cartoon_k0y4m0vz",
+    "dataset": "",
+    "metrics": [],
+    "identifiable": []
+  },
+  {
+    "endpoint_name": "nachet-6seeds",
+    "model_name": "Model 7",
+    "created_by": "Developer 3",
+    "creation_date": "2023-09-24",
+    "version": "1",
+    "description": "Model 7 Description",
+    "job_name": "neat_cartoon_k0y4m0vz",
+    "dataset": "",
+    "metrics": [],
+    "identifiable": []
+  }
+]
