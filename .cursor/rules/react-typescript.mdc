@@ -1,0 +1,33 @@
+---
+description: 
+globs: **/components/**/*.ts,**/components/**/*.tsx,**/components/**/*.js,**/components/**/*.jsx
+alwaysApply: false
+---
+---
+description: Enforces specific React component development practices, including functional components, declarative JSX, UI library usage, and optimization techniques.
+globs: components/**/*.{ts,tsx,js,jsx}
+---
+- Use functional components and TypeScript interfaces.
+- Use declarative JSX.
+- Use const for components.
+- Use mui/material for components and styling.
+- Place static content and interfaces at file end.
+- Use content variables for static content outside render functions.
+- Minimize 'use client', 'useEffect', and 'setState'. Favor RSC.
+- Use Zod for form validation.
+- Wrap client components in Suspense with fallback.
+- Use dynamic loading for non-critical components.
+- Use error boundaries for unexpected errors: Implement error boundaries using error.tsx and global-error.tsx files to handle unexpected errors and provide a fallback UI.
+- Use useActionState with react-hook-form for form validation.
+- Use .tsx extension for files with JSX.
+- Implement strict TypeScript checks.
+- Utilize React.lazy and Suspense for code-splitting.
+- Use type inference where possible.
+- Implement error boundaries for robust error handling.
+- Follow React and TypeScript best practices and naming conventions.
+- Use ESLint with TypeScript and React plugins for code quality.
+- Use React.FC for functional components with props.
+- Utilize useState and useEffect hooks for state and side effects.
+- Implement proper TypeScript interfaces for props and state.
+- Use React.memo for performance optimization when needed.
+- Implement custom hooks for reusable logic.
