@@ -1,0 +1,16 @@
+name: Repo standards validation
+
+on:
+  pull_request:
+    paths:
+      - "**"
+      - ".github/workflows/repo-std.yml"
+    types:
+      - opened
+      - closed
+      - synchronize
+
+jobs:
+  repo-standard:
+    uses: ai-cfia/github-workflows/.github/workflows/workflow-repo-standards-validation.yml@main
+    secrets: inherit
