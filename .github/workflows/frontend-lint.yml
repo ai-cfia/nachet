@@ -1,0 +1,64 @@
+name: Frontend Lint
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+      - 'package.json'
+      - '.nvmrc'
+      - 'tsconfig.json'
+    types:
+      - opened
+      - closed
+      - synchronize
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IS_MONOREPO: true
+  FRONTEND_PATH: frontend
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/nachet-frontend
+
+defaults:
+  run:
+    working-directory: frontend
+
+jobs:
+  extract-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      node-version: ${{ steps.versions.outputs.node-version }}
+      npm-version: ${{ steps.versions.outputs.npm-version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Extract versions from package.json
+        id: versions
+        run: |
+          NODE_VERSION=$(jq -r '.engines.node' package.json | sed 's/\^//')
+          NPM_VERSION=$(jq -r '.engines.npm' package.json | sed 's/\^//')
+          echo "Detected Node.js version: $NODE_VERSION"
+          echo "Detected npm version: $NPM_VERSION"
+          echo "node-version=$NODE_VERSION" >> $GITHUB_OUTPUT
+          echo "npm-version=$NPM_VERSION" >> $GITHUB_OUTPUT
+
+  frontend-lint-test:
+    needs: extract-versions
+    uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-test-node-mono.yml@main
+    with:
+      working-directory: frontend
+      node-version: ${{ needs.extract-versions.outputs.node-version }}
+      npm-version: ${{ needs.extract-versions.outputs.npm-version }}
+    secrets: inherit
+
+  markdown-check:
+    uses: ai-cfia/github-workflows/.github/workflows/workflow-markdown-check-mono.yml@main
+    with:
+      working-directory: frontend
+      md-link-config-file-path: ".mlc_config.json"
+    secrets: inherit
