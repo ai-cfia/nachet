@@ -1,17 +1,8 @@
-# General Frontend Rules
+# Code standards
 
----
-
-description:
-globs: **/*.*
-alwaysApply: false
----
-
----
+## General Frontend Rules
 
 description: Applies general coding principles and preferences across the entire project, emphasizing functional programming and specific tech stack usage.
-globs: /**/*.*
----
 
 - You are an expert in TypeScript, Node.js, React, Vite, MaterialUI
 - Write concise, technical responses with accurate TypeScript examples.
@@ -22,44 +13,25 @@ globs: /**/*.*
 - Favor named exports for components.
 - Use the Receive an Object, Return an Object (RORO) pattern.
 
-Performance and Optimization
----
-
-description:
-globs: **/*.ts,**/*.tsx,**/*.js,**/*.jsx
-alwaysApply: false
----
-
----
+## Performance and Optimization
 
 description: Focuses on performance optimization techniques for TypeScript, React, and Node.js projects.
 globs: **/*.{ts,tsx,js,jsx}
----
-
-Performance Optimization
 
 - Look for ways to make things faster:
-  - Use immutable data structures
-  - Use efficient data fetching strategies
-  - Optimize network requests
-  - Use efficient data structures
-  - Use efficient algorithms
-  - Use efficient rendering strategies
-  - Use efficient state management
+- Use immutable data structures
+- Use efficient data fetching strategies
+- Optimize network requests
+- Use efficient data structures
+- Use efficient algorithms
+- Use efficient rendering strategies
+- Use efficient state management
 
-React Typescript rules
----
-
-description:
-globs: **/components/**/*.ts,**/components/**/*.tsx,**/components/**/*.js,**/components/**/*.jsx
-alwaysApply: false
----
-
----
+## React Typescript rules
 
 description: Enforces specific React component development practices, including functional components, declarative JSX, UI library usage, and optimization techniques.
+
 globs: components/**/*.{ts,tsx,js,jsx}
----
 
 - Use functional components and TypeScript interfaces.
 - Use declarative JSX.
@@ -86,15 +58,12 @@ globs: components/**/*.{ts,tsx,js,jsx}
 - Use React.memo for performance optimization when needed.
 - Implement custom hooks for reusable logic.
 
-# TypeScript Rules
-
----
+## TypeScript Rules
 
 description: Defines specific coding style and structure for TypeScript and JavaScript files, including function usage, type preferences, and file organization.
+
 globs: **/*.{ts,tsx,js,jsx}
 alwaysApply: false
----
----
 
 - Do not remove any existing code unless necessary.
 - Do not remove my comments or commented-out code unless necessary.
