@@ -122,8 +122,7 @@ changes in the frontend.
 For managing and configuring different deployment environments (development,
 staging, production), we follow a structured approach to ensure consistency and
 reliability across all stages of deployment. Detailed guidelines and practices
-can be found in our [Deployment Environment Configuration Management
-documentation](https://github.com/ai-cfia/dev-rel-docs/blob/103-documentation-request-environment-configuration-guidelines/TypeScript-AppVersion/DEPLOYMENT_ENV_CONFIG_MANAGEMENT.md).
+can be found in our 
 
 This documentation covers:
 

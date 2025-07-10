@@ -1,3 +1,14 @@
 {
-    "aliveStatusCodes": [999,200,403]
+    "aliveStatusCodes": [999,200,403],
+    "ignorePatterns": [
+        {
+            "pattern": "^https?://localhost"
+        },
+        {
+            "pattern": "^https?://127\\.0\\.0\\.1"
+        },
+        {
+            "pattern": "^https?://0\\.0\\.0\\.0"
+        }
+    ]
 }
