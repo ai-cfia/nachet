@@ -1,0 +1,61 @@
+---
+name: datastore workflows
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+on:
+  pull_request:
+    types:
+      - opened
+      - closed
+      - synchronize
+    paths:
+      - 'datastore/**'
+      - 'datastore/nachet_pyproject.toml'
+      - '.github/workflows/datastore-workflows.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'datastore/**'
+      - 'datastore/nachet_pyproject.toml'
+      - '.github/workflows/datastore-workflows.yml'
+
+defaults:
+  run:
+    working-directory: datastore
+
+jobs:
+  nachet-pyproject-version-bump:
+    if: github.event.pull_request.merged != true
+    name: nachet-datastore-pyproject-version-bump
+    uses: ai-cfia/github-workflows/.github/workflows/workflow-version-bump-python-mono.yml@main
+    secrets: inherit
+    with:
+      pyproject-path: 'nachet_pyproject.toml'
+      package-name: 'nachet-datastore'
+      working-directory: datastore
+  datastore-lint:
+    name: datastore-lint-test-python
+    uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-python-mono.yml@main
+    secrets: inherit
+    with:
+      working-directory: datastore
+  # bytebase-sql-review:
+  #   uses: ai-cfia/github-workflows/.github/workflows/workflow-bytebase-sql-review.yml@main
+  #   secrets: inherit
+  mkd-check:
+    name: workflow-markdown-check
+    uses: ai-cfia/github-workflows/.github/workflows/workflow-markdown-check-mono.yml@main
+    secrets: inherit
+    with:
+      working-directory: datastore
+      md-link-config-file-path: '.mlc_config.json'
+  yaml-check:
+    name: workflow-yaml-check
+    uses: ai-cfia/github-workflows/.github/workflows/workflow-yaml-check-mono.yml@main
+    secrets: inherit
+    with:
+      working-directory: datastore

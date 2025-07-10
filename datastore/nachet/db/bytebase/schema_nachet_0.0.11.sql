@@ -9,13 +9,13 @@ IF (EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'nache
         "email" VARCHAR(255) NOT NULL,
         "registration_date" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "default_set_id" uuid NOT NULL REFERENCES "nachet_0.0.11".picture_set(id),
+        "default_set_id" uuid
     );
 
     CREATE TABLE "nachet_0.0.11"."picture_set" (
         "id" uuid NOT NULL DEFAULT uuid_.uuid_generate_v4() PRIMARY KEY,
         "picture_set" json NOT NULL,
-        "owner_id" uuid NOT NULL REFERENCES "nachet_0.0.11".users(id),
+        "owner_id" uuid NOT NULL,
         "upload_date" date NOT NULL DEFAULT current_timestamp,
         "name" text
     );
@@ -23,7 +23,7 @@ IF (EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'nache
     CREATE TABLE "nachet_0.0.11"."picture" (
         "id" uuid NOT NULL DEFAULT uuid_.uuid_generate_v4() PRIMARY KEY,
         "picture" json NOT NULL,
-        "picture_set_id" uuid NOT NULL
+        "picture_set_id" uuid NOT NULL,
         "nb_obj" integer NOT NULL,
         "verified" boolean NOT NULL DEFAULT false,
         "upload_date" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -46,7 +46,7 @@ IF (EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'nache
     CREATE TABLE "nachet_0.0.11"."picture_seed" (
         "id" uuid DEFAULT uuid_.uuid_generate_v4() PRIMARY KEY,
         "picture_id" uuid NOT NULL,
-        "seed_id" uuid NOT NULL REFERENCES seeds(id),
+        "seed_id" uuid NOT NULL REFERENCES "nachet_0.0.11".seed(id),
         "upload_date" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY ("picture_id") REFERENCES "nachet_0.0.11"."picture"(id) ON DELETE CASCADE
     );
@@ -73,7 +73,7 @@ IF (EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'nache
         "name" text NOT NULL,
         "endpoint_name" text NOT NULL,
         "task_id" integer NOT NULL REFERENCES "nachet_0.0.11".task(id),
-        "upload_date" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        "upload_date" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "active_version" uuid
     );
     
@@ -85,7 +85,7 @@ IF (EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'nache
         "upload_date" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
     
-    Alter table "nachet_0.0.11".model ADD "active_version" uuid REFERENCES "nachet_0.0.11".model_version(id);
+    Alter table "nachet_0.0.11".model ADD CONSTRAINT fk_model_version FOREIGN KEY ("active_version") REFERENCES "nachet_0.0.11".model_version(id);
 
     CREATE TABLE "nachet_0.0.11"."object" (
         "id" uuid NOT NULL DEFAULT uuid_.uuid_generate_v4() PRIMARY KEY,
@@ -112,9 +112,6 @@ IF (EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'nache
     
     Alter table "nachet_0.0.11"."inference" ADD "pipeline_id" uuid REFERENCES "nachet_0.0.11"."pipeline"(id);
 
-    CREATE TRIGGER "pipeline_default_trigger" BEFORE insert OR UPDATE ON "nachet_0.0.11"."pipeline"
-    FOR EACH ROW EXECUTE FUNCTION "nachet_0.0.11".pipeline_default_trigger();
-
     CREATE FUNCTION "nachet_0.0.11".pipeline_default_trigger() RETURNS TRIGGER AS $$
     BEGIN
         IF NEW.is_default THEN
@@ -123,6 +120,9 @@ IF (EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'nache
         RETURN NEW;
     END;
    $$language plpgsql;
+
+    CREATE TRIGGER "pipeline_default_trigger" BEFORE insert OR UPDATE ON "nachet_0.0.11"."pipeline"
+    FOR EACH ROW EXECUTE FUNCTION "nachet_0.0.11".pipeline_default_trigger();
 
     CREATE TABLE "nachet_0.0.11"."pipeline_default" (
         "id" uuid NOT NULL DEFAULT uuid_.uuid_generate_v4() PRIMARY KEY,
@@ -146,15 +146,15 @@ IF (EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'nache
         FOREIGN KEY ("object_id") REFERENCES "nachet_0.0.11"."object"(id) ON DELETE CASCADE
     );  
 
-    CREATE OR REPLACE FUNCTION verified_inference() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+    CREATE OR REPLACE FUNCTION "nachet_0.0.11".verified_inference() RETURNS TRIGGER LANGUAGE plpgsql AS $$
   BEGIN
     IF NEW.verified = true THEN
-        INSERT INTO picture_seed (picture_id, seed_id)
+        INSERT INTO "nachet_0.0.11".picture_seed (picture_id, seed_id)
           SELECT 
             New.picture_id, 
             so.seed_id  
-          FROM object obj 
-            LEFT JOIN seed_obj so 
+          FROM "nachet_0.0.11".object obj 
+            LEFT JOIN "nachet_0.0.11".seed_obj so 
               ON so.id = obj.verified_id  
           WHERE obj.inference_id = NEW.id and obj.verified_id is not null;
     END IF;
@@ -163,10 +163,10 @@ IF (EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'nache
 $$;
 
 CREATE TRIGGER verified_inference_trigger 
-AFTER UPDATE ON inference
+AFTER UPDATE ON "nachet_0.0.11".inference
 FOR EACH ROW 
 WHEN (NEW.verified = true)
-EXECUTE FUNCTION verified_inference();
+EXECUTE FUNCTION "nachet_0.0.11".verified_inference();
 
     INSERT INTO "nachet_0.0.11".seed(name) VALUES
     ('Brassica napus'),
@@ -195,14 +195,19 @@ EXECUTE FUNCTION verified_inference();
     ('Seed-detector','seed-detector-1',1),
     ('Swin','swinv1-base-dataaugv2-1',2);
 
-    INSERT INTO "nachet_0.0.11".pipeline(name,active,is_default) VALUES
-    ('6 Seed Detector',true,false),
-    ('Swin transformer',true,true);
+    INSERT INTO "nachet_0.0.11".pipeline(name,active,is_default,data) VALUES
+    ('6 Seed Detector',true,false,'{}'),
+    ('Swin transformer',true,true,'{}');
 
     INSERT INTO "nachet_0.0.11".pipeline_model(pipeline_id,model_id) 
     (Select p.id,m.id from "nachet_0.0.11".model as m, "nachet_0.0.11".pipeline as p where 
     (m.endpoint_name='Nachet-6seeds' and p.name='6 Seed Detector') or 
     (m.endpoint_name='Seed-detector' and p.name='Swin transformer') or
    	(m.endpoint_name='Swin' and p.name='Swin transformer')); 
+    
+    ALTER TABLE "nachet_0.0.11".users ADD CONSTRAINT fk_users_picture_set FOREIGN KEY (default_set_id) REFERENCES "nachet_0.0.11".picture_set(id);
+    ALTER TABLE "nachet_0.0.11".picture_set ADD CONSTRAINT fk_picture_set_users FOREIGN KEY (owner_id) REFERENCES "nachet_0.0.11".users(id);
+
+    END IF;
 END
 $do$

@@ -95,7 +95,7 @@ The complete diagram is part of the datastore documentation. You can see it
 here:
 
 [Trusted user upload
-process](https://github.com/ai-cfia/nachet-datastore/blob/issue13-create-process-to-upload-metadata-for-trusted-users/doc/trusted-user-upload.md)
+process]
 
 ## API Routes
 
@@ -201,7 +201,7 @@ Le diagramme complet fait partie de la documentation du **datastore**. Vous
 pouvez le consulter ici :
 
 [Processus de téléversement pour utilisateurs de
-confiance](https://github.com/ai-cfia/nachet-datastore/blob/issue13-create-process-to-upload-metadata-for-trusted-users/doc/trusted-user-upload.md)
+confiance]
 
 ## API
 

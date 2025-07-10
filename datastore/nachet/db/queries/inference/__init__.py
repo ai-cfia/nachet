@@ -348,7 +348,7 @@ def get_inference_object(cursor, inference_object_id: str):
                 valid,
                 top_id,
                 upload_date,
-                update_at
+                updated_at
             FROM 
                 object
             WHERE 
@@ -405,7 +405,7 @@ def set_inference_object_top_id(cursor, inference_object_id: str, top_id:str):
                 object
             SET
                 top_id = %s,
-                update_at = now()
+                updated_at = now()
             WHERE 
                 id = %s
             """
