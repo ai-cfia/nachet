@@ -18,14 +18,14 @@ python -m unittest discover -s tests
 
 You also have the option to run automatic tests in run_test.py or manually test
 the functionality with the frontend. [See frontend testing
-documentation](https://github.com/ai-cfia/nachet-frontend/blob/main/TESTING.md)
+documentation](https://github.com/ai-cfia/nachet/frontend/blob/main/TESTING.md)
 
 To perform the following test, you will need the Nachet's frontend repository.
 It can be found at: [Nachet Frontend GitHub
-Repository](https://github.com/ai-cfia/nachet-frontend).
+Repository](https://github.com/ai-cfia/nachet/tree/main/frontend).
 
 You will also need the list of the available pipelines. The list can be found
-[here](https://github.com/ai-cfia/nachet-backend/blob/51-implementing-2-models/docs/nachet-inference-documentation.md#available-version-of-the-json-file).
+[here](https://github.com/ai-cfia/nachet/blob/main/backend/docs/nachet-inference-documentation.md#available-version-of-the-json-file).
 
 ## Test Case: Populate model selection component with pipelines information
 
@@ -120,15 +120,15 @@ python -m unittest discover -s tests
 Vous avez également la possibilité d'exécuter les tests automatiques dans
 `run_test.py` ou de tester manuellement les fonctionnalités avec le frontend.
 [Voir la documentation des tests du
-frontend](https://github.com/ai-cfia/nachet-frontend/blob/main/TESTING.md).
+frontend](https://github.com/ai-cfia/nachet/blob/main/frontend/TESTING.md).
 
 Pour effectuer les tests suivants, vous aurez besoin du dépôt frontend de
 l'application Nachet Interactive. Le frontend se trouve ici : [Dépôt GitHub du
-frontend Nachet](https://github.com/ai-cfia/nachet-frontend).
+frontend Nachet](https://github.com/ai-cfia/nachet/tree/main/frontend).
 
 Vous aurez également besoin de la liste des pipelines disponibles. La liste se
 trouve
-[ici](https://github.com/ai-cfia/nachet-backend/blob/51-implementing-2-models/docs/nachet-inference-documentation.md#available-version-of-the-json-file).
+[ici](https://github.com/ai-cfia/nachet/blob/main/backend/docs/nachet-inference-documentation.md#available-version-of-the-json-file).
 
 ## Cas de Test : Remplir le composant de sélection de modèle avec les informations des pipelines
 

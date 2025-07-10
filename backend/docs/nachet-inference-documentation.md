@@ -232,7 +232,7 @@ the box around a seed| |bottomX | 2 | The bottom x value of the box around a
 seed| |bottomY| 2 | The bottom y value of the box around a seed|
 
 *for more look at
-[nachet-model-documentation](https://github.com/ai-cfia/nachet/backend/docs/nachet-model-documentation.md#return-value-of-models)*
+[nachet-model-documentation](https://github.com/ai-cfia/nachet/blob/main/backend/docs/nachet-model-documentation.md#return-value-of-models)*
 
 **topN** contains the models' top 5 predictions:
 
@@ -591,7 +591,7 @@ x inférieure de la boîte autour d'une graine | | bottomY | 2 | La valeur y
 inférieure de la boîte autour d'une graine |
 
 *Pour plus d'informations, consultez
-[nachet-model-documentation](https://github.com/ai-cfia/nachet/backend/docs/nachet-model-documentation.md#return-value-of-models)*
+[nachet-model-documentation](https://github.com/ai-cfia/nachet/blob/main/backend/docs/nachet-model-documentation.md#return-value-of-models)*
 
 **topN** contient les 5 meilleures prédictions des modèles :
 
