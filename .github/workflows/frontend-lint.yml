@@ -105,6 +105,9 @@ jobs:
     outputs:
       node-version: ${{ steps.versions.outputs.node-version }}
       npm-version: ${{ steps.versions.outputs.npm-version }}
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -112,8 +115,8 @@ jobs:
       - name: Extract versions from package.json
         id: versions
         run: |
-          NODE_VERSION=$(jq -r '.engines.node' frontend/package.json | sed 's/\^//')
-          NPM_VERSION=$(jq -r '.engines.npm' frontend/package.json | sed 's/\^//')
+          NODE_VERSION=$(jq -r '.engines.node' package.json | sed 's/\^//')
+          NPM_VERSION=$(jq -r '.engines.npm' package.json | sed 's/\^//')
           echo "Detected Node.js version: $NODE_VERSION"
           echo "Detected npm version: $NPM_VERSION"
           echo "node-version=$NODE_VERSION" >> $GITHUB_OUTPUT
