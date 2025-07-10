@@ -4,18 +4,24 @@ on:
   pull_request:
     paths:
       - 'frontend/**'
-      - '.github/workflows/frontend-ci.yml'
-      - 'package.json'
-      - '.nvmrc'
-      - 'tsconfig.json'
+      - '.github/workflows/frontend-build.yml'
+      - 'frontend/package.json'
+      - 'frontend/.nvmrc'
+      - 'frontend/tsconfig.json'
     types:
       - opened
       - closed
       - synchronize
 
 concurrency:
-  group: frontend-ci-${{ github.ref }}
+  group: frontend-build-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
 
 env:
   IS_MONOREPO: true

@@ -4,17 +4,17 @@ on:
   pull_request:
     paths:
       - 'frontend/**'
-      - '.github/workflows/frontend-ci.yml'
-      - 'package.json'
-      - '.nvmrc'
-      - 'tsconfig.json'
+      - '.github/workflows/frontend-lint.yml'
+      - 'frontend/package.json'
+      - 'frontend/.nvmrc'
+      - 'frontend/tsconfig.json'
     types:
       - opened
       - closed
       - synchronize
 
 concurrency:
-  group: frontend-ci-${{ github.ref }}
+  group: frontend-lint-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -40,7 +40,7 @@ jobs:
       - name: Get PR branch version
         id: pr-version
         run: |
-          PR_VERSION=$(jq -r '.version' frontend/package.json)
+          PR_VERSION=$(jq -r '.version' package.json)
           echo "PR version: $PR_VERSION"
           echo "version=$PR_VERSION" >> $GITHUB_OUTPUT
       
@@ -105,6 +105,9 @@ jobs:
     outputs:
       node-version: ${{ steps.versions.outputs.node-version }}
       npm-version: ${{ steps.versions.outputs.npm-version }}
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
