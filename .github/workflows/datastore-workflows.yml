@@ -20,6 +20,10 @@ on:
       - 'datastore/**'
       - 'nachet_pyproject.toml'
 
+defaults:
+  run:
+    working-directory: datastore
+
 jobs:
   nachet-pyproject-version-bump:
     if: github.event.pull_request.merged != true
