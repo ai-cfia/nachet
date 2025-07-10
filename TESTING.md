@@ -9,9 +9,11 @@ Nachet consists of a React TypeScript frontend and Python Quart backend. Each co
 ## Component Testing Documentation
 
 ### Frontend Testing
+
 For detailed frontend testing procedures, see [frontend/TESTING.md](frontend/TESTING.md).
 
 The frontend testing covers:
+
 - Manual testing procedures for all UI components
 - Capture and classification workflows
 - Model selection and result display
@@ -19,9 +21,11 @@ The frontend testing covers:
 - Camera/microscope integration testing
 
 ### Backend Testing
+
 For detailed backend testing procedures, see [backend/TESTING.md](backend/TESTING.md).
 
 The backend testing covers:
+
 - API endpoint testing
 - Database integration testing
 - Machine learning pipeline testing
@@ -30,6 +34,7 @@ The backend testing covers:
 ## Quick Start Testing
 
 ### Running Frontend Tests
+
 ```bash
 cd frontend/
 npm install
@@ -38,6 +43,7 @@ npm run test:coverage           # Run tests with coverage
 ```
 
 ### Running Backend Tests
+
 ```bash
 cd backend/
 pip install -r requirements.txt
@@ -45,6 +51,7 @@ python -m unittest discover -s tests
 ```
 
 ### Full System Testing
+
 ```bash
 # Start backend
 cd backend && hypercorn -b :8080 app:app
@@ -58,6 +65,7 @@ cd frontend && npm run dev
 ## Test Environment Setup
 
 Ensure you have the following configured:
+
 - PostgreSQL database connection
 - Azure Storage connection string
 - ML model endpoints (for integration testing)
