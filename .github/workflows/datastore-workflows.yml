@@ -12,13 +12,13 @@ on:
       - synchronize
     paths:
       - 'datastore/**'
-      - 'nachet_pyproject.toml'
+      - 'datastore/nachet_pyproject.toml'
   push:
     branches:
       - main
     paths:
       - 'datastore/**'
-      - 'nachet_pyproject.toml'
+      - 'datastore/nachet_pyproject.toml'
 
 defaults:
   run:
