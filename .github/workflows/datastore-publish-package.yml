@@ -10,6 +10,10 @@ on:
         options:
           - nachet
 
+permissions:
+  contents: write
+  pull-requests: read
+
 defaults:
   run:
     working-directory: datastore

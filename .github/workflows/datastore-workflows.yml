@@ -1,8 +1,8 @@
 ---
 name: datastore workflows
 permissions:
-  contents: read
-  workflow: write
+  contents: write
+  pull-requests: read
 
 on:
   pull_request:
@@ -13,12 +13,14 @@ on:
     paths:
       - 'datastore/**'
       - 'datastore/nachet_pyproject.toml'
+      - '.github/workflows/datastore-workflows.yml'
   push:
     branches:
       - main
     paths:
       - 'datastore/**'
       - 'datastore/nachet_pyproject.toml'
+      - '.github/workflows/datastore-workflows.yml'
 
 defaults:
   run:
