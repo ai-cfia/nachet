@@ -1,5 +1,8 @@
 ---
 name: datastore workflows
+permissions:
+  contents: read
+  workflow: write
 
 on:
   pull_request:
