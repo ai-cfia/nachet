@@ -13,6 +13,7 @@ The project consists of a React TypeScript frontend and Python Quart backend, wi
 ## Common Development Commands
 
 ### Frontend (React + TypeScript + Vite)
+
 ```bash
 cd frontend/
 npm install                    # Install dependencies
@@ -26,6 +27,7 @@ npm run format:check           # Check formatting
 ```
 
 ### Backend (Python + Quart)
+
 ```bash
 cd backend/
 pip install -r requirements.txt    # Install dependencies
@@ -34,6 +36,7 @@ python -m unittest discover -s tests  # Run tests
 ```
 
 ### Docker Commands
+
 ```bash
 # Frontend only
 docker build -t nachet-frontend frontend/
@@ -50,6 +53,7 @@ docker-compose up --build          # Run frontend + backend together
 ## Architecture Overview
 
 ### Technology Stack
+
 - **Frontend**: React 18 + TypeScript + Vite + Material-UI + Axios
 - **Backend**: Python + Quart (async Flask) + SQLAlchemy + Azure SDK
 - **Database**: PostgreSQL with dual schemas (Nachet + FertiScan)
@@ -58,6 +62,7 @@ docker-compose up --build          # Run frontend + backend together
 - **Database Management**: Bytebase for schema versioning
 
 ### Key Directories Structure
+
 ```
 nachet/
 ├── frontend/          # React TypeScript application
@@ -76,6 +81,7 @@ nachet/
 ```
 
 ### Database Architecture
+
 - **PostgreSQL** with two schemas:
   - `nachet_0.0.11`: Seed detection system (users, pictures, inferences, models)
   - `fertiscan_0.0.17`: Fertilizer analysis (inspections, labels, ingredients)
@@ -84,6 +90,7 @@ nachet/
 - **Schema versioning**: Managed with Bytebase migration system
 
 ### ML Pipeline Architecture
+
 - **Cloud-native**: All models hosted on external endpoints (Azure ML)
 - **Pipeline-based**: Sequential chains of models (detection → classification)
 - **Model types**: Object detection (seed-detector), Classification (Swin transformers), Ensemble models
@@ -93,17 +100,20 @@ nachet/
 ## Development Workflow
 
 ### Running the Application Locally
+
 1. **Backend**: Set up environment variables in `.env` (copy from `.env.template`)
 2. **Start backend**: `cd backend && hypercorn -b :8080 app:app`
 3. **Start frontend**: `cd frontend && npm run dev`
-4. **Access**: Frontend at http://localhost:5173, Backend at http://localhost:8080
+4. **Access**: Frontend at <http://localhost:5173>, Backend at <http://localhost:8080>
 
 ### Testing
+
 - **Frontend tests**: Use `npm run test` (Vitest + React Testing Library)
 - **Backend tests**: Use `python -m unittest discover -s tests`
 - **Manual testing**: See comprehensive test documentation in `frontend/TESTING.md` and `backend/TESTING.md`
 
 ### Environment Configuration
+
 - **Frontend**: Uses environment files (`environment.ts`, `environment.staging.ts`, `environment.prod.ts`)
 - **Backend**: Requires Azure Storage connection strings, database URLs, and ML endpoint configurations
 - **Required variables**: `NACHET_AZURE_STORAGE_CONNECTION_STRING`, `NACHET_DATA`, various pipeline and model credentials
@@ -111,6 +121,7 @@ nachet/
 ## Key Implementation Notes
 
 ### Data Flow
+
 1. **Image capture/upload** → Frontend (React)
 2. **Base64 encoding** → HTTP POST to backend
 3. **Storage in Azure Blob** → Metadata to PostgreSQL
@@ -118,17 +129,20 @@ nachet/
 5. **Results processing** → Database storage → Frontend display
 
 ### Authentication & Security
+
 - **Cookie-based authentication** with JWT tokens
 - **Encrypted model credentials** using Fernet encryption
 - **Multi-tenant isolation** via UUID-based user containers
 - **API key authentication** for external ML services
 
 ### Frontend State Management
+
 - **No global state library** (Redux/Zustand) - uses React state and context
 - **API caching** with custom cache utilities
 - **Real-time updates** through API polling for inference results
 
 ### Backend Error Handling
+
 - **Custom exception hierarchy** for different error types
 - **HTTP status code mapping** for API responses
 - **Comprehensive logging** throughout the request pipeline
@@ -136,6 +150,7 @@ nachet/
 ## Troubleshooting
 
 ### Common Issues
+
 - **CORS errors**: Check backend CORS configuration in `app.py`
 - **Image upload failures**: Verify Azure Storage connection string
 - **ML inference errors**: Check model endpoint availability and API keys
@@ -143,6 +158,7 @@ nachet/
 - **Build failures**: Ensure all dependencies are installed and environment variables set
 
 ### Debug Commands
+
 ```bash
 # Check backend health
 curl http://localhost:8080/health
