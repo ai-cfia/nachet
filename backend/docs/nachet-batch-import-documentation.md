@@ -201,7 +201,7 @@ Le diagramme complet fait partie de la documentation du **datastore**. Vous
 pouvez le consulter ici :
 
 [Processus de téléversement pour utilisateurs de
-confiance](https://github.com/ai-cfia/nachet-datastore/blob/issue13-create-process-to-upload-metadata-for-trusted-users/doc/trusted-user-upload.md)
+confiance]
 
 ## API
 
