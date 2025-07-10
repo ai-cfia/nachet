@@ -40,7 +40,7 @@ jobs:
       - name: Get PR branch version
         id: pr-version
         run: |
-          PR_VERSION=$(jq -r '.version' frontend/package.json)
+          PR_VERSION=$(jq -r '.version' package.json)
           echo "PR version: $PR_VERSION"
           echo "version=$PR_VERSION" >> $GITHUB_OUTPUT
       
