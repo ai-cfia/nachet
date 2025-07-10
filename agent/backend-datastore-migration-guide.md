@@ -87,13 +87,13 @@ from storage.datastore_storage_api import DatastoreError
 
 **Remove:**
 
-```
+```text
 nachet-datastore @git+https://github.com/ai-cfia/ailab-datastore.git@231-split-nachet-config-secrets
 ```
 
 **Add dependencies that were previously included in the datastore package:**
 
-```
+```text
 azure-storage-blob>=12.0.0
 azure-identity>=1.0.0
 psycopg2-binary>=2.9.0
@@ -104,7 +104,7 @@ asyncpg>=0.28.0
 
 **Remove:**
 
-```
+```text
 nachet-datastore @git+https://github.com/ai-cfia/ailab-datastore.git@231-split-nachet-config-secrets
 ```
 

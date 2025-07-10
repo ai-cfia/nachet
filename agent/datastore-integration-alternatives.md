@@ -49,7 +49,7 @@ import datastore.bin.upload_picture_set
 
 **Implementation**:
 
-```
+```text
 backend/
 ├── datastore/
 │   ├── db/
@@ -106,7 +106,7 @@ git submodule add <datastore-repo-url> datastore
 
 **Implementation**:
 
-```
+```text
 nachet/
 ├── shared/
 │   └── datastore/
@@ -134,7 +134,7 @@ nachet/
 
 **Implementation**:
 
-```
+```text
 datastore-service/  # FastAPI or similar
 backend/           # Calls datastore via HTTP
 frontend/          # Remains unchanged

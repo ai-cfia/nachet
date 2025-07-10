@@ -63,7 +63,7 @@ docker-compose up --build          # Run frontend + backend together
 
 ### Key Directories Structure
 
-```
+```text
 nachet/
 ├── frontend/          # React TypeScript application
 │   ├── src/

@@ -1,4 +1,5 @@
-General frontend rules
+# General Frontend Rules
+
 ---
 
 description:
@@ -85,18 +86,14 @@ globs: components/**/*.{ts,tsx,js,jsx}
 - Use React.memo for performance optimization when needed.
 - Implement custom hooks for reusable logic.
 
-Typescript rules
----
-
-description:
-globs: **/*.ts,**/*.tsx,**/*.js,**/*.jsx
-alwaysApply: false
----
+# TypeScript Rules
 
 ---
 
 description: Defines specific coding style and structure for TypeScript and JavaScript files, including function usage, type preferences, and file organization.
 globs: **/*.{ts,tsx,js,jsx}
+alwaysApply: false
+---
 ---
 
 - Do not remove any existing code unless necessary.

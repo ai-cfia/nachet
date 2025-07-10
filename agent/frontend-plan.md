@@ -67,7 +67,7 @@ on:
 
 #### 1.2 Job Migration Strategy
 
-**Job 1: Frontend Lint and Test**
+##### Job 1: Frontend Lint and Test
 
 - Use existing `ai-cfia/github-workflows/.github/workflows/workflow-lint-test-node.yml`
 - **Working Directory**: Set to `frontend/`
@@ -76,20 +76,20 @@ on:
   - Node version: 18.16.0
   - NPM version: 9.8.1
 
-**Job 2: Frontend Build Validation**
+##### Job 2: Frontend Build Validation
 
 - Add explicit build validation step
 - Run `npm run build` to ensure production build works
 - Cache `node_modules` and `dist` for efficiency
 
-**Job 3: Docker Build and Push**  
+##### Job 3: Docker Build and Push  
 
 - Use existing `ai-cfia/github-workflows/.github/workflows/workflow-build-push-container-github-registry.yml`
 - **Critical Change**: Docker context must be `frontend/` directory
 - **Container name**: Keep as `nachet-frontend` or use repository name
 - **Tag**: Use commit SHA for traceability
 
-**Job 4: Repository Standards (Conditional)**
+##### Job 4: Repository Standards (Conditional)
 
 - Only run repo standards check if frontend-specific files changed
 - Focus on frontend-related standards
