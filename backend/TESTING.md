@@ -18,7 +18,7 @@ python -m unittest discover -s tests
 
 You also have the option to run automatic tests in run_test.py or manually test
 the functionality with the frontend. [See frontend testing
-documentation](https://github.com/ai-cfia/nachet/frontend/blob/main/TESTING.md)
+documentation](https://github.com/ai-cfia/nachet/blob/main/frontend/TESTING.md)
 
 To perform the following test, you will need the Nachet's frontend repository.
 It can be found at: [Nachet Frontend GitHub
