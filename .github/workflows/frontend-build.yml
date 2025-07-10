@@ -29,8 +29,8 @@ defaults:
 
 jobs:
   build-and-push-gcr:
-    uses: ./.github/workflows/workflow-build-push-container-github-registry-mono.yml
-    #   uses: ai-cfia/github-workflows/.github/workflows/workflow-build-push-container-github-registry-mono.yml@main
+    # uses: ./.github/workflows/workflow-build-push-container-github-registry-mono.yml
+    uses: ai-cfia/github-workflows/.github/workflows/workflow-build-push-container-github-registry-mono.yml@main
     with:
       working-directory: frontend
       container-name: ${{ github.event.repository.name }}-frontend
