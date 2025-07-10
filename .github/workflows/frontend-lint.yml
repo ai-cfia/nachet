@@ -4,17 +4,17 @@ on:
   pull_request:
     paths:
       - 'frontend/**'
-      - '.github/workflows/frontend-ci.yml'
-      - 'package.json'
-      - '.nvmrc'
-      - 'tsconfig.json'
+      - '.github/workflows/frontend-lint.yml'
+      - 'frontend/package.json'
+      - 'frontend/.nvmrc'
+      - 'frontend/tsconfig.json'
     types:
       - opened
       - closed
       - synchronize
 
 concurrency:
-  group: frontend-ci-${{ github.ref }}
+  group: frontend-lint-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -112,8 +112,8 @@ jobs:
       - name: Extract versions from package.json
         id: versions
         run: |
-          NODE_VERSION=$(jq -r '.engines.node' package.json | sed 's/\^//')
-          NPM_VERSION=$(jq -r '.engines.npm' package.json | sed 's/\^//')
+          NODE_VERSION=$(jq -r '.engines.node' frontend/package.json | sed 's/\^//')
+          NPM_VERSION=$(jq -r '.engines.npm' frontend/package.json | sed 's/\^//')
           echo "Detected Node.js version: $NODE_VERSION"
           echo "Detected npm version: $NPM_VERSION"
           echo "node-version=$NODE_VERSION" >> $GITHUB_OUTPUT
