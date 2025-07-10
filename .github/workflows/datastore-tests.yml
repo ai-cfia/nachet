@@ -1,0 +1,114 @@
+name: datastore tests
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    paths:
+      - 'datastore/**'
+      - '.github/workflows/datastore-tests.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'datastore/**'
+      - '.github/workflows/datastore-tests.yml'
+
+defaults:
+  run:
+    working-directory: datastore
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nachet_test
+          POSTGRES_USER: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      azurite:
+        image: mcr.microsoft.com/azure-storage/azurite
+        ports:
+          - 10000:10000
+          - 10001:10001
+          - 10002:10002
+        options: >-
+          --health-cmd "curl -f http://localhost:10000/ || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Set up database schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d nachet_test -f nachet/db/bytebase/schema_nachet_0.0.11.sql
+        env:
+          PGPASSWORD: postgres
+
+      - name: Run tests
+        run: |
+          python -m pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
+        env:
+          # PostgreSQL connection
+          NACHET_DB_URL: postgresql://postgres:postgres@localhost:5432/nachet_test
+          
+          # Azurite connection (Azure Storage emulator)
+          NACHET_AZURE_STORAGE_CONNECTION_STRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;"
+          
+          # Test environment flag
+          TESTING: "true"
+
+      - name: Upload coverage to Codecov
+        if: success()
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./datastore/coverage.xml
+          flags: datastore
+          name: datastore-coverage
+
+  trigger-release:
+    name: Trigger release workflow
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Trigger Release Workflow for Nachet Datastore
+        run: |
+          gh workflow run datastore-publish-package.yml \
+          --ref main \
+          -f package-name=nachet
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
