@@ -122,7 +122,7 @@ changes in the frontend.
 For managing and configuring different deployment environments (development,
 staging, production), we follow a structured approach to ensure consistency and
 reliability across all stages of deployment. Detailed guidelines and practices
-can be found in our 
+can be found in our
 
 This documentation covers:
 
