@@ -53,7 +53,7 @@ jobs:
     secrets: inherit
     with:
       working-directory: datastore
-      md-link-config-file-path: '../.mlc_config.json'
+      md-link-config-file-path: '.mlc_config.json'
   yaml-check:
     name: workflow-yaml-check
     uses: ai-cfia/github-workflows/.github/workflows/workflow-yaml-check-mono.yml@main
