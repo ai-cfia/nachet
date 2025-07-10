@@ -52,7 +52,7 @@ jobs:
     secrets: inherit
     with:
       working-directory: datastore
-      md-link-config-file-path: '.mlc_config.json'
+      md-link-config-file-path: '../.mlc_config.json'
   yaml-check:
     name: workflow-yaml-check
     uses: ai-cfia/github-workflows/.github/workflows/workflow-yaml-check-mono.yml@main
@@ -70,7 +70,7 @@ jobs:
 
       - name: Trigger Release Workflow for Nachet Datastore
         run: |
-          gh workflow run publish-package.yml \
+          gh workflow run datastore-publish-package.yml \
           --ref main \
           -f package-name=nachet
         env:
