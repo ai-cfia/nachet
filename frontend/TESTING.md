@@ -17,7 +17,7 @@ backend URL is not set or is non-responsive.
 - [ ] Nachet Backend is set up and running locally. The Nachet Backend can be
 found at:
 [Nachet Backend GitHub
-Repository](https://github.com/ai-cfia/nachet-backend).
+Repository](https://github.com/ai-cfia/nachet).
 To run the application locally, use the command `hypercorn -b :8080
 app:app` in the terminal.
 - [ ] The backend URL environment variable is either not set, empty, or
