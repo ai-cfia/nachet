@@ -43,17 +43,17 @@ jobs:
         ports:
           - 5432:5432
       
-      azurite:
-        image: mcr.microsoft.com/azure-storage/azurite
-        ports:
-          - 10000:10000
-          - 10001:10001
-          - 10002:10002
-        options: >-
-          --health-cmd "curl -f http://localhost:10000/ || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+      # azurite:
+      #   image: mcr.microsoft.com/azure-storage/azurite
+      #   ports:
+      #     - 10000:10000
+      #     - 10001:10001
+      #     - 10002:10002
+      #   options: >-
+      #     --health-cmd "curl -f http://localhost:10000/ || exit 1"
+      #     --health-interval 10s
+      #     --health-timeout 5s
+      #     --health-retries 5
 
     steps:
       - name: Checkout code
@@ -69,6 +69,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov
+      
+      - name: Install Azurite
+        run: npm install -g azurite
+      
+      - name: Start Azurite Blob Storage Emulator
+        shell: bash
+        run: azurite-blob &
 
       - name: Set up database schema
         run: |
@@ -89,13 +96,13 @@ jobs:
           # Test environment flag
           TESTING: "true"
 
-      - name: Upload coverage to Codecov
-        if: success()
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./datastore/coverage.xml
-          flags: datastore
-          name: datastore-coverage
+      # - name: Upload coverage to Codecov
+      #   if: success()
+      #   uses: codecov/codecov-action@v3
+      #   with:
+      #     file: ./datastore/coverage.xml
+      #     flags: datastore
+      #     name: datastore-coverage
 
   trigger-release:
     name: Trigger release workflow
