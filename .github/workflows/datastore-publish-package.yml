@@ -1,5 +1,8 @@
 name: Create Release
 
+# This workflow can be triggered in two ways:
+# 1. Automatically by the datastore-tests workflow when a PR is merged to main
+# 2. Manually via workflow_dispatch for ad-hoc releases
 on:
   workflow_dispatch:
     inputs:
@@ -33,25 +36,70 @@ jobs:
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Action"
 
-      - name: Move appropriate pyproject.toml for build
+      - name: Validate and move pyproject.toml for build
         run: |
+          if [ ! -f "${{ inputs.package-name }}_pyproject.toml" ]; then
+            echo "Error: ${{ inputs.package-name }}_pyproject.toml not found"
+            exit 1
+          fi
           mv ${{ inputs.package-name }}_pyproject.toml pyproject.toml
 
       - name: Parse version from pyproject.toml
         id: parse_version
         run: |
+          if [ ! -f "pyproject.toml" ]; then
+            echo "Error: pyproject.toml not found after move operation"
+            exit 1
+          fi
           version=$(grep -Po '(?<=^version = ")[^"]*' pyproject.toml)
+          if [ -z "$version" ]; then
+            echo "Error: Could not parse version from pyproject.toml"
+            exit 1
+          fi
+          echo "Parsed version: $version"
           echo "version=$version" >> $GITHUB_ENV
 
       - name: Switch to the release branch
         run: |
-          git checkout -b ${{ inputs.package-name }}-${{ env.version }}
-          git push -u origin ${{ inputs.package-name }}-${{ env.version }}
+          branch_name="${{ inputs.package-name }}-${{ env.version }}"
+          
+          # Check if branch exists locally and delete it
+          if git show-ref --verify --quiet refs/heads/$branch_name; then
+            echo "Branch $branch_name exists locally, deleting it"
+            git branch -D $branch_name
+          fi
+          
+          # Check if branch exists remotely and delete it
+          if git ls-remote --heads origin $branch_name | grep -q $branch_name; then
+            echo "Branch $branch_name exists remotely, deleting it"
+            git push origin --delete $branch_name
+          fi
+          
+          # Create and push new branch
+          git checkout -b $branch_name
+          git push -u origin $branch_name
 
       - name: Remove unnecessary files from release branch
         run: |
-          find . -path "./.git" -prune -o -type f ! -name "pyproject.toml" ! -name "requirements.txt" ! -path "./datastore/*" ! -path "./${{ inputs.package-name }}/*" -exec rm -f {} +
-          find . -type d \( -path "./.git" -o -path ./"datastore" -o -path "./${{ inputs.package-name }}" \) -prune -o -type d ! -path "." -exec rm -rf {} +
+          echo "Files and directories before cleanup:"
+          find . -maxdepth 2 -type f -o -type d | head -20
+          
+          # Validate required directories exist before cleanup
+          if [ ! -d "./datastore" ] || [ ! -d "./${{ inputs.package-name }}" ]; then
+            echo "Error: Required directories (datastore or ${{ inputs.package-name }}) not found"
+            exit 1
+          fi
+          
+          # Remove files (excluding protected ones)
+          echo "Removing unnecessary files..."
+          find . -path "./.git" -prune -o -type f ! -name "pyproject.toml" ! -name "requirements.txt" ! -path "./datastore/*" ! -path "./${{ inputs.package-name }}/*" -print -exec rm -f {} +
+          
+          # Remove directories (excluding protected ones) 
+          echo "Removing unnecessary directories..."
+          find . -type d \( -path "./.git" -o -path "./datastore" -o -path "./${{ inputs.package-name }}" \) -prune -o -type d ! -path "." -print -exec rm -rf {} +
+          
+          echo "Files and directories after cleanup:"
+          find . -maxdepth 2 -type f -o -type d | head -20
 
       - uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5
         with:
@@ -62,27 +110,61 @@ jobs:
 
       - name: Tag the clean version on the release branch
         run: |
-          git tag -a v${{ env.version }}-${{ inputs.package-name }}-datastore -m "Release ${{ env.version }}"
-          git push origin v${{ env.version }}-${{ inputs.package-name }}-datastore
+          tag_name="v${{ env.version }}-${{ inputs.package-name }}-datastore"
+          
+          # Check if tag exists locally and delete it
+          if git tag -l | grep -q "^$tag_name$"; then
+            echo "Tag $tag_name exists locally, deleting it"
+            git tag -d $tag_name
+          fi
+          
+          # Check if tag exists remotely and delete it
+          if git ls-remote --tags origin | grep -q "refs/tags/$tag_name$"; then
+            echo "Tag $tag_name exists remotely, deleting it"
+            git push --delete origin $tag_name
+          fi
+          
+          # Create and push new tag
+          git tag -a $tag_name -m "Release ${{ env.version }}"
+          git push origin $tag_name
 
       - name: Generate changelog from PRs since last tag
         id: generate_changelog
         run: |
           # Fetch the latest tag as a reference. We are comparing changelogs from latest tag to current one.
-          latest_tag=$(git describe --tags --abbrev=0)
-
-          # Format date for jq comparison
-          latest_tag_date=$(git log -1 --format=%ai "$latest_tag" | sed 's/.*/"&"/')
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$latest_tag" ]; then
+            echo "No previous tags found, generating changelog from beginning of history"
+            latest_tag_date="\"1970-01-01T00:00:00Z\""
+          else
+            echo "Found latest tag: $latest_tag"
+            # Format date for jq comparison
+            latest_tag_date=$(git log -1 --format=%ai "$latest_tag" | sed 's/.*/"&"/')
+          fi
 
           datastore_changelog=""
           nachet_changelog=""
           fertiscan_changelog=""
 
           # Fetch merged PRs since the latest tag
-          pr_list=$(gh pr list --repo $GITHUB_REPOSITORY --state merged --json number,title,url,mergedAt --jq ".[] | select(.mergedAt > $latest_tag_date) | .number")
+          echo "Fetching merged PRs since $latest_tag_date"
+          pr_list=$(gh pr list --repo $GITHUB_REPOSITORY --state merged --json number,title,url,mergedAt --jq ".[] | select(.mergedAt > $latest_tag_date) | .number" 2>/dev/null || echo "")
+          
+          if [ -z "$pr_list" ]; then
+            echo "No merged PRs found since latest tag"
+          else
+            echo "Found PRs: $pr_list"
+          fi
 
           for pr in $pr_list; do
-            files=$(gh pr view "$pr" --repo $GITHUB_REPOSITORY --json files --jq '.files[].path')
+            echo "Processing PR #$pr"
+            files=$(gh pr view "$pr" --repo $GITHUB_REPOSITORY --json files --jq '.files[].path' 2>/dev/null || echo "")
+            
+            if [ -z "$files" ]; then
+              echo "Warning: Could not fetch files for PR #$pr, skipping"
+              continue
+            fi
 
             if echo "$files" | grep -q "^datastore/"; then
               pr_info=$(gh pr view "$pr" --repo $GITHUB_REPOSITORY --json title,url | jq -r '"- \(.title) (\(.url))"')
