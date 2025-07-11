@@ -204,5 +204,5 @@ EXECUTE FUNCTION verified_inference();
     (m.endpoint_name='Nachet-6seeds' and p.name='6 Seed Detector') or 
     (m.endpoint_name='Seed-detector' and p.name='Swin transformer') or
    	(m.endpoint_name='Swin' and p.name='Swin transformer')); 
-END
+END;
 $do$

@@ -64,6 +64,10 @@ jobs:
       - name: Start Azurite Blob Storage Emulator
         shell: bash
         run: azurite --loose --blobHost 0.0.0.0 --blobPort 10000 &
+      
+      - name: Wait for Azurite to be ready
+        run: |
+          timeout 30 bash -c 'until curl -f http://127.0.0.1:10000/ 2>/dev/null; do sleep 1; done'
 
       - name: Set up database schema
         run: |
@@ -76,10 +80,10 @@ jobs:
           python -m pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
         env:
           TESTING: "true"
-          NACHET_AZURE_STORAGE_CONNECTION_STRING: 'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1;'
+          NACHET_AZURE_STORAGE_CONNECTION_STRING: 'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;'
           NACHET_STORAGE_URL_TESTING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
           NACHET_STORAGE_URL: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
-          NACHET_DB_URL: "postgresql://postgres:postgres@localhost:5432/nachet_test"
+          NACHET_DB_URL: "postgresql://postgres:postgres@127.0.0.1:5432/nachet_test"
           NACHET_SCHEMA_TESTING: "nachet_0.0.12"
           NACHET_SCHEMA: "nachet_0.0.12"
           NACHET_DATA: "https://raw.githubusercontent.com/ai-cfia/nachet-data/main/"
