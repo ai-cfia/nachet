@@ -42,18 +42,6 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-      
-      # azurite:
-      #   image: mcr.microsoft.com/azure-storage/azurite
-      #   ports:
-      #     - 10000:10000
-      #     - 10001:10001
-      #     - 10002:10002
-      #   options: >-
-      #     --health-cmd "curl -f http://localhost:10000/ || exit 1"
-      #     --health-interval 10s
-      #     --health-timeout 5s
-      #     --health-retries 5
 
     steps:
       - name: Checkout code
@@ -75,7 +63,7 @@ jobs:
       
       - name: Start Azurite Blob Storage Emulator
         shell: bash
-        run: azurite-blob &
+        run: azurite --loose --blobHost 0.0.0.0 --blobPort 10000 &
 
       - name: Set up database schema
         run: |
