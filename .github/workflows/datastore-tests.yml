@@ -93,6 +93,7 @@ jobs:
           NACHET_STORAGE_URL: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
           NACHET_DB_URL: "postgresql://postgres:postgres@localhost:5432/nachet_test"
           NACHET_SCHEMA_TESTING: "nachet_0.0.12"
+          NACHET_SCHEMA: "nachet_0.0.12"
           NACHET_DATA: "https://raw.githubusercontent.com/ai-cfia/nachet-data/main/"
           NACHET_MAX_CONTENT_LENGTH: "200"
           NACHET_BLOB_PIPELINE_NAME: sg-nachet-pipeline-dev
@@ -101,6 +102,7 @@ jobs:
           NACHET_BLOB_ACCOUNT: "devstoreaccount1"
           NACHET_BLOB_ACCOUNT_TESTING: "devstoreaccount1"
           NACHET_BLOB_KEY: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
+          NACHET_BLOB_KEY_TESTING: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
           NACHET_VALID_EXTENSION: '["jpeg", "jpg", "png", "gif", "bmp", "tiff", "webp"]'
           NACHET_VALID_DIMENSION: '{"width": 1920, "height": 1080}'
           DEV_USER_EMAIL: "example@gmail.com"
