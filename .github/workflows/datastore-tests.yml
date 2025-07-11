@@ -72,6 +72,8 @@ jobs:
       - name: Set up database schema
         run: |
           PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d nachet_test -c "CREATE SCHEMA IF NOT EXISTS \"nachet_0.0.10\";"
+          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d nachet_test -c "CREATE SCHEMA IF NOT EXISTS \"nachet_0.0.11\";"
+          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d nachet_test -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" SCHEMA uuid_;"
           PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d nachet_test -f nachet/db/bytebase/schema_nachet_0.0.11.sql
         env:
           PGPASSWORD: postgres
