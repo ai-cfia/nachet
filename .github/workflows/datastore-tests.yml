@@ -81,7 +81,7 @@ jobs:
 
       - name: Verify schema setup
         run: |
-          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d nachet_test -c "\dt nachet_0_0_11.*" -c "\df nachet_0_0_11.*" -c "SELECT * FROM nachet_0_0_11.seed;"
+          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d nachet_test -c "\dt \"nachet_0.0.11\".*" -c "\df \"nachet_0.0.11\".*" -c "SELECT * FROM \"nachet_0.0.11\".seed;"
         env:
           PGPASSWORD: postgres
 
