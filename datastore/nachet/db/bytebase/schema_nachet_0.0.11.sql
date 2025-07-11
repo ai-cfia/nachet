@@ -208,5 +208,6 @@ EXECUTE FUNCTION "nachet_0.0.11".verified_inference();
     ALTER TABLE "nachet_0.0.11".users ADD CONSTRAINT fk_users_picture_set FOREIGN KEY (default_set_id) REFERENCES "nachet_0.0.11".picture_set(id);
     ALTER TABLE "nachet_0.0.11".picture_set ADD CONSTRAINT fk_picture_set_users FOREIGN KEY (owner_id) REFERENCES "nachet_0.0.11".users(id);
 
+    END IF;
 END
 $do$
