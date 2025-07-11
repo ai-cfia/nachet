@@ -10,12 +10,10 @@ network policy we are working under doesn't allow us to make connection on port.
 
 ## Decision
 
-To view the architectural decision record behind Bytebase refer [to the
-following
-ADR](https://github.com/ai-cfia/dev-rel-docs/tree/main/adr/006-review-database-change-management.md)
+To view the architectural decision record behind Bytebase refer to the
+ai-cfia/dev-rel-docs repository at `adr/006-review-database-change-management.md`
 
 ## Usage documentation
 
-Refer [to the following
-documentation](https://github.com/ai-cfia/dev-rel-docs/tree/main/Bytebase/usage-guideline.md)
+Refer to the ai-cfia/dev-rel-docs repository at `Bytebase/usage-guideline.md`
 to better understand how Bytebase works and how to use its features.
