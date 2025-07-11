@@ -9,7 +9,7 @@ IF (EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'nache
         "email" VARCHAR(255) NOT NULL,
         "registration_date" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updated_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "default_set_id" uuid NOT NULL
+        "default_set_id" uuid
     );
 
     CREATE TABLE "nachet_0.0.11"."picture_set" (
