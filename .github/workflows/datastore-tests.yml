@@ -71,7 +71,7 @@ jobs:
 
       - name: Set up database schema
         run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d nachet_test -f nachet/db/bytebase/schema_nachet_0.0.11.sql
+          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d nachet_test -f nachet/db/bytebase/schema_nachet_0.0.11.sql
         env:
           PGPASSWORD: postgres
 
@@ -83,7 +83,7 @@ jobs:
           NACHET_AZURE_STORAGE_CONNECTION_STRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
           NACHET_STORAGE_URL_TESTING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
           NACHET_STORAGE_URL: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
-          NACHET_DB_URL: "postgresql://postgres:postgres@postgres:5432/nachet_test"
+          NACHET_DB_URL: "postgresql://postgres:postgres@127.0.0.1:5432/nachet_test"
           NACHET_SCHEMA_TESTING: "nachet_0.0.12"
           NACHET_SCHEMA: "nachet_0.0.12"
           NACHET_DATA: "https://raw.githubusercontent.com/ai-cfia/nachet-data/main/"
