@@ -1,5 +1,5 @@
 ---
-name: datastore workflows
+name: datastore lint
 permissions:
   contents: write
   pull-requests: write
