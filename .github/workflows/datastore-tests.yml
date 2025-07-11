@@ -87,14 +87,25 @@ jobs:
         run: |
           python -m pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
         env:
-          # PostgreSQL connection
-          NACHET_DB_URL: postgresql://postgres:postgres@localhost:5432/nachet_test
-          
-          # Azurite connection (Azure Storage emulator)
-          NACHET_AZURE_STORAGE_CONNECTION_STRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;"
-          
-          # Test environment flag
           TESTING: "true"
+          NACHET_AZURE_STORAGE_CONNECTION_STRING: 'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://nachet-blob:10000/devstoreaccount1;'
+          NACHET_STORAGE_URL: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
+          NACHET_DB_URL: "postgresql://postgres:postgres@localhost:5432/nachet_test"
+          NACHET_SCHEMA: "nachet_0.0.12"
+          NACHET_DATA: "https://raw.githubusercontent.com/ai-cfia/nachet-data/main/"
+          NACHET_MAX_CONTENT_LENGTH: "200"
+          NACHET_BLOB_PIPELINE_NAME: sg-nachet-pipeline-dev
+          NACHET_BLOB_PIPELINE_VERSION: 0.1.3
+          NACHET_BLOB_PIPELINE_DECRYPTION_KEY: "LzXE90TH5zvP-jwh215opmbgesatIZD0I4Wiy080E="
+          NACHET_BLOB_ACCOUNT: "devstoreaccount1"
+          NACHET_BLOB_KEY: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
+          NACHET_VALID_EXTENSION: '["jpeg", "jpg", "png", "gif", "bmp", "tiff", "webp"]'
+          NACHET_VALID_DIMENSION: '{"width": 1920, "height": 1080}'
+          DEV_USER_EMAIL: "example@gmail.com"
+          NACHET_ENV: "local" # local, dev, prod
+          NACHET_FRONTEND_PUBLIC_URL: "https://nachet.inspection.alpha.canada.ca"
+          NACHET_FRONTEND_DEV_URL: "http://localhost:5173"
+          PORT: 5174
 
       # - name: Upload coverage to Codecov
       #   if: success()
