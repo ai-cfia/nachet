@@ -89,9 +89,9 @@ jobs:
         env:
           TESTING: "true"
           NACHET_AZURE_STORAGE_CONNECTION_STRING: 'DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://nachet-blob:10000/devstoreaccount1;'
-          NACHET_STORAGE_URL: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
+          NACHET_STORAGE_URL_TESTING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
           NACHET_DB_URL: "postgresql://postgres:postgres@localhost:5432/nachet_test"
-          NACHET_SCHEMA: "nachet_0.0.12"
+          NACHET_SCHEMA_TESTING: "nachet_0.0.12"
           NACHET_DATA: "https://raw.githubusercontent.com/ai-cfia/nachet-data/main/"
           NACHET_MAX_CONTENT_LENGTH: "200"
           NACHET_BLOB_PIPELINE_NAME: sg-nachet-pipeline-dev
