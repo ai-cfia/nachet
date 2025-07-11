@@ -65,9 +65,9 @@ jobs:
         shell: bash
         run: azurite --loose --blobHost 127.0.0.1 --blobPort 10000 &
       
-      - name: Wait for Azurite to be ready
-        run: |
-          timeout 30 bash -c 'until curl -f http://127.0.0.1:10000/ 2>/dev/null; do sleep 1; done'
+      # - name: Wait for Azurite to be ready
+      #   run: |
+      #     timeout 30 bash -c 'until curl -f http://127.0.0.1:10000/ 2>/dev/null; do sleep 1; done'
 
       - name: Set up database schema
         run: |
