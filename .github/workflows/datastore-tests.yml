@@ -94,7 +94,7 @@ jobs:
           NACHET_AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           NACHET_STORAGE_URL_TESTING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           NACHET_STORAGE_URL: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
-          NACHET_DB_URL: ${{ secrets.NACHET_DB_URL }}
+          NACHET_DB_URL: "postgresql://${{ secrets.PG_USER }}:${{ secrets.PG_PASS }}@127.0.0.1:5432/${{ secrets.PG_DB }}"
           NACHET_SCHEMA_TESTING: "nachet_0.0.11"
           NACHET_SCHEMA: "nachet_0.0.11"
           NACHET_DATA: "https://raw.githubusercontent.com/ai-cfia/nachet-data/main/"
