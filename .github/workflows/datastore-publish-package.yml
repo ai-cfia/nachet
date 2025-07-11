@@ -187,7 +187,14 @@ jobs:
             changelog="$changelog\n\nNachet:\n$nachet_changelog"
           fi
 
-          echo -e "$changelog" > ./RELEASE_CHANGELOG.md
+          # Print changelog for debugging
+          echo "Generated changelog:"
+          echo -e "$changelog"
+
+          # Output changelog content to GitHub Actions output for use in release step
+          echo "release_body<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$changelog" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -196,7 +203,7 @@ jobs:
         with:
           tag: "v${{ env.version }}-${{ inputs.package-name }}-datastore"
           name: "${{ inputs.package-name }}-datastore v${{ env.version }}"
-          bodyFile: "./RELEASE_CHANGELOG.md"
+          body: "${{ steps.generate_changelog.outputs.release_body }}"
           allowUpdates: true
           generateReleaseNotes: false
           makeLatest: true
