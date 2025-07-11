@@ -145,7 +145,6 @@ jobs:
 
           datastore_changelog=""
           nachet_changelog=""
-          fertiscan_changelog=""
 
           # Fetch merged PRs since the latest tag
           echo "Fetching merged PRs since $latest_tag_date"
@@ -176,10 +175,6 @@ jobs:
               nachet_changelog="$nachet_changelog\n$pr_info"
             fi
 
-            if echo "$files" | grep -q "^fertiscan/" && [ "${{ inputs.package-name }}" = "fertiscan" ]; then
-              pr_info=$(gh pr view "$pr" --repo $GITHUB_REPOSITORY --json title,url | jq -r '"- \(.title) (\(.url))"')
-              fertiscan_changelog="$fertiscan_changelog\n$pr_info"
-            fi
           done
 
           changelog="Changelog:\n"
@@ -190,10 +185,6 @@ jobs:
 
           if [ -n "$nachet_changelog" ]; then
             changelog="$changelog\n\nNachet:\n$nachet_changelog"
-          fi
-
-          if [ -n "$fertiscan_changelog" ]; then
-            changelog="$changelog\n\nFertiscan:\n$fertiscan_changelog"
           fi
 
           echo -e "$changelog" > RELEASE_CHANGELOG.md

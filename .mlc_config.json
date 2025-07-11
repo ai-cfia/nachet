@@ -1,7 +1,7 @@
 {
     "aliveStatusCodes": [999,200,403],
     "retry": 3,
-    "retryDelay": 2000,
+    "retryDelay": 5000,
     "ignorePatterns": [
         {
             "pattern": "^https?://localhost"
