@@ -1,4 +1,4 @@
-name: Create Release
+name: Create Datastore Release
 
 # This workflow can be triggered in two ways:
 # 1. Automatically by the datastore-tests workflow when a PR is merged to main
@@ -187,7 +187,7 @@ jobs:
             changelog="$changelog\n\nNachet:\n$nachet_changelog"
           fi
 
-          echo -e "$changelog" > RELEASE_CHANGELOG.md
+          echo -e "$changelog" > ./RELEASE_CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -196,7 +196,7 @@ jobs:
         with:
           tag: "v${{ env.version }}-${{ inputs.package-name }}-datastore"
           name: "${{ inputs.package-name }}-datastore v${{ env.version }}"
-          bodyFile: "RELEASE_CHANGELOG.md"
+          bodyFile: "./RELEASE_CHANGELOG.md"
           allowUpdates: true
           generateReleaseNotes: false
           makeLatest: true
