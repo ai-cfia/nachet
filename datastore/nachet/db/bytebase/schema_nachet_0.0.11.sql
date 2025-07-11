@@ -195,9 +195,9 @@ EXECUTE FUNCTION "nachet_0.0.11".verified_inference();
     ('Seed-detector','seed-detector-1',1),
     ('Swin','swinv1-base-dataaugv2-1',2);
 
-    INSERT INTO "nachet_0.0.11".pipeline(name,active,is_default) VALUES
-    ('6 Seed Detector',true,false),
-    ('Swin transformer',true,true);
+    INSERT INTO "nachet_0.0.11".pipeline(name,active,is_default,data) VALUES
+    ('6 Seed Detector',true,false,'{}'),
+    ('Swin transformer',true,true,'{}');
 
     INSERT INTO "nachet_0.0.11".pipeline_model(pipeline_id,model_id) 
     (Select p.id,m.id from "nachet_0.0.11".model as m, "nachet_0.0.11".pipeline as p where 
