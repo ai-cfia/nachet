@@ -5,9 +5,6 @@ on:
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-build.yml'
-      - 'frontend/package.json'
-      - 'frontend/.nvmrc'
-      - 'frontend/tsconfig.json'
     types:
       - opened
       - closed

@@ -4,14 +4,17 @@ on:
   pull_request:
     paths:
       - 'frontend/**'
-      - '.github/workflows/frontend-lint.yml'
-      - 'frontend/package.json'
-      - 'frontend/.nvmrc'
-      - 'frontend/tsconfig.json'
+      - '.github/workflows/frontend-*.yml'
     types:
       - opened
       - closed
       - synchronize
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-*.yml'
 
 concurrency:
   group: frontend-lint-${{ github.ref }}
@@ -28,9 +31,14 @@ defaults:
     working-directory: frontend
 
 jobs:
-  version-check:
+  versions:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    outputs:
+      node-version: ${{ steps.versions.outputs.node-version }}
+      npm-version: ${{ steps.versions.outputs.npm-version }}
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v4
@@ -99,18 +107,6 @@ jobs:
             echo "Please ensure the version is incremented properly."
             exit 1
           fi
-
-  extract-versions:
-    runs-on: ubuntu-latest
-    outputs:
-      node-version: ${{ steps.versions.outputs.node-version }}
-      npm-version: ${{ steps.versions.outputs.npm-version }}
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
       
       - name: Extract versions from package.json
         id: versions
@@ -123,18 +119,35 @@ jobs:
           echo "npm-version=$NPM_VERSION" >> $GITHUB_OUTPUT
 
   frontend-lint-test:
-    needs: [extract-versions, version-check]
+    needs: [versions]
     uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-test-node-mono.yml@main
     with:
       working-directory: frontend
-      node-version: ${{ needs.extract-versions.outputs.node-version }}
-      npm-version: ${{ needs.extract-versions.outputs.npm-version }}
+      node-version: ${{ needs.versions.outputs.node-version }}
+      npm-version: ${{ needs.versions.outputs.npm-version }}
     secrets: inherit
 
   markdown-check:
-    needs: version-check
+    needs: [versions]
     uses: ai-cfia/github-workflows/.github/workflows/workflow-markdown-check-mono.yml@main
     with:
       working-directory: frontend
       md-link-config-file-path: ".mlc_config.json"
     secrets: inherit
+
+  trigger-release:
+    name: Trigger release workflow
+    # This job triggers the publish workflow automatically when a PR is merged to main
+    # The publish workflow can also be triggered manually via workflow_dispatch
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Trigger Release Workflow for Nachet Datastore
+        run: |
+          gh workflow run frontend-release.yml \
+          --ref main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

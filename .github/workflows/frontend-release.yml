@@ -4,10 +4,6 @@ name: Create Frontend Release
 # 1. Automatically after merge on main when frontend changes are detected
 # 2. Manually via workflow_dispatch for ad-hoc releases
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'frontend/**'
   workflow_dispatch:
 
 permissions:
@@ -21,39 +17,43 @@ defaults:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      
+      - name: Extract versions from package.json
+        id: versions
+        run: |
+          NODE_VERSION=$(jq -r '.engines.node' package.json | sed 's/\^//')
+          NPM_VERSION=$(jq -r '.engines.npm' package.json | sed 's/\^//')
+          APP_VERSION=$(jq -r '.version' package.json | sed 's/\^//')
+          if [ -z "$NODE_VERSION" ] || [ -z "$NPM_VERSION" ] || [ -z "$APP_VERSION" ]; then
+            echo "Error: Could not extract versions from package.json"
+            exit 1
+          fi
+          echo "Detected Node.js version: $NODE_VERSION"
+          echo "Detected npm version: $NPM_VERSION"
+          echo "Detected application version: $APP_VERSION"
+          echo "node-version=$NODE_VERSION" >> $GITHUB_OUTPUT
+          echo "npm-version=$NPM_VERSION" >> $GITHUB_OUTPUT
+          echo "app-version=$APP_VERSION" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18.16.0'
+          node-version: ${{ steps.versions.outputs.node-version }}
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
+            
+      - name: Install specific npm version
+        run: npm install -g npm@${{ steps.versions.outputs.npm-version }}
 
       - name: Configure Git for GitHub Actions
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Action"
-
-      - name: Parse version from package.json
-        id: parse_version
-        run: |
-          if [ ! -f "package.json" ]; then
-            echo "Error: package.json not found"
-            exit 1
-          fi
-          version=$(node -p "require('./package.json').version")
-          if [ -z "$version" ]; then
-            echo "Error: Could not parse version from package.json"
-            exit 1
-          fi
-          echo "Parsed version: $version"
-          echo "version=$version" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: npm ci
@@ -72,7 +72,7 @@ jobs:
 
       - name: Switch to the release branch
         run: |
-          branch_name="nachet-frontend-v${{ env.version }}"
+          branch_name="nachet-frontend-v${{ steps.versions.outputs.app-version }}"
           
           # Check if branch exists locally and delete it
           if git show-ref --verify --quiet refs/heads/$branch_name; then
@@ -114,14 +114,14 @@ jobs:
 
       - uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5
         with:
-          message: "Release frontend v${{ env.version }}-nachet-frontend"
+          message: "Release frontend nachet-frontend-v${{ steps.versions.outputs.app-version }}"
           add: "."
           author_name: "GitHub Action"
           author_email: actions@github.com
 
       - name: Tag the clean version on the release branch
         run: |
-          tag_name="v${{ env.version }}-nachet-frontend"
+          tag_name="nachet-frontend-v${{ steps.versions.outputs.app-version }}"
           
           # Check if tag exists locally and delete it
           if git tag -l | grep -q "^$tag_name$"; then
@@ -136,7 +136,7 @@ jobs:
           fi
           
           # Create and push new tag
-          git tag -a $tag_name -m "Frontend Release ${{ env.version }}"
+          git tag -a $tag_name -m "Frontend Release ${{ steps.versions.outputs.app-version }}"
           git push origin $tag_name
 
       - name: Generate changelog from PRs since last frontend tag
@@ -203,8 +203,8 @@ jobs:
       - name: Create GitHub Release
         uses: ncipollo/release-action@bcfe5470707e8832e12347755757cec0eb3c22af
         with:
-          tag: "v${{ env.version }}-nachet-frontend"
-          name: "nachet-frontend v${{ env.version }}"
+          tag: "nachet-frontend-v${{ steps.versions.outputs.app-version }}"
+          name: "nachet-frontend v${{ steps.versions.outputs.app-version }}"
           body: "${{ steps.generate_changelog.outputs.release_body }}"
           allowUpdates: true
           generateReleaseNotes: false

@@ -5,13 +5,6 @@ name: Create Datastore Release
 # 2. Manually via workflow_dispatch for ad-hoc releases
 on:
   workflow_dispatch:
-    inputs:
-      package-name:
-        description: 'Package name (e.g., nachet)'
-        required: true
-        type: choice
-        options:
-          - nachet
 
 permissions:
   contents: write
@@ -27,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -38,14 +31,14 @@ jobs:
 
       - name: Validate and move pyproject.toml for build
         run: |
-          if [ ! -f "${{ inputs.package-name }}_pyproject.toml" ]; then
-            echo "Error: ${{ inputs.package-name }}_pyproject.toml not found"
+          if [ ! -f "nachet_pyproject.toml" ]; then
+            echo "Error: nachet_pyproject.toml not found"
             exit 1
           fi
-          mv ${{ inputs.package-name }}_pyproject.toml pyproject.toml
+          mv nachet_pyproject.toml pyproject.toml
 
       - name: Parse version from pyproject.toml
-        id: parse_version
+        id: versions
         run: |
           if [ ! -f "pyproject.toml" ]; then
             echo "Error: pyproject.toml not found after move operation"
@@ -57,11 +50,11 @@ jobs:
             exit 1
           fi
           echo "Parsed version: $version"
-          echo "version=$version" >> $GITHUB_ENV
+          echo "app-version=$APP_VERSION" >> $GITHUB_OUTPUT
 
       - name: Switch to the release branch
         run: |
-          branch_name="${{ inputs.package-name }}-datastore-v${{ env.version }}"
+          branch_name="nachet-datastore-v${{ steps.versions.outputs.app-version }}"
           
           # Check if branch exists locally and delete it
           if git show-ref --verify --quiet refs/heads/$branch_name; then
@@ -85,32 +78,32 @@ jobs:
           find . -maxdepth 2 -type f -o -type d | head -20
           
           # Validate required directories exist before cleanup
-          if [ ! -d "./datastore" ] || [ ! -d "./${{ inputs.package-name }}" ]; then
-            echo "Error: Required directories (datastore or ${{ inputs.package-name }}) not found"
+          if [ ! -d "./datastore" ] || [ ! -d "./nachet" ]; then
+            echo "Error: Required directories (datastore or nachet) not found"
             exit 1
           fi
           
           # Remove files (excluding protected ones)
           echo "Removing unnecessary files..."
-          find . -path "./.git" -prune -o -type f ! -name "pyproject.toml" ! -name "requirements.txt" ! -path "./datastore/*" ! -path "./${{ inputs.package-name }}/*" -print -exec rm -f {} +
+          find . -path "./.git" -prune -o -type f ! -name "pyproject.toml" ! -name "requirements.txt" ! -path "./datastore/*" ! -path "./nachet/*" -print -exec rm -f {} +
           
           # Remove directories (excluding protected ones) 
           echo "Removing unnecessary directories..."
-          find . -type d \( -path "./.git" -o -path "./datastore" -o -path "./${{ inputs.package-name }}" \) -prune -o -type d ! -path "." -print -exec rm -rf {} +
+          find . -type d \( -path "./.git" -o -path "./datastore" -o -path "./nachet" \) -prune -o -type d ! -path "." -print -exec rm -rf {} +
           
           echo "Files and directories after cleanup:"
           find . -maxdepth 2 -type f -o -type d | head -20
 
       - uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5
         with:
-          message: "Release v${{ env.version }}-${{ inputs.package-name }}-datastore"
+          message: "Release nachet-datastore-v${{ steps.versions.outputs.app-version }}"
           add: "."
           author_name: "GitHub Action"
           author_email: actions@github.com
 
       - name: Tag the clean version on the release branch
         run: |
-          tag_name="v${{ env.version }}-${{ inputs.package-name }}-datastore"
+          tag_name="nachet-datastore-v${{ steps.versions.outputs.app-version }}"
           
           # Check if tag exists locally and delete it
           if git tag -l | grep -q "^$tag_name$"; then
@@ -125,7 +118,7 @@ jobs:
           fi
           
           # Create and push new tag
-          git tag -a $tag_name -m "Release ${{ env.version }}"
+          git tag -a $tag_name -m "Release ${{ steps.versions.outputs.app-version }}"
           git push origin $tag_name
 
       - name: Generate changelog from PRs since last tag
@@ -170,7 +163,7 @@ jobs:
               datastore_changelog="$datastore_changelog\n$pr_info"
             fi
 
-            if echo "$files" | grep -q "^nachet/" && [ "${{ inputs.package-name }}" = "nachet" ]; then
+            if echo "$files" | grep -q "^nachet/" && [ "nachet" = "nachet" ]; then
               pr_info=$(gh pr view "$pr" --repo $GITHUB_REPOSITORY --json title,url | jq -r '"- \(.title) (\(.url))"')
               nachet_changelog="$nachet_changelog\n$pr_info"
             fi
@@ -201,8 +194,8 @@ jobs:
       - name: Create GitHub Release
         uses: ncipollo/release-action@bcfe5470707e8832e12347755757cec0eb3c22af
         with:
-          tag: "v${{ env.version }}-${{ inputs.package-name }}-datastore"
-          name: "${{ inputs.package-name }}-datastore v${{ env.version }}"
+          tag: "nachet-datastore-v${{ steps.versions.outputs.app-version }}"
+          name: "nachet-datastore v${{ steps.versions.outputs.app-version }}"
           body: "${{ steps.generate_changelog.outputs.release_body }}"
           allowUpdates: true
           generateReleaseNotes: false
