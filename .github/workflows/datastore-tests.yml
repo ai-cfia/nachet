@@ -131,12 +131,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Trigger Release Workflow for Nachet Datastore
         run: |
           gh workflow run datastore-publish-package.yml \
-          --ref main \
-          -f package-name=nachet
+          --ref main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

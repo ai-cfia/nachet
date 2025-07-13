@@ -29,7 +29,7 @@ defaults:
 
 jobs:
   nachet-pyproject-version-bump:
-    if: github.event.pull_request.merged != true
+    # if: github.event.pull_request.merged != true
     name: nachet-datastore-pyproject-version-bump
     uses: ai-cfia/github-workflows/.github/workflows/workflow-version-bump-python-mono.yml@main
     secrets: inherit
