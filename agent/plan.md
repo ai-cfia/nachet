@@ -1,295 +1,147 @@
-# Monorepo GitHub Actions Workflow Migration Plan
+# Plan: Converting Nachet Backend to UV Project
 
 ## Current State Analysis
 
-### Repository Structure
+### Existing Structure
 
-- **Root**: Contains basic repo standards and markdown checking workflows
-- **Backend**: Python Quart application with Docker containerization workflows
-- **Frontend**: React application with Node.js workflows and container builds
-- **Datastore**: Python package with sophisticated CI/CD including version bumping and package publishing
-  - **Note**: Currently publishes both `nachet-datastore` and `fertiscan-datastore` packages
-  - **Future**: Will be simplified to only `nachet-datastore` after fertiscan removal
+- Uses `requirements.txt` with 16 dependencies including git-based `nachet-datastore`
+- Has local `ailab-datastore` library in `lib/` directory (with existing pyproject.toml files)
+- Multiple requirements files (requirements.txt, requirements.txt.local, requirements2025031201.txt)
+- Standard Python Quart web application with Azure integration
 
-### Existing Workflows Overview
+### Dependencies Analysis
 
-#### Root Level (`.github/workflows/`)
-
-- `workflows.yml`: Basic markdown and repo standards validation
-
-#### Backend (`.github/workflows/`)
-
-- `workflows.yml`: Python linting, testing, coverage, Docker build/push to GHCR
-- `project-issue-status.yml`: Project management automation
-
-#### Frontend (`.github/workflows/`)
-
-- `react-frontend-workflows.yml`: Node.js linting, testing, container build/push
-- `project-issue-status.yml`: Project management automation
-
-#### Datastore (`.github/workflows/`)
-
-- `workflows.yml`: Complex workflow with file change detection, version bumping for multiple packages
-- `publish-package.yml`: Package publishing to PyPI
-- `project-issue-status.yml`: Project management automation
-
-## Phase 1: Critical Immediate Fixes (BEFORE Migration)
-
-### 1.1 Fix Current Broken Workflows
-
-**CRITICAL**: Several workflow files need immediate fixes before migration can proceed:
-
-1. **Backend Build Workflow is Empty**
-   - File: `.github/workflows/backend-build.yml`
-   - Status: Completely empty - needs implementation
-
-2. **Frontend Path References Invalid**
-   - File: `.github/workflows/frontend-build.yml`
-   - Issue: References non-existent `.github/workflows/frontend-ci.yml`
-   - Fix: Update path to `.github/workflows/frontend-build.yml`
-
-3. **Missing Backend Lint Workflow**
-   - Current backend workflow includes lint+test+build
-   - Need separate workflows or consolidation strategy
-
-### 1.2 Implement Backend Workflows
-
-**File**: `.github/workflows/backend-build.yml` (currently empty)
-
-```yaml
-name: Backend Build and Test
-on:
-  pull_request:
-    paths:
-      - 'backend/**'
-      - 'datastore/**'  # Critical dependency
-    types: [opened, closed, synchronize]
-
-defaults:
-  run:
-    working-directory: backend
-
-jobs:
-  lint-test:
-    uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-test-python.yml@main
-    with:
-      working-directory: backend
-    secrets: inherit
-    
-  build-push:
-    uses: ai-cfia/github-workflows/.github/workflows/workflow-build-push-container-github-registry-mono.yml@main
-    with:
-      working-directory: backend
-      container-name: ${{ github.event.repository.name }}-backend
-      tag: ${{ github.sha }}
-      registry: ghcr.io/ai-cfia
-    secrets: inherit
+```
+nachet-datastore @git+https://github.com/ai-cfia/ailab-datastore.git@231-split-nachet-config-secrets
+numpy==1.26.4
+azure-storage-blob
+azure-identity
+flask==3.0.3
+quart==0.19.6
+quart-cors
+python-dotenv
+hypercorn
+Pillow==10.3.0
+cryptography
+pyyaml
+pydantic==2.7.1
+pydantic-core==2.18.2
+python-magic
+PyJWT
 ```
 
-## Phase 2: Consolidate Workflows to Root Level
+### Updated Dependency Configuration
 
-### 2.1 Create Path-Based Workflow Triggers
-
-Move all workflows to root `.github/workflows/` and implement path-based triggers using:
-
-```yaml
-on:
-  pull_request:
-    paths:
-      - 'backend/**'
-      - 'datastore/**'  # Since backend depends on datastore
+```
+nachet-datastore @git+https://github.com/ai-cfia/nachet.git@v1.1.0-nachet-datastore
 ```
 
-### 2.2 Frontend Workflow Consolidation
+## Conversion Plan
 
-**Current State**: `frontend-build.yml` exists but has incorrect path references
-**Action**: Fix path references and ensure consistency
+### Phase 1: Core uv Project Setup
 
-### 2.3 Datastore Workflow Strategy
+1. **Create main pyproject.toml**
+   - Convert requirements.txt to modern pyproject.toml format
+   - Define project metadata (name, version, description, authors)
+   - Set up proper dependency specifications
 
-**Current Complexity**: Handles dual-package publishing (nachet-datastore + fertiscan-datastore)
-**Short-term**: Maintain existing dual-package support for workflow stability
-**Long-term**: Simplify to nachet-datastore only after fertiscan removal
+2. **Handle git dependency**
+   - Configure the `nachet-datastore@git+https://github.com/ai-cfia/nachet.git@v1.1.0-nachet-datastore` dependency properly in pyproject.toml
+   - Use tag `v1.1.0-nachet-datastore` for stable versioning
 
-## Phase 3: Implement Cross-Service Dependencies
+3. **Define project metadata**
+   - Name: `nachet-backend`
+   - Version: Extract from existing documentation
+   - Description: "Canadian government (CFIA) AI-powered seed identification system backend"
+   - Authors: Based on existing documentation
 
-### 3.1 Backend-Datastore Dependency Management
+### Phase 2: Workspace Configuration (Optional)
 
-- When datastore changes, automatically trigger backend CI
-- Implement workflow dependencies using `workflow_run` events
-- Consider package version compatibility checks
+1. **Evaluate workspace structure**
+   - Consider making this a uv workspace with local `ailab-datastore` as a workspace member
+   - Analyze pros/cons of workspace vs git dependency
 
-### 3.2 Workflow Orchestration
+2. **Update ailab-datastore integration**
+   - Decision point: git dependency vs local workspace dependency
+   - Consider impact on development workflow
 
-**New file**: `.github/workflows/monorepo-orchestrator.yml`
+### Phase 3: Build & Development Environment
 
-- Detect which services have changed
-- Trigger appropriate downstream builds
-- Handle cross-service dependencies
+1. **Update Dockerfile**
+   - Modify both `Dockerfile` and `Dockerfile.local` to use `uv` instead of `pip`
+   - Update build stages for uv installation and dependency management
+   - Ensure proper caching layers
 
-## Phase 4: Optimization and Enhancement
+2. **Update documentation**
+   - Change CLAUDE.md commands from `pip install -r requirements.txt` to `uv sync`
+   - Update README.md with new development setup instructions
+   - Update any other documentation referencing pip
 
-### 4.1 Conditional Job Execution
+3. **Development scripts**
+   - Ensure all development workflows use uv
+   - Update any shell scripts or automation
 
-Implement smart job execution that only runs relevant tests:
+### Phase 4: Migration & Cleanup
 
-- Use `tj-actions/changed-files` (already used in datastore)
-- Skip unnecessary jobs when changes don't affect specific services
+1. **Backup existing setup**
+   - Keep requirements.txt temporarily for rollback capability
+   - Document rollback procedure
 
-### 4.2 Parallel Execution Strategy
+2. **Clean up redundant files**
+   - Remove old requirements files once conversion is verified
+   - Clean up any pip-related configurations
 
-- Run independent service builds in parallel
-- Sequence dependent builds (datastore → backend)
+3. **Update CI/CD**
+   - Any GitHub Actions or deployment scripts
+   - Update deployment documentation
 
-### 4.3 Caching Strategy
+## Key Decisions Needed
 
-- Implement dependency caching for faster builds
-- Docker layer caching for container builds
-- Python package caching for backend/datastore
+### 1. Workspace vs Single Project
 
-## IMMEDIATE ACTION PLAN (Priority Order)
+- **Option A**: Use uv workspace to include local ailab-datastore
+  - Pros: Better local development, unified dependency management
+  - Cons: More complex setup, potential CI/CD changes
 
-### Step 1: Fix Critical Broken Workflows (URGENT)
+- **Option B**: Keep git dependency
+  - Pros: Simpler migration, minimal changes
+  - Cons: Continues external dependency complexity
 
-**Timeline**: Complete within 24 hours for basic CI/CD functionality
+### 2. Version Pinning Strategy
 
-1. **Implement Backend Build Workflow**
+- **Current**: Exact pins for some packages (numpy==1.26.4, flask==3.0.3)
+- **Options**:
+  - Keep exact pins for stability
+  - Use more flexible constraints for easier updates
+  - Mixed approach (pin critical packages, flexible for others)
 
-   ```bash
-   # File: .github/workflows/backend-build.yml
-   # Status: Currently empty - implement using template above
-   ```
+### 3. Development Dependencies
 
-2. **Fix Frontend Path References**
+- **Current**: All dependencies in single requirements.txt
+- **Proposed**: Separate dev dependencies (testing, linting) from production
+- **Benefits**: Cleaner production builds, better dependency management
 
-   ```yaml
-   # In .github/workflows/frontend-build.yml, fix line 7:
-   - '.github/workflows/frontend-ci.yml'  # WRONG - doesn't exist
-   + '.github/workflows/frontend-build.yml'  # CORRECT
-   ```
+## Implementation Steps
 
-3. **Create Backend Lint Workflow**
+1. [ ] Create initial pyproject.toml
+2. [ ] Test basic uv sync functionality
+3. [ ] Update Dockerfiles
+4. [ ] Update documentation
+5. [ ] Test full application startup
+6. [ ] Update CI/CD if needed
+7. [ ] Create migration guide for team
+8. [ ] Clean up old files
 
-   ```bash
-   # File: .github/workflows/backend-lint.yml
-   # Status: Missing - needed for separation of concerns
-   ```
+## Rollback Plan
 
-### Step 2: Test Current Workflow Functionality
-
-1. Create test PRs for each service
-2. Verify path-based triggering works
-3. Validate container builds succeed
-4. Check all workflows execute without errors
-
-### Step 3: Gradual Migration (Post-Basic Functionality)
-
-1. Enhance existing workflows with better path targeting
-2. Implement cross-service dependency handling
-3. Add workflow orchestration for complex scenarios
-4. Optimize for performance and caching
-
-### Step 4: Long-term Cleanup (Future Phases)
-
-1. Remove fertiscan-datastore package publishing after fertiscan removal
-2. Simplify datastore workflows to nachet-only
-3. Remove old workflow files from subdirectories
-4. Update documentation to reflect monorepo structure
-
-## Updated Implementation Priority
-
-### CRITICAL (Fix Immediately - Deployment Blocker)
-
-1. **Fix empty backend-build.yml** - Currently prevents any backend CI/CD
-2. **Fix frontend path references** - Currently causes workflow failures  
-3. **Test basic functionality** - Ensure workflows execute successfully
-
-### High Priority (Immediate - This Week)
-
-1. **Backend workflow implementation** - Core deployment requirement
-2. **Datastore-Backend dependency handling** - Critical for backend functionality
-3. **Path-based triggering validation** - Foundation for monorepo CI
-4. **Container build verification** - Ensure Docker builds work from monorepo context
-
-### Medium Priority (Next Phase)
-
-1. **Frontend workflow consolidation** - Already partially working
-2. **Workflow orchestration optimization** - Performance improvements
-3. **Advanced caching strategies** - Build speed optimization
-
-### Low Priority (Future - Post Deployment)
-
-1. **Fertiscan removal from datastore** - Technical debt cleanup
-2. **Advanced cross-service integration testing** - Enhanced validation
-3. **Performance optimizations** - Nice-to-have improvements
-4. **Documentation updates** - Reflect final monorepo structure
-
-## Key Technical Considerations
-
-### Dockerfile Context Issues
-
-- Root-level workflows will need to handle Docker builds with correct context paths
-- Update Dockerfile paths and build contexts for monorepo structure
-
-### Package Dependencies
-
-- Backend imports from datastore - ensure proper package installation in CI
-- Consider using local package installation during CI builds
-
-### Environment Variables and Secrets
-
-- Consolidate secrets management at root level
-- Ensure service-specific environment variables are properly scoped
-
-### Testing Strategy
-
-- Maintain existing test coverage
-- Add integration tests for cross-service functionality
-- Consider end-to-end testing across services
+- Keep requirements.txt until full verification
+- Document exact pip commands for rollback
+- Maintain Docker image tags for quick reversion
 
 ## Success Criteria
 
-### Phase 1 Success (Critical for Deployment)
-
-1. ✅ Backend-build.yml workflow implemented and functional
-2. ✅ Frontend path references fixed and workflows execute
-3. ✅ All workflows trigger correctly on relevant path changes
-4. ✅ Container builds succeed from monorepo context
-5. ✅ No workflow execution failures on test PRs
-
-### Phase 2 Success (Full Monorepo CI/CD)
-
-1. ✅ Backend builds trigger on backend/ changes
-2. ✅ Backend builds trigger on datastore/ changes (dependency)
-3. ✅ No duplicate or unnecessary workflow runs
-4. ✅ All existing functionality preserved
-5. ✅ Build times remain reasonable
-6. ✅ Package publishing still works for datastore (dual-package temporarily)
-
-### Future Success (Post-Fertiscan Removal)
-
-1. ✅ Datastore simplified to nachet-only package
-2. ✅ Old workflow files removed from subdirectories
-3. ✅ Documentation updated to reflect monorepo structure
-
-## Risk Mitigation
-
-### Immediate Risk Mitigation
-
-1. **Fix Critical Issues First**: Address empty workflows and broken references before migration
-2. **Test in Isolation**: Validate each workflow individually before integration
-3. **Rollback Strategy**: Keep original workflows as backup during testing phase
-4. **Small Incremental Changes**: Implement and test one workflow at a time
-
-### Migration Risk Mitigation  
-
-1. **Gradual Migration**: Implement alongside existing workflows initially
-2. **Comprehensive Testing**: Test all scenarios before removing old workflows
-3. **Documentation**: Document all changes and new workflow behavior
-4. **Monitoring**: Monitor workflow execution success rates during transition
-
-### Long-term Risk Mitigation
-
-1. **Fertiscan Deprecation Plan**: Maintain dual-package support until fertiscan removal is complete
-2. **Backward Compatibility**: Ensure existing integrations continue to work
-3. **Performance Monitoring**: Track build times and resource usage during migration
+- [ ] Application starts and runs identically to current setup
+- [ ] All dependencies properly resolved
+- [ ] Docker builds successfully
+- [ ] Documentation updated
+- [ ] Team can follow migration guide successfully
