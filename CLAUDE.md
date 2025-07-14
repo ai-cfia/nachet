@@ -75,9 +75,8 @@ nachet/
 │   ├── app.py             # Main application entry point
 │   ├── model/             # ML inference request functions
 │   ├── storage/           # Data storage integration
-│   ├── lib/ailab-datastore/  # Database and blob storage library
 │   └── tests/             # Backend test suite
-└── datastore/         # Standalone datastore package (legacy)
+└── datastore/         # Standalone datastore package
 ```
 
 ### Database Architecture
