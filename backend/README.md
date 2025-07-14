@@ -82,21 +82,32 @@ frontend-->>-Client: display inference res.
 
 ### RUNNING NACHET-BACKEND FROM DEVCONTAINER
 
-When developping you first need to install the required packages.
+When developing, you first need to install the required packages.
 
-This command must be run the **first time** you want to run the backend on your
-computer, but also **every time** you update the requirements.txt file or if the
-datastore repo is updated.
+#### Using UV (Recommended)
+
+This project uses [uv](https://docs.astral.sh/uv/) for modern Python dependency management. This command must be run the **first time** you want to run the backend on your computer, but also **every time** you update the `pyproject.toml` file or if the datastore repo is updated.
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 Then, you can run the backend while in the devcontainer by using this command:
 
 ```bash
+uv run hypercorn -b :8080 app:app
+```
+
+#### Using pip (Legacy)
+
+Alternatively, you can still use pip with the legacy requirements.txt:
+
+```bash
+pip install -r requirements.txt
 hypercorn -b :8080 app:app
 ```
+
+**Note:** The pip method is deprecated and will be removed in future versions. Please migrate to using uv.
 
 ### RUNNING NACHET-BACKEND AS A DOCKER CONTAINER
 
@@ -123,6 +134,14 @@ will be pulled from our Github registry.
 ### TESTING NACHET-BACKEND
 
 To test the program, use this command:
+
+#### Using UV (Recommended)
+
+```bash
+uv run python -m unittest discover -s tests
+```
+
+#### Using pip (Legacy)
 
 ```bash
 python -m unittest discover -s tests
@@ -230,20 +249,30 @@ frontend-->>-Client: afficher le résultat de l'inférence
 
 Lors du développement, vous devez d'abord installer les paquets nécessaires.
 
-Cette commande doit être exécutée **la première fois** que vous lancez le
-backend sur votre ordinateur, mais aussi **à chaque mise à jour** du fichier
-`requirements.txt` ou du dépôt datastore.
+#### Utilisation d'UV (Recommandé)
+
+Ce projet utilise [uv](https://docs.astral.sh/uv/) pour la gestion moderne des dépendances Python. Cette commande doit être exécutée **la première fois** que vous lancez le backend sur votre ordinateur, mais aussi **à chaque mise à jour** du fichier `pyproject.toml` ou du dépôt datastore.
+
+```bash
+uv sync
+```
+
+Ensuite, vous pouvez exécuter le backend dans un devcontainer avec cette commande :
+
+```bash
+uv run hypercorn -b :8080 app:app
+```
+
+#### Utilisation de pip (Hérité)
+
+Alternativement, vous pouvez encore utiliser pip avec le fichier requirements.txt :
 
 ```bash
 pip install -r requirements.txt
-```
-
-Ensuite, vous pouvez exécuter le backend dans un devcontainer avec cette
-commande :
-
-```bash
 hypercorn -b :8080 app:app
 ```
+
+**Note :** La méthode pip est dépréciée et sera supprimée dans les versions futures. Veuillez migrer vers l'utilisation d'uv.
 
 ### EXÉCUTER NACHET-BACKEND EN TANT QUE CONTENEUR DOCKER
 
@@ -271,6 +300,14 @@ GitHub.
 ### TESTER NACHET-BACKEND
 
 Pour tester le programme, utilisez cette commande :
+
+#### Utilisation d'UV (Recommandé)
+
+```bash
+uv run python -m unittest discover -s tests
+```
+
+#### Utilisation de pip (Hérité)
 
 ```bash
 python -m unittest discover -s tests
