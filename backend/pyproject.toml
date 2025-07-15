@@ -12,6 +12,7 @@ license = { file = "LICENSE" }
 authors = [
     { name = "Francois Werbrouck", email = "francois.werbrouck@inspection.gc.ca" },
     { name = "Sylvanie You", email = "Sylvanie.You@inspection.gc.ca" },
+    { name = "Joseffus Santos", email = "Joseffus.Santos@inspection.gc.ca" }
 ]
 keywords = ["nachet", "ai", "seed", "identification", "cfia"]
 classifiers = [
