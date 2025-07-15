@@ -32,7 +32,7 @@ PyJWT
 
 ### Updated Dependency Configuration
 
-```
+```Text
 nachet-datastore @git+https://github.com/ai-cfia/nachet.git@v1.1.0-nachet-datastore
 ```
 

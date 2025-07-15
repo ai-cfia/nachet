@@ -135,13 +135,13 @@ will be pulled from our Github registry.
 
 To test the program, use this command:
 
-#### Using UV (Recommended)
+#### Using UV (Recommended) for tests
 
 ```bash
 uv run python -m unittest discover -s tests
 ```
 
-#### Using pip (Legacy)
+#### Using pip (Legacy) (verify)
 
 ```bash
 python -m unittest discover -s tests
@@ -301,13 +301,13 @@ GitHub.
 
 Pour tester le programme, utilisez cette commande :
 
-#### Utilisation d'UV (Recommandé)
+#### Utilisation d'UV (Recommandé) pour les tests
 
 ```bash
 uv run python -m unittest discover -s tests
 ```
 
-#### Utilisation de pip (Hérité)
+#### Utilisation de pip (Hérité) (verify)
 
 ```bash
 python -m unittest discover -s tests

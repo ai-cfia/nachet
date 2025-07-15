@@ -10,6 +10,10 @@ on:
       - closed
       - synchronize
 
+permissions:
+  contents: read
+  packages: write
+
 concurrency:
   group: backend-build-${{ github.ref }}
   cancel-in-progress: true
