@@ -11,7 +11,7 @@
 
 ### Dependencies Analysis
 
-```
+```Text
 nachet-datastore @git+https://github.com/ai-cfia/ailab-datastore.git@231-split-nachet-config-secrets
 numpy==1.26.4
 azure-storage-blob
