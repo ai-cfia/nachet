@@ -7,10 +7,13 @@ ENV QUART_ENV=development
 ENV PYTHONUNBUFFERED True
 ENV PYTHONPATH=/app
 
-COPY ./requirements.txt .
+# Install uv
+RUN pip install --no-cache-dir uv
 
-RUN mv requirements.txt requirements2025031402.txt && \
-    pip install --no-cache-dir -r requirements2025031402.txt
+COPY ./pyproject.toml ./uv.lock ./LICENSE ./README.md ./
+
+# Install dependencies using uv
+RUN uv sync --frozen
 
 COPY . ./
 

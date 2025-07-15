@@ -30,6 +30,11 @@ npm run format:check           # Check formatting
 
 ```bash
 cd backend/
+uv sync                           # Install dependencies (recommended)
+uv run hypercorn -b :8080 app:app # Start development server
+uv run python -m unittest discover -s tests  # Run tests
+
+# Alternative (legacy pip method)
 pip install -r requirements.txt    # Install dependencies
 hypercorn -b :8080 app:app         # Start development server
 python -m unittest discover -s tests  # Run tests
@@ -101,14 +106,14 @@ nachet/
 ### Running the Application Locally
 
 1. **Backend**: Set up environment variables in `.env` (copy from `.env.template`)
-2. **Start backend**: `cd backend && hypercorn -b :8080 app:app`
+2. **Start backend**: `cd backend && uv run hypercorn -b :8080 app:app`
 3. **Start frontend**: `cd frontend && npm run dev`
 4. **Access**: Frontend at <http://localhost:5173>, Backend at <http://localhost:8080>
 
 ### Testing
 
 - **Frontend tests**: Use `npm run test` (Vitest + React Testing Library)
-- **Backend tests**: Use `python -m unittest discover -s tests`
+- **Backend tests**: Use `uv run python -m unittest discover -s tests`
 - **Manual testing**: See comprehensive test documentation in `frontend/TESTING.md` and `backend/TESTING.md`
 
 ### Environment Configuration
@@ -166,5 +171,5 @@ curl http://localhost:8080/health
 cd frontend && npm run build
 
 # Test database connection
-cd backend && python -c "from storage.datastore_storage_api import *"
+cd backend && uv run python -c "from storage.datastore_storage_api import *"
 ```
