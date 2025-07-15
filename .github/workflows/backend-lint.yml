@@ -34,7 +34,7 @@ jobs:
     uses: ai-cfia/github-workflows/.github/workflows/workflow-version-bump-python-mono.yml@main
     secrets: inherit
     with:
-      pyproject-path: 'nachet_pyproject.toml'
+      pyproject-path: 'pyproject.toml'
       package-name: 'nachet-backend'
       working-directory: backend
   backend-lint:
