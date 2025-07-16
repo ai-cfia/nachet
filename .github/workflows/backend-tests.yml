@@ -90,7 +90,7 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m pytest tests/nachet/db/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
+          python -m pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
         env:
           TESTING: "true"
           NACHET_AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
