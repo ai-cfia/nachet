@@ -1,5 +1,5 @@
 import pytest
-import asyncio
+# import asyncio
 
 from model.inference import (
     process_inference_results,

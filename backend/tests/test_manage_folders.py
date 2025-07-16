@@ -1,6 +1,6 @@
 import os
 import pytest
-import asyncio
+# import asyncio
 import json
 import base64
 from unittest.mock import patch, MagicMock
@@ -469,7 +469,7 @@ async def test_delete_permanently_successful(delete_folder_setup):
             "folder_uuid": setup["folder_uuid"]
         })
     assert response.status_code == 200
-    assert json.loads(await response.get_data()) == True
+    assert json.loads(await response.get_data()) is True
 
     setup["mock_mount_container"].assert_called_once_with(CONNECTION_STRING, setup["container_name"], create_container=True)
     setup["mock_connect_db"].assert_called_once_with(NACHET_DB_URL, NACHET_SCHEMA)
@@ -494,7 +494,7 @@ async def test_delete_with_archive_successful(delete_folder_setup):
             "folder_uuid": setup["folder_uuid"]
         })
     assert response.status_code == 200
-    assert json.loads(await response.get_data()) == True
+    assert json.loads(await response.get_data()) is True
 
     setup["mock_mount_container"].assert_called_once_with(CONNECTION_STRING, setup["container_name"], create_container=True)
     setup["mock_connect_db"].assert_called_once_with(NACHET_DB_URL, NACHET_SCHEMA)
