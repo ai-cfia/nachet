@@ -4,7 +4,7 @@ import os
 import base64
 
 from app import app, json
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 
 @pytest.fixture
@@ -35,38 +35,46 @@ async def create_test_inference(setup):
     """
     Create a test inference to be used in the test
     """
-    # Mock azure client services
-    mock_blob = Mock()
-    mock_blob.readall.return_value = bytes(setup["image_src"], encoding="utf-8")
+    with patch("patch.bin_azure_storage_api.mount_container") as mock_container:
+        # Mock azure client services
+        mock_blob = Mock()
+        mock_blob.readall.return_value = bytes(setup["image_src"], encoding="utf-8")
 
-    mock_blob_client = Mock()
-    mock_blob_client.configure_mock(name="test_blob.json")
-    mock_blob_client.download_blob.return_value = mock_blob
+        mock_blob_client = Mock()
+        mock_blob_client.configure_mock(name="test_blob.json")
+        mock_blob_client.download_blob.return_value = mock_blob
 
-    mock_container_client = MagicMock()
-    mock_container_client.list_blobs.return_value = [mock_blob_client]
-    mock_container_client.get_blob_client.return_value = mock_blob_client
-    mock_container_client.exists.return_value = True
+        mock_container_client = MagicMock()
+        mock_container_client.list_blobs.return_value = [mock_blob_client]
+        mock_container_client.get_blob_client.return_value = mock_blob_client
+        mock_container_client.exists.return_value = True
 
-    # Test the answers from inference_request
-    response = await setup["test_client"].post(
-        '/inf',
-        headers={
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-        },
-        json={
-            "image": setup["image_header"] + setup["image_src"],
-            "imageDims": [720,540],
-            "folder_name": setup["folder_name"],
-            "container_name": setup["userId"],
-            "model_name": setup["pipeline"].get("pipeline_name")
-        })
-    
-    inference = json.loads(await response.get_data())
-    setup["inferences_id"].append(inference.get("inference_id"))
-    
-    return inference
+        mock_container.return_value = mock_container_client
+
+        # Test the answers from inference_request
+        response = await setup["test_client"].post(
+            '/inf',
+            headers={
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+            json={
+                "image": setup["image_header"] + setup["image_src"],
+                "imageDims": [720,540],
+                "folder_name": setup["folder_name"],
+                "container_name": setup["userId"],
+                "model_name": setup["pipeline"].get("pipeline_name")
+            })
+        
+        inference = json.loads(await response.get_data())
+        
+        # Check if response is an error (list) or success (dict)
+        if isinstance(inference, list):
+            raise RuntimeError(f"Failed to create test inference: {inference}")
+        
+        setup["inferences_id"].append(inference.get("inference_id"))
+        
+        return inference
 
 @pytest.mark.asyncio
 async def test_positive_feedback_successful(positive_feedback_setup):
