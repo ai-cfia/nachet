@@ -93,10 +93,8 @@ jobs:
         env:
           TESTING: "true"
           NACHET_AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
-          NACHET_STORAGE_URL_TESTING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           NACHET_STORAGE_URL: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           NACHET_DB_URL: "postgresql://${{ secrets.PG_USER }}:${{ secrets.PG_PASS }}@127.0.0.1:5432/${{ secrets.PG_DB }}"
-          NACHET_SCHEMA_TESTING: "nachet_0.0.11"
           NACHET_SCHEMA: "nachet_0.0.11"
           NACHET_DATA: "https://raw.githubusercontent.com/ai-cfia/nachet-data/main/"
           NACHET_MAX_CONTENT_LENGTH: "200"
@@ -104,9 +102,7 @@ jobs:
           NACHET_BLOB_PIPELINE_VERSION: 0.1.3
           NACHET_BLOB_PIPELINE_DECRYPTION_KEY: ${{ secrets.NACHET_BLOB_PIPELINE_DECRYPTION_KEY }}
           NACHET_BLOB_ACCOUNT: ${{ secrets.NACHET_BLOB_ACCOUNT }}
-          NACHET_BLOB_ACCOUNT_TESTING: ${{ secrets.NACHET_BLOB_ACCOUNT }}
           NACHET_BLOB_KEY: ${{ secrets.NACHET_BLOB_KEY }}
-          NACHET_BLOB_KEY_TESTING: ${{ secrets.NACHET_BLOB_KEY }}
           NACHET_VALID_EXTENSION: '["jpeg", "jpg", "png", "gif", "bmp", "tiff", "webp"]'
           NACHET_VALID_DIMENSION: '{"width": 1920, "height": 1080}'
           DEV_USER_EMAIL: "example@gmail.com"
