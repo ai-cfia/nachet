@@ -2,7 +2,7 @@ from model.swin import request_inference_from_swin
 from model.seed_detector import request_inference_from_seed_detector
 from model.test import request_inference_from_test
 from model.six_seeds import request_inference_from_nachet_6seeds
-from model.torch_swin import request_inference_from_torch_swin
+# from model.torch_swin import request_inference_from_torch_swin
 from model.torch_ensemble import request_inference_ensemble_a, request_inference_ensemble_b
 
 request_function = {

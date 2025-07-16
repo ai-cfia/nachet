@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 from quart import Quart, request, jsonify
 from quart_cors import cors
 from collections import namedtuple
-from cryptography.fernet import Fernet
+# from cryptography.fernet import Fernet
 
 load_dotenv()  # noqa: E402
 

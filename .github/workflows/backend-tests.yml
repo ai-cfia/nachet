@@ -1,4 +1,5 @@
-name: datastore tests
+---
+name: backend tests
 
 permissions:
   contents: read
@@ -11,23 +12,23 @@ on:
       - opened
       - synchronize
     paths:
-      - 'datastore/**'
-      - '.github/workflows/datastore-*'
+      - 'backend/**'
+      - '.github/workflows/backend-*'
   push:
     branches:
       - main
     paths:
-      - 'datastore/**'
-      - '.github/workflows/datastore-*'
+      - 'backend/**'
+      - '.github/workflows/backend-*'
 
 defaults:
   run:
-    working-directory: datastore
+    working-directory: backend
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    environment: datastore_ci
+    environment: backend-test-env
     timeout-minutes: 15
     
     services:
@@ -77,7 +78,7 @@ jobs:
           psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "CREATE SCHEMA IF NOT EXISTS \"nachet_0.0.11\";"
           psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "CREATE SCHEMA IF NOT EXISTS uuid_;"
           psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" SCHEMA uuid_;"
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f nachet/db/bytebase/schema_nachet_0.0.11.sql
+          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f $GITHUB_WORKSPACE/datastore/nachet/db/bytebase/schema_nachet_0.0.11.sql
         env:
           PGPASSWORD:  ${{ secrets.PG_PASS }}
 
@@ -119,9 +120,9 @@ jobs:
       #   if: success()
       #   uses: codecov/codecov-action@v3
       #   with:
-      #     file: ./datastore/coverage.xml
-      #     flags: datastore
-      #     name: datastore-coverage
+      #     file: ./backend/coverage.xml
+      #     flags: backend
+      #     name: backend-coverage
 
   trigger-release:
     name: Trigger release workflow
@@ -133,9 +134,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Trigger Release Workflow for Nachet Datastore
+      - name: Trigger Release Workflow for Nachet backend
         run: |
-          gh workflow run datastore-publish-package.yml \
+          gh workflow run backend-release.yml \
           --ref main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

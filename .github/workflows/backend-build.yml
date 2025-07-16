@@ -1,10 +1,10 @@
-name: Frontend Build and Push
+name: Backend Build and Push
 
 on:
   pull_request:
     paths:
-      - 'frontend/**'
-      - '.github/workflows/frontend-build.yml'
+      - 'backend/**'
+      - '.github/workflows/backend-build.yml'
     types:
       - opened
       - closed
@@ -15,26 +15,26 @@ permissions:
   packages: write
 
 concurrency:
-  group: frontend-build-${{ github.ref }}
+  group: backend-build-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   IS_MONOREPO: true
-  FRONTEND_PATH: frontend
+  BACKEND_PATH: backend
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/nachet-frontend
+  IMAGE_NAME: ${{ github.repository }}/nachet-backend
 
 defaults:
   run:
-    working-directory: frontend
+    working-directory: backend
 
 jobs:
   build-and-push-gcr:
     # uses: ./.github/workflows/workflow-build-push-container-github-registry-mono.yml
     uses: ai-cfia/github-workflows/.github/workflows/workflow-build-push-container-github-registry-mono.yml@main
     with:
-      working-directory: frontend
-      container-name: ${{ github.event.repository.name }}-frontend
+      working-directory: backend
+      container-name: ${{ github.event.repository.name }}-backend
       tag: ${{ github.sha }}
       registry: ghcr.io/ai-cfia
     secrets: inherit

@@ -1,16 +1,8 @@
-import unittest
-import asyncio
-
+import pytest
 from app import app
 
-class TestQuartHealth(unittest.TestCase):
-    def test_health(self):
-        test = app.test_client()
-
-        response = asyncio.run(
-            test.get('/health')
-        )
-        self.assertEqual(response.status_code, 200)
-
-if __name__ == '__main__':
-    unittest.main()
+@pytest.mark.asyncio
+async def test_health():
+    test = app.test_client()
+    response = await test.get('/health')
+    assert response.status_code == 200
