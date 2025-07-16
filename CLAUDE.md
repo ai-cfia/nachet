@@ -32,12 +32,12 @@ npm run format:check           # Check formatting
 cd backend/
 uv sync                           # Install dependencies (recommended)
 uv run hypercorn -b :8080 app:app # Start development server
-uv run python -m unittest discover -s tests  # Run tests
+uv run pytest                    # Run tests
 
 # Alternative (legacy pip method)
 pip install -r requirements.txt    # Install dependencies
 hypercorn -b :8080 app:app         # Start development server
-python -m unittest discover -s tests  # Run tests
+pytest                            # Run tests
 ```
 
 ### Docker Commands
@@ -113,7 +113,7 @@ nachet/
 ### Testing
 
 - **Frontend tests**: Use `npm run test` (Vitest + React Testing Library)
-- **Backend tests**: Use `uv run python -m unittest discover -s tests`
+- **Backend tests**: Use `uv run pytest`
 - **Manual testing**: See comprehensive test documentation in `frontend/TESTING.md` and `backend/TESTING.md`
 
 ### Environment Configuration

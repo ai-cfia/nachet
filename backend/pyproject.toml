@@ -44,6 +44,8 @@ dependencies = [
     "pydantic-core==2.18.2",
     "python-magic",
     "PyJWT",
+    "pytest",
+    "pytest-asyncio",
 ]
 
 [project.urls]
