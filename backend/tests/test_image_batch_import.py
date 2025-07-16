@@ -138,27 +138,25 @@ async def test_new_batch_import_wrong_nb_pictures(new_batch_import_setup):
         
 
 @pytest.fixture
-def upload_batch_import_setup():
+async def upload_batch_import_setup():
     test_client = app.test_client()
     container_name = "a427278e-28df-428f-8937-ddeeef44e72f"
     nb_pictures = 1
     folder_name = "test_batch_import"
     session_id = None
     
-    response = asyncio.run(
-        test_client.post(
-            '/new-batch-import',
-            headers={
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
-            json={
-                "container_name": container_name,
-                "folder_name": folder_name,
-                "nb_pictures": nb_pictures
-            })
-    )
-    result_json = json.loads(asyncio.run(response.get_data()))
+    response = await test_client.post(
+        '/new-batch-import',
+        headers={
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+        },
+        json={
+            "container_name": container_name,
+            "folder_name": folder_name,
+            "nb_pictures": nb_pictures
+        })
+    result_json = json.loads(await response.get_data())
     if response.status_code == 200:
         print("Setup : folder successfully created")
     else :
@@ -191,24 +189,22 @@ def upload_batch_import_setup():
     
     # Teardown
     if session_id is not None:
-        response = asyncio.run(
-            test_client.post(
-                '/delete-permanently',
-                headers={
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                },
-                json={
-                    "container_name": container_name,
-                    "folder_uuid": session_id
-                })
-        )
+        response = await test_client.post(
+            '/delete-permanently',
+            headers={
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+            json={
+                "container_name": container_name,
+                "folder_uuid": session_id
+            })
         if response.status_code == 200:
             print("Teardown : folder successfully deleted")
         
 @pytest.mark.asyncio
 async def test_upload_picture_successful(upload_batch_import_setup):
-    setup = upload_batch_import_setup
+    setup = await upload_batch_import_setup
     response = await setup["test_client"].post(
         '/upload-picture',
         headers={
@@ -225,7 +221,7 @@ async def test_upload_picture_successful(upload_batch_import_setup):
             "image": setup["image"]
         })
     assert response.status_code == 200
-    result_json = json.loads(await response.get_data())[0]
+    result_json = json.loads(await response.get_data())
     print(result_json)
         
 @pytest.mark.asyncio
@@ -233,7 +229,7 @@ async def test_upload_picture_missing_arguments_error(upload_batch_import_setup)
     """
     Test if a request with missing arguments return an error
     """
-    setup = upload_batch_import_setup
+    setup = await upload_batch_import_setup
     expected = ("API Error uploading picture : missing request arguments: either seed_name, session_id, container_name or image is missing")
 
     response = await setup["test_client"].post(
@@ -261,7 +257,7 @@ async def test_upload_picture_wrong_arguments_error(upload_batch_import_setup):
     """
     Test if a request with wrong arguments return an error
     """
-    setup = upload_batch_import_setup
+    setup = await upload_batch_import_setup
     expected = ("API Error uploading picture : missing request arguments: either seed_name, session_id, container_name or image is missing")
 
     response = await setup["test_client"].post(

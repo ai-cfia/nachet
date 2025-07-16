@@ -8,13 +8,11 @@ from unittest.mock import MagicMock, Mock
 
 
 @pytest.fixture
-def positive_feedback_setup():
+async def positive_feedback_setup():
     test_client = app.test_client()
     userId = "a427278e-28df-428f-8937-ddeeef44e72f"
-    response = asyncio.run(
-        test_client.get("/test")
-    )
-    pipeline = json.loads(asyncio.run(response.get_data()))[0]
+    response = await test_client.get("/test")
+    pipeline = json.loads(await response.get_data())[0]
     current_dir = os.path.dirname(__file__)
     image_path = os.path.join(current_dir, 'img/16.tiff')
     folder_name = "test1"
@@ -33,7 +31,7 @@ def positive_feedback_setup():
         "inferences_id": inferences_id
     }
 
-def create_test_inference(setup):
+async def create_test_inference(setup):
     """
     Create a test inference to be used in the test
     """
@@ -51,32 +49,30 @@ def create_test_inference(setup):
     mock_container_client.exists.return_value = True
 
     # Test the answers from inference_request
-    response = asyncio.run(
-        setup["test_client"].post(
-            '/inf',
-            headers={
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
-            json={
-                "image": setup["image_header"] + setup["image_src"],
-                "imageDims": [720,540],
-                "folder_name": setup["folder_name"],
-                "container_name": setup["userId"],
-                "model_name": setup["pipeline"].get("pipeline_name")
-            })
-    )
+    response = await setup["test_client"].post(
+        '/inf',
+        headers={
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+        },
+        json={
+            "image": setup["image_header"] + setup["image_src"],
+            "imageDims": [720,540],
+            "folder_name": setup["folder_name"],
+            "container_name": setup["userId"],
+            "model_name": setup["pipeline"].get("pipeline_name")
+        })
     
-    inference = json.loads(asyncio.run(response.get_data()))
+    inference = json.loads(await response.get_data())
     setup["inferences_id"].append(inference.get("inference_id"))
     
     return inference
 
 @pytest.mark.asyncio
 async def test_positive_feedback_successful(positive_feedback_setup):
-    setup = positive_feedback_setup
+    setup = await positive_feedback_setup
     
-    inference = create_test_inference(setup)
+    inference = await create_test_inference(setup)
     inferenceId = inference.get("inference_id")
     boxes = []
     for box in inference.get("boxes"):
@@ -102,10 +98,10 @@ async def test_positive_feedback_missing_arguments_error(positive_feedback_setup
     """
     Test if a request with missing arguments return an error
     """
-    setup = positive_feedback_setup
+    setup = await positive_feedback_setup
     expected = ("API Error giving a positive feedback : missing request arguments: either userId, inferenceId or boxes is missing")
     
-    inference = create_test_inference(setup)
+    inference = await create_test_inference(setup)
     inferenceId = inference.get("inference_id")
     boxes = []
     for box in inference.get("boxes"):
@@ -148,13 +144,11 @@ async def test_positive_feedback_missing_arguments_error(positive_feedback_setup
         
 
 @pytest.fixture        
-def negative_feedback_setup():
+async def negative_feedback_setup():
     test_client = app.test_client()
     userId = "a427278e-28df-428f-8937-ddeeef44e72f"
-    response = asyncio.run(
-        test_client.get("/test")
-    )
-    pipeline = json.loads(asyncio.run(response.get_data()))[0]
+    response = await test_client.get("/test")
+    pipeline = json.loads(await response.get_data())[0]
     current_dir = os.path.dirname(__file__)
     image_path = os.path.join(current_dir, 'img/16.tiff')
     folder_name = "test1"
@@ -175,9 +169,9 @@ def negative_feedback_setup():
 
 @pytest.mark.asyncio
 async def test_negative_feedback_successful(negative_feedback_setup):
-    setup = negative_feedback_setup
+    setup = await negative_feedback_setup
     
-    inference = create_test_inference(setup)
+    inference = await create_test_inference(setup)
     inferenceId = inference.get("inference_id")
     boxes = []
     for box in inference.get("boxes"):
@@ -216,10 +210,10 @@ async def test_negative_feedback_missing_arguments_error(negative_feedback_setup
     """
     Test if a request with missing arguments return an error
     """
-    setup = negative_feedback_setup
+    setup = await negative_feedback_setup
     expected = ("API Error giving a negative feedback : missing request arguments: either userId, inferenceId or boxes is missing")
     
-    inference = create_test_inference(setup)
+    inference = await create_test_inference(setup)
     inferenceId = inference.get("inference_id")
     boxes = []
     for box in inference.get("boxes"):
