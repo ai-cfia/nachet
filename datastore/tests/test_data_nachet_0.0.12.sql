@@ -28,7 +28,6 @@ INSERT INTO "nachet_0.0.12".pipeline (id, name, active, is_default, data) VALUES
 --
 
 
-
 --
 -- Data for Name: pipeline_model; Type: TABLE DATA; Schema: nachet_0.0.12; Owner: nachet
 --
@@ -36,7 +35,6 @@ INSERT INTO "nachet_0.0.12".pipeline (id, name, active, is_default, data) VALUES
 INSERT INTO "nachet_0.0.12".pipeline_model (id, pipeline_id, model_id) VALUES ('0704a8a6-7853-4530-a49a-d98a884a3f71', 'cc901051-34e0-4e21-803f-76e159848046', '52fd7ca2-8101-4541-ae49-d6d92ac69196');
 INSERT INTO "nachet_0.0.12".pipeline_model (id, pipeline_id, model_id) VALUES ('3dad6eb9-56c6-4bc1-b8ab-c683f186b874', 'cc901051-34e0-4e21-803f-76e159848046', 'e83ee51e-830e-403a-a48f-d216ae91abb9');
 INSERT INTO "nachet_0.0.12".pipeline_model (id, pipeline_id, model_id) VALUES ('b2d0f715-7d64-48ed-8f5f-b3ce338918c4', 'cc901051-34e0-4e21-803f-76e159848046', 'ecef8395-e6d5-47a3-8f3d-8424b4dd3816');
-
 
 
 --

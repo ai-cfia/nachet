@@ -2,7 +2,6 @@ import pytest
 import json
 import os
 import base64
-import asyncio
 import warnings
 
 from app import app, ImageWarning

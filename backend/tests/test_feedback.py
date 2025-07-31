@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 import os
 import base64
 
