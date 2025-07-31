@@ -54,11 +54,13 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-cov
+          uv sync --dev
+          uv add toml
       
       - name: Install Azurite
         run: npm install -g azurite
@@ -71,31 +73,37 @@ jobs:
       #   run: |
       #     timeout 30 bash -c 'until curl -f http://127.0.0.1:10000/ 2>/dev/null; do sleep 1; done'
 
+      - name: Extract schema version
+        id: schema-version
+        run: |
+          SCHEMA_VERSION=$(uv run python -c "import toml; config = toml.load('pyproject.toml'); print(config['tool']['nachet-db']['db-schema-version'])")
+          echo "version=$SCHEMA_VERSION" >> $GITHUB_OUTPUT
+          echo "Schema version: $SCHEMA_VERSION"
+
       - name: Set up database schema
         run: |
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "CREATE SCHEMA IF NOT EXISTS \"nachet_0.0.10\";"
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "CREATE SCHEMA IF NOT EXISTS \"nachet_0.0.11\";"
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "CREATE SCHEMA IF NOT EXISTS uuid_;"
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" SCHEMA uuid_;"
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f nachet/db/bytebase/schema_nachet_0.0.11.sql
+          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "CREATE SCHEMA IF NOT EXISTS \"nachet_${{ steps.schema-version.outputs.version }}\";"
+          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f nachet/db/bytebase/schema_nachet_${{ steps.schema-version.outputs.version }}.sql
+          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f nachet/db/bytebase/constants_nachet_${{ steps.schema-version.outputs.version }}.sql
+          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f nachet/datastore/tests/test_data_nachet_${{ steps.schema-version.outputs.version }}.sql
         env:
           PGPASSWORD:  ${{ secrets.PG_PASS }}
 
       - name: Verify schema setup
         run: |
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "\dt \"nachet_0.0.11\".*" -c "\df \"nachet_0.0.11\".*" -c "SELECT * FROM \"nachet_0.0.11\".seed;"
+          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "\dt \"nachet_${{ steps.schema-version.outputs.version }}\".*" -c "\df \"nachet_${{ steps.schema-version.outputs.version }}\".*" -c "SELECT * FROM \"nachet_${{ steps.schema-version.outputs.version }}\".seed;"
         env:
           PGPASSWORD: ${{ secrets.PG_PASS }}
 
       - name: Run tests
         run: |
-          python -m pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
+          uv run pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
         env:
           TESTING: "true"
           NACHET_AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           NACHET_STORAGE_URL: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           NACHET_DB_URL: "postgresql://${{ secrets.PG_USER }}:${{ secrets.PG_PASS }}@127.0.0.1:5432/${{ secrets.PG_DB }}"
-          NACHET_SCHEMA: "nachet_0.0.11"
+          NACHET_SCHEMA: "nachet_${{ steps.schema-version.outputs.version }}"
           NACHET_DATA: "https://raw.githubusercontent.com/ai-cfia/nachet-data/main/"
           NACHET_MAX_CONTENT_LENGTH: "200"
           NACHET_BLOB_PIPELINE_NAME: sg-nachet-pipeline-dev
