@@ -283,5 +283,3 @@ create trigger verified_inference_trigger
     for each row
     when (new.verified = true)
 execute procedure "nachet_0.0.12".verified_inference();
-
-
