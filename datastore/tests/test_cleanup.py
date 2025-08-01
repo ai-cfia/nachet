@@ -77,6 +77,17 @@ def cleanup_database():
 
 def main():
     """Main entry point."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Clean up test database schema")
+    parser.add_argument(
+        "--force",
+        "-f",
+        action="store_true",
+        help="Skip confirmation prompt and force cleanup",
+    )
+    args = parser.parse_args()
+
     print("Cleaning up test database...")
 
     # Change to datastore directory if not already there
@@ -84,13 +95,16 @@ def main():
         print("Error: Must be run from the datastore directory")
         sys.exit(1)
 
-    # Ask for confirmation
-    response = input(
-        "Are you sure you want to drop the test database schema? This will delete all test data. (y/N): "
-    )
-    if response.lower() not in ["y", "yes"]:
-        print("Cleanup cancelled.")
-        sys.exit(0)
+    # Ask for confirmation unless forced
+    if not args.force:
+        response = input(
+            "Are you sure you want to drop the test database schema? This will delete all test data. (y/N): "
+        )
+        if response.lower() not in ["y", "yes"]:
+            print("Cleanup cancelled.")
+            sys.exit(0)
+    else:
+        print("Force cleanup mode - skipping confirmation.")
 
     cleanup_database()
 

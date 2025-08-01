@@ -96,23 +96,17 @@ def setup_database():
 
     # Step 2: Apply schema file
     print("Applying schema structure...")
-    schema_cmd = (
-        f"psql -h {pg_host} -p {pg_port} -U {pg_user} -d {pg_db} -f {schema_file}"
-    )
+    schema_cmd = f"psql --set ON_ERROR_STOP=1 -h {pg_host} -p {pg_port} -U {pg_user} -d {pg_db} -f {schema_file}"
     run_command(schema_cmd, env=env)
 
     # Step 3: Apply constants file
     print("Applying constants data...")
-    constants_cmd = (
-        f"psql -h {pg_host} -p {pg_port} -U {pg_user} -d {pg_db} -f {constants_file}"
-    )
+    constants_cmd = f"psql --set ON_ERROR_STOP=1 -h {pg_host} -p {pg_port} -U {pg_user} -d {pg_db} -f {constants_file}"
     run_command(constants_cmd, env=env)
 
     # Step 4: Apply test data file
     print("Applying test data...")
-    test_data_cmd = (
-        f"psql -h {pg_host} -p {pg_port} -U {pg_user} -d {pg_db} -f {test_data_file}"
-    )
+    test_data_cmd = f"psql --set ON_ERROR_STOP=1 -h {pg_host} -p {pg_port} -U {pg_user} -d {pg_db} -f {test_data_file}"
     run_command(test_data_cmd, env=env)
 
     # Step 5: Verify setup
@@ -121,6 +115,29 @@ def setup_database():
     result = run_command(verify_cmd, env=env)
     print("Verification output:")
     print(result)
+
+    # Step 6: Verify critical test data was loaded
+    print("Verifying test data...")
+    verification_queries = [
+        f'SELECT COUNT(*) as model_count FROM \\"{schema_name}\\".model',
+        f'SELECT COUNT(*) as pipeline_count FROM \\"{schema_name}\\".pipeline',
+        f'SELECT COUNT(*) as pipeline_model_count FROM \\"{schema_name}\\".pipeline_model',
+        f'SELECT COUNT(*) as user_count FROM \\"{schema_name}\\".users',
+    ]
+
+    for query in verification_queries:
+        result = run_command(
+            f'psql -h {pg_host} -p {pg_port} -U {pg_user} -d {pg_db} -t -c "{query}"',
+            env=env,
+        )
+        count = int(result.strip())
+        table_name = query.split("as ")[1].split(" ")[0].replace("_count", "")
+        print(f"  {table_name}: {count} records")
+        if count == 0:
+            print(f"ERROR: No {table_name} found in test data!")
+            sys.exit(1)
+
+    print("Test data verification passed!")
 
     print(f"Database setup completed successfully!")
     print(f"Schema: {schema_name}")
