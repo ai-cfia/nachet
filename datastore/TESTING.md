@@ -12,6 +12,7 @@ This guide explains how to set up and run tests for the Nachet datastore package
 ## Environment Setup
 
 1. Configure your test database and blob storage environment variables in `.env.test`:
+
    ```bash
    PG_TEST_DB="nachet-test"
    PG_TEST_USER="postgres"
@@ -30,6 +31,7 @@ This guide explains how to set up and run tests for the Nachet datastore package
 2. Ensure your PostgreSQL server is running and accessible with these credentials.
 
 3. **For blob storage tests**: Start Azure Storage Emulator (Azurite):
+
    ```bash
    # Using Docker
    docker run -p 10000:10000 -p 10001:10001 -p 10002:10002 mcr.microsoft.com/azure-storage/azurite
@@ -52,6 +54,7 @@ set -a && source .env.test && set +a && uv run python tests/test_setup.py
 ```
 
 This will:
+
 - Create the `nachet_0.0.12` schema in your test database
 - Apply the database structure from `nachet/db/bytebase/schema_nachet_0.0.12.sql`
 - Load constants from `nachet/db/bytebase/constants_nachet_0.0.12.sql`
@@ -88,24 +91,29 @@ set -a && source .env.test && set +a && uv run python tests/test_cleanup.py
 ## Troubleshooting
 
 ### Database Connection Issues
+
 - Verify PostgreSQL is running on the specified host/port
 - Check that the database specified in `PG_TEST_DB` exists
 - Ensure the user has sufficient privileges to create/drop schemas
 
 ### Blob Storage Connection Issues
+
 - **Tests timeout or fail with authentication errors**: Ensure Azurite is running on `localhost:10000`
 - **"Server failed to authenticate" errors**: Check that the `NACHET_STORAGE_URL` includes the correct `BlobEndpoint=http://localhost:10000/devstoreaccount1;`
 - **Connection refused errors**: Start Azurite before running tests that interact with blob storage
 - For tests that require blob storage (like `test_datastore.py`), Azurite must be running
 
 ### Schema Version Mismatch
+
 - The schema version is read from `pyproject.toml` under `[tool.nachet-db].db-schema-version`
 - Ensure the corresponding SQL files exist in `nachet/db/bytebase/`
 
 ### Test Data Issues
+
 - If tests fail due to missing data, re-run the setup script
 - Check that `test_data_nachet_0.0.12.sql` contains the expected test records
 
 ### Test Types
+
 - **Database-only tests**: Tests like those in `tests/nachet/db/` only require PostgreSQL
 - **Full integration tests**: Tests like `test_datastore.py` require both PostgreSQL and Azurite running
