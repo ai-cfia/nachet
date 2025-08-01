@@ -139,7 +139,7 @@ def setup_database():
 
     print("Test data verification passed!")
 
-    print(f"Database setup completed successfully!")
+    print("Database setup completed successfully!")
     print(f"Schema: {schema_name}")
     print(f"Connection: postgresql://{pg_user}:***@{pg_host}:{pg_port}/{pg_db}")
 

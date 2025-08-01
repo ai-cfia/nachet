@@ -113,7 +113,7 @@ jobs:
           NACHET_BLOB_KEY: ${{ secrets.NACHET_BLOB_KEY }}
           NACHET_VALID_EXTENSION: '["jpeg", "jpg", "png", "gif", "bmp", "tiff", "webp"]'
           NACHET_VALID_DIMENSION: '{"width": 1920, "height": 1080}'
-          DEV_USER_EMAIL: "example@gmail.com"
+          DEV_USER_EMAIL: ${{ secrets.DEV_USER_EMAIL }}
           NACHET_ENV: "local" # local, dev, prod
           NACHET_FRONTEND_PUBLIC_URL: "https://nachet.inspection.alpha.canada.ca"
           NACHET_FRONTEND_DEV_URL: "http://localhost:5173"
