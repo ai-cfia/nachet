@@ -26,6 +26,7 @@ This guide explains how to set up and run tests for the Nachet datastore package
    NACHET_STORAGE_URL="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1;"
    NACHET_BLOB_ACCOUNT="devstoreaccount1"
    NACHET_BLOB_KEY="Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
+   DEV_USER_EMAIL="test.user@inspection.gc.ca"
    ```
 
 2. Ensure your PostgreSQL server is running and accessible with these credentials.

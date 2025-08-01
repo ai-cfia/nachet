@@ -32,14 +32,15 @@ def get_all_seeds_names(cursor):
         return cursor.fetchall()
     except Exception:
         raise Exception("Error: seeds could not be retrieved")
-    
+
+
 def get_all_seeds(cursor):
     """
     This function returns all the seed from the database.
-    
+
     Parameters:
     - cursor (cursor): The cursor of the database.
-    
+
     Returns:
     - list of tuple (id,seed_name)
     """
@@ -53,7 +54,7 @@ def get_all_seeds(cursor):
         cursor.execute(query)
         return cursor.fetchall()
     except Exception:
-        raise Exception("Error: seeds could not be retrieved")    
+        raise Exception("Error: seeds could not be retrieved")
 
 
 def get_seed_id(cursor, seed_name: str) -> str:
@@ -67,7 +68,12 @@ def get_seed_id(cursor, seed_name: str) -> str:
     Returns:
     - The UUID of the seed.
     """
+    import re
+
     try:
+        # Strip number prefix if present (e.g., "14 Ambrosia psilostachya" -> "Ambrosia psilostachya")
+        cleaned_name = re.sub(r"^\d+\s+", "", seed_name.strip())
+
         query = """
             SELECT 
                 id 
@@ -76,8 +82,8 @@ def get_seed_id(cursor, seed_name: str) -> str:
             WHERE 
                 name ILIKE %s
                 """
-        seed_name= "%"+seed_name
-        cursor.execute(query, (seed_name,))
+        search_pattern = "%" + cleaned_name + "%"
+        cursor.execute(query, (search_pattern,))
         result = cursor.fetchone()[0]
         return result
     except TypeError:
@@ -85,7 +91,8 @@ def get_seed_id(cursor, seed_name: str) -> str:
     except Exception:
         raise Exception("unhandled error")
 
-def get_seed_name(cursor, seed_id:str) -> str :
+
+def get_seed_name(cursor, seed_id: str) -> str:
     """
     This function retrieves the name of a seed from the database.
 
@@ -111,6 +118,7 @@ def get_seed_name(cursor, seed_id:str) -> str :
         raise SeedNotFoundError("Error: seed not found")
     except Exception:
         raise Exception("unhandled error")
+
 
 def new_seed(cursor, seed_name: str):
     """
@@ -165,6 +173,7 @@ def is_seed_registered(cursor, seed_name: str) -> bool:
         return res
     except Exception:
         raise Exception("Error: could not check if seed name is a seed")
+
 
 def get_seed_object_seed_id(cursor, seed_object_id: str) -> str:
     """
