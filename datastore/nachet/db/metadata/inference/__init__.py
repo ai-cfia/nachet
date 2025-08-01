@@ -20,10 +20,10 @@ class Seed(BaseModel):
     score: float
     
 class Box(BaseModel):
-    topX : float
-    topY : float
-    bottomX : float
-    bottomY : float
+    topX : int
+    topY : int
+    bottomX : int
+    bottomY : int
 
 class Model(BaseModel):
     name: str

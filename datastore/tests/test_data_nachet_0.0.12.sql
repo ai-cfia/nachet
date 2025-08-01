@@ -51,3 +51,17 @@ INSERT INTO "nachet_0.0.12".pipeline_model (id, pipeline_id, model_id) VALUES ('
 --
 
 INSERT INTO "nachet_0.0.12".users (id, email, registration_date, updated_at, default_set_id) VALUES ('8ea46a6b-7d37-4fbb-a66f-775112376e16', 'test.user@inspection.gc.ca', '2024-10-30 19:59:56.653932', '2024-10-30 19:59:56.653932', null);
+
+
+--
+-- Data for Name: picture_set; Type: TABLE DATA; Schema: nachet_0.0.12; Owner: nachet
+--
+
+INSERT INTO "nachet_0.0.12".picture_set (id, name, picture_set, owner_id, upload_date) VALUES ('f47ac10b-58cc-4372-a567-0e02b2c3d479', 'default', '{}', '8ea46a6b-7d37-4fbb-a66f-775112376e16', '2024-10-30');
+
+
+--
+-- Update user default_set_id after picture_set is inserted
+--
+
+UPDATE "nachet_0.0.12".users SET default_set_id = 'f47ac10b-58cc-4372-a567-0e02b2c3d479' WHERE id = '8ea46a6b-7d37-4fbb-a66f-775112376e16';

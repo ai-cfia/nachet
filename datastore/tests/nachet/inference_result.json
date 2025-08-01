@@ -50,6 +50,10 @@
         {
             "name": "swin-27-spp",
             "version": "1"
+        },
+        {
+            "name": "swin-15e-spp",
+            "version": "1"
         }
     ]
 }
