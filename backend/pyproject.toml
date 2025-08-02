@@ -28,7 +28,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "nachet-datastore @ git+https://github.com/ai-cfia/nachet.git@v1.1.0-nachet-datastore#subdirectory=datastore",
+    "nachet-datastore @ git+https://github.com/ai-cfia/nachet.git@v1.1.3-nachet-datastore#subdirectory=datastore",
+    # "nachet-datastore @ file:///home/path/to/nachet/datastore",
     "numpy==1.26.4",
     "azure-storage-blob",
     "azure-identity",

@@ -1,18 +1,29 @@
 import pytest
-import asyncio
+import pytest_asyncio
 import os
 import base64
 
 from app import app, json
 from unittest.mock import MagicMock, Mock, patch
+import storage.datastore_storage_api as datastore
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def positive_feedback_setup():
     test_client = app.test_client()
-    userId = "a427278e-28df-428f-8937-ddeeef44e72f"
-    response = await test_client.get("/test")
-    pipeline = json.loads(await response.get_data())[0]
+    test_email = "test.user@inspection.gc.ca"
+    
+    # Create test user in database
+    connection_string = os.getenv("NACHET_AZURE_STORAGE_CONNECTION_STRING")
+    try:
+        user = await datastore.create_user(test_email, connection_string)
+        userId = user.id
+    except Exception:
+        # User might already exist, get the existing user ID
+        userId = datastore.get_user_id(test_email)
+    
+    # Use existing pipeline from database instead of calling /test endpoint
+    pipeline = {"pipeline_name": "swin-27-spp"}
     current_dir = os.path.dirname(__file__)
     image_path = os.path.join(current_dir, 'img/16.tiff')
     folder_name = "test1"
@@ -33,52 +44,69 @@ async def positive_feedback_setup():
 
 async def create_test_inference(setup):
     """
-    Create a test inference to be used in the test
+    Create a test inference record in the database using real test data
     """
-    with patch("patch.bin_azure_storage_api.mount_container") as mock_container:
-        # Mock azure client services
-        mock_blob = Mock()
-        mock_blob.readall.return_value = bytes(setup["image_src"], encoding="utf-8")
-
-        mock_blob_client = Mock()
-        mock_blob_client.configure_mock(name="test_blob.json")
-        mock_blob_client.download_blob.return_value = mock_blob
-
-        mock_container_client = MagicMock()
-        mock_container_client.list_blobs.return_value = [mock_blob_client]
-        mock_container_client.get_blob_client.return_value = mock_blob_client
-        mock_container_client.exists.return_value = True
-
-        mock_container.return_value = mock_container_client
-
-        # Test the answers from inference_request
-        response = await setup["test_client"].post(
-            '/inf',
-            headers={
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
-            json={
-                "image": setup["image_header"] + setup["image_src"],
-                "imageDims": [720,540],
-                "folder_name": setup["folder_name"],
-                "container_name": setup["userId"],
-                "model_name": setup["pipeline"].get("pipeline_name")
-            })
+    # Load the test inference data
+    import json
+    with open('/home/p4r0d1m3pxz/work/nachet/datastore/tests/nachet/inference_result.json', 'r') as f:
+        inference_data = json.load(f)
+    
+    # Mock Azure storage functions to avoid blob storage dependencies
+    with patch('datastore.blob.azure_storage_api.get_blob') as mock_get_blob, \
+         patch('datastore.blob.azure_storage_api.get_image_count') as mock_get_image_count:
         
-        inference = json.loads(await response.get_data())
+        # Set up mocks
+        mock_get_blob.return_value = '{"folder_name": "General"}'
+        mock_get_image_count.return_value = 0
         
-        # Check if response is an error (list) or success (dict)
-        if isinstance(inference, list):
-            raise RuntimeError(f"Failed to create test inference: {inference}")
+        # Create a picture first (needed for inference)
+        connection = datastore.get_connection()
+        cursor = datastore.get_cursor(connection)
         
-        setup["inferences_id"].append(inference.get("inference_id"))
-        
-        return inference
+        try:
+            # Create test image data
+            import base64
+            image_bytes = base64.b64decode(setup["image_src"])
+            
+            # Mock container client with proper blob list behavior
+            from unittest.mock import Mock, MagicMock
+            container_client = MagicMock()
+            
+            # Create a mock blob that represents the General folder
+            mock_blob = MagicMock()
+            mock_blob.name = "General/General.json"
+            mock_blob.download_blob.return_value.readall.return_value = b'{"folder_name": "General"}'
+            
+            # Mock blob client returned by upload_blob
+            mock_blob_client = MagicMock()
+            mock_blob_client.set_blob_tags = MagicMock()
+            
+            # Mock container methods
+            container_client.list_blobs.return_value = [mock_blob]
+            container_client.get_blob_client.return_value = mock_blob
+            container_client.upload_blob.return_value = mock_blob_client
+            
+            # Create picture record
+            picture_id = await datastore.get_picture_id(
+                cursor, setup["userId"], image_bytes, container_client
+            )
+            
+            # Save inference result to database using the test data
+            saved_inference = await datastore.save_inference_result(
+                cursor, setup["userId"], inference_data, picture_id, "swin-27-spp", 1
+            )
+            
+            datastore.end_query(connection, cursor)
+            setup["inferences_id"].append(saved_inference.get("inference_id"))
+            return saved_inference
+            
+        except Exception as error:
+            datastore.end_query(connection, cursor)
+            raise error
 
 @pytest.mark.asyncio
 async def test_positive_feedback_successful(positive_feedback_setup):
-    setup = await positive_feedback_setup
+    setup = positive_feedback_setup
     
     inference = await create_test_inference(setup)
     inferenceId = inference.get("inference_id")
@@ -106,7 +134,7 @@ async def test_positive_feedback_missing_arguments_error(positive_feedback_setup
     """
     Test if a request with missing arguments return an error
     """
-    setup = await positive_feedback_setup
+    setup = positive_feedback_setup
     expected = ("API Error giving a positive feedback : missing request arguments: either userId, inferenceId or boxes is missing")
     
     inference = await create_test_inference(setup)
@@ -151,12 +179,21 @@ async def test_positive_feedback_missing_arguments_error(positive_feedback_setup
     assert result_json[0] == expected
         
 
-@pytest.fixture        
+@pytest_asyncio.fixture        
 async def negative_feedback_setup():
     test_client = app.test_client()
-    userId = "a427278e-28df-428f-8937-ddeeef44e72f"
-    response = await test_client.get("/test")
-    pipeline = json.loads(await response.get_data())[0]
+    test_email = "test.user@inspection.gc.ca"
+    
+    # Create test user in database
+    connection_string = os.getenv("NACHET_AZURE_STORAGE_CONNECTION_STRING")
+    try:
+        user = await datastore.create_user(test_email, connection_string)
+        userId = user.id
+    except Exception:
+        # User might already exist, get the existing user ID
+        userId = datastore.get_user_id(test_email)
+    # Use existing pipeline from database instead of calling /test endpoint
+    pipeline = {"pipeline_name": "swin-27-spp"}
     current_dir = os.path.dirname(__file__)
     image_path = os.path.join(current_dir, 'img/16.tiff')
     folder_name = "test1"
@@ -177,7 +214,7 @@ async def negative_feedback_setup():
 
 @pytest.mark.asyncio
 async def test_negative_feedback_successful(negative_feedback_setup):
-    setup = await negative_feedback_setup
+    setup = negative_feedback_setup
     
     inference = await create_test_inference(setup)
     inferenceId = inference.get("inference_id")
@@ -218,7 +255,7 @@ async def test_negative_feedback_missing_arguments_error(negative_feedback_setup
     """
     Test if a request with missing arguments return an error
     """
-    setup = await negative_feedback_setup
+    setup = negative_feedback_setup
     expected = ("API Error giving a negative feedback : missing request arguments: either userId, inferenceId or boxes is missing")
     
     inference = await create_test_inference(setup)
