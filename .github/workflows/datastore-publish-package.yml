@@ -49,7 +49,7 @@ jobs:
             exit 1
           fi
           echo "Parsed version: $version"
-          echo "app-version=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "app-version=$version" >> $GITHUB_OUTPUT
 
       - name: Switch to the release branch
         run: |
