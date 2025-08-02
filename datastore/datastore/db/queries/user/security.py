@@ -4,7 +4,7 @@ Security functions for user database operations to prevent SQL injection and val
 
 import re
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 
 # Import from local exceptions module to avoid circular imports

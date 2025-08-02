@@ -44,7 +44,7 @@ def is_user_registered(cursor, email: str) -> bool:
         # Log the sanitized query for security monitoring
         if "stmt" in locals():
             print(f"Security log: {sanitize_query_log(str(stmt), (validated_email,))}")
-        raise Exception(f"Error: could not check if the email is a registered user")
+        raise Exception(f"Error: could not check if the email is a registered user - {e}")
 
 
 def is_a_user_id(cursor, user_id: str) -> bool:
@@ -87,4 +87,4 @@ def is_a_user_id(cursor, user_id: str) -> bool:
             print(
                 f"Security log: {sanitize_query_log(str(stmt), (validated_user_id,))}"
             )
-        raise Exception(f"Error: could not check if given parameter is a user id")
+        raise Exception(f"Error: could not check if given parameter is a user id - {e}")

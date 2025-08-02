@@ -27,7 +27,7 @@ def link_container(cursor, user_id: str, container_url: str):
 
         # Check if user exists
         if not is_a_user_id(cursor=cursor, user_id=validated_user_id):
-            raise UserNotFoundError(f"User not found for the given id")
+            raise UserNotFoundError(f"User not found for the given id {validated_user_id}")
 
         # Use sql.SQL for secure query composition
         stmt = sql.SQL("""
@@ -74,7 +74,7 @@ def get_container_url(cursor, user_id: str):
 
         # Check if user exists
         if not is_a_user_id(cursor=cursor, user_id=validated_user_id):
-            raise UserNotFoundError(f"User not found for the given id")
+            raise UserNotFoundError(f"User not found for the given id {validated_user_id}")
 
         # Use sql.SQL for secure query composition
         stmt = sql.SQL("""

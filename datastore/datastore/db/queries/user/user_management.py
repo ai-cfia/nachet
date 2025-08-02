@@ -6,7 +6,7 @@ from uuid import UUID
 from psycopg import sql
 
 from .exceptions import UserCreationError, UserNotFoundError
-from .security import validate_email, validate_user_id, sanitize_query_log
+from .security import validate_email, sanitize_query_log
 
 
 def get_user_id(cursor, email: str) -> str:
@@ -43,7 +43,7 @@ def get_user_id(cursor, email: str) -> str:
         res = cursor.fetchone()[0]
         return res
     except TypeError:
-        raise UserNotFoundError(f"Error: user could not be retrieved")
+        raise UserNotFoundError(f"Error: user could not be retrieved for email {validated_email}")
     except Exception:
         # Log the sanitized query for security monitoring
         if "stmt" in locals():
@@ -88,4 +88,4 @@ def register_user(cursor, email: str) -> UUID:
         # Log the sanitized query for security monitoring
         if "stmt" in locals():
             print(f"Security log: {sanitize_query_log(str(stmt), (validated_email,))}")
-        raise UserCreationError(f"Error: user not registered")
+        raise UserCreationError(f"Error: user not registered for email {validated_email}")
