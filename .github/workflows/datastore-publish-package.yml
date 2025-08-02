@@ -53,7 +53,7 @@ jobs:
 
       - name: Switch to the release branch
         run: |
-          branch_name="nachet-datastore-v${{ steps.versions.outputs.app-version }}"
+          branch_name="release/nachet-datastore-v${{ steps.versions.outputs.app-version }}"
           
           # Check if branch exists locally and delete it
           if git show-ref --verify --quiet refs/heads/$branch_name; then
@@ -113,12 +113,12 @@ jobs:
           # Check if tag exists remotely and delete it
           if git ls-remote --tags origin | grep -q "refs/tags/$tag_name$"; then
             echo "Tag $tag_name exists remotely, deleting it"
-            git push --delete origin $tag_name
+            git push --delete origin refs/tags/$tag_name
           fi
           
           # Create and push new tag
           git tag -a $tag_name -m "Release ${{ steps.versions.outputs.app-version }}"
-          git push origin $tag_name
+          git push origin refs/tags/$tag_name
 
       - name: Generate changelog from PRs since last tag
         id: generate_changelog
