@@ -32,7 +32,7 @@ jobs:
       - name: Validate and move pyproject.toml for build
         run: |
           if [ ! -f "pyproject.toml" ]; then
-            echo "Error: nachet_pyproject.toml not found"
+            echo "Error: pyproject.toml not found"
             exit 1
           fi
 
