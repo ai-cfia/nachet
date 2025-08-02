@@ -3,8 +3,10 @@ Core user management operations for database interactions.
 """
 
 from uuid import UUID
+from psycopg import sql
 
 from .exceptions import UserCreationError, UserNotFoundError
+from .security import validate_email, validate_user_id, sanitize_query_log
 
 
 def get_user_id(cursor, email: str) -> str:
@@ -19,20 +21,33 @@ def get_user_id(cursor, email: str) -> str:
     - The UUID of the user.
     """
     try:
-        query = """
+        # Validate and sanitize input
+        validated_email = validate_email(email)
+
+        # Use sql.SQL for secure query composition
+        stmt = sql.SQL("""
             SELECT 
-                id 
+                {id_column}
             FROM 
-                users
+                {table_name}
             WHERE 
-                email = %s
-                """
-        cursor.execute(query, (email,))
+                {email_column} = {email_param}
+        """).format(
+            table_name=sql.Identifier("users"),
+            id_column=sql.Identifier("id"),
+            email_column=sql.Identifier("email"),
+            email_param=sql.Literal(validated_email),
+        )
+
+        cursor.execute(stmt)
         res = cursor.fetchone()[0]
         return res
     except TypeError:
-        raise UserNotFoundError(f"Error: user {email} could not be retrieved")
+        raise UserNotFoundError(f"Error: user could not be retrieved")
     except Exception:
+        # Log the sanitized query for security monitoring
+        if "stmt" in locals():
+            print(f"Security log: {sanitize_query_log(str(stmt), (validated_email,))}")
         raise Exception("Unhandled Error")
 
 
@@ -48,17 +63,29 @@ def register_user(cursor, email: str) -> UUID:
     - The UUID of the user.
     """
     try:
-        query = """
+        # Validate and sanitize input
+        validated_email = validate_email(email)
+
+        # Use sql.SQL for secure query composition
+        stmt = sql.SQL("""
             INSERT INTO  
-                users (email,default_set_id)
+                {table_name} ({email_column}, {default_set_column})
             VALUES
-                (%s,NULL)
-            RETURNING id
-            """
-        cursor.execute(
-            query,
-            (email,),
+                ({email_param}, {null_value})
+            RETURNING {id_column}
+        """).format(
+            table_name=sql.Identifier("users"),
+            email_column=sql.Identifier("email"),
+            default_set_column=sql.Identifier("default_set_id"),
+            id_column=sql.Identifier("id"),
+            email_param=sql.Literal(validated_email),
+            null_value=sql.SQL("NULL"),
         )
+
+        cursor.execute(stmt)
         return cursor.fetchone()[0]
     except Exception:
-        raise UserCreationError(f"Error: user {email} not registered")
+        # Log the sanitized query for security monitoring
+        if "stmt" in locals():
+            print(f"Security log: {sanitize_query_log(str(stmt), (validated_email,))}")
+        raise UserCreationError(f"Error: user not registered")

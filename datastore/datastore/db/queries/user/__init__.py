@@ -5,7 +5,7 @@ The module is organized into the following sub-modules:
 - exceptions: Custom exception classes
 - validation: User validation functions
 - user_management: Core user operations
-- container_management: Container-related operations  
+- container_management: Container-related operations
 - picture_set_management: Picture set operations
 """
 
@@ -16,6 +16,7 @@ from .exceptions import (
     UserCreationError,
     UserNotFoundError,
     ContainerNotSetError,
+    SecurityValidationError,
 )
 
 # Import validation functions
@@ -46,8 +47,9 @@ from .picture_set_management import (
 __all__ = [
     # Exceptions
     "UserCreationError",
-    "UserNotFoundError", 
+    "UserNotFoundError",
     "ContainerNotSetError",
+    "SecurityValidationError",
     # Validation functions
     "is_user_registered",
     "is_a_user_id",
