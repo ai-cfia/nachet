@@ -59,3 +59,25 @@ jobs:
     secrets: inherit
     with:
       working-directory: datastore
+  uv-lock-check:
+    name: Check uv.lock is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc
+        with:
+          version: "latest"
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Check if uv.lock is up to date
+        run: |
+          # Generate a new lock file and compare with existing
+          uv lock --check
+        working-directory: datastore
