@@ -69,7 +69,6 @@ async def create_test_inference(setup):
         cursor = datastore.get_cursor(connection)
 
         try:
-
             image_bytes = base64.b64decode(setup["image_src"])
 
             container_client = MagicMock()
