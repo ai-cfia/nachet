@@ -45,8 +45,17 @@ dependencies = [
     "pydantic-core==2.18.2",
     "python-magic",
     "PyJWT",
-    "pytest",
+]
+
+[tool.nachet-db]
+db-schema-version = "0.0.12"
+previous-db-schema-version = "0.0.11"
+
+[dependency-groups]
+dev = [
     "pytest-asyncio",
+    "pytest>=8.4.1",
+    "toml>=0.10.2",
 ]
 
 [project.urls]
