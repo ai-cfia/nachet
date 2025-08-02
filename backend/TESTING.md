@@ -75,7 +75,7 @@ To perform the following test, you will need the Nachet's frontend repository.
 It can be found at: [Nachet Frontend GitHub
 Repository](https://github.com/ai-cfia/nachet/tree/main/frontend).
 
-You will also need the list of the available pipelines. The list can be found in the 
+You will also need the list of the available pipelines. The list can be found in the  
 [available pipelines documentation](https://github.com/ai-cfia/nachet/blob/main/backend/docs/nachet-inference-documentation.md#available-version-of-the-json-file).
 
 ## Test Case: Populate model selection component with pipelines information
