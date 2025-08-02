@@ -51,7 +51,7 @@
     "totalBoxes": 1,
     "models": [
         {
-            "name": "seed-detector-1",
+            "name": "seed-detector-rcnn-1",
             "version": "1"
         },
         {

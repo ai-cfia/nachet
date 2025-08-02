@@ -13,14 +13,14 @@ on:
       - synchronize
     paths:
       - 'datastore/**'
-      - 'datastore/nachet_pyproject.toml'
+      - 'datastore/pyproject.toml'
       - '.github/workflows/datastore-*'
   push:
     branches:
       - main
     paths:
       - 'datastore/**'
-      - 'datastore/nachet_pyproject.toml'
+      - 'datastore/pyproject.toml'
       - '.github/workflows/datastore-*'
 
 defaults:
@@ -34,7 +34,7 @@ jobs:
     uses: ai-cfia/github-workflows/.github/workflows/workflow-version-bump-python-mono.yml@main
     secrets: inherit
     with:
-      pyproject-path: 'nachet_pyproject.toml'
+      pyproject-path: 'pyproject.toml'
       package-name: 'nachet-datastore'
       working-directory: datastore
   datastore-lint:

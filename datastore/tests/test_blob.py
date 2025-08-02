@@ -9,9 +9,9 @@ import datastore.blob.__init__ as blob
 from datastore.blob.__init__ import ConnectionStringError
 from datastore.blob.azure_storage_api import build_container_name
 
-BLOB_CONNECTION_STRING = os.environ["NACHET_STORAGE_URL_TESTING"]
+BLOB_CONNECTION_STRING = os.environ["NACHET_STORAGE_URL"]
 if BLOB_CONNECTION_STRING is None or BLOB_CONNECTION_STRING == "":
-    raise ValueError("NACHET_STORAGE_URL_TESTING is not set")
+    raise ValueError("NACHET_STORAGE_URL is not set")
 
 
 class TestGetBlobServiceClient(unittest.TestCase):

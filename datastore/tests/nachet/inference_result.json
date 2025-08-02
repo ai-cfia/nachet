@@ -44,11 +44,15 @@
     "totalBoxes": 1,
     "models": [
         {
-            "name": "seed-detector-1",
+            "name": "seed-detector-rcnn-1",
             "version": "1"
         },
         {
-            "name": "swinv1-base-dataaugv2-1",
+            "name": "swin-27-spp",
+            "version": "1"
+        },
+        {
+            "name": "swin-15e-spp",
             "version": "1"
         }
     ]

@@ -20,19 +20,19 @@ DB_CONNECTION_STRING = os.environ.get("NACHET_DB_URL")
 if DB_CONNECTION_STRING is None or DB_CONNECTION_STRING == "":
     raise ValueError("NACHET_DB_URL is not set")
 
-DB_SCHEMA = os.environ.get("NACHET_SCHEMA_TESTING")
+DB_SCHEMA = os.environ.get("NACHET_SCHEMA")
 if DB_SCHEMA is None or DB_SCHEMA == "":
-    raise ValueError("NACHET_SCHEMA_TESTING is not set")
+    raise ValueError("NACHET_SCHEMA is not set")
 
-BLOB_CONNECTION_STRING = os.environ["NACHET_STORAGE_URL_TESTING"]
+BLOB_CONNECTION_STRING = os.environ["NACHET_STORAGE_URL"]
 if BLOB_CONNECTION_STRING is None or BLOB_CONNECTION_STRING == "":
-    raise ValueError("NACHET_STORAGE_URL_TESTING is not set")
+    raise ValueError("NACHET_STORAGE_URL is not set")
 
-BLOB_ACCOUNT = os.environ["NACHET_BLOB_ACCOUNT_TESTING"]
+BLOB_ACCOUNT = os.environ["NACHET_BLOB_ACCOUNT"]
 if BLOB_ACCOUNT is None or BLOB_ACCOUNT == "":
     raise ValueError("NACHET_BLOB_ACCOUNT is not set")
 
-BLOB_KEY = os.environ["NACHET_BLOB_KEY_TESTING"]
+BLOB_KEY = os.environ["NACHET_BLOB_KEY"]
 if BLOB_KEY is None or BLOB_KEY == "":
     raise ValueError("NACHET_BLOB_KEY is not set")
 
