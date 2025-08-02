@@ -1,10 +1,11 @@
 """
-This is a test script for the highest level of the datastore packages. 
+This is a test script for the highest level of the datastore packages.
 It tests the functions in the __init__.py files of the datastore packages.
 """
 
 import io
 import os
+import time
 import unittest
 from unittest.mock import MagicMock
 from PIL import Image, ImageChops
@@ -121,7 +122,9 @@ class test_picture(unittest.TestCase):
         self.cursor = self.con.cursor()
         db.create_search_path(self.con, self.cursor, DB_SCHEMA)
         self.connection_str = BLOB_CONNECTION_STRING
-        self.user_email = "testing@email"
+        import time
+
+        self.user_email = f"testing.picture.{int(time.time())}@inspection.gc.ca"
         self.user_obj = asyncio.run(
             datastore.new_user(
                 self.cursor, self.user_email, self.connection_str, "test-user"
@@ -275,28 +278,29 @@ class test_picture(unittest.TestCase):
             )
         )
 
-        # CRITICAL BUSINESS LOGIC: Direct comparison is NOT possible between register_inference_result 
+        # CRITICAL BUSINESS LOGIC: Direct comparison is NOT possible between register_inference_result
         # and get_picture_inference due to intentional data transformation for traceability and usability:
         #
         # 1. LABEL TRANSFORMATION: Model outputs include numbered prefixes (e.g., "14 Ambrosia psilostachya")
-        #    for model versioning, but database stores clean species names ("Ambrosia psilostachya") 
+        #    for model versioning, but database stores clean species names ("Ambrosia psilostachya")
         #    for consistency and user readability.
         #
-        # 2. TRACEABILITY PRESERVATION: The labelOccurrence field preserves original model output 
+        # 2. TRACEABILITY PRESERVATION: The labelOccurrence field preserves original model output
         #    (with numbers) for audit trails, while individual box labels use cleaned database names.
         #
         # 3. DATA FLOW:
         #    - register_inference_result: Returns original model output format (numbered labels)
-        #    - get_picture_inference: Returns database format (cleaned labels in boxes, 
+        #    - get_picture_inference: Returns database format (cleaned labels in boxes,
         #      original labels in labelOccurrence)
         #
         # This normalization ensures we test the actual system behavior while preserving
         # both traceability (original model output) and usability (clean species names).
-        
+
         import re
+
         def clean_label(label):
-            return re.sub(r'^\d+\s+', '', label.strip())
-        
+            return re.sub(r"^\d+\s+", "", label.strip())
+
         # Create a copy of inference with cleaned labels for comparison
         normalized_inference = inference.copy()
         normalized_inference["boxes"] = []
@@ -310,7 +314,7 @@ class test_picture(unittest.TestCase):
                     normalized_topN["label"] = clean_label(topN["label"])
                     normalized_box["topN"].append(normalized_topN)
             normalized_inference["boxes"].append(normalized_box)
-        
+
         # Keep original labelOccurrence (it should preserve the original model output)
         # No normalization needed for labelOccurrence as it stores original model output
 
@@ -342,28 +346,29 @@ class test_picture(unittest.TestCase):
             )
         )
 
-        # CRITICAL BUSINESS LOGIC: Direct comparison is NOT possible between register_inference_result 
+        # CRITICAL BUSINESS LOGIC: Direct comparison is NOT possible between register_inference_result
         # and get_picture_inference due to intentional data transformation for traceability and usability:
         #
         # 1. LABEL TRANSFORMATION: Model outputs include numbered prefixes (e.g., "14 Ambrosia psilostachya")
-        #    for model versioning, but database stores clean species names ("Ambrosia psilostachya") 
+        #    for model versioning, but database stores clean species names ("Ambrosia psilostachya")
         #    for consistency and user readability.
         #
-        # 2. TRACEABILITY PRESERVATION: The labelOccurrence field preserves original model output 
+        # 2. TRACEABILITY PRESERVATION: The labelOccurrence field preserves original model output
         #    (with numbers) for audit trails, while individual box labels use cleaned database names.
         #
         # 3. DATA FLOW:
         #    - register_inference_result: Returns original model output format (numbered labels)
-        #    - get_picture_inference: Returns database format (cleaned labels in boxes, 
+        #    - get_picture_inference: Returns database format (cleaned labels in boxes,
         #      original labels in labelOccurrence)
         #
         # This normalization ensures we test the actual system behavior while preserving
         # both traceability (original model output) and usability (clean species names).
-        
+
         import re
+
         def clean_label(label):
-            return re.sub(r'^\d+\s+', '', label.strip())
-        
+            return re.sub(r"^\d+\s+", "", label.strip())
+
         # Create a copy of inference with cleaned labels for comparison
         normalized_inference = inference.copy()
         normalized_inference["boxes"] = []
@@ -377,7 +382,7 @@ class test_picture(unittest.TestCase):
                     normalized_topN["label"] = clean_label(topN["label"])
                     normalized_box["topN"].append(normalized_topN)
             normalized_inference["boxes"].append(normalized_box)
-        
+
         # Keep original labelOccurrence (it should preserve the original model output)
         # No normalization needed for labelOccurrence as it stores original model output
 
@@ -447,7 +452,10 @@ class test_picture(unittest.TestCase):
 
         not_owner_user_obj = asyncio.run(
             datastore.new_user(
-                self.cursor, "notowner@email", self.connection_str, "test-user"
+                self.cursor,
+                f"notowner.{int(time.time())}@inspection.gc.ca",
+                self.connection_str,
+                "test-user",
             )
         )
         not_owner_user_id = datastore.User.get_id(not_owner_user_obj)
@@ -555,7 +563,10 @@ class test_picture(unittest.TestCase):
 
         not_owner_user_obj = asyncio.run(
             datastore.new_user(
-                self.cursor, "notowner@email", self.connection_str, "test-user"
+                self.cursor,
+                f"notowner.{int(time.time())}@inspection.gc.ca",
+                self.connection_str,
+                "test-user",
             )
         )
         not_owner_user_id = datastore.User.get_id(not_owner_user_obj)
@@ -588,7 +599,9 @@ class test_picture_set(unittest.TestCase):
         self.cursor = self.con.cursor()
         db.create_search_path(self.con, self.cursor, DB_SCHEMA)
         self.connection_str = BLOB_CONNECTION_STRING
-        self.user_email = "testingss@email"
+        import time
+
+        self.user_email = f"testingss.{int(time.time())}@inspection.gc.ca"
         self.user_obj = asyncio.run(
             datastore.new_user(
                 self.cursor, self.user_email, self.connection_str, "test-user"
@@ -878,7 +891,10 @@ class test_picture_set(unittest.TestCase):
         """
         not_owner_user_obj = asyncio.run(
             datastore.new_user(
-                self.cursor, "notowner@email", self.connection_str, "test-user"
+                self.cursor,
+                f"notowner.{int(time.time())}@inspection.gc.ca",
+                self.connection_str,
+                "test-user",
             )
         )
         not_owner_user_id = datastore.User.get_id(not_owner_user_obj)
@@ -1055,7 +1071,10 @@ class test_picture_set(unittest.TestCase):
         """
         not_owner_user_obj = asyncio.run(
             datastore.new_user(
-                self.cursor, "notowner@email", self.connection_str, "test-user"
+                self.cursor,
+                f"notowner.{int(time.time())}@inspection.gc.ca",
+                self.connection_str,
+                "test-user",
             )
         )
         not_owner_user_id = datastore.User.get_id(not_owner_user_obj)
@@ -1105,7 +1124,9 @@ class test_feedback(unittest.TestCase):
         self.cursor = self.con.cursor()
         db.create_search_path(self.con, self.cursor, DB_SCHEMA)
         self.connection_str = BLOB_CONNECTION_STRING
-        self.user_email = "test@email"
+        import time
+
+        self.user_email = f"test.nachet.{int(time.time())}@inspection.gc.ca"
         self.user_obj = asyncio.run(
             datastore.new_user(
                 self.cursor, self.user_email, self.connection_str, "test-user"

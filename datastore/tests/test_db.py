@@ -34,7 +34,9 @@ class test_user_functions(unittest.TestCase):
         self.con = db.connect_db(DB_CONNECTION_STRING, DB_SCHEMA)
         self.cursor = self.con.cursor()
         db.create_search_path(self.con, self.cursor, DB_SCHEMA)
-        self.email = "test@email.gouv.ca"
+        import time
+
+        self.email = f"test.db.{int(time.time())}@inspection.gc.ca"
 
     def tearDown(self):
         self.con.rollback()
@@ -222,7 +224,10 @@ class test_pictures_functions(unittest.TestCase):
         db.create_search_path(self.con, self.cursor, DB_SCHEMA)
 
         # prepare the user
-        self.user_id = user.register_user(self.cursor, "test@email")
+        import time
+
+        test_email = f"test.pictures.{int(time.time())}@inspection.gc.ca"
+        self.user_id = user.register_user(self.cursor, test_email)
 
         # prepare the picture_set and picture
         self.image = Image.new("RGB", (1980, 1080), "blue")
@@ -671,9 +676,6 @@ class test_pictures_functions(unittest.TestCase):
                 self.cursor, str(uuid.uuid4()), old_picture_set_id, new_picture_set_id
             )
 
-
-if __name__ == "__main__":
-    unittest.main()
 
 if __name__ == "__main__":
     unittest.main()
