@@ -20,7 +20,7 @@ on:
       - main
     paths:
       - 'backend/**'
-      - 'backend/pyproject.toml'
+      - 'backend/nachet_pyproject.toml'
       - '.github/workflows/backend-*'
 
 defaults:
