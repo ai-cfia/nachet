@@ -72,6 +72,7 @@ jobs:
           git push -u origin $branch_name
 
       - name: Remove unnecessary files from release branch
+        working-directory: .
         run: |
           echo "Files and directories before cleanup:"
           find . -maxdepth 2 -type f -o -type d | head -20
