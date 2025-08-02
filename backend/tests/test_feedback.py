@@ -48,7 +48,7 @@ async def create_test_inference(setup):
     """
     # Load the test inference data
     import json
-    with open('/home/p4r0d1m3pxz/work/nachet/datastore/tests/nachet/inference_result.json', 'r') as f:
+    with open('../datastore/tests/nachet/inference_result.json', 'r') as f:
         inference_data = json.load(f)
     
     # Mock Azure storage functions to avoid blob storage dependencies
