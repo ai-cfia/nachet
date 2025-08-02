@@ -26,7 +26,7 @@ class TestEmailValidation(unittest.TestCase):
             "firstname+lastname@company.ca",
             "user123@test-domain.co.uk",
         ]
-        
+
         for email in valid_emails:
             with self.subTest(email=email):
                 result = validate_email(email)
@@ -41,7 +41,7 @@ class TestEmailValidation(unittest.TestCase):
             {},
             True,
         ]
-        
+
         for invalid_input in invalid_inputs:
             with self.subTest(input=invalid_input):
                 with self.assertRaises(SecurityValidationError) as context:
@@ -51,7 +51,7 @@ class TestEmailValidation(unittest.TestCase):
     def test_validate_email_too_long(self):
         """Test rejection of overly long email addresses."""
         long_email = "a" * 250 + "@example.com"  # 265 characters
-        
+
         with self.assertRaises(SecurityValidationError) as context:
             validate_email(long_email)
         self.assertIn("too long", str(context.exception))
@@ -59,7 +59,7 @@ class TestEmailValidation(unittest.TestCase):
     def test_validate_email_too_short(self):
         """Test rejection of overly short email addresses."""
         short_emails = ["a", "ab", "@."]
-        
+
         for email in short_emails:
             with self.subTest(email=email):
                 with self.assertRaises(SecurityValidationError) as context:
@@ -76,7 +76,7 @@ class TestEmailValidation(unittest.TestCase):
             "user@example",
             "user.example.com",
         ]
-        
+
         for email in invalid_emails:
             with self.subTest(email=email):
                 with self.assertRaises(SecurityValidationError) as context:
@@ -93,14 +93,14 @@ class TestEmailValidation(unittest.TestCase):
             "test\\@example.com",
             "test\x00@example.com",
         ]
-        
+
         for email in malicious_emails:
             with self.subTest(email=email):
                 with self.assertRaises(SecurityValidationError) as context:
                     validate_email(email)
                 self.assertTrue(
-                    "suspicious character" in str(context.exception) or
-                    "Invalid email format" in str(context.exception)
+                    "suspicious character" in str(context.exception)
+                    or "Invalid email format" in str(context.exception)
                 )
 
     def test_validate_email_sql_keywords(self):
@@ -111,7 +111,7 @@ class TestEmailValidation(unittest.TestCase):
             "drop-table@example.com",
             "INSERT-INTO@example.com",
         ]
-        
+
         for email in malicious_emails:
             with self.subTest(email=email):
                 with self.assertRaises(SecurityValidationError) as context:
@@ -143,7 +143,7 @@ class TestUserIdValidation(unittest.TestCase):
             {},
             True,
         ]
-        
+
         for invalid_input in invalid_inputs:
             with self.subTest(input=invalid_input):
                 with self.assertRaises(SecurityValidationError) as context:
@@ -156,14 +156,14 @@ class TestUserIdValidation(unittest.TestCase):
             "too-short",
             "this-is-way-too-long-to-be-a-valid-uuid-string",
         ]
-        
+
         for invalid_uuid in invalid_lengths:
             with self.subTest(uuid=invalid_uuid):
                 with self.assertRaises(SecurityValidationError) as context:
                     validate_user_id(invalid_uuid)
                 self.assertTrue(
-                    "too short" in str(context.exception) or
-                    "too long" in str(context.exception)
+                    "too short" in str(context.exception)
+                    or "too long" in str(context.exception)
                 )
 
     def test_validate_user_id_invalid_format(self):
@@ -173,26 +173,26 @@ class TestUserIdValidation(unittest.TestCase):
             "12345678-1234-1234-1234-12345678901z",  # invalid character
             "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",  # invalid format
         ]
-        
+
         for invalid_uuid in invalid_uuids:
             with self.subTest(uuid=invalid_uuid):
                 with self.assertRaises(SecurityValidationError) as context:
                     validate_user_id(invalid_uuid)
                 self.assertIn("Invalid UUID format", str(context.exception))
-                
+
         # Test UUIDs with wrong length (these should fail length check first)
         wrong_length_uuids = [
             "not-a-valid-uuid-format-at-all-here",  # too short
             "12345678-1234-1234-1234-1234567890123",  # too long
         ]
-        
+
         for invalid_uuid in wrong_length_uuids:
             with self.subTest(uuid=invalid_uuid):
                 with self.assertRaises(SecurityValidationError) as context:
                     validate_user_id(invalid_uuid)
                 self.assertTrue(
-                    "too short" in str(context.exception) or
-                    "too long" in str(context.exception)
+                    "too short" in str(context.exception)
+                    or "too long" in str(context.exception)
                 )
 
     def test_validate_user_id_sql_injection_attempts(self):
@@ -204,15 +204,15 @@ class TestUserIdValidation(unittest.TestCase):
             "12345678-1234-1234-1234-123456789012\\",
             "12345678-1234-1234-1234-123456789012\x00",
         ]
-        
+
         for malicious_uuid in malicious_uuids:
             with self.subTest(uuid=malicious_uuid):
                 with self.assertRaises(SecurityValidationError) as context:
                     validate_user_id(malicious_uuid)
                 self.assertTrue(
-                    "suspicious character" in str(context.exception) or
-                    "Invalid UUID format" in str(context.exception) or
-                    "too long" in str(context.exception)
+                    "suspicious character" in str(context.exception)
+                    or "Invalid UUID format" in str(context.exception)
+                    or "too long" in str(context.exception)
                 )
 
 
@@ -227,7 +227,7 @@ class TestContainerUrlValidation(unittest.TestCase):
             "http://localhost:8080/container",
             "https://myaccount.blob.core.windows.net/container/folder/file.txt",
         ]
-        
+
         for url in valid_urls:
             with self.subTest(url=url):
                 result = validate_container_url(url)
@@ -242,7 +242,7 @@ class TestContainerUrlValidation(unittest.TestCase):
             {},
             True,
         ]
-        
+
         for invalid_input in invalid_inputs:
             with self.subTest(input=invalid_input):
                 with self.assertRaises(SecurityValidationError) as context:
@@ -256,18 +256,21 @@ class TestContainerUrlValidation(unittest.TestCase):
         with self.assertRaises(SecurityValidationError) as context:
             validate_container_url(long_url)
         self.assertIn("too long", str(context.exception))
-        
+
         # Too short (some fail length check, some fail format check)
         short_urls = [
             ("http://", "too short"),  # 7 chars - fails length check
-            ("https://", "Invalid URL format"),  # 8 chars - passes length but fails format
+            (
+                "https://",
+                "Invalid URL format",
+            ),  # 8 chars - passes length but fails format
         ]
         for url, expected_error in short_urls:
             with self.subTest(url=url):
                 with self.assertRaises(SecurityValidationError) as context:
                     validate_container_url(url)
                 self.assertIn(expected_error, str(context.exception))
-                
+
         # URLs that are short but fail format validation first
         format_first_urls = ["a.com"]  # too short AND invalid format
         for url in format_first_urls:
@@ -275,10 +278,10 @@ class TestContainerUrlValidation(unittest.TestCase):
                 with self.assertRaises(SecurityValidationError) as context:
                     validate_container_url(url)
                 self.assertTrue(
-                    "too short" in str(context.exception) or 
-                    "Invalid URL format" in str(context.exception)
+                    "too short" in str(context.exception)
+                    or "Invalid URL format" in str(context.exception)
                 )
-                
+
         # Invalid format (not length issues)
         format_invalid_urls = ["ftp://example.com"]  # wrong protocol
         for url in format_invalid_urls:
@@ -295,7 +298,7 @@ class TestContainerUrlValidation(unittest.TestCase):
             "javascript:alert('xss')",
             "file:///etc/passwd",
         ]
-        
+
         for url in invalid_urls:
             with self.subTest(url=url):
                 with self.assertRaises(SecurityValidationError) as context:
@@ -304,35 +307,35 @@ class TestContainerUrlValidation(unittest.TestCase):
 
     def test_validate_container_url_sql_injection_attempts(self):
         """Test rejection of SQL injection attempts in URLs."""
-        # URLs that fail format validation first 
+        # URLs that fail format validation first
         format_fail_urls = [
             "https://example.com'; DROP TABLE users; --",
             'https://example.com"; DELETE FROM users; --',
             "https://example.com\\malicious",
         ]
-        
+
         for url in format_fail_urls:
             with self.subTest(url=url):
                 with self.assertRaises(SecurityValidationError) as context:
                     validate_container_url(url)
                 self.assertTrue(
-                    "Invalid URL format" in str(context.exception) or
-                    "suspicious character" in str(context.exception)
+                    "Invalid URL format" in str(context.exception)
+                    or "suspicious character" in str(context.exception)
                 )
-                
+
         # URLs that should fail due to null byte (may be caught by format or suspicious char check)
         suspicious_char_urls = [
             "https://example.com\x00",  # null byte
         ]
-        
+
         for url in suspicious_char_urls:
             with self.subTest(url=url):
                 with self.assertRaises(SecurityValidationError) as context:
                     validate_container_url(url)
                 # Either format validation or suspicious character check should catch this
                 self.assertTrue(
-                    "suspicious character" in str(context.exception) or
-                    "Invalid URL format" in str(context.exception)
+                    "suspicious character" in str(context.exception)
+                    or "Invalid URL format" in str(context.exception)
                 )
 
     def test_validate_container_url_sql_keywords(self):
@@ -342,7 +345,7 @@ class TestContainerUrlValidation(unittest.TestCase):
             "https://example.com/SELECT-ALL",
             "https://UNION-SELECT.blob.core.windows.net/container",
         ]
-        
+
         for url in malicious_urls:
             with self.subTest(url=url):
                 with self.assertRaises(SecurityValidationError) as context:
@@ -357,9 +360,9 @@ class TestQueryLogging(unittest.TestCase):
         """Test sanitization of query logs containing emails."""
         query = "SELECT id FROM users WHERE email = %s"
         params = ("user@example.com",)
-        
+
         result = sanitize_query_log(query, params)
-        
+
         self.assertIn("Query:", result)
         self.assertIn("Params:", result)
         self.assertIn("***@***.***", result)
@@ -370,9 +373,9 @@ class TestQueryLogging(unittest.TestCase):
         query = "UPDATE users SET name = %s WHERE id = %s"
         test_uuid = str(uuid.uuid4())
         params = ("John Doe", test_uuid)
-        
+
         result = sanitize_query_log(query, params)
-        
+
         self.assertIn("***", result)
         self.assertIn("********-****-****-****-************", result)
         self.assertNotIn(test_uuid, result)
@@ -383,9 +386,9 @@ class TestQueryLogging(unittest.TestCase):
         query = "INSERT INTO users (email, id, active) VALUES (%s, %s, %s)"
         test_uuid = str(uuid.uuid4())
         params = ("user@example.com", test_uuid, True)
-        
+
         result = sanitize_query_log(query, params)
-        
+
         # Check that all sensitive data is masked
         self.assertNotIn("user@example.com", result)
         self.assertNotIn(test_uuid, result)
@@ -407,10 +410,10 @@ class TestSecurityIntegration(unittest.TestCase):
         """Test that validation functions raise SecurityValidationError."""
         with self.assertRaises(SecurityValidationError):
             validate_email("invalid')email")
-        
+
         with self.assertRaises(SecurityValidationError):
             validate_user_id("invalid')uuid")
-        
+
         with self.assertRaises(SecurityValidationError):
             validate_container_url("invalid')url")
 

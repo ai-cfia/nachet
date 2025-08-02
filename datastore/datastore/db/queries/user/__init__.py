@@ -9,8 +9,6 @@ The module is organized into the following sub-modules:
 - picture_set_management: Picture set operations
 """
 
-from uuid import UUID
-
 # Import exceptions
 from .exceptions import (
     UserCreationError,
