@@ -86,7 +86,7 @@ jobs:
           psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "CREATE SCHEMA IF NOT EXISTS \"nachet_${{ steps.schema-version.outputs.version }}\";"
           psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/nachet/db/bytebase/schema_nachet_${{ steps.schema-version.outputs.version }}.sql
           psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/nachet/db/bytebase/constants_nachet_${{ steps.schema-version.outputs.version }}.sql
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/nachet/db/bytebase/tests/test_data_nachet_${{ steps.schema-version.outputs.version }}.sql
+          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/tests/test_data_nachet_${{ steps.schema-version.outputs.version }}.sql
         env:
           PGPASSWORD:  ${{ secrets.PG_PASS }}
 
