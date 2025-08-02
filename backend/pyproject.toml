@@ -28,7 +28,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "nachet-datastore @ git+https://github.com/ai-cfia/nachet.git@v1.1.0-nachet-datastore#subdirectory=datastore",
+    "nachet-datastore @ git+https://github.com/ai-cfia/nachet.git@nachet-datastore-v1.1.3#subdirectory=datastore",
+    # "nachet-datastore @ file:///home/path/to/nachet/datastore",
     "numpy==1.26.4",
     "azure-storage-blob",
     "azure-identity",
@@ -44,8 +45,17 @@ dependencies = [
     "pydantic-core==2.18.2",
     "python-magic",
     "PyJWT",
-    "pytest",
+]
+
+[tool.nachet-db]
+db-schema-version = "0.0.12"
+previous-db-schema-version = "0.0.11"
+
+[dependency-groups]
+dev = [
     "pytest-asyncio",
+    "pytest>=8.4.1",
+    "toml>=0.10.2",
 ]
 
 [project.urls]

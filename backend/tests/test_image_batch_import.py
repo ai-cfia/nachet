@@ -1,15 +1,27 @@
 import pytest
-import asyncio
+import pytest_asyncio
 import os
 import base64
 
 from app import app, json
 
 
-@pytest.fixture
-def new_batch_import_setup():
+@pytest_asyncio.fixture
+async def new_batch_import_setup():
     test_client = app.test_client()
-    container_name = "a427278e-28df-428f-8937-ddeeef44e72f"
+    test_email = "test.user@inspection.gc.ca"
+    
+    # Create test user in database
+    connection_string = os.getenv("NACHET_AZURE_STORAGE_CONNECTION_STRING")
+    try:
+        import storage.datastore_storage_api as datastore
+        user = await datastore.create_user(test_email, connection_string)
+        container_name = user.id
+    except Exception:
+        # User might already exist, get the existing user ID
+        import storage.datastore_storage_api as datastore
+        container_name = datastore.get_user_id(test_email)
+    
     nb_pictures = 1
     folder_name = "test_batch_import"
     session_id = None
@@ -139,28 +151,37 @@ async def test_new_batch_import_wrong_nb_pictures(new_batch_import_setup):
     assert result_json[0] == expected
         
 
-@pytest.fixture
-def upload_batch_import_setup():
+@pytest_asyncio.fixture
+async def upload_batch_import_setup():
     test_client = app.test_client()
-    container_name = "a427278e-28df-428f-8937-ddeeef44e72f"
+    test_email = "test.user@inspection.gc.ca"
+    
+    # Create test user in database
+    connection_string = os.getenv("NACHET_AZURE_STORAGE_CONNECTION_STRING")
+    try:
+        import storage.datastore_storage_api as datastore
+        user = await datastore.create_user(test_email, connection_string)
+        container_name = user.id
+    except Exception:
+        # User might already exist, get the existing user ID
+        import storage.datastore_storage_api as datastore
+        container_name = datastore.get_user_id(test_email)
     nb_pictures = 1
     folder_name = "test_batch_import"
     session_id = None
     
-    response = asyncio.run(
-        test_client.post(
-            '/new-batch-import',
-            headers={
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
-            json={
-                "container_name": container_name,
-                "folder_name": folder_name,
-                "nb_pictures": nb_pictures
-            })
-    )
-    result_json = json.loads(asyncio.run(response.get_data()))
+    response = await test_client.post(
+        '/new-batch-import',
+        headers={
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+        },
+        json={
+            "container_name": container_name,
+            "folder_name": folder_name,
+            "nb_pictures": nb_pictures
+        })
+    result_json = json.loads(await response.get_data())
     if response.status_code == 200:
         print("Setup : folder successfully created")
     else :
@@ -193,18 +214,16 @@ def upload_batch_import_setup():
     
     # Teardown
     if session_id is not None:
-        response = asyncio.run(
-            test_client.post(
-                '/delete-permanently',
-                headers={
-                    "Content-Type": "application/json",
-                    "Access-Control-Allow-Origin": "*",
-                },
-                json={
-                    "container_name": container_name,
-                    "folder_uuid": session_id
-                })
-        )
+        response = await test_client.post(
+            '/delete-permanently',
+            headers={
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+            json={
+                "container_name": container_name,
+                "folder_uuid": session_id
+            })
         if response.status_code == 200:
             print("Teardown : folder successfully deleted")
         

@@ -447,13 +447,18 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-core" },
     { name = "pyjwt" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
     { name = "python-dotenv" },
     { name = "python-magic" },
     { name = "pyyaml" },
     { name = "quart" },
     { name = "quart-cors" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "toml" },
 ]
 
 [package.metadata]
@@ -463,14 +468,12 @@ requires-dist = [
     { name = "cryptography" },
     { name = "flask", specifier = "==3.0.3" },
     { name = "hypercorn" },
-    { name = "nachet-datastore", git = "https://github.com/ai-cfia/nachet.git?subdirectory=datastore&rev=v1.1.0-nachet-datastore" },
+    { name = "nachet-datastore", git = "https://github.com/ai-cfia/nachet.git?subdirectory=datastore&rev=nachet-datastore-v1.1.3" },
     { name = "numpy", specifier = "==1.26.4" },
     { name = "pillow", specifier = "==10.3.0" },
     { name = "pydantic", specifier = "==2.7.1" },
     { name = "pydantic-core", specifier = "==2.18.2" },
     { name = "pyjwt" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
     { name = "python-dotenv" },
     { name = "python-magic" },
     { name = "pyyaml" },
@@ -478,10 +481,17 @@ requires-dist = [
     { name = "quart-cors" },
 ]
 
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=8.4.1" },
+    { name = "pytest-asyncio" },
+    { name = "toml", specifier = ">=0.10.2" },
+]
+
 [[package]]
 name = "nachet-datastore"
-version = "1.1.0"
-source = { git = "https://github.com/ai-cfia/nachet.git?subdirectory=datastore&rev=v1.1.0-nachet-datastore#b1869c4773a989025c495815f3eeaeaa052f36c9" }
+version = "1.1.3"
+source = { git = "https://github.com/ai-cfia/nachet.git?subdirectory=datastore&rev=nachet-datastore-v1.1.3#75cecbc7e35489b8329ea404dcc49f1b1d8e7e70" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
@@ -806,6 +816,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050 },
+]
+
+[[package]]
+name = "toml"
+version = "0.10.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/be/ba/1f744cdc819428fc6b5084ec34d9b30660f6f9daaf70eead706e3203ec3c/toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f", size = 22253 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/6f/7120676b6d73228c96e17f1f794d8ab046fc910d781c8d151120c3f1569e/toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b", size = 16588 },
 ]
 
 [[package]]

@@ -32,7 +32,7 @@ jobs:
       - name: Validate and move pyproject.toml for build
         run: |
           if [ ! -f "pyproject.toml" ]; then
-            echo "Error: nachet_pyproject.toml not found"
+            echo "Error: pyproject.toml not found"
             exit 1
           fi
 
@@ -49,11 +49,11 @@ jobs:
             exit 1
           fi
           echo "Parsed version: $version"
-          echo "app-version=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "app-version=$version" >> $GITHUB_OUTPUT
 
       - name: Switch to the release branch
         run: |
-          branch_name="nachet-backend-v${{ steps.versions.outputs.app-version }}"
+          branch_name="release/nachet-backend-v${{ steps.versions.outputs.app-version }}"
           
           # Check if branch exists locally and delete it
           if git show-ref --verify --quiet refs/heads/$branch_name; then
@@ -113,18 +113,18 @@ jobs:
           # Check if tag exists remotely and delete it
           if git ls-remote --tags origin | grep -q "refs/tags/$tag_name$"; then
             echo "Tag $tag_name exists remotely, deleting it"
-            git push --delete origin $tag_name
+            git push --delete origin refs/tags/$tag_name
           fi
           
           # Create and push new tag
           git tag -a $tag_name -m "Release ${{ steps.versions.outputs.app-version }}"
-          git push origin $tag_name
+          git push origin refs/tags/$tag_name
 
       - name: Generate changelog from PRs since last backend tag
         id: generate_changelog
         run: |
           # Fetch the latest backend tag as a reference
-          latest_tag=$(git tag -l "v*-backend" | sort -V | tail -n 1 2>/dev/null || echo "")
+          latest_tag=$(git tag -l "nachet-backend-v*" | sort -V | tail -n 1 2>/dev/null || echo "")
           
           if [ -z "$latest_tag" ]; then
             echo "No previous backend tags found, generating changelog from beginning of history"

@@ -2,11 +2,11 @@ import pytest
 import json
 import os
 import base64
-import asyncio
 import warnings
 
 from app import app, ImageWarning
 from unittest.mock import patch, MagicMock, Mock
+
 
 @pytest.fixture
 async def inference_request_setup():
@@ -18,14 +18,14 @@ async def inference_request_setup():
     response = await test.get("/test")
     pipeline = json.loads(await response.get_data())[0]
     current_dir = os.path.dirname(__file__)
-    image_path = os.path.join(current_dir, 'img/1310_1.png')
+    image_path = os.path.join(current_dir, "img/1310_1.png")
     endpoints = "/model-endpoints-metadata"
     inference = "/inf"
     container_name = "a427278e-28df-428f-8937-ddeeef44e72f"
     folder_name = "test1"
     image_header = "data:image/PNG;base64,"
-    with open(image_path, 'rb') as image_file:
-        image_src = base64.b64encode(image_file.read()).decode('utf-8')
+    with open(image_path, "rb") as image_file:
+        image_src = base64.b64encode(image_file.read()).decode("utf-8")
 
     return {
         "test": test,
@@ -35,10 +35,13 @@ async def inference_request_setup():
         "container_name": container_name,
         "folder_name": folder_name,
         "image_header": image_header,
-        "image_src": image_src
+        "image_src": image_src,
     }
 
-@patch("patch.bin_azure_storage_api.mount_container") # TODO : change to patch the mount_container function of the datastore repo
+
+@patch(
+    "patch.bin_azure_storage_api.mount_container"
+)  # TODO : change to patch the mount_container function of the datastore repo
 @pytest.mark.asyncio
 async def test_inference_request_successful(mock_container, inference_request_setup):
     setup = await inference_request_setup
@@ -76,39 +79,43 @@ async def test_inference_request_successful(mock_container, inference_request_se
         "object_type_id",
         "top_id",
         "models",
-        "pipeline_id"
+        "pipeline_id",
     }
 
     # Test the answers from inference_request
     response = await setup["test"].post(
-        '/inf',
+        "/inf",
         headers={
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",
         },
         json={
             "image": setup["image_header"] + setup["image_src"],
-            "imageDims": [720,540],
+            "imageDims": [720, 540],
             "folder_name": setup["folder_name"],
             "container_name": setup["container_name"],
-            "model_name": setup["pipeline"].get("pipeline_name")
-        })
+            "model_name": setup["pipeline"].get("pipeline_name"),
+        },
+    )
 
     result_json = json.loads(await response.get_data())
-    
+
     # Check if response is an error (list) or success (dict)
     if isinstance(result_json, list):
         # If it's a list, it's likely an error response - skip this test or mark as expected
         pytest.skip(f"Inference endpoint returned error: {result_json}")
         return
-    
+
     keys = set(result_json.keys())
     keys.update(result_json["boxes"][0].keys())
     responses.update(keys)
 
     assert responses == expected_keys
 
-@patch("patch.bin_azure_storage_api.mount_container") # TODO : change to patch the mount_container function of the datastore repo
+
+@patch(
+    "patch.bin_azure_storage_api.mount_container"
+)  # TODO : change to patch the mount_container function of the datastore repo
 @pytest.mark.asyncio
 async def test_inference_request_unsuccessful(mock_container, inference_request_setup):
     setup = await inference_request_setup
@@ -128,40 +135,42 @@ async def test_inference_request_unsuccessful(mock_container, inference_request_
     mock_container.return_value = mock_container_client
 
     # Build expected response
-    expected = ("Datastore Error during classification : Datastore Unhandled Error")
+    expected = "Datastore Error during classification : Datastore Unhandled Error"
 
     # Test the answers from inference_request
     response = await setup["test"].post(
-        '/inf',
+        "/inf",
         headers={
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",
         },
         json={
             "image": setup["image_header"],
-            "imageDims": [720,540],
+            "imageDims": [720, 540],
             "folder_name": setup["folder_name"],
             "container_name": setup["container_name"],
-            "model_name":  setup["pipeline"].get("pipeline_name")
-        })
+            "model_name": setup["pipeline"].get("pipeline_name"),
+        },
+    )
 
     result_json = json.loads(await response.get_data())
     assert result_json[0] == expected
     assert response.status_code == 400
+
 
 @pytest.mark.asyncio
 async def test_inference_request_missing_argument(inference_request_setup):
     setup = await inference_request_setup
     # Build expected response
     responses = []
-    expected = ("API Error during classification : missing request arguments: either folder_name, container_name, imageDims or image is missing")
+    expected = "API Error during classification : missing request arguments: either folder_name, container_name, imageDims or image is missing"
 
     data = {
         "image": setup["image_header"],
-        "imageDims": [720,540],
+        "imageDims": [720, 540],
         "folder_name": setup["folder_name"],
         "container_name": setup["container_name"],
-        "model_name": setup["pipeline"].get("pipeline_name")
+        "model_name": setup["pipeline"].get("pipeline_name"),
     }
 
     # Test the answers from inference_request
@@ -170,12 +179,12 @@ async def test_inference_request_missing_argument(inference_request_setup):
         if k != "model_name":
             data[k] = ""
             response = await setup["test"].post(
-                '/inf',
+                "/inf",
                 headers={
                     "Content-Type": "application/json",
                     "Access-Control-Allow-Origin": "*",
                 },
-                json=data
+                json=data,
             )
             result_json = json.loads(await response.get_data())
             if len(responses) == 0:
@@ -185,35 +194,39 @@ async def test_inference_request_missing_argument(inference_request_setup):
             data[k] = v
 
     if len(responses) > 1:
-        raise ValueError(f"Different errors messages were given; expected only 'missing request arguments', {responses}")
+        raise ValueError(
+            f"Different errors messages were given; expected only 'missing request arguments', {responses}"
+        )
     assert result_json[0] == expected
     assert response.status_code == 400
+
 
 @pytest.mark.asyncio
 async def test_inference_request_wrong_pipeline_name(inference_request_setup):
     setup = await inference_request_setup
     # Build expected response
-    expected = ("API Error during classification : model wrong_pipeline_name not found")
+    expected = "API Error during classification : model wrong_pipeline_name not found"
 
     # Test the answers from inference_request
     response = await setup["test"].post(
-        '/inf',
+        "/inf",
         headers={
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",
         },
         json={
             "image": setup["image_src"],
-            "imageDims": [720,540],
+            "imageDims": [720, 540],
             "folder_name": setup["folder_name"],
             "container_name": setup["container_name"],
-            "model_name": "wrong_pipeline_name"
-        }
+            "model_name": "wrong_pipeline_name",
+        },
     )
     result_json = json.loads(await response.get_data())
 
     assert result_json[0] == expected
     assert response.status_code == 400
+
 
 # TODO test validation error when frontend return validators
 @pytest.mark.asyncio
@@ -223,25 +236,27 @@ async def test_inference_request_validation_warning(inference_request_setup):
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         await setup["test"].post(
-            '/inf',
+            "/inf",
             headers={
                 "Content-Type": "application/json",
                 "Access-Control-Allow-Origin": "*",
             },
             json={
                 "image": "data:python," + setup["image_src"],
-                "imageDims": [720,540],
+                "imageDims": [720, 540],
                 "folder_name": setup["folder_name"],
                 "container_name": setup["container_name"],
-                "model_name": setup["pipeline"].get("pipeline_name")
-            }
+                "model_name": setup["pipeline"].get("pipeline_name"),
+            },
         )
 
     # Check if any warnings were recorded and if the last one is the expected type
     assert len(w) > 0
-    
+
     # Look for ImageWarning specifically, as ResourceWarning is unrelated
-    image_warnings = [warning for warning in w if issubclass(warning.category, ImageWarning)]
+    image_warnings = [
+        warning for warning in w if issubclass(warning.category, ImageWarning)
+    ]
     if image_warnings:
         assert "this picture was not validate" in str(image_warnings[-1].message)
     else:

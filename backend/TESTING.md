@@ -10,22 +10,73 @@
 - [Cas de Test : Remplir le composant de sélection de modèle avec les informations des pipelines](#cas-de-test--remplir-le-composant-de-sélection-de-modèle-avec-les-informations-des-pipelines)
 - [Cas de test : requête d'inférence](#cas-de-test--requête-dinférence)
 
-To start the automatic test, you can use the following command:
+## Automated Testing
+
+### Prerequisites
+
+Before running tests, ensure you have:
+
+1. **Environment Setup**: Load the test environment variables:
+
+   ```bash
+   set -a; source .env.test; set +a
+   ```
+
+2. **Database**: PostgreSQL test database running (if testing database functionality)
+3. **Azure Storage Emulator**: Azurite running for blob storage tests (if needed)
+
+### Running Tests
+
+#### Run All Tests
 
 ```bash
+# With environment loaded
+set -a; source .env.test; set +a; python -m pytest tests/ -v
+
+# Alternative using unittest (legacy)
 python -m unittest discover -s tests
 ```
 
-You also have the option to run automatic tests in run_test.py or manually test
-the functionality with the frontend. [See frontend testing
+#### Run Specific Test Files
+
+```bash
+# Test specific functionality
+set -a; source .env.test; set +a; python -m pytest tests/test_feedback.py -v
+set -a; source .env.test; set +a; python -m pytest tests/test_inference_request.py -v
+```
+
+#### Run Single Test
+
+```bash
+# Test specific function
+set -a; source .env.test; set +a; python -m pytest tests/test_feedback.py::test_positive_feedback_successful -v
+```
+
+#### With Coverage
+
+```bash
+set -a; source .env.test; set +a; python -m pytest tests/ --cov=. --cov-report=term-missing
+```
+
+### Test Environment Configuration
+
+The `.env.test` file contains required environment variables:
+
+- Database connection (PostgreSQL test instance)
+- Azure Storage emulator settings
+- Test-specific configurations
+
+### Manual Testing
+
+You also have the option to manually test the functionality with the frontend. [See frontend testing
 documentation](https://github.com/ai-cfia/nachet/blob/main/frontend/TESTING.md)
 
 To perform the following test, you will need the Nachet's frontend repository.
 It can be found at: [Nachet Frontend GitHub
 Repository](https://github.com/ai-cfia/nachet/tree/main/frontend).
 
-You will also need the list of the available pipelines. The list can be found
-[here](https://github.com/ai-cfia/nachet/blob/main/backend/docs/nachet-inference-documentation.md#available-version-of-the-json-file).
+You will also need the list of the available pipelines. The list can be found in the  
+[available pipelines documentation](https://github.com/ai-cfia/nachet/blob/main/backend/docs/nachet-inference-documentation.md#available-version-of-the-json-file).
 
 ## Test Case: Populate model selection component with pipelines information
 
@@ -111,14 +162,65 @@ models will overlap and become unreadable.|
 
 ## Documentation des tests
 
-Pour lancer les tests automatiques, vous pouvez utiliser la commande suivante :
+### Tests automatisés
+
+#### Prérequis
+
+Avant d'exécuter les tests, assurez-vous d'avoir :
+
+1. **Configuration de l'environnement** : Chargez les variables d'environnement de test :
+
+   ```bash
+   set -a; source .env.test; set +a
+   ```
+
+2. **Base de données** : Instance PostgreSQL de test en cours d'exécution (si test de fonctionnalité base de données)
+3. **Émulateur Azure Storage** : Azurite en cours d'exécution pour les tests de stockage blob (si nécessaire)
+
+#### Exécuter les tests
+
+##### Exécuter tous les tests
 
 ```bash
+# Avec l'environnement chargé
+set -a; source .env.test; set +a; python -m pytest tests/ -v
+
+# Alternative avec unittest (legacy)
 python -m unittest discover -s tests
 ```
 
-Vous avez également la possibilité d'exécuter les tests automatiques dans
-`run_test.py` ou de tester manuellement les fonctionnalités avec le frontend.
+##### Exécuter des fichiers de test spécifiques
+
+```bash
+# Tester une fonctionnalité spécifique
+set -a; source .env.test; set +a; python -m pytest tests/test_feedback.py -v
+set -a; source .env.test; set +a; python -m pytest tests/test_inference_request.py -v
+```
+
+##### Exécuter un test unique
+
+```bash
+# Tester une fonction spécifique
+set -a; source .env.test; set +a; python -m pytest tests/test_feedback.py::test_positive_feedback_successful -v
+```
+
+##### Avec couverture de code
+
+```bash
+set -a; source .env.test; set +a; python -m pytest tests/ --cov=. --cov-report=term-missing
+```
+
+#### Configuration de l'environnement de test
+
+Le fichier `.env.test` contient les variables d'environnement requises :
+
+- Connexion à la base de données (instance PostgreSQL de test)
+- Paramètres de l'émulateur Azure Storage
+- Configurations spécifiques aux tests
+
+### Tests manuels
+
+Vous avez également la possibilité de tester manuellement les fonctionnalités avec le frontend.
 [Voir la documentation des tests du
 frontend](https://github.com/ai-cfia/nachet/blob/main/frontend/TESTING.md).
 
@@ -134,7 +236,7 @@ trouve
 
 ### Objectif : Vérifier que le composant de sélection de modèle est correctement rempli avec les informations des pipelines
 
-### Prérequis
+### Prérequis fr
 
 - [ ] Le backend Nachet est configuré et en cours d'exécution. Utilisez la
   commande `hypercorn -b :8080 app:app` pour démarrer le serveur Quart.
