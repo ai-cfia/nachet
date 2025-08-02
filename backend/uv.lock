@@ -463,7 +463,7 @@ requires-dist = [
     { name = "cryptography" },
     { name = "flask", specifier = "==3.0.3" },
     { name = "hypercorn" },
-    { name = "nachet-datastore", git = "https://github.com/ai-cfia/nachet.git?subdirectory=datastore&rev=v1.1.0-nachet-datastore" },
+    { name = "nachet-datastore", git = "https://github.com/ai-cfia/nachet.git?subdirectory=datastore&rev=nachet-datastore-v1.1.3" },
     { name = "numpy", specifier = "==1.26.4" },
     { name = "pillow", specifier = "==10.3.0" },
     { name = "pydantic", specifier = "==2.7.1" },
@@ -480,8 +480,8 @@ requires-dist = [
 
 [[package]]
 name = "nachet-datastore"
-version = "1.1.0"
-source = { git = "https://github.com/ai-cfia/nachet.git?subdirectory=datastore&rev=v1.1.0-nachet-datastore#b1869c4773a989025c495815f3eeaeaa052f36c9" }
+version = "1.1.3"
+source = { git = "https://github.com/ai-cfia/nachet.git?subdirectory=datastore&rev=nachet-datastore-v1.1.3#75cecbc7e35489b8329ea404dcc49f1b1d8e7e70" }
 dependencies = [
     { name = "azure-core" },
     { name = "azure-identity" },
