@@ -61,25 +61,25 @@ describe("readAzureStorageDir", () => {
 
   it("should throw ValueError for empty backend URL", async () => {
     await expect(readAzureStorageDir("", "valid-uuid")).rejects.toThrow(
-      new ValueError("Backend URL is null or empty")
+      new ValueError("Backend URL is null or empty"),
     );
   });
 
   it("should throw ValueError for null backend URL", async () => {
     await expect(
-      readAzureStorageDir(null as any, "valid-uuid")
+      readAzureStorageDir(null as any, "valid-uuid"),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
   });
 
   it("should throw ValueError for empty UUID", async () => {
     await expect(
-      readAzureStorageDir("http://localhost:8080", "")
+      readAzureStorageDir("http://localhost:8080", ""),
     ).rejects.toThrow(new ValueError("UUID is null or empty"));
   });
 
   it("should throw ValueError for null UUID", async () => {
     await expect(
-      readAzureStorageDir("http://localhost:8080", null as any)
+      readAzureStorageDir("http://localhost:8080", null as any),
     ).rejects.toThrow(new ValueError("UUID is null or empty"));
   });
 
@@ -144,7 +144,7 @@ describe("readAzureStorageDir", () => {
     const uuid = "valid-uuid";
 
     await expect(readAzureStorageDir(backendUrl, uuid)).rejects.toThrow(
-      AzureAPIError
+      AzureAPIError,
     );
   });
 
@@ -193,19 +193,19 @@ describe("createAzureStorageDir", () => {
 
   it("should throw ValueError for empty backend URL", async () => {
     await expect(
-      createAzureStorageDir("", "valid-uuid", "folder")
+      createAzureStorageDir("", "valid-uuid", "folder"),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
   });
 
   it("should throw ValueError for empty UUID", async () => {
     await expect(
-      createAzureStorageDir("http://localhost:8080", "", "folder")
+      createAzureStorageDir("http://localhost:8080", "", "folder"),
     ).rejects.toThrow(new ValueError("UUID is null or empty"));
   });
 
   it("should throw ValueError for empty folder name", async () => {
     await expect(
-      createAzureStorageDir("http://localhost:8080", "valid-uuid", "")
+      createAzureStorageDir("http://localhost:8080", "valid-uuid", ""),
     ).rejects.toThrow(new ValueError("Folder name is null or empty"));
   });
 
@@ -220,7 +220,7 @@ describe("createAzureStorageDir", () => {
     });
 
     await expect(
-      createAzureStorageDir("http://localhost:8080", "valid-uuid", "folder")
+      createAzureStorageDir("http://localhost:8080", "valid-uuid", "folder"),
     ).rejects.toThrow(new AzureAPIError("Permission denied"));
     console.error = consoleError;
   });
@@ -254,19 +254,19 @@ describe("deleteAzureStorageDir", () => {
 
   it("should throw ValueError for empty backend URL", async () => {
     await expect(
-      deleteAzureStorageDir("", "valid-uuid", "folder")
+      deleteAzureStorageDir("", "valid-uuid", "folder"),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
   });
 
   it("should throw ValueError for empty UUID", async () => {
     await expect(
-      deleteAzureStorageDir("http://localhost:8080", "", "folder")
+      deleteAzureStorageDir("http://localhost:8080", "", "folder"),
     ).rejects.toThrow(new ValueError("UUID is null or empty"));
   });
 
   it("should throw ValueError for empty folder name", async () => {
     await expect(
-      deleteAzureStorageDir("http://localhost:8080", "valid-uuid", "")
+      deleteAzureStorageDir("http://localhost:8080", "valid-uuid", ""),
     ).rejects.toThrow(new ValueError("Folder name is null or empty"));
   });
 
@@ -281,7 +281,11 @@ describe("deleteAzureStorageDir", () => {
     });
 
     await expect(
-      deleteAzureStorageDir("http://localhost:8080", "valid-uuid", "nonexistent")
+      deleteAzureStorageDir(
+        "http://localhost:8080",
+        "valid-uuid",
+        "nonexistent",
+      ),
     ).rejects.toThrow(new AzureAPIError("Directory not found"));
     console.error = consoleError;
   });
@@ -307,7 +311,7 @@ describe("inferenceRequest", () => {
       imageId: "img-123",
       inference_id: "inf-456",
       boxes: [],
-      labelOccurrence: { "seed_name": 0 },
+      labelOccurrence: { seed_name: 0 },
       totalBoxes: 0,
       models: [{ name: "test-model", version: 1 }],
     };
@@ -329,7 +333,7 @@ describe("inferenceRequest", () => {
       mockImageObject,
       curDir,
       uuid,
-      containerUuid
+      containerUuid,
     );
 
     expect(result).toEqual(mockInferenceData);
@@ -353,32 +357,67 @@ describe("inferenceRequest", () => {
 
   it("should throw ValueError for empty backend URL", async () => {
     await expect(
-      inferenceRequest("", "model", mockImageObject, "dir", "uuid", "container")
+      inferenceRequest(
+        "",
+        "model",
+        mockImageObject,
+        "dir",
+        "uuid",
+        "container",
+      ),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
   });
 
   it("should throw ValueError for empty model", async () => {
     await expect(
-      inferenceRequest("http://localhost:8080", "", mockImageObject, "dir", "uuid", "container")
+      inferenceRequest(
+        "http://localhost:8080",
+        "",
+        mockImageObject,
+        "dir",
+        "uuid",
+        "container",
+      ),
     ).rejects.toThrow(new ValueError("Model is null or empty"));
   });
 
   it("should throw ValueError for empty image", async () => {
     const emptyImageObject = { ...mockImageObject, src: "" };
     await expect(
-      inferenceRequest("http://localhost:8080", "model", emptyImageObject, "dir", "uuid", "container")
+      inferenceRequest(
+        "http://localhost:8080",
+        "model",
+        emptyImageObject,
+        "dir",
+        "uuid",
+        "container",
+      ),
     ).rejects.toThrow(new ValueError("Image is null or empty"));
   });
 
   it("should throw ValueError for empty directory", async () => {
     await expect(
-      inferenceRequest("http://localhost:8080", "model", mockImageObject, "", "uuid", "container")
+      inferenceRequest(
+        "http://localhost:8080",
+        "model",
+        mockImageObject,
+        "",
+        "uuid",
+        "container",
+      ),
     ).rejects.toThrow(new ValueError("Directory is null or empty"));
   });
 
   it("should throw ValueError for empty UUID", async () => {
     await expect(
-      inferenceRequest("http://localhost:8080", "model", mockImageObject, "dir", "", "container")
+      inferenceRequest(
+        "http://localhost:8080",
+        "model",
+        mockImageObject,
+        "dir",
+        "",
+        "container",
+      ),
     ).rejects.toThrow(new ValueError("UUID is null or empty"));
   });
 
@@ -393,7 +432,14 @@ describe("inferenceRequest", () => {
     });
 
     await expect(
-      inferenceRequest("http://localhost:8080", "invalid-model", mockImageObject, "dir", "uuid", "container")
+      inferenceRequest(
+        "http://localhost:8080",
+        "invalid-model",
+        mockImageObject,
+        "dir",
+        "uuid",
+        "container",
+      ),
     ).rejects.toThrow(new AzureAPIError("Model not available"));
     console.error = consoleError;
   });
@@ -409,7 +455,14 @@ describe("inferenceRequest", () => {
     });
 
     await expect(
-      inferenceRequest("http://localhost:8080", "model", mockImageObject, "dir", "uuid", "container")
+      inferenceRequest(
+        "http://localhost:8080",
+        "model",
+        mockImageObject,
+        "dir",
+        "uuid",
+        "container",
+      ),
     ).rejects.toThrow(new AzureAPIError("Invalid image format"));
     console.error = consoleError;
   });
@@ -422,7 +475,14 @@ describe("inferenceRequest", () => {
     });
 
     await expect(
-      inferenceRequest("http://localhost:8080", "model", mockImageObject, "dir", "uuid", "container")
+      inferenceRequest(
+        "http://localhost:8080",
+        "model",
+        mockImageObject,
+        "dir",
+        "uuid",
+        "container",
+      ),
     ).rejects.toThrow(new AzureAPIError("Network timeout"));
     console.error = consoleError;
   });
@@ -435,9 +495,9 @@ describe("handleAxios error scenarios", () => {
       data: "accepted",
     });
 
-    await expect(
-      fetchModelMetadata("http://localhost:8080")
-    ).rejects.toThrow(AzureAPIError);
+    await expect(fetchModelMetadata("http://localhost:8080")).rejects.toThrow(
+      AzureAPIError,
+    );
   });
 });
 
@@ -481,13 +541,13 @@ describe("fetchModelMetadata", () => {
 
   it("should throw ValueError for empty backend URL", async () => {
     await expect(fetchModelMetadata("")).rejects.toThrow(
-      new ValueError("Backend URL is null or empty")
+      new ValueError("Backend URL is null or empty"),
     );
   });
 
   it("should throw ValueError for null backend URL", async () => {
     await expect(fetchModelMetadata(null as any)).rejects.toThrow(
-      new ValueError("Backend URL is null or empty")
+      new ValueError("Backend URL is null or empty"),
     );
   });
 
@@ -501,9 +561,9 @@ describe("fetchModelMetadata", () => {
       },
     });
 
-    await expect(
-      fetchModelMetadata("http://localhost:8080")
-    ).rejects.toThrow(new AzureAPIError("Service temporarily unavailable"));
+    await expect(fetchModelMetadata("http://localhost:8080")).rejects.toThrow(
+      new AzureAPIError("Service temporarily unavailable"),
+    );
     console.error = consoleError;
   });
 
@@ -549,7 +609,7 @@ describe("requestUUID", () => {
 
   it("should throw ValueError for empty backend URL", async () => {
     await expect(requestUUID("", "test@example.com")).rejects.toThrow(
-      new ValueError("Backend URL is null or empty")
+      new ValueError("Backend URL is null or empty"),
     );
   });
 });
@@ -585,7 +645,7 @@ describe("requestClassList", () => {
 
   it("should throw ValueError for empty backend URL", async () => {
     await expect(requestClassList("")).rejects.toThrow(
-      new ValueError("Backend URL is null or empty")
+      new ValueError("Backend URL is null or empty"),
     );
   });
 });
@@ -610,7 +670,7 @@ describe("batchUploadInit", () => {
       uuid,
       folderName,
       containerUuid,
-      nbPictures
+      nbPictures,
     );
 
     expect(result).toEqual(mockResponse);
@@ -632,13 +692,19 @@ describe("batchUploadInit", () => {
 
   it("should throw ValueError for zero pictures", async () => {
     await expect(
-      batchUploadInit("http://localhost:8080", "uuid", "folder", "container", 0)
+      batchUploadInit(
+        "http://localhost:8080",
+        "uuid",
+        "folder",
+        "container",
+        0,
+      ),
     ).rejects.toThrow(new ValueError("Number of pictures is null or empty"));
   });
 
   it("should throw ValueError for empty container UUID", async () => {
     await expect(
-      batchUploadInit("http://localhost:8080", "uuid", "folder", "", 5)
+      batchUploadInit("http://localhost:8080", "uuid", "folder", "", 5),
     ).rejects.toThrow(new ValueError("Container UUID is null or empty"));
   });
 });
@@ -687,57 +753,57 @@ describe("batchUploadImage", () => {
   });
 
   it("should throw ValueError for empty backend URL", async () => {
-    await expect(
-      batchUploadImage("", mockBatchUploadData)
-    ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
+    await expect(batchUploadImage("", mockBatchUploadData)).rejects.toThrow(
+      new ValueError("Backend URL is null or empty"),
+    );
   });
 
   it("should throw ValueError for empty session ID", async () => {
     const invalidData = { ...mockBatchUploadData, sessionId: "" };
     await expect(
-      batchUploadImage("http://localhost:8080", invalidData)
+      batchUploadImage("http://localhost:8080", invalidData),
     ).rejects.toThrow(new ValueError("Session ID is null or empty"));
   });
 
   it("should throw ValueError for empty image data", async () => {
     const invalidData = { ...mockBatchUploadData, imageDataUrl: "" };
     await expect(
-      batchUploadImage("http://localhost:8080", invalidData)
+      batchUploadImage("http://localhost:8080", invalidData),
     ).rejects.toThrow(new ValueError("Image is null or empty"));
   });
 
   it("should throw ValueError for empty container name", async () => {
     const invalidData = { ...mockBatchUploadData, containerName: "" };
     await expect(
-      batchUploadImage("http://localhost:8080", invalidData)
+      batchUploadImage("http://localhost:8080", invalidData),
     ).rejects.toThrow(new ValueError("Container name is null or empty"));
   });
 
   it("should throw ValueError for empty UUID", async () => {
     const invalidData = { ...mockBatchUploadData, uuid: "" };
     await expect(
-      batchUploadImage("http://localhost:8080", invalidData)
+      batchUploadImage("http://localhost:8080", invalidData),
     ).rejects.toThrow(new ValueError("UUID is null or empty"));
   });
 
   it("should throw ValueError for empty seed ID", async () => {
     const invalidData = { ...mockBatchUploadData, seedId: "" };
     await expect(
-      batchUploadImage("http://localhost:8080", invalidData)
+      batchUploadImage("http://localhost:8080", invalidData),
     ).rejects.toThrow(new ValueError("Seed ID is null or empty"));
   });
 
   it("should throw ValueError for zero zoom", async () => {
     const invalidData = { ...mockBatchUploadData, zoom: 0 };
     await expect(
-      batchUploadImage("http://localhost:8080", invalidData)
+      batchUploadImage("http://localhost:8080", invalidData),
     ).rejects.toThrow(new ValueError("Zoom is null or empty"));
   });
 
   it("should throw ValueError for zero seed count", async () => {
     const invalidData = { ...mockBatchUploadData, seedCount: 0 };
     await expect(
-      batchUploadImage("http://localhost:8080", invalidData)
+      batchUploadImage("http://localhost:8080", invalidData),
     ).rejects.toThrow(new ValueError("Seed count is null or empty"));
   });
 
@@ -752,7 +818,7 @@ describe("batchUploadImage", () => {
     });
 
     await expect(
-      batchUploadImage("http://localhost:8080", mockBatchUploadData)
+      batchUploadImage("http://localhost:8080", mockBatchUploadData),
     ).rejects.toThrow(new AzureAPIError("Upload failed - file too large"));
     console.error = consoleError;
   });
@@ -762,10 +828,7 @@ describe("sendPositiveFeedback", () => {
   const mockPositiveFeedbackData = {
     userId: "user-123",
     inferenceId: "inference-456",
-    boxes: [
-      { boxId: "box-1" },
-      { boxId: "box-2" },
-    ],
+    boxes: [{ boxId: "box-1" }, { boxId: "box-2" }],
   };
 
   it("should send positive feedback successfully", async () => {
@@ -774,7 +837,7 @@ describe("sendPositiveFeedback", () => {
       imageId: "img-123",
       inference_id: "inf-456",
       boxes: [],
-      labelOccurrence: { "seed_name": 2 },
+      labelOccurrence: { seed_name: 2 },
       totalBoxes: 2,
       models: [{ name: "test-model", version: 1 }],
     };
@@ -787,7 +850,7 @@ describe("sendPositiveFeedback", () => {
     const backendUrl = "http://localhost:8080";
     const result = await sendPositiveFeedback(
       mockPositiveFeedbackData,
-      backendUrl
+      backendUrl,
     );
 
     expect(result).toEqual(mockResponse);
@@ -804,7 +867,7 @@ describe("sendPositiveFeedback", () => {
 
   it("should throw ValueError for empty backend URL", async () => {
     await expect(
-      sendPositiveFeedback(mockPositiveFeedbackData, "")
+      sendPositiveFeedback(mockPositiveFeedbackData, ""),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
   });
 
@@ -819,7 +882,7 @@ describe("sendPositiveFeedback", () => {
     });
 
     await expect(
-      sendPositiveFeedback(mockPositiveFeedbackData, "http://localhost:8080")
+      sendPositiveFeedback(mockPositiveFeedbackData, "http://localhost:8080"),
     ).rejects.toThrow(new AzureAPIError("Inference not found"));
     console.error = consoleError;
   });
@@ -846,7 +909,7 @@ describe("sendNegativeFeedback", () => {
       imageId: "img-123",
       inference_id: "inf-456",
       boxes: [],
-      labelOccurrence: { "seed_name": 0 },
+      labelOccurrence: { seed_name: 0 },
       totalBoxes: 0,
       models: [{ name: "test-model", version: 1 }],
     };
@@ -859,7 +922,7 @@ describe("sendNegativeFeedback", () => {
     const backendUrl = "http://localhost:8080";
     const result = await sendNegativeFeedback(
       mockNegativeFeedbackData,
-      backendUrl
+      backendUrl,
     );
 
     expect(result).toEqual(mockResponse);
@@ -876,7 +939,7 @@ describe("sendNegativeFeedback", () => {
 
   it("should throw ValueError for empty backend URL", async () => {
     await expect(
-      sendNegativeFeedback(mockNegativeFeedbackData, "")
+      sendNegativeFeedback(mockNegativeFeedbackData, ""),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
   });
 });
@@ -926,10 +989,7 @@ describe("sendFeedbackNewBox", () => {
     });
 
     const backendUrl = "http://localhost:8080";
-    const result = await sendFeedbackNewBox(
-      mockNewBoxFeedbackData,
-      backendUrl
-    );
+    const result = await sendFeedbackNewBox(mockNewBoxFeedbackData, backendUrl);
 
     expect(result).toEqual(mockResponse);
     expect(mockedAxios).toHaveBeenCalledWith({
@@ -945,7 +1005,7 @@ describe("sendFeedbackNewBox", () => {
 
   it("should throw ValueError for empty backend URL", async () => {
     await expect(
-      sendFeedbackNewBox(mockNewBoxFeedbackData, "")
+      sendFeedbackNewBox(mockNewBoxFeedbackData, ""),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
   });
 
@@ -960,7 +1020,7 @@ describe("sendFeedbackNewBox", () => {
     });
 
     await expect(
-      sendFeedbackNewBox(mockNewBoxFeedbackData, "http://localhost:8080")
+      sendFeedbackNewBox(mockNewBoxFeedbackData, "http://localhost:8080"),
     ).rejects.toThrow(new AzureAPIError("Invalid box coordinates"));
     console.error = consoleError;
   });

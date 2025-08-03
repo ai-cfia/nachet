@@ -4,7 +4,7 @@ import { BlobError, DecodeError, FetchError, ValueError } from "../common";
 import { DecodedTiff } from "../hooks/useDecoderTiff";
 import { ApiInferenceData, Images, LabelOccurrences } from "./types";
 
-const getInferenceLabelIndex = (
+export const getInferenceLabelIndex = (
   prediction: string,
   labelOccurrences: LabelOccurrences,
 ): number => {
@@ -423,4 +423,167 @@ export const getLabelOccurrence = (image: Images): LabelOccurrences => {
   }
 
   return result;
+};
+
+// DOM-based alternatives to canvas drawing functions - Much more testable!
+
+export interface BoxElement {
+  boxDiv: HTMLDivElement;
+  labelDiv: HTMLDivElement;
+}
+
+export const createBoxElement = (
+  box: Images["boxes"][0],
+  score: number,
+  index: number,
+  prediction: string,
+  labelOccurrences: LabelOccurrences,
+  switchTable: boolean,
+): BoxElement => {
+  if (box == null) {
+    throw new ValueError("Box is null");
+  }
+
+  const { topX, topY, bottomX, bottomY } = box;
+  const width = bottomX - topX;
+  const height = bottomY - topY;
+
+  // Create bounding box div
+  const boxDiv = document.createElement("div");
+  boxDiv.style.position = "absolute";
+  boxDiv.style.left = `${topX}px`;
+  boxDiv.style.top = `${topY}px`;
+  boxDiv.style.width = `${width}px`;
+  boxDiv.style.height = `${height}px`;
+  boxDiv.style.border = `3px solid ${box.is_verified ? "green" : "red"}`;
+  boxDiv.style.pointerEvents = "none";
+  boxDiv.className = "inference-box";
+  boxDiv.setAttribute("data-testid", `inference-box-${index}`);
+
+  // Create label div
+  const labelDiv = document.createElement("div");
+  const labelIndex = getInferenceLabelIndex(prediction, labelOccurrences);
+  const scorePercentage = (score * 100).toFixed(0);
+  const boxMidX = width / 2;
+
+  // Label positioning logic (same as canvas version)
+  let labelTop = -25;
+  if (topY <= 40) {
+    labelTop = height + 5;
+  }
+
+  labelDiv.style.position = "absolute";
+  labelDiv.style.left = `${boxMidX - 45}px`; // Center label (90px width / 2)
+  labelDiv.style.top = `${labelTop}px`;
+  labelDiv.style.width = "90px";
+  labelDiv.style.height = "25px";
+  labelDiv.style.backgroundColor = "white";
+  labelDiv.style.color = "black";
+  labelDiv.style.fontSize = "12px";
+  labelDiv.style.fontWeight = "bold";
+  labelDiv.style.textAlign = "center";
+  labelDiv.style.lineHeight = "25px";
+  labelDiv.style.border = "1px solid #ccc";
+  labelDiv.style.pointerEvents = "none";
+  labelDiv.className = "inference-label";
+  labelDiv.setAttribute("data-testid", `inference-label-${index}`);
+
+  if (switchTable) {
+    labelDiv.textContent = `[${labelIndex + 1}] - ${scorePercentage}%`;
+  } else {
+    labelDiv.textContent = `[${index + 1}]`;
+  }
+
+  return { boxDiv, labelDiv };
+};
+
+export const createBoxElements = (
+  imageData: Images,
+  selectedLabel: string,
+  labelOccurrences: LabelOccurrences,
+  switchTable: boolean,
+): BoxElement[] => {
+  if (!imageData.annotated) {
+    return [];
+  }
+  if (imageData.classifications == null) {
+    throw new ValueError("Image object is missing classifications");
+  }
+  if (imageData.boxes == null) {
+    throw new ValueError("Image object is missing boxes");
+  }
+  if (imageData.scores == null) {
+    throw new ValueError("Image object is missing scores");
+  }
+
+  let selectedClassifications = imageData.classifications.map(
+    (prediction, index) => ({ label: prediction, index }),
+  );
+
+  if (selectedLabel !== "all") {
+    selectedClassifications = imageData.classifications
+      .map((prediction, index) => ({ label: prediction, index }))
+      .filter((item) => item.label === selectedLabel);
+  }
+
+  return selectedClassifications.map((prediction) =>
+    createBoxElement(
+      imageData.boxes[prediction.index],
+      imageData.scores[prediction.index],
+      prediction.index,
+      prediction.label,
+      labelOccurrences,
+      switchTable,
+    ),
+  );
+};
+
+export const renderBoxesToContainer = (
+  container: HTMLElement,
+  imageData: Images,
+  selectedLabel: string,
+  labelOccurrences: LabelOccurrences,
+  switchTable: boolean,
+  showInference: boolean,
+): void => {
+  if (container == null) {
+    throw new ValueError("Container element is null");
+  }
+
+  // Clear existing boxes
+  const existingBoxes = container.querySelectorAll(
+    ".inference-box, .inference-label",
+  );
+  existingBoxes.forEach((box) => box.remove());
+
+  if (!showInference) {
+    return;
+  }
+
+  // Create and append new box elements
+  const boxElements = createBoxElements(
+    imageData,
+    selectedLabel,
+    labelOccurrences,
+    switchTable,
+  );
+
+  boxElements.forEach(({ boxDiv, labelDiv }) => {
+    boxDiv.appendChild(labelDiv);
+    container.appendChild(boxDiv);
+  });
+
+  // Add capture label (equivalent to canvas bottom-left text)
+  const captureLabel = document.createElement("div");
+  captureLabel.style.position = "absolute";
+  captureLabel.style.left = "10px";
+  captureLabel.style.bottom = "15px";
+  captureLabel.style.color = "#4ee44e";
+  captureLabel.style.fontSize = "14px";
+  captureLabel.style.fontWeight = "bold";
+  captureLabel.style.pointerEvents = "none";
+  captureLabel.className = "capture-label";
+  captureLabel.setAttribute("data-testid", "capture-label");
+  captureLabel.textContent = `Capture ${imageData.index}`;
+  container.appendChild(captureLabel);
 };
