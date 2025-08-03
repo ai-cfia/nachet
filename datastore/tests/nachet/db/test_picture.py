@@ -1,5 +1,5 @@
 """
-This is a test script for the database packages. 
+This is a test script for the database packages.
 It tests the functions in the user, seed and picture modules.
 """
 
@@ -40,7 +40,10 @@ class test_pictures_functions(unittest.TestCase):
         self.seed_id = seed.new_seed(self.cursor, self.seed_name)
 
         # prepare the user
-        self.user_id = user.register_user(self.cursor, "test@email")
+        import time
+
+        test_email = f"test.picture.{int(time.time())}@inspection.gc.ca"
+        self.user_id = user.register_user(self.cursor, test_email)
 
         # prepare the picture_set and picture
         self.image = Image.new("RGB", (1980, 1080), "blue")
