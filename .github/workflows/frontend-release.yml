@@ -72,7 +72,7 @@ jobs:
 
       - name: Switch to the release branch
         run: |
-          branch_name="nachet-frontend-v${{ steps.versions.outputs.app-version }}"
+          branch_name="release/nachet-frontend-v${{ steps.versions.outputs.app-version }}"
           
           # Check if branch exists locally and delete it
           if git show-ref --verify --quiet refs/heads/$branch_name; then
@@ -91,6 +91,7 @@ jobs:
           git push -u origin $branch_name
 
       - name: Remove unnecessary files from release branch
+        working-directory: .
         run: |
           echo "Files and directories before cleanup:"
           find . -maxdepth 2 -type f -o -type d | head -20
@@ -132,18 +133,18 @@ jobs:
           # Check if tag exists remotely and delete it
           if git ls-remote --tags origin | grep -q "refs/tags/$tag_name$"; then
             echo "Tag $tag_name exists remotely, deleting it"
-            git push --delete origin $tag_name
+            git push --delete origin refs/tags/$tag_name
           fi
           
           # Create and push new tag
           git tag -a $tag_name -m "Frontend Release ${{ steps.versions.outputs.app-version }}"
-          git push origin $tag_name
+          git push origin refs/tags/$tag_name
 
       - name: Generate changelog from PRs since last frontend tag
         id: generate_changelog
         run: |
           # Fetch the latest frontend tag as a reference
-          latest_tag=$(git tag -l "v*-frontend" | sort -V | tail -n 1 2>/dev/null || echo "")
+          latest_tag=$(git tag -l "nachet-frontend-v*" | sort -V | tail -n 1 2>/dev/null || echo "")
           
           if [ -z "$latest_tag" ]; then
             echo "No previous frontend tags found, generating changelog from beginning of history"
