@@ -10,9 +10,37 @@ vi.mock("../../common", async (importOriginal) => {
     ...mod,
     readAzureStorageDir: vi.fn(() => {
       return Promise.resolve({
-        testDir1: 0,
-        testDir2: 1,
-        testDir3: 2,
+        folders: [
+          {
+            folder_name: "testDir1",
+            nb_pictures: 1,
+            picture_set_id: "testDir1ID",
+            pictures: [
+              {
+                inference_exists: false,
+                is_validation: false,
+                picture_id: "testDir1Pic1",
+              },
+            ],
+          },
+          {
+            folder_name: "testDir2",
+            nb_pictures: 2,
+            picture_set_id: "testDir2ID",
+            pictures: [
+              {
+                inference_exists: false,
+                is_validation: false,
+                picture_id: "testDir2Pic1",
+              },
+              {
+                inference_exists: false,
+                is_validation: false,
+                picture_id: "testDir2Pic2",
+              },
+            ],
+          },
+        ],
       });
     }),
     createAzureStorageDir: vi.fn(),
