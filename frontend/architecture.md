@@ -38,6 +38,54 @@ The Nachet frontend is a **Single Page Application (SPA)** built with React 18 a
 - **Vitest 1.4** - Unit testing framework
 - **React Testing Library 14.2** - Component testing utilities
 
+## Component Hierarchy Visualization
+
+```mermaid
+graph TD
+  App[App.tsx]
+  Navbar[Navbar]
+  Appbar[Appbar]
+  Footer[Footer]
+  Body[Body]
+  SavePopup[SavePopup]
+  BatchUploadPopup[BatchUploadPopup]
+  UploadPopup[UploadPopup]
+  ModelInfoPopup[ModelInfoPopup]
+  SwitchDevice[SwitchDevice]
+  DeleteDirectoryPopup[DeleteDirectoryPopup]
+  CreateDirectory[CreateDirectory]
+  SignUp[SignUp]
+  CreativeCommonsPopup[CreativeCommonsPopup]
+  Classifier[Classifier]
+  ClassificationResults[ClassificationResults]
+  TableContainer[TableContainer]
+  Table[Table]
+  TableRow[TableRow]
+  TableCell[TableCell]
+
+  App --> Navbar
+  App --> Appbar
+  App --> Footer
+  App --> Body
+  Body --> SavePopup
+  Body --> BatchUploadPopup
+  Body --> UploadPopup
+  Body --> ModelInfoPopup
+  Body --> SwitchDevice
+  Body --> DeleteDirectoryPopup
+  Body --> CreateDirectory
+  Body --> SignUp
+  Body --> CreativeCommonsPopup
+  Body --> Classifier
+  Classifier --> ClassificationResults
+  ClassificationResults --> TableContainer
+  TableContainer --> Table
+  Table --> TableRow
+  TableRow --> TableCell
+```
+
+This graph shows the main component hierarchy and relationships in the frontend application. For clarity, only key components and their nesting are shown.
+
 ## Directory Structure & Organization
 
 ```text
