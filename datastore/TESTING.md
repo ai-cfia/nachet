@@ -118,3 +118,20 @@ set -a && source .env.test && set +a && uv run python tests/test_cleanup.py
 
 - **Database-only tests**: Tests like those in `tests/nachet/db/` only require PostgreSQL
 - **Full integration tests**: Tests like `test_datastore.py` require both PostgreSQL and Azurite running
+
+## Automated Test Runner
+
+For convenience, you can use the automated test runner script that handles the complete test cycle:
+
+```bash
+./run_tests.sh
+```
+
+This script will:
+
+1. **Cleanup**: Drop any existing test database schema
+2. **Setup**: Create fresh test database schema and load test data
+3. **Test**: Run all tests with verbose output
+4. **Cleanup**: Clean up test database after completion
+
+The script provides colored output, timestamps, and clear status messages. It will exit with code 0 if all tests pass, or 1 if any tests fail.

@@ -1,5 +1,5 @@
 """
-This is a test script for the database packages. 
+This is a test script for the database packages.
 It tests the functions in the user, seed and picture modules.
 """
 
@@ -42,7 +42,10 @@ class test_inference_functions(unittest.TestCase):
         self.seed_id = seed.new_seed(self.cursor, self.seed_name)
 
         # prepare the user
-        self.user_id = user.register_user(self.cursor, "test@email")
+        import time
+
+        test_email = f"test.inference.{int(time.time())}@inspection.gc.ca"
+        self.user_id = user.register_user(self.cursor, test_email)
 
         # prepare the picture_set and picture
         self.image = Image.new("RGB", (1980, 1080), "blue")
@@ -70,8 +73,12 @@ class test_inference_functions(unittest.TestCase):
             '{"filename": "inference_example", "totalBoxes": 1, "totalBoxes": 1}'
         )
         self.type = 1
-        self.model_id = machine_learning.new_model(self.cursor, "test_model",'test-endpoint',1)
-        self.pipeline_id = machine_learning.new_pipeline(self.cursor, json.dumps({}),"test_pipeline",[self.model_id],False)
+        self.model_id = machine_learning.new_model(
+            self.cursor, "test_model", "test-endpoint", 1
+        )
+        self.pipeline_id = machine_learning.new_pipeline(
+            self.cursor, json.dumps({}), "test_pipeline", [self.model_id], False
+        )
 
     def tearDown(self):
         self.con.rollback()
@@ -82,7 +89,12 @@ class test_inference_functions(unittest.TestCase):
         This test checks if the new_inference function returns a valid UUID
         """
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
 
         self.assertTrue(
@@ -103,7 +115,7 @@ class test_inference_functions(unittest.TestCase):
                 self.user_id,
                 self.picture_id,
                 self.type,
-                self.pipeline_id
+                self.pipeline_id,
             )
 
     def test_new_inference_obj(self):
@@ -111,7 +123,12 @@ class test_inference_functions(unittest.TestCase):
         This test checks if the new_inference_object function returns a valid UUID
         """
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
         for box in self.inference["boxes"]:
             inference_obj_id = inference.new_inference_object(
@@ -127,7 +144,12 @@ class test_inference_functions(unittest.TestCase):
         This test checks if the new_inference_object function raises an exception when the connection fails
         """
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
         mock_cursor = MagicMock()
         mock_cursor.fetchone.side_effect = Exception("Connection error")
@@ -142,7 +164,12 @@ class test_inference_functions(unittest.TestCase):
         This test checks if the new_seed_object function returns a valid UUID
         """
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
         for box in self.inference["boxes"]:
             inference_obj_id = inference.new_inference_object(
@@ -158,7 +185,12 @@ class test_inference_functions(unittest.TestCase):
 
     def test_new_seed_object_error(self):
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
         inference_obj_id = inference.new_inference_object(
             self.cursor, inference_id, json.dumps(self.inference["boxes"][0]), self.type
@@ -175,7 +207,12 @@ class test_inference_functions(unittest.TestCase):
         """
         inference_trim = json.loads(self.inference_trim)
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
         inference_data = inference.get_inference(self.cursor, str(inference_id))
         # inference_json=json.loads(inference_data)
@@ -199,7 +236,12 @@ class test_inference_functions(unittest.TestCase):
         This test checks if the get_inference_object function returns a correctly build object
         """
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
         inference_obj_id = inference.new_inference_object(
             self.cursor, inference_id, json.dumps(self.inference["boxes"][0]), self.type
@@ -225,7 +267,12 @@ class test_inference_functions(unittest.TestCase):
         This test checks if the get_inference_object function raise an error if the inference oject does not exist
         """
         inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
         inference_obj_id = "00000000-0000-0000-0000-000000000000"
 
@@ -237,7 +284,12 @@ class test_inference_functions(unittest.TestCase):
         This test checks if the get_objects_by_inference function returns the corrects objects for an inference
         """
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
         total_boxes = len(self.inference["boxes"])
         objects_id = []
@@ -269,7 +321,12 @@ class test_inference_functions(unittest.TestCase):
         This test checks if the get_inference_object_top_id function returns the correct top_id of an inference object
         """
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
         inference_obj_id = inference.new_inference_object(
             self.cursor, inference_id, json.dumps(self.inference["boxes"][0]), self.type
@@ -295,14 +352,17 @@ class test_inference_functions(unittest.TestCase):
         This test checks if the set_inference_object_verified_id function returns a correctly update inference object
         """
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
         inference_obj_id = inference.new_inference_object(
             self.cursor, inference_id, json.dumps(self.inference["boxes"][0]), self.type
         )
-        inference.get_inference_object(
-            self.cursor, inference_obj_id
-        )
+        inference.get_inference_object(self.cursor, inference_obj_id)
         # print(previous_inference_obj)
         seed_obj_id = inference.new_seed_object(
             self.cursor,
@@ -329,14 +389,17 @@ class test_inference_functions(unittest.TestCase):
         This test checks if the set_inference_object_verified_id function returns a correctly update inference object
         """
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
         inference_obj_id = inference.new_inference_object(
             self.cursor, inference_id, json.dumps(self.inference["boxes"][0]), self.type
         )
-        inference.get_inference_object(
-            self.cursor, inference_obj_id
-        )
+        inference.get_inference_object(self.cursor, inference_obj_id)
         # Sleep to see a difference in the updated_at date of the object
         sleep(3)
 
@@ -360,7 +423,12 @@ class test_inference_functions(unittest.TestCase):
         Test if is_inference_verified function correctly returns the inference status
         """
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
 
         verified = inference.is_inference_verified(self.cursor, inference_id)
@@ -376,7 +444,12 @@ class test_inference_functions(unittest.TestCase):
         Test if verify_inference_status function correctly updates the inference status
         """
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
         inference_obj_id = inference.new_inference_object(
             self.cursor, inference_id, json.dumps(self.inference["boxes"][0]), self.type
@@ -407,7 +480,12 @@ class test_inference_functions(unittest.TestCase):
         Test if get_seed_object_id function correctly returns the seed object id
         """
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
         inference_obj_id = inference.new_inference_object(
             self.cursor, inference_id, json.dumps(self.inference["boxes"][0]), self.type
@@ -433,7 +511,12 @@ class test_inference_functions(unittest.TestCase):
         Test if get_seed_object_id function correctly returns the seed object id
         """
         inference_id = inference.new_inference(
-            self.cursor, self.inference_trim, self.user_id, self.picture_id, self.type, self.pipeline_id
+            self.cursor,
+            self.inference_trim,
+            self.user_id,
+            self.picture_id,
+            self.type,
+            self.pipeline_id,
         )
         inference_obj_id = inference.new_inference_object(
             self.cursor, inference_id, json.dumps(self.inference["boxes"][0]), self.type

@@ -6,6 +6,7 @@ It tests the functions in the __init__.py files of the datastore packages.
 import asyncio
 import io
 import os
+import time
 import unittest
 import uuid
 from unittest.mock import MagicMock, patch
@@ -36,13 +37,20 @@ BLOB_KEY = os.environ["NACHET_BLOB_KEY"]
 if BLOB_KEY is None or BLOB_KEY == "":
     raise ValueError("NACHET_BLOB_KEY is not set")
 
+DEV_USER_EMAIL = os.environ["DEV_USER_EMAIL"]
+if DEV_USER_EMAIL is None or DEV_USER_EMAIL == "":
+    raise ValueError("DEV_USER_EMAIL is not set")
+
 
 class test_user(unittest.TestCase):
     def setUp(self):
         self.con = db.connect_db(DB_CONNECTION_STRING, DB_SCHEMA)
         self.cursor = self.con.cursor()
         db.create_search_path(self.con, self.cursor, DB_SCHEMA)
-        self.user_email = "testssssss@email"
+        # Use a unique email for each test run to avoid conflicts
+        import time
+
+        self.user_email = f"test.user.{int(time.time())}@inspection.gc.ca"
         self.user_id = None
         self.connection_str = BLOB_CONNECTION_STRING
 
@@ -164,7 +172,9 @@ class test_picture(unittest.TestCase):
         self.cursor = self.con.cursor()
         db.create_search_path(self.con, self.cursor, DB_SCHEMA)
         self.connection_str = BLOB_CONNECTION_STRING
-        self.user_email = "test@email"
+        import time
+
+        self.user_email = f"test.picture.{int(time.time())}@inspection.gc.ca"
         self.user_obj = asyncio.run(
             datastore.new_user(
                 self.cursor, self.user_email, self.connection_str, "test-user"
@@ -414,7 +424,10 @@ class test_picture(unittest.TestCase):
         """
         not_owner_user_obj = asyncio.run(
             datastore.new_user(
-                self.cursor, "notowner@email", self.connection_str, "test-user"
+                self.cursor,
+                f"notowner.{int(time.time())}@inspection.gc.ca",
+                self.connection_str,
+                "test-user",
             )
         )
         not_owner_user_id = datastore.User.get_id(not_owner_user_obj)
