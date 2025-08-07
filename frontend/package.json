@@ -1,7 +1,7 @@
 {
   "name": "nachet-frontend",
   "private": true,
-  "version": "0.9.17",
+  "version": "0.9.18",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -71,7 +71,7 @@
     "@testing-library/user-event": "^14.5.2",
     "@types/file-saver": "^2.0.7",
     "@types/js-cookie": "^3.0.6",
-    "@types/node": "^20.11.29",
+    "@types/node": "^20.19.9",
     "@types/pako": "^2.0.3",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
