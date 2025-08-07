@@ -94,7 +94,7 @@ jobs:
           echo "Files and directories after cleanup:"
           find . -maxdepth 2 -type f -o -type d | head -20
 
-      - uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5
+      - uses: EndBug/add-and-commit@af62f267410b647327457e1a82a6686727fcb8a0
         with:
           message: "Release nachet-datastore-v${{ steps.versions.outputs.app-version }}"
           add: "."
