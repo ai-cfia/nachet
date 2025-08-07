@@ -122,8 +122,52 @@ jobs:
           echo "node-version=$NODE_VERSION" >> $GITHUB_OUTPUT
           echo "npm-version=$NPM_VERSION" >> $GITHUB_OUTPUT
 
-  frontend-lint-test:
+  check-package-lock:
     needs: [versions]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ needs.versions.outputs.node-version }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+            
+      - name: Install specific npm version
+        run: npm install -g npm@${{ needs.versions.outputs.npm-version }}
+      
+      - name: Check if package-lock.json is up to date
+        run: |
+          echo "🔍 Checking if package-lock.json needs updating..."
+          
+          # Create a backup of the current package-lock.json
+          cp package-lock.json package-lock.json.backup
+          
+          # Run npm install to regenerate package-lock.json
+          npm install --package-lock-only
+          
+          # Compare the files
+          if ! cmp -s package-lock.json package-lock.json.backup; then
+            echo "❌ package-lock.json is out of date!"
+            echo ""
+            echo "The package-lock.json file needs to be updated."
+            echo "Please run 'npm install' locally and commit the updated package-lock.json file."
+            echo ""
+            echo "Differences found:"
+            diff package-lock.json.backup package-lock.json || true
+            exit 1
+          else
+            echo "✅ package-lock.json is up to date!"
+          fi
+
+  frontend-lint-test:
+    needs: [versions, check-package-lock]
     uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-test-node-mono.yml@main
     with:
       working-directory: frontend
