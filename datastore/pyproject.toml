@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nachet_datastore"
-version = "1.1.8"
+version = "1.1.9"
 authors = [
   { name="Francois Werbrouck", email="francois.werbrouck@inspection.gc.ca" },
   { name="Sylvanie You", email="Sylvanie.You@inspection.gc.ca"}
@@ -19,8 +19,8 @@ classifiers = [
 ]
 dependencies = [
     "azure-core==1.35.0",
-    "azure-identity==1.23.0",
-    "azure-storage-blob==12.25.1",
+    "azure-identity==1.23.1",
+    "azure-storage-blob==12.26.0",
     "numpy==1.26.4",
     "pillow==10.3.0",
     "psycopg==3.1.19",
