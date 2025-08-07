@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import { decodeTiff } from "../common";
 
 export interface DecodedTiff {
-  rgba: Uint8Array;
+  rgba: Uint8Array<ArrayBufferLike>;
   width: number;
   height: number;
 }
 
 const useDecoderTiff = (imageSrc: string) => {
   const [decodedTiff, setDecodedTiff] = useState<DecodedTiff>({
-    rgba: new Uint8Array(0),
+    rgba: new Uint8Array(0) as Uint8Array<ArrayBufferLike>,
     width: 0,
     height: 0,
   });
