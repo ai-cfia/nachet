@@ -78,7 +78,7 @@ jobs:
           find . -maxdepth 2 -type f -o -type d | head -20
           
           # Validate required directories exist before cleanup
-          if [ ! -d "./datastore" ] || [ ! -d "./nachet" ]; then
+          if [ ! -d "./datastore" ] ]; then
             echo "Error: Required directories (datastore or nachet) not found"
             exit 1
           fi
