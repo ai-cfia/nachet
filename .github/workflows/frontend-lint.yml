@@ -2,7 +2,7 @@ name: Frontend Lint
 permissions:
   contents: write
   pull-requests: write
-  actions: read
+  actions: write
 
 on:
   pull_request:
