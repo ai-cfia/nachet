@@ -193,7 +193,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Trigger Release Workflow for Nachet Datastore
+      - name: Trigger Release Workflow for Nachet Frontend
         run: |
           gh workflow run frontend-release.yml \
           --ref main
