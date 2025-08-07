@@ -249,8 +249,8 @@ export const utifToRGBA = (bytes: ArrayBuffer): DecodedTiff => {
 };
 
 export const decodeTiff = async (imageSrc: string): Promise<DecodedTiff> => {
-  let decodedTiff = {
-    rgba: new Uint8Array(0),
+  let decodedTiff: DecodedTiff = {
+    rgba: new Uint8Array(0) as Uint8Array<ArrayBufferLike>,
     width: 0,
     height: 0,
   };
