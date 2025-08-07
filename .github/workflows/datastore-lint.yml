@@ -81,3 +81,10 @@ jobs:
           # Generate a new lock file and compare with existing
           uv lock --check
         working-directory: datastore
+  
+  uv-sbom-check:
+    name: Check SBOM is up to date
+    uses: ./.github/workflows/uv-sbom-check.yml
+    secrets: inherit
+    with:
+      working-directory: datastore
