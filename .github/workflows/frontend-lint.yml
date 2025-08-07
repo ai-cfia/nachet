@@ -58,7 +58,7 @@ jobs:
       
       - name: Get target branch version
         id: target-version
-        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        if: github.event_name == 'pull_request' && github.event.action != 'closed' && !github.event.pull_request.merged
         run: |
           git fetch origin ${{ github.base_ref }}
           TARGET_VERSION=$(git show origin/${{ github.base_ref }}:frontend/package.json | jq -r '.version')
@@ -66,7 +66,7 @@ jobs:
           echo "version=$TARGET_VERSION" >> $GITHUB_OUTPUT
       
       - name: Compare versions
-        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        if: github.event_name == 'pull_request' && github.event.action != 'closed' && !github.event.pull_request.merged
         run: |
           PR_VERSION="${{ steps.pr-version.outputs.version }}"
           TARGET_VERSION="${{ steps.target-version.outputs.version }}"
