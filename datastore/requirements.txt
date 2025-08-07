@@ -1,5 +1,5 @@
 azure-core==1.35.0
-azure-identity==1.23.0
+azure-identity==1.23.1
 azure-storage-blob==12.25.1
 numpy==1.26.4
 pillow==10.3.0
