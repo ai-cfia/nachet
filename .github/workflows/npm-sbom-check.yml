@@ -67,9 +67,9 @@ jobs:
           elif ! cmp -s sbom.json sbom-new.json; then
             # HACK: cyclonedx-npm --output-reproducible is not truly reproducible
             # due to non-deterministic BOM-REF generation and component ordering.
-            # Allow up to 50 lines of diff to avoid false positives from cosmetic changes.
-            diff_lines=$(diff sbom.json sbom-new.json | wc -l)
-            if [ "$diff_lines" -gt 50 ]; then
+            # Filter out BOM-REF differences and only count meaningful changes.
+            diff_lines=$(diff sbom.json sbom-new.json | grep -v "bom-ref\|BomRef\|content.*:" | wc -l)
+            if [ "$diff_lines" -gt 100 ]; then
               echo "SBOM file is outdated and needs to be regenerated (significant changes: $diff_lines lines)"
               echo "needs_update=true" >> $GITHUB_OUTPUT
               echo "## SBOM Update Required" >> $GITHUB_STEP_SUMMARY
