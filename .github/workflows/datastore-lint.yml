@@ -88,3 +88,9 @@ jobs:
     secrets: inherit
     with:
       working-directory: datastore
+
+  sbom-security-scan:
+    name: SBOM Security Scan
+    uses: anchore/scan-action@v6.5.1
+    with:
+      sbom: sbom.json
