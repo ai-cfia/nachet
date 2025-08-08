@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nachet-backend"
-version = "1.0.1"
+version = "1.0.2"
 description = "Canadian government (CFIA) AI-powered seed identification system backend"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -28,7 +28,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "nachet-datastore @ git+https://github.com/ai-cfia/nachet.git@nachet-datastore-v1.1.10#subdirectory=datastore",
+    "nachet-datastore @ git+https://github.com/ai-cfia/nachet.git@nachet-datastore-v1.1.11#subdirectory=datastore",
     # "nachet-datastore @ file:///home/path/to/nachet/datastore",
     "numpy==1.26.4",
     "azure-storage-blob",
@@ -53,6 +53,7 @@ previous-db-schema-version = "0.0.11"
 
 [dependency-groups]
 dev = [
+    "cyclonedx-bom>=7.0.0",
     "pytest-asyncio",
     "pytest>=8.4.1",
     "toml>=0.10.2",
