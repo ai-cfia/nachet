@@ -3,8 +3,8 @@ name: Frontend Build and Push
 on:
   pull_request:
     paths:
-      - 'frontend/**'
-      - '.github/workflows/frontend-build.yml'
+      - "frontend/**"
+      - ".github/workflows/frontend-build.yml"
     types:
       - opened
       - closed

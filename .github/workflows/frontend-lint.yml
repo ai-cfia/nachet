@@ -217,3 +217,44 @@ jobs:
           --ref main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  npm-sbom-check:
+    name: Check SBOM is up to date
+    needs: [versions]
+    uses: ./.github/workflows/npm-sbom-check.yml
+    secrets: inherit
+    with:
+      working-directory: frontend
+      node-version: ${{ needs.versions.outputs.node-version }}
+      npm-version: ${{ needs.versions.outputs.npm-version }}
+
+  sbom-security-scan:
+    needs: npm-sbom-check
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Ensure SBOM exists (skip scan if missing)
+        run: |
+          if [ ! -f frontend/sbom.json ]; then
+            echo "SBOM not present (likely failed validation job); skipping scan.";
+            echo "No SBOM file found" > sbom-scan-skip.log
+            exit 0
+          fi
+      - uses: anchore/scan-action@1638637db639e0ade3258b51db49a9a137574c3e
+        name: SBOM Security Scan
+        id: scan
+        with:
+          sbom: frontend/sbom.json
+          fail-build: false
+      - name: Check SBOM scan results
+        run: cat ${{ steps.scan.outputs.sarif }}
+      - name: Upload SBOM scan results
+        uses: github/codeql-action/upload-sarif@v3
+        # there is a bug https://github.com/microsoft/sarif-sdk/issues/2770
+        # grype probably needa to point to the vuln location for this to work properly
+        continue-on-error: true
+        with:
+          sarif_file: ${{ steps.scan.outputs.sarif }}
