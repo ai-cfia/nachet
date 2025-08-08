@@ -92,7 +92,7 @@ jobs:
   sbom-security-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: anchore/scan-action@v6.5.1
+      - uses: anchore/scan-action@1638637db639e0ade3258b51db49a9a137574c3e
         name: SBOM Security Scan
         id: scan
         with:
