@@ -98,40 +98,9 @@
   "components": [
     {
       "type": "library",
-      "name": "string-width",
-      "version": "4.2.3",
-      "bom-ref": "BomRef.4s7nduuakis.v179oskd29s",
-      "scope": "optional",
-      "purl": "pkg:npm/string-width@4.2.3",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "c0ac90450a63274b08a7ad84ad265d1ac8cc256b1aa79a1136284786ee86ec954effd8c807a5327af2feb57b8eaab9e0f23fdcc4a4d6c96530bd24eb8a2673fe"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:development",
-          "value": "true"
-        },
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/string-width-cjs"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "name": "strip-ansi",
       "version": "6.0.1",
-      "bom-ref": "BomRef.q6lgg7el388.r308voia3q8",
+      "bom-ref": "BomRef.5n6mog8q5l4.4nmeksd2rfs",
       "scope": "optional",
       "purl": "pkg:npm/strip-ansi@6.0.1",
       "externalReferences": [
@@ -162,7 +131,7 @@
       "type": "library",
       "name": "wrap-ansi",
       "version": "7.0.0",
-      "bom-ref": "BomRef.shbcvmjqj54.aeg9dnjdi4k",
+      "bom-ref": "BomRef.6sh2svg7b2k.68190gcon94",
       "scope": "optional",
       "purl": "pkg:npm/wrap-ansi@7.0.0",
       "externalReferences": [
@@ -186,6 +155,37 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/wrap-ansi-cjs"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "string-width",
+      "version": "4.2.3",
+      "bom-ref": "BomRef.7mo9i4ckhkg.63oeamtgt8k",
+      "scope": "optional",
+      "purl": "pkg:npm/string-width@4.2.3",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "c0ac90450a63274b08a7ad84ad265d1ac8cc256b1aa79a1136284786ee86ec954effd8c807a5327af2feb57b8eaab9e0f23fdcc4a4d6c96530bd24eb8a2673fe"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/string-width-cjs"
         }
       ]
     },
@@ -31325,24 +31325,24 @@
   ],
   "dependencies": [
     {
-      "ref": "BomRef.4s7nduuakis.v179oskd29s",
-      "dependsOn": [
-        "nachet-frontend@0.9.24|emoji-regex@8.0.0",
-        "nachet-frontend@0.9.24|is-fullwidth-code-point@3.0.0",
-        "nachet-frontend@0.9.24|strip-ansi@6.0.1"
-      ]
-    },
-    {
-      "ref": "BomRef.q6lgg7el388.r308voia3q8",
+      "ref": "BomRef.5n6mog8q5l4.4nmeksd2rfs",
       "dependsOn": [
         "nachet-frontend@0.9.24|ansi-regex@5.0.1"
       ]
     },
     {
-      "ref": "BomRef.shbcvmjqj54.aeg9dnjdi4k",
+      "ref": "BomRef.6sh2svg7b2k.68190gcon94",
       "dependsOn": [
         "nachet-frontend@0.9.24|ansi-styles@4.3.0",
         "nachet-frontend@0.9.24|string-width@4.2.3",
+        "nachet-frontend@0.9.24|strip-ansi@6.0.1"
+      ]
+    },
+    {
+      "ref": "BomRef.7mo9i4ckhkg.63oeamtgt8k",
+      "dependsOn": [
+        "nachet-frontend@0.9.24|emoji-regex@8.0.0",
+        "nachet-frontend@0.9.24|is-fullwidth-code-point@3.0.0",
         "nachet-frontend@0.9.24|strip-ansi@6.0.1"
       ]
     },
@@ -32585,9 +32585,9 @@
     {
       "ref": "nachet-frontend@0.9.24|@isaacs/cliui@8.0.2",
       "dependsOn": [
-        "BomRef.4s7nduuakis.v179oskd29s",
-        "BomRef.q6lgg7el388.r308voia3q8",
-        "BomRef.shbcvmjqj54.aeg9dnjdi4k",
+        "BomRef.5n6mog8q5l4.4nmeksd2rfs",
+        "BomRef.6sh2svg7b2k.68190gcon94",
+        "BomRef.7mo9i4ckhkg.63oeamtgt8k",
         "nachet-frontend@0.9.24|@isaacs/cliui@8.0.2|string-width@5.1.2",
         "nachet-frontend@0.9.24|@isaacs/cliui@8.0.2|strip-ansi@7.1.0",
         "nachet-frontend@0.9.24|@isaacs/cliui@8.0.2|wrap-ansi@8.1.0"
