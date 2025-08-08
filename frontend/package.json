@@ -106,7 +106,7 @@
     "node": "^24.5.0"
   },
   "overrides": {
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.25.8",
     "on-headers": "^1.1.0",
     "cross-spawn": "^7.0.5"
   }
