@@ -100,7 +100,7 @@
       "type": "library",
       "name": "string-width",
       "version": "4.2.3",
-      "bom-ref": "BomRef.19ork6dkuac.tuts8d1rlus",
+      "bom-ref": "BomRef.4n4av76g7bk.gpoq3c2435s",
       "scope": "optional",
       "purl": "pkg:npm/string-width@4.2.3",
       "externalReferences": [
@@ -131,7 +131,7 @@
       "type": "library",
       "name": "wrap-ansi",
       "version": "7.0.0",
-      "bom-ref": "BomRef.ifh6krpuvnc.jlaoh81cp6s",
+      "bom-ref": "BomRef.6ogfkom8r54.psr75vpa2u",
       "scope": "optional",
       "purl": "pkg:npm/wrap-ansi@7.0.0",
       "externalReferences": [
@@ -162,7 +162,7 @@
       "type": "library",
       "name": "strip-ansi",
       "version": "6.0.1",
-      "bom-ref": "BomRef.vbeacfhdamc.bqgu15sd20g",
+      "bom-ref": "BomRef.g73ksh7s4ck.gq1tm0jadoc",
       "scope": "optional",
       "purl": "pkg:npm/strip-ansi@6.0.1",
       "externalReferences": [
@@ -3843,18 +3843,26 @@
       "type": "library",
       "name": "aix-ppc64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/aix-ppc64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/aix-ppc64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/aix-ppc64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/aix-ppc64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "d520e01fa6523d3960832d7223af836e48b3f31ce91c911502517f00cd6d1cf2ec7f9493a26f6bc2d8c4e21280176d057d75cd4c5a84617c893568751a265e75"
+              "content": "bab02fad479d22a122151dc56122d359080bbb9b5bfa6d2a670d0d0446ac51ea3ac2ea9ab643036914fed6e0018865c4bb9bea80f77b146135061b00232f5054"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -3875,18 +3883,26 @@
       "type": "library",
       "name": "android-arm",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/android-arm@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/android-arm@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/android-arm@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/android-arm@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "bc23efcd28e93c7122d6c899765bc096c3f15e5ed66ce554041028c16ba0e2b2476faf0ec7c2ae6a507ed6870dbd3e5f8efeb0a645faa3f884a5b0eb7faf3372"
+              "content": "44e36c02f182cf9a16c9e3d59cb75963f1c7c00fbe9f1616217d5ab489e5696e92124c2ae9790fdfe71bf36e4451c46ce55b2cfe51a1ff663101be71a9cd3b53"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -3907,18 +3923,26 @@
       "type": "library",
       "name": "android-arm64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/android-arm64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/android-arm64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/android-arm64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/android-arm64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "734b97f55014050edd4c30a3abec1dc862e8c0c76d47f1a80b653921893fec3d47d49602d2ab1e0fbfb5d6230fda644b37d45c08c45c8c2e1831c942cc6c12fc"
+              "content": "383de9ecb6335a92e1644c804dc4d227aeea0790fedb4bdbb6beaf1e51d64906212adcd462b113b964e19b316966d16c048c51be13b4efe520540f66d22fced7"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -3939,18 +3963,26 @@
       "type": "library",
       "name": "android-x64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/android-x64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/android-x64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/android-x64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/android-x64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "0fb68f45450d1d10701f1cf146fa7ce7aae35074455b549d4004ca5c7da1a80d240196f584a9a2d363a961169c9744f1206cff6665d695b6608f05986826a44c"
+              "content": "c890153e494ce7ee3ef5d4de2b01ce680f8b4249ab2855fde8133403fdb342b6d2e843429b1738395a01b3974f90209a936ae8003fa328276798ea8ab333e48c"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -3971,18 +4003,26 @@
       "type": "library",
       "name": "darwin-arm64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/darwin-arm64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/darwin-arm64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/darwin-arm64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/darwin-arm64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "0f0a97a99cae9390225967f751f2e2443279103778f7383a3bdc1c959ee450cbf659116be072a35e9ff9b7c259d7541b41f512ebf71108a1b0621b4d018f3c91"
+              "content": "270d26c6021a617e91f0e0eb7642cb3f006a1d3b581c94a6cf377e41ecad4ae833434560e1ce6b0e4cb9560928a306d941a8426ecbf5ad3d4a5bbd8c3c891ebf"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4003,18 +4043,26 @@
       "type": "library",
       "name": "darwin-x64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/darwin-x64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/darwin-x64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/darwin-x64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/darwin-x64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "b1efc98c5f0d9662951b890d22ec96315ff6d9969eac1faa6928b931dad7b5de91d3c92fb36a823780b4f668aea64b438adbe1f234457e5c0614141cc594636f"
+              "content": "561da02f1c479eea10f868cf36f0d20d1a680425336383eed2406a3010e52b87ee59b2a01ad98321e102d3cd718b6e8f3e39fed6d72df8187c163c8b970d5996"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4035,18 +4083,26 @@
       "type": "library",
       "name": "freebsd-arm64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/freebsd-arm64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/freebsd-arm64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/freebsd-arm64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/freebsd-arm64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "e49711c714435092d7f095e9ff07010b2de910d9c280147d6cde89b18e0e9a17d4b481dedd95b499ac00efe44301c30bacc21969fd373654225fd0c6c81f21e2"
+              "content": "60f27b84343d0e735ee6fc4e9ba8da89ef50b13c1c29e74fbe2cd3565a961bd1814aaf81bb25840dace519a0d30b934653840977aeba574caa0812f6a1628f7c"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4067,18 +4123,26 @@
       "type": "library",
       "name": "freebsd-x64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/freebsd-x64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/freebsd-x64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/freebsd-x64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/freebsd-x64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "27de643418f5ce46cc5ed1d51f6f5b06b890ca0317aa8550390600f884acd3fda5dd3f7f923e36a30da6a6a7ab441c432679a450309a413fdd7cd5d65ff65909"
+              "content": "3266845f1411757345b1137f29c22298b9d226b936af91fcbfe59569f456cf9c5d4959962e82136505dc81e848d9913a822a04e878ab0044e833f46f1417ae87"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4099,18 +4163,26 @@
       "type": "library",
       "name": "linux-arm",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-arm@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-arm@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-arm@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/linux-arm@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "6cf6f900766d6de3468c229567d506a86c28f0452ee1c2eaebc13de40e772a5c403d1994c98bf60fa174b9423ae578ac18e2f58413f9993ae89db828fb46c570"
+              "content": "16ecc43fd062c73668865d642dfefa28454eb31b48045c0268bba956e9387855673997d4f96b27fb1e51c9a9bb9c82d5da992ad93a9033d1193ec381b8c0be92"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4131,18 +4203,26 @@
       "type": "library",
       "name": "linux-arm64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-arm64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-arm64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-arm64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/linux-arm64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "89b2af9b26332ac05e5fc77c23b307fd331f5835c117775be2a33ab32fbbaded185f26be2b571e9b7a27f5781d4f611018cbb8850c9985a9fb4de43c5e41a9e1"
+              "content": "588820d340115affee60b53b96cb832b4d1dfe11d27c44b907375601d0228358a857991a14daed2bc12a19c50126162aa2d95407250acf9428eaef2db7b883ff"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4163,18 +4243,26 @@
       "type": "library",
       "name": "linux-ia32",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-ia32@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-ia32@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-ia32@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/linux-ia32@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-ia32/-/linux-ia32-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-ia32/-/linux-ia32-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "62f8d70ea2d1a8f0e5d9dbd13836269a1cf8acf795298be9a5f198292346772664034d74e3aa4b5b244a288ddac7c7db2682b941bc5b954464c0afcc598d7c4e"
+              "content": "0350fd633457d62fb500966e14550c3f513d7cc69863e1a74908a5f53970d39bad944f3a10a4d403b463c070e4122b662d8885b1177d1f02813c47ed35d05f8e"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4195,18 +4283,26 @@
       "type": "library",
       "name": "linux-loong64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-loong64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-loong64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-loong64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/linux-loong64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "b877f5066306f2a12fcddaf302a8364881bfd36fb8fc31c1e9af4a6f26b45c3bf00c4282a02f19456239249bcd7548ed722046150e4fb8196910e5d08fe2504a"
+              "content": "3bb93527f7701e463544c56f8251479751f3bad18414567790d8833123b252b07b59ca0719ff7a4a1fbae274d14f6ea5dc631b096d3512487f4e128ce6223b85"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4227,18 +4323,26 @@
       "type": "library",
       "name": "linux-mips64el",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-mips64el@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-mips64el@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-mips64el@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/linux-mips64el@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-mips64el/-/linux-mips64el-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-mips64el/-/linux-mips64el-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "21a8ce98ef8a24adb76e3e7674548d08cb33d503f50ea33a7302d4bf75b5430cb193221679c7da7e7239e797ef486a842b08cc5d52e891c579ca01d6e5bdc96e"
+              "content": "baff9da9f45aced7b70737cca7c3c041799d18742dda80bfcb6a2fc294ed7aaaccc769706a4b22159fdb7645c90b5f6db53bcd5c1b961f9df3cbf6938f51601b"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4259,18 +4363,26 @@
       "type": "library",
       "name": "linux-ppc64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-ppc64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-ppc64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-ppc64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/linux-ppc64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-ppc64/-/linux-ppc64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-ppc64/-/linux-ppc64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "d611d5fd9e0e11f330a4b3bcae9ec2be58410e78ec0b70adb495c88418bee408f9afe301bf2e1e820ef009b7bffe14ac4fe46f0c01bbb3cd6d02fa4bd97004e3"
+              "content": "1b21b429c322d4605abcfe49800924b2d306c8c86894c0f26c07fcc05e40ef40802e50ccda9fdfed8144ec7f76783787fd506d149039313e2744f0c683826ecd"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4291,18 +4403,26 @@
       "type": "library",
       "name": "linux-riscv64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-riscv64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-riscv64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-riscv64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/linux-riscv64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-riscv64/-/linux-riscv64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-riscv64/-/linux-riscv64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "d877570cc77d18c8131ab3d69c9ccfd802d2a2413fd0ee4785352f5886c3dd8763304f09c2f4829cd1819d34e1286101f75399873ac9e2a208c64fd2066c830c"
+              "content": "ac0a83605bf7cb332babb18871e9f75cfed35041bfe0b2bce8b50f308cfa453f00ea94480e7d2c0dcbe3b9d559062893719098f72d928185f69602b7005fb57a"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4323,18 +4443,26 @@
       "type": "library",
       "name": "linux-s390x",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-s390x@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-s390x@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-s390x@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/linux-s390x@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-s390x/-/linux-s390x-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-s390x/-/linux-s390x-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "ceeb39b31cea0490f7797c70be3375c909117a900d83113d960396daa2e79abf2290c4e98648e05eed47474d4ae05260f21d641040c0a8371942d6eb467078d4"
+              "content": "5eeb6f87a56395b707a6c2086f063c19545bc28be2593d7db45860740ec395e9cb182fe66dcde506855bee3c63f59f9ec86aaf7274b2225b5852b90acd6a92be"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4355,18 +4483,26 @@
       "type": "library",
       "name": "linux-x64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-x64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/linux-x64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/linux-x64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/linux-x64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "d6b61d4e9cafd378b2705d7e061cebcd024274eb803ad6aa1d35896425af8a3283d8de57bb44ed542f3ffb57da5aa70ff6204258e9a39a1a07f78747f360713d"
+              "content": "0121508606381255e1de70dc38c4e441eae8e1bd6582e6ec90d96121f26bb07e4e2995c3a5400a065352d0ac7cd63c0e069f8709e66a9a826e8a14efe7bfe3bd"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4385,20 +4521,68 @@
     },
     {
       "type": "library",
-      "name": "netbsd-x64",
+      "name": "netbsd-arm64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/netbsd-x64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/netbsd-arm64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/netbsd-x64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/netbsd-arm64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/netbsd-x64/-/netbsd-x64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/netbsd-arm64/-/netbsd-arm64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "5a88b6317cd78cc50b71c2303272dc8b2647e2708832959002cd38f4a11e32f39c3400d5c68d1404840f7d29b107709629e767820eec59974bbcb733a5ed2d2e"
+              "content": "77529faee21ea21a808ba480fa010d32e39b0db1239f6da894047b7a0aa79020fd0c6046d30b04011a2d90b8170eee9ce27720593649b4de6f720c7359133373"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@esbuild/netbsd-arm64"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "netbsd-x64",
+      "group": "@esbuild",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/netbsd-x64@0.25.8",
+      "scope": "optional",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/netbsd-x64@0.25.8",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@esbuild/netbsd-x64/-/netbsd-x64-0.25.8.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "9d50c292bbf1dae6be5d03727ebba3206dfcf981b2bb2d91bbd90a54dca1e63032b3a9fe978e2d4ed4e8a878e29e8d8ccbc54063a2f0f47ed123bdd7162eba0a"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4417,20 +4601,68 @@
     },
     {
       "type": "library",
-      "name": "openbsd-x64",
+      "name": "openbsd-arm64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/openbsd-x64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/openbsd-arm64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/openbsd-x64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/openbsd-arm64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/openbsd-x64/-/openbsd-x64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/openbsd-arm64/-/openbsd-arm64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "1cb34dc3df71b2fc75da5141530a13f04542b12bd13435713698d9edb3e7f78edbf2024fcde1d6c8d56116c69eadcd27dd3b1b38836f44fd9bc936792ca7b3a3"
+              "content": "8fc1e0ac3b9224502e8e48af48c49f3d04806b91716ef938ae03404b98b72beafcb355f4a75b8e3b61e5db136c185a6939e1ce2c05606300d5966c61ab987e49"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@esbuild/openbsd-arm64"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "openbsd-x64",
+      "group": "@esbuild",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/openbsd-x64@0.25.8",
+      "scope": "optional",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/openbsd-x64@0.25.8",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@esbuild/openbsd-x64/-/openbsd-x64-0.25.8.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "d61f0c500c1ad1584d083a7a01fd074e82364c91409f5baa4fd025e83255cdd20101ddb59bf1b461f73beca0ccdee1774ff61a3a042adea4c91cf6d33889da21"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4449,20 +4681,68 @@
     },
     {
       "type": "library",
-      "name": "sunos-x64",
+      "name": "openharmony-arm64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/sunos-x64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/openharmony-arm64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/sunos-x64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/openharmony-arm64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/sunos-x64/-/sunos-x64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/openharmony-arm64/-/openharmony-arm64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "ebe823985a5fcb40475394e9a6d92e87cfaec379a7aef82cf9d48f41740ebf77a46e8addc27cd35446f8aa722f41c617aba8339324e7a19f5d646f83e206ab2a"
+              "content": "af69d56b94882bdb5259dd2425df4709f7e70c729c8531a291bffff5cec75feafec07602a50ad283186563a2965759c5a359782856ec3251e4f8be9f7a42ec52"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@esbuild/openharmony-arm64"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "sunos-x64",
+      "group": "@esbuild",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/sunos-x64@0.25.8",
+      "scope": "optional",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/sunos-x64@0.25.8",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@esbuild/sunos-x64/-/sunos-x64-0.25.8.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "cd495a3f64b5d98850d94cd47dc0ae3031d0149c8a0019008ef3b96129dd32222432298f9b103e0584818a45a0b11a6fcb1b919e8c389d2e4d3e77fd7e9bf8d7"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4483,18 +4763,26 @@
       "type": "library",
       "name": "win32-arm64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/win32-arm64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/win32-arm64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/win32-arm64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/win32-arm64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "67480e4ddef956f5eacaaee7b25f77cf06a171344e82abee01c60352bfaf3aff2e1e13522913b253deb5920b420f57bde48a8f29240a1fbb414ec9674b7b40f0"
+              "content": "60418515611294fbdaf2118bfb3be3db3fd268afa91f44b038cd0d73f77ead59d6ec64931652c11b3664b9253d905206228f2af57dee729661bbc3c3379036b1"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4515,18 +4803,26 @@
       "type": "library",
       "name": "win32-ia32",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/win32-ia32@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/win32-ia32@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/win32-ia32@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/win32-ia32@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/win32-ia32/-/win32-ia32-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/win32-ia32/-/win32-ia32-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "4965c517508bd9154d31a56cf81042970b5f652bc382d2fffc6fec9b001ce6854afd43eed86bbdb486918059981452ab9a0dd2c808d2ac495fd13889d6ff1f60"
+              "content": "8621a0182e8a6792d9cf9f0e2fffaa555a198ae6655189581cd0267333a6edbb36a04d57ae23c58b96471eb4bc002a55e448f24ab9e808a99c6d030dfa88e71e"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4547,18 +4843,26 @@
       "type": "library",
       "name": "win32-x64",
       "group": "@esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|@esbuild/win32-x64@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|@esbuild/win32-x64@0.25.8",
       "scope": "optional",
-      "purl": "pkg:npm/%40esbuild/win32-x64@0.21.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40esbuild/win32-x64@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "b5077fd5e7c9bb33c2eab085c04bcbb5c8bfc4d15c4d9927997b3df056037c6138c0ff4294557df27c8aaf324a54f3217439e3ccb85d532317e0fb1000f8f023"
+              "content": "727dd8afbf8e69a66ad5cfb6a5efbccb10bc135e3849178242337aff6ca7b9bcd88efcaa6634d77d026901c429b1d26adcccbb5c00c03626061e8142ebda4b43"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -14271,17 +14575,25 @@
     {
       "type": "library",
       "name": "esbuild",
-      "version": "0.21.5",
-      "bom-ref": "nachet-frontend@0.9.25|esbuild@0.21.5",
-      "purl": "pkg:npm/esbuild@0.21.5",
+      "version": "0.25.8",
+      "bom-ref": "nachet-frontend@0.9.25|esbuild@0.25.8",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/esbuild@0.25.8",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/esbuild/-/esbuild-0.21.5.tgz",
+          "url": "https://registry.npmjs.org/esbuild/-/esbuild-0.25.8.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "9a0dce3cc578857cb0c29a03c6edd075ae7108a422faf09366af12f49fc4a64841d87cca5eae12345644dfe34af77258c5cf153127a9fa5394482fd154a681ab"
+              "content": "bd50b45121c6b4c8bcf91e0acfcaede8984458bc6cbfd467bbf94661b3d1f2ee3b07e0c2064b2af496ab5b4cce3bb6ecdfb87238ad65dbfa2ab5b722bad2f9f9"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -18604,32 +18916,6 @@
       "components": [
         {
           "type": "library",
-          "name": "cross-spawn",
-          "version": "5.1.0",
-          "bom-ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|cross-spawn@5.1.0",
-          "purl": "pkg:npm/cross-spawn@5.1.0",
-          "externalReferences": [
-            {
-              "url": "https://registry.npmjs.org/cross-spawn/-/cross-spawn-5.1.0.tgz",
-              "type": "distribution",
-              "hashes": [
-                {
-                  "alg": "SHA-512",
-                  "content": "a53810279282d1dda1718f1ec8bd48ce504f6234e4c87ef65d164f9cbc8abacda605f36342cde496a6c95365482ea66bc80654b7d24e6f787f996332db7fdfe4"
-                }
-              ],
-              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-            }
-          ],
-          "properties": [
-            {
-              "name": "cdx:npm:package:path",
-              "value": "node_modules/is-git-repository/node_modules/cross-spawn"
-            }
-          ]
-        },
-        {
-          "type": "library",
           "name": "execa",
           "version": "0.6.3",
           "bom-ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|execa@0.6.3",
@@ -18708,32 +18994,6 @@
         },
         {
           "type": "library",
-          "name": "lru-cache",
-          "version": "4.1.5",
-          "bom-ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|lru-cache@4.1.5",
-          "purl": "pkg:npm/lru-cache@4.1.5",
-          "externalReferences": [
-            {
-              "url": "https://registry.npmjs.org/lru-cache/-/lru-cache-4.1.5.tgz",
-              "type": "distribution",
-              "hashes": [
-                {
-                  "alg": "SHA-512",
-                  "content": "b166656c43f63ac1cd917acc97919893f8ca93bd0c06783a514e1823fa860d86e07fa61b3f812f9aa2126d70a826244ab3ed5b4a9147560431bc9d7b176962e6"
-                }
-              ],
-              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-            }
-          ],
-          "properties": [
-            {
-              "name": "cdx:npm:package:path",
-              "value": "node_modules/is-git-repository/node_modules/lru-cache"
-            }
-          ]
-        },
-        {
-          "type": "library",
           "name": "npm-run-path",
           "version": "2.0.2",
           "bom-ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|npm-run-path@2.0.2",
@@ -18781,110 +19041,6 @@
             {
               "name": "cdx:npm:package:path",
               "value": "node_modules/is-git-repository/node_modules/path-key"
-            }
-          ]
-        },
-        {
-          "type": "library",
-          "name": "shebang-command",
-          "version": "1.2.0",
-          "bom-ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|shebang-command@1.2.0",
-          "purl": "pkg:npm/shebang-command@1.2.0",
-          "externalReferences": [
-            {
-              "url": "https://registry.npmjs.org/shebang-command/-/shebang-command-1.2.0.tgz",
-              "type": "distribution",
-              "hashes": [
-                {
-                  "alg": "SHA-512",
-                  "content": "115dcbd7e510586a2bdb53a69efa232b7ea6860f93c8828387788504a06886be71797221341731f2859d8244c4110f8110515874b46ea8c7dde4bf3837557956"
-                }
-              ],
-              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-            }
-          ],
-          "properties": [
-            {
-              "name": "cdx:npm:package:path",
-              "value": "node_modules/is-git-repository/node_modules/shebang-command"
-            }
-          ]
-        },
-        {
-          "type": "library",
-          "name": "shebang-regex",
-          "version": "1.0.0",
-          "bom-ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|shebang-regex@1.0.0",
-          "purl": "pkg:npm/shebang-regex@1.0.0",
-          "externalReferences": [
-            {
-              "url": "https://registry.npmjs.org/shebang-regex/-/shebang-regex-1.0.0.tgz",
-              "type": "distribution",
-              "hashes": [
-                {
-                  "alg": "SHA-512",
-                  "content": "c29a12140c72b3a6f66b6c076755e90d2803ecdf62563836f4f87db95fee68ff44c7f2979644d94de75dc433d2610a60bf328b18991ed94534033a060a3348bd"
-                }
-              ],
-              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-            }
-          ],
-          "properties": [
-            {
-              "name": "cdx:npm:package:path",
-              "value": "node_modules/is-git-repository/node_modules/shebang-regex"
-            }
-          ]
-        },
-        {
-          "type": "library",
-          "name": "which",
-          "version": "1.3.1",
-          "bom-ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|which@1.3.1",
-          "purl": "pkg:npm/which@1.3.1",
-          "externalReferences": [
-            {
-              "url": "https://registry.npmjs.org/which/-/which-1.3.1.tgz",
-              "type": "distribution",
-              "hashes": [
-                {
-                  "alg": "SHA-512",
-                  "content": "1f125d616ab53132106c9de7c3472ab2c1e84cd536ebb2a5ac3b866755989710d2b54b4a52139a266875d76fd36661f1c547ee26a3d748e9bbb43c9ab3439221"
-                }
-              ],
-              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-            }
-          ],
-          "properties": [
-            {
-              "name": "cdx:npm:package:path",
-              "value": "node_modules/is-git-repository/node_modules/which"
-            }
-          ]
-        },
-        {
-          "type": "library",
-          "name": "yallist",
-          "version": "2.1.2",
-          "bom-ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|yallist@2.1.2",
-          "purl": "pkg:npm/yallist@2.1.2",
-          "externalReferences": [
-            {
-              "url": "https://registry.npmjs.org/yallist/-/yallist-2.1.2.tgz",
-              "type": "distribution",
-              "hashes": [
-                {
-                  "alg": "SHA-512",
-                  "content": "9dc4f31d5ecdbec4199187b50d6edc6c32e6d18a731e6645e6bfe2c8fdd99d0b4c889fa98f38ac0a230d23e4a3fb1405e695e1487c52077b836ec053cd8fdcd8"
-                }
-              ],
-              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-            }
-          ],
-          "properties": [
-            {
-              "name": "cdx:npm:package:path",
-              "value": "node_modules/is-git-repository/node_modules/yallist"
             }
           ]
         }
@@ -23072,17 +23228,25 @@
     {
       "type": "library",
       "name": "on-headers",
-      "version": "1.0.2",
-      "bom-ref": "nachet-frontend@0.9.25|on-headers@1.0.2",
-      "purl": "pkg:npm/on-headers@1.0.2",
+      "version": "1.1.0",
+      "bom-ref": "nachet-frontend@0.9.25|on-headers@1.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/on-headers@1.1.0",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/on-headers/-/on-headers-1.0.2.tgz",
+          "url": "https://registry.npmjs.org/on-headers/-/on-headers-1.1.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "a59004f8524ba32213cad76a2b4539b3e148a6337424fdcecc58bfbbc471f84579fd6f894d61971bcc45cdebc4ec08c17c3a87bfff2f2fca90b088479ea464ac"
+              "content": "ef7ed9637c8d9d7cb7ec51e44313f3b78519d9458f5a209958bbc56787eee5cb9e7227a05f4cc63e7ae563a6f0460e0575039ef5853c324989c068683326e5f0"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -24494,32 +24658,6 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/proxy-from-env"
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "name": "pseudomap",
-      "version": "1.0.2",
-      "bom-ref": "nachet-frontend@0.9.25|pseudomap@1.0.2",
-      "purl": "pkg:npm/pseudomap@1.0.2",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/pseudomap/-/pseudomap-1.0.2.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "6ff6303616fc964d59cf6f9b5d7a52fcb2bd3a2b22659d5236c48bc4dd71d8e5d51215b60a4affee6584e6fac2d594e22650fd835f635accd3989b01fa812915"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/pseudomap"
         }
       ]
     },
@@ -31394,7 +31532,7 @@
   ],
   "dependencies": [
     {
-      "ref": "BomRef.19ork6dkuac.tuts8d1rlus",
+      "ref": "BomRef.4n4av76g7bk.gpoq3c2435s",
       "dependsOn": [
         "nachet-frontend@0.9.25|emoji-regex@8.0.0",
         "nachet-frontend@0.9.25|is-fullwidth-code-point@3.0.0",
@@ -31402,7 +31540,7 @@
       ]
     },
     {
-      "ref": "BomRef.ifh6krpuvnc.jlaoh81cp6s",
+      "ref": "BomRef.6ogfkom8r54.psr75vpa2u",
       "dependsOn": [
         "nachet-frontend@0.9.25|ansi-styles@4.3.0",
         "nachet-frontend@0.9.25|string-width@4.2.3",
@@ -31410,7 +31548,7 @@
       ]
     },
     {
-      "ref": "BomRef.vbeacfhdamc.bqgu15sd20g",
+      "ref": "BomRef.g73ksh7s4ck.gq1tm0jadoc",
       "dependsOn": [
         "nachet-frontend@0.9.25|ansi-regex@5.0.1"
       ]
@@ -32486,73 +32624,82 @@
       "ref": "nachet-frontend@0.9.25|@emotion/weak-memoize@0.3.1"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/aix-ppc64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/aix-ppc64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/android-arm@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/android-arm@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/android-arm64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/android-arm64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/android-x64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/android-x64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/darwin-arm64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/darwin-arm64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/darwin-x64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/darwin-x64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/freebsd-arm64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/freebsd-arm64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/freebsd-x64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/freebsd-x64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/linux-arm@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/linux-arm@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/linux-arm64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/linux-arm64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/linux-ia32@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/linux-ia32@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/linux-loong64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/linux-loong64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/linux-mips64el@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/linux-mips64el@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/linux-ppc64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/linux-ppc64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/linux-riscv64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/linux-riscv64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/linux-s390x@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/linux-s390x@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/linux-x64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/linux-x64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/netbsd-x64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/netbsd-arm64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/openbsd-x64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/netbsd-x64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/sunos-x64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/openbsd-arm64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/win32-arm64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/openbsd-x64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/win32-ia32@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/openharmony-arm64@0.25.8"
     },
     {
-      "ref": "nachet-frontend@0.9.25|@esbuild/win32-x64@0.21.5"
+      "ref": "nachet-frontend@0.9.25|@esbuild/sunos-x64@0.25.8"
+    },
+    {
+      "ref": "nachet-frontend@0.9.25|@esbuild/win32-arm64@0.25.8"
+    },
+    {
+      "ref": "nachet-frontend@0.9.25|@esbuild/win32-ia32@0.25.8"
+    },
+    {
+      "ref": "nachet-frontend@0.9.25|@esbuild/win32-x64@0.25.8"
     },
     {
       "ref": "nachet-frontend@0.9.25|@eslint-community/eslint-utils@4.4.0",
@@ -32654,9 +32801,9 @@
     {
       "ref": "nachet-frontend@0.9.25|@isaacs/cliui@8.0.2",
       "dependsOn": [
-        "BomRef.19ork6dkuac.tuts8d1rlus",
-        "BomRef.ifh6krpuvnc.jlaoh81cp6s",
-        "BomRef.vbeacfhdamc.bqgu15sd20g",
+        "BomRef.4n4av76g7bk.gpoq3c2435s",
+        "BomRef.6ogfkom8r54.psr75vpa2u",
+        "BomRef.g73ksh7s4ck.gq1tm0jadoc",
         "nachet-frontend@0.9.25|@isaacs/cliui@8.0.2|string-width@5.1.2",
         "nachet-frontend@0.9.25|@isaacs/cliui@8.0.2|strip-ansi@7.1.0",
         "nachet-frontend@0.9.25|@isaacs/cliui@8.0.2|wrap-ansi@8.1.0"
@@ -34113,7 +34260,7 @@
         "nachet-frontend@0.9.25|compression@1.7.4|bytes@3.0.0",
         "nachet-frontend@0.9.25|compression@1.7.4|debug@2.6.9",
         "nachet-frontend@0.9.25|compression@1.7.4|safe-buffer@5.1.2",
-        "nachet-frontend@0.9.25|on-headers@1.0.2",
+        "nachet-frontend@0.9.25|on-headers@1.1.0",
         "nachet-frontend@0.9.25|vary@1.1.2"
       ]
     },
@@ -34540,31 +34687,34 @@
       ]
     },
     {
-      "ref": "nachet-frontend@0.9.25|esbuild@0.21.5",
+      "ref": "nachet-frontend@0.9.25|esbuild@0.25.8",
       "dependsOn": [
-        "nachet-frontend@0.9.25|@esbuild/aix-ppc64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/android-arm@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/android-arm64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/android-x64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/darwin-arm64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/darwin-x64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/freebsd-arm64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/freebsd-x64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/linux-arm@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/linux-arm64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/linux-ia32@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/linux-loong64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/linux-mips64el@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/linux-ppc64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/linux-riscv64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/linux-s390x@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/linux-x64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/netbsd-x64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/openbsd-x64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/sunos-x64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/win32-arm64@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/win32-ia32@0.21.5",
-        "nachet-frontend@0.9.25|@esbuild/win32-x64@0.21.5"
+        "nachet-frontend@0.9.25|@esbuild/aix-ppc64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/android-arm@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/android-arm64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/android-x64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/darwin-arm64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/darwin-x64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/freebsd-arm64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/freebsd-x64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/linux-arm@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/linux-arm64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/linux-ia32@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/linux-loong64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/linux-mips64el@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/linux-ppc64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/linux-riscv64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/linux-s390x@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/linux-x64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/netbsd-arm64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/netbsd-x64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/openbsd-arm64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/openbsd-x64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/openharmony-arm64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/sunos-x64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/win32-arm64@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/win32-ia32@0.25.8",
+        "nachet-frontend@0.9.25|@esbuild/win32-x64@0.25.8"
       ]
     },
     {
@@ -35495,17 +35645,9 @@
       ]
     },
     {
-      "ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|cross-spawn@5.1.0",
-      "dependsOn": [
-        "nachet-frontend@0.9.25|is-git-repository@1.1.1|lru-cache@4.1.5",
-        "nachet-frontend@0.9.25|is-git-repository@1.1.1|shebang-command@1.2.0",
-        "nachet-frontend@0.9.25|is-git-repository@1.1.1|which@1.3.1"
-      ]
-    },
-    {
       "ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|execa@0.6.3",
       "dependsOn": [
-        "nachet-frontend@0.9.25|is-git-repository@1.1.1|cross-spawn@5.1.0",
+        "nachet-frontend@0.9.25|cross-spawn@7.0.6",
         "nachet-frontend@0.9.25|is-git-repository@1.1.1|get-stream@3.0.0",
         "nachet-frontend@0.9.25|is-git-repository@1.1.1|is-stream@1.1.0",
         "nachet-frontend@0.9.25|is-git-repository@1.1.1|npm-run-path@2.0.2",
@@ -35521,13 +35663,6 @@
       "ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|is-stream@1.1.0"
     },
     {
-      "ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|lru-cache@4.1.5",
-      "dependsOn": [
-        "nachet-frontend@0.9.25|is-git-repository@1.1.1|yallist@2.1.2",
-        "nachet-frontend@0.9.25|pseudomap@1.0.2"
-      ]
-    },
-    {
       "ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|npm-run-path@2.0.2",
       "dependsOn": [
         "nachet-frontend@0.9.25|is-git-repository@1.1.1|path-key@2.0.1"
@@ -35535,24 +35670,6 @@
     },
     {
       "ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|path-key@2.0.1"
-    },
-    {
-      "ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|shebang-command@1.2.0",
-      "dependsOn": [
-        "nachet-frontend@0.9.25|is-git-repository@1.1.1|shebang-regex@1.0.0"
-      ]
-    },
-    {
-      "ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|shebang-regex@1.0.0"
-    },
-    {
-      "ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|which@1.3.1",
-      "dependsOn": [
-        "nachet-frontend@0.9.25|isexe@2.0.0"
-      ]
-    },
-    {
-      "ref": "nachet-frontend@0.9.25|is-git-repository@1.1.1|yallist@2.1.2"
     },
     {
       "ref": "nachet-frontend@0.9.25|is-glob@4.0.3",
@@ -36360,7 +36477,7 @@
       ]
     },
     {
-      "ref": "nachet-frontend@0.9.25|on-headers@1.0.2"
+      "ref": "nachet-frontend@0.9.25|on-headers@1.1.0"
     },
     {
       "ref": "nachet-frontend@0.9.25|once@1.4.0",
@@ -36598,9 +36715,6 @@
     },
     {
       "ref": "nachet-frontend@0.9.25|proxy-from-env@1.1.0"
-    },
-    {
-      "ref": "nachet-frontend@0.9.25|pseudomap@1.0.2"
     },
     {
       "ref": "nachet-frontend@0.9.25|psl@1.9.0"
@@ -37747,7 +37861,7 @@
       "ref": "nachet-frontend@0.9.25|vite@5.4.19",
       "dependsOn": [
         "nachet-frontend@0.9.25|@types/node@20.19.9",
-        "nachet-frontend@0.9.25|esbuild@0.21.5",
+        "nachet-frontend@0.9.25|esbuild@0.25.8",
         "nachet-frontend@0.9.25|fsevents@2.3.3",
         "nachet-frontend@0.9.25|postcss@8.4.49",
         "nachet-frontend@0.9.25|rollup@4.24.0"

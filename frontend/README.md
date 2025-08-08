@@ -176,3 +176,5 @@ To learn more about Vite, check out the [Vite
 documentation](https://vitejs.dev/guide/).
 
 To learn React, check out the [React documentation](https://reactjs.org/).
+
+npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo "" >> sbom.json
