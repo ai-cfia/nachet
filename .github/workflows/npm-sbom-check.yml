@@ -48,7 +48,7 @@ jobs:
 
       - name: Generate new SBOM
         run: |
-          npx cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom-new.json && echo "" >> sbom-new.json
+          npx cyclonedx-npm --output-reproducible --package-lock-only -v --sv 1.6 -o sbom-new.json && echo "" >> sbom-new.json
 
       - name: Check if SBOM needs update
         id: sbom-check
