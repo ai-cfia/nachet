@@ -69,3 +69,7 @@ for both Nachet and Fertiscan packages. Here's how it works:
 
 For detailed information on the specific workflows and configurations, please
 refer to the respective README files in the `nachet` and `fertiscan` folders.
+
+uv tool install cyclonedx-bom
+
+uv run cyclonedx-py environment --output-reproducible -v --sv 1.6 --pyproject pyproject.toml -o sbom.json && echo "" >> sbom.json
