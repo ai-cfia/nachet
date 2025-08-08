@@ -98,65 +98,9 @@
   "components": [
     {
       "type": "library",
-      "name": "string-width",
-      "version": "4.2.3",
-      "bom-ref": "BomRef.2bubhi6mf3c.97lplruo73o",
-      "author": "Sindre Sorhus",
-      "description": "Get the visual width of a string - the number of columns required to display it",
-      "scope": "optional",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/string-width@4.2.3",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "c0ac90450a63274b08a7ad84ad265d1ac8cc256b1aa79a1136284786ee86ec954effd8c807a5327af2feb57b8eaab9e0f23fdcc4a4d6c96530bd24eb8a2673fe"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        },
-        {
-          "url": "https://github.com/sindresorhus/string-width/issues",
-          "type": "issue-tracker",
-          "comment": "as detected from PackageJson property \"bugs.url\""
-        },
-        {
-          "url": "git+https://github.com/sindresorhus/string-width.git",
-          "type": "vcs",
-          "comment": "as detected from PackageJson property \"repository.url\""
-        },
-        {
-          "url": "https://github.com/sindresorhus/string-width#readme",
-          "type": "website",
-          "comment": "as detected from PackageJson property \"homepage\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:development",
-          "value": "true"
-        },
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/string-width-cjs"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "name": "wrap-ansi",
       "version": "7.0.0",
-      "bom-ref": "BomRef.qotq8vdndg.8fr0u13onn8",
+      "bom-ref": "BomRef.4bmisoe9rfo.3bii6lqqd5s",
       "author": "Sindre Sorhus",
       "description": "Wordwrap a string with ANSI escape codes",
       "scope": "optional",
@@ -212,7 +156,7 @@
       "type": "library",
       "name": "strip-ansi",
       "version": "6.0.1",
-      "bom-ref": "BomRef.vs8v6i0dv7k.2vopaggn9t4",
+      "bom-ref": "BomRef.g6man7mgods.ieim29681n4",
       "author": "Sindre Sorhus",
       "description": "Strip ANSI escape codes from a string",
       "scope": "optional",
@@ -261,6 +205,62 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/strip-ansi-cjs"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "string-width",
+      "version": "4.2.3",
+      "bom-ref": "BomRef.pqki3v9okik.g1msp7shgic",
+      "author": "Sindre Sorhus",
+      "description": "Get the visual width of a string - the number of columns required to display it",
+      "scope": "optional",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/string-width@4.2.3",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "c0ac90450a63274b08a7ad84ad265d1ac8cc256b1aa79a1136284786ee86ec954effd8c807a5327af2feb57b8eaab9e0f23fdcc4a4d6c96530bd24eb8a2673fe"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        },
+        {
+          "url": "https://github.com/sindresorhus/string-width/issues",
+          "type": "issue-tracker",
+          "comment": "as detected from PackageJson property \"bugs.url\""
+        },
+        {
+          "url": "git+https://github.com/sindresorhus/string-width.git",
+          "type": "vcs",
+          "comment": "as detected from PackageJson property \"repository.url\""
+        },
+        {
+          "url": "https://github.com/sindresorhus/string-width#readme",
+          "type": "website",
+          "comment": "as detected from PackageJson property \"homepage\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/string-width-cjs"
         }
       ]
     },
@@ -56991,15 +56991,7 @@
   ],
   "dependencies": [
     {
-      "ref": "BomRef.2bubhi6mf3c.97lplruo73o",
-      "dependsOn": [
-        "nachet-frontend@0.9.24|emoji-regex@8.0.0",
-        "nachet-frontend@0.9.24|is-fullwidth-code-point@3.0.0",
-        "nachet-frontend@0.9.24|strip-ansi@6.0.1"
-      ]
-    },
-    {
-      "ref": "BomRef.qotq8vdndg.8fr0u13onn8",
+      "ref": "BomRef.4bmisoe9rfo.3bii6lqqd5s",
       "dependsOn": [
         "nachet-frontend@0.9.24|ansi-styles@4.3.0",
         "nachet-frontend@0.9.24|string-width@4.2.3",
@@ -57007,9 +56999,17 @@
       ]
     },
     {
-      "ref": "BomRef.vs8v6i0dv7k.2vopaggn9t4",
+      "ref": "BomRef.g6man7mgods.ieim29681n4",
       "dependsOn": [
         "nachet-frontend@0.9.24|ansi-regex@5.0.1"
+      ]
+    },
+    {
+      "ref": "BomRef.pqki3v9okik.g1msp7shgic",
+      "dependsOn": [
+        "nachet-frontend@0.9.24|emoji-regex@8.0.0",
+        "nachet-frontend@0.9.24|is-fullwidth-code-point@3.0.0",
+        "nachet-frontend@0.9.24|strip-ansi@6.0.1"
       ]
     },
     {
@@ -58251,9 +58251,9 @@
     {
       "ref": "nachet-frontend@0.9.24|@isaacs/cliui@8.0.2",
       "dependsOn": [
-        "BomRef.2bubhi6mf3c.97lplruo73o",
-        "BomRef.qotq8vdndg.8fr0u13onn8",
-        "BomRef.vs8v6i0dv7k.2vopaggn9t4",
+        "BomRef.4bmisoe9rfo.3bii6lqqd5s",
+        "BomRef.g6man7mgods.ieim29681n4",
+        "BomRef.pqki3v9okik.g1msp7shgic",
         "nachet-frontend@0.9.24|@isaacs/cliui@8.0.2|string-width@5.1.2",
         "nachet-frontend@0.9.24|@isaacs/cliui@8.0.2|strip-ansi@7.1.0",
         "nachet-frontend@0.9.24|@isaacs/cliui@8.0.2|wrap-ansi@8.1.0"

@@ -48,7 +48,7 @@ jobs:
 
       - name: Generate new SBOM
         run: |
-          npx @cyclonedx/cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom-new.json && echo "" >> sbom-new.json
+          npx cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom-new.json && echo "" >> sbom-new.json
 
       - name: Check if SBOM needs update
         id: sbom-check
@@ -62,7 +62,7 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Run the following command to create it:" >> $GITHUB_STEP_SUMMARY
             echo '```bash' >> $GITHUB_STEP_SUMMARY
-            echo 'npx @cyclonedx/cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom.json && echo "" >> sbom.json' >> $GITHUB_STEP_SUMMARY
+            echo 'npx cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom.json && echo "" >> sbom.json' >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           elif ! cmp -s sbom.json sbom-new.json; then
             echo "SBOM file is outdated and needs to be regenerated"
@@ -75,7 +75,7 @@ jobs:
             echo "Run the following command to update it:" \
               >> $GITHUB_STEP_SUMMARY
             echo '```bash' >> $GITHUB_STEP_SUMMARY
-            echo 'npx @cyclonedx/cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom.json && echo "" >> sbom.json' >> $GITHUB_STEP_SUMMARY
+            echo 'npx cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom.json && echo "" >> sbom.json' >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           else
             echo "SBOM file is up to date"
@@ -95,5 +95,5 @@ jobs:
         if: steps.sbom-check.outputs.needs_update == 'true'
         run: |
           echo "SBOM file needs to be regenerated. Please run:"
-          echo "cd frontend && npx @cyclonedx/cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom.json && echo \"\" >> sbom.json"
+          echo "cd frontend && npx cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom.json && echo \"\" >> sbom.json"
           exit 1
