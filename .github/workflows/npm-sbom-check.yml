@@ -95,5 +95,5 @@ jobs:
         if: steps.sbom-check.outputs.needs_update == 'true'
         run: |
           echo "SBOM file needs to be regenerated. Please run:"
-          echo "cd frontend && npx @cyclonedx/cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom.json && echo "" >> sbom.json"
+          echo "cd frontend && npx @cyclonedx/cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom.json && echo \"\" >> sbom.json"
           exit 1
