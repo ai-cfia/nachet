@@ -44,7 +44,7 @@ jobs:
         run: npm install -g npm@${{ inputs.npm-version }}
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Generate new SBOM
         run: |
