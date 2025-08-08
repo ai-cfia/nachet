@@ -98,19 +98,19 @@
   "components": [
     {
       "type": "library",
-      "name": "strip-ansi",
-      "version": "6.0.1",
-      "bom-ref": "BomRef.1qbe62eh6nk.pvm4j7cnt5k",
+      "name": "string-width",
+      "version": "4.2.3",
+      "bom-ref": "BomRef.aaiii3gdrig.i4d2fuarlks",
       "scope": "optional",
-      "purl": "pkg:npm/strip-ansi@6.0.1",
+      "purl": "pkg:npm/string-width@4.2.3",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/strip-ansi/-/strip-ansi-6.0.1.tgz",
+          "url": "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "637f153d21dcaa416b0a916743dbee4979aabaebf9a1738aa46793e9a1abaf7a3719cf409556ba2417d448e0a76f1186645fbfd28a08ecaacfb944b3b54754e4"
+              "content": "c0ac90450a63274b08a7ad84ad265d1ac8cc256b1aa79a1136284786ee86ec954effd8c807a5327af2feb57b8eaab9e0f23fdcc4a4d6c96530bd24eb8a2673fe"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -123,7 +123,7 @@
         },
         {
           "name": "cdx:npm:package:path",
-          "value": "node_modules/strip-ansi-cjs"
+          "value": "node_modules/string-width-cjs"
         }
       ]
     },
@@ -131,7 +131,7 @@
       "type": "library",
       "name": "wrap-ansi",
       "version": "7.0.0",
-      "bom-ref": "BomRef.5o9qnnmioe4.bqa1uvmn3e8",
+      "bom-ref": "BomRef.me8ne5pft3c.frng8uacn9k",
       "scope": "optional",
       "purl": "pkg:npm/wrap-ansi@7.0.0",
       "externalReferences": [
@@ -160,19 +160,19 @@
     },
     {
       "type": "library",
-      "name": "string-width",
-      "version": "4.2.3",
-      "bom-ref": "BomRef.gn7m4s5kdjg.1uoltc0ku2c",
+      "name": "strip-ansi",
+      "version": "6.0.1",
+      "bom-ref": "BomRef.p7f90563voo.u7c0ukhp57c",
       "scope": "optional",
-      "purl": "pkg:npm/string-width@4.2.3",
+      "purl": "pkg:npm/strip-ansi@6.0.1",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz",
+          "url": "https://registry.npmjs.org/strip-ansi/-/strip-ansi-6.0.1.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "c0ac90450a63274b08a7ad84ad265d1ac8cc256b1aa79a1136284786ee86ec954effd8c807a5327af2feb57b8eaab9e0f23fdcc4a4d6c96530bd24eb8a2673fe"
+              "content": "637f153d21dcaa416b0a916743dbee4979aabaebf9a1738aa46793e9a1abaf7a3719cf409556ba2417d448e0a76f1186645fbfd28a08ecaacfb944b3b54754e4"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -185,7 +185,7 @@
         },
         {
           "name": "cdx:npm:package:path",
-          "value": "node_modules/string-width-cjs"
+          "value": "node_modules/strip-ansi-cjs"
         }
       ]
     },
@@ -31139,13 +31139,15 @@
   ],
   "dependencies": [
     {
-      "ref": "BomRef.1qbe62eh6nk.pvm4j7cnt5k",
+      "ref": "BomRef.aaiii3gdrig.i4d2fuarlks",
       "dependsOn": [
-        "nachet-frontend@0.9.24|ansi-regex@5.0.1"
+        "nachet-frontend@0.9.24|emoji-regex@8.0.0",
+        "nachet-frontend@0.9.24|is-fullwidth-code-point@3.0.0",
+        "nachet-frontend@0.9.24|strip-ansi@6.0.1"
       ]
     },
     {
-      "ref": "BomRef.5o9qnnmioe4.bqa1uvmn3e8",
+      "ref": "BomRef.me8ne5pft3c.frng8uacn9k",
       "dependsOn": [
         "nachet-frontend@0.9.24|ansi-styles@4.3.0",
         "nachet-frontend@0.9.24|string-width@4.2.3",
@@ -31153,11 +31155,9 @@
       ]
     },
     {
-      "ref": "BomRef.gn7m4s5kdjg.1uoltc0ku2c",
+      "ref": "BomRef.p7f90563voo.u7c0ukhp57c",
       "dependsOn": [
-        "nachet-frontend@0.9.24|emoji-regex@8.0.0",
-        "nachet-frontend@0.9.24|is-fullwidth-code-point@3.0.0",
-        "nachet-frontend@0.9.24|strip-ansi@6.0.1"
+        "nachet-frontend@0.9.24|ansi-regex@5.0.1"
       ]
     },
     {
@@ -32399,9 +32399,9 @@
     {
       "ref": "nachet-frontend@0.9.24|@isaacs/cliui@8.0.2",
       "dependsOn": [
-        "BomRef.1qbe62eh6nk.pvm4j7cnt5k",
-        "BomRef.5o9qnnmioe4.bqa1uvmn3e8",
-        "BomRef.gn7m4s5kdjg.1uoltc0ku2c",
+        "BomRef.aaiii3gdrig.i4d2fuarlks",
+        "BomRef.me8ne5pft3c.frng8uacn9k",
+        "BomRef.p7f90563voo.u7c0ukhp57c",
         "nachet-frontend@0.9.24|@isaacs/cliui@8.0.2|string-width@5.1.2",
         "nachet-frontend@0.9.24|@isaacs/cliui@8.0.2|strip-ansi@7.1.0",
         "nachet-frontend@0.9.24|@isaacs/cliui@8.0.2|wrap-ansi@8.1.0"
