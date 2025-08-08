@@ -40,7 +40,7 @@ jobs:
       - name: Generate new SBOM
         run: |
           uv run cyclonedx-py environment --output-reproducible -v --sv 1.6 \
-            --pyproject pyproject.toml -o sbom-new.json && echo "" >> sbom.json
+            --pyproject pyproject.toml -o sbom-new.json && echo "" >> sbom-new.json
 
       - name: Check if SBOM needs update
         id: sbom-check
