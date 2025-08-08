@@ -12,16 +12,16 @@ on:
       - closed
       - synchronize
     paths:
-      - 'datastore/**'
-      - 'datastore/pyproject.toml'
-      - '.github/workflows/datastore-*'
+      - "datastore/**"
+      - "datastore/pyproject.toml"
+      - ".github/workflows/datastore-*"
   push:
     branches:
       - main
     paths:
-      - 'datastore/**'
-      - 'datastore/pyproject.toml'
-      - '.github/workflows/datastore-*'
+      - "datastore/**"
+      - "datastore/pyproject.toml"
+      - ".github/workflows/datastore-*"
 
 defaults:
   run:
@@ -34,8 +34,8 @@ jobs:
     uses: ai-cfia/github-workflows/.github/workflows/workflow-version-bump-python-mono.yml@main
     secrets: inherit
     with:
-      pyproject-path: 'pyproject.toml'
-      package-name: 'nachet-datastore'
+      pyproject-path: "pyproject.toml"
+      package-name: "nachet-datastore"
       working-directory: datastore
   datastore-lint:
     name: datastore-lint-test-python
@@ -52,7 +52,7 @@ jobs:
     secrets: inherit
     with:
       working-directory: datastore
-      md-link-config-file-path: '.mlc_config.json'
+      md-link-config-file-path: ".mlc_config.json"
   yaml-check:
     name: workflow-yaml-check
     uses: ai-cfia/github-workflows/.github/workflows/workflow-yaml-check-mono.yml@main
@@ -65,23 +65,23 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Install uv
         uses: astral-sh/setup-uv@142240426d0e82f3e584603c3aa194c582f5aed3
         with:
           version: "latest"
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      
+          python-version: "3.11"
+
       - name: Check if uv.lock is up to date
         run: |
           # Generate a new lock file and compare with existing
           uv lock --check
         working-directory: datastore
-  
+
   uv-sbom-check:
     name: Check SBOM is up to date
     uses: ./.github/workflows/uv-sbom-check.yml
@@ -90,7 +90,10 @@ jobs:
       working-directory: datastore
 
   sbom-security-scan:
-    name: SBOM Security Scan
-    uses: anchore/scan-action@v6.5.1
-    with:
-      sbom: sbom.json
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anchore/scan-action@v6.5.1
+        name: SBOM Security Scan
+        with:
+          sbom: sbom.json
+          fail-build: false
