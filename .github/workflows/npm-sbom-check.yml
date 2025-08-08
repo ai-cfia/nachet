@@ -1,0 +1,99 @@
+---
+name: npm node sbom check
+
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: false
+        type: string
+        default: "."
+      node-version:
+        required: false
+        type: string
+        default: "18.16.0"
+      npm-version:
+        required: false
+        type: string
+        default: "9.8.1"
+
+jobs:
+  check-sbom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: "npm"
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+      - name: Install specific npm version
+        run: npm install -g npm@${{ inputs.npm-version }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate new SBOM
+        run: |
+          npx @cyclonedx/cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom-new.json && echo "" >> sbom-new.json
+
+      - name: Check if SBOM needs update
+        id: sbom-check
+        run: |
+          if [ ! -f sbom.json ]; then
+            echo "SBOM file does not exist and needs to be generated"
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+            echo "## SBOM Creation Required" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The SBOM file (sbom.json) does not exist and needs to be generated." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Run the following command to create it:" >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo 'npx @cyclonedx/cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom.json && echo "" >> sbom.json' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          elif ! cmp -s sbom.json sbom-new.json; then
+            echo "SBOM file is outdated and needs to be regenerated"
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+            echo "## SBOM Update Required" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The SBOM file (sbom.json) is outdated and " \
+              "needs to be regenerated." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Run the following command to update it:" \
+              >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo 'npx @cyclonedx/cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom.json && echo "" >> sbom.json' >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "SBOM file is up to date"
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "## SBOM Status" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ SBOM file is up to date" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Show diff if needed
+        if: steps.sbom-check.outputs.needs_update == 'true'
+        run: |
+          echo "Differences between current and expected SBOM:"
+          diff sbom.json sbom-new.json || true
+
+      - name: Fail if SBOM needs update
+        if: steps.sbom-check.outputs.needs_update == 'true'
+        run: |
+          echo "SBOM file needs to be regenerated. Please run:"
+          echo "cd frontend && npx @cyclonedx/cyclonedx-npm --output-reproducible -v --sv 1.6 -o sbom.json && echo "" >> sbom.json"
+          exit 1
