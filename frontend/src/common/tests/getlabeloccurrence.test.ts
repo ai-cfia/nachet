@@ -1,4 +1,4 @@
-import { describe, it } from "vitest";
+import { describe, it, beforeEach, expect } from "vitest";
 import { getLabelOccurrence } from "../cacheutils";
 import { Images } from "../types";
 

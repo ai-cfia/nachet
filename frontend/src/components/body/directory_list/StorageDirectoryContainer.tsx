@@ -10,7 +10,7 @@ export interface params {
   handleDirChange: (dir: string) => void;
 }
 
-const StorageDirectoryContainer: React.FC<params> = (props): JSX.Element => {
+const StorageDirectoryContainer: React.FC<params> = (props) => {
   const handleDelete = (folder: string): void => {
     props.handleDirChange(folder);
     props.setDelDirectoryOpen(true);

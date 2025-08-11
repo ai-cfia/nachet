@@ -34,9 +34,7 @@ interface SimpleFeedbackFormProps {
   onNegativeFeedback: () => void;
 }
 
-export const SimpleFeedbackForm = (
-  props: SimpleFeedbackFormProps,
-): JSX.Element => {
+export const SimpleFeedbackForm = (props: SimpleFeedbackFormProps) => {
   const { anchorEl, onClose, submitPositiveFeedback, onNegativeFeedback } =
     props;
 
@@ -112,9 +110,7 @@ interface NegativeFeedbackFormProps {
   classListLoading: boolean;
 }
 
-export const NegativeFeedbackForm = (
-  props: NegativeFeedbackFormProps,
-): JSX.Element => {
+export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
   /* TODO: update when backend is defined Section stub convert to prop or use state when backend defined */
 
   const reasons = useMemo(() => {

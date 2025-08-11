@@ -20,7 +20,7 @@ interface params {
   onSignIn: () => void;
 }
 
-const SignUp: React.FC<params> = (props): JSX.Element => {
+const SignUp: React.FC<params> = (props) => {
   const handleClose = (): void => {
     props.setSignUpOpen(false);
   };
@@ -111,12 +111,12 @@ const SignUp: React.FC<params> = (props): JSX.Element => {
               Sign In
             </Button>
             <Grid container>
-              <Grid item xs>
+              <Grid size={{ xs: 2 }}>
                 <Link href="#" variant="body2">
                   Forgot password?
                 </Link>
               </Grid>
-              <Grid item>
+              <Grid>
                 <Link href="#" variant="body2">
                   {"Don't have an account? Sign Up"}
                 </Link>

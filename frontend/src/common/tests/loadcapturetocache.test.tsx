@@ -1,4 +1,4 @@
-import { describe, it, vi } from "vitest";
+import { describe, it, vi, beforeEach, expect } from "vitest";
 import { getImageDims, loadCaptureToCache } from "../cacheutils";
 import { Images } from "../types";
 

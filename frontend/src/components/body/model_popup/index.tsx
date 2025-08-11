@@ -15,7 +15,7 @@ interface params {
   realData: any[]; // Type should be adjusted to match the actual data structure
 }
 
-const SwitchModel: React.FC<params> = (props): JSX.Element => {
+const SwitchModel: React.FC<params> = (props) => {
   const handleClose = (): void => {
     props.setSwitchModelOpen(false);
   };

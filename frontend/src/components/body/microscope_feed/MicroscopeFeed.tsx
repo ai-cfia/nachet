@@ -36,11 +36,11 @@ import { getUnscaledCoordinates } from "../../../common/imageutils";
 import ApiAction from "../api_action";
 import { colours } from "../../../styles/colours";
 interface MicroscopeFeedProps {
-  webcamRef: React.RefObject<Webcam>;
+  webcamRef: React.RefObject<Webcam | null>;
   capture: () => void;
   activeDeviceId: string | undefined;
   setSwitchDeviceOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  canvasRef: React.RefObject<HTMLCanvasElement>;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
   setSaveOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setBatchUploadOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setUploadOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -66,7 +66,7 @@ const ButtonMicroscopeFeed = (props: {
   icon: React.ReactNode;
   disabled: boolean;
   onClick: () => void;
-}): JSX.Element => {
+}) => {
   const { label, icon, onClick, disabled } = props;
   const buttonStyle = {
     marginRight: "0.2vh",
@@ -106,7 +106,7 @@ const ButtonMicroscopeFeed = (props: {
   );
 };
 
-const MicroscopeFeed = (props: MicroscopeFeedProps): JSX.Element => {
+const MicroscopeFeed = (props: MicroscopeFeedProps) => {
   const {
     webcamRef,
     capture,

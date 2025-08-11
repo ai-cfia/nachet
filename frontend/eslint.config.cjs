@@ -16,12 +16,10 @@ const reactHooks = require("eslint-plugin-react-hooks");
 const prettier = require("eslint-plugin-prettier");
 const reactRefresh = require("eslint-plugin-react-refresh");
 const js = require("@eslint/js");
-const path = require("path");
 
 const {
     FlatCompat,
 } = require("@eslint/eslintrc");
-const { default: path } = require("path");
 
 const compat = new FlatCompat({
     baseDirectory: __dirname,
@@ -30,6 +28,7 @@ const compat = new FlatCompat({
 });
 
 module.exports = defineConfig([{
+    files: ["**/*.{ts,tsx}"],
     languageOptions: {
         globals: {
             ...globals.browser,
@@ -44,8 +43,7 @@ module.exports = defineConfig([{
                 jsx: true,
             },
 
-            // project: "./tsconfig.json",
-            project: path.join(__dirname, "tsconfig.json"),
+            project: "./tsconfig.json",
         },
     },
 
@@ -86,6 +84,16 @@ module.exports = defineConfig([{
             version: "detect",
         },
     },
+}, {
+    files: ["**/*.{js,cjs}"],
+    languageOptions: {
+        globals: {
+            ...globals.node,
+        },
+        ecmaVersion: 12,
+        sourceType: "commonjs",
+    },
+    ...js.configs.recommended,
 }, {
     files: ["__mocks__/**/*.js"],
 
