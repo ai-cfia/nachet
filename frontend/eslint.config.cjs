@@ -16,6 +16,7 @@ const reactHooks = require("eslint-plugin-react-hooks");
 const prettier = require("eslint-plugin-prettier");
 const reactRefresh = require("eslint-plugin-react-refresh");
 const js = require("@eslint/js");
+const path = require("path");
 
 const {
     FlatCompat,
