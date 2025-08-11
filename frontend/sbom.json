@@ -98,39 +98,9 @@
   "components": [
     {
       "type": "library",
-      "name": "wrap-ansi",
-      "version": "7.0.0",
-      "bom-ref": "BomRef.4kfmke9c7n8.iaad1lerpr8",
-      "purl": "pkg:npm/wrap-ansi@7.0.0",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/wrap-ansi/-/wrap-ansi-7.0.0.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "6151888f691a98b493c70e8db198e80717d2c2c9f4c9c75eb26738a7e436d5ce733ee675a65f8d7f155dc4fb5d1ef98d54e43a5d2606e0052dcadfc58bb0f5e9"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:development",
-          "value": "true"
-        },
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/wrap-ansi-cjs"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "name": "string-width",
       "version": "4.2.3",
-      "bom-ref": "BomRef.pmq9mkdcmu.s5g92kpn20o",
+      "bom-ref": "BomRef.08d3rnhte4s.pd9n0rkt14c",
       "purl": "pkg:npm/string-width@4.2.3",
       "externalReferences": [
         {
@@ -160,7 +130,7 @@
       "type": "library",
       "name": "strip-ansi",
       "version": "6.0.1",
-      "bom-ref": "BomRef.sjnkj43mle.rlj23cejusc",
+      "bom-ref": "BomRef.h40r504h6t4.larv7kea41k",
       "purl": "pkg:npm/strip-ansi@6.0.1",
       "externalReferences": [
         {
@@ -183,6 +153,36 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/strip-ansi-cjs"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "wrap-ansi",
+      "version": "7.0.0",
+      "bom-ref": "BomRef.jh8oqvufnes.lmceednt0mc",
+      "purl": "pkg:npm/wrap-ansi@7.0.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/wrap-ansi/-/wrap-ansi-7.0.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "6151888f691a98b493c70e8db198e80717d2c2c9f4c9c75eb26738a7e436d5ce733ee675a65f8d7f155dc4fb5d1ef98d54e43a5d2606e0052dcadfc58bb0f5e9"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/wrap-ansi-cjs"
         }
       ]
     },
@@ -5558,6 +5558,45 @@
     },
     {
       "type": "library",
+      "name": "compat",
+      "group": "@eslint",
+      "version": "1.3.2",
+      "bom-ref": "nachet-frontend@0.9.27|@eslint/compat@1.3.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40eslint/compat@1.3.2",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@eslint/compat/-/compat-1.3.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "8d1370cd36ddea9d91c38b19d42816452f1832da86d7963265fef3bdbea0636ac1daeea7fb667e10b5b41ad2f47d0832974a6be18fc1cc17e783f05db1eade44"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@eslint/compat"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "config-array",
       "group": "@eslint",
       "version": "0.21.0",
@@ -5825,6 +5864,44 @@
             {
               "name": "cdx:npm:package:path",
               "value": "node_modules/@eslint/eslintrc/node_modules/brace-expansion"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "name": "globals",
+          "version": "14.0.0",
+          "bom-ref": "nachet-frontend@0.9.27|@eslint/eslintrc@3.3.1|globals@14.0.0",
+          "licenses": [
+            {
+              "license": {
+                "id": "MIT",
+                "acknowledgement": "declared"
+              }
+            }
+          ],
+          "purl": "pkg:npm/globals@14.0.0",
+          "externalReferences": [
+            {
+              "url": "https://registry.npmjs.org/globals/-/globals-14.0.0.tgz",
+              "type": "distribution",
+              "hashes": [
+                {
+                  "alg": "SHA-512",
+                  "content": "a1a846bee3064253f0fe2bc86018d54ab5807d62c17a4bb9b693c4d9f38f2e2f961df7c859bba1dad0a38724214c13cc7f913d8c3107e053a64d8818c1b2b0b5"
+                }
+              ],
+              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:development",
+              "value": "true"
+            },
+            {
+              "name": "cdx:npm:package:path",
+              "value": "node_modules/@eslint/eslintrc/node_modules/globals"
             }
           ]
         },
@@ -18998,8 +19075,8 @@
     {
       "type": "library",
       "name": "globals",
-      "version": "14.0.0",
-      "bom-ref": "nachet-frontend@0.9.27|globals@14.0.0",
+      "version": "16.3.0",
+      "bom-ref": "nachet-frontend@0.9.27|globals@16.3.0",
       "licenses": [
         {
           "license": {
@@ -19008,15 +19085,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/globals@14.0.0",
+      "purl": "pkg:npm/globals@16.3.0",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/globals/-/globals-14.0.0.tgz",
+          "url": "https://registry.npmjs.org/globals/-/globals-16.3.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "a1a846bee3064253f0fe2bc86018d54ab5807d62c17a4bb9b693c4d9f38f2e2f961df7c859bba1dad0a38724214c13cc7f913d8c3107e053a64d8818c1b2b0b5"
+              "content": "6ea5849c9d4db779deab1daae5215f192f2bfda86e9886a48371dcc2d365ad59705c878dba65a7fdcecf9ffc0acc685fe92696e87eae5972ea0b7d124c231c85"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -33358,15 +33435,7 @@
   ],
   "dependencies": [
     {
-      "ref": "BomRef.4kfmke9c7n8.iaad1lerpr8",
-      "dependsOn": [
-        "nachet-frontend@0.9.27|ansi-styles@4.3.0",
-        "nachet-frontend@0.9.27|string-width@4.2.3",
-        "nachet-frontend@0.9.27|strip-ansi@6.0.1"
-      ]
-    },
-    {
-      "ref": "BomRef.pmq9mkdcmu.s5g92kpn20o",
+      "ref": "BomRef.08d3rnhte4s.pd9n0rkt14c",
       "dependsOn": [
         "nachet-frontend@0.9.27|emoji-regex@8.0.0",
         "nachet-frontend@0.9.27|is-fullwidth-code-point@3.0.0",
@@ -33374,9 +33443,17 @@
       ]
     },
     {
-      "ref": "BomRef.sjnkj43mle.rlj23cejusc",
+      "ref": "BomRef.h40r504h6t4.larv7kea41k",
       "dependsOn": [
         "nachet-frontend@0.9.27|ansi-regex@5.0.1"
+      ]
+    },
+    {
+      "ref": "BomRef.jh8oqvufnes.lmceednt0mc",
+      "dependsOn": [
+        "nachet-frontend@0.9.27|ansi-styles@4.3.0",
+        "nachet-frontend@0.9.27|string-width@4.2.3",
+        "nachet-frontend@0.9.27|strip-ansi@6.0.1"
       ]
     },
     {
@@ -33389,6 +33466,9 @@
         "nachet-frontend@0.9.27|@cyclonedx/cyclonedx-npm@4.0.0",
         "nachet-frontend@0.9.27|@emotion/react@11.14.0",
         "nachet-frontend@0.9.27|@emotion/styled@11.14.1",
+        "nachet-frontend@0.9.27|@eslint/compat@1.3.2",
+        "nachet-frontend@0.9.27|@eslint/eslintrc@3.3.1",
+        "nachet-frontend@0.9.27|@eslint/js@9.33.0",
         "nachet-frontend@0.9.27|@mui/icons-material@7.3.1",
         "nachet-frontend@0.9.27|@mui/material@7.3.1",
         "nachet-frontend@0.9.27|@saithodev/ts-appversion@2.2.0",
@@ -33418,6 +33498,7 @@
         "nachet-frontend@0.9.27|eslint@9.33.0",
         "nachet-frontend@0.9.27|express@5.1.0",
         "nachet-frontend@0.9.27|file-saver@2.0.5",
+        "nachet-frontend@0.9.27|globals@16.3.0",
         "nachet-frontend@0.9.27|identity-obj-proxy@3.0.0",
         "nachet-frontend@0.9.27|jest-environment-jsdom@30.0.5",
         "nachet-frontend@0.9.27|js-base64@3.7.7",
@@ -34600,6 +34681,12 @@
       "ref": "nachet-frontend@0.9.27|@eslint-community/regexpp@4.12.1"
     },
     {
+      "ref": "nachet-frontend@0.9.27|@eslint/compat@1.3.2",
+      "dependsOn": [
+        "nachet-frontend@0.9.27|eslint@9.33.0"
+      ]
+    },
+    {
       "ref": "nachet-frontend@0.9.27|@eslint/config-array@0.21.0",
       "dependsOn": [
         "nachet-frontend@0.9.27|@eslint/config-array@0.21.0|minimatch@3.1.2",
@@ -34632,11 +34719,11 @@
     {
       "ref": "nachet-frontend@0.9.27|@eslint/eslintrc@3.3.1",
       "dependsOn": [
+        "nachet-frontend@0.9.27|@eslint/eslintrc@3.3.1|globals@14.0.0",
         "nachet-frontend@0.9.27|@eslint/eslintrc@3.3.1|minimatch@3.1.2",
         "nachet-frontend@0.9.27|ajv@6.12.6",
         "nachet-frontend@0.9.27|debug@4.4.1",
         "nachet-frontend@0.9.27|espree@10.4.0",
-        "nachet-frontend@0.9.27|globals@14.0.0",
         "nachet-frontend@0.9.27|ignore@5.3.2",
         "nachet-frontend@0.9.27|import-fresh@3.3.0",
         "nachet-frontend@0.9.27|js-yaml@4.1.0",
@@ -34649,6 +34736,9 @@
         "nachet-frontend@0.9.27|balanced-match@1.0.2",
         "nachet-frontend@0.9.27|concat-map@0.0.1"
       ]
+    },
+    {
+      "ref": "nachet-frontend@0.9.27|@eslint/eslintrc@3.3.1|globals@14.0.0"
     },
     {
       "ref": "nachet-frontend@0.9.27|@eslint/eslintrc@3.3.1|minimatch@3.1.2",
@@ -34691,9 +34781,9 @@
     {
       "ref": "nachet-frontend@0.9.27|@isaacs/cliui@8.0.2",
       "dependsOn": [
-        "BomRef.4kfmke9c7n8.iaad1lerpr8",
-        "BomRef.pmq9mkdcmu.s5g92kpn20o",
-        "BomRef.sjnkj43mle.rlj23cejusc",
+        "BomRef.08d3rnhte4s.pd9n0rkt14c",
+        "BomRef.h40r504h6t4.larv7kea41k",
+        "BomRef.jh8oqvufnes.lmceednt0mc",
         "nachet-frontend@0.9.27|@isaacs/cliui@8.0.2|string-width@5.1.2",
         "nachet-frontend@0.9.27|@isaacs/cliui@8.0.2|strip-ansi@7.1.0",
         "nachet-frontend@0.9.27|@isaacs/cliui@8.0.2|wrap-ansi@8.1.0"
@@ -37105,7 +37195,7 @@
       ]
     },
     {
-      "ref": "nachet-frontend@0.9.27|globals@14.0.0"
+      "ref": "nachet-frontend@0.9.27|globals@16.3.0"
     },
     {
       "ref": "nachet-frontend@0.9.27|globalthis@1.0.4",
