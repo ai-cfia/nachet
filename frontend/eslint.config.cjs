@@ -20,6 +20,7 @@ const js = require("@eslint/js");
 const {
     FlatCompat,
 } = require("@eslint/eslintrc");
+const { default: path } = require("path");
 
 const compat = new FlatCompat({
     baseDirectory: __dirname,
@@ -42,7 +43,8 @@ module.exports = defineConfig([{
                 jsx: true,
             },
 
-            project: "./tsconfig.json",
+            // project: "./tsconfig.json",
+            project: path.join(__dirname, "tsconfig.json"),
         },
     },
 
