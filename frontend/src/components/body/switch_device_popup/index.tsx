@@ -12,7 +12,7 @@ interface params {
   activeDeviceId: string | undefined;
 }
 
-const SwitchDevice: React.FC<params> = (props): JSX.Element => {
+const SwitchDevice: React.FC<params> = (props) => {
   const handleClose = (): void => {
     props.setSwitchDeviceOpen(false);
   };

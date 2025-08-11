@@ -56,7 +56,7 @@ const ClassificationResults: React.FC<params> = (props) => {
 
   const renderTopResults = (
     topN: Array<{ score: number | string; label: string }>,
-  ): JSX.Element => {
+  ) => {
     return (
       <>
         <Typography

@@ -68,7 +68,7 @@ interface params {
   uuid: string;
 }
 
-const BatchUploadPopup = (props: params): JSX.Element => {
+const BatchUploadPopup = (props: params) => {
   const { setBatchUploadOpen, containerName, uuid, backendUrl } = props;
 
   const [files, setFiles] = useState<FileList | null>(null);

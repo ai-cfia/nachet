@@ -15,7 +15,7 @@ interface params {
   uuid: string;
 }
 
-const CreateFolder: React.FC<params> = (props): JSX.Element => {
+const CreateFolder: React.FC<params> = (props) => {
   const {
     setCreateDirectoryOpen,
     curDir,

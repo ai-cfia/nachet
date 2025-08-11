@@ -30,7 +30,7 @@ interface params {
   saveIndividualImage?: string;
 }
 
-const SavePopup: React.FC<params> = (props): JSX.Element => {
+const SavePopup: React.FC<params> = (props) => {
   const saveImage = (): void => {
     // saves image to local storage or compresses the entire cache into a zip file which is then saved to local storage
     (async () => {

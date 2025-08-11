@@ -16,7 +16,7 @@ import { AzureStorageDirectoryItem, Images } from "../../common/types";
 
 interface params {
   imageSrc: string;
-  webcamRef: React.RefObject<Webcam>;
+  webcamRef: React.RefObject<Webcam | null>;
   imageFormat: string;
   setSaveOpen: React.Dispatch<React.SetStateAction<boolean>>;
   capture: () => void;
@@ -26,7 +26,7 @@ interface params {
   setImageIndex: React.Dispatch<React.SetStateAction<number>>;
   setBatchUploadOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setUploadOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  canvasRef: React.RefObject<HTMLCanvasElement>;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
   handleInference: () => void;
   removeImage: (string: any) => void;
   setSwitchModelOpen: React.Dispatch<React.SetStateAction<boolean>>;

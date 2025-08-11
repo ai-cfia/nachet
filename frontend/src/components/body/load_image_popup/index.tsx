@@ -9,7 +9,7 @@ interface params {
   pushImageToCache: (imageUrl: string) => void;
 }
 
-const UploadPopup: React.FC<params> = (props): JSX.Element => {
+const UploadPopup: React.FC<params> = (props) => {
   const { setUploadOpen, pushImageToCache } = props;
 
   const uploadImage = (event: any): void => {

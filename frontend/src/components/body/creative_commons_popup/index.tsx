@@ -16,7 +16,7 @@ interface params {
   handleCreativeCommonsAgreement: (agree: boolean) => void;
 }
 
-const CreativeCommonsPopup: React.FC<params> = (props): JSX.Element => {
+const CreativeCommonsPopup: React.FC<params> = (props) => {
   const introduction = `
 By uploading your images to Seed Classification Interface, you agree to license your work under a Creative Commons Attribution-ShareAlike (CC BY-SA) License. This agreement outlines the terms and conditions of the license and other considerations.`;
   const termsAndConditions = `

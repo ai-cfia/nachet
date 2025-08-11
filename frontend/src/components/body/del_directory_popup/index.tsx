@@ -14,7 +14,7 @@ interface params {
   uuid: string;
 }
 
-const DeleteDirectoryPopup: React.FC<params> = (props): JSX.Element => {
+const DeleteDirectoryPopup: React.FC<params> = (props) => {
   const { uuid, setDelDirectoryOpen, curDir, setCurDir, setReadAzureStorage } =
     props;
   const backendURL = useBackendUrl();
