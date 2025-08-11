@@ -45,7 +45,7 @@
     "react-draggable": "^4.4.6",
     "react-icons": "^4.12.0",
     "react-picture-annotation": "^1.2.0",
-    "react-router-dom": "^6.14.1",
+    "react-router-dom": "^6.30.1",
     "react-webcam": "^7.2.0",
     "serve": "^14.2.4",
     "styled-components": "^6.1.19",
