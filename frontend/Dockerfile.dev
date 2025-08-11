@@ -1,0 +1,51 @@
+FROM ubuntu:24.04
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    sudo \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install nvm
+ENV NVM_DIR=/usr/local/nvm
+RUN mkdir -p $NVM_DIR && \
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+
+# Copy package.json to read versions
+COPY package.json /tmp/package.json
+
+# Extract Node and npm versions from package.json and install via nvm  
+RUN . $NVM_DIR/nvm.sh && \
+    NODE_VERSION=$(jq -r '.engines.node' /tmp/package.json | sed 's/\^//') && \
+    NPM_VERSION=$(jq -r '.engines.npm' /tmp/package.json | sed 's/\^//') && \
+    nvm install $NODE_VERSION && \
+    nvm use $NODE_VERSION && \
+    npm install -g npm@$NPM_VERSION && \
+    nvm alias default $NODE_VERSION && \
+    echo "export PATH=\"$NVM_DIR/versions/node/v$NODE_VERSION/bin:\$PATH\"" >> /etc/environment && \
+    echo "export PATH=\"$NVM_DIR/versions/node/v$NODE_VERSION/bin:\$PATH\"" > /etc/profile.d/node.sh && \
+    ln -sf "$NVM_DIR/versions/node/v$NODE_VERSION/bin/node" /usr/local/bin/node && \
+    ln -sf "$NVM_DIR/versions/node/v$NODE_VERSION/bin/npm" /usr/local/bin/npm
+
+# Set up git configuration for the container
+RUN git config --global --add safe.directory /app && \
+    git config --global init.defaultBranch main
+
+WORKDIR /app
+
+# Use existing ubuntu user (1000:1000)
+USER ubuntu
+
+# Set up nvm environment for ubuntu user
+RUN echo 'export NVM_DIR="/usr/local/nvm"' >> /home/ubuntu/.bashrc && \
+    echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> /home/ubuntu/.bashrc && \
+    echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"' >> /home/ubuntu/.bashrc
+
+# Install dependencies when container starts to ensure they're always fresh
+# This is done via command in docker-compose to allow for hot reload
+EXPOSE 5173
+
+# Keep container running for VS Code to connect
+CMD ["tail", "-f", "/dev/null"]

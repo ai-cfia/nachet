@@ -1,8 +1,6 @@
-# Vite React Project
+# Nachet Frontend
 
-This project was initialized with [Vite](https://vitejs.dev/), a build tool that
-aims to provide a faster and leaner development experience for modern web
-projects.
+This is the React TypeScript frontend for the Nachet seed identification system. The project was initialized with [Vite](https://vitejs.dev/), a build tool that aims to provide a faster and leaner development experience for modern web projects.
 
 ## Setting up @saithodev/ts-appversion
 
@@ -38,9 +36,47 @@ displayed in the console, helping you maintain a clean and efficient codebase.
 The app will automatically reload if you make changes to the code. You will see
 the build errors and lint warnings in the console.
 
+## Development Workflow
+
+### Local Development (Recommended)
+
+For the fastest development experience, run the frontend locally:
+
+1. **Install dependencies**: `npm install` (or `npm run update` if `package.json` changed)
+2. **Start development server**: `npm run dev`
+3. **Access application**: Open `http://localhost:5173`
+
+The development server provides hot reload, instant feedback on errors, and optimal performance.
+
+**When to use `npm run update`:**
+
+- After pulling changes that modified `package.json`
+- When switching between branches with different dependencies
+- If experiencing dependency-related issues
+- After manually editing `package.json`
+
+### Container-based Development
+
+For consistency across different environments, use the Docker development setup (see Development with Docker section below).
+
 ## Available Scripts
 
 In the project directory, you can run:
+
+### `npm run update`
+
+**IMPORTANT**: Run this command after any changes to `package.json` or when switching branches with dependency changes.
+
+This command:
+
+- Removes the `node_modules` directory
+- Reinstalls all dependencies from scratch
+- Regenerates the Software Bill of Materials (SBOM) file
+- Ensures a clean dependency state
+
+```bash
+npm run update
+```
 
 ### `npm run dev`
 
@@ -70,52 +106,151 @@ Runs eslint to find and fix problems in your JavaScript code.
 
 ### `npm run test`
 
-Launches the test runner in the interactive watch mode.
+Launches the test runner in the interactive watch mode using Vitest.
+
+### `npm run test:coverage`
+
+Runs tests with coverage reporting to analyze code coverage.
+
+### `npm run format`
+
+Formats all code using Prettier to ensure consistency across the codebase.
+
+### `npm run format:check`
+
+Checks if code formatting is consistent without making changes.
 
 ## Code Formatting with Prettier
 
 To ensure your codebase remains clean and consistent, we use
 [Prettier](https://prettier.io/) for automatic code formatting. Before
-committing your changes, you can format your code by running the following
-command:
+committing your changes, you can format your code by running:
 
 ```bash
-npx prettier --write .
+npm run format
 ```
 
-Executing this command automatically formats the specified files. You can
-replace `.` with the relative path of any specific file or directory you wish to
-format. This allows for targeted formatting, ensuring that only the desired
-sections of your codebase are adjusted.
+This command automatically formats all files in the project. You can also check formatting without making changes using `npm run format:check`.
 
-### Running the application with docker
+## Software Bill of Materials (SBOM) with CycloneDX
+
+This project automatically generates a Software Bill of Materials (SBOM) using [CycloneDX](https://cyclonedx.org/), which provides a comprehensive inventory of all project dependencies for security and compliance purposes.
+
+### What is SBOM?
+
+An SBOM is a formal record containing the details and supply chain relationships of various components used in building software. It's essential for:
+
+- **Security vulnerability tracking** - Identify which components may be affected by security issues
+- **License compliance** - Understand the licenses of all dependencies
+- **Supply chain transparency** - Know exactly what's included in your application
+- **Regulatory compliance** - Meet requirements for software transparency
+
+### SBOM Generation
+
+The SBOM is automatically generated when you run:
+
+```bash
+npm run update
+```
+
+This creates an `sbom.json` file in the project root using the CycloneDX format specification v1.6. The file contains:
+
+- All direct and transitive dependencies
+- Package versions and locations
+- License information
+- Component relationships
+- Reproducible output for consistent results
+
+### Manual SBOM Generation
+
+You can also generate the SBOM manually:
+
+```bash
+npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json
+```
+
+**Note**: The SBOM file (`sbom.json`) is tracked in version control to provide a complete record of dependencies for each release.
+
+### Development with Docker
+
+For a consistent development environment, you can use Docker:
+
+#### Development Container Setup
+
+1. **Prerequisites**: Ensure you have Docker and Docker Compose installed.
+
+2. **Environment Configuration**: Create a `.env.config.local` file with your environment variables (see Environment Variable Setup section below).
+
+3. **Start Development Container**:
+
+   ```bash
+   docker-compose -f docker-compose.dev.yml up --build
+   ```
+
+   This will:
+   - Build a development container with Node.js and npm versions from `package.json`
+   - Mount the entire frontend directory for hot reload
+   - Install dependencies automatically
+   - Start the Vite dev server on `http://localhost:5173`
+
+4. **VS Code Integration**: The development container is configured to work with VS Code's Remote-Containers extension for a full development environment.
+
+5. **Container Management**:
+
+   ```bash
+   # Stop the development container
+   docker-compose -f docker-compose.dev.yml down
+   
+   # Rebuild with fresh dependencies
+   docker-compose -f docker-compose.dev.yml up --build --force-recreate
+   
+   # Clean up development containers and images
+   docker-compose -f docker-compose.dev.yml down --rmi all --volumes
+   ```
+
+#### Docker Cleanup
+
+To prevent disk space issues from accumulating Docker images and containers:
+
+```bash
+# Remove stopped containers, unused networks, and dangling images
+docker system prune
+
+# More aggressive cleanup (removes all unused images, not just dangling ones)
+docker system prune -a
+
+# Remove specific development images
+docker rmi nachet-frontend-dev_nachet-frontend-dev
+
+# Clean up volumes (be careful - this removes data!)
+docker volume prune
+```
+
+**Tip**: Run `docker system df` to see Docker disk usage breakdown.
+
+#### Production Docker Build
 
 1. Build the docker image:
 
    ```bash
-   docker build -t finesse-frontend .
+   docker build -t nachet-frontend .
    ```
 
-2. Run the image: `docker run -p 3000:3000 finesse-frontend`.
+2. Run the image:
 
-### Docker-compose (optional)
+   ```bash
+   docker run -p 3000:3000 nachet-frontend
+   ```
 
-You can also use `docker-compose` to run the API with the client. The API is the
-backend that this client uses and is available at
-<https://github.com/ai-cfia/finesse-backend>.
+#### Full Stack Development
 
-To run the API and the client together, make sure you have all the environment
-variables required from the backend (see .env.template in the repository) and
-then you can use the following command:
+You can also use `docker-compose` to run the API with the client together. Make sure you have all the environment variables required from the backend (see .env.template in the repository) and then run:
 
 ```bash
 docker-compose up --build
 ```
 
-You can then access the client at `http://localhost`. Take note that the backend
-image is being pulled from our Github registry and the frontend image is being
-built from the Dockerfile in the repository. This enables preview of local
-changes in the frontend.
+This enables preview of local frontend changes while connecting to the backend services.
 
 ## Deployment Environment Configuration Management
 
