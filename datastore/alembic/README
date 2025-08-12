@@ -1,0 +1,40 @@
+Generic single-database configuration for Nachet SQLAlchemy migrations.
+
+This directory contains Alembic migration files for the Nachet database schema.
+
+## Basic Usage
+
+1. Generate a new migration:
+   ```bash
+   alembic revision --autogenerate -m "Description of changes"
+   ```
+
+2. Apply migrations:
+   ```bash
+   alembic upgrade head
+   ```
+
+3. View migration history:
+   ```bash
+   alembic history
+   ```
+
+4. Rollback to previous migration:
+   ```bash
+   alembic downgrade -1
+   ```
+
+## Schema Versioning
+
+The migrations in this directory manage the transition from schema version 0.0.12 to 0.0.13,
+implementing SQLAlchemy ORM models for the existing database structure.
+
+## Environment Variables
+
+Make sure the following environment variable is set:
+- `NACHET_DATA`: PostgreSQL connection string
+
+Example:
+```bash
+export NACHET_DATA="postgresql://user:password@localhost:5432/nachet_db"
+```

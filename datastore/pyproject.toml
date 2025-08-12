@@ -27,6 +27,9 @@ dependencies = [
     "pydantic==2.7.1",
     "pydantic_core==2.18.2",
     "python-dotenv",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
+    "asyncpg>=0.29.0",
 ]
 
 license = { file = "LICENSE" }  
@@ -38,8 +41,8 @@ where = ["."]
 include = ["nachet*", "datastore*"]
 
 [tool.nachet-db]
-db-schema-version = "0.0.12"
-previous-db-schema-version = "0.0.11"
+db-schema-version = "0.0.13"
+previous-db-schema-version = "0.0.12"
 
 [dependency-groups]
 dev = [
