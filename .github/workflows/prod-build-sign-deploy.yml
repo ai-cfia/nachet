@@ -19,10 +19,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Login to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -30,7 +30,7 @@ jobs:
 
       - name: Extract metadata for backend
         id: meta-backend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/nachet-backend
           tags: |
@@ -41,7 +41,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push backend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@4f58ea79222946e1b7c4dc10b045f720ab50c414
         with:
           context: ./backend
           file: ./backend/Dockerfile.prod
@@ -50,7 +50,7 @@ jobs:
           labels: ${{ steps.meta-backend.outputs.labels }}
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da
         with:
           cosign-release: 'v2.2.3'
 
@@ -86,10 +86,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Login to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -97,7 +97,7 @@ jobs:
 
       - name: Extract metadata for frontend
         id: meta-frontend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/nachet-frontend
           tags: |
@@ -108,7 +108,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push frontend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@4f58ea79222946e1b7c4dc10b045f720ab50c414
         with:
           context: ./frontend
           file: ./frontend/Dockerfile.prod
@@ -117,7 +117,7 @@ jobs:
           labels: ${{ steps.meta-frontend.outputs.labels }}
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da
         with:
           cosign-release: 'v2.2.3'
 
@@ -152,7 +152,7 @@ jobs:
       
     steps:
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191
         with:
           body: |
             ## Release ${{ github.ref_name }}
