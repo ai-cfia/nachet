@@ -449,29 +449,6 @@
       "version": "3.4.2"
     },
     {
-      "bom-ref": "colorama==0.4.6",
-      "description": "Cross-platform colored terminal text.",
-      "externalReferences": [
-        {
-          "comment": "from packaging metadata Project-URL: Homepage",
-          "type": "website",
-          "url": "https://github.com/tartley/colorama"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "acknowledgement": "declared",
-            "name": "License :: OSI Approved :: BSD License"
-          }
-        }
-      ],
-      "name": "colorama",
-      "purl": "pkg:pypi/colorama@0.4.6",
-      "type": "library",
-      "version": "0.4.6"
-    },
-    {
       "bom-ref": "coverage==7.10.1",
       "description": "Code coverage measurement for Python",
       "externalReferences": [
@@ -2100,50 +2077,6 @@
       "version": "4.14.1"
     },
     {
-      "bom-ref": "tzdata==2025.2",
-      "description": "Provider of IANA time zone data",
-      "externalReferences": [
-        {
-          "comment": "from packaging metadata Project-URL: Documentation",
-          "type": "documentation",
-          "url": "https://tzdata.readthedocs.io"
-        },
-        {
-          "comment": "from packaging metadata Project-URL: Bug Reports",
-          "type": "issue-tracker",
-          "url": "https://github.com/python/tzdata/issues"
-        },
-        {
-          "comment": "from packaging metadata Project-URL: Source",
-          "type": "other",
-          "url": "https://github.com/python/tzdata"
-        },
-        {
-          "comment": "from packaging metadata: Home-page",
-          "type": "website",
-          "url": "https://github.com/python/tzdata"
-        }
-      ],
-      "licenses": [
-        {
-          "license": {
-            "acknowledgement": "declared",
-            "id": "Apache-2.0"
-          }
-        },
-        {
-          "license": {
-            "acknowledgement": "declared",
-            "name": "License :: OSI Approved :: Apache Software License"
-          }
-        }
-      ],
-      "name": "tzdata",
-      "purl": "pkg:pypi/tzdata@2025.2",
-      "type": "library",
-      "version": "2025.2"
-    },
-    {
       "bom-ref": "uri-template==1.3.0",
       "description": "RFC 6570 URI Template Processor",
       "externalReferences": [
@@ -2249,9 +2182,6 @@
       "ref": "PyJWT==2.10.1"
     },
     {
-      "dependsOn": [
-        "colorama==0.4.6"
-      ],
       "ref": "Pygments==2.19.2"
     },
     {
@@ -2323,9 +2253,6 @@
     },
     {
       "ref": "charset-normalizer==3.4.2"
-    },
-    {
-      "ref": "colorama==0.4.6"
     },
     {
       "ref": "coverage==7.10.1"
@@ -2482,8 +2409,7 @@
       "dependsOn": [
         "pytest-cov==6.2.1",
         "pytest==8.4.1",
-        "typing_extensions==4.14.1",
-        "tzdata==2025.2"
+        "typing_extensions==4.14.1"
       ],
       "ref": "psycopg==3.1.19"
     },
@@ -2525,7 +2451,6 @@
       "dependsOn": [
         "Pygments==2.19.2",
         "attrs==25.3.0",
-        "colorama==0.4.6",
         "iniconfig==2.1.0",
         "packaging==25.0",
         "pluggy==1.6.0",
@@ -2607,9 +2532,6 @@
     },
     {
       "ref": "typing_extensions==4.14.1"
-    },
-    {
-      "ref": "tzdata==2025.2"
     },
     {
       "ref": "uri-template==1.3.0"
@@ -2767,5 +2689,4 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.6"
-} 
- 
+}
