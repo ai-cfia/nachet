@@ -1,12 +1,18 @@
 import os
+import sys
 import json
+import logging
 from contextvars import ContextVar
 from typing import Optional
 from loguru import logger
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
-from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
-from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter as HTTPLogExporter
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter as GRPCLogExporter
+
+# env
+OTEL_EXPORTER_PROTOCOL = "OTEL_EXPORTER_PROTOCOL"
+OTEL_EXPORTER_ENDPOINT = "OTEL_EXPORTER_ENDPOINT"
 
 # Correlation ID context variable
 correlation_id_var: ContextVar[Optional[str]] = ContextVar('correlation_id', default=None)
@@ -37,31 +43,57 @@ def set_user_id(user_id: str) -> None:
     """Set user ID in context"""
     user_id_var.set(user_id)
 
-def json_formatter(record):
-    """Custom JSON formatter for structured logging"""
-    # Base log record
-    log_entry = {
-        "timestamp": record["time"].isoformat(),
-        "level": record["level"].name,
-        "message": record["message"],
-        "service": "nachet-backend",
-        "file": record["file"].name,
-        "function": record["function"],
-        "line": record["line"]
-    }
+def custom_formatter(record):
+    """Custom formatter for adding context to log records"""
+    record["extra"]["correlation_id"] = get_correlation_id()
+    record["extra"]["session_id"] = get_session_id()
+    record["extra"]["user_id"] = get_user_id()
+    record["extra"]["service"] = "nachet-backend"
+    return "{time:YYYY-MM-DD HH:mm:ss} | {level} | {extra[service]} | {extra[correlation_id]} | {message}\n"
+
+
+class LoguruToOTELBridge:
+    """Bridge between Loguru and OpenTelemetry logging"""
     
-    if get_correlation_id():
-        log_entry["correlation_id"] = get_correlation_id()
-    if get_session_id():
-        log_entry["session_id"] = get_session_id()
-    if get_user_id():
-        log_entry["user_id"] = get_user_id()
+    def __init__(self, otel_handler):
+        self.otel_handler = otel_handler
+        self.python_logger = logging.getLogger("nachet")
+        self.python_logger.addHandler(otel_handler)
+        self.python_logger.setLevel(logging.INFO)
+        
+        # Map loguru levels to Python logging levels
+        self.level_map = {
+            "TRACE": logging.DEBUG,
+            "DEBUG": logging.DEBUG,
+            "INFO": logging.INFO,
+            "SUCCESS": logging.INFO,
+            "WARNING": logging.WARNING,
+            "ERROR": logging.ERROR,
+            "CRITICAL": logging.CRITICAL
+        }
     
-    # Add extra fields from the record
-    if "extra" in record:
-        log_entry.update(record["extra"])
-    
-    return json.dumps(log_entry)
+    def write(self, message):
+        """Write loguru message to OTEL via standard Python logging"""
+        if message.strip():
+            record = message.record
+            level = record["level"].name
+            msg = record["message"]
+            
+            # Add context to extra
+            extra = {
+                "correlation_id": get_correlation_id(),
+                "session_id": get_session_id(),
+                "user_id": get_user_id(),
+                "service": "nachet-backend",
+                **record.get("extra", {})
+            }
+            
+            self.python_logger.log(
+                self.level_map.get(level, logging.INFO),
+                msg,
+                extra=extra
+            )
+
 
 def setup_logging():
     """Setup logging configuration with OTEL and console output"""
@@ -71,15 +103,14 @@ def setup_logging():
     
     # Console logging for development
     logger.add(
-        sink=lambda msg: print(msg, end=''),
-        format=json_formatter,
+        sys.stdout,
+        format=custom_formatter,
         level="INFO"
     )
     
-    # OTEL logging - always enabled
-    # Determine which exporter to use (HTTP or GRPC)
-    otel_protocol = os.getenv("OTEL_EXPORTER_OTLP_PROTOCOL", "grpc").lower()
-    endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://alloy.monitoring.svc.cluster.local:4317")
+    # OTEL logging setup
+    otel_protocol = os.getenv(OTEL_EXPORTER_PROTOCOL, "grpc").lower()
+    endpoint = os.getenv(OTEL_EXPORTER_ENDPOINT, "http://alloy.monitoring.svc.cluster.local:4317")
     
     if otel_protocol == "http":
         if not endpoint.endswith("/v1/logs"):
@@ -88,29 +119,32 @@ def setup_logging():
     # Setup OTEL logger provider
     logger_provider = LoggerProvider()
     
-    # Create exporter
-    otlp_exporter = OTLPLogExporter(
-        endpoint=endpoint,
-        insecure=True
-    )
+    # Create exporter based on protocol
+    if otel_protocol == "http":
+        otlp_exporter = HTTPLogExporter(
+            endpoint=endpoint,
+            insecure=True
+        )
+    else:
+        otlp_exporter = GRPCLogExporter(
+            endpoint=endpoint,
+            insecure=True
+        )
     
     # Add processor
     logger_provider.add_log_record_processor(
         BatchLogRecordProcessor(otlp_exporter)
     )
     
-    # Add OTEL handler to loguru
+    # Setup standard Python logging to forward to OTEL
     otel_handler = LoggingHandler(logger_provider=logger_provider)
-    logger.add(
-        sink=otel_handler.emit,
-        format=json_formatter,
-        level="INFO"
-    )
+    otel_handler.setLevel(logging.INFO)
     
-    logger.info("OTEL logging initialized", extra={
-        "protocol": otel_protocol,
-        "endpoint": endpoint
-    })
+    # Add the bridge as a sink
+    bridge = LoguruToOTELBridge(otel_handler)
+    logger.add(bridge, level="INFO")
+    
+    logger.info("OTEL logging initialized", protocol=otel_protocol, endpoint=endpoint)
     
     return logger
 

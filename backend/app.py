@@ -11,12 +11,16 @@ import warnings
 from PIL import Image
 from datetime import date
 from dotenv import load_dotenv
-from quart import Quart, request, jsonify
+from quart import Quart, request, jsonify, g
 from quart_cors import cors
 from collections import namedtuple
 # from cryptography.fernet import Fernet
 
 load_dotenv()  # noqa: E402
+
+# Setup logging
+from logging_config import setup_logging, get_logger
+logger = setup_logging()
 
 import model.inference as inference  # noqa: E402
 import storage.datastore_storage_api as datastore  # noqa: E402
@@ -144,6 +148,10 @@ app = Quart(__name__)
 app = cors(app, **cors_settings)
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH_MEGABYTES * 1024 * 1024
 
+# Setup middleware
+from middleware import setup_middleware
+setup_middleware(app)
+
 
 @app.before_serving
 async def before_serving():
@@ -176,16 +184,17 @@ async def before_serving():
         CACHE["seeds"] = await datastore.get_all_seeds()
         CACHE["endpoints"] = await get_pipelines()
 
-        print(
-            f"""Server start with current configuration:\n
-                date: {date.today()}
-                file version of pipelines: {PIPELINE_VERSION}
-                pipelines: {[pipeline for pipeline in CACHE["pipelines"].keys()]}\n
-            """
-        )  # TODO Transform into logging
+        logger.info(
+            f"Server started with configuration",
+            extra={
+                "date": str(date.today()),
+                "pipeline_version": PIPELINE_VERSION,
+                "pipelines": list(CACHE["pipelines"].keys())
+            }
+        )
 
     except (Exception, ServerError, inference.ModelAPIError) as e:
-        print(e)
+        logger.error(f"Error during server initialization: {e}", exc_info=True)
         raise
 
 
@@ -215,7 +224,7 @@ async def get_user_id():
         return jsonify({"user_id": user_id}), 200
 
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return (
             jsonify(
                 [f"Datastore Error retrieving user id for email {email} : {str(error)}"]
@@ -223,13 +232,13 @@ async def get_user_id():
             400,
         )
     except (KeyError, TypeError, ValueError, APIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return (
             jsonify([f"API Error retrieving user id for email {email} : {str(error)}"]),
             400,
         )
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return (
             jsonify(
                 [f"Unhandled API error : Error retrieving user id for email {email}"]
@@ -270,13 +279,13 @@ async def delete_directory():
             raise MissingArgumentsError("missing container or directory name")
 
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"Datastore Error deleting directory : {str(error)}"]), 400
     except (KeyError, TypeError, APIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"API Error deleting directory : {str(error)}"]), 400
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify(["Unhandled API error : Error deleting directory"]), 400
 
 
@@ -307,7 +316,7 @@ async def delete_request():
             raise MissingArgumentsError("missing container or directory name")
 
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return (
             jsonify(
                 [f"Datastore Error requesting deletion of directory : {str(error)}"]
@@ -315,13 +324,13 @@ async def delete_request():
             400,
         )
     except (KeyError, TypeError, APIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return (
             jsonify([f"API Error requesting deletion of directory : {str(error)}"]),
             400,
         )
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return (
             jsonify(["Unhandled API error : Error requesting deletion of directory"]),
             400,
@@ -357,13 +366,13 @@ async def delete_permanently():
             raise MissingArgumentsError("missing container name or directory id")
 
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"Datastore Error deleting directory : {str(error)}"]), 400
     except (KeyError, TypeError, APIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"API Error deleting directory : {str(error)}"]), 400
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify(["Unhandled API error : Error deleting directory"]), 400
 
 
@@ -397,13 +406,13 @@ async def delete_with_archive():
             raise MissingArgumentsError("missing container or directory name")
 
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"Datastore Error deleting directory : {str(error)}"]), 400
     except (KeyError, TypeError, APIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"API Error deleting directory : {str(error)}"]), 400
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify(["Unhandled API error : Error deleting directory"]), 400
 
 
@@ -429,16 +438,16 @@ async def list_directories():
             raise MissingArgumentsError("Missing container name")
 
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return (
             jsonify([f"Datastore Error retrieving user directories : {str(error)}"]),
             400,
         )
     except (KeyError, TypeError, APIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"API Error retrieving user directories : {str(error)}"]), 400
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify(["Unhandled API error : Error retrieving user directories"]), 400
 
 
@@ -466,16 +475,16 @@ async def get_directories():
             raise MissingArgumentsError("Missing container name")
 
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return (
             jsonify([f"Datastore Error retrieving user directories : {str(error)}"]),
             400,
         )
     except (KeyError, TypeError, APIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"API Error retrieving user directories : {str(error)}"]), 400
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify(["Unhandled API error : Error retrieving user directories"]), 400
 
 
@@ -519,13 +528,13 @@ async def get_picture():
             raise MissingArgumentsError("Missing container name")
 
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"Datastore Error retrieving the picture : {str(error)}"]), 400
     except (KeyError, TypeError, APIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"API Error retrieving the picture : {str(error)}"]), 400
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify(["Unhandled API error : Error retrieving the picture"]), 400
 
 
@@ -560,13 +569,13 @@ async def create_directory():
             raise MissingArgumentsError("missing container or directory name")
 
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"Datastore Error creating directory : {str(error)}"]), 400
     except (KeyError, TypeError, APIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"API Error creating directory : {str(error)}"]), 400
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify(["Unhandled API error : Error creating directory"]), 400
 
 
@@ -628,13 +637,13 @@ async def image_validation():
         return jsonify([validator]), 200
 
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"Datastore Error validating image : {str(error)}"]), 400
     except (KeyError, TypeError, APIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"API Error validating image : {str(error)}"]), 400
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify(["Unhandled API error : Error validating image"]), 400
 
 
@@ -647,9 +656,10 @@ async def inference_request():
 
     seconds = time.perf_counter()  # TODO: transform into logging
     try:
-        print(
-            f"{date.today()} Entering inference request"
-        )  # TODO: Transform into logging
+        logger.info(
+            "Entering inference request",
+            extra={"date": str(date.today())}
+        )
         data = await request.get_json()
         pipeline_name = data.get("model_name")
         validator = data.get("validator")
@@ -662,7 +672,7 @@ async def inference_request():
         area_ratio = data.get("area_ratio", 0.5)
         color_format = data.get("color_format", "hex")
 
-        print(f"Requested by user: {container_name}")  # TODO: Transform into logging
+        logger.info(f"Inference requested by user: {container_name}")
         pipelines_endpoints = CACHE.get("pipelines")
         validators = CACHE.get("validators")
 
@@ -685,23 +695,23 @@ async def inference_request():
         cache_json_result = [encoded_data]
         image_bytes = base64.b64decode(encoded_data)
 
-        print(f"Mounting containerb {container_name}")  # TODO: Transform into logging
+        logger.debug(f"Mounting container {container_name}")
         mount_container_time = time.perf_counter()
         container_client = await azure_storage.mount_container(
             CONNECTION_STRING, container_name, create_container=True
         )
-        print(f"Time mount_container: {time.perf_counter() - mount_container_time} seconds")
+        logger.debug(f"Time mount_container: {time.perf_counter() - mount_container_time} seconds")
 
         # Open db connection
         connection = datastore.get_connection()
         cursor = datastore.get_cursor(connection)
 
-        print("Get picture id")  # TODO: Transform into logging
+        logger.debug("Getting picture ID")
         get_picture_id_time = time.perf_counter()
         picture_id = await datastore.get_picture_id(
             cursor, user_id, image_bytes, container_client
         )
-        print(f"Time get_picture_id: {time.perf_counter() - get_picture_id_time} seconds")
+        logger.debug(f"Time get_picture_id: {time.perf_counter() - get_picture_id_time} seconds")
         
         # Close connection
         datastore.end_query(connection, cursor)
@@ -711,53 +721,52 @@ async def inference_request():
         
         for idx, model in enumerate(pipeline):
             model_time = time.perf_counter()
-            print(
-                f"Entering {model.name.upper()} model"
-            )  
-            print(f"Request function: {model.request_function}")  # TODO: Transform into logging
+            logger.info(f"Entering {model.name.upper()} model")  
+            logger.debug(f"Request function: {model.request_function}")
             result_json = await model.request_function(model, cache_json_result[idx])
             cache_json_result.append(result_json)
-            print(f"Time {model.name}: {time.perf_counter() - model_time} seconds")
-        print("End of inference request")  # TODO: Transform into logging
+            logger.debug(f"Time {model.name}: {time.perf_counter() - model_time} seconds")
+        logger.info("End of inference request")
         
-        print("Process results")  # TODO: Transform into logging
+        logger.debug("Processing results")
         processed_result_json = await inference.process_inference_results(
             cache_json_result[-1], imageDims, area_ratio, color_format
         )
 
-        print("Record model")  # TODO: Transform into logging
+        logger.debug("Recording model")
         record_model_time = time.perf_counter()
         await record_model(pipeline, processed_result_json)
-        print(f"Time record_model: {time.perf_counter() - record_model_time} seconds")
+        logger.debug(f"Time record_model: {time.perf_counter() - record_model_time} seconds")
 
         # Open db connection
         connection = datastore.get_connection()
         cursor = datastore.get_cursor(connection)
 
-        print("Save inference result")  # TODO: Transform into logging
+        logger.debug("Saving inference result")
         save_inference_time = time.perf_counter()
         saved_result_json = await datastore.save_inference_result(
             cursor, user_id, processed_result_json[0], picture_id, pipeline_name, 1
         )
-        print(f"Time save_inference_result: {time.perf_counter() - save_inference_time} seconds")
+        logger.debug(f"Time save_inference_result: {time.perf_counter() - save_inference_time} seconds")
 
         # Close connection
         datastore.end_query(connection, cursor)
 
         # return the inference results to the client
-        print(
-            f"Took: {'{:10.4f}'.format(time.perf_counter() - seconds)} seconds"
-        )  # TODO: Transform into logging
+        logger.info(
+            f"Inference request completed",
+            extra={"duration_seconds": round(time.perf_counter() - seconds, 4)}
+        )
         return jsonify(saved_result_json), 200
 
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"Datastore Error during classification : {str(error)}"]), 400
     except (KeyError, TypeError, APIError, ModelAPIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"API Error during classification : {str(error)}"]), 400
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify(["Unhandled API error : Error during classification"]), 400
 
 
@@ -781,7 +790,7 @@ async def reload_seed_data():
         await fetch_json(NACHET_DATA, "seeds", "seeds/all.json")
         return jsonify(["Seed data reloaded successfully"]), 200
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return (
             jsonify(
                 [
@@ -860,16 +869,16 @@ async def feedback_positive():
         else:
             raise MissingArgumentsError("missing argument(s)")
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return (
             jsonify([f"Datastore Error giving a positive feedback : {str(error)}"]),
             400,
         )
     except (KeyError, TypeError, APIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"API Error giving a positive feedback : {str(error)}"]), 400
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify(["Unhandled API error : Error giving a positive feedback"]), 400
 
 
@@ -918,16 +927,16 @@ async def feedback_negative():
         return jsonify(inference), 200
 
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return (
             jsonify([f"Datastore Error giving a negative feedback : {str(error)}"]),
             400,
         )
     except (KeyError, TypeError, APIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"API Error giving a negative feedback : {str(error)}"]), 400
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify(["Unhandled API error : Error giving a negative feedback"]), 400
 
 
@@ -972,13 +981,13 @@ async def new_batch_import():
             raise APIError("failed to create picture set")
 
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"Datastore Error initiating batch upload : {str(error)}"]), 400
     except (KeyError, TypeError, APIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"API Error initiating batch upload : {str(error)}"]), 400
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify(["Unhandled API error : Error initiating batch upload"]), 400
 
 
@@ -1038,14 +1047,58 @@ async def upload_picture():
             raise APIError("failed to upload pictures")
 
     except datastore.DatastoreError as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"Datastore Error uploading picture : {str(error)}"]), 400
     except (KeyError, TypeError, APIError) as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify([f"API Error uploading picture : {str(error)}"]), 400
     except Exception as error:
-        print(error)
+        logger.error(f"API error: {error}", exc_info=True)
         return jsonify(["Unhandled API error : Error uploading picture"]), 400
+
+
+@app.post("/api/logs")
+async def log_frontend_error():
+    """Endpoint to receive frontend error logs"""
+    try:
+        data = await request.get_json()
+        
+        # Extract log data
+        level = data.get('level', 'ERROR')
+        message = data.get('message', 'Frontend error')
+        error_type = data.get('error_type', 'UnknownError')
+        stack_trace = data.get('stack_trace', '')
+        url = data.get('url', '')
+        user_agent = request.headers.get('User-Agent', '')
+        correlation_id = getattr(g, 'correlation_id', None)
+        session_id = getattr(g, 'session_id', None)
+        
+        # Log based on level
+        log_data = {
+            "source": "frontend",
+            "error_type": error_type,
+            "url": url,
+            "user_agent": user_agent,
+            "correlation_id": correlation_id,
+            "session_id": session_id,
+            "stack_trace": stack_trace
+        }
+        
+        if level.upper() == 'ERROR':
+            logger.error(f"Frontend error: {message}", extra=log_data)
+        elif level.upper() == 'WARNING':
+            logger.warning(f"Frontend warning: {message}", extra=log_data)
+        else:
+            logger.info(f"Frontend log: {message}", extra=log_data)
+        
+        return jsonify({
+            "status": "logged",
+            "correlation_id": correlation_id
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error logging frontend error: {str(e)}", exc_info=True)
+        return jsonify({"error": "Failed to log error"}), 500
 
 
 @app.get("/health")
