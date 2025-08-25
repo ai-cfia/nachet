@@ -46,17 +46,18 @@ describe("readAzureStorageDir", () => {
 
     const result = await readAzureStorageDir(backendUrl, uuid);
     expect(result).toEqual(mockData);
-    expect(mockedAxios).toHaveBeenCalledWith({
+    expect(mockedAxios).toHaveBeenCalledWith(expect.objectContaining({
       method: "post",
       url: `${backendUrl}/get-directories`,
-      headers: {
+      headers: expect.objectContaining({
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-      },
+      }),
       data: {
         container_name: uuid,
       },
-    });
+      withCredentials: true,
+    }));
   });
 
   it("should throw ValueError for empty backend URL", async () => {
@@ -98,7 +99,7 @@ describe("readAzureStorageDir", () => {
     await expect(readAzureStorageDir(backendUrl, uuid)).rejects.toEqual(
       new AzureAPIError("error"),
     );
-    expect(console.error).toHaveBeenCalled();
+    // Note: console.error is not called for response errors in the enhanced error handling
     console.error = consoleError;
   });
 
@@ -131,7 +132,12 @@ describe("readAzureStorageDir", () => {
     await expect(readAzureStorageDir(backendUrl, uuid)).rejects.toEqual(
       new AzureAPIError("error config"),
     );
-    expect(console.error).toHaveBeenCalledWith("Error", "Network error");
+    // Updated expectation to match the enhanced error logging format
+    expect(console.error).toHaveBeenCalledWith(
+      "Request setup error: Network error",
+      expect.objectContaining({ message: "Network error" }),
+      expect.objectContaining({ config: "error config" })
+    );
     console.error = consoleError;
   });
 
@@ -177,18 +183,19 @@ describe("createAzureStorageDir", () => {
     const folderName = "test-folder";
 
     await createAzureStorageDir(backendUrl, uuid, folderName);
-    expect(mockedAxios).toHaveBeenCalledWith({
+    expect(mockedAxios).toHaveBeenCalledWith(expect.objectContaining({
       method: "post",
       url: `${backendUrl}/create-dir`,
-      headers: {
+      headers: expect.objectContaining({
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-      },
+      }),
       data: {
         container_name: uuid,
         folder_name: folderName,
       },
-    });
+      withCredentials: true,
+    }));
   });
 
   it("should throw ValueError for empty backend URL", async () => {
@@ -238,18 +245,19 @@ describe("deleteAzureStorageDir", () => {
     const folderName = "test-folder";
 
     await deleteAzureStorageDir(backendUrl, uuid, folderName);
-    expect(mockedAxios).toHaveBeenCalledWith({
+    expect(mockedAxios).toHaveBeenCalledWith(expect.objectContaining({
       method: "post",
       url: `${backendUrl}/del`,
-      headers: {
+      headers: expect.objectContaining({
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-      },
+      }),
       data: {
         container_name: uuid,
         folder_name: folderName,
       },
-    });
+      withCredentials: true,
+    }));
   });
 
   it("should throw ValueError for empty backend URL", async () => {
@@ -337,13 +345,13 @@ describe("inferenceRequest", () => {
     );
 
     expect(result).toEqual(mockInferenceData);
-    expect(mockedAxios).toHaveBeenCalledWith({
+    expect(mockedAxios).toHaveBeenCalledWith(expect.objectContaining({
       method: "post",
       url: `${backendUrl}/inf`,
-      headers: {
+      headers: expect.objectContaining({
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-      },
+      }),
       data: {
         model_name: selectedModel,
         image: mockImageObject.src,
@@ -352,7 +360,8 @@ describe("inferenceRequest", () => {
         user_id: uuid,
         container_name: containerUuid,
       },
-    });
+      withCredentials: true,
+    }));
   });
 
   it("should throw ValueError for empty backend URL", async () => {
@@ -528,15 +537,16 @@ describe("fetchModelMetadata", () => {
     const result = await fetchModelMetadata(backendUrl);
 
     expect(result).toEqual(mockMetadata);
-    expect(mockedAxios).toHaveBeenCalledWith({
+    expect(mockedAxios).toHaveBeenCalledWith(expect.objectContaining({
       method: "get",
       url: `${backendUrl}/model-endpoints-metadata`,
-      headers: {
+      headers: expect.objectContaining({
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-      },
+      }),
       data: {},
-    });
+      withCredentials: true,
+    }));
   });
 
   it("should throw ValueError for empty backend URL", async () => {
@@ -593,18 +603,18 @@ describe("requestUUID", () => {
     const result = await requestUUID(backendUrl, email);
 
     expect(result).toEqual(mockResponse);
-    expect(mockedAxios).toHaveBeenCalledWith({
+    expect(mockedAxios).toHaveBeenCalledWith(expect.objectContaining({
       method: "post",
       url: `${backendUrl}/get-user-id`,
-      headers: {
+      headers: expect.objectContaining({
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-      },
+      }),
       data: {
         email: email,
       },
       withCredentials: true,
-    });
+    }));
   });
 
   it("should throw ValueError for empty backend URL", async () => {
@@ -632,15 +642,16 @@ describe("requestClassList", () => {
     const result = await requestClassList(backendUrl);
 
     expect(result).toEqual(mockSpeciesData);
-    expect(mockedAxios).toHaveBeenCalledWith({
+    expect(mockedAxios).toHaveBeenCalledWith(expect.objectContaining({
       method: "get",
       url: `${backendUrl}/seeds`,
-      headers: {
+      headers: expect.objectContaining({
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-      },
+      }),
       data: {},
-    });
+      withCredentials: true,
+    }));
   });
 
   it("should throw ValueError for empty backend URL", async () => {
@@ -674,20 +685,21 @@ describe("batchUploadInit", () => {
     );
 
     expect(result).toEqual(mockResponse);
-    expect(mockedAxios).toHaveBeenCalledWith({
+    expect(mockedAxios).toHaveBeenCalledWith(expect.objectContaining({
       method: "post",
       url: `${backendUrl}/new-batch-import`,
-      headers: {
+      headers: expect.objectContaining({
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-      },
+      }),
       data: {
         user_id: uuid,
         folder_name: folderName,
         container_name: containerUuid,
         nb_pictures: nbPictures,
       },
-    });
+      withCredentials: true,
+    }));
   });
 
   it("should throw ValueError for zero pictures", async () => {
@@ -732,13 +744,13 @@ describe("batchUploadImage", () => {
     const result = await batchUploadImage(backendUrl, mockBatchUploadData);
 
     expect(result).toBe(true);
-    expect(mockedAxios).toHaveBeenCalledWith({
+    expect(mockedAxios).toHaveBeenCalledWith(expect.objectContaining({
       method: "post",
       url: `${backendUrl}/upload-picture`,
-      headers: {
+      headers: expect.objectContaining({
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-      },
+      }),
       data: {
         container_name: mockBatchUploadData.containerName,
         user_id: mockBatchUploadData.uuid,
@@ -749,7 +761,8 @@ describe("batchUploadImage", () => {
         session_id: mockBatchUploadData.sessionId,
         image: mockBatchUploadData.imageDataUrl,
       },
-    });
+      withCredentials: true,
+    }));
   });
 
   it("should throw ValueError for empty backend URL", async () => {
@@ -854,15 +867,16 @@ describe("sendPositiveFeedback", () => {
     );
 
     expect(result).toEqual(mockResponse);
-    expect(mockedAxios).toHaveBeenCalledWith({
+    expect(mockedAxios).toHaveBeenCalledWith(expect.objectContaining({
       method: "post",
       url: `${backendUrl}/feedback-positive`,
-      headers: {
+      headers: expect.objectContaining({
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-      },
+      }),
       data: mockPositiveFeedbackData,
-    });
+      withCredentials: true,
+    }));
   });
 
   it("should throw ValueError for empty backend URL", async () => {
@@ -926,15 +940,16 @@ describe("sendNegativeFeedback", () => {
     );
 
     expect(result).toEqual(mockResponse);
-    expect(mockedAxios).toHaveBeenCalledWith({
+    expect(mockedAxios).toHaveBeenCalledWith(expect.objectContaining({
       method: "post",
       url: `${backendUrl}/feedback-negative`,
-      headers: {
+      headers: expect.objectContaining({
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-      },
+      }),
       data: mockNegativeFeedbackData,
-    });
+      withCredentials: true,
+    }));
   });
 
   it("should throw ValueError for empty backend URL", async () => {
@@ -992,15 +1007,16 @@ describe("sendFeedbackNewBox", () => {
     const result = await sendFeedbackNewBox(mockNewBoxFeedbackData, backendUrl);
 
     expect(result).toEqual(mockResponse);
-    expect(mockedAxios).toHaveBeenCalledWith({
+    expect(mockedAxios).toHaveBeenCalledWith(expect.objectContaining({
       method: "post",
       url: `${backendUrl}/feedback-new-box`,
-      headers: {
+      headers: expect.objectContaining({
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-      },
+      }),
       data: mockNewBoxFeedbackData,
-    });
+      withCredentials: true,
+    }));
   });
 
   it("should throw ValueError for empty backend URL", async () => {

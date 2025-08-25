@@ -35,7 +35,7 @@ const handleAxios = async <T>(request: {
   const data = await axios(enhancedRequest)
     .then((response) => {
       // Extract correlation ID from response if available
-      const responseCorrelationId = response.headers["x-correlation-id"];
+      const responseCorrelationId = response.headers?.["x-correlation-id"];
       if (responseCorrelationId) {
         errorLogger.setCorrelationId(responseCorrelationId);
       }
@@ -51,12 +51,12 @@ const handleAxios = async <T>(request: {
         // Log API error with details
         errorLogger.logApiError(
           request.url,
-          error.response.status,
-          error.response.statusText,
-          error.response.data,
-          error.response.headers["x-correlation-id"] || correlationId,
+          error.response?.status || 0,
+          error.response?.statusText || 'Unknown',
+          error.response?.data || 'No response data',
+          error.response?.headers?.["x-correlation-id"] || correlationId,
         );
-        throw new AzureAPIError(error.response.data);
+        throw new AzureAPIError(error.response?.data || 'API Error');
       } else if (error.request) {
         // Log network error
         errorLogger.logError(
@@ -67,7 +67,7 @@ const handleAxios = async <T>(request: {
         throw new AzureAPIError(error.request);
       } else {
         // Log other errors
-        errorLogger.logError(`Request setup error: ${error.message}`, error, {
+        errorLogger.logError(`Request setup error: ${error.message || 'Unknown error'}`, error, {
           config: error.config,
           correlationId,
         });
