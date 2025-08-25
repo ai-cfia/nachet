@@ -3,6 +3,7 @@
 ## Backend Tests
 
 ### 1. Test Correlation ID Middleware
+
 ```bash
 # Start the backend server
 cd backend
@@ -14,6 +15,7 @@ curl -X GET http://localhost:8080/health -H "X-Correlation-ID: test-123" -v
 ```
 
 ### 2. Test Frontend Error Logging Endpoint
+
 ```bash
 # Send a test error log
 curl -X POST http://localhost:8080/api/logs \
@@ -30,6 +32,7 @@ curl -X POST http://localhost:8080/api/logs \
 ```
 
 ### 3. Check Backend Logs
+
 - Verify correlation IDs appear in logs
 - Verify request/response logging
 - Verify error logging with stack traces
@@ -37,6 +40,7 @@ curl -X POST http://localhost:8080/api/logs \
 ## Frontend Tests
 
 ### 1. Test Error Logger Service
+
 ```javascript
 // In browser console after starting frontend
 errorLogger.logError('Test error', new Error('Test'));
@@ -45,6 +49,7 @@ errorLogger.logError('Test error', new Error('Test'));
 ```
 
 ### 2. Test Error Boundary
+
 ```javascript
 // Trigger an error in a component
 // Verify error is caught and logged
@@ -52,6 +57,7 @@ errorLogger.logError('Test error', new Error('Test'));
 ```
 
 ### 3. Test API Error Handling
+
 ```javascript
 // Make a failing API call
 // Verify error is logged with correlation ID
@@ -62,7 +68,7 @@ errorLogger.logError('Test error', new Error('Test'));
 
 1. Start backend: `cd backend && uv run hypercorn -b :8080 app:app`
 2. Start frontend: `cd frontend && npm run dev`
-3. Open browser to http://localhost:5173
+3. Open browser to <http://localhost:5173>
 4. Open browser DevTools (Network and Console tabs)
 5. Perform actions that trigger API calls
 6. Check for:
@@ -74,6 +80,7 @@ errorLogger.logError('Test error', new Error('Test'));
 ## Monitoring Integration
 
 For production with Grafana/Loki:
+
 1. Verify OTEL environment variables are set
 2. Check logs are being sent to Alloy/Loki
 3. Query Loki for correlation IDs

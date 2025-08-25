@@ -1,6 +1,6 @@
-import { Component, ErrorInfo, ReactNode } from 'react';
-import { Box, Typography, Button, Paper } from '@mui/material';
-import errorLogger from '../logging/errorLogger';
+import { Component, ErrorInfo, ReactNode } from "react";
+import { Box, Typography, Button, Paper } from "@mui/material";
+import errorLogger from "../logging/errorLogger";
 
 interface Props {
   children: ReactNode;
@@ -33,15 +33,11 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log the error to our centralized logging service
-    errorLogger.logError(
-      'React Error Boundary caught an error',
-      error,
-      {
-        componentStack: errorInfo.componentStack,
-        errorBoundary: true,
-        correlationId: errorLogger.getCorrelationId(),
-      }
-    );
+    errorLogger.logError("React Error Boundary caught an error", error, {
+      componentStack: errorInfo.componentStack,
+      errorBoundary: true,
+      correlationId: errorLogger.getCorrelationId(),
+    });
 
     this.setState({
       error,
@@ -78,21 +74,30 @@ class ErrorBoundary extends Component<Props, State> {
               Something went wrong
             </Typography>
             <Typography variant="body1" paragraph>
-              An unexpected error has occurred. The error has been logged and our team has been notified.
+              An unexpected error has occurred. The error has been logged and
+              our team has been notified.
             </Typography>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {process.env.NODE_ENV === "development" && this.state.error && (
               <Box mt={2}>
                 <Typography variant="subtitle2" color="textSecondary">
                   Error Details (Development Only):
                 </Typography>
-                <Paper variant="outlined" sx={{ p: 2, mt: 1, bgcolor: 'grey.50' }}>
-                  <Typography variant="body2" component="pre" sx={{ 
-                    fontFamily: 'monospace',
-                    fontSize: '0.875rem',
-                    overflow: 'auto'
-                  }}>
+                <Paper
+                  variant="outlined"
+                  sx={{ p: 2, mt: 1, bgcolor: "grey.50" }}
+                >
+                  <Typography
+                    variant="body2"
+                    component="pre"
+                    sx={{
+                      fontFamily: "monospace",
+                      fontSize: "0.875rem",
+                      overflow: "auto",
+                    }}
+                  >
                     {this.state.error.toString()}
-                    {this.state.errorInfo && this.state.errorInfo.componentStack}
+                    {this.state.errorInfo &&
+                      this.state.errorInfo.componentStack}
                   </Typography>
                 </Paper>
               </Box>
@@ -107,12 +112,17 @@ class ErrorBoundary extends Component<Props, State> {
               </Button>
               <Button
                 variant="outlined"
-                onClick={() => window.location.href = '/'}
+                onClick={() => (window.location.href = "/")}
               >
                 Go to Home
               </Button>
             </Box>
-            <Typography variant="caption" color="textSecondary" mt={2} display="block">
+            <Typography
+              variant="caption"
+              color="textSecondary"
+              mt={2}
+              display="block"
+            >
               Error ID: {errorLogger.getCorrelationId()}
             </Typography>
           </Paper>

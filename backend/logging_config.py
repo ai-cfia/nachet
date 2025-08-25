@@ -1,6 +1,5 @@
 import os
 import sys
-import json
 import logging
 from contextvars import ContextVar
 from typing import Optional

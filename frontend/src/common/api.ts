@@ -20,14 +20,14 @@ const handleAxios = async <T>(request: {
 }): Promise<T> => {
   // Generate correlation ID for this request
   const correlationId = errorLogger.getCorrelationId();
-  
+
   // Add correlation and session IDs to headers
   const enhancedRequest = {
     ...request,
     headers: {
       ...request.headers,
-      'X-Correlation-ID': correlationId,
-      'X-Session-ID': errorLogger.getSessionId(),
+      "X-Correlation-ID": correlationId,
+      "X-Session-ID": errorLogger.getSessionId(),
     },
     withCredentials: true,
   };
@@ -35,11 +35,11 @@ const handleAxios = async <T>(request: {
   const data = await axios(enhancedRequest)
     .then((response) => {
       // Extract correlation ID from response if available
-      const responseCorrelationId = response.headers['x-correlation-id'];
+      const responseCorrelationId = response.headers["x-correlation-id"];
       if (responseCorrelationId) {
         errorLogger.setCorrelationId(responseCorrelationId);
       }
-      
+
       if (response.status === 200) {
         return response.data;
       } else {
@@ -54,24 +54,23 @@ const handleAxios = async <T>(request: {
           error.response.status,
           error.response.statusText,
           error.response.data,
-          error.response.headers['x-correlation-id'] || correlationId
+          error.response.headers["x-correlation-id"] || correlationId,
         );
         throw new AzureAPIError(error.response.data);
       } else if (error.request) {
         // Log network error
         errorLogger.logError(
           `Network error: No response received from ${request.url}`,
-          new Error('Network request failed'),
-          { request: error.request, correlationId }
+          new Error("Network request failed"),
+          { request: error.request, correlationId },
         );
         throw new AzureAPIError(error.request);
       } else {
         // Log other errors
-        errorLogger.logError(
-          `Request setup error: ${error.message}`,
-          error,
-          { config: error.config, correlationId }
-        );
+        errorLogger.logError(`Request setup error: ${error.message}`, error, {
+          config: error.config,
+          correlationId,
+        });
       }
       throw new AzureAPIError(error.config || error.message);
     });

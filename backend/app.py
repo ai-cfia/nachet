@@ -16,18 +16,19 @@ from quart_cors import cors
 from collections import namedtuple
 # from cryptography.fernet import Fernet
 
-load_dotenv()  # noqa: E402
+# Import everything needed before load_dotenv
+import model.inference as inference
+import storage.datastore_storage_api as datastore
+from model.model_exceptions import ModelAPIError
+from model import request_function
+from datastore import azure_storage
+from auth.cookie import decode_vouch_cookie
+from logging_config import setup_logging
 
-# Setup logging
-from logging_config import setup_logging, get_logger
+load_dotenv()
+
+# Setup logging after loading env vars
 logger = setup_logging()
-
-import model.inference as inference  # noqa: E402
-import storage.datastore_storage_api as datastore  # noqa: E402
-from model.model_exceptions import ModelAPIError  # noqa: E402
-from model import request_function  # noqa: E402
-from datastore import azure_storage  # noqa: E402
-from auth.cookie import decode_vouch_cookie  # noqa: E402
 
 
 class APIError(Exception):
@@ -148,8 +149,8 @@ app = Quart(__name__)
 app = cors(app, **cors_settings)
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH_MEGABYTES * 1024 * 1024
 
-# Setup middleware
-from middleware import setup_middleware
+# Import middleware at the top of the file is handled above
+from middleware import setup_middleware  # noqa: E402
 setup_middleware(app)
 
 
@@ -185,7 +186,7 @@ async def before_serving():
         CACHE["endpoints"] = await get_pipelines()
 
         logger.info(
-            f"Server started with configuration",
+            "Server started with configuration",
             extra={
                 "date": str(date.today()),
                 "pipeline_version": PIPELINE_VERSION,
@@ -754,7 +755,7 @@ async def inference_request():
 
         # return the inference results to the client
         logger.info(
-            f"Inference request completed",
+            "Inference request completed",
             extra={"duration_seconds": round(time.perf_counter() - seconds, 4)}
         )
         return jsonify(saved_result_json), 200
