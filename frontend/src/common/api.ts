@@ -52,11 +52,11 @@ const handleAxios = async <T>(request: {
         errorLogger.logApiError(
           request.url,
           error.response?.status || 0,
-          error.response?.statusText || 'Unknown',
-          error.response?.data || 'No response data',
+          error.response?.statusText || "Unknown",
+          error.response?.data || "No response data",
           error.response?.headers?.["x-correlation-id"] || correlationId,
         );
-        throw new AzureAPIError(error.response?.data || 'API Error');
+        throw new AzureAPIError(error.response?.data || "API Error");
       } else if (error.request) {
         // Log network error
         errorLogger.logError(
@@ -67,10 +67,14 @@ const handleAxios = async <T>(request: {
         throw new AzureAPIError(error.request);
       } else {
         // Log other errors
-        errorLogger.logError(`Request setup error: ${error.message || 'Unknown error'}`, error, {
-          config: error.config,
-          correlationId,
-        });
+        errorLogger.logError(
+          `Request setup error: ${error.message || "Unknown error"}`,
+          error,
+          {
+            config: error.config,
+            correlationId,
+          },
+        );
       }
       throw new AzureAPIError(error.config || error.message);
     });
