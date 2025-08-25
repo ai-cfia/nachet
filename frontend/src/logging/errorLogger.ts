@@ -22,11 +22,23 @@ class ErrorLogger {
   }
 
   private generateSessionId(): string {
-    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const arr = new Uint8Array(9);
+    window.crypto.getRandomValues(arr);
+    const randomStr = Array.from(arr)
+      .map((b) => b.toString(36))
+      .join("")
+      .substring(0, 9);
+    return `session_${Date.now()}_${randomStr}`;
   }
 
   private generateCorrelationId(): string {
-    return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const arr = new Uint8Array(9);
+    window.crypto.getRandomValues(arr);
+    const randomStr = Array.from(arr)
+      .map((b) => b.toString(36))
+      .join("")
+      .substring(0, 9);
+    return `${Date.now()}_${randomStr}`;
   }
 
   public setCorrelationId(id: string): void {
