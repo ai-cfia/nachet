@@ -7,7 +7,7 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-PROJECT_DIR="$1"
+PROJECT_DIR="$(realpath "$1")"
 
 # Check if directory exists
 if [ ! -d "$PROJECT_DIR" ]; then
@@ -23,4 +23,4 @@ docker run --rm -v "$PROJECT_DIR":/app -w /app ubuntu:24.04 sh -c "\
   curl -LsSf https://astral.sh/uv/install.sh | sh && \
   /root/.local/bin/uv sync && \
   /root/.local/bin/uv lock && \
-  /root/.local/bin/uv run cyclonedx-py environment --output-reproducible -v --sv 1.6 --pyproject pyproject.toml -o sbom.json"
+  /root/.local/bin/uv run cyclonedx-py environment --output-reproducible -v --sv 1.6 --pyproject pyproject.toml -o sbom.json && echo "" >> sbom.json"
