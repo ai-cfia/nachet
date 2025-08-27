@@ -147,6 +147,18 @@ uv run python -m unittest discover -s tests
 python -m unittest discover -s tests
 ```
 
+### GENERATING SOFTWARE BILL OF MATERIALS (SBOM)
+
+To generate an SBOM (Software Bill of Materials) for the backend dependencies, use:
+
+```bash
+./generate-sbom.sh /path/to/backend/directory
+```
+
+This script uses Docker with Ubuntu 24.04 to create a reproducible environment for SBOM generation. The generated `sbom.json` file will contain all project dependencies in CycloneDX format.
+
+**Note:** The SBOM should be regenerated whenever the project version changes or dependencies are updated in `pyproject.toml`.
+
 ### ENVIRONMENT VARIABLES
 
 Start by making a copy of `.env.template` and renaming it `.env`. For the
@@ -312,6 +324,18 @@ uv run python -m unittest discover -s tests
 ```bash
 python -m unittest discover -s tests
 ```
+
+### GÉNÉRATION DE LA NOMENCLATURE LOGICIELLE (SBOM)
+
+Pour générer un SBOM (Software Bill of Materials) pour les dépendances du backend, utilisez :
+
+```bash
+./generate-sbom.sh /chemin/vers/repertoire/backend
+```
+
+Ce script utilise Docker avec Ubuntu 24.04 pour créer un environnement reproductible pour la génération du SBOM. Le fichier `sbom.json` généré contiendra toutes les dépendances du projet au format CycloneDX.
+
+**Note :** Le SBOM doit être régénéré chaque fois que la version du projet change ou que les dépendances sont mises à jour dans `pyproject.toml`.
 
 ### VARIABLES D'ENVIRONNEMENT
 
