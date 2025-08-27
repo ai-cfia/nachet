@@ -54,7 +54,7 @@ jobs:
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Run the following command to create it:" >> $GITHUB_STEP_SUMMARY
             echo '```bash' >> $GITHUB_STEP_SUMMARY
-            echo 'uv run cyclonedx-py environment --output-reproducible -v --sv 1.6 --pyproject pyproject.toml -o sbom.json' >> $GITHUB_STEP_SUMMARY
+            echo 'cd nachet && ./generate-sbom.sh ${{ inputs.working-directory }} ' >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           elif ! cmp -s sbom.json sbom-new.json; then
             echo "SBOM file is outdated and needs to be regenerated"
@@ -67,9 +67,7 @@ jobs:
             echo "Run the following command to update it:" \
               >> $GITHUB_STEP_SUMMARY
             echo '```bash' >> $GITHUB_STEP_SUMMARY
-            echo 'uv run cyclonedx-py environment ' \
-              '--output-reproducible -v --sv 1.6 --pyproject pyproject.toml' \
-              ' -o sbom.json' >> $GITHUB_STEP_SUMMARY
+            echo 'cd nachet && ./generate-sbom.sh ${{ inputs.working-directory }} ' >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           else
             echo "SBOM file is up to date"
@@ -89,7 +87,5 @@ jobs:
         if: steps.sbom-check.outputs.needs_update == 'true'
         run: |
           echo "SBOM file needs to be regenerated. Please run:"
-          echo "cd datastore && uv run cyclonedx-py environment " \
-            "--output-reproducible -v --sv 1.6 --pyproject pyproject.toml " \
-            "-o sbom.json"
+            echo "cd nachet && ./generate-sbom.sh ${{ inputs.working-directory }} "
           exit 1
