@@ -1,0 +1,107 @@
+trigger:
+  tags:
+    include:
+      - v*
+
+pr: none
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  - group: terraform-backend-settings
+
+stages:
+  - stage: InitAndPlan
+    displayName: "Initialize and Plan"
+    jobs:
+      - job: TerraformInitPlan
+        displayName: "Terraform Init and Plan"
+        steps:
+          - task: AzureCLI@2
+            displayName: "Azure CLI Login"
+            inputs:
+              azureSubscription: $(serviceConnectionName)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                echo "Successfully logged in with Azure CLI"
+
+          - task: DownloadSecureFile@1
+            name: DownloadSecureVars
+            displayName: "Download nachet-dev.tfvars"
+            inputs:
+              secureFile: "nachet-dev.tfvars"
+
+          - task: TerraformTaskV2@2
+            displayName: "Terraform Init"
+            inputs:
+              provider: "azurerm"
+              command: "init"
+              workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
+              backendServiceArm: "$(serviceConnectionName)"
+              backendAzureRmResourceGroupName: "$(resourceGroupName)"
+              backendAzureRmStorageAccountName: "$(storageAccountName)"
+              backendAzureRmContainerName: "$(containerName)"
+              backendAzureRmKey: "$(stateKey)"
+
+          - task: TerraformTaskV2@2
+            displayName: "Terraform Plan"
+            inputs:
+              provider: "azurerm"
+              command: "plan"
+              commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath)"
+              workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
+              environmentServiceNameAzureRM: "$(serviceConnectionName)"
+
+  - stage: Apply
+    displayName: "Apply Terraform Plan"
+    dependsOn: InitAndPlan
+    condition: succeeded()
+    jobs:
+      - deployment: TerraformApply
+        displayName: "Terraform Apply"
+        pool:
+          vmImage: "ubuntu-latest"
+        environment: "TFApproval"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: AzureCLI@2
+                  displayName: "Azure CLI Login"
+                  inputs:
+                    azureSubscription: $(serviceConnectionName)
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
+                    inlineScript: |
+                      echo "Successfully logged in with Azure CLI"
+
+                - task: DownloadSecureFile@1
+                  name: DownloadSecureVars
+                  displayName: "Download nachet-dev.tfvars"
+                  inputs:
+                    secureFile: "nachet-dev.tfvars"
+
+                - task: TerraformTaskV2@2
+                  displayName: "Terraform Init"
+                  inputs:
+                    provider: "azurerm"
+                    command: "init"
+                    workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
+                    backendServiceArm: "$(serviceConnectionName)"
+                    backendAzureRmResourceGroupName: "$(resourceGroupName)"
+                    backendAzureRmStorageAccountName: "$(storageAccountName)"
+                    backendAzureRmContainerName: "$(containerName)"
+                    backendAzureRmKey: "$(stateKey)"
+
+                - task: TerraformTaskV2@2
+                  displayName: "Terraform Apply"
+                  inputs:
+                    provider: "azurerm"
+                    command: "apply"
+                    commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath)"
+                    workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
+                    environmentServiceNameAzureRM: "$(serviceConnectionName)"
