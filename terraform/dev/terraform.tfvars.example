@@ -1,0 +1,63 @@
+# Dev Environment Configuration
+project_name        = "nachet"
+environment         = "dev"
+location            = "canadacentral"
+resource_group_name = "nachet-dev-rg"
+
+# Container Images
+backend_image    = "ghcr.io/ai-cfia/nachet-backend:dev"
+blob_mock_image  = "ghcr.io/ai-cfia/nachet-blob-storage-mock:latest"
+triton_image     = "nvcr.io/nvidia/tritonserver:24.10-py3"
+
+# PostgreSQL Configuration
+postgresql_admin_username = "nachetadmin"
+postgresql_admin_password = "YourDevPasswordHere123!"
+postgresql_sku_name       = "B_Standard_B2ms"
+postgresql_storage_mb     = 32768
+postgresql_version        = "16"
+
+# Container Apps Resources
+container_app_cpu    = 0.5
+container_app_memory = "1Gi"
+triton_cpu           = 2
+triton_memory        = "4Gi"
+
+# Backend Environment Variables
+nachet_azure_storage_connection_string = "DefaultEndpointsProtocol=https;AccountName=youraccount;AccountKey=yourkey;EndpointSuffix=core.windows.net"
+nachet_data_path                       = "/app/data"
+backend_port                           = "8080"
+
+# ML Model Endpoints (Leave empty to use local Triton servers)
+ml_model_endpoint_rcnn         = ""
+ml_model_endpoint_swin         = ""
+ml_model_endpoint_swin_22_spp  = ""
+ml_model_endpoint_swin_27_spp  = ""
+
+# ML Model API Keys
+ml_api_key = ""
+
+# Application Security
+jwt_secret      = "dev-jwt-secret-here"
+session_secret  = "dev-session-secret-here"
+encryption_key  = "dev-encryption-key-here"
+
+# Application Configuration
+cors_allowed_origins = "*"
+log_level            = "DEBUG"
+
+# Azure Storage for Triton Models (Leave empty to use generated storage account key)
+azure_storage_account_key = ""
+
+# Blob Mock Configuration
+blob_mock_port = "10000"
+
+# Additional Database URLs (Leave empty to use default)
+fertiscan_db_url = ""
+
+# Tags
+tags = {
+  Environment = "dev"
+  Project     = "nachet"
+  ManagedBy   = "Terraform"
+  Department  = "CFIA"
+}
