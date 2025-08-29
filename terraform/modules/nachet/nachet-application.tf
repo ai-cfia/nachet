@@ -4,6 +4,9 @@ resource "azurerm_container_app_environment" "nachet" {
   resource_group_name        = azurerm_resource_group.nachet.name
   log_analytics_workspace_id = azurerm_log_analytics_workspace.nachet.id
   
+  # Use the created subnet for Container Apps
+  infrastructure_subnet_id = azurerm_subnet.container_apps.id
+  
   tags = var.tags
 }
 
@@ -55,10 +58,6 @@ resource "azurerm_container_app" "backend" {
         value = "https://${var.project_name}-backend-ca-${var.environment}.${azurerm_container_app_environment.nachet.default_domain}"
       }
       
-      env {
-        name  = "BLOB_STORAGE_URL"
-        value = "http://${azurerm_container_app.blob_mock.name}:${var.blob_mock_port}"
-      }
       
       env {
         name  = "ML_MODEL_ENDPOINT_RCNN"
@@ -116,7 +115,7 @@ resource "azurerm_container_app" "backend" {
   }
   
   ingress {
-    external_enabled = true
+    external_enabled = var.enable_public_access
     target_port      = tonumber(var.backend_port)
     
     traffic_weight {
@@ -134,50 +133,8 @@ resource "azurerm_container_app" "backend" {
   tags = var.tags
   
   depends_on = [
-    azurerm_container_app.blob_mock,
     azurerm_container_app.swin_classifier,
     azurerm_container_app.swin_22_spp,
     azurerm_container_app.swin_27_spp
   ]
-}
-
-resource "azurerm_container_app" "blob_mock" {
-  name                         = "${var.project_name}-blob-mock-ca-${var.environment}"
-  container_app_environment_id = azurerm_container_app_environment.nachet.id
-  resource_group_name          = azurerm_resource_group.nachet.name
-  revision_mode                = "Single"
-  
-  template {
-    container {
-      name   = "blob-mock"
-      image  = var.blob_mock_image
-      cpu    = var.container_app_cpu
-      memory = var.container_app_memory
-      
-      env {
-        name  = "PORT"
-        value = var.blob_mock_port
-      }
-      
-      env {
-        name  = "AZURE_STORAGE_CONNECTION_STRING"
-        value = var.nachet_azure_storage_connection_string != "" ? var.nachet_azure_storage_connection_string : azurerm_storage_account.nachet.primary_connection_string
-      }
-    }
-    
-    min_replicas = 1
-    max_replicas = 3
-  }
-  
-  ingress {
-    external_enabled = false
-    target_port      = tonumber(var.blob_mock_port)
-    
-    traffic_weight {
-      percentage      = 100
-      latest_revision = true
-    }
-  }
-  
-  tags = var.tags
 }

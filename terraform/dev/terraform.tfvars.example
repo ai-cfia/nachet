@@ -4,9 +4,16 @@ environment         = "dev"
 location            = "canadacentral"
 resource_group_name = "nachet-dev-rg"
 
+# Network Configuration (Required - VNet must exist in same RG, subnets will be created)
+vnet_name                  = "my-vnet"
+container_apps_subnet_cidr = "10.0.1.0/26"  # 59 usable IPs for Container Apps
+postgresql_subnet_cidr     = "10.0.2.0/28"  # 11 usable IPs for PostgreSQL
+app_gateway_subnet_cidr    = "10.0.4.0/27"  # 27 usable IPs for Application Gateway
+# storage_subnet_cidr      = "10.0.3.0/29"  # Optional: 3 usable IPs for Storage private endpoints
+enable_public_access       = false  # Container Apps private, accessible via App Gateway
+
 # Container Images
 backend_image    = "ghcr.io/ai-cfia/nachet-backend:dev"
-blob_mock_image  = "ghcr.io/ai-cfia/nachet-blob-storage-mock:latest"
 triton_image     = "nvcr.io/nvidia/tritonserver:24.10-py3"
 
 # PostgreSQL Configuration
@@ -47,9 +54,6 @@ log_level            = "DEBUG"
 
 # Azure Storage for Triton Models (Leave empty to use generated storage account key)
 azure_storage_account_key = ""
-
-# Blob Mock Configuration
-blob_mock_port = "10000"
 
 # Additional Database URLs (Leave empty to use default)
 fertiscan_db_url = ""

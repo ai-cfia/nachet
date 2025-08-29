@@ -1,33 +1,3 @@
-terraform {
-  required_version = ">= 1.5.0"
-  
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 4.0"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.6"
-    }
-  }
-  
-  backend "azurerm" {
-    resource_group_name  = "terraform-state-rg"
-    storage_account_name = "tfstatenachet"
-    container_name       = "tfstate"
-    key                  = "nachet-dev.tfstate"
-  }
-}
-
-provider "azurerm" {
-  features {
-    key_vault {
-      purge_soft_delete_on_destroy    = true
-      recover_soft_deleted_key_vaults = true
-    }
-  }
-}
 
 module "nachet" {
   source = "../modules/nachet"
@@ -38,9 +8,16 @@ module "nachet" {
   resource_group_name = var.resource_group_name
   tags                = var.tags
   
+  # Network Configuration
+  vnet_name                  = var.vnet_name
+  container_apps_subnet_cidr = var.container_apps_subnet_cidr
+  postgresql_subnet_cidr     = var.postgresql_subnet_cidr
+  storage_subnet_cidr        = var.storage_subnet_cidr
+  app_gateway_subnet_cidr    = var.app_gateway_subnet_cidr
+  enable_public_access       = var.enable_public_access
+  
   # Container Images
   backend_image    = var.backend_image
-  blob_mock_image  = var.blob_mock_image
   triton_image     = var.triton_image
   
   # PostgreSQL Configuration
@@ -79,9 +56,6 @@ module "nachet" {
   
   # Azure Storage for Triton Models
   azure_storage_account_key = var.azure_storage_account_key
-  
-  # Blob Mock Configuration
-  blob_mock_port = var.blob_mock_port
   
   # Additional Database URLs
   fertiscan_db_url = var.fertiscan_db_url

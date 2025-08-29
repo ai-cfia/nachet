@@ -33,17 +33,47 @@ variable "tags" {
   }
 }
 
+# Network Configuration
+variable "vnet_name" {
+  description = "Name of the existing VNet where subnets will be created"
+  type        = string
+}
+
+variable "container_apps_subnet_cidr" {
+  description = "CIDR block for Container Apps subnet (e.g., 10.0.1.0/26)"
+  type        = string
+  default     = "10.0.1.0/26"  # 59 usable IPs
+}
+
+variable "postgresql_subnet_cidr" {
+  description = "CIDR block for PostgreSQL subnet (e.g., 10.0.2.0/28)"
+  type        = string
+  default     = "10.0.2.0/28"  # 11 usable IPs
+}
+
+variable "storage_subnet_cidr" {
+  description = "CIDR block for Storage subnet - optional (e.g., 10.0.3.0/29)"
+  type        = string
+  default     = ""  # Optional - leave empty if not using private endpoints
+}
+
+variable "app_gateway_subnet_cidr" {
+  description = "CIDR block for Application Gateway subnet (e.g., 10.0.4.0/27)"
+  type        = string
+  default     = "10.0.4.0/27"  # 27 usable IPs for App Gateway
+}
+
+variable "enable_public_access" {
+  description = "Enable public access for Container Apps (set to false for full private deployment)"
+  type        = bool
+  default     = false
+}
+
 # Container Images
 variable "backend_image" {
   description = "Docker image for Nachet backend"
   type        = string
   default     = "ghcr.io/ai-cfia/nachet-backend:dev"
-}
-
-variable "blob_mock_image" {
-  description = "Docker image for blob storage mock"
-  type        = string
-  default     = "ghcr.io/ai-cfia/nachet-blob-storage-mock:latest"
 }
 
 variable "triton_image" {
@@ -190,13 +220,6 @@ variable "azure_storage_account_key" {
   type        = string
   default     = ""
   sensitive   = true
-}
-
-# Blob Mock Configuration
-variable "blob_mock_port" {
-  description = "Port for blob mock service"
-  type        = string
-  default     = "10000"
 }
 
 # Additional Backend Environment Variables

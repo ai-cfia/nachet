@@ -18,10 +18,6 @@ output "backend_url" {
   value       = module.nachet.backend_url
 }
 
-output "blob_mock_fqdn" {
-  description = "Blob Mock Container App FQDN"
-  value       = module.nachet.blob_mock_fqdn
-}
 
 output "swin_classifier_fqdns" {
   description = "Swin Classifier Container Apps FQDNs"
@@ -48,4 +44,14 @@ output "storage_account_connection_string" {
   description = "Storage Account connection string"
   value       = module.nachet.storage_account_connection_string
   sensitive   = true
+}
+
+output "app_gateway_public_ip" {
+  description = "Application Gateway public IP address"
+  value       = module.nachet.app_gateway_public_ip
+}
+
+output "app_gateway_url" {
+  description = "Application Gateway public URL to access Nachet"
+  value       = module.nachet.app_gateway_url
 }

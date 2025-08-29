@@ -11,8 +11,12 @@ resource "azurerm_postgresql_flexible_server" "nachet" {
   sku_name                      = var.postgresql_sku_name
   backup_retention_days         = 7
   geo_redundant_backup_enabled  = false
-  auto_grow_enabled             = true
-  public_network_access_enabled = true
+  auto_grow_enabled             = false
+  
+  # Use the created subnet for PostgreSQL
+  delegated_subnet_id           = azurerm_subnet.postgresql.id
+  private_dns_zone_id           = azurerm_private_dns_zone.postgresql.id
+  public_network_access_enabled = false
   
   authentication {
     active_directory_auth_enabled = false
@@ -42,9 +46,4 @@ resource "azurerm_postgresql_flexible_server_database" "fertiscan" {
   charset   = "utf8"
 }
 
-resource "azurerm_postgresql_flexible_server_firewall_rule" "allow_azure_services" {
-  name             = "allow-azure-services"
-  server_id        = azurerm_postgresql_flexible_server.nachet.id
-  start_ip_address = "0.0.0.0"
-  end_ip_address   = "0.0.0.0"
-}
+# No firewall rules needed for private deployment

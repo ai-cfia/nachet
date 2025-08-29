@@ -23,14 +23,61 @@ variable "tags" {
   type        = map(string)
 }
 
-# Container Images
-variable "backend_image" {
-  description = "Docker image for Nachet backend"
+# Network Configuration
+variable "vnet_name" {
+  description = "Name of the existing VNet where subnets will be created"
   type        = string
 }
 
-variable "blob_mock_image" {
-  description = "Docker image for blob storage mock"
+variable "container_apps_subnet_cidr" {
+  description = "CIDR block for Container Apps subnet (e.g., 10.0.1.0/26)"
+  type        = string
+}
+
+variable "postgresql_subnet_cidr" {
+  description = "CIDR block for PostgreSQL subnet (e.g., 10.0.2.0/28)"
+  type        = string
+}
+
+variable "storage_subnet_cidr" {
+  description = "CIDR block for Storage subnet - optional (e.g., 10.0.3.0/29)"
+  type        = string
+  default     = ""
+}
+
+variable "app_gateway_subnet_cidr" {
+  description = "CIDR block for Application Gateway subnet (e.g., 10.0.4.0/27)"
+  type        = string
+}
+
+# Optional: NSG IDs if you want to associate existing NSGs with subnets
+variable "container_apps_nsg_id" {
+  description = "ID of existing NSG to associate with Container Apps subnet (optional)"
+  type        = string
+  default     = ""
+}
+
+variable "postgresql_nsg_id" {
+  description = "ID of existing NSG to associate with PostgreSQL subnet (optional)"
+  type        = string
+  default     = ""
+}
+
+variable "storage_nsg_id" {
+  description = "ID of existing NSG to associate with Storage subnet (optional)"
+  type        = string
+  default     = ""
+}
+
+variable "enable_public_access" {
+  description = "Enable public access for Container Apps (set to false for full private deployment)"
+  type        = bool
+  default     = false
+}
+
+# Container Images
+variable "backend_image" {
+  description = "Docker image for Nachet backend"
   type        = string
 }
 
@@ -165,12 +212,6 @@ variable "azure_storage_account_key" {
   type        = string
   default     = ""
   sensitive   = true
-}
-
-# Blob Mock Configuration
-variable "blob_mock_port" {
-  description = "Port for blob mock service"
-  type        = string
 }
 
 # Additional Backend Environment Variables

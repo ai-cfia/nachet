@@ -18,10 +18,6 @@ output "backend_url" {
   value       = "https://${azurerm_container_app.backend.latest_revision_fqdn}"
 }
 
-output "blob_mock_fqdn" {
-  description = "Blob Mock Container App FQDN"
-  value       = azurerm_container_app.blob_mock.latest_revision_fqdn
-}
 
 output "swin_classifier_fqdns" {
   description = "Swin Classifier Container Apps FQDNs"
@@ -52,4 +48,19 @@ output "storage_account_connection_string" {
   description = "Storage Account connection string"
   value       = azurerm_storage_account.nachet.primary_connection_string
   sensitive   = true
+}
+
+output "app_gateway_public_ip" {
+  description = "Application Gateway public IP address"
+  value       = azurerm_public_ip.app_gateway.ip_address
+}
+
+output "app_gateway_fqdn" {
+  description = "Application Gateway public FQDN"
+  value       = azurerm_public_ip.app_gateway.fqdn
+}
+
+output "app_gateway_url" {
+  description = "Application Gateway public URL"
+  value       = "http://${azurerm_public_ip.app_gateway.ip_address}"
 }

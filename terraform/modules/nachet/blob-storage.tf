@@ -6,6 +6,16 @@ resource "azurerm_storage_account" "nachet" {
   account_replication_type = "LRS"
   min_tls_version          = "TLS1_2"
   
+  # Restrict to private access only
+  public_network_access_enabled = false
+  
+  # Configure network rules to allow Container Apps subnet
+  network_rules {
+    default_action             = "Deny"
+    bypass                     = ["AzureServices"]
+    virtual_network_subnet_ids = [azurerm_subnet.container_apps.id]
+  }
+  
   blob_properties {
     versioning_enabled = true
     delete_retention_policy {
