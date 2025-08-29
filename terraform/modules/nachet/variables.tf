@@ -45,10 +45,6 @@ variable "storage_subnet_cidr" {
   default     = ""
 }
 
-variable "app_gateway_subnet_cidr" {
-  description = "CIDR block for Application Gateway subnet (e.g., 10.0.4.0/27)"
-  type        = string
-}
 
 # Optional: NSG IDs if you want to associate existing NSGs with subnets
 variable "container_apps_nsg_id" {
@@ -75,6 +71,18 @@ variable "enable_public_access" {
   default     = false
 }
 
+variable "enable_observability_stack" {
+  description = "Enable Grafana LGTM + Alloy observability stack"
+  type        = bool
+  default     = true
+}
+
+variable "allowed_ip_addresses" {
+  description = "List of IP addresses allowed to access Container Apps directly (CIDR format, e.g. 205.194.32.99/32)"
+  type        = list(string)
+  default     = ["0.0.0.0/0"] # Allow all by default - CHANGE THIS!
+}
+
 # Container Images
 variable "backend_image" {
   description = "Docker image for Nachet backend"
@@ -84,6 +92,140 @@ variable "backend_image" {
 variable "triton_image" {
   description = "Docker image for Triton inference server"
   type        = string
+}
+
+# Observability Stack Images
+variable "loki_image" {
+  description = "Docker image for Loki"
+  type        = string
+  default     = "grafana/loki:3.0.0"
+}
+
+variable "grafana_image" {
+  description = "Docker image for Grafana"
+  type        = string
+  default     = "grafana/grafana:10.4.0"
+}
+
+variable "tempo_image" {
+  description = "Docker image for Tempo"
+  type        = string
+  default     = "grafana/tempo:2.4.0"
+}
+
+variable "mimir_image" {
+  description = "Docker image for Mimir"
+  type        = string
+  default     = "grafana/mimir:2.12.0"
+}
+
+variable "alloy_image" {
+  description = "Docker image for Alloy"
+  type        = string
+  default     = "grafana/alloy:v1.0.0"
+}
+
+# Observability Stack Resources
+variable "loki_cpu" {
+  description = "CPU allocation for Loki"
+  type        = number
+  default     = 0.5
+}
+
+variable "loki_memory" {
+  description = "Memory allocation for Loki"
+  type        = string
+  default     = "1Gi"
+}
+
+variable "grafana_cpu" {
+  description = "CPU allocation for Grafana"
+  type        = number
+  default     = 0.5
+}
+
+variable "grafana_memory" {
+  description = "Memory allocation for Grafana"
+  type        = string
+  default     = "1Gi"
+}
+
+variable "tempo_cpu" {
+  description = "CPU allocation for Tempo"
+  type        = number
+  default     = 0.25
+}
+
+variable "tempo_memory" {
+  description = "Memory allocation for Tempo"
+  type        = string
+  default     = "0.5Gi"
+}
+
+variable "mimir_cpu" {
+  description = "CPU allocation for Mimir"
+  type        = number
+  default     = 0.5
+}
+
+variable "mimir_memory" {
+  description = "Memory allocation for Mimir"
+  type        = string
+  default     = "1Gi"
+}
+
+variable "alloy_cpu" {
+  description = "CPU allocation for Alloy"
+  type        = number
+  default     = 0.25
+}
+
+variable "alloy_memory" {
+  description = "Memory allocation for Alloy"
+  type        = string
+  default     = "0.5Gi"
+}
+
+# Observability Stack Configuration
+variable "grafana_admin_password" {
+  description = "Grafana admin password - REQUIRED, no default for security"
+  type        = string
+  sensitive   = true
+  # NO DEFAULT - must be provided in terraform.tfvars
+}
+
+variable "loki_auth_enabled" {
+  description = "Enable authentication for Loki"
+  type        = bool
+  default     = false
+}
+
+variable "observability_replicas_min" {
+  description = "Minimum replicas for observability components"
+  type        = number
+  default     = 1
+}
+
+variable "observability_replicas_max" {
+  description = "Maximum replicas for observability components"
+  type        = number
+  default     = 2
+}
+
+variable "observability_database_names" {
+  description = "Database names for observability components"
+  type = object({
+    loki    = string
+    grafana = string
+    tempo   = string
+    mimir   = string
+  })
+  default = {
+    loki    = "loki_db"
+    grafana = "grafana_db"
+    tempo   = "tempo_db"
+    mimir   = "mimir_db"
+  }
 }
 
 # PostgreSQL Configuration

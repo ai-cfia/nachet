@@ -4,7 +4,7 @@ resource "azurerm_subnet" "container_apps" {
   resource_group_name  = azurerm_resource_group.nachet.name
   virtual_network_name = var.vnet_name
   address_prefixes     = [var.container_apps_subnet_cidr]
-  
+
   # Container Apps requires delegation
   delegation {
     name = "container-apps-delegation"
@@ -23,7 +23,7 @@ resource "azurerm_subnet" "postgresql" {
   resource_group_name  = azurerm_resource_group.nachet.name
   virtual_network_name = var.vnet_name
   address_prefixes     = [var.postgresql_subnet_cidr]
-  
+
   # PostgreSQL requires delegation
   delegation {
     name = "postgresql-delegation"
@@ -34,7 +34,7 @@ resource "azurerm_subnet" "postgresql" {
       ]
     }
   }
-  
+
   service_endpoints = ["Microsoft.Storage"]
 }
 
@@ -45,18 +45,12 @@ resource "azurerm_subnet" "storage" {
   resource_group_name  = azurerm_resource_group.nachet.name
   virtual_network_name = var.vnet_name
   address_prefixes     = [var.storage_subnet_cidr]
-  
+
   # Enable private endpoints on this subnet
   private_endpoint_network_policies = "Disabled"
 }
 
-# Subnet for Application Gateway
-resource "azurerm_subnet" "app_gateway" {
-  name                 = "${var.project_name}-appgw-subnet-${var.environment}"
-  resource_group_name  = azurerm_resource_group.nachet.name
-  virtual_network_name = var.vnet_name
-  address_prefixes     = [var.app_gateway_subnet_cidr]
-}
+# No Application Gateway subnet needed - using direct Container Apps access
 
 # Associate existing NSGs with subnets (optional)
 resource "azurerm_subnet_network_security_group_association" "container_apps" {
@@ -81,7 +75,7 @@ resource "azurerm_subnet_network_security_group_association" "storage" {
 resource "azurerm_private_dns_zone" "postgresql" {
   name                = "privatelink.postgres.database.azure.com"
   resource_group_name = azurerm_resource_group.nachet.name
-  
+
   tags = var.tags
 }
 
@@ -98,6 +92,6 @@ resource "azurerm_private_dns_zone_virtual_network_link" "postgresql" {
   private_dns_zone_name = azurerm_private_dns_zone.postgresql.name
   virtual_network_id    = data.azurerm_virtual_network.existing.id
   registration_enabled  = false
-  
+
   tags = var.tags
 }

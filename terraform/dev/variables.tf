@@ -42,29 +42,141 @@ variable "vnet_name" {
 variable "container_apps_subnet_cidr" {
   description = "CIDR block for Container Apps subnet (e.g., 10.0.1.0/26)"
   type        = string
-  default     = "10.0.1.0/26"  # 59 usable IPs
+  default     = "10.0.1.0/26" # 59 usable IPs
 }
 
 variable "postgresql_subnet_cidr" {
   description = "CIDR block for PostgreSQL subnet (e.g., 10.0.2.0/28)"
   type        = string
-  default     = "10.0.2.0/28"  # 11 usable IPs
+  default     = "10.0.2.0/28" # 11 usable IPs
 }
 
 variable "storage_subnet_cidr" {
   description = "CIDR block for Storage subnet - optional (e.g., 10.0.3.0/29)"
   type        = string
-  default     = ""  # Optional - leave empty if not using private endpoints
+  default     = "" # Optional - leave empty if not using private endpoints
 }
 
-variable "app_gateway_subnet_cidr" {
-  description = "CIDR block for Application Gateway subnet (e.g., 10.0.4.0/27)"
-  type        = string
-  default     = "10.0.4.0/27"  # 27 usable IPs for App Gateway
-}
 
 variable "enable_public_access" {
   description = "Enable public access for Container Apps (set to false for full private deployment)"
+  type        = bool
+  default     = false
+}
+
+variable "allowed_ip_addresses" {
+  description = "List of IP addresses allowed to access Container Apps (CIDR format)"
+  type        = list(string)
+  default     = ["205.194.32.99/32"] # Your specific IP address
+}
+
+variable "enable_observability_stack" {
+  description = "Enable Grafana LGTM + Alloy observability stack"
+  type        = bool
+  default     = true
+}
+
+# Observability Stack Images (with cost-optimized defaults)
+variable "loki_image" {
+  description = "Docker image for Loki"
+  type        = string
+  default     = "grafana/loki:3.0.0"
+}
+
+variable "grafana_image" {
+  description = "Docker image for Grafana"
+  type        = string
+  default     = "grafana/grafana:10.4.0"
+}
+
+variable "tempo_image" {
+  description = "Docker image for Tempo"
+  type        = string
+  default     = "grafana/tempo:2.4.0"
+}
+
+variable "mimir_image" {
+  description = "Docker image for Mimir"
+  type        = string
+  default     = "grafana/mimir:2.12.0"
+}
+
+variable "alloy_image" {
+  description = "Docker image for Alloy"
+  type        = string
+  default     = "grafana/alloy:v1.0.0"
+}
+
+# Observability Stack Resources (minimum for cost optimization)
+variable "loki_cpu" {
+  description = "CPU allocation for Loki"
+  type        = number
+  default     = 0.25 # Reduced from 0.5 for cost
+}
+
+variable "loki_memory" {
+  description = "Memory allocation for Loki"
+  type        = string
+  default     = "0.5Gi" # Reduced from 1Gi for cost
+}
+
+variable "grafana_cpu" {
+  description = "CPU allocation for Grafana"
+  type        = number
+  default     = 0.25 # Reduced from 0.5 for cost
+}
+
+variable "grafana_memory" {
+  description = "Memory allocation for Grafana"
+  type        = string
+  default     = "0.5Gi" # Reduced from 1Gi for cost
+}
+
+variable "tempo_cpu" {
+  description = "CPU allocation for Tempo"
+  type        = number
+  default     = 0.25
+}
+
+variable "tempo_memory" {
+  description = "Memory allocation for Tempo"
+  type        = string
+  default     = "0.5Gi"
+}
+
+variable "mimir_cpu" {
+  description = "CPU allocation for Mimir"
+  type        = number
+  default     = 0.25 # Reduced from 0.5 for cost
+}
+
+variable "mimir_memory" {
+  description = "Memory allocation for Mimir"
+  type        = string
+  default     = "0.5Gi" # Reduced from 1Gi for cost
+}
+
+variable "alloy_cpu" {
+  description = "CPU allocation for Alloy"
+  type        = number
+  default     = 0.25
+}
+
+variable "alloy_memory" {
+  description = "Memory allocation for Alloy"
+  type        = string
+  default     = "0.5Gi"
+}
+
+variable "grafana_admin_password" {
+  description = "Grafana admin password - REQUIRED, no default for security"
+  type        = string
+  sensitive   = true
+  # NO DEFAULT - must be provided in terraform.tfvars
+}
+
+variable "loki_auth_enabled" {
+  description = "Enable authentication for Loki"
   type        = bool
   default     = false
 }
@@ -99,13 +211,13 @@ variable "postgresql_admin_password" {
 variable "postgresql_sku_name" {
   description = "SKU for PostgreSQL flexible server"
   type        = string
-  default     = "B_Standard_B2ms"
+  default     = "B_Standard_B1ms" # 1 vCPU, 2GB RAM - Cheapest option
 }
 
 variable "postgresql_storage_mb" {
   description = "Storage size in MB for PostgreSQL"
   type        = number
-  default     = 32768
+  default     = 32768 # 32GB - Minimum required
 }
 
 variable "postgresql_version" {
@@ -118,25 +230,25 @@ variable "postgresql_version" {
 variable "container_app_cpu" {
   description = "CPU for container apps"
   type        = number
-  default     = 0.5
+  default     = 0.25 # Minimum CPU allocation
 }
 
 variable "container_app_memory" {
   description = "Memory for container apps"
   type        = string
-  default     = "1Gi"
+  default     = "0.5Gi" # Minimum memory allocation
 }
 
 variable "triton_cpu" {
   description = "CPU for Triton server containers"
   type        = number
-  default     = 2
+  default     = 0.5 # Minimum for ML inference
 }
 
 variable "triton_memory" {
   description = "Memory for Triton server containers"
   type        = string
-  default     = "4Gi"
+  default     = "1Gi" # Minimum for ML models
 }
 
 # Backend Environment Variables

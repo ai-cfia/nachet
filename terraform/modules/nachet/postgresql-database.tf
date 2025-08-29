@@ -1,28 +1,28 @@
 resource "azurerm_postgresql_flexible_server" "nachet" {
-  name                          = "${var.project_name}-psql-${var.environment}"
-  resource_group_name           = azurerm_resource_group.nachet.name
-  location                      = azurerm_resource_group.nachet.location
-  version                       = var.postgresql_version
-  administrator_login           = var.postgresql_admin_username
-  administrator_password        = var.postgresql_admin_password
-  zone                          = "1"
-  storage_mb                    = var.postgresql_storage_mb
-  storage_tier                  = "P4"
-  sku_name                      = var.postgresql_sku_name
-  backup_retention_days         = 7
-  geo_redundant_backup_enabled  = false
-  auto_grow_enabled             = false
-  
+  name                         = "${var.project_name}-psql-${var.environment}"
+  resource_group_name          = azurerm_resource_group.nachet.name
+  location                     = azurerm_resource_group.nachet.location
+  version                      = var.postgresql_version
+  administrator_login          = var.postgresql_admin_username
+  administrator_password       = var.postgresql_admin_password
+  zone                         = "1"
+  storage_mb                   = var.postgresql_storage_mb
+  storage_tier                 = "P4"
+  sku_name                     = var.postgresql_sku_name
+  backup_retention_days        = 7
+  geo_redundant_backup_enabled = false
+  auto_grow_enabled            = false
+
   # Use the created subnet for PostgreSQL
   delegated_subnet_id           = azurerm_subnet.postgresql.id
   private_dns_zone_id           = azurerm_private_dns_zone.postgresql.id
   public_network_access_enabled = false
-  
+
   authentication {
     active_directory_auth_enabled = false
     password_auth_enabled         = true
   }
-  
+
   tags = var.tags
 }
 

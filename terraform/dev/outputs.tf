@@ -46,12 +46,28 @@ output "storage_account_connection_string" {
   sensitive   = true
 }
 
-output "app_gateway_public_ip" {
-  description = "Application Gateway public IP address"
-  value       = module.nachet.app_gateway_public_ip
+output "nachet_app_url" {
+  description = "Nachet application URL (restricted to your IP)"
+  value       = module.nachet.nachet_app_url
 }
 
-output "app_gateway_url" {
-  description = "Application Gateway public URL to access Nachet"
-  value       = module.nachet.app_gateway_url
+output "nachet_app_fqdn" {
+  description = "Nachet application FQDN"
+  value       = module.nachet.nachet_app_fqdn
+}
+
+# Observability Stack Outputs
+output "grafana_url" {
+  description = "Grafana dashboard URL (restricted to your IP)"
+  value       = module.nachet.grafana_url
+}
+
+output "observability_stack_enabled" {
+  description = "Whether observability stack is enabled"
+  value       = module.nachet.observability_stack_enabled
+}
+
+output "alloy_dashboard_url" {
+  description = "Alloy dashboard URL (restricted to your IP)"
+  value       = module.nachet.alloy_dashboard_url
 }
