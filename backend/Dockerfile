@@ -11,7 +11,7 @@ ENV PYTHONPATH=/app
 RUN pip install --no-cache-dir uv
 
 # Install dependencies using uv
-COPY pyproject.toml uv.lock LICENSE README.md ./
+COPY . ./
 
 RUN uv sync --frozen
 
