@@ -46,7 +46,7 @@ print_status "Starting datastore test cycle..."
 # Step 1: Load environment variables
 print_status "Loading test environment variables..."
 set -a
-source .env.test
+source .env.test.local
 set +a
 print_success "Environment variables loaded"
 

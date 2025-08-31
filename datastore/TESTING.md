@@ -51,7 +51,7 @@ Before running tests, you need to set up the database schema and load test data:
 cd /home/p4r0d1m3pxz/work/nachet/datastore
 
 # Load environment variables and run database setup
-set -a && source .env.test && set +a && uv run python tests/test_setup.py
+set -a && source .env.test.local && set +a && uv run python tests/test_setup.py
 ```
 
 This will:
@@ -65,11 +65,11 @@ This will:
 
 ```bash
 # Run all tests with verbose output
-set -a && source .env.test && set +a && uv run python -m pytest tests/ -v
+set -a && source .env.test.local && set +a && uv run python -m pytest tests/ -v
 
 # Run specific test files
-set -a && source .env.test && set +a && uv run python -m pytest tests/test_datastore.py -v
-set -a && source .env.test && set +a && uv run python -m pytest tests/nachet/db/test_metadata.py -v
+set -a && source .env.test.local && set +a && uv run python -m pytest tests/test_datastore.py -v
+set -a && source .env.test.local && set +a && uv run python -m pytest tests/nachet/db/test_metadata.py -v
 ```
 
 ### Step 3: Clean up (optional)
@@ -78,7 +78,7 @@ After testing, you can clean up the test database:
 
 ```bash
 # This will drop the test schema and all its data
-set -a && source .env.test && set +a && uv run python tests/test_cleanup.py
+set -a && source .env.test.local && set +a && uv run python tests/test_cleanup.py
 ```
 
 ## Test Structure
