@@ -74,30 +74,31 @@ nachet/backend$ cp .env.test.template .env.test.local
 nachet/backend$ nano .env.test.local
 
 # initialize venv
-nachet/datastore$ uv sync
-nachet/datastore$ source .venv/bin/activate
-nachet/datastore$ ./run_tests.sh
-nachet/datastore$ deactivate
+nachet/backend$ uv sync
+nachet/backend$ source .venv/bin/activate
+nachet/backend$ ./run_tests.sh
+nachet/backend$ deactivate
 ```
 
 ### Frontend setup
 
 ```bash
-nachet/backend$ cd ../frontend
+nachet$ cd frontend
 
 # enter your own values in the .env.config.local file
 nachet/frontend$ cp .env.template .env.config.local
 nachet/frontend$ nano .env.config.local
+nachet/frontend$ npm run update
+nachet/frontend$ npm run test
 ```
 
-### Update the compose file if needed
+### Update the compose file as needed
 
 ```bash
-nachet/frontend$ cd ..
 nachet$ nano docker-compose.yaml
 ```
 
-### Start the development environment
+### Start the rest of the services
 
 ```bash
 nachet$ docker compose -f docker-compose.yaml up -d
@@ -123,3 +124,5 @@ nachet$ docker compose -f docker-compose.yaml rm
 ```
 
 ## Development
+
+At this point you will have the full stack, you will be able to test integration with all components.
