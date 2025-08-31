@@ -48,7 +48,7 @@ This guide explains how to set up and run tests for the Nachet datastore package
 Before running tests, you need to set up the database schema and load test data:
 
 ```bash
-cd /home/p4r0d1m3pxz/work/nachet/datastore
+cd datastore
 
 # Load environment variables and run database setup
 set -a && source .env.test.local && set +a && uv run python tests/test_setup.py

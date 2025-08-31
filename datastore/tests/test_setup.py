@@ -87,6 +87,14 @@ def setup_database():
             print(f"  - {file_path}")
         sys.exit(1)
 
+    print(f"Drop testing database if it exists: {pg_db}")
+    drop_db_cmd = f"dropdb -h {pg_host} -p {pg_port} -U {pg_user} --if-exists {pg_db}"
+    run_command(drop_db_cmd, env=env)
+
+    print(f"Creating a database: {pg_db} on {pg_host}:{pg_port} as user {pg_user}")
+    create_db_cmd = f"createdb -h {pg_host} -p {pg_port} -U {pg_user} {pg_db}"
+    run_command(create_db_cmd, env=env)
+
     print(f"Setting up database schema: {schema_name}")
 
     # Step 1: Create schema
