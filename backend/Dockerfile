@@ -15,4 +15,4 @@ COPY pyproject.toml uv.lock LICENSE README.md ./
 
 RUN uv sync --frozen
 
-CMD hypercorn -b :$BACKEND_DEV_PORT app:app
+CMD uv run hypercorn -b :$BACKEND_DEV_PORT app:app

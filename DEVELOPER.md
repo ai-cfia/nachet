@@ -121,6 +121,7 @@ nachet$ docker compose -f docker-compose.yaml stop
 nachet$ docker compose -f docker-compose.yaml start
 nachet$ docker compose -f docker-compose.yaml restart
 nachet$ docker compose -f docker-compose.yaml rm
+nachet$ docker compose -f docker-compose.yaml pull
 ```
 
 ## Development
