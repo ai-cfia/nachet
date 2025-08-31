@@ -44,11 +44,11 @@ services:
 
   nachet-backend:
     container_name: nachet-backend
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.local
+    # build:
+    #   context: ./backend
+    #   dockerfile: Dockerfile.local
+    image: ghcr.io/ai-cfia/nachet-backend:v1.0.3
     # command: ["hypercorn -b :5174 app:app"]
-    # image: ghcr.io/ai-cfia/nachet-backend:latest
     env_file:
       # - ./nachet-backend/.env.secrets.local
       # - ./nachet-backend/.env.config.local
@@ -66,17 +66,15 @@ services:
 
   nachet-frontend:
     container_name: nachet-frontend
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-      # args:
-      #   - ENV_FILE="./.env.config.local"
+    # build:
+    #   context: ./frontend
+    #   dockerfile: Dockerfile.dev
+    image: ghcr.io/ai-cfia/nachet-frontend:v0.9.30
+    # command: ["npm run dev --host"]
     env_file:
       - ./nachet-frontend/.env.config.local
     volumes:
       - ./nachet-frontend:/app
-    # image: ghcr.io/ai-cfia/nachet-frontend:latest
-    # command: ["npm run dev --host"]
     ports:
       - "12436:5173"
     depends_on:
