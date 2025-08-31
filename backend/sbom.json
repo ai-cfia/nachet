@@ -860,6 +860,60 @@
       "version": "8.2.1"
     },
     {
+      "bom-ref": "coverage==7.10.6",
+      "description": "Code coverage measurement for Python",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://coverage.readthedocs.io/en/7.10.6"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issues",
+          "type": "issue-tracker",
+          "url": "https://github.com/nedbat/coveragepy/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Mastodon",
+          "type": "other",
+          "url": "https://hachyderm.io/@coveragepy"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Mastodon (nedbat)",
+          "type": "other",
+          "url": "https://hachyderm.io/@nedbat"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Funding",
+          "type": "other",
+          "url": "https://tidelift.com/subscription/pkg/pypi-coverage?utm_source=pypi-coverage&utm_medium=referral&utm_campaign=pypi"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/nedbat/coveragepy"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "coverage",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "toml"
+        }
+      ],
+      "purl": "pkg:pypi/coverage@7.10.6",
+      "type": "library",
+      "version": "7.10.6"
+    },
+    {
       "bom-ref": "cryptography==45.0.5",
       "description": "cryptography is a package which provides cryptographic recipes and primitives to Python developers.",
       "externalReferences": [
@@ -2257,6 +2311,44 @@
       "version": "1.0.0"
     },
     {
+      "bom-ref": "pytest-cov==6.2.1",
+      "description": "Pytest plugin for measuring coverage.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://pytest-cov.readthedocs.io/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issue Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/pytest-dev/pytest-cov/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://pytest-cov.readthedocs.io/en/latest/changelog.html"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/pytest-dev/pytest-cov"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "pytest-cov",
+      "purl": "pkg:pypi/pytest-cov@6.2.1",
+      "type": "library",
+      "version": "6.2.1"
+    },
+    {
       "bom-ref": "python-dateutil==2.9.0.post0",
       "description": "Extensions to the standard Python datetime module",
       "externalReferences": [
@@ -2904,6 +2996,7 @@
     },
     {
       "dependsOn": [
+        "coverage==7.10.6",
         "cryptography==45.0.5",
         "pytest==8.4.1"
       ],
@@ -2948,6 +3041,7 @@
     },
     {
       "dependsOn": [
+        "pytest-cov==6.2.1",
         "pytest==8.4.1",
         "python-dateutil==2.9.0.post0",
         "types-python-dateutil==2.9.0.20250708"
@@ -2956,6 +3050,7 @@
     },
     {
       "dependsOn": [
+        "coverage==7.10.6",
         "pytest==8.4.1"
       ],
       "ref": "attrs==25.3.0"
@@ -3015,10 +3110,14 @@
       "ref": "click==8.2.1"
     },
     {
+      "ref": "coverage==7.10.6"
+    },
+    {
       "dependsOn": [
         "certifi==2025.7.14",
         "cffi==1.17.1",
         "click==8.2.1",
+        "pytest-cov==6.2.1",
         "pytest==8.4.1"
       ],
       "ref": "cryptography==45.0.5"
@@ -3171,8 +3270,10 @@
     },
     {
       "dependsOn": [
+        "coverage==7.10.6",
         "defusedxml==0.7.1",
         "packaging==25.0",
+        "pytest-cov==6.2.1",
         "pytest==8.4.1",
         "typing_extensions==4.14.1"
       ],
@@ -3188,6 +3289,7 @@
     },
     {
       "dependsOn": [
+        "coverage==7.10.6",
         "pytest==8.4.1"
       ],
       "ref": "pluggy==1.6.0"
@@ -3197,6 +3299,7 @@
     },
     {
       "dependsOn": [
+        "pytest-cov==6.2.1",
         "pytest==8.4.1",
         "typing_extensions==4.14.1"
       ],
@@ -3233,10 +3336,19 @@
     },
     {
       "dependsOn": [
+        "coverage==7.10.6",
         "pytest==8.4.1",
         "typing_extensions==4.14.1"
       ],
       "ref": "pytest-asyncio==1.0.0"
+    },
+    {
+      "dependsOn": [
+        "coverage==7.10.6",
+        "pluggy==1.6.0",
+        "pytest==8.4.1"
+      ],
+      "ref": "pytest-cov==6.2.1"
     },
     {
       "dependsOn": [
