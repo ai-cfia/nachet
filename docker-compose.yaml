@@ -29,7 +29,7 @@ services:
 
   nachet-blob:
     container_name: nachet-blob
-    image: mcr.microsoft.com/azure-storage/azurite:3.34.0
+    image: mcr.microsoft.com/azure-storage/azurite:3.35.0
     hostname: azurite
     restart: always
     # command: "azurite --blobHost 127.0.0.1 --blobPort 10000 --queueHost 127.0.0.1 --queuePort 10001"

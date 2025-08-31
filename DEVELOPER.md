@@ -17,40 +17,76 @@ Feel free to update this document as needed to reflect changes in the developmen
 
 ### Navigate to the project directory
 
-### Local database and pgadmin setup
+### Local database, blob store, and pgadmin setup
 
 ```bash
 nachet$ cd db
-nachet/db$ cp .env.config.template .env.config.local
 
 # enter your own values in the .env.config.local file
+nachet/db$ cp .env.config.template .env.config.local
 nachet/db$ nano .env.config.local
+
+# create database and pgadmin containers
 nachet/db$ cd ..
-nachet$ docker compose -f docker-compose.yaml up -d nachet-db nachet-pgadmin
+nachet$ docker compose -f docker-compose.yaml up -d nachet-db nachet-pgadmin nachet-blob
 nachet$ chmod +x db/dev_setup.sh
 
 # load the dev schema
 nachet$ db/./dev_setup.sh <your_schema_version> <your_db_name> <your_db_user> <your_db_password>
+```  
+
+- access pgadmin at <http://localhost:12433>  
+- login with the email and password you set in the .env.config.local file  
+- create a new server with the database connection details from the .env.config.local file  
+- browse your database and schema using pgadmin
+
+### Datastore setup
+
+```bash
+nachet$ cd datastore
+
+# enter your own values in the .env.test.local file
+nachet/datastore$ cp .env.test.template .env.test.local
+nachet/datastore$ nano .env.test.local
+
+# enter your own values in the .env.local file
+nachet/datastore$ cp .env.template .env.local
+nachet/datastore$ nano .env.local
+
+# initialize venv
+nachet/datastore$ uv sync
+nachet/datastore$ source .venv/bin/activate
+nachet/datastore$ ./run_tests.sh
+nachet/datastore$ deactivate
 ```
 
 ### Backend setup
 
 ```bash
-nachet/db$ cd ../backend
+nachet$ cd backend
+
+# enter your own values in the .env.config.local file
 nachet/backend$ cp .env.config.template .env.config.local
-nachet/backend$ # enter your own values in the .env.config.local file
 nachet/backend$ nano .env.config.local
+
+# enter your own values in the .env.test.local file
 nachet/backend$ cp .env.test.template .env.test.local
-nachet/backend$ # enter your own values in the .env.test.local file
 nachet/backend$ nano .env.test.local
+
+# initialize venv
+nachet/datastore$ uv sync
+nachet/datastore$ source .venv/bin/activate
+nachet/datastore$ ./run_tests.sh
+nachet/datastore$ deactivate
 ```
 
 ### Frontend setup
 
 ```bash
 nachet/backend$ cd ../frontend
+
+# enter your own values in the .env.config.local file
 nachet/frontend$ cp .env.template .env.config.local
-nachet/frontend$ # enter your own values in the .env.config.local file
 nachet/frontend$ nano .env.config.local
 ```
 
