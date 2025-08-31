@@ -10,10 +10,8 @@ ENV PYTHONPATH=/app
 # Install uv
 RUN pip install --no-cache-dir uv
 
-# COPY ./pyproject.toml ./uv.lock ./LICENSE ./README.md ./
-
 # Install dependencies using uv
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock LICENSE README.md ./
 
 RUN uv sync --frozen
 
