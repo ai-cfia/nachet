@@ -31,7 +31,7 @@ Before running tests, ensure you have:
 
 ```bash
 # With environment loaded
-set -a; source .env.test.local; set +a; python -m pytest tests/ -v
+set -a; source .env.test.local; set +a; uv run pytest tests/ -v
 
 # Alternative using unittest (legacy)
 python -m unittest discover -s tests
@@ -41,21 +41,21 @@ python -m unittest discover -s tests
 
 ```bash
 # Test specific functionality
-set -a; source .env.test.local; set +a; python -m pytest tests/test_feedback.py -v
-set -a; source .env.test.local; set +a; python -m pytest tests/test_inference_request.py -v
+set -a; source .env.test.local; set +a; uv run pytest tests/test_feedback.py -v
+set -a; source .env.test.local; set +a; uv run pytest tests/test_inference_request.py -v
 ```
 
 #### Run Single Test
 
 ```bash
 # Test specific function
-set -a; source .env.test.local; set +a; python -m pytest tests/test_feedback.py::test_positive_feedback_successful -v
+set -a; source .env.test.local; set +a; uv run pytest tests/test_feedback.py::test_positive_feedback_successful -v
 ```
 
 #### With Coverage
 
 ```bash
-set -a; source .env.test.local; set +a; python -m pytest tests/ --cov=. --cov-report=term-missing
+set -a; source .env.test.local; set +a; uv run pytest tests/ --cov=. --cov-report=term-missing
 ```
 
 ### Test Environment Configuration
@@ -183,7 +183,7 @@ Avant d'exécuter les tests, assurez-vous d'avoir :
 
 ```bash
 # Avec l'environnement chargé
-set -a; source .env.test.local; set +a; python -m pytest tests/ -v
+set -a; source .env.test.local; set +a; uv run pytest tests/ -v
 
 # Alternative avec unittest (legacy)
 python -m unittest discover -s tests
@@ -193,21 +193,21 @@ python -m unittest discover -s tests
 
 ```bash
 # Tester une fonctionnalité spécifique
-set -a; source .env.test.local; set +a; python -m pytest tests/test_feedback.py -v
-set -a; source .env.test.local; set +a; python -m pytest tests/test_inference_request.py -v
+set -a; source .env.test.local; set +a; uv run pytest tests/test_feedback.py -v
+set -a; source .env.test.local; set +a; uv run pytest tests/test_inference_request.py -v
 ```
 
 ##### Exécuter un test unique
 
 ```bash
 # Tester une fonction spécifique
-set -a; source .env.test.local; set +a; python -m pytest tests/test_feedback.py::test_positive_feedback_successful -v
+set -a; source .env.test.local; set +a; uv run pytest tests/test_feedback.py::test_positive_feedback_successful -v
 ```
 
 ##### Avec couverture de code
 
 ```bash
-set -a; source .env.test.local; set +a; python -m pytest tests/ --cov=. --cov-report=term-missing
+set -a; source .env.test.local; set +a; uv run pytest tests/ --cov=. --cov-report=term-missing
 ```
 
 #### Configuration de l'environnement de test
