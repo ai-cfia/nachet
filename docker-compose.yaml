@@ -3,43 +3,58 @@ services:
     container_name: nachet-db
     image: postgres:15-bookworm
     env_file:
-      - ./nachet-db/.env.config.local
+      - ./db/.env.config.local
     ports:
       - "12432:5432"
     volumes:
-      - ./nachet-db/postgres-data:/var/lib/postgresql/data
+      - ./db/postgres-data:/var/lib/postgresql/data
     # network_mode: bridge
     networks:
-      - nachet-network
+      - nachet-local-network
+
+  nachet-pgadmin:
+    container_name: nachet-pgadmin
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    depends_on:
+      - nachet-db
+    env_file:
+      - ./db/.env.config.local
+    volumes: 
+      - ./db/pgadmin-data:/var/lib/pgadmin
+    ports:
+      - '12433:80'
+    networks:
+      - nachet-local-network
 
   nachet-blob:
     container_name: nachet-blob
-    image: mcr.microsoft.com/azure-storage/azurite
+    image: mcr.microsoft.com/azure-storage/azurite:3.34.0
     hostname: azurite
     restart: always
     # command: "azurite --blobHost 127.0.0.1 --blobPort 10000 --queueHost 127.0.0.1 --queuePort 10001"
     command: "azurite --loose --blobHost 0.0.0.0 --blobPort 10000 --location /workspace --debug /workspace/debug.log"
     volumes:
-      - ./nachet-blob/data:/workspace
+      - ./blob/data:/workspace
     ports:
-      - "10000:10000"
+      - "12434:10000"
     # network_mode: bridge
     networks:
-      - nachet-network
+      - nachet-local-network
 
   nachet-backend:
     container_name: nachet-backend
     build:
-      context: ./nachet-backend
+      context: ./backend
       dockerfile: Dockerfile.local
     # command: ["hypercorn -b :5174 app:app"]
-    # image: ghcr.io/ai-cfia/nachet-backend:main
+    # image: ghcr.io/ai-cfia/nachet-backend:latest
     env_file:
       # - ./nachet-backend/.env.secrets.local
       # - ./nachet-backend/.env.config.local
-      - ./nachet-backend/.env.local
+      - ./backend/.env.local
     ports:
-      - "5174:5174"
+      - "12435:5174"
     extra_hosts:
       - host.docker.internal:host-gateway
     depends_on:
@@ -47,23 +62,23 @@ services:
       - nachet-blob
     # network_mode: bridge
     networks:
-      - nachet-network
+      - nachet-local-network
 
   nachet-frontend:
     container_name: nachet-frontend
     build:
-      context: ./nachet-frontend
-      dockerfile: Dockerfile.local
+      context: ./frontend
+      dockerfile: Dockerfile.dev
       # args:
       #   - ENV_FILE="./.env.config.local"
     env_file:
       - ./nachet-frontend/.env.config.local
     volumes:
       - ./nachet-frontend:/app
-    # image: ghcr.io/ai-cfia/nachet-frontend:main
+    # image: ghcr.io/ai-cfia/nachet-frontend:latest
     # command: ["npm run dev --host"]
     ports:
-      - "5173:5173"
+      - "12436:5173"
     depends_on:
       - nachet-backend
 
@@ -80,38 +95,38 @@ services:
       - "12382:8888"
     # network_mode: bridge
     networks:
-      - nachet-network
+      - nachet-local-network
 
-  nachet-15-spp-swin:
-    # build:
-    #   context: ./nachet-model/AzureMLSeedCls
-    #   dockerfile: Dockerfile
-    container_name: nachet-15-spp-swin
-    image: ghcr.io/ai-cfia/nachet-backend:29-azureml-swin-classifier
-    command: bash -c 'azmlinfsrv --entry_script /app/score.py'
-    ports:
-      - "12390:5001"
-      - "12391:8883"
-      - "12392:8888"
-    # network_mode: bridge
-    networks:
-      - nachet-network
+  # nachet-15-spp-swin:
+  #   # build:
+  #   #   context: ./nachet-model/AzureMLSeedCls
+  #   #   dockerfile: Dockerfile
+  #   container_name: nachet-15-spp-swin
+  #   image: ghcr.io/ai-cfia/nachet-backend:29-azureml-swin-classifier
+  #   command: bash -c 'azmlinfsrv --entry_script /app/score.py'
+  #   ports:
+  #     - "12390:5001"
+  #     - "12391:8883"
+  #     - "12392:8888"
+  #   # network_mode: bridge
+  #   networks:
+  #     - nachet-local-network
 
-  nachet-22-spp-swin:
-    # build:
-    #   context: ./nachet-model/AzureMLSeedCls_22_spp
-    #   dockerfile: Dockerfile
-    container_name: nachet-22-spp-swin
-    image: ghcr.io/ai-cfia/nachet-backend:29-azureml-swin-classifier-22-spp
-    command: bash -c 'azmlinfsrv --entry_script /app/score.py'
-    ports:
-      - "12370:5001"
-      - "12371:8883"
-      - "12372:8888"
-    # network_mode: bridge
-    networks:
-      - nachet-network
-  
+  # nachet-22-spp-swin:
+  #   # build:
+  #   #   context: ./nachet-model/AzureMLSeedCls_22_spp
+  #   #   dockerfile: Dockerfile
+  #   container_name: nachet-22-spp-swin
+  #   image: ghcr.io/ai-cfia/nachet-backend:29-azureml-swin-classifier-22-spp
+  #   command: bash -c 'azmlinfsrv --entry_script /app/score.py'
+  #   ports:
+  #     - "12370:5001"
+  #     - "12371:8883"
+  #     - "12372:8888"
+  #   # network_mode: bridge
+  #   networks:
+  #     - nachet-local-network
+
   nachet-27-spp-swin:
     # build:
     #   context: ./nachet-model/AzureMLSeedCls_27_spp
@@ -124,23 +139,7 @@ services:
       # - "12362:8082"
     # network_mode: bridge
     networks:
-      - nachet-network
-
-  # nachet-pgadmin:
-  #   container_name: nachet-pgadmin
-  #   image: dpage/pgadmin4:latest
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - nachet-db
-  #   env_file:
-  #     - ./pgadmin/.env.local
-  #   volumes: 
-  #     - ./pgadmin/data:/var/lib/pgadmin
-  #   ports:
-  #     - '12433:80'
-  #   networks:
-  #     - nachet-network
+      - nachet-local-network
 
 networks:
-  nachet-network:
-    external: true
+  nachet-local-network: {}

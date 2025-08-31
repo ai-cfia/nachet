@@ -19,7 +19,7 @@ Before running tests, ensure you have:
 1. **Environment Setup**: Load the test environment variables:
 
    ```bash
-   set -a; source .env.test; set +a
+   set -a; source .env.test.local; set +a
    ```
 
 2. **Database**: PostgreSQL test database running (if testing database functionality)
@@ -31,7 +31,7 @@ Before running tests, ensure you have:
 
 ```bash
 # With environment loaded
-set -a; source .env.test; set +a; python -m pytest tests/ -v
+set -a; source .env.test.local; set +a; python -m pytest tests/ -v
 
 # Alternative using unittest (legacy)
 python -m unittest discover -s tests
@@ -41,26 +41,26 @@ python -m unittest discover -s tests
 
 ```bash
 # Test specific functionality
-set -a; source .env.test; set +a; python -m pytest tests/test_feedback.py -v
-set -a; source .env.test; set +a; python -m pytest tests/test_inference_request.py -v
+set -a; source .env.test.local; set +a; python -m pytest tests/test_feedback.py -v
+set -a; source .env.test.local; set +a; python -m pytest tests/test_inference_request.py -v
 ```
 
 #### Run Single Test
 
 ```bash
 # Test specific function
-set -a; source .env.test; set +a; python -m pytest tests/test_feedback.py::test_positive_feedback_successful -v
+set -a; source .env.test.local; set +a; python -m pytest tests/test_feedback.py::test_positive_feedback_successful -v
 ```
 
 #### With Coverage
 
 ```bash
-set -a; source .env.test; set +a; python -m pytest tests/ --cov=. --cov-report=term-missing
+set -a; source .env.test.local; set +a; python -m pytest tests/ --cov=. --cov-report=term-missing
 ```
 
 ### Test Environment Configuration
 
-The `.env.test` file contains required environment variables:
+The `.env.test.local` file contains required environment variables:
 
 - Database connection (PostgreSQL test instance)
 - Azure Storage emulator settings
@@ -171,7 +171,7 @@ Avant d'exécuter les tests, assurez-vous d'avoir :
 1. **Configuration de l'environnement** : Chargez les variables d'environnement de test :
 
    ```bash
-   set -a; source .env.test; set +a
+   set -a; source .env.test.local; set +a
    ```
 
 2. **Base de données** : Instance PostgreSQL de test en cours d'exécution (si test de fonctionnalité base de données)
@@ -183,7 +183,7 @@ Avant d'exécuter les tests, assurez-vous d'avoir :
 
 ```bash
 # Avec l'environnement chargé
-set -a; source .env.test; set +a; python -m pytest tests/ -v
+set -a; source .env.test.local; set +a; python -m pytest tests/ -v
 
 # Alternative avec unittest (legacy)
 python -m unittest discover -s tests
@@ -193,26 +193,26 @@ python -m unittest discover -s tests
 
 ```bash
 # Tester une fonctionnalité spécifique
-set -a; source .env.test; set +a; python -m pytest tests/test_feedback.py -v
-set -a; source .env.test; set +a; python -m pytest tests/test_inference_request.py -v
+set -a; source .env.test.local; set +a; python -m pytest tests/test_feedback.py -v
+set -a; source .env.test.local; set +a; python -m pytest tests/test_inference_request.py -v
 ```
 
 ##### Exécuter un test unique
 
 ```bash
 # Tester une fonction spécifique
-set -a; source .env.test; set +a; python -m pytest tests/test_feedback.py::test_positive_feedback_successful -v
+set -a; source .env.test.local; set +a; python -m pytest tests/test_feedback.py::test_positive_feedback_successful -v
 ```
 
 ##### Avec couverture de code
 
 ```bash
-set -a; source .env.test; set +a; python -m pytest tests/ --cov=. --cov-report=term-missing
+set -a; source .env.test.local; set +a; python -m pytest tests/ --cov=. --cov-report=term-missing
 ```
 
 #### Configuration de l'environnement de test
 
-Le fichier `.env.test` contient les variables d'environnement requises :
+Le fichier `.env.test.local` contient les variables d'environnement requises :
 
 - Connexion à la base de données (instance PostgreSQL de test)
 - Paramètres de l'émulateur Azure Storage

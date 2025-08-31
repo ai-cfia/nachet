@@ -17,4 +17,4 @@ RUN uv sync --frozen
 
 COPY . ./
 
-CMD hypercorn -b :$PORT app:app
+CMD hypercorn -b :$BACKEND_DEV_PORT app:app

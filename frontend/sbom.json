@@ -100,7 +100,7 @@
       "type": "library",
       "name": "wrap-ansi",
       "version": "7.0.0",
-      "bom-ref": "BomRef.3tlpatct1oo.aq7o9aifu1s",
+      "bom-ref": "BomRef.32pv0fh23is.kak4slvolqs",
       "purl": "pkg:npm/wrap-ansi@7.0.0",
       "externalReferences": [
         {
@@ -130,7 +130,7 @@
       "type": "library",
       "name": "string-width",
       "version": "4.2.3",
-      "bom-ref": "BomRef.81n7b4sj3to.nkhalojbbdc",
+      "bom-ref": "BomRef.bbiahs2a9pc.pd73dhgt4qg",
       "purl": "pkg:npm/string-width@4.2.3",
       "externalReferences": [
         {
@@ -160,7 +160,7 @@
       "type": "library",
       "name": "strip-ansi",
       "version": "6.0.1",
-      "bom-ref": "BomRef.n5jah22k2bg.3j1ugc8fq2k",
+      "bom-ref": "BomRef.ip2l03uv1ms.i7jqr6eppfg",
       "purl": "pkg:npm/strip-ansi@6.0.1",
       "externalReferences": [
         {
@@ -33393,7 +33393,7 @@
   ],
   "dependencies": [
     {
-      "ref": "BomRef.3tlpatct1oo.aq7o9aifu1s",
+      "ref": "BomRef.32pv0fh23is.kak4slvolqs",
       "dependsOn": [
         "nachet-frontend@0.9.30|ansi-styles@4.3.0",
         "nachet-frontend@0.9.30|string-width@4.2.3",
@@ -33401,7 +33401,7 @@
       ]
     },
     {
-      "ref": "BomRef.81n7b4sj3to.nkhalojbbdc",
+      "ref": "BomRef.bbiahs2a9pc.pd73dhgt4qg",
       "dependsOn": [
         "nachet-frontend@0.9.30|emoji-regex@8.0.0",
         "nachet-frontend@0.9.30|is-fullwidth-code-point@3.0.0",
@@ -33409,7 +33409,7 @@
       ]
     },
     {
-      "ref": "BomRef.n5jah22k2bg.3j1ugc8fq2k",
+      "ref": "BomRef.ip2l03uv1ms.i7jqr6eppfg",
       "dependsOn": [
         "nachet-frontend@0.9.30|ansi-regex@5.0.1"
       ]
@@ -34722,9 +34722,9 @@
     {
       "ref": "nachet-frontend@0.9.30|@isaacs/cliui@8.0.2",
       "dependsOn": [
-        "BomRef.3tlpatct1oo.aq7o9aifu1s",
-        "BomRef.81n7b4sj3to.nkhalojbbdc",
-        "BomRef.n5jah22k2bg.3j1ugc8fq2k",
+        "BomRef.32pv0fh23is.kak4slvolqs",
+        "BomRef.bbiahs2a9pc.pd73dhgt4qg",
+        "BomRef.ip2l03uv1ms.i7jqr6eppfg",
         "nachet-frontend@0.9.30|@isaacs/cliui@8.0.2|string-width@5.1.2",
         "nachet-frontend@0.9.30|@isaacs/cliui@8.0.2|strip-ansi@7.1.0",
         "nachet-frontend@0.9.30|@isaacs/cliui@8.0.2|wrap-ansi@8.1.0"
