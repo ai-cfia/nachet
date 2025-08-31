@@ -76,7 +76,8 @@ services:
     volumes:
       - ./frontend:/app
     ports:
-      - "12436:5173"
+      # - "12436:5173" 
+      - "12436:3000" # for ghcr images
     depends_on:
       - nachet-backend
 
