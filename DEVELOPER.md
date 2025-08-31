@@ -1,0 +1,90 @@
+# Developer Notes
+
+This file contains notes for developers working on the Nachet project. It includes information about the development environment, tools, and processes used in the project.
+Please refer to this document for guidance on setting up your development environment and contributing to the project.
+Feel free to update this document as needed to reflect changes in the development process or environment.
+
+## Development Environment
+
+- The project uses Docker and Docker Compose for local development.  
+- The backend is built using FastAPI and the frontend uses React with Vite.
+- Environment variables are managed using `.env` files located in the respective `backend` and `frontend` directories.
+- Each layer can be run independently using Docker Compose.
+
+## Setup Instructions
+
+### Clone the repository
+
+### Navigate to the project directory
+
+### Local database and pgadmin setup
+
+```bash
+nachet$ cd db
+nachet/db$ cp .env.config.template .env.config.local
+
+# enter your own values in the .env.config.local file
+nachet/db$ nano .env.config.local
+nachet/db$ cd ..
+nachet$ docker compose -f docker-compose.yaml up -d nachet-db nachet-pgadmin
+nachet$ chmod +x db/dev_setup.sh
+
+# load the dev schema
+nachet$ db/./dev_setup.sh <your_schema_version> <your_db_name> <your_db_user> <your_db_password>
+```
+
+### Backend setup
+
+```bash
+nachet/db$ cd ../backend
+nachet/backend$ cp .env.config.template .env.config.local
+nachet/backend$ # enter your own values in the .env.config.local file
+nachet/backend$ nano .env.config.local
+nachet/backend$ cp .env.test.template .env.test.local
+nachet/backend$ # enter your own values in the .env.test.local file
+nachet/backend$ nano .env.test.local
+```
+
+### Frontend setup
+
+```bash
+nachet/backend$ cd ../frontend
+nachet/frontend$ cp .env.template .env.config.local
+nachet/frontend$ # enter your own values in the .env.config.local file
+nachet/frontend$ nano .env.config.local
+```
+
+### Update the compose file if needed
+
+```bash
+nachet/frontend$ cd ..
+nachet$ nano docker-compose.yaml
+```
+
+### Start the development environment
+
+```bash
+nachet$ docker compose -f docker-compose.yaml up -d
+```
+
+## Useful Commands
+
+```bash
+nachet$ docker compose -f docker-compose.yaml down
+nachet$ docker compose -f docker-compose.yaml logs -f
+nachet$ docker compose -f docker-compose.yaml exec backend bash
+nachet$ docker compose -f docker-compose.yaml exec frontend bash
+nachet$ docker compose -f docker-compose.yaml exec db psql -U <your_db_user> -d <your_db_name>
+nachet$ docker ps -a --format "table {{.Image}}\t{{.Names}}\t{{.RunningFor}}\t{{.Status}}\t{{.Ports}}"
+nachet$ docker logs -f --tail 20 <container_id or container_name>
+nachet$ docker stop <container_id or container_name>
+nachet$ docker start <container_id or container_name>
+nachet$ docker rm <container_id or container_name>
+nachet$ docker compose -f docker-compose.yaml stop
+nachet$ docker compose -f docker-compose.yaml start
+nachet$ docker compose -f docker-compose.yaml restart
+nachet$ docker compose -f docker-compose.yaml rm
+```
+
+## Development
+

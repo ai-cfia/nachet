@@ -7,7 +7,7 @@ services:
     ports:
       - "12432:5432"
     volumes:
-      - ./db/postgres-data:/var/lib/postgresql/data
+      - ./db/postgres-data/data:/var/lib/postgresql/data
     # network_mode: bridge
     networks:
       - nachet-local-network
