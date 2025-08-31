@@ -25,17 +25,17 @@ if [ ! -f "datastore/nachet/db/bytebase/constants_nachet_${SCHEMA_VERSION}.sql" 
   exit 1
 fi
 
-# if [ ! -f "datastore/nachet/db/bytebase/dev_data_nachet_${SCHEMA_VERSION}.sql" ]; then
-#   echo "Dev data file datastore/nachet/db/bytebase/dev_data_nachet_${SCHEMA_VERSION}.sql not found!"
-#   exit 1
-# fi
+if [ ! -f "datastore/nachet/db/bytebase/dev_data_nachet_${SCHEMA_VERSION}.sql" ]; then
+  echo "Dev data file datastore/nachet/db/bytebase/dev_data_nachet_${SCHEMA_VERSION}.sql not found!"
+  exit 1
+fi
 
 # copy the schema files to the container
 docker cp datastore/nachet/db/bytebase/schema_nachet_${SCHEMA_VERSION}.sql nachet-db:/schema_nachet_${SCHEMA_VERSION}.sql
 docker cp datastore/nachet/db/bytebase/constants_nachet_${SCHEMA_VERSION}.sql nachet-db:/constants_nachet_${SCHEMA_VERSION}.sql
-# docker cp datastore/nachet/db/bytebase/dev_data_nachet_${SCHEMA_VERSION}.sql nachet-db:/dev_data_nachet_${SCHEMA_VERSION}.sql
+docker cp datastore/nachet/db/bytebase/dev_data_nachet_${SCHEMA_VERSION}.sql nachet-db:/dev_data_nachet_${SCHEMA_VERSION}.sql
 
 # load the schema files
 docker exec -it nachet-db psql -h 127.0.0.1 -U ${DB_USER} -d ${DB_NAME} -f /schema_nachet_${SCHEMA_VERSION}.sql
 docker exec -it nachet-db psql -h 127.0.0.1 -U ${DB_USER} -d ${DB_NAME} -f /constants_nachet_${SCHEMA_VERSION}.sql
-# docker exec -it nachet-db psql -h 127.0.0.1 -U ${DB_USER} -d ${DB_NAME} -f /dev_data_nachet_${SCHEMA_VERSION}.sql
+docker exec -it nachet-db psql -h 127.0.0.1 -U ${DB_USER} -d ${DB_NAME} -f /dev_data_nachet_${SCHEMA_VERSION}.sql

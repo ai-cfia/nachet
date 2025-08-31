@@ -95,20 +95,20 @@ services:
     networks:
       - nachet-local-network
 
-  # nachet-15-spp-swin:
-  #   # build:
-  #   #   context: ./nachet-model/AzureMLSeedCls
-  #   #   dockerfile: Dockerfile
-  #   container_name: nachet-15-spp-swin
-  #   image: ghcr.io/ai-cfia/nachet-backend:29-azureml-swin-classifier
-  #   command: bash -c 'azmlinfsrv --entry_script /app/score.py'
-  #   ports:
-  #     - "12390:5001"
-  #     - "12391:8883"
-  #     - "12392:8888"
-  #   # network_mode: bridge
-  #   networks:
-  #     - nachet-local-network
+  nachet-15-spp-classifier:
+    # build:
+    #   context: ./nachet-model/AzureMLSeedCls
+    #   dockerfile: Dockerfile
+    container_name: nachet-15-spp-classifier
+    image: ghcr.io/ai-cfia/nachet-backend:29-azureml-swin-classifier
+    command: bash -c 'azmlinfsrv --entry_script /app/score.py'
+    ports:
+      - "12390:5001"
+      - "12391:8883"
+      - "12392:8888"
+    # network_mode: bridge
+    networks:
+      - nachet-local-network
 
   # nachet-22-spp-swin:
   #   # build:
@@ -125,11 +125,11 @@ services:
   #   networks:
   #     - nachet-local-network
 
-  nachet-27-spp-swin:
+  nachet-27-spp-classifier:
     # build:
     #   context: ./nachet-model/AzureMLSeedCls_27_spp
     #   dockerfile: Dockerfile
-    container_name: nachet-27-spp-swin
+    container_name: nachet-27-spp-classifier
     image: ghcr.io/ai-cfia/nachet-model-ccds/gpu-classifier-27spp-model-1:2025030321
     ports:
       - "12360:8080"

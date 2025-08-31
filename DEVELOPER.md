@@ -102,6 +102,16 @@ nachet$ nano docker-compose.yaml
 
 ```bash
 nachet$ docker compose -f docker-compose.yaml up -d
+nachet$ $ docker ps -a --format "table {{.Image}}\t{{.Names}}\t{{.RunningFor}}\t{{.Status}}\t{{.Ports}}"
+IMAGE                                                                       NAMES                      CREATED             STATUS                      PORTS
+ghcr.io/ai-cfia/nachet-backend:29-azureml-swin-classifier                   nachet-15-spp-classifier   2 minutes ago       Up 2 minutes                0.0.0.0:12390->5001/tcp, [::]:12390->5001/tcp, 0.0.0.0:12391->8883/tcp, [::]:12391->8883/tcp, 0.0.0.0:12392->8888/tcp, [::]:12392->8888/tcp
+ghcr.io/ai-cfia/nachet-model-ccds/gpu-classifier-27spp-model-1:2025030321   nachet-27-spp-classifier   2 minutes ago       Up 3 seconds                7070-7071/tcp, 8081-8082/tcp, 0.0.0.0:12360->8080/tcp, [::]:12360->8080/tcp
+ghcr.io/ai-cfia/nachet-backend:1.0.4                                        nachet-backend             42 minutes ago      Up 2 minutes                0.0.0.0:12435->5174/tcp, [::]:12435->5174/tcp
+dpage/pgadmin4:latest                                                       nachet-pgadmin             53 minutes ago      Up 53 minutes               443/tcp, 0.0.0.0:12433->80/tcp, [::]:12433->80/tcp
+postgres:15-bookworm                                                        nachet-db                  53 minutes ago      Up 53 minutes               0.0.0.0:12432->5432/tcp, [::]:12432->5432/tcp
+ghcr.io/ai-cfia/nachet-frontend:0.9.31                                      nachet-frontend            About an hour ago   Up About an hour            3000/tcp, 0.0.0.0:12436->5173/tcp, [::]:12436->5173/tcp
+ghcr.io/ai-cfia/nachet-backend:29-azureml-seed-detector                     nachet-detector            About an hour ago   Up About an hour            0.0.0.0:12380->5001/tcp, [::]:12380->5001/tcp, 0.0.0.0:12381->8883/tcp, [::]:12381->8883/tcp, 0.0.0.0:12382->8888/tcp, [::]:12382->8888/tcp
+mcr.microsoft.com/azure-storage/azurite:3.35.0                              nachet-blob                4 hours ago         Up 4 hours                  10001-10002/tcp, 0.0.0.0:12434->10000/tcp, [::]:12434->10000/tcp
 ```
 
 ## Useful Commands
