@@ -16,9 +16,9 @@ class SwinModelAPIError(ModelAPIError):
 
 
 SPECIES_LIST = [
-    "012 Ambrosia artemisiifolia",
-    "013 Ambrosia trifida",
-    "014 Ambrosia psilostachya",
+    "ambrosia artemisiifolia",
+    "ambrosia trifida",
+    "ambrosia psilostachya",
 ]
 
 
@@ -108,7 +108,7 @@ async def request_inference_ensemble_b(model: namedtuple, previous_result: "dict
         amended_result = deepcopy(previous_result.get("result_json"))
 
         for idx, result in enumerate(previous_result.get("result_json")[0]["boxes"]):
-            if result["label"] in SPECIES_LIST:
+            if result["label"].lower().strip() in SPECIES_LIST:
                 headers = {
                     "Content-Type": model.content_type,
                     "Authorization": ("Bearer " + model.api_key),
