@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/score"
+  },
+
+  "response": {
+    "status": 200,
+    "body": "{\"result_json\":[{\"filename\":\"default_filename\",\"boxes\":[{\"box\":{\"topX\":0.5259549997984581,\"topY\":0.027695440887807805,\"bottomX\":0.806650644842724,\"bottomY\":0.9486585308195952},\"label\":\"Ambrosia psilostachya\",\"score\":0.9999996423721313,\"topN\":[{\"label\":\"Ambrosia psilostachya\",\"score\":0.9999996423721313},{\"label\":\"Cyclachaena Xanthiifolia\",\"score\":3.18318001291118e-7},{\"label\":\"Ambrosia trifida\",\"score\":4.448181378791105e-9},{\"label\":\"Centaurea stoebe\",\"score\":2.6268636155180047e-9},{\"label\":\"Solanum rostratum\",\"score\":2.608500082601495e-9}]},{\"box\":{\"topX\":0.1735114120855564,\"topY\":0.12971776793516537,\"bottomX\":0.4727374107260641,\"bottomY\":0.8980269647002818},\"label\":\"Ambrosia psilostachya\",\"score\":0.8021641969680786,\"topN\":[{\"label\":\"Ambrosia psilostachya\",\"score\":0.8021641969680786},{\"label\":\"Ambrosia artemisiifolia\",\"score\":0.19744080305099487},{\"label\":\"Cyclachaena Xanthiifolia\",\"score\":0.00026501616230234504},{\"label\":\"Ambrosia trifida\",\"score\":0.00010990769806085154},{\"label\":\"Centaurea solstitialis D\",\"score\":0.000012602728020283394}]}]}],\"images\":[\"base64encodeddata\",\"base64encodeddata\"]}",
+    "headers": {
+        "Content-Type": "text/plain"
+    }
+  }
+}

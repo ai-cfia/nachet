@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/score"
+  },
+
+  "response": {
+    "status": 200,
+    "body": "{\"result_json\":[{\"box\":{\"topX\":0.5259549997984581,\"topY\":0.027695440887807805,\"bottomX\":0.806650644842724,\"bottomY\":0.9486585308195952},\"label\":\"Seed\",\"score\":0.9999797344207764},{\"box\":{\"topX\":0.1735114120855564,\"topY\":0.12971776793516537,\"bottomX\":0.4727374107260641,\"bottomY\":0.8980269647002818},\"label\":\"Seed\",\"score\":0.9999767541885376}],\"images\":[\"base64encodeddata\",\"base64encodeddata\"]}",
+    "headers": {
+        "Content-Type": "text/plain"
+    }
+  }
+}
