@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/score"
+  },
+
+  "response": {
+    "status": 200,
+    "body": "[{\"score\":0.9968032836914062,\"label\":\"12 Ambrosia artemisiifolia\"},{\"score\":0.002940527629107237,\"label\":\"14 Ambrosia psilostachya\"},{\"score\":0.00025198215735144913,\"label\":\"13 Ambrosia trifida\"},{\"score\":0.000002209280182796647,\"label\":\"10 Solanum nigrum\"},{\"score\":5.990810905132093e-7,\"label\":\"2 Cirsium arvense\"}]",
+    "headers": {
+        "Content-Type": "text/plain"
+    }
+  }
+}
