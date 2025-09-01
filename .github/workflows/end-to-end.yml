@@ -72,35 +72,6 @@ jobs:
           FRONTEND_DEV_PORT: 12436
         ports:
           - 12436:3000
-      nachet-backend:
-        image: ghcr.io/ai-cfia/nachet-backend:1.0.4
-        env:
-          TESTING: "true"
-          NACHET_AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
-          NACHET_STORAGE_URL_TESTING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
-          NACHET_STORAGE_URL: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
-          NACHET_DB_URL: "postgresql://${{ secrets.PG_USER }}:${{ secrets.PG_PASS }}@nachet-db:5432/${{ secrets.PG_DB }}"
-          NACHET_SCHEMA_TESTING: "nachet_${{ steps.schema-version.outputs.version }}"
-          NACHET_SCHEMA: "nachet_${{ steps.schema-version.outputs.version }}"
-          NACHET_DATA: "https://raw.githubusercontent.com/ai-cfia/nachet-data/main/"
-          NACHET_MAX_CONTENT_LENGTH: "200"
-          NACHET_BLOB_PIPELINE_NAME: sg-nachet-pipeline-dev
-          NACHET_BLOB_PIPELINE_VERSION: 0.1.3
-          NACHET_BLOB_PIPELINE_DECRYPTION_KEY: ${{ secrets.NACHET_BLOB_PIPELINE_DECRYPTION_KEY }}
-          NACHET_BLOB_ACCOUNT: ${{ secrets.NACHET_BLOB_ACCOUNT }}
-          NACHET_BLOB_ACCOUNT_TESTING: ${{ secrets.NACHET_BLOB_ACCOUNT }}
-          NACHET_BLOB_KEY: ${{ secrets.NACHET_BLOB_KEY }}
-          NACHET_BLOB_KEY_TESTING: ${{ secrets.NACHET_BLOB_KEY }}
-          NACHET_VALID_EXTENSION: '["jpeg", "jpg", "png", "gif", "bmp", "tiff", "webp"]'
-          NACHET_VALID_DIMENSION: '{"width": 1920, "height": 1080}'
-          DEV_USER_EMAIL: ${{ secrets.DEV_USER_EMAIL }}
-          NACHET_ENV: "local" # local, dev, prod
-          NACHET_FRONTEND_PUBLIC_URL: "https://nachet.inspection.alpha.canada.ca"
-          NACHET_FRONTEND_DEV_URL: "http://localhost:12436"
-          BACKEND_DEV_PORT: 5174
-          FRONTEND_DEV_PORT: 12436
-        ports:
-          - 12435:5174
 
     steps:
       - name: Chown user
@@ -182,6 +153,42 @@ jobs:
         if: steps.cache-playwright.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps
 
+      - name: Start backend service
+        run: |
+          docker run -d --name nachet-backend \
+            --network host \
+            -e TESTING="true" \
+            -e NACHET_AZURE_STORAGE_CONNECTION_STRING="${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}" \
+            -e NACHET_STORAGE_URL_TESTING="${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}" \
+            -e NACHET_STORAGE_URL="${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}" \
+            -e NACHET_DB_URL="postgresql://${{ secrets.PG_USER }}:${{ secrets.PG_PASS }}@127.0.0.1:5432/${{ secrets.PG_DB }}" \
+            -e NACHET_SCHEMA_TESTING="nachet_${{ steps.schema-version.outputs.version }}" \
+            -e NACHET_SCHEMA="nachet_${{ steps.schema-version.outputs.version }}" \
+            -e NACHET_DATA="https://raw.githubusercontent.com/ai-cfia/nachet-data/main/" \
+            -e NACHET_MAX_CONTENT_LENGTH="200" \
+            -e NACHET_BLOB_PIPELINE_NAME="sg-nachet-pipeline-dev" \
+            -e NACHET_BLOB_PIPELINE_VERSION="0.1.3" \
+            -e NACHET_BLOB_PIPELINE_DECRYPTION_KEY="${{ secrets.NACHET_BLOB_PIPELINE_DECRYPTION_KEY }}" \
+            -e NACHET_BLOB_ACCOUNT="${{ secrets.NACHET_BLOB_ACCOUNT }}" \
+            -e NACHET_BLOB_ACCOUNT_TESTING="${{ secrets.NACHET_BLOB_ACCOUNT }}" \
+            -e NACHET_BLOB_KEY="${{ secrets.NACHET_BLOB_KEY }}" \
+            -e NACHET_BLOB_KEY_TESTING="${{ secrets.NACHET_BLOB_KEY }}" \
+            -e NACHET_VALID_EXTENSION='["jpeg", "jpg", "png", "gif", "bmp", "tiff", "webp"]' \
+            -e NACHET_VALID_DIMENSION='{"width": 1920, "height": 1080}' \
+            -e DEV_USER_EMAIL="${{ secrets.DEV_USER_EMAIL }}" \
+            -e NACHET_ENV="local" \
+            -e NACHET_FRONTEND_PUBLIC_URL="https://nachet.inspection.alpha.canada.ca" \
+            -e NACHET_FRONTEND_DEV_URL="http://localhost:12436" \
+            -e BACKEND_DEV_PORT="5174" \
+            -e FRONTEND_DEV_PORT="12436" \
+            -p 12435:5174 \
+            ghcr.io/ai-cfia/nachet-backend:1.0.4
+
+      - name: Wait for backend to be ready
+        run: |
+          sleep 30
+          echo "Backend is ready!"
+
       - name: Run Playwright tests
         run: npx playwright test
 
@@ -189,7 +196,7 @@ jobs:
         if: failure()
         run: |
           echo "=== Backend logs ==="
-          docker logs ${{ job.services.nachet-backend.id }}
+          docker logs nachet-backend
           echo "=== Database logs ==="
           docker logs ${{ job.services.nachet-db.id }}
           echo "=== detector mock logs ==="
