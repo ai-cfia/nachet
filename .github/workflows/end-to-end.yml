@@ -138,6 +138,7 @@ jobs:
       - name: Extract schema version
         id: schema-version
         run: |
+          cd backend
           SCHEMA_VERSION=$(uv run python -c "import toml; config = toml.load('pyproject.toml'); print(config['tool']['nachet-db']['db-schema-version'])")
           echo "version=$SCHEMA_VERSION" >> $GITHUB_OUTPUT
           echo "Schema version: $SCHEMA_VERSION"
