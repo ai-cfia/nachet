@@ -34,7 +34,7 @@ dependencies = [
     "azure-storage-blob",
     "azure-identity",
     "flask==3.0.3",
-    "quart==0.19.6",
+    "quart==0.20.0",
     "quart-cors",
     "python-dotenv",
     "hypercorn",
