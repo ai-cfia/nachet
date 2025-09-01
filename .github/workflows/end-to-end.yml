@@ -73,7 +73,7 @@ jobs:
         ports:
           - 12436:3000
       nachet-backend:
-        image: ghcr.io/ai-cfia/nachet-backend:1.04
+        image: ghcr.io/ai-cfia/nachet-backend:1.0.4
         env:
           TESTING: "true"
           NACHET_AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
@@ -151,12 +151,16 @@ jobs:
           psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "\dt \"nachet_${{ steps.schema-version.outputs.version }}\".*" -c "\df \"nachet_${{ steps.schema-version.outputs.version }}\".*" -c "SELECT * FROM \"nachet_${{ steps.schema-version.outputs.version }}\".seed;"
         env:
           PGPASSWORD: ${{ secrets.PG_PASS }}
+
       - name: Install dependencies
         run: npm ci
+
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
+
       - name: Run Playwright tests
         run: npx playwright test
+
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
