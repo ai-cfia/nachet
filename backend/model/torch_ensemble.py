@@ -120,7 +120,12 @@ async def request_inference_ensemble_b(model: namedtuple, previous_result: "dict
                 inf_result = response.read()
                 inf_result_json = json.loads(inf_result.decode("utf8"))
                 print(f"Result for image {idx + 1}: \n {json.dumps(inf_result_json, indent=4)}")
-                amended_result[0]["boxes"][idx]["label"] = inf_result_json[0].get("label")
+                # The older models return labels with leading numbers, so we need to adjust for that
+                # detect and remove leading numbers if present
+                corrected_label = inf_result_json[0].get("label")
+                if inf_result_json[0].get("label").split(" ")[0].isdigit():
+                    corrected_label = " ".join(inf_result_json[0].get("label").split(" ")[1:])
+                amended_result[0]["boxes"][idx]["label"] = corrected_label
                 amended_result[0]["boxes"][idx]["score"] = inf_result_json[0].get("score")
                 amended_result[0]["boxes"][idx]["topN"] = [d for d in inf_result_json]
 
