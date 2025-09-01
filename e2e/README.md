@@ -258,4 +258,4 @@ When adding new e2e tests:
 
 - [Frontend Testing Guide](../frontend/TESTING.md)
 - [Backend Testing Guide](../backend/TESTING.md)
-- [Playwright Documentation](https://playwright.dev/docs)
+- [Playwright Documentation](https://playwright.dev/docs/intro)
