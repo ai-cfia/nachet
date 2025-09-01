@@ -115,14 +115,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      # - name: Install uv
-      #   uses: astral-sh/setup-uv@142240426d0e82f3e584603c3aa194c582f5aed3
-
-      # - name: Install dependencies
-      #   run: |
-      #     uv sync --dev
-      #     uv add toml pytest-cov
-
       - name: Install Azurite
         run: npm install -g azurite
 
@@ -133,6 +125,15 @@ jobs:
       # - name: Wait for Azurite to be ready
       #   run: |
       #     timeout 30 bash -c 'until curl -f http://127.0.0.1:10000/ 2>/dev/null; do sleep 1; done'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@142240426d0e82f3e584603c3aa194c582f5aed3
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          uv sync --dev
+          uv add toml pytest-cov
 
       - name: Extract schema version
         id: schema-version
@@ -157,7 +158,7 @@ jobs:
           PGPASSWORD: ${{ secrets.PG_PASS }}
 
       - name: Install dependencies
-        run: npm ci
+        run: cd .. && npm ci
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
