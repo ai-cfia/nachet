@@ -129,30 +129,6 @@ jobs:
         env:
           PGPASSWORD: ${{ secrets.PG_PASS }}
 
-      - name: Cache Node Modules
-        id: cache-node-modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            node_modules
-          key: modules-${{ hashFiles('package-lock.json') }}
-      
-      - name: Cache Playwright Binaries
-        id: cache-playwright
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/ms-playwright
-          key: playwright-${{ hashFiles('package-lock.json') }}
-
-      - name: Install dependencies
-        if: steps.cache-node-modules.outputs.cache-hit != 'true'
-        run: npm ci
-
-      - name: Install Playwright Browsers
-        if: steps.cache-playwright.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps
-
       - name: Start backend service
         run: |
           docker run -d --name nachet-backend \
@@ -184,10 +160,29 @@ jobs:
             -p 12435:5174 \
             ghcr.io/ai-cfia/nachet-backend:1.0.4
 
-      - name: Wait for backend to be ready
-        run: |
-          sleep 30
-          echo "Backend is ready!"
+      - name: Cache Node Modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+          key: modules-${{ hashFiles('package-lock.json') }}
+      
+      - name: Cache Playwright Binaries
+        id: cache-playwright
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        if: steps.cache-playwright.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps
 
       - name: Run Playwright tests
         run: npx playwright test
@@ -195,6 +190,7 @@ jobs:
       - name: Show backend service logs
         if: failure()
         run: |
+          docker ps -a
           echo "=== Backend logs ==="
           docker logs nachet-backend
           echo "=== Database logs ==="
