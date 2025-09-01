@@ -3,7 +3,7 @@
     "playwright:install-deps": "npx playwright install-deps",
     "playwright:update": "npm install -D @playwright/test@latest && npx playwright install --with-deps",
     "playwright:version": "npx playwright --version",
-    "test:e2e": "npx playwright test"
+    "test:e2e": "npx playwright test --workers=1"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
