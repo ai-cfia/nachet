@@ -29,12 +29,37 @@ defaults:
     working-directory: frontend
 
 jobs:
+  get-version:
+    runs-on: ubuntu-latest
+
+    outputs:
+      app-version: ${{ steps.versions.outputs.app-version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract versions from package.json
+        id: versions
+        run: |
+          APP_VERSION=$(jq -r '.version' package.json | sed 's/\^//')
+          if [ -z "$APP_VERSION" ]; then
+            echo "Error: Could not extract versions from package.json"
+            exit 1
+          fi
+          echo "Detected application version: $APP_VERSION"
+          echo "app-version=$APP_VERSION" >> $GITHUB_OUTPUT
+
   build-and-push-gcr:
+    needs: get-version
     # uses: ./.github/workflows/workflow-build-push-container-github-registry-mono.yml
     uses: ai-cfia/github-workflows/.github/workflows/workflow-build-push-container-github-registry-mono.yml@main
     with:
       working-directory: frontend
       container-name: ${{ github.event.repository.name }}-frontend
       tag: ${{ github.sha }}
+      release-version: ${{ needs.get-version.outputs.app-version }}
       registry: ghcr.io/ai-cfia
     secrets: inherit
