@@ -67,5 +67,7 @@ else
       curl -LsSf https://astral.sh/uv/install.sh | sh && \
       /root/.local/bin/uv sync && \
       /root/.local/bin/uv lock && \
-      /root/.local/bin/uv run cyclonedx-py environment --output-reproducible -v --sv 1.6 --pyproject pyproject.toml -o sbom.json && echo "" >> sbom.json"
+      /root/.local/bin/uv run cyclonedx-py environment --output-reproducible -v --sv 1.6 --pyproject pyproject.toml -o sbom.json && \
+      echo "" >> sbom.json && \
+      chown -R 1000:1000 .venv"
 fi

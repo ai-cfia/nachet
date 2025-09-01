@@ -36,8 +36,8 @@ if [ ! -f "pyproject.toml" ] || [ ! -d "tests" ]; then
 fi
 
 # Check if .env.test exists
-if [ ! -f ".env.test" ]; then
-    print_error ".env.test file not found. Please ensure test environment is configured."
+if [ ! -f ".env.test.local" ]; then
+    print_error ".env.test.local file not found. Please ensure test environment is configured."
     exit 1
 fi
 
@@ -46,7 +46,7 @@ print_status "Starting datastore test cycle..."
 # Step 1: Load environment variables
 print_status "Loading test environment variables..."
 set -a
-source .env.test
+source .env.test.local
 set +a
 print_success "Environment variables loaded"
 
@@ -72,7 +72,7 @@ print_status "Step 3/4: Running all tests..."
 echo "----------------------------------------"
 
 # Run tests with verbose output and collect results
-if uv run python -m pytest tests/ -v --tb=short; then
+if uv run python -m pytest tests/ -v --cov=. --cov-report=term-missing; then
     print_success "All tests passed!"
     TEST_RESULT=0
 else
