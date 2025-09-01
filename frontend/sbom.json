@@ -100,7 +100,7 @@
       "type": "library",
       "name": "string-width",
       "version": "4.2.3",
-      "bom-ref": "BomRef.03rrqs3psds.is23qbb28s8",
+      "bom-ref": "BomRef.82v6a3krrn.k6g29jpdn2g",
       "purl": "pkg:npm/string-width@4.2.3",
       "externalReferences": [
         {
@@ -128,39 +128,9 @@
     },
     {
       "type": "library",
-      "name": "wrap-ansi",
-      "version": "7.0.0",
-      "bom-ref": "BomRef.eut6fepa3kc.0skrdhjho8g",
-      "purl": "pkg:npm/wrap-ansi@7.0.0",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/wrap-ansi/-/wrap-ansi-7.0.0.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "6151888f691a98b493c70e8db198e80717d2c2c9f4c9c75eb26738a7e436d5ce733ee675a65f8d7f155dc4fb5d1ef98d54e43a5d2606e0052dcadfc58bb0f5e9"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:development",
-          "value": "true"
-        },
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/wrap-ansi-cjs"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "name": "strip-ansi",
       "version": "6.0.1",
-      "bom-ref": "BomRef.n623sn7ftes.2elg4uim5j4",
+      "bom-ref": "BomRef.jol5tvj8rso.kb26ieks378",
       "purl": "pkg:npm/strip-ansi@6.0.1",
       "externalReferences": [
         {
@@ -183,6 +153,36 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/strip-ansi-cjs"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "wrap-ansi",
+      "version": "7.0.0",
+      "bom-ref": "BomRef.m0le26c9i4.g5q8e9pk1is",
+      "purl": "pkg:npm/wrap-ansi@7.0.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/wrap-ansi/-/wrap-ansi-7.0.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "6151888f691a98b493c70e8db198e80717d2c2c9f4c9c75eb26738a7e436d5ce733ee675a65f8d7f155dc4fb5d1ef98d54e43a5d2606e0052dcadfc58bb0f5e9"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/wrap-ansi-cjs"
         }
       ]
     },
@@ -33393,7 +33393,7 @@
   ],
   "dependencies": [
     {
-      "ref": "BomRef.03rrqs3psds.is23qbb28s8",
+      "ref": "BomRef.82v6a3krrn.k6g29jpdn2g",
       "dependsOn": [
         "nachet-frontend@0.9.31|emoji-regex@8.0.0",
         "nachet-frontend@0.9.31|is-fullwidth-code-point@3.0.0",
@@ -33401,17 +33401,17 @@
       ]
     },
     {
-      "ref": "BomRef.eut6fepa3kc.0skrdhjho8g",
+      "ref": "BomRef.jol5tvj8rso.kb26ieks378",
+      "dependsOn": [
+        "nachet-frontend@0.9.31|ansi-regex@5.0.1"
+      ]
+    },
+    {
+      "ref": "BomRef.m0le26c9i4.g5q8e9pk1is",
       "dependsOn": [
         "nachet-frontend@0.9.31|ansi-styles@4.3.0",
         "nachet-frontend@0.9.31|string-width@4.2.3",
         "nachet-frontend@0.9.31|strip-ansi@6.0.1"
-      ]
-    },
-    {
-      "ref": "BomRef.n623sn7ftes.2elg4uim5j4",
-      "dependsOn": [
-        "nachet-frontend@0.9.31|ansi-regex@5.0.1"
       ]
     },
     {
@@ -34722,9 +34722,9 @@
     {
       "ref": "nachet-frontend@0.9.31|@isaacs/cliui@8.0.2",
       "dependsOn": [
-        "BomRef.03rrqs3psds.is23qbb28s8",
-        "BomRef.eut6fepa3kc.0skrdhjho8g",
-        "BomRef.n623sn7ftes.2elg4uim5j4",
+        "BomRef.82v6a3krrn.k6g29jpdn2g",
+        "BomRef.jol5tvj8rso.kb26ieks378",
+        "BomRef.m0le26c9i4.g5q8e9pk1is",
         "nachet-frontend@0.9.31|@isaacs/cliui@8.0.2|string-width@5.1.2",
         "nachet-frontend@0.9.31|@isaacs/cliui@8.0.2|strip-ansi@7.1.0",
         "nachet-frontend@0.9.31|@isaacs/cliui@8.0.2|wrap-ansi@8.1.0"

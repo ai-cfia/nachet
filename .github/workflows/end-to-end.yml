@@ -54,13 +54,13 @@ jobs:
       nachet-15spp-classifier:
         image: wiremock/wiremock:3.13.1
         ports:
-          - 5001:8080
+          - 5003:8080
         volumes:
           - ./e2e/mocks/nachet-15spp-classifier:/home/wiremock/mappings
       nachet-27spp-classifier:
         image: wiremock/wiremock:3.13.1
         ports:
-          - 8080:8080
+          - 5002:8080
         volumes:
           - ./e2e/mocks/nachet-27spp-classifier:/home/wiremock/mappings
 
