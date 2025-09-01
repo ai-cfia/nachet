@@ -103,10 +103,12 @@ jobs:
           - 12435:5174
 
     steps:
+      - name: Chown user
+        run: |
+          sudo chown -R $USER:$USER $GITHUB_WORKSPACE
+
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          clean: false
 
       - name: Set up Python
         uses: actions/setup-python@v4
