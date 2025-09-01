@@ -12,6 +12,6 @@ test('inference succeeeds', async ({ page }) => {
   await page.getByRole('button', { name: 'Done' }).click();
   await page.getByRole('button', { name: 'CLASSIFY' }).click();
   await page.waitForTimeout(5000); // Wait 5 seconds for processing to start
-  await expect(page.getByRole('cell', { name: 'Ambrosia psilostachya' })).toBeVisible({ timeout: 90000 });
+  await expect(page.getByRole('cell', { name: 'Ambrosia artemisiifolia' })).toBeVisible({ timeout: 90000 });
 //   await page.screenshot({ path: 'debug.png' });
 });
