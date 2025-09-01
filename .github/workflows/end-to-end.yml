@@ -12,25 +12,25 @@ on:
       - opened
       - synchronize
     paths:
-      - 'backend/**'
-      - 'frontend/**'
+      - "backend/**"
+      - "frontend/**"
   push:
     branches:
       - main
     paths:
-      - 'backend/**'
-      - 'frontend/**'
+      - "backend/**"
+      - "frontend/**"
 
 defaults:
   run:
     working-directory: .
 
 jobs:
-  test:
+  end-to-end-test:
     runs-on: ubuntu-latest
     environment: e2e-test-env
     timeout-minutes: 15
-    
+
     services:
       postgres:
         image: postgres:13
@@ -63,60 +63,17 @@ jobs:
           - 5002:8080
         volumes:
           - ./e2e/mocks/nachet-27spp-classifier:/home/wiremock/mappings
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@142240426d0e82f3e584603c3aa194c582f5aed3
-
-      - name: Install dependencies
-        run: |
-          uv sync --dev
-          uv add toml pytest-cov
-      
-      - name: Install Azurite
-        run: npm install -g azurite
-      
-      - name: Start Azurite Blob Storage Emulator
-        shell: bash
-        run: azurite --loose --blobHost 127.0.0.1 --blobPort 10000 &
-      
-      # - name: Wait for Azurite to be ready
-      #   run: |
-      #     timeout 30 bash -c 'until curl -f http://127.0.0.1:10000/ 2>/dev/null; do sleep 1; done'
-
-      - name: Extract schema version
-        id: schema-version
-        run: |
-          SCHEMA_VERSION=$(uv run python -c "import toml; config = toml.load('pyproject.toml'); print(config['tool']['nachet-db']['db-schema-version'])")
-          echo "version=$SCHEMA_VERSION" >> $GITHUB_OUTPUT
-          echo "Schema version: $SCHEMA_VERSION"
-
-      - name: Set up database schema
-        run: |
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "CREATE SCHEMA IF NOT EXISTS \"nachet_${{ steps.schema-version.outputs.version }}\";"
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/nachet/db/bytebase/schema_nachet_${{ steps.schema-version.outputs.version }}.sql
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/nachet/db/bytebase/constants_nachet_${{ steps.schema-version.outputs.version }}.sql
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/tests/test_data_nachet_${{ steps.schema-version.outputs.version }}.sql
-        env:
-          PGPASSWORD:  ${{ secrets.PG_PASS }}
-
-      - name: Verify schema setup
-        run: |
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "\dt \"nachet_${{ steps.schema-version.outputs.version }}\".*" -c "\df \"nachet_${{ steps.schema-version.outputs.version }}\".*" -c "SELECT * FROM \"nachet_${{ steps.schema-version.outputs.version }}\".seed;"
-        env:
-          PGPASSWORD: ${{ secrets.PG_PASS }}
-
-      - name: Run tests
-        run: |
-          uv run pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
+      nachet-frontend:
+        image: ghcr.io/ai-cfia/nachet-frontend:0.9.31
+        env: 
+          PUBLIC_URL: "."
+          VITE_BACKEND_URL: "http://localhost:12435"
+          VITE_APP_MODE: ""
+          FRONTEND_DEV_PORT: 12436
+        ports:
+          - 12436:3000
+      nachet-backend:
+        image: ghcr.io/ai-cfia/nachet-backend:1.04
         env:
           TESTING: "true"
           NACHET_AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
@@ -139,13 +96,70 @@ jobs:
           DEV_USER_EMAIL: ${{ secrets.DEV_USER_EMAIL }}
           NACHET_ENV: "local" # local, dev, prod
           NACHET_FRONTEND_PUBLIC_URL: "https://nachet.inspection.alpha.canada.ca"
-          NACHET_FRONTEND_DEV_URL: "http://localhost:5173"
-          PORT: 5174
+          NACHET_FRONTEND_DEV_URL: "http://localhost:12436"
+          BACKEND_DEV_PORT: 5174
+          FRONTEND_DEV_PORT: 12436
+        ports:
+          - 12435:5174
 
-      # - name: Upload coverage to Codecov
-      #   if: success()
-      #   uses: codecov/codecov-action@v3
-      #   with:
-      #     file: ./backend/coverage.xml
-      #     flags: backend
-      #     name: backend-coverage
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@142240426d0e82f3e584603c3aa194c582f5aed3
+
+      - name: Install dependencies
+        run: |
+          uv sync --dev
+          uv add toml pytest-cov
+
+      - name: Install Azurite
+        run: npm install -g azurite
+
+      - name: Start Azurite Blob Storage Emulator
+        shell: bash
+        run: azurite --loose --blobHost 127.0.0.1 --blobPort 10000 &
+
+      # - name: Wait for Azurite to be ready
+      #   run: |
+      #     timeout 30 bash -c 'until curl -f http://127.0.0.1:10000/ 2>/dev/null; do sleep 1; done'
+
+      - name: Extract schema version
+        id: schema-version
+        run: |
+          SCHEMA_VERSION=$(uv run python -c "import toml; config = toml.load('pyproject.toml'); print(config['tool']['nachet-db']['db-schema-version'])")
+          echo "version=$SCHEMA_VERSION" >> $GITHUB_OUTPUT
+          echo "Schema version: $SCHEMA_VERSION"
+
+      - name: Set up database schema
+        run: |
+          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "CREATE SCHEMA IF NOT EXISTS \"nachet_${{ steps.schema-version.outputs.version }}\";"
+          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/nachet/db/bytebase/schema_nachet_${{ steps.schema-version.outputs.version }}.sql
+          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/nachet/db/bytebase/constants_nachet_${{ steps.schema-version.outputs.version }}.sql
+          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/tests/test_data_nachet_${{ steps.schema-version.outputs.version }}.sql
+        env:
+          PGPASSWORD: ${{ secrets.PG_PASS }}
+
+      - name: Verify schema setup
+        run: |
+          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "\dt \"nachet_${{ steps.schema-version.outputs.version }}\".*" -c "\df \"nachet_${{ steps.schema-version.outputs.version }}\".*" -c "SELECT * FROM \"nachet_${{ steps.schema-version.outputs.version }}\".seed;"
+        env:
+          PGPASSWORD: ${{ secrets.PG_PASS }}
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      - name: Run Playwright tests
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
