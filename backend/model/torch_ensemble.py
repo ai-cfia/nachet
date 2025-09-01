@@ -74,6 +74,7 @@ async def request_inference_ensemble_a(model: namedtuple, previous_result: "dict
             response = urlopen(req)
             inf_result = response.read()
             inf_result_json = json.loads(inf_result.decode("utf8"))
+            print(f"Result for image {idx + 1}: \n {json.dumps(inf_result_json, indent=4)}")
             inf_results.append(inf_result_json)
 
         print(json.dumps(inf_results, indent=4))  # TODO Transform into logging
@@ -106,21 +107,22 @@ async def request_inference_ensemble_b(model: namedtuple, previous_result: "dict
         print(f"Endpoint: {model.endpoint}")
         amended_result = deepcopy(previous_result.get("result_json"))
 
-        for i, result in enumerate(previous_result.get("result_json")[0]["boxes"]):
+        for idx, result in enumerate(previous_result.get("result_json")[0]["boxes"]):
             if result["label"] in SPECIES_LIST:
                 headers = {
                     "Content-Type": model.content_type,
                     "Authorization": ("Bearer " + model.api_key),
                     model.deployment_platform: model.name,
                 }
-                body = previous_result.get("images")[i]
+                body = previous_result.get("images")[idx]
                 req = Request(model.endpoint, body, headers, method="POST")
                 response = urlopen(req)
                 inf_result = response.read()
                 inf_result_json = json.loads(inf_result.decode("utf8"))
-                amended_result[0]["boxes"][i]["label"] = inf_result_json[0].get("label")
-                amended_result[0]["boxes"][i]["score"] = inf_result_json[0].get("score")
-                amended_result[0]["boxes"][i]["topN"] = [d for d in inf_result_json]
+                print(f"Result for image {idx + 1}: \n {json.dumps(inf_result_json, indent=4)}")
+                amended_result[0]["boxes"][idx]["label"] = inf_result_json[0].get("label")
+                amended_result[0]["boxes"][idx]["score"] = inf_result_json[0].get("score")
+                amended_result[0]["boxes"][idx]["topN"] = [d for d in inf_result_json]
 
         print(json.dumps(amended_result, indent=4))  # TODO Transform into logging
         return amended_result

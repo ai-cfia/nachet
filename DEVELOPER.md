@@ -123,7 +123,7 @@ nachet$ docker compose -f docker-compose.yaml exec backend bash
 nachet$ docker compose -f docker-compose.yaml exec frontend bash
 nachet$ docker compose -f docker-compose.yaml exec db psql -U <your_db_user> -d <your_db_name>
 nachet$ docker ps -a --format "table {{.Image}}\t{{.Names}}\t{{.RunningFor}}\t{{.Status}}\t{{.Ports}}"
-nachet$ docker logs -f --tail 20 <container_id or container_name>
+nachet$ docker logs -f --tail 20 nachet-backend
 nachet$ docker stop <container_id or container_name>
 nachet$ docker start <container_id or container_name>
 nachet$ docker rm <container_id or container_name>
