@@ -164,6 +164,8 @@ node_modules/
 coverage/
 **/*.local
 blob/data/
+db/pgadmin-data/
+db/postgres-data/
 
 # Playwright
 /test-results/

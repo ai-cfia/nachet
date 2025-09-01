@@ -21,7 +21,7 @@ services:
     env_file:
       - ./db/.env.config.local
     volumes: 
-      - ./db/pgadmin-data:/var/lib/pgadmin
+      - ./db/pgadmin-data/data:/var/lib/pgadmin
     ports:
       - '12433:80'
     networks:
