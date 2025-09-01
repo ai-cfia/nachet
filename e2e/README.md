@@ -62,6 +62,18 @@ npx playwright test tests/seed-identification.spec.ts
 npx playwright test --debug
 ```
 
+### Codegen for Test Creation
+
+if you are running the app locally, you can use codegen to generate test code by running:
+
+```bash
+npx playwright codegen <your-frontend-ip>:port
+```
+
+This will open a browser window where you can interact with the app, and Playwright will generate the corresponding test code in the terminal.
+
+if you are developing on a remote system via vscode ssh, you can use port forwarding to access the remote app from your local machine. For example, if your remote app is running on port 5173, you can forward it to your local machine using the vscode port forwarding feature. You would have to install the Playwright extension on your local machine separately. then when you run npx playwright codegen localhost:5173, it will open a browser window on your local machine where you can interact with the remote app, and Playwright will generate the corresponding test code in the terminal on your remote machine.
+
 ### Other useful commands
 
 ```bash

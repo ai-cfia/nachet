@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('inference succeeeds', async ({ page }) => {
   await page.goto('http://localhost:12436/');
+  await expect(page).toHaveTitle("Nachet | Seed Classification");
   await page.getByRole('button', { name: 'I Agree' }).click();
   await page.getByRole('button', { name: 'Capture', exact: true }).click();
   await page.getByRole('button', { name: 'LOAD' }).click();
