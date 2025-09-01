@@ -207,7 +207,7 @@ async def get_user_id():
             email = data.get("email")
 
         if not email:
-            email = "test.user@inspection.gc.ca"
+            email = "example@gmail.com"
             # raise MissingArgumentsError("Missing email")
 
         user_id = datastore.get_user_id(email)

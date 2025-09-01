@@ -55,7 +55,7 @@ async def request_inference_from_swin(model: namedtuple, previous_result: 'list[
     """
     try:
         results = []
-        for idx, img in previous_result.get("images"):
+        for img in previous_result.get("images"):
             headers = {
                 "Content-Type": model.content_type,
                 "Authorization": ("Bearer " + model.api_key),
@@ -66,9 +66,7 @@ async def request_inference_from_swin(model: namedtuple, previous_result: 'list[
             # req = Request("http://192.168.x.x:12390/score", body, headers, method="POST")
             response = urlopen(req)
             result = response.read()
-            inf_result_json = json.loads(result.decode("utf8"))
-            print(f"Result for image {idx + 1}: \n {json.dumps(inf_result_json, indent=4)}")
-            results.append(inf_result_json)
+            results.append(json.loads(result.decode("utf8")))
 
         print(json.dumps(results, indent=4)) #TODO Transform into logging
 
