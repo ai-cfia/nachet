@@ -32,6 +32,10 @@ The tests expect:
 - Frontend at `http://localhost:5173`
 - Backend API at `http://localhost:8080`
 
+### 4. VS Code Setup (Optional)
+
+If using VS Code, install the [Playwright Test for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-playwright.playwright) extension for enhanced test running and debugging capabilities.
+
 ## Running Tests
 
 ### Run All Tests
