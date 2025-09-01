@@ -185,6 +185,16 @@ jobs:
       - name: Run Playwright tests
         run: npx playwright test
 
+      - name: Show backend service logs
+        if: failure()
+        run: |
+          echo "=== Backend logs ==="
+          docker logs ${{ job.services.nachet-backend.id }}
+          echo "=== Database logs ==="
+          docker logs ${{ job.services.nachet-db.id }}
+          echo "=== detector mock logs ==="
+          docker logs ${{ job.services.nachet-detector.id }}
+
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
