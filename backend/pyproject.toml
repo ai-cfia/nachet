@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nachet-backend"
-version = "1.0.3"
+version = "1.0.4"
 description = "Canadian government (CFIA) AI-powered seed identification system backend"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -57,6 +57,7 @@ dev = [
     "pytest-asyncio",
     "pytest>=8.4.1",
     "toml>=0.10.2",
+    "pytest-cov>=6.2.1",
 ]
 
 [project.urls]
