@@ -473,6 +473,49 @@
       "version": "12.26.0"
     },
     {
+      "bom-ref": "beartype==0.21.0",
+      "description": "Unbearably fast near-real-time hybrid runtime-static type-checking in pure Python.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Docs",
+          "type": "documentation",
+          "url": "https://beartype.readthedocs.io"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issues",
+          "type": "issue-tracker",
+          "url": "https://github.com/beartype/beartype/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Forums",
+          "type": "other",
+          "url": "https://github.com/beartype/beartype/discussions"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Releases",
+          "type": "other",
+          "url": "https://github.com/beartype/beartype/releases"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub",
+          "type": "vcs",
+          "url": "https://github.com/beartype/beartype"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "beartype",
+      "purl": "pkg:pypi/beartype@0.21.0",
+      "type": "library",
+      "version": "0.21.0"
+    },
+    {
       "bom-ref": "boolean.py==5.0",
       "description": "Define boolean algebras, create and parse boolean expressions and create custom boolean DSL.",
       "externalReferences": [
@@ -3495,6 +3538,17 @@
     },
     {
       "dependsOn": [
+        "Pygments==2.19.2",
+        "click==8.2.1",
+        "coverage==7.10.6",
+        "numpy==1.26.4",
+        "pytest==8.4.1",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "beartype==0.21.0"
+    },
+    {
+      "dependsOn": [
         "pytest==8.4.1"
       ],
       "ref": "boolean.py==5.0"
@@ -3903,6 +3957,7 @@
         "PyYAML==6.0.2",
         "azure-identity==1.24.0",
         "azure-storage-blob==12.26.0",
+        "beartype==0.21.0",
         "cryptography==45.0.7",
         "fastapi==0.116.1",
         "numpy==1.26.4",

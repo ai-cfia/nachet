@@ -41,6 +41,7 @@ dependencies = [
     "python-magic==0.4.27",
     "PyJWT==2.10.1",
     "fastapi[standard-no-fastapi-cloud-cli]>=0.116.1",
+    "beartype>=0.21.0",
 ]
 
 [tool.nachet-db]
