@@ -10,9 +10,9 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
+    { name = "Joseffus Santos", email = "Joseffus.Santos@inspection.gc.ca" },
     { name = "Francois Werbrouck", email = "francois.werbrouck@inspection.gc.ca" },
-    { name = "Sylvanie You", email = "Sylvanie.You@inspection.gc.ca" },
-    { name = "Joseffus Santos", email = "Joseffus.Santos@inspection.gc.ca" }
+    { name = "Sylvanie You", email = "Sylvanie.You@inspection.gc.ca" }
 ]
 keywords = ["nachet", "ai", "seed", "identification", "cfia"]
 classifiers = [
