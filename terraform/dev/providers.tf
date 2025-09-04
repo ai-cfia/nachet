@@ -16,7 +16,7 @@ terraform {
     resource_group_name  = "rg-nachet"
     storage_account_name = "tfstatenachet"
     container_name       = "tfstate"
-    key                  = "nachet-dev.tfstate"
+    key                  = "tf/nachet-dev.tfstate"
   }
 }
 
