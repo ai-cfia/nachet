@@ -27,7 +27,7 @@ stages:
             displayName: "Display Agent Public IP"
 
           - task: AzureCLI@2
-            displayName: "Azure CLI Login"
+            displayName: "Azure CLI Login and add the current agent IP to blob FW"
             inputs:
               azureSubscription: $(serviceConnectionName)
               scriptType: "bash"
@@ -100,7 +100,7 @@ stages:
                   displayName: "Display Agent Public IP"
 
                 - task: AzureCLI@2
-                  displayName: "Azure CLI Login"
+                  displayName: "Azure CLI Login and add the current agent IP to blob FW"
                   inputs:
                     azureSubscription: $(serviceConnectionName)
                     scriptType: "bash"
@@ -114,7 +114,7 @@ stages:
                         --ip-address $(agentIP) \
                         --output none
                       echo "Waiting for firewall rule to propagate..."
-                      sleep 10
+                      sleep 30
 
                 - task: DownloadSecureFile@1
                   name: DownloadSecureVars
