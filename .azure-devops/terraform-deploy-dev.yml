@@ -33,7 +33,7 @@ stages:
             inputs:
               secureFile: "nachet-dev.tfvars"
 
-          - task: TerraformInstaller@1
+          - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
             displayName: "Install Terraform (latest)"
             inputs:
               terraformVersion: 'latest'
@@ -90,7 +90,7 @@ stages:
                   inputs:
                     secureFile: "nachet-dev.tfvars"
 
-                - task: TerraformInstaller@1
+                - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
                   displayName: "Install Terraform (latest)"
                   inputs:
                     terraformVersion: 'latest'
