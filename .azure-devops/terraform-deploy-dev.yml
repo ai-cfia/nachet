@@ -40,8 +40,8 @@ stages:
                   --account-name $(storageAccountName) \
                   --ip-address $(agentIP) \
                   --output none
-                echo "Waiting for firewall rule to propagate (30 seconds)..."
-                sleep 30
+                echo "Waiting for firewall rule to propagate (60 seconds for safety)..."
+                sleep 120
 
           - task: DownloadSecureFile@1
             name: DownloadSecureVars
@@ -130,7 +130,7 @@ stages:
                         --ip-address $(agentIP) \
                         --output none
                       echo "Waiting for firewall rule to propagate..."
-                      sleep 30
+                      sleep 120
 
                 - task: DownloadSecureFile@1
                   name: DownloadSecureVars
