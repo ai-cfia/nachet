@@ -33,7 +33,12 @@ stages:
             inputs:
               secureFile: "nachet-dev.tfvars"
 
-          - task: TerraformTaskV2@2
+          - task: TerraformInstaller@1
+            displayName: "Install Terraform (latest)"
+            inputs:
+              terraformVersion: 'latest'
+
+          - task: TerraformTask@5
             displayName: "Terraform Init"
             inputs:
               provider: "azurerm"
@@ -45,7 +50,7 @@ stages:
               backendAzureRmContainerName: "$(containerName)"
               backendAzureRmKey: "$(stateKey)"
 
-          - task: TerraformTaskV2@2
+          - task: TerraformTask@5
             displayName: "Terraform Plan"
             inputs:
               provider: "azurerm"
@@ -85,7 +90,12 @@ stages:
                   inputs:
                     secureFile: "nachet-dev.tfvars"
 
-                - task: TerraformTaskV2@2
+                - task: TerraformInstaller@1
+                  displayName: "Install Terraform (latest)"
+                  inputs:
+                    terraformVersion: 'latest'
+
+                - task: TerraformTask@5
                   displayName: "Terraform Init"
                   inputs:
                     provider: "azurerm"
@@ -97,7 +107,7 @@ stages:
                     backendAzureRmContainerName: "$(containerName)"
                     backendAzureRmKey: "$(stateKey)"
 
-                - task: TerraformTaskV2@2
+                - task: TerraformTask@5
                   displayName: "Terraform Apply"
                   inputs:
                     provider: "azurerm"
