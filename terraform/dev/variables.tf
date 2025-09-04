@@ -39,6 +39,11 @@ variable "vnet_name" {
   type        = string
 }
 
+variable "vnet_resource_group_name" {
+  description = "Resource group name where VNet exists"
+  type        = string
+}
+
 variable "container_apps_subnet_cidr" {
   description = "CIDR block for Container Apps subnet (e.g., 10.0.1.0/26)"
   type        = string
@@ -72,6 +77,12 @@ variable "allowed_ip_addresses" {
 
 variable "enable_observability_stack" {
   description = "Enable Grafana LGTM + Alloy observability stack"
+  type        = bool
+  default     = true
+}
+
+variable "deploy_inference_servers" {
+  description = "Deploy local Triton inference servers (set to false to use external ML endpoints)"
   type        = bool
   default     = true
 }

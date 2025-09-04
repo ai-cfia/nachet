@@ -4,8 +4,9 @@ environment         = "dev"
 location            = "canadacentral"
 resource_group_name = "nachet-dev-rg"
 
-# Network Configuration (Required - VNet must exist in same RG, subnets will be created)
+# Network Configuration (Required - VNet must exist, subnets will be created)
 vnet_name                  = "my-vnet"
+vnet_resource_group_name   = "network-rg"
 container_apps_subnet_cidr = "10.0.1.0/26"  # 59 usable IPs for Container Apps
 postgresql_subnet_cidr     = "10.0.2.0/28"  # 11 usable IPs for PostgreSQL
 # storage_subnet_cidr      = "10.0.3.0/29"  # Optional: 3 usable IPs for Storage private endpoints
@@ -18,6 +19,9 @@ allowed_ip_addresses = [
 
 # Observability - Enable Grafana LGTM + Alloy stack (uses PostgreSQL storage)
 enable_observability_stack = true  # Set to false to disable and save ~$48/month
+
+# Inference Servers - Deploy local Triton inference servers  
+deploy_inference_servers = true  # Set to false to use external ML endpoints only
 
 # Observability Configuration (all defaults optimized for minimum cost)
 # Uncomment and modify only what you want to change:

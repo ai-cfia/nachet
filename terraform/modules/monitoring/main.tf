@@ -1,42 +1,9 @@
-# PostgreSQL databases for observability stack
-resource "azurerm_postgresql_flexible_server_database" "loki" {
-  count     = var.enable_observability_stack ? 1 : 0
-  name      = var.observability_database_names.loki
-  server_id = azurerm_postgresql_flexible_server.nachet.id
-  collation = "en_US.utf8"
-  charset   = "utf8"
-}
-
-resource "azurerm_postgresql_flexible_server_database" "grafana" {
-  count     = var.enable_observability_stack ? 1 : 0
-  name      = var.observability_database_names.grafana
-  server_id = azurerm_postgresql_flexible_server.nachet.id
-  collation = "en_US.utf8"
-  charset   = "utf8"
-}
-
-resource "azurerm_postgresql_flexible_server_database" "tempo" {
-  count     = var.enable_observability_stack ? 1 : 0
-  name      = var.observability_database_names.tempo
-  server_id = azurerm_postgresql_flexible_server.nachet.id
-  collation = "en_US.utf8"
-  charset   = "utf8"
-}
-
-resource "azurerm_postgresql_flexible_server_database" "mimir" {
-  count     = var.enable_observability_stack ? 1 : 0
-  name      = var.observability_database_names.mimir
-  server_id = azurerm_postgresql_flexible_server.nachet.id
-  collation = "en_US.utf8"
-  charset   = "utf8"
-}
-
 # Loki - Log aggregation system
 resource "azurerm_container_app" "loki" {
-  count                        = var.enable_observability_stack ? 1 : 0
+  count                        = 1
   name                         = "${var.project_name}-loki-ca-${var.environment}"
-  container_app_environment_id = azurerm_container_app_environment.nachet.id
-  resource_group_name          = azurerm_resource_group.nachet.name
+  container_app_environment_id = var.container_app_environment_id
+  resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
 
   template {
@@ -83,7 +50,7 @@ resource "azurerm_container_app" "loki" {
 
       env {
         name  = "POSTGRES_HOST"
-        value = azurerm_postgresql_flexible_server.nachet.fqdn
+        value = var.postgresql_server_fqdn
       }
 
       env {
@@ -98,7 +65,7 @@ resource "azurerm_container_app" "loki" {
 
       env {
         name  = "POSTGRES_DB"
-        value = "loki_db"
+        value = "nachet_db"
       }
     }
 
@@ -132,10 +99,10 @@ resource "azurerm_container_app" "loki" {
 
 # Grafana - Visualization and dashboards
 resource "azurerm_container_app" "grafana" {
-  count                        = var.enable_observability_stack ? 1 : 0
+  count                        = 1
   name                         = "${var.project_name}-grafana-ca-${var.environment}"
-  container_app_environment_id = azurerm_container_app_environment.nachet.id
-  resource_group_name          = azurerm_resource_group.nachet.name
+  container_app_environment_id = var.container_app_environment_id
+  resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
 
   template {
@@ -195,7 +162,7 @@ resource "azurerm_container_app" "grafana" {
 
       env {
         name  = "GF_DATABASE_NAME"
-        value = "grafana_db"
+        value = "nachet_db"
       }
 
       env {
@@ -245,10 +212,10 @@ resource "azurerm_container_app" "grafana" {
 
 # Tempo - Distributed tracing system
 resource "azurerm_container_app" "tempo" {
-  count                        = var.enable_observability_stack ? 1 : 0
+  count                        = 1
   name                         = "${var.project_name}-tempo-ca-${var.environment}"
-  container_app_environment_id = azurerm_container_app_environment.nachet.id
-  resource_group_name          = azurerm_resource_group.nachet.name
+  container_app_environment_id = var.container_app_environment_id
+  resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
 
   template {
@@ -295,7 +262,7 @@ resource "azurerm_container_app" "tempo" {
 
       env {
         name  = "TEMPO_STORAGE_TRACE_POSTGRESQL_DATABASE"
-        value = "tempo_db"
+        value = "nachet_db"
       }
 
       env {
@@ -330,10 +297,10 @@ resource "azurerm_container_app" "tempo" {
 
 # Mimir - Long-term metrics storage
 resource "azurerm_container_app" "mimir" {
-  count                        = var.enable_observability_stack ? 1 : 0
+  count                        = 1
   name                         = "${var.project_name}-mimir-ca-${var.environment}"
-  container_app_environment_id = azurerm_container_app_environment.nachet.id
-  resource_group_name          = azurerm_resource_group.nachet.name
+  container_app_environment_id = var.container_app_environment_id
+  resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
 
   template {
@@ -380,7 +347,7 @@ resource "azurerm_container_app" "mimir" {
 
       env {
         name  = "MIMIR_BLOCKS_STORAGE_POSTGRESQL_DATABASE"
-        value = "mimir_db"
+        value = "nachet_db"
       }
 
       env {
@@ -415,10 +382,10 @@ resource "azurerm_container_app" "mimir" {
 
 # Alloy - Telemetry data collection agent
 resource "azurerm_container_app" "alloy" {
-  count                        = var.enable_observability_stack ? 1 : 0
+  count                        = 1
   name                         = "${var.project_name}-alloy-ca-${var.environment}"
-  container_app_environment_id = azurerm_container_app_environment.nachet.id
-  resource_group_name          = azurerm_resource_group.nachet.name
+  container_app_environment_id = var.container_app_environment_id
+  resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
 
   template {
@@ -484,5 +451,3 @@ resource "azurerm_container_app" "alloy" {
 
   tags = var.tags
 }
-
-# All data stored in PostgreSQL - no additional storage needed
