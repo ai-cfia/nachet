@@ -9,7 +9,7 @@ pool:
   vmImage: "ubuntu-latest"
 
 variables:
-  - group: terraform-backend-settings
+  - group: nachet-dev
 
 stages:
   - stage: InitAndPlan
