@@ -18,6 +18,14 @@ stages:
       - job: TerraformInitPlan
         displayName: "Terraform Init and Plan"
         steps:
+          - bash: |
+              echo "Public IP address of Azure DevOps agent:"
+              AGENT_IP=$(curl -s ifconfig.me)
+              echo $AGENT_IP
+              echo "##vso[task.setvariable variable=agentIP]$AGENT_IP"
+              echo ""
+            displayName: "Display Agent Public IP"
+
           - task: AzureCLI@2
             displayName: "Azure CLI Login"
             inputs:
@@ -26,6 +34,14 @@ stages:
               scriptLocation: "inlineScript"
               inlineScript: |
                 echo "Successfully logged in with Azure CLI"
+                echo "Adding Agent IP $(agentIP) to storage account firewall..."
+                az storage account network-rule add \
+                  --resource-group $(resourceGroupName) \
+                  --account-name $(storageAccountName) \
+                  --ip-address $(agentIP) \
+                  --output none
+                echo "Waiting for firewall rule to propagate..."
+                sleep 10
 
           - task: DownloadSecureFile@1
             name: DownloadSecureVars
@@ -75,6 +91,14 @@ stages:
               steps:
                 - checkout: self
 
+                - bash: |
+                    echo "Public IP address of Azure DevOps agent:"
+                    AGENT_IP=$(curl -s ifconfig.me)
+                    echo $AGENT_IP
+                    echo "##vso[task.setvariable variable=agentIP]$AGENT_IP"
+                    echo ""
+                  displayName: "Display Agent Public IP"
+
                 - task: AzureCLI@2
                   displayName: "Azure CLI Login"
                   inputs:
@@ -83,6 +107,14 @@ stages:
                     scriptLocation: "inlineScript"
                     inlineScript: |
                       echo "Successfully logged in with Azure CLI"
+                      echo "Adding Agent IP $(agentIP) to storage account firewall..."
+                      az storage account network-rule add \
+                        --resource-group $(resourceGroupName) \
+                        --account-name $(storageAccountName) \
+                        --ip-address $(agentIP) \
+                        --output none
+                      echo "Waiting for firewall rule to propagate..."
+                      sleep 10
 
                 - task: DownloadSecureFile@1
                   name: DownloadSecureVars
