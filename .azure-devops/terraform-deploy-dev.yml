@@ -54,6 +54,14 @@ stages:
             inputs:
               terraformVersion: 'latest'
 
+          - bash: |
+              echo "Public IP address of Azure DevOps agent (2):"
+              AGENT_IP_2=$(curl -s ifconfig.me)
+              echo $AGENT_IP_2
+              echo "##vso[task.setvariable variable=agentIP]$AGENT_IP_2"
+              echo ""
+            displayName: "Display Agent Public IP (2)"
+
           - task: TerraformTask@5
             displayName: "Terraform Init"
             inputs:
