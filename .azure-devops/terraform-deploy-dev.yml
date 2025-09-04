@@ -27,7 +27,7 @@ stages:
             displayName: "Display Agent Public IP"
 
           - task: AzureCLI@2
-            displayName: "Azure CLI Login and add the current agent IP to blob FW"
+            displayName: "Azure CLI Login and add the current agent IP to SA FW"
             inputs:
               azureSubscription: $(serviceConnectionName)
               scriptType: "bash"
@@ -75,6 +75,22 @@ stages:
               workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
               environmentServiceNameAzureRM: "$(serviceConnectionName)"
 
+          - task: AzureCLI@2
+            displayName: "Remove agent IP from SA FW"
+            condition: always()
+            inputs:
+              azureSubscription: $(serviceConnectionName)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                echo "Removing Agent IP $(agentIP) from storage account firewall..."
+                az storage account network-rule remove \
+                  --resource-group $(resourceGroupName) \
+                  --account-name $(storageAccountName) \
+                  --ip-address $(agentIP) \
+                  --output none || echo "IP might already be removed or doesn't exist"
+                echo "Cleanup completed"
+
   - stage: Apply
     displayName: "Apply Terraform Plan"
     dependsOn: InitAndPlan
@@ -100,7 +116,7 @@ stages:
                   displayName: "Display Agent Public IP"
 
                 - task: AzureCLI@2
-                  displayName: "Azure CLI Login and add the current agent IP to blob FW"
+                  displayName: "Azure CLI Login and add the current agent IP to SA FW"
                   inputs:
                     azureSubscription: $(serviceConnectionName)
                     scriptType: "bash"
@@ -147,3 +163,19 @@ stages:
                     commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath)"
                     workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
                     environmentServiceNameAzureRM: "$(serviceConnectionName)"
+
+                - task: AzureCLI@2
+                  displayName: "Remove agent IP from SA FW"
+                  condition: always()
+                  inputs:
+                    azureSubscription: $(serviceConnectionName)
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
+                    inlineScript: |
+                      echo "Removing Agent IP $(agentIP) from storage account firewall..."
+                      az storage account network-rule remove \
+                        --resource-group $(resourceGroupName) \
+                        --account-name $(storageAccountName) \
+                        --ip-address $(agentIP) \
+                        --output none || echo "IP might already be removed or doesn't exist"
+                      echo "Cleanup completed"
