@@ -1,5 +1,8 @@
 name: Repo standards validation & terraform check
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     paths:
