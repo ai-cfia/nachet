@@ -10,11 +10,9 @@ ENV PYTHONPATH=/app
 # Install uv
 RUN pip install --no-cache-dir uv
 
-COPY ./pyproject.toml ./uv.lock ./LICENSE ./README.md ./
-
 # Install dependencies using uv
-RUN uv sync --frozen
-
 COPY . ./
 
-CMD hypercorn -b :$PORT app:app
+RUN uv sync --frozen
+
+CMD uv run hypercorn -b :$BACKEND_DEV_PORT app:app

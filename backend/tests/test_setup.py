@@ -63,17 +63,19 @@ def setup_database():
 
     # Define file paths
     base_path = Path.cwd()
+    parent_path = base_path.parent
     schema_file = (
-        base_path / "nachet" / "db" / "bytebase" / f"schema_nachet_{schema_version}.sql"
+        parent_path / "datastore" / "nachet" / "db" / "bytebase" / f"schema_nachet_{schema_version}.sql"
     )
     constants_file = (
-        base_path
+        parent_path
+        / "datastore"
         / "nachet"
         / "db"
         / "bytebase"
         / f"constants_nachet_{schema_version}.sql"
     )
-    test_data_file = base_path / "tests" / f"test_data_nachet_{schema_version}.sql"
+    test_data_file = parent_path / "datastore" / "tests" / f"test_data_nachet_{schema_version}.sql"
 
     # Check if required files exist
     missing_files = []

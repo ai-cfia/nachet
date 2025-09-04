@@ -120,7 +120,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env.*
 .venv
 env/
 venv/
@@ -177,3 +176,13 @@ coverage/
 
 # Sensitive files
 **/*.auto.tfvars
+**/*.local
+blob/data/
+db/pgadmin-data/
+db/postgres-data/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
