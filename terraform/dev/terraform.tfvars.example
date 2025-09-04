@@ -1,0 +1,99 @@
+# Dev Environment Configuration
+project_name        = "nachet"
+environment         = "dev"
+location            = "canadacentral"
+resource_group_name = "nachet-dev-rg"
+
+# Network Configuration (Required - VNet must exist, subnets will be created)
+vnet_name                  = "my-vnet"
+vnet_resource_group_name   = "network-rg"
+container_apps_subnet_cidr = "10.0.1.0/26"  # 59 usable IPs for Container Apps
+postgresql_subnet_cidr     = "10.0.2.0/28"  # 11 usable IPs for PostgreSQL
+# storage_subnet_cidr      = "10.0.3.0/29"  # Optional: 3 usable IPs for Storage private endpoints
+enable_public_access       = true   # Container Apps accessible directly (with IP restrictions)
+
+# Security - Only your IP address can access the applications
+allowed_ip_addresses = [
+  "205.194.32.99/32"  # Your specific IP address - Access to Nachet, Grafana & Alloy dashboards
+]
+
+# Observability - Enable Grafana LGTM + Alloy stack (uses PostgreSQL storage)
+enable_observability_stack = true  # Set to false to disable and save ~$48/month
+
+# Inference Servers - Deploy local Triton inference servers  
+deploy_inference_servers = true  # Set to false to use external ML endpoints only
+
+# Observability Configuration (all defaults optimized for minimum cost)
+# Uncomment and modify only what you want to change:
+
+# Docker Images (defaults provided)
+# loki_image    = "grafana/loki:3.0.0"
+# grafana_image = "grafana/grafana:10.4.0"
+# tempo_image   = "grafana/tempo:2.4.0"
+# mimir_image   = "grafana/mimir:2.12.0"
+# alloy_image   = "grafana/alloy:v1.0.0"
+
+# Resources (defaults: all 0.25 CPU, 0.5Gi RAM for minimum cost)
+# loki_cpu = 0.25, loki_memory = "0.5Gi"
+# grafana_cpu = 0.25, grafana_memory = "0.5Gi" 
+# tempo_cpu = 0.25, tempo_memory = "0.5Gi"
+# mimir_cpu = 0.25, mimir_memory = "0.5Gi"
+# alloy_cpu = 0.25, alloy_memory = "0.5Gi"
+
+# Security
+grafana_admin_password = "ChangeThisSecurePassword123!"  # REQUIRED: Change this!
+# loki_auth_enabled = false
+
+# Container Images
+backend_image    = "ghcr.io/ai-cfia/nachet-backend:dev"
+triton_image     = "nvcr.io/nvidia/tritonserver:24.10-py3"
+
+# PostgreSQL Configuration
+postgresql_admin_username = "nachetadmin"
+postgresql_admin_password = "YourDevPasswordHere123!"
+postgresql_sku_name       = "B_Standard_B1ms"  # 1 vCPU, 2GB RAM - Cheapest
+postgresql_storage_mb     = 32768              # 32GB - Minimum
+postgresql_version        = "16"
+
+# Container Apps Resources (Minimum configurations for cost optimization)
+container_app_cpu    = 0.25   # Minimum CPU
+container_app_memory = "0.5Gi" # Minimum memory
+triton_cpu           = 0.5     # Minimum for ML inference
+triton_memory        = "1Gi"   # Minimum for ML models
+
+# Backend Environment Variables
+nachet_azure_storage_connection_string = "DefaultEndpointsProtocol=https;AccountName=youraccount;AccountKey=yourkey;EndpointSuffix=core.windows.net"
+nachet_data_path                       = "/app/data"
+backend_port                           = "8080"
+
+# ML Model Endpoints (Leave empty to use local Triton servers)
+ml_model_endpoint_rcnn         = ""
+ml_model_endpoint_swin         = ""
+ml_model_endpoint_swin_22_spp  = ""
+ml_model_endpoint_swin_27_spp  = ""
+
+# ML Model API Keys
+ml_api_key = ""
+
+# Application Security
+jwt_secret      = "dev-jwt-secret-here"
+session_secret  = "dev-session-secret-here"
+encryption_key  = "dev-encryption-key-here"
+
+# Application Configuration
+cors_allowed_origins = "*"
+log_level            = "DEBUG"
+
+# Azure Storage for Triton Models (Leave empty to use generated storage account key)
+azure_storage_account_key = ""
+
+# Additional Database URLs (Leave empty to use default)
+fertiscan_db_url = ""
+
+# Tags
+tags = {
+  Environment = "dev"
+  Project     = "nachet"
+  ManagedBy   = "Terraform"
+  Department  = "CFIA"
+}

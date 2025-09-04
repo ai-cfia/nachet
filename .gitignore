@@ -162,6 +162,20 @@ cython_debug/
 
 node_modules/
 coverage/
+
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/terraform.tfvars
+**/.terraform.tfstate.lock.info
+
+# Terraform plan files
+**/*.tfplan
+
+# Sensitive files
+**/*.auto.tfvars
 **/*.local
 blob/data/
 db/pgadmin-data/

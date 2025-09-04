@@ -1,4 +1,7 @@
-name: Repo standards validation
+name: Repo standards validation & terraform check
+
+permissions:
+  contents: read
 
 on:
   pull_request:
@@ -14,3 +17,9 @@ jobs:
   repo-standard:
     uses: ai-cfia/github-workflows/.github/workflows/workflow-repo-standards-validation.yml@main
     secrets: inherit
+  
+  terraform-check:
+    uses:
+      ai-cfia/github-workflows/.github/workflows/workflow-terraform-check.yml@main
+    with:
+      config-file-path: '.tflint.hcl'
