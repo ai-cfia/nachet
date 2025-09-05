@@ -11,31 +11,48 @@ data "azurerm_virtual_network" "existing" {
   resource_group_name = var.vnet_resource_group_name
 }
 
-# Subnet for PostgreSQL 
-resource "azurerm_subnet" "postgresql" {
-  name                 = "${var.project_name}-postgresql-subnet-${var.environment}"
-  resource_group_name  = var.vnet_resource_group_name
-  virtual_network_name = data.azurerm_virtual_network.existing.name
-  address_prefixes     = [var.postgresql_subnet_cidr]
+# Create subnet with route table using Azure CLI (workaround for strict policy)
+resource "null_resource" "postgresql_subnet" {
+  triggers = {
+    subnet_name = "${var.project_name}-postgresql-subnet-${var.environment}"
+    vnet_name   = var.vnet_name
+    rg_name     = var.vnet_resource_group_name
+    cidr        = var.postgresql_subnet_cidr
+    rt_id       = var.route_table_id
+  }
 
-  service_endpoints = ["Microsoft.Storage"]
+  provisioner "local-exec" {
+    command = <<-EOT
+      az network vnet subnet create \
+        --resource-group "${var.vnet_resource_group_name}" \
+        --vnet-name "${var.vnet_name}" \
+        --name "${var.project_name}-postgresql-subnet-${var.environment}" \
+        --address-prefixes "${var.postgresql_subnet_cidr}" \
+        --route-table "${var.route_table_id}" \
+        --service-endpoints "Microsoft.Storage" \
+        --delegations "Microsoft.DBforPostgreSQL/flexibleServers"
+    EOT
+  }
 
-  delegation {
-    name = "fs"
-    service_delegation {
-      name = "Microsoft.DBforPostgreSQL/flexibleServers"
-      actions = [
-        "Microsoft.Network/virtualNetworks/subnets/join/action",
-      ]
-    }
+  provisioner "local-exec" {
+    when = destroy
+    command = <<-EOT
+      az network vnet subnet delete \
+        --resource-group "${var.vnet_resource_group_name}" \
+        --vnet-name "${var.vnet_name}" \
+        --name "${var.project_name}-postgresql-subnet-${var.environment}" \
+        --no-wait || true
+    EOT
   }
 }
 
-resource "azurerm_subnet_route_table_association" "postgresql" {
-  subnet_id      = azurerm_subnet.postgresql.id
-  route_table_id = var.route_table_id
+# Import the subnet created by Azure CLI
+data "azurerm_subnet" "postgresql" {
+  name                 = "${var.project_name}-postgresql-subnet-${var.environment}"
+  virtual_network_name = var.vnet_name
+  resource_group_name  = var.vnet_resource_group_name
   
-  depends_on = [azurerm_subnet.postgresql]
+  depends_on = [null_resource.postgresql_subnet]
 }
 
 # PostgreSQL Flexible Server
@@ -54,7 +71,7 @@ resource "azurerm_postgresql_flexible_server" "nachet" {
   geo_redundant_backup_enabled = false
   auto_grow_enabled            = false
 
-  delegated_subnet_id = azurerm_subnet.postgresql.id
+  delegated_subnet_id = data.azurerm_subnet.postgresql.id
   public_network_access_enabled = false
 
   authentication {
