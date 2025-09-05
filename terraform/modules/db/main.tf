@@ -17,10 +17,10 @@ data "azurerm_route_table" "existing" {
   resource_group_name = var.route_table_resource_group_name
 }
 
-# Subnet for PostgreSQL
+# Subnet for PostgreSQL (must be in same RG as VNet)
 resource "azurerm_subnet" "postgresql" {
   name                 = "${var.project_name}-postgresql-subnet-${var.environment}"
-  resource_group_name  = azurerm_resource_group.db.name
+  resource_group_name  = var.vnet_resource_group_name  # Same RG as VNet
   virtual_network_name = data.azurerm_virtual_network.existing.name
   address_prefixes     = [var.postgresql_subnet_cidr]
 
