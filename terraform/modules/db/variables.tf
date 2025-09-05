@@ -44,6 +44,16 @@ variable "postgresql_subnet_name" {
   default     = "nachet-postgresql-subnet-dev"
 }
 
+variable "private_dns_zone_name" {
+  description = "Name of the Private DNS Zone for PostgreSQL"
+  type        = string
+}
+
+variable "private_dns_zone_resource_group_name" {
+  description = "Resource group name of the centralized Private DNS Zone"
+  type        = string
+}
+
 variable "postgresql_admin_username" {
   description = "PostgreSQL admin username"
   type        = string

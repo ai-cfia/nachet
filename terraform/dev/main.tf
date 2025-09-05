@@ -10,8 +10,10 @@ module "db" {
   tags                     = var.tags
 
   # Network
-  vnet_name              = var.vnet_name
-  postgresql_subnet_name = var.postgresql_subnet_name
+  vnet_name                            = var.vnet_name
+  postgresql_subnet_name               = var.postgresql_subnet_name
+  private_dns_zone_name                = var.private_dns_zone_name
+  private_dns_zone_resource_group_name = var.private_dns_zone_resource_group_name
 
   # PostgreSQL Configuration
   postgresql_admin_username = var.postgresql_admin_username

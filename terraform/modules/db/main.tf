@@ -5,17 +5,20 @@ resource "azurerm_resource_group" "db" {
   tags     = var.tags
 }
 
-# Get the existing VNet (assume it's in a different/shared RG)
 data "azurerm_virtual_network" "existing" {
   name                = var.vnet_name
   resource_group_name = var.vnet_resource_group_name
 }
 
-# Use existing subnet (created by Azure DevOps pipeline with route table)
 data "azurerm_subnet" "postgresql" {
   name                 = var.postgresql_subnet_name
   virtual_network_name = var.vnet_name
   resource_group_name  = var.vnet_resource_group_name
+}
+
+data "azurerm_private_dns_zone" "postgresql" {
+  name                = var.private_dns_zone_name
+  resource_group_name = var.private_dns_zone_resource_group_name
 }
 
 # PostgreSQL Flexible Server
@@ -34,7 +37,8 @@ resource "azurerm_postgresql_flexible_server" "nachet" {
   geo_redundant_backup_enabled = false
   auto_grow_enabled            = false
 
-  delegated_subnet_id = data.azurerm_subnet.postgresql.id
+  delegated_subnet_id           = data.azurerm_subnet.postgresql.id
+  private_dns_zone_id           = data.azurerm_private_dns_zone.postgresql.id
   public_network_access_enabled = false
 
   authentication {
