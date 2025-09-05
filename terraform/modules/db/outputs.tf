@@ -14,16 +14,7 @@ output "nachet_database_name" {
   value = azurerm_postgresql_flexible_server_database.nachet.name
 }
 
-output "fertiscan_database_name" {
-  value = azurerm_postgresql_flexible_server_database.fertiscan.name
-}
-
 output "nachet_connection_string" {
   value     = "postgresql://${var.postgresql_admin_username}:${var.postgresql_admin_password}@${azurerm_postgresql_flexible_server.nachet.fqdn}:5432/nachet_db?sslmode=require"
-  sensitive = true
-}
-
-output "fertiscan_connection_string" {
-  value     = "postgresql://${var.postgresql_admin_username}:${var.postgresql_admin_password}@${azurerm_postgresql_flexible_server.nachet.fqdn}:5432/fertiscan_db?sslmode=require"
   sensitive = true
 }
