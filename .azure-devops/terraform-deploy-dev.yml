@@ -45,6 +45,7 @@ stages:
                 VNET_RG="$(vnetResourceGroupName)"
                 SUBNET_CIDR="$(postgresqlSubnetCidr)"
                 ROUTE_TABLE_ID="$(routeTableId)"
+                NSG_ID="$(networkSecurityGroupId)"
                 
                 echo "Checking if PostgreSQL subnet exists..."
                 if az network vnet subnet show \
@@ -55,13 +56,14 @@ stages:
                   
                   echo "✓ Subnet '$SUBNET_NAME' already exists"
                 else
-                  echo "Creating PostgreSQL subnet with route table..."
+                  echo "Creating PostgreSQL subnet with route table and NSG..."
                   az network vnet subnet create \
                     --resource-group "$VNET_RG" \
                     --vnet-name "$VNET_NAME" \
                     --name "$SUBNET_NAME" \
                     --address-prefixes "$SUBNET_CIDR" \
                     --route-table "$ROUTE_TABLE_ID" \
+                    --network-security-group "$NSG_ID" \
                     --service-endpoints Microsoft.Storage \
                     --delegations Microsoft.DBforPostgreSQL/flexibleServers \
                     --output table
@@ -130,52 +132,6 @@ stages:
                   displayName: "Download nachet-dev.tfvars"
                   inputs:
                     secureFile: "nachet-dev.tfvars"
-
-                - task: AzureCLI@2
-                  displayName: "Pre-create PostgreSQL Subnet with Route Table"
-                  inputs:
-                    azureSubscription: $(serviceConnectionName)
-                    scriptType: "bash"
-                    scriptLocation: "inlineScript"
-                    inlineScript: |
-                      # Use variables from nachet-dev group
-                      SUBNET_NAME="$(postgresqlSubnetName)"
-                      VNET_NAME="$(vnetName)"
-                      VNET_RG="$(vnetResourceGroupName)"
-                      SUBNET_CIDR="$(postgresqlSubnetCidr)"
-                      ROUTE_TABLE_ID="$(routeTableId)"
-                      
-                      echo "Checking if PostgreSQL subnet exists..."
-                      
-                      # Check if subnet exists
-                      if az network vnet subnet show \
-                        --resource-group "$VNET_RG" \
-                        --vnet-name "$VNET_NAME" \
-                        --name "$SUBNET_NAME" \
-                        --query "id" -o tsv 2>/dev/null; then
-                        
-                        echo "✓ Subnet '$SUBNET_NAME' already exists"
-                      else
-                        echo "Creating PostgreSQL subnet with route table..."
-                        
-                        # Create subnet with route table in one command
-                        az network vnet subnet create \
-                          --resource-group "$VNET_RG" \
-                          --vnet-name "$VNET_NAME" \
-                          --name "$SUBNET_NAME" \
-                          --address-prefixes "$SUBNET_CIDR" \
-                          --route-table "$ROUTE_TABLE_ID" \
-                          --service-endpoints Microsoft.Storage \
-                          --delegations Microsoft.DBforPostgreSQL/flexibleServers \
-                          --output table
-                          
-                        if [ $? -eq 0 ]; then
-                          echo "✓ Successfully created subnet '$SUBNET_NAME' with route table"
-                        else
-                          echo "✗ Failed to create subnet"
-                          exit 1
-                        fi
-                      fi
 
                 - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
                   displayName: "Install Terraform (latest)"
