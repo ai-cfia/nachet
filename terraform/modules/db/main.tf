@@ -11,8 +11,7 @@ data "azurerm_virtual_network" "existing" {
   resource_group_name = var.vnet_resource_group_name
 }
 
-
-# Subnet for PostgreSQL
+# Subnet for PostgreSQL 
 resource "azurerm_subnet" "postgresql" {
   name                 = "${var.project_name}-postgresql-subnet-${var.environment}"
   resource_group_name  = var.vnet_resource_group_name
@@ -32,10 +31,11 @@ resource "azurerm_subnet" "postgresql" {
   }
 }
 
-# Associate Route Table with Subnet - must be applied together
 resource "azurerm_subnet_route_table_association" "postgresql" {
   subnet_id      = azurerm_subnet.postgresql.id
-  route_table_id = var.route_table_id  # Full Azure Resource ID
+  route_table_id = var.route_table_id
+  
+  depends_on = [azurerm_subnet.postgresql]
 }
 
 # PostgreSQL Flexible Server
