@@ -11,6 +11,12 @@ data "azurerm_virtual_network" "existing" {
   resource_group_name = var.vnet_resource_group_name
 }
 
+# Get existing Route Table
+data "azurerm_route_table" "existing" {
+  name                = var.route_table_name
+  resource_group_name = var.route_table_resource_group_name
+}
+
 # Subnet for PostgreSQL
 resource "azurerm_subnet" "postgresql" {
   name                 = "${var.project_name}-postgresql-subnet-${var.environment}"
@@ -31,21 +37,10 @@ resource "azurerm_subnet" "postgresql" {
   }
 }
 
-# Private DNS Zone for PostgreSQL
-resource "azurerm_private_dns_zone" "postgresql" {
-  name                = "privatelink.postgres.database.azure.com"
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
-}
-
-# Link DNS Zone to VNet
-resource "azurerm_private_dns_zone_virtual_network_link" "postgresql" {
-  name                  = "${var.project_name}-postgresql-dns-link-${var.environment}"
-  resource_group_name   = var.resource_group_name
-  private_dns_zone_name = azurerm_private_dns_zone.postgresql.name
-  virtual_network_id    = data.azurerm_virtual_network.existing.id
-  registration_enabled  = false
-  tags                  = var.tags
+# Associate existing Route Table with Subnet
+resource "azurerm_subnet_route_table_association" "postgresql" {
+  subnet_id      = azurerm_subnet.postgresql.id
+  route_table_id = data.azurerm_route_table.existing.id
 }
 
 # PostgreSQL Flexible Server
@@ -64,8 +59,7 @@ resource "azurerm_postgresql_flexible_server" "nachet" {
   geo_redundant_backup_enabled = false
   auto_grow_enabled            = false
 
-  delegated_subnet_id           = azurerm_subnet.postgresql.id
-  private_dns_zone_id           = azurerm_private_dns_zone.postgresql.id
+  delegated_subnet_id = azurerm_subnet.postgresql.id
   public_network_access_enabled = false
 
   authentication {

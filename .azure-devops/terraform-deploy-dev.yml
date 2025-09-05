@@ -18,30 +18,14 @@ stages:
       - job: TerraformInitPlan
         displayName: "Terraform Init and Plan"
         steps:
-          - bash: |
-              echo "Public IP address of Azure DevOps agent:"
-              AGENT_IP=$(curl -s ifconfig.me)
-              echo $AGENT_IP
-              echo "##vso[task.setvariable variable=agentIP]$AGENT_IP"
-              echo ""
-            displayName: "Display Agent Public IP"
-
           - task: AzureCLI@2
-            displayName: "Azure CLI Login and add the current agent IP to SA FW"
+            displayName: "Azure CLI Login"
             inputs:
               azureSubscription: $(serviceConnectionName)
               scriptType: "bash"
               scriptLocation: "inlineScript"
               inlineScript: |
                 echo "Successfully logged in with Azure CLI"
-                echo "Adding Agent IP $(agentIP) to storage account firewall..."
-                az storage account network-rule add \
-                  --resource-group $(resourceGroupName) \
-                  --account-name $(storageAccountName) \
-                  --ip-address $(agentIP) \
-                  --output none
-                echo "Waiting for firewall rule to propagate (60 seconds for safety)..."
-                sleep 120
 
           - task: DownloadSecureFile@1
             name: DownloadSecureVars
@@ -53,14 +37,6 @@ stages:
             displayName: "Install Terraform (latest)"
             inputs:
               terraformVersion: 'latest'
-
-          - bash: |
-              echo "Public IP address of Azure DevOps agent (2):"
-              AGENT_IP_2=$(curl -s ifconfig.me)
-              echo $AGENT_IP_2
-              echo "##vso[task.setvariable variable=agentIP]$AGENT_IP_2"
-              echo ""
-            displayName: "Display Agent Public IP (2)"
 
           - task: TerraformTask@5
             displayName: "Terraform Init"
@@ -83,22 +59,6 @@ stages:
               workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
               environmentServiceNameAzureRM: "$(serviceConnectionName)"
 
-          - task: AzureCLI@2
-            displayName: "Remove agent IP from SA FW"
-            condition: always()
-            inputs:
-              azureSubscription: $(serviceConnectionName)
-              scriptType: "bash"
-              scriptLocation: "inlineScript"
-              inlineScript: |
-                echo "Removing Agent IP $(agentIP) from storage account firewall..."
-                az storage account network-rule remove \
-                  --resource-group $(resourceGroupName) \
-                  --account-name $(storageAccountName) \
-                  --ip-address $(agentIP) \
-                  --output none || echo "IP might already be removed or doesn't exist"
-                echo "Cleanup completed"
-
   - stage: Apply
     displayName: "Apply Terraform Plan"
     dependsOn: InitAndPlan
@@ -115,30 +75,14 @@ stages:
               steps:
                 - checkout: self
 
-                - bash: |
-                    echo "Public IP address of Azure DevOps agent:"
-                    AGENT_IP=$(curl -s ifconfig.me)
-                    echo $AGENT_IP
-                    echo "##vso[task.setvariable variable=agentIP]$AGENT_IP"
-                    echo ""
-                  displayName: "Display Agent Public IP"
-
                 - task: AzureCLI@2
-                  displayName: "Azure CLI Login and add the current agent IP to SA FW"
+                  displayName: "Azure CLI Login"
                   inputs:
                     azureSubscription: $(serviceConnectionName)
                     scriptType: "bash"
                     scriptLocation: "inlineScript"
                     inlineScript: |
                       echo "Successfully logged in with Azure CLI"
-                      echo "Adding Agent IP $(agentIP) to storage account firewall..."
-                      az storage account network-rule add \
-                        --resource-group $(resourceGroupName) \
-                        --account-name $(storageAccountName) \
-                        --ip-address $(agentIP) \
-                        --output none
-                      echo "Waiting for firewall rule to propagate..."
-                      sleep 120
 
                 - task: DownloadSecureFile@1
                   name: DownloadSecureVars
@@ -171,19 +115,3 @@ stages:
                     commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath)"
                     workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
                     environmentServiceNameAzureRM: "$(serviceConnectionName)"
-
-                - task: AzureCLI@2
-                  displayName: "Remove agent IP from SA FW"
-                  condition: always()
-                  inputs:
-                    azureSubscription: $(serviceConnectionName)
-                    scriptType: "bash"
-                    scriptLocation: "inlineScript"
-                    inlineScript: |
-                      echo "Removing Agent IP $(agentIP) from storage account firewall..."
-                      az storage account network-rule remove \
-                        --resource-group $(resourceGroupName) \
-                        --account-name $(storageAccountName) \
-                        --ip-address $(agentIP) \
-                        --output none || echo "IP might already be removed or doesn't exist"
-                      echo "Cleanup completed"
