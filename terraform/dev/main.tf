@@ -10,10 +10,9 @@ module "db" {
   tags                     = var.tags
 
   # Network
-  vnet_name                       = var.vnet_name
-  postgresql_subnet_cidr          = var.postgresql_subnet_cidr
-  route_table_name                = var.route_table_name
-  route_table_resource_group_name = var.route_table_resource_group_name
+  vnet_name              = var.vnet_name
+  postgresql_subnet_cidr = var.postgresql_subnet_cidr
+  route_table_id         = var.route_table_id
 
   # PostgreSQL Configuration
   postgresql_admin_username = var.postgresql_admin_username

@@ -43,13 +43,8 @@ variable "postgresql_subnet_cidr" {
   type        = string
 }
 
-variable "route_table_name" {
-  description = "Name of the existing route table to associate with PostgreSQL subnet"
-  type        = string
-}
-
-variable "route_table_resource_group_name" {
-  description = "Resource group name of the existing route table"
+variable "route_table_id" {
+  description = "Full Azure Resource ID of the existing route table"
   type        = string
 }
 
