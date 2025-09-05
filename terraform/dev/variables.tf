@@ -50,14 +50,8 @@ variable "vnet_resource_group_name" {
 #   default     = "10.0.1.0/26" # 59 usable IPs
 # }
 
-variable "postgresql_subnet_cidr" {
-  description = "CIDR block for PostgreSQL subnet"
-  type        = string
-  default     = "10.148.52.16/28"
-}
-
-variable "route_table_id" {
-  description = "Full Azure Resource ID of the existing route table"
+variable "postgresql_subnet_name" {
+  description = "Name of the existing PostgreSQL subnet (created by pipeline)"
   type        = string
 }
 

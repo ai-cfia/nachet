@@ -38,14 +38,10 @@ variable "vnet_name" {
   type        = string
 }
 
-variable "postgresql_subnet_cidr" {
-  description = "CIDR block for PostgreSQL subnet"
+variable "postgresql_subnet_name" {
+  description = "Name of the existing PostgreSQL subnet (created by pipeline)"
   type        = string
-}
-
-variable "route_table_id" {
-  description = "Full Azure Resource ID of the existing route table"
-  type        = string
+  default     = "nachet-postgresql-subnet-dev"
 }
 
 variable "postgresql_admin_username" {

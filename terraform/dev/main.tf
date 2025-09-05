@@ -11,8 +11,7 @@ module "db" {
 
   # Network
   vnet_name              = var.vnet_name
-  postgresql_subnet_cidr = var.postgresql_subnet_cidr
-  route_table_id         = var.route_table_id
+  postgresql_subnet_name = var.postgresql_subnet_name
 
   # PostgreSQL Configuration
   postgresql_admin_username = var.postgresql_admin_username

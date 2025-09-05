@@ -11,48 +11,11 @@ data "azurerm_virtual_network" "existing" {
   resource_group_name = var.vnet_resource_group_name
 }
 
-# Create subnet with route table using Azure CLI (workaround for strict policy)
-resource "null_resource" "postgresql_subnet" {
-  triggers = {
-    subnet_name = "${var.project_name}-postgresql-subnet-${var.environment}"
-    vnet_name   = var.vnet_name
-    rg_name     = var.vnet_resource_group_name
-    cidr        = var.postgresql_subnet_cidr
-    rt_id       = var.route_table_id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      az network vnet subnet create \
-        --resource-group "${var.vnet_resource_group_name}" \
-        --vnet-name "${var.vnet_name}" \
-        --name "${var.project_name}-postgresql-subnet-${var.environment}" \
-        --address-prefixes "${var.postgresql_subnet_cidr}" \
-        --route-table "${var.route_table_id}" \
-        --service-endpoints "Microsoft.Storage" \
-        --delegations "Microsoft.DBforPostgreSQL/flexibleServers"
-    EOT
-  }
-
-  provisioner "local-exec" {
-    when = destroy
-    command = <<-EOT
-      az network vnet subnet delete \
-        --resource-group "${var.vnet_resource_group_name}" \
-        --vnet-name "${var.vnet_name}" \
-        --name "${var.project_name}-postgresql-subnet-${var.environment}" \
-        --no-wait || true
-    EOT
-  }
-}
-
-# Import the subnet created by Azure CLI
+# Use existing subnet (created by Azure DevOps pipeline with route table)
 data "azurerm_subnet" "postgresql" {
-  name                 = "${var.project_name}-postgresql-subnet-${var.environment}"
+  name                 = var.postgresql_subnet_name
   virtual_network_name = var.vnet_name
   resource_group_name  = var.vnet_resource_group_name
-  
-  depends_on = [null_resource.postgresql_subnet]
 }
 
 # PostgreSQL Flexible Server
