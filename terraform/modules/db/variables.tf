@@ -45,7 +45,7 @@ variable "postgresql_subnet_name" {
 }
 
 variable "private_dns_zone_name" {
-  description = "Name of the Private DNS Zone for PostgreSQL"
+  description = "Name of the Private DNS Zone for PostgreSQL (required for VNet integration)"
   type        = string
 }
 

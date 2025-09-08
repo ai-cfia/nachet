@@ -1,17 +1,14 @@
-# Get the existing VNet
 data "azurerm_virtual_network" "existing" {
   name                = var.vnet_name
   resource_group_name = var.vnet_resource_group_name
 }
 
-# Use existing Container Apps subnet (created by Azure DevOps pipeline)
 data "azurerm_subnet" "container_apps" {
   name                 = var.container_apps_subnet_name
   virtual_network_name = var.vnet_name
   resource_group_name  = var.vnet_resource_group_name
 }
 
-# Log Analytics Workspace (shared by all Container Apps)
 resource "azurerm_log_analytics_workspace" "nachet" {
   name                = "${var.project_name}-law-${var.environment}"
   location            = var.location
@@ -21,7 +18,6 @@ resource "azurerm_log_analytics_workspace" "nachet" {
   tags                = var.tags
 }
 
-# Container App Environment (shared by all Container Apps)
 resource "azurerm_container_app_environment" "nachet" {
   name                       = "${var.project_name}-cae-${var.environment}"
   location                   = var.location
@@ -29,6 +25,13 @@ resource "azurerm_container_app_environment" "nachet" {
   log_analytics_workspace_id = azurerm_log_analytics_workspace.nachet.id
   infrastructure_subnet_id   = data.azurerm_subnet.container_apps.id
   tags                       = var.tags
+
+  workload_profile {
+    name                  = "Consumption"
+    workload_profile_type = "Consumption"
+    maximum_count         = 10
+    minimum_count         = 0
+  }
 }
 
 module "db" {

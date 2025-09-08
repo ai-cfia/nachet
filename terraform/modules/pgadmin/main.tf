@@ -5,6 +5,9 @@ resource "azurerm_container_app" "pgadmin" {
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
 
+  # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/container_app#workload_profile_name-1
+  # workload_profile_name = "Consumption"
+
   template {
     container {
       name   = "pgadmin"
