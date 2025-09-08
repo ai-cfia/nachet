@@ -23,7 +23,7 @@ dependencies = [
     "azure-storage-blob==12.26.0",
     "numpy==1.26.4",
     "pillow==10.3.0",
-    "psycopg==3.1.19",
+    "psycopg==3.2.10",
     "pydantic==2.7.1",
     "pydantic_core==2.18.2",
     "python-dotenv",
