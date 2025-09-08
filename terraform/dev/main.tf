@@ -24,54 +24,49 @@ module "db" {
 }
 
 # Module 2: Nachet Application (includes RG, Log Analytics, Container App Environment, Storage)
-# module "nachet" {
-#   source = "../modules/nachet"
+module "nachet" {
+  source = "../modules/nachet"
 
-#   project_name        = var.project_name
-#   environment         = var.environment
-#   location            = var.location
-#   resource_group_name = var.resource_group_name
-#   tags                = var.tags
+  project_name        = var.project_name
+  environment         = var.environment
+  location            = var.location
+  resource_group_name = "${var.project_name}-db-${var.environment}-rg"
+  tags                = var.tags
 
-#   # Network Configuration
-#   vnet_name                  = var.vnet_name
-#   vnet_resource_group_name   = var.vnet_resource_group_name
-#   container_apps_subnet_cidr = var.container_apps_subnet_cidr
+  # Network Configuration
+  vnet_name                    = var.vnet_name
+  vnet_resource_group_name     = var.vnet_resource_group_name
+  container_apps_subnet_name   = var.container_apps_subnet_name
 
-#   # Container configuration
-#   backend_image        = var.backend_image
-#   container_app_cpu    = var.container_app_cpu
-#   container_app_memory = var.container_app_memory
-#   backend_port         = var.backend_port
+  # Container configuration
+  backend_image        = var.backend_image
+  container_app_cpu    = var.container_app_cpu
+  container_app_memory = var.container_app_memory
+  backend_port         = var.backend_port
 
-#   # Access control
-#   enable_public_access = var.enable_public_access
-#   allowed_ip_addresses = var.allowed_ip_addresses
+  # Access control
+  enable_public_access = var.enable_public_access
+  allowed_ip_addresses = var.allowed_ip_addresses
 
-#   # Database connections from DB module
-#   database_url     = module.db.nachet_connection_string
-#   fertiscan_db_url = var.fertiscan_db_url != "" ? var.fertiscan_db_url : module.db.fertiscan_connection_string
+  # Database connections from DB module
+  database_url = module.db.nachet_connection_string
 
-#   # Storage
-#   nachet_azure_storage_connection_string = var.nachet_azure_storage_connection_string
-#   nachet_data_path                       = var.nachet_data_path
+  # ML Model Endpoints - use external endpoints only (no cross-module references)
+  ml_model_endpoint_rcnn        = var.ml_model_endpoint_rcnn
+  ml_model_endpoint_swin        = var.ml_model_endpoint_swin
+  ml_model_endpoint_swin_22_spp = var.ml_model_endpoint_swin_22_spp
+  ml_model_endpoint_swin_27_spp = var.ml_model_endpoint_swin_27_spp
+  ml_api_key                    = var.ml_api_key
 
-#   # ML Model Endpoints - use external endpoints only (no cross-module references)
-#   ml_model_endpoint_rcnn        = var.ml_model_endpoint_rcnn
-#   ml_model_endpoint_swin        = var.ml_model_endpoint_swin
-#   ml_model_endpoint_swin_22_spp = var.ml_model_endpoint_swin_22_spp
-#   ml_model_endpoint_swin_27_spp = var.ml_model_endpoint_swin_27_spp
-#   ml_api_key                    = var.ml_api_key
+  # Application Security
+  jwt_secret     = var.jwt_secret
+  session_secret = var.session_secret
+  encryption_key = var.encryption_key
 
-#   # Application Security
-#   jwt_secret     = var.jwt_secret
-#   session_secret = var.session_secret
-#   encryption_key = var.encryption_key
-
-#   # Application Configuration
-#   cors_allowed_origins = var.cors_allowed_origins
-#   log_level            = var.log_level
-# }
+  # Application Configuration
+  cors_allowed_origins = var.cors_allowed_origins
+  log_level            = var.log_level
+}
 
 # # Module 3: Inference Servers (Triton containers with their own storage)
 # module "nachet_inference" {

@@ -35,8 +35,8 @@ variable "vnet_resource_group_name" {
   type        = string
 }
 
-variable "container_apps_subnet_cidr" {
-  description = "CIDR block for Container Apps subnet"
+variable "container_apps_subnet_name" {
+  description = "Name of the existing Container Apps subnet (created by pipeline)"
   type        = string
 }
 
@@ -80,24 +80,8 @@ variable "database_url" {
   sensitive   = true
 }
 
-variable "fertiscan_db_url" {
-  description = "FertiScan database connection URL"
-  type        = string
-  sensitive   = true
-}
 
 # Storage
-variable "nachet_azure_storage_connection_string" {
-  description = "Azure Storage connection string for Nachet (optional - will use created storage if not provided)"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "nachet_data_path" {
-  description = "Data path for Nachet"
-  type        = string
-}
 
 # ML Model Endpoints
 variable "ml_model_endpoint_rcnn" {

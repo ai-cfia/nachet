@@ -87,8 +87,6 @@ log_level            = "DEBUG"
 # Azure Storage for Triton Models (Leave empty to use generated storage account key)
 azure_storage_account_key = ""
 
-# Additional Database URLs (Leave empty to use default)
-fertiscan_db_url = ""
 
 # Tags
 tags = {

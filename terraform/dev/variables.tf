@@ -44,11 +44,11 @@ variable "vnet_resource_group_name" {
   type        = string
 }
 
-# variable "container_apps_subnet_cidr" {
-#   description = "CIDR block for Container Apps subnet (e.g., 10.0.1.0/26)"
-#   type        = string
-#   default     = "10.0.1.0/26" # 59 usable IPs
-# }
+variable "container_apps_subnet_name" {
+  description = "Name of the existing Container Apps subnet (created by pipeline)"
+  type        = string
+  default     = "nachet-container-apps-subnet-dev"
+}
 
 variable "postgresql_subnet_name" {
   description = "Name of the existing PostgreSQL subnet (created by pipeline)"
@@ -71,17 +71,17 @@ variable "private_dns_zone_resource_group_name" {
 #   default     = "" # Optional - leave empty if not using private endpoints
 # }
 
-# variable "enable_public_access" {
-#   description = "Enable public access for Container Apps (set to false for full private deployment)"
-#   type        = bool
-#   default     = false
-# }
+variable "enable_public_access" {
+  description = "Enable public access for Container Apps (set to false for full private deployment)"
+  type        = bool
+  default     = false
+}
 
-# variable "allowed_ip_addresses" {
-#   description = "List of IP addresses allowed to access Container Apps (CIDR format)"
-#   type        = list(string)
-#   default     = ["205.194.32.99/32"] # Your specific IP address
-# }
+variable "allowed_ip_addresses" {
+  description = "List of IP addresses allowed to access Container Apps (CIDR format)"
+  type        = list(string)
+  default     = ["0.0.0.0/0"] # Allow all for dev - restrict in prod
+}
 
 # variable "enable_observability_stack" {
 #   description = "Enable Grafana LGTM + Alloy observability stack"
@@ -201,11 +201,11 @@ variable "private_dns_zone_resource_group_name" {
 # }
 
 # # Container Images
-# variable "backend_image" {
-#   description = "Docker image for Nachet backend"
-#   type        = string
-#   default     = "ghcr.io/ai-cfia/nachet-backend:dev"
-# }
+variable "backend_image" {
+  description = "Docker image for Nachet backend"
+  type        = string
+  default     = "ghcr.io/ai-cfia/nachet-backend:dev"
+}
 
 # variable "triton_image" {
 #   description = "Docker image for Triton inference server"
@@ -246,17 +246,17 @@ variable "postgresql_version" {
 }
 
 # # Container Apps Resources
-# variable "container_app_cpu" {
-#   description = "CPU for container apps"
-#   type        = number
-#   default     = 0.25 # Minimum CPU allocation
-# }
+variable "container_app_cpu" {
+  description = "CPU for container apps"
+  type        = number
+  default     = 0.25 # Minimum CPU allocation
+}
 
-# variable "container_app_memory" {
-#   description = "Memory for container apps"
-#   type        = string
-#   default     = "0.5Gi" # Minimum memory allocation
-# }
+variable "container_app_memory" {
+  description = "Memory for container apps"
+  type        = string
+  default     = "0.5Gi" # Minimum memory allocation
+}
 
 # variable "triton_cpu" {
 #   description = "CPU for Triton server containers"
@@ -271,79 +271,67 @@ variable "postgresql_version" {
 # }
 
 # # Backend Environment Variables
-# variable "nachet_azure_storage_connection_string" {
-#   description = "Azure Storage connection string for Nachet"
-#   type        = string
-#   sensitive   = true
-# }
 
-# variable "nachet_data_path" {
-#   description = "Data path for Nachet"
-#   type        = string
-#   default     = "/app/data"
-# }
-
-# variable "backend_port" {
-#   description = "Backend application port"
-#   type        = string
-#   default     = "8080"
-# }
+variable "backend_port" {
+  description = "Backend application port"
+  type        = string
+  default     = "8080"
+}
 
 # # ML Model Endpoints (if using external services instead of Triton)
-# variable "ml_model_endpoint_rcnn" {
-#   description = "RCNN model endpoint URL"
-#   type        = string
-#   default     = ""
-#   sensitive   = true
-# }
+variable "ml_model_endpoint_rcnn" {
+  description = "RCNN model endpoint URL"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
 
-# variable "ml_model_endpoint_swin" {
-#   description = "Swin model endpoint URL"
-#   type        = string
-#   default     = ""
-#   sensitive   = true
-# }
+variable "ml_model_endpoint_swin" {
+  description = "Swin model endpoint URL"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
 
-# variable "ml_model_endpoint_swin_22_spp" {
-#   description = "Swin 22 SPP model endpoint URL"
-#   type        = string
-#   default     = ""
-#   sensitive   = true
-# }
+variable "ml_model_endpoint_swin_22_spp" {
+  description = "Swin 22 SPP model endpoint URL"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
 
-# variable "ml_model_endpoint_swin_27_spp" {
-#   description = "Swin 27 SPP model endpoint URL"
-#   type        = string
-#   default     = ""
-#   sensitive   = true
-# }
+variable "ml_model_endpoint_swin_27_spp" {
+  description = "Swin 27 SPP model endpoint URL"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
 
-# # ML Model API Keys
-# variable "ml_api_key" {
-#   description = "API key for ML model endpoints"
-#   type        = string
-#   default     = ""
-#   sensitive   = true
-# }
+# ML Model API Keys
+variable "ml_api_key" {
+  description = "API key for ML model endpoints"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
 
 # # Application Configuration
-# variable "jwt_secret" {
-#   description = "JWT secret for authentication"
-#   type        = string
-#   sensitive   = true
-# }
+variable "jwt_secret" {
+  description = "JWT secret for authentication"
+  type        = string
+  sensitive   = true
+}
 
-# variable "cors_allowed_origins" {
-#   description = "CORS allowed origins"
-#   type        = string
-#   default     = "*"
-# }
+variable "cors_allowed_origins" {
+  description = "CORS allowed origins"
+  type        = string
+}
 
-# variable "log_level" {
-#   description = "Application log level"
-#   type        = string
-#   default     = "DEBUG"
-# }
+variable "log_level" {
+  description = "Application log level"
+  type        = string
+  default     = "DEBUG"
+}
 
 # # Azure Storage for Triton Models
 # variable "azure_storage_account_key" {
@@ -353,24 +341,17 @@ variable "postgresql_version" {
 #   sensitive   = true
 # }
 
-# # Additional Backend Environment Variables
-# variable "fertiscan_db_url" {
-#   description = "FertiScan database connection URL"
-#   type        = string
-#   default     = ""
-#   sensitive   = true
-# }
 
-# variable "encryption_key" {
-#   description = "Encryption key for sensitive data"
-#   type        = string
-#   default     = ""
-#   sensitive   = true
-# }
+variable "encryption_key" {
+  description = "Encryption key for sensitive data"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
 
-# variable "session_secret" {
-#   description = "Session secret for cookies"
-#   type        = string
-#   default     = ""
-#   sensitive   = true
-# }
+variable "session_secret" {
+  description = "Session secret for cookies"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

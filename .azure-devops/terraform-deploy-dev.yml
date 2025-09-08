@@ -75,6 +75,37 @@ stages:
                     exit 1
                   fi
                 fi
+                
+                # Container Apps Subnet
+                CONTAINER_SUBNET_NAME="$(containerAppsSubnetName)"
+                CONTAINER_SUBNET_CIDR="$(containerAppsSubnetCidr)"
+                
+                echo "Checking if Container Apps subnet exists..."
+                if az network vnet subnet show \
+                  --resource-group "$VNET_RG" \
+                  --vnet-name "$VNET_NAME" \
+                  --name "$CONTAINER_SUBNET_NAME" \
+                  --query "id" -o tsv 2>/dev/null; then
+                  
+                  echo "✓ Subnet '$CONTAINER_SUBNET_NAME' already exists"
+                else
+                  echo "Creating Container Apps subnet..."
+                  az network vnet subnet create \
+                    --resource-group "$VNET_RG" \
+                    --vnet-name "$VNET_NAME" \
+                    --name "$CONTAINER_SUBNET_NAME" \
+                    --address-prefixes "$CONTAINER_SUBNET_CIDR" \
+                    --route-table "$ROUTE_TABLE_ID" \
+                    --network-security-group "$NSG_ID" \
+                    --output table
+                    
+                  if [ $? -eq 0 ]; then
+                    echo "✓ Successfully created Container Apps subnet"
+                  else
+                    echo "✗ Failed to create Container Apps subnet"
+                    exit 1
+                  fi
+                fi
 
           - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
             displayName: "Install Terraform (latest)"
