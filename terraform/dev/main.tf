@@ -26,6 +26,7 @@ resource "azurerm_container_app_environment" "nachet" {
   infrastructure_subnet_id   = data.azurerm_subnet.container_apps.id
   tags                       = var.tags
 
+  # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/container_app_environment#workload_profile_type-1
   workload_profile {
     name                  = "Consumption"
     workload_profile_type = "Consumption"
