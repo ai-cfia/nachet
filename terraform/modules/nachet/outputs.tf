@@ -25,20 +25,9 @@ output "storage_account_primary_access_key" {
   sensitive   = true
 }
 
-output "log_analytics_workspace_id" {
-  description = "Log Analytics workspace ID"
-  value       = azurerm_log_analytics_workspace.nachet.id
-}
+# Log Analytics workspace output removed - now managed in dev/main.tf
 
-output "container_app_environment_id" {
-  description = "Container App Environment ID"
-  value       = azurerm_container_app_environment.nachet.id
-}
-
-output "container_app_environment_default_domain" {
-  description = "Container App Environment default domain"
-  value       = azurerm_container_app_environment.nachet.default_domain
-}
+# Container App Environment outputs removed - now managed in dev/main.tf
 
 output "backend_app_name" {
   description = "Backend Container App name"

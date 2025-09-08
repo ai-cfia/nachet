@@ -24,19 +24,8 @@ variable "tags" {
   type        = map(string)
 }
 
-# Network Configuration
-variable "vnet_name" {
-  description = "Name of the existing VNet"
-  type        = string
-}
-
-variable "vnet_resource_group_name" {
-  description = "Resource group name where VNet exists"
-  type        = string
-}
-
-variable "container_apps_subnet_name" {
-  description = "Name of the existing Container Apps subnet (created by pipeline)"
+variable "container_app_environment_id" {
+  description = "Container App Environment ID (shared)"
   type        = string
 }
 

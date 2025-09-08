@@ -355,3 +355,9 @@ variable "session_secret" {
   default     = ""
   sensitive   = true
 }
+
+variable "pgadmin_password" {
+  description = "PgAdmin admin password"
+  type        = string
+  sensitive   = true
+}

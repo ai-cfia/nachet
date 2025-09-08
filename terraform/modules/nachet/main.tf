@@ -5,48 +5,15 @@ resource "azurerm_resource_group" "nachet" {
   tags     = var.tags
 }
 
-# Log Analytics Workspace
-resource "azurerm_log_analytics_workspace" "nachet" {
-  name                = "${var.project_name}-law-${var.environment}"
-  location            = azurerm_resource_group.nachet.location
-  resource_group_name = azurerm_resource_group.nachet.name
-  sku                 = "PerGB2018"
-  retention_in_days   = 30
-  tags                = var.tags
-}
-
-# Get the existing VNet
-data "azurerm_virtual_network" "existing" {
-  name                = var.vnet_name
-  resource_group_name = var.vnet_resource_group_name
-}
-
-# Use existing Container Apps subnet (created by Azure DevOps pipeline)
-data "azurerm_subnet" "container_apps" {
-  name                 = var.container_apps_subnet_name
-  virtual_network_name = var.vnet_name
-  resource_group_name  = var.vnet_resource_group_name
-}
-
-# Container App Environment
-resource "azurerm_container_app_environment" "nachet" {
-  name                       = "${var.project_name}-cae-${var.environment}"
-  location                   = azurerm_resource_group.nachet.location
-  resource_group_name        = azurerm_resource_group.nachet.name
-  log_analytics_workspace_id = azurerm_log_analytics_workspace.nachet.id
-  infrastructure_subnet_id   = data.azurerm_subnet.container_apps.id
-  tags                       = var.tags
-}
-
 # Storage Account for Nachet
 resource "azurerm_storage_account" "nachet" {
-  name                            = replace("${var.project_name}${var.environment}st", "-", "")
-  resource_group_name             = azurerm_resource_group.nachet.name
-  location                        = azurerm_resource_group.nachet.location
-  account_tier                    = "Standard"
-  account_replication_type        = "LRS"
-  min_tls_version                 = "TLS1_2"
-  
+  name                     = replace("${var.project_name}${var.environment}st", "-", "")
+  resource_group_name      = azurerm_resource_group.nachet.name
+  location                 = azurerm_resource_group.nachet.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  min_tls_version          = "TLS1_2"
+
   # Security enhancements for Azure Policy compliance
   allow_nested_items_to_be_public = false
   shared_access_key_enabled       = true
@@ -77,7 +44,7 @@ resource "azurerm_storage_container" "nachet_images" {
 # Nachet Backend Container App
 resource "azurerm_container_app" "backend" {
   name                         = "${var.project_name}-backend-ca-${var.environment}"
-  container_app_environment_id = azurerm_container_app_environment.nachet.id
+  container_app_environment_id = var.container_app_environment_id
   resource_group_name          = azurerm_resource_group.nachet.name
   revision_mode                = "Single"
 
@@ -127,17 +94,17 @@ resource "azurerm_container_app" "backend" {
 
       env {
         name  = "NACHET_DATA"
-        value = "/app/data"  # Fixed path, no need for variable
+        value = "/app/data" # Fixed path, no need for variable
       }
 
       env {
         name  = "FRONTEND_URL"
-        value = "https://${var.project_name}-backend-ca-${var.environment}.${azurerm_container_app_environment.nachet.default_domain}"
+        value = "https://${azurerm_container_app.backend.latest_revision_fqdn}"
       }
 
       env {
         name  = "BACKEND_URL"
-        value = "https://${var.project_name}-backend-ca-${var.environment}.${azurerm_container_app_environment.nachet.default_domain}"
+        value = "https://${azurerm_container_app.backend.latest_revision_fqdn}"
       }
 
       env {
