@@ -43,10 +43,10 @@
 # }
 
 # PgAdmin Outputs
-# output "pgadmin_url" {
-#   description = "PgAdmin internal URL (accessible from VNet only)"
-#   value       = module.pgadmin.pgadmin_url
-# }
+output "pgadmin_url" {
+  description = "PgAdmin internal URL (accessible from VNet only)"
+  value       = module.pgadmin.pgadmin_url
+}
 
 # Inference Server Outputs
 # output "inference_servers_deployed" {
