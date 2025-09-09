@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     swagger_path: str = "/docs"
     swagger_ui_client_id: str | None = None
     allowed_origins: list[str]
-    testing: bool = False
+    testing: bool = True
     debug: bool = False
 
     @computed_field
@@ -107,7 +107,7 @@ async def lifespan(app: FastAPI):
     app.pool.open()
     # resource = Resource.create(
     #     {
-    #         "service.name": "fertiscan-backend",
+    #         "service.name": "nachet-backend",
     #     }
     # )
 
@@ -156,7 +156,7 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     pool = ConnectionPool(
         open=False,
         conninfo=settings.pg_conn_info,
-        kwargs={"options": f"-c search_path={settings.fertiscan_schema},public"},
+        kwargs={"options": f"-c search_path={settings.nachet_schema},public"},
     )
     app.pool = pool
 
