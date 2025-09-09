@@ -18,23 +18,23 @@ resource "azurerm_log_analytics_workspace" "nachet" {
   tags                = var.tags
 }
 
-resource "azurerm_container_app_environment" "nachet" {
-  name                             = "${var.project_name}-cae-${var.environment}"
-  location                         = var.location
-  resource_group_name              = "${var.project_name}-db-${var.environment}-rg"
-  log_analytics_workspace_id       = azurerm_log_analytics_workspace.nachet.id
-  infrastructure_subnet_id         = data.azurerm_subnet.container_apps.id
-  internal_load_balancer_enabled   = true
-  tags                             = var.tags
+# resource "azurerm_container_app_environment" "nachet" {
+#   name                             = "${var.project_name}-cae-${var.environment}"
+#   location                         = var.location
+#   resource_group_name              = "${var.project_name}-db-${var.environment}-rg"
+#   log_analytics_workspace_id       = azurerm_log_analytics_workspace.nachet.id
+#   infrastructure_subnet_id         = data.azurerm_subnet.container_apps.id
+#   internal_load_balancer_enabled   = true
+#   tags                             = var.tags
 
-  # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/container_app_environment#workload_profile_type-1
-  workload_profile {
-    name                  = "Consumption"
-    workload_profile_type = "Consumption"
-    maximum_count         = 10
-    minimum_count         = 0
-  }
-}
+#   # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/container_app_environment#workload_profile_type-1
+#   workload_profile {
+#     name                  = "Consumption"
+#     workload_profile_type = "Consumption"
+#     maximum_count         = 10
+#     minimum_count         = 0
+#   }
+# }
 
 # Created manually
 # module "db" {
