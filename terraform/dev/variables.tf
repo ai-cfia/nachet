@@ -50,21 +50,6 @@ variable "container_apps_subnet_name" {
   default     = "nachet-container-apps-subnet-dev"
 }
 
-variable "postgresql_subnet_name" {
-  description = "Name of the existing PostgreSQL subnet (created by pipeline)"
-  type        = string
-}
-
-variable "private_dns_zone_name" {
-  description = "Name of the Private DNS Zone for PostgreSQL (required for VNet integration)"
-  type        = string
-}
-
-variable "private_dns_zone_resource_group_name" {
-  description = "Resource group name of the centralized Private DNS Zone"
-  type        = string
-}
-
 # variable "storage_subnet_cidr" {
 #   description = "CIDR block for Storage subnet - optional (e.g., 10.0.3.0/29)"
 #   type        = string
@@ -212,38 +197,6 @@ variable "backend_image" {
 #   type        = string
 #   default     = "nvcr.io/nvidia/tritonserver:24.10-py3"
 # }
-
-# PostgreSQL Configuration
-variable "postgresql_admin_username" {
-  description = "PostgreSQL admin username"
-  type        = string
-  default     = "nachetadmin"
-  sensitive   = true
-}
-
-variable "postgresql_admin_password" {
-  description = "PostgreSQL admin password"
-  type        = string
-  sensitive   = true
-}
-
-variable "postgresql_sku_name" {
-  description = "SKU for PostgreSQL flexible server"
-  type        = string
-  default     = "B_Standard_B1ms" # 1 vCPU, 2GB RAM - Cheapest option
-}
-
-variable "postgresql_storage_mb" {
-  description = "Storage size in MB for PostgreSQL"
-  type        = number
-  default     = 32768 # 32GB - Minimum required
-}
-
-variable "postgresql_version" {
-  description = "PostgreSQL version"
-  type        = string
-  default     = "16"
-}
 
 # # Container Apps Resources
 variable "container_app_cpu" {

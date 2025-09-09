@@ -35,29 +35,30 @@ resource "azurerm_container_app_environment" "nachet" {
   }
 }
 
-module "db" {
-  source = "../modules/db"
+# Created manually
+# module "db" {
+#   source = "../modules/db"
 
-  project_name             = var.project_name
-  environment              = var.environment
-  location                 = var.location
-  resource_group_name      = "${var.project_name}-db-${var.environment}-rg"
-  vnet_resource_group_name = var.vnet_resource_group_name
-  tags                     = var.tags
+#   project_name             = var.project_name
+#   environment              = var.environment
+#   location                 = var.location
+#   resource_group_name      = "${var.project_name}-db-${var.environment}-rg"
+#   vnet_resource_group_name = var.vnet_resource_group_name
+#   tags                     = var.tags
 
-  # Network
-  vnet_name                            = var.vnet_name
-  postgresql_subnet_name               = var.postgresql_subnet_name
-  private_dns_zone_name                = var.private_dns_zone_name
-  private_dns_zone_resource_group_name = var.private_dns_zone_resource_group_name
+#   # Network
+#   vnet_name                            = var.vnet_name
+#   postgresql_subnet_name               = var.postgresql_subnet_name
+#   private_dns_zone_name                = var.private_dns_zone_name
+#   private_dns_zone_resource_group_name = var.private_dns_zone_resource_group_name
 
-  # PostgreSQL Configuration
-  postgresql_admin_username = var.postgresql_admin_username
-  postgresql_admin_password = var.postgresql_admin_password
-  postgresql_sku_name       = var.postgresql_sku_name
-  postgresql_storage_mb     = var.postgresql_storage_mb
-  postgresql_version        = var.postgresql_version
-}
+#   # PostgreSQL Configuration
+#   postgresql_admin_username = var.postgresql_admin_username
+#   postgresql_admin_password = var.postgresql_admin_password
+#   postgresql_sku_name       = var.postgresql_sku_name
+#   postgresql_storage_mb     = var.postgresql_storage_mb
+#   postgresql_version        = var.postgresql_version
+# }
 
 module "pgadmin" {
   source = "../modules/pgadmin"
