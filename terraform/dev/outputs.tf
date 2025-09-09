@@ -36,11 +36,11 @@
 #   value       = module.nachet.backend_url
 # }
 
-# Database Outputs
-output "postgresql_fqdn" {
-  description = "PostgreSQL server FQDN"
-  value       = module.db.postgresql_server_fqdn
-}
+# # Database Outputs
+# output "postgresql_fqdn" {
+#   description = "PostgreSQL server FQDN"
+#   value       = module.db.postgresql_server_fqdn
+# }
 
 # PgAdmin Outputs
 output "pgadmin_url" {
