@@ -88,6 +88,13 @@ stages:
                   --query "id" -o tsv 2>/dev/null; then
                   
                   echo "✓ Subnet '$CONTAINER_SUBNET_NAME' already exists"
+                  echo "Ensuring subnet delegation to Microsoft.App/environments..."
+                  az network vnet subnet update \
+                    --resource-group "$VNET_RG" \
+                    --vnet-name "$VNET_NAME" \
+                    --name "$CONTAINER_SUBNET_NAME" \
+                    --delegations "Microsoft.App/environments" \
+                    --output table
                 else
                   echo "Creating Container Apps subnet..."
                   az network vnet subnet create \
@@ -97,6 +104,7 @@ stages:
                     --address-prefixes "$CONTAINER_SUBNET_CIDR" \
                     --route-table "$ROUTE_TABLE_ID" \
                     --network-security-group "$NSG_ID" \
+                    --delegations "Microsoft.App/environments" \
                     --output table
                     
                   if [ $? -eq 0 ]; then
