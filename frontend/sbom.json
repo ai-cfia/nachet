@@ -100,7 +100,7 @@
       "type": "library",
       "name": "wrap-ansi",
       "version": "7.0.0",
-      "bom-ref": "BomRef.51v3u31ri3g.dbkjce924fs",
+      "bom-ref": "BomRef.bsbh896urf.q55j6m92fqg",
       "purl": "pkg:npm/wrap-ansi@7.0.0",
       "externalReferences": [
         {
@@ -128,39 +128,9 @@
     },
     {
       "type": "library",
-      "name": "string-width",
-      "version": "4.2.3",
-      "bom-ref": "BomRef.eerb2t19c6k.a24lv1vhufo",
-      "purl": "pkg:npm/string-width@4.2.3",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "c0ac90450a63274b08a7ad84ad265d1ac8cc256b1aa79a1136284786ee86ec954effd8c807a5327af2feb57b8eaab9e0f23fdcc4a4d6c96530bd24eb8a2673fe"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:development",
-          "value": "true"
-        },
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/string-width-cjs"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "name": "strip-ansi",
       "version": "6.0.1",
-      "bom-ref": "BomRef.u1io79lkv6s.bo327velbsk",
+      "bom-ref": "BomRef.duqnj9432k8.4b6idl88cng",
       "purl": "pkg:npm/strip-ansi@6.0.1",
       "externalReferences": [
         {
@@ -183,6 +153,36 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/strip-ansi-cjs"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "string-width",
+      "version": "4.2.3",
+      "bom-ref": "BomRef.j84e8ot45g.4vu4jf657k4",
+      "purl": "pkg:npm/string-width@4.2.3",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "c0ac90450a63274b08a7ad84ad265d1ac8cc256b1aa79a1136284786ee86ec954effd8c807a5327af2feb57b8eaab9e0f23fdcc4a4d6c96530bd24eb8a2673fe"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/string-width-cjs"
         }
       ]
     },
@@ -10570,6 +10570,37 @@
     },
     {
       "type": "library",
+      "name": "sanitize-html",
+      "group": "@types",
+      "version": "2.16.0",
+      "bom-ref": "nachet-frontend@0.10.1|@types/sanitize-html@2.16.0",
+      "purl": "pkg:npm/%40types/sanitize-html@2.16.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@types/sanitize-html/-/sanitize-html-2.16.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "97aad7d4c5178dee73b4f4f470016d51ac97174e83a8f851c9f5576ab78437980608568ffe2c2cc48c8a383afd5c385fc4fa4deaf5d414d7e8e6464c5c2c41b7"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/sanitize-html"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "semver",
       "group": "@types",
       "version": "7.5.8",
@@ -15277,6 +15308,32 @@
     },
     {
       "type": "library",
+      "name": "deepmerge",
+      "version": "4.3.1",
+      "bom-ref": "nachet-frontend@0.10.1|deepmerge@4.3.1",
+      "purl": "pkg:npm/deepmerge@4.3.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/deepmerge/-/deepmerge-4.3.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "dec52a6cc11cefb5eaa5d34eec547246883e796de987e19809b8feacafae63244cbb0b15cb4acc895b4f9fe40994a16f58fff53d8a5aa6a627d0c7b6927167f8"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/deepmerge"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "define-data-property",
       "version": "1.1.4",
       "bom-ref": "nachet-frontend@0.10.1|define-data-property@1.1.4",
@@ -15557,6 +15614,112 @@
     },
     {
       "type": "library",
+      "name": "dom-serializer",
+      "version": "2.0.0",
+      "bom-ref": "nachet-frontend@0.10.1|dom-serializer@2.0.0",
+      "purl": "pkg:npm/dom-serializer@2.0.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/dom-serializer/-/dom-serializer-2.0.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "c08900af28aab7f9d5e4440aa90a68dd24e848e57d2740e76c9ab02bb5affd3adcf76cc801867816532ef893c55b50df185b7cd594c21a00c469b7df5de2f226"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/dom-serializer"
+        }
+      ],
+      "components": [
+        {
+          "type": "library",
+          "name": "entities",
+          "version": "4.5.0",
+          "bom-ref": "nachet-frontend@0.10.1|dom-serializer@2.0.0|entities@4.5.0",
+          "purl": "pkg:npm/entities@4.5.0",
+          "externalReferences": [
+            {
+              "url": "https://registry.npmjs.org/entities/-/entities-4.5.0.tgz",
+              "type": "distribution",
+              "hashes": [
+                {
+                  "alg": "SHA-512",
+                  "content": "5748631f87463e1f40a39a74328458e8156ab700a3873eaf2392d3f00279e47fb883dff8bdb1f1d48e787d2d17b9c94b8431c0acf40288c8c3c6368bf1f3f187"
+                }
+              ],
+              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:path",
+              "value": "node_modules/dom-serializer/node_modules/entities"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "domelementtype",
+      "version": "2.3.0",
+      "bom-ref": "nachet-frontend@0.10.1|domelementtype@2.3.0",
+      "purl": "pkg:npm/domelementtype@2.3.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/domelementtype/-/domelementtype-2.3.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "38b113063eb0d0eb1a801c1d5e73dd37472731f17da2937af5ca3eed9adb7cf1ab7693d5341523d36b298ba07537bc0284b4223e7e02487ff326f5f0e7a8261f"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/domelementtype"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "domhandler",
+      "version": "5.0.3",
+      "bom-ref": "nachet-frontend@0.10.1|domhandler@5.0.3",
+      "purl": "pkg:npm/domhandler@5.0.3",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/domhandler/-/domhandler-5.0.3.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "720c25bffd621508859d4f7a5d78113a1f314de7adb272620ec4dced36022c577dfbf58d908a8f4f188cffca5277c548ae15c64dfd4dcb5ab586ab95a83241e7"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/domhandler"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "dompurify",
       "version": "3.2.6",
       "bom-ref": "nachet-frontend@0.10.1|dompurify@3.2.6",
@@ -15578,6 +15741,32 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/dompurify"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "domutils",
+      "version": "3.2.2",
+      "bom-ref": "nachet-frontend@0.10.1|domutils@3.2.2",
+      "purl": "pkg:npm/domutils@3.2.2",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/domutils/-/domutils-3.2.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "ea464ac946a3943baa9472955f5c3b832b258fd30f217cc8162cffac6bb7e6e0b5c0c8be90c850c06865e25b7dba70bd55bf4836763d677fd9037f8584048b6b"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/domutils"
         }
       ]
     },
@@ -19632,6 +19821,60 @@
     },
     {
       "type": "library",
+      "name": "htmlparser2",
+      "version": "8.0.2",
+      "bom-ref": "nachet-frontend@0.10.1|htmlparser2@8.0.2",
+      "purl": "pkg:npm/htmlparser2@8.0.2",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/htmlparser2/-/htmlparser2-8.0.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "19876358a0e46d12e467981eb87b39358d69b89f8f5f03fbf9f1cf473d3a122aec6fdba07fa77c9245dabfa00385c38384514f3085f2c64c52b8c7f70fa34214"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/htmlparser2"
+        }
+      ],
+      "components": [
+        {
+          "type": "library",
+          "name": "entities",
+          "version": "4.5.0",
+          "bom-ref": "nachet-frontend@0.10.1|htmlparser2@8.0.2|entities@4.5.0",
+          "purl": "pkg:npm/entities@4.5.0",
+          "externalReferences": [
+            {
+              "url": "https://registry.npmjs.org/entities/-/entities-4.5.0.tgz",
+              "type": "distribution",
+              "hashes": [
+                {
+                  "alg": "SHA-512",
+                  "content": "5748631f87463e1f40a39a74328458e8156ab700a3873eaf2392d3f00279e47fb883dff8bdb1f1d48e787d2d17b9c94b8431c0acf40288c8c3c6368bf1f3f187"
+                }
+              ],
+              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:path",
+              "value": "node_modules/htmlparser2/node_modules/entities"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "http-cache-semantics",
       "version": "4.2.0",
       "bom-ref": "nachet-frontend@0.10.1|http-cache-semantics@4.2.0",
@@ -20930,6 +21173,32 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/is-number"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "is-plain-object",
+      "version": "5.0.0",
+      "bom-ref": "nachet-frontend@0.10.1|is-plain-object@5.0.0",
+      "purl": "pkg:npm/is-plain-object@5.0.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/is-plain-object/-/is-plain-object-5.0.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "5514b32a46cc9b98cc0e828b6e5b4090543942bed50e24c5197c581575e8c158f7f3b19e18d382b0e1fa32ccb4d12199dc5a7ce1bd4d69ad69b2a81c08810fe5"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/is-plain-object"
         }
       ]
     },
@@ -25260,6 +25529,32 @@
     },
     {
       "type": "library",
+      "name": "parse-srcset",
+      "version": "1.0.2",
+      "bom-ref": "nachet-frontend@0.10.1|parse-srcset@1.0.2",
+      "purl": "pkg:npm/parse-srcset@1.0.2",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/parse-srcset/-/parse-srcset-1.0.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "ff6aa1d256afe82988d791730378bfd81ce4db30a042118c92f84e84a35c05543595d8296df88d4d5b259a8a1499625c0038b57f59087b29db0d15733657d1e9"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/parse-srcset"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "parse5",
       "version": "7.3.0",
       "bom-ref": "nachet-frontend@0.10.1|parse5@7.3.0",
@@ -27897,6 +28192,32 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/safer-buffer"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "sanitize-html",
+      "version": "2.17.0",
+      "bom-ref": "nachet-frontend@0.10.1|sanitize-html@2.17.0",
+      "purl": "pkg:npm/sanitize-html@2.17.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/sanitize-html/-/sanitize-html-2.17.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "74b0000d4492f2b07085a7af4f5db209ecef8a8080f9b9944cf1ffbb9ef128f4fc77efafa1e604e877a5b80fdb3db435e53c03046da28be419204998c7c55dc4"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/sanitize-html"
         }
       ]
     },
@@ -33449,7 +33770,7 @@
   ],
   "dependencies": [
     {
-      "ref": "BomRef.51v3u31ri3g.dbkjce924fs",
+      "ref": "BomRef.bsbh896urf.q55j6m92fqg",
       "dependsOn": [
         "nachet-frontend@0.10.1|ansi-styles@4.3.0",
         "nachet-frontend@0.10.1|string-width@4.2.3",
@@ -33457,17 +33778,17 @@
       ]
     },
     {
-      "ref": "BomRef.eerb2t19c6k.a24lv1vhufo",
+      "ref": "BomRef.duqnj9432k8.4b6idl88cng",
+      "dependsOn": [
+        "nachet-frontend@0.10.1|ansi-regex@5.0.1"
+      ]
+    },
+    {
+      "ref": "BomRef.j84e8ot45g.4vu4jf657k4",
       "dependsOn": [
         "nachet-frontend@0.10.1|emoji-regex@8.0.0",
         "nachet-frontend@0.10.1|is-fullwidth-code-point@3.0.0",
         "nachet-frontend@0.10.1|strip-ansi@6.0.1"
-      ]
-    },
-    {
-      "ref": "BomRef.u1io79lkv6s.bo327velbsk",
-      "dependsOn": [
-        "nachet-frontend@0.10.1|ansi-regex@5.0.1"
       ]
     },
     {
@@ -33495,6 +33816,7 @@
         "nachet-frontend@0.10.1|@types/pako@2.0.3",
         "nachet-frontend@0.10.1|@types/react-dom@19.1.7",
         "nachet-frontend@0.10.1|@types/react@19.1.9",
+        "nachet-frontend@0.10.1|@types/sanitize-html@2.16.0",
         "nachet-frontend@0.10.1|@types/utif@3.0.5",
         "nachet-frontend@0.10.1|@types/uuid@10.0.0",
         "nachet-frontend@0.10.1|@typescript-eslint/eslint-plugin@8.39.1",
@@ -33532,6 +33854,7 @@
         "nachet-frontend@0.10.1|react-router-dom@7.8.0",
         "nachet-frontend@0.10.1|react-webcam@7.2.0",
         "nachet-frontend@0.10.1|react@19.1.1",
+        "nachet-frontend@0.10.1|sanitize-html@2.17.0",
         "nachet-frontend@0.10.1|serve@14.2.4",
         "nachet-frontend@0.10.1|styled-components@6.1.19",
         "nachet-frontend@0.10.1|typescript@5.9.2",
@@ -34780,9 +35103,9 @@
     {
       "ref": "nachet-frontend@0.10.1|@isaacs/cliui@8.0.2",
       "dependsOn": [
-        "BomRef.51v3u31ri3g.dbkjce924fs",
-        "BomRef.eerb2t19c6k.a24lv1vhufo",
-        "BomRef.u1io79lkv6s.bo327velbsk",
+        "BomRef.bsbh896urf.q55j6m92fqg",
+        "BomRef.duqnj9432k8.4b6idl88cng",
+        "BomRef.j84e8ot45g.4vu4jf657k4",
         "nachet-frontend@0.10.1|@isaacs/cliui@8.0.2|string-width@5.1.2",
         "nachet-frontend@0.10.1|@isaacs/cliui@8.0.2|strip-ansi@7.1.0",
         "nachet-frontend@0.10.1|@isaacs/cliui@8.0.2|wrap-ansi@8.1.0"
@@ -35452,6 +35775,12 @@
       "ref": "nachet-frontend@0.10.1|@types/react@19.1.9",
       "dependsOn": [
         "nachet-frontend@0.10.1|csstype@3.1.3"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@0.10.1|@types/sanitize-html@2.16.0",
+      "dependsOn": [
+        "nachet-frontend@0.10.1|htmlparser2@8.0.2"
       ]
     },
     {
@@ -36376,6 +36705,9 @@
       "ref": "nachet-frontend@0.10.1|deep-is@0.1.4"
     },
     {
+      "ref": "nachet-frontend@0.10.1|deepmerge@4.3.1"
+    },
+    {
       "ref": "nachet-frontend@0.10.1|define-data-property@1.1.4",
       "dependsOn": [
         "nachet-frontend@0.10.1|es-define-property@1.0.1",
@@ -36417,9 +36749,37 @@
       ]
     },
     {
+      "ref": "nachet-frontend@0.10.1|dom-serializer@2.0.0",
+      "dependsOn": [
+        "nachet-frontend@0.10.1|dom-serializer@2.0.0|entities@4.5.0",
+        "nachet-frontend@0.10.1|domelementtype@2.3.0",
+        "nachet-frontend@0.10.1|domhandler@5.0.3"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@0.10.1|dom-serializer@2.0.0|entities@4.5.0"
+    },
+    {
+      "ref": "nachet-frontend@0.10.1|domelementtype@2.3.0"
+    },
+    {
+      "ref": "nachet-frontend@0.10.1|domhandler@5.0.3",
+      "dependsOn": [
+        "nachet-frontend@0.10.1|domelementtype@2.3.0"
+      ]
+    },
+    {
       "ref": "nachet-frontend@0.10.1|dompurify@3.2.6",
       "dependsOn": [
         "nachet-frontend@0.10.1|@types/trusted-types@2.0.7"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@0.10.1|domutils@3.2.2",
+      "dependsOn": [
+        "nachet-frontend@0.10.1|dom-serializer@2.0.0",
+        "nachet-frontend@0.10.1|domelementtype@2.3.0",
+        "nachet-frontend@0.10.1|domhandler@5.0.3"
       ]
     },
     {
@@ -37285,6 +37645,18 @@
       "ref": "nachet-frontend@0.10.1|html-escaper@2.0.2"
     },
     {
+      "ref": "nachet-frontend@0.10.1|htmlparser2@8.0.2",
+      "dependsOn": [
+        "nachet-frontend@0.10.1|domelementtype@2.3.0",
+        "nachet-frontend@0.10.1|domhandler@5.0.3",
+        "nachet-frontend@0.10.1|domutils@3.2.2",
+        "nachet-frontend@0.10.1|htmlparser2@8.0.2|entities@4.5.0"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@0.10.1|htmlparser2@8.0.2|entities@4.5.0"
+    },
+    {
       "ref": "nachet-frontend@0.10.1|http-cache-semantics@4.2.0"
     },
     {
@@ -37512,6 +37884,9 @@
     },
     {
       "ref": "nachet-frontend@0.10.1|is-number@7.0.0"
+    },
+    {
+      "ref": "nachet-frontend@0.10.1|is-plain-object@5.0.0"
     },
     {
       "ref": "nachet-frontend@0.10.1|is-port-reachable@4.0.0"
@@ -38257,6 +38632,9 @@
       ]
     },
     {
+      "ref": "nachet-frontend@0.10.1|parse-srcset@1.0.2"
+    },
+    {
       "ref": "nachet-frontend@0.10.1|parse5@7.3.0",
       "dependsOn": [
         "nachet-frontend@0.10.1|entities@6.0.1"
@@ -38741,6 +39119,17 @@
     },
     {
       "ref": "nachet-frontend@0.10.1|safer-buffer@2.1.2"
+    },
+    {
+      "ref": "nachet-frontend@0.10.1|sanitize-html@2.17.0",
+      "dependsOn": [
+        "nachet-frontend@0.10.1|deepmerge@4.3.1",
+        "nachet-frontend@0.10.1|escape-string-regexp@4.0.0",
+        "nachet-frontend@0.10.1|htmlparser2@8.0.2",
+        "nachet-frontend@0.10.1|is-plain-object@5.0.0",
+        "nachet-frontend@0.10.1|parse-srcset@1.0.2",
+        "nachet-frontend@0.10.1|postcss@8.4.49"
+      ]
     },
     {
       "ref": "nachet-frontend@0.10.1|saxes@6.0.0",

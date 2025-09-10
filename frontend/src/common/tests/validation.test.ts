@@ -786,7 +786,7 @@ describe("XSS Protection Functions", () => {
         '<img onload="alert(\'xss\')" src="test.jpg">',
       );
       expect(result2).not.toContain('onload="alert(');
-      expect(result2).toContain('src="test.jpg">');
+      expect(result2).toContain('src="test.jpg"');
 
       const result3 = stripDangerousHtml(
         "<button onmouseover=\"alert('xss')\">Hover</button>",

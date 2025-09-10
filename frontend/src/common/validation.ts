@@ -1,4 +1,5 @@
 import { z } from "zod";
+import sanitizeHtml from "sanitize-html";
 
 // Directory name validation - alphanumeric, hyphens, underscores, no spaces at start/end
 export const directoryNameSchema = z
@@ -301,11 +302,36 @@ export const escapeJavaScript = (str: string): string => {
 
 /**
  * Validates and sanitizes URLs to prevent javascript: and data: URL attacks
+ * Uses sanitize-html for initial validation with custom checks as fallback
  */
 export const sanitizeUrl = (url: string): string | null => {
   const trimmed = url.trim();
 
-  // Block dangerous protocols with comprehensive normalization
+  // First, use sanitize-html to validate the URL in a link context
+  const testHtml = `<a href="${trimmed}">test</a>`;
+  const sanitized = sanitizeHtml(testHtml, {
+    allowedTags: ["a"],
+    allowedAttributes: {
+      a: ["href"],
+    },
+    allowedSchemes: ["http", "https", "ftp", "mailto"],
+    allowProtocolRelative: false,
+  });
+
+  // If sanitize-html removed the href attribute, the URL is dangerous
+  if (!sanitized.includes('href="')) {
+    return null;
+  }
+
+  // Extract the sanitized URL
+  const hrefMatch = sanitized.match(/href="([^"]*)"/);
+  if (!hrefMatch) {
+    return null;
+  }
+
+  const sanitizedUrl = hrefMatch[1];
+
+  // Additional custom validation for edge cases
   const normalizedForCheck = (() => {
     // Remove control chars, whitespace, and null bytes that could be used for obfuscation
     let compact = trimmed.replace(
@@ -325,36 +351,8 @@ export const sanitizeUrl = (url: string): string | null => {
       }
     }
 
-    // Additional normalization for HTML entities and Unicode
-    compact = compact
-      .replace(/&\w+;/g, "") // Remove HTML entities
-      .replace(/\\u[\da-f]{4}/gi, "") // Remove Unicode escapes
-      .replace(/\\x[\da-f]{2}/gi, "") // Remove hex escapes
-      .toLowerCase();
-
-    return compact;
+    return compact.toLowerCase();
   })();
-
-  // Comprehensive dangerous protocol detection
-  const dangerousPatterns = [
-    /^(javascript|data|vbscript|file|about|blob|chrome|chrome-extension|moz-extension):/i,
-    /javascript\s*:/i,
-    /data\s*:/i,
-    /vbscript\s*:/i,
-    // eslint-disable-next-line no-control-regex
-    /^[\s\u0000-\u001F]*javascript:/i, // With leading whitespace/control chars
-    // eslint-disable-next-line no-control-regex
-    /^[\s\u0000-\u001F]*data:/i,
-    // eslint-disable-next-line no-control-regex
-    /^[\s\u0000-\u001F]*vbscript:/i,
-  ];
-
-  // Check both original and normalized versions
-  for (const pattern of dangerousPatterns) {
-    if (pattern.test(trimmed) || pattern.test(normalizedForCheck)) {
-      return null;
-    }
-  }
 
   // Additional checks for obfuscated scripts
   if (
@@ -365,17 +363,7 @@ export const sanitizeUrl = (url: string): string | null => {
     return null;
   }
 
-  // Allow only safe protocols
-  const safeProtocols = /^(https?|ftp|mailto):/i;
-  const isRelative =
-    /^[./]/.test(trimmed) ||
-    (!trimmed.includes(":") && !trimmed.startsWith("//"));
-
-  if (!safeProtocols.test(trimmed) && !isRelative) {
-    return null;
-  }
-
-  return trimmed;
+  return sanitizedUrl;
 };
 
 /**
@@ -394,76 +382,73 @@ export const containsHtml = (str: string): boolean => {
 };
 
 /**
- * Removes potentially dangerous HTML tags and attributes
+ * Removes potentially dangerous HTML tags and attributes using sanitize-html
  * @deprecated Use containsHtml() to reject HTML input instead of sanitizing
  * Use sparingly - prefer escaping over stripping when possible
  */
 export const stripDangerousHtml = (str: string): string => {
-  let result = str;
+  // First sanitize HTML using sanitize-html
+  let result = sanitizeHtml(str, {
+    allowedTags: [
+      // Basic formatting tags - safe to preserve
+      "p",
+      "br",
+      "strong",
+      "b",
+      "em",
+      "i",
+      "u",
+      "span",
+      "div",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "ul",
+      "ol",
+      "li",
+      "blockquote",
+      "a",
+      "img",
+    ],
+    allowedAttributes: {
+      a: ["href"], // Only href for links
+      img: ["src", "alt"], // Only src and alt for images
+    },
+    allowedSchemes: ["http", "https", "mailto"], // Only safe URL schemes
+    disallowedTagsMode: "discard", // Remove disallowed tags entirely
+    allowProtocolRelative: false, // Block protocol-relative URLs
+    enforceHtmlBoundary: false, // Don't require html tags
+    parseStyleAttributes: false, // Don't parse style attributes for security
+  });
 
-  // Remove dangerous tags with comprehensive multi-pass sanitization
-  const dangerousPatterns = [
-    // Tag patterns - match closing tags with extra attributes, whitespace, or malformed variants
-    /<\s*script\b[^>]*>[\s\S]*?<\s*\/\s*script\b[^>]*>/gi,
-    /<\s*iframe\b[^>]*>[\s\S]*?<\s*\/\s*iframe\b[^>]*>/gi,
-    /<\s*object\b[^>]*>[\s\S]*?<\s*\/\s*object\b[^>]*>/gi,
-    /<\s*style\b[^>]*>[\s\S]*?<\s*\/\s*style\b[^>]*>/gi,
-    /<\s*embed\b[^>]*>/gi,
-    /<\s*link\b[^>]*>/gi,
-    /<\s*meta\b[^>]*>/gi,
-    // Self-closing and malformed variations
-    /<\s*script\b[^>]*\/?\s*>/gi,
-    /<\s*iframe\b[^>]*\/?\s*>/gi,
-    /<\s*object\b[^>]*\/?\s*>/gi,
-    /<\s*embed\b[^>]*\/?\s*>/gi,
-    // Additional patterns to catch malformed end tags with spaces
-    /<\s*\/\s*script[\s>]/gi,
-    /<\s*\/\s*iframe[\s>]/gi,
-    /<\s*\/\s*object[\s>]/gi,
-    /<\s*\/\s*style[\s>]/gi,
-    // Partial tag patterns to catch incomplete sanitization
-    /<\s*script/gi,
-    /<\s*iframe/gi,
-    /<\s*object/gi,
-    /<\s*embed/gi,
-  ];
-
-  // Apply multiple complete passes until result stabilizes
-  const maxIterations = 10;
-  let iteration = 0;
-
-  while (iteration < maxIterations) {
-    const beforePass = result;
-
-    // Apply all patterns in each pass
-    dangerousPatterns.forEach((pattern) => {
-      result = result.replace(pattern, "");
-    });
-
-    // Remove event handlers and dangerous URLs with comprehensive multi-pass approach
-    result = result
-      // Complete removal of any "on*" attribute patterns to prevent partial sanitization
-      .replace(/\s+on\w*\s*=\s*["'][^"']*["']/gi, " ") // Quoted event handlers with leading space
-      .replace(/\s+on\w*\s*=\s*[^"'\s>][^\s>]*/gi, " ") // Unquoted event handlers with leading space
-      .replace(/\bon\w*\s*=\s*["'][^"']*["']/gi, "") // Word boundary quoted handlers
-      .replace(/\bon\w*\s*=\s*[^"'\s>][^\s>]*/gi, "") // Word boundary unquoted handlers
-      .replace(/\s+on\w*/gi, " ") // Any remaining "on*" patterns with space
-      .replace(/\bon\w*/gi, "") // Any remaining "on*" patterns at word boundaries
-      .replace(/javascript\s*:/gi, "") // Remove javascript: URLs
-      .replace(/data\s*:/gi, "") // Remove data: URLs
-      .replace(/vbscript\s*:/gi, "") // Remove vbscript: URLs
-      .replace(/\s+/g, " ") // Normalize whitespace after removals
-      .trim(); // Clean up any leading/trailing whitespace
-
-    // If no changes were made, we're done
-    if (result === beforePass) {
-      break;
-    }
-
-    iteration++;
-  }
+  // Also handle plain text dangerous URLs that sanitize-html might miss
+  result = result
+    .replace(/javascript\s*:/gi, "") // Remove javascript: URLs
+    .replace(/data\s*:/gi, "") // Remove data: URLs
+    .replace(/vbscript\s*:/gi, "") // Remove vbscript: URLs
+    .trim();
 
   return result;
+};
+
+/**
+ * Sanitizes HTML content using sanitize-html library with safe defaults
+ * Allows basic formatting tags but removes all dangerous content
+ * Use this when you need to preserve some HTML formatting
+ */
+export const sanitizeHtmlContent = (html: string): string => {
+  return sanitizeHtml(html, {
+    allowedTags: ["b", "i", "em", "strong", "p", "br"], // Only basic formatting
+    allowedAttributes: {}, // No attributes allowed
+    allowedSchemes: ["http", "https", "mailto"], // Only safe URL schemes
+    disallowedTagsMode: "discard", // Remove disallowed tags entirely
+    allowProtocolRelative: false, // Block protocol-relative URLs
+    enforceHtmlBoundary: false, // Don't require html tags
+    parseStyleAttributes: false, // Don't parse style attributes for security
+  }).trim();
 };
 
 /**
