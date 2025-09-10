@@ -9,13 +9,6 @@ data "azurerm_subnet" "container_apps" {
   resource_group_name  = var.vnet_resource_group_name
 }
 
-# Resource group for Container Apps Environment infrastructure
-resource "azurerm_resource_group" "container_apps_infra" {
-  name     = "${var.resource_group_name}-cae-infra"
-  location = var.location
-  tags     = var.tags
-}
-
 resource "azurerm_log_analytics_workspace" "nachet" {
   name                = "${var.project_name}-law-${var.environment}"
   location            = var.location
@@ -31,11 +24,9 @@ resource "azurerm_container_app_environment" "nachet" {
   resource_group_name                = var.resource_group_name
   log_analytics_workspace_id         = azurerm_log_analytics_workspace.nachet.id
   infrastructure_subnet_id           = data.azurerm_subnet.container_apps.id
-  infrastructure_resource_group_name = azurerm_resource_group.container_apps_infra.name
   internal_load_balancer_enabled     = true
   tags                               = var.tags
 
-  depends_on = [azurerm_resource_group.container_apps_infra]
 
   # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/container_app_environment#workload_profile_type-1
   workload_profile {
