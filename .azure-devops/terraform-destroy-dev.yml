@@ -112,4 +112,3 @@ stages:
                     commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath) -auto-approve"
                     workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
                     environmentServiceNameAzureRM: "$(serviceConnectionName)"
-

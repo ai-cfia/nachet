@@ -64,7 +64,7 @@ jobs:
         volumes:
           - ./e2e/mocks/nachet-27spp-classifier:/home/wiremock/mappings
       nachet-frontend:
-        image: ghcr.io/ai-cfia/nachet-frontend:0.9.31
+        image: ghcr.io/ai-cfia/nachet-frontend:0.10.2
         env: 
           PUBLIC_URL: "."
           VITE_BACKEND_URL: "http://localhost:12435"
@@ -158,7 +158,7 @@ jobs:
             -e BACKEND_DEV_PORT="5174" \
             -e FRONTEND_DEV_PORT="12436" \
             -p 12435:5174 \
-            ghcr.io/ai-cfia/nachet-backend:1.0.4
+            ghcr.io/ai-cfia/nachet-backend:205-end-to-end-testing
 
       - name: Cache Node Modules
         id: cache-node-modules

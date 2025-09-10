@@ -15,7 +15,7 @@ export interface ApiInferenceData {
     is_verified?: boolean;
   }>;
   labelOccurrence: {
-    seed_name: number;
+    [key: string]: number;
   };
   totalBoxes: number;
   models: Array<{ name: string; version: number }>;
