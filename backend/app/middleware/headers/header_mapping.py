@@ -12,4 +12,7 @@ PARAM_TO_HEADER = {
     "cross_origin_embedder_policy": "Cross-Origin-Embedder-Policy",
     "cross_origin_opener_policy": "Cross-Origin-Opener-Policy",
     "cross_origin_resource_policy": "Cross-Origin-Resource-Policy",
+    "x_permitted_cross_domain_policies": "X-Permitted-Cross-Domain-Policies",
+    "clear_site_data": "Clear-Site-Data",
+    "cache_control": "Cache-Control",
 }
