@@ -130,7 +130,7 @@ jobs:
           docker run --rm --network="host" \
             -v ${{ github.workspace }}/oshp-validator:/workspace \
             ovhcom/venom:latest run \
-            --var="target_site=http://localhost:5174" \
+            --var="target_site=http://127.0.0.1:5174" \
             --output-dir=/tmp \
             --format=xml \
             /workspace/tests_suite.yml
