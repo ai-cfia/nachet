@@ -5,15 +5,6 @@ trigger:
 
 pr: none
 
-parameters:
-  - name: action
-    displayName: 'Terraform Action'
-    type: string
-    default: 'apply'
-    values:
-      - apply
-      - destroy
-
 pool:
   vmImage: "ubuntu-latest"
 
@@ -156,17 +147,17 @@ stages:
             inputs:
               provider: "azurerm"
               command: "plan"
-              commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath) ${{ eq(parameters.action, 'destroy') && '-destroy' || '' }}"
+              commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath)"
               workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
               environmentServiceNameAzureRM: "$(serviceConnectionName)"
 
   - stage: Apply
-    displayName: "Terraform ${{ parameters.action }}"
+    displayName: "Apply Terraform Plan"
     dependsOn: InitAndPlan
     condition: succeeded()
     jobs:
       - deployment: TerraformApply
-        displayName: "Terraform ${{ parameters.action }}"
+        displayName: "Terraform Apply"
         pool:
           vmImage: "ubuntu-latest"
         environment: "TFApproval"
@@ -175,19 +166,6 @@ stages:
             deploy:
               steps:
                 - checkout: self
-
-                - script: |
-                    echo "⚠️  WARNING: About to ${{ upper(parameters.action) }} all infrastructure!"
-                    echo "Environment: DEV"
-                    echo "Action: ${{ upper(parameters.action) }}"
-                    echo ""
-                    echo "This will affect:"
-                    echo "- PostgreSQL Flexible Server"
-                    echo "- Container Apps Environment"
-                    echo "- PgAdmin Container App"
-                    echo "- All associated resources"
-                  condition: eq('${{ parameters.action }}', 'destroy')
-                  displayName: "⚠️ DESTROY Warning"
 
                 - task: AzureCLI@2
                   displayName: "Azure CLI Login"
@@ -222,10 +200,10 @@ stages:
                     backendAzureRmKey: "$(stateKey)"
 
                 - task: TerraformTask@5
-                  displayName: "Terraform ${{ parameters.action }}"
+                  displayName: "Terraform Apply"
                   inputs:
                     provider: "azurerm"
-                    command: "${{ parameters.action }}"
+                    command: "apply"
                     commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath)"
                     workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
                     environmentServiceNameAzureRM: "$(serviceConnectionName)"

@@ -1,0 +1,115 @@
+trigger: none
+pr: none
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  - group: nachet-dev
+
+stages:
+  - stage: DestroyPlan
+    displayName: "Destroy Plan"
+    jobs:
+      - job: TerraformDestroyPlan
+        displayName: "Terraform Destroy Plan"
+        steps:
+          - task: AzureCLI@2
+            displayName: "Azure CLI Login"
+            inputs:
+              azureSubscription: $(serviceConnectionName)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                echo "Successfully logged in with Azure CLI"
+
+          - task: DownloadSecureFile@1
+            name: DownloadSecureVars
+            displayName: "Download nachet-dev.tfvars"
+            inputs:
+              secureFile: "nachet-dev.tfvars"
+
+          - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
+            displayName: "Install Terraform (latest)"
+            inputs:
+              terraformVersion: 'latest'
+
+          - task: TerraformTask@5
+            displayName: "Terraform Init"
+            inputs:
+              provider: "azurerm"
+              command: "init"
+              workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
+              backendServiceArm: "$(serviceConnectionName)"
+              backendAzureRmResourceGroupName: "$(resourceGroupName)"
+              backendAzureRmStorageAccountName: "$(storageAccountName)"
+              backendAzureRmContainerName: "$(containerName)"
+              backendAzureRmKey: "$(stateKey)"
+
+          - task: TerraformTask@5
+            displayName: "Terraform Plan -destroy"
+            inputs:
+              provider: "azurerm"
+              command: "plan"
+              commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath) -destroy"
+              workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
+              environmentServiceNameAzureRM: "$(serviceConnectionName)"
+
+  - stage: DestroyApproval
+    displayName: "DESTROY Infrastructure"
+    dependsOn: DestroyPlan
+    condition: succeeded()
+    jobs:
+      - deployment: TerraformDestroy
+        displayName: "DESTROY ALL RESOURCES"
+        pool:
+          vmImage: "ubuntu-latest"
+        environment: "TFDestroyApproval"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+
+                - task: AzureCLI@2
+                  displayName: "Azure CLI Login"
+                  inputs:
+                    azureSubscription: $(serviceConnectionName)
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
+                    inlineScript: |
+                      echo "Successfully logged in with Azure CLI"
+
+                - task: DownloadSecureFile@1
+                  name: DownloadSecureVars
+                  displayName: "Download nachet-dev.tfvars"
+                  inputs:
+                    secureFile: "nachet-dev.tfvars"
+
+                - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
+                  displayName: "Install Terraform (latest)"
+                  inputs:
+                    terraformVersion: 'latest'
+
+                - task: TerraformTask@5
+                  displayName: "Terraform Init"
+                  inputs:
+                    provider: "azurerm"
+                    command: "init"
+                    workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
+                    backendServiceArm: "$(serviceConnectionName)"
+                    backendAzureRmResourceGroupName: "$(resourceGroupName)"
+                    backendAzureRmStorageAccountName: "$(storageAccountName)"
+                    backendAzureRmContainerName: "$(containerName)"
+                    backendAzureRmKey: "$(stateKey)"
+
+                - task: TerraformTask@5
+                  displayName: "TERRAFORM DESTROY"
+                  inputs:
+                    provider: "azurerm"
+                    command: "destroy"
+                    commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath) -auto-approve"
+                    workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
+                    environmentServiceNameAzureRM: "$(serviceConnectionName)"
+
