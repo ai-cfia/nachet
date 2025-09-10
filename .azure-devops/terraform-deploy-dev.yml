@@ -135,8 +135,7 @@ stages:
                 SERVER_NAME="$(postgresqlServerName)"
                 RESOURCE_GROUP="$(vnetResourceGroupName)"
                 LOCATION="$(location)"
-                VNET_NAME="$(vnetName)"
-                SUBNET_NAME="$(postgresqlSubnetName)"
+                SUBNET_ID="$(postgresqlSubnetNameID)"
                 VNET_RG="$(vnetResourceGroupName)"
                 ADMIN_USERNAME="$(postgresqlAdminUsername)"
                 ADMIN_PASSWORD="$(postgresqlAdminPassword)"
@@ -163,7 +162,7 @@ stages:
                     --tier "Burstable" \
                     --backup-retention 7 \
                     --zone 1 \
-                    --subnet "$SUBNET_NAME" \
+                    --subnet "$SUBNET_ID" \
                     --yes
                     
                   if [ $? -eq 0 ]; then
