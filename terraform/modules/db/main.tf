@@ -16,11 +16,6 @@ data "azurerm_subnet" "postgresql" {
   resource_group_name  = var.vnet_resource_group_name
 }
 
-data "azurerm_private_dns_zone" "postgresql" {
-  name                = var.private_dns_zone_name
-  resource_group_name = var.private_dns_zone_resource_group_name
-}
-
 # PostgreSQL Flexible Server
 resource "azurerm_postgresql_flexible_server" "nachet" {
   name                         = "${var.project_name}-psql-${var.environment}"
@@ -38,8 +33,7 @@ resource "azurerm_postgresql_flexible_server" "nachet" {
   auto_grow_enabled            = false
 
   delegated_subnet_id           = data.azurerm_subnet.postgresql.id
-  private_dns_zone_id           = data.azurerm_private_dns_zone.postgresql.id
-  public_network_access_enabled = false
+  public_network_access_enabled = var.public_network_access_enabled
 
   authentication {
     active_directory_auth_enabled = false

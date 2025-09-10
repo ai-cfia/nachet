@@ -37,39 +37,39 @@ resource "azurerm_container_app_environment" "nachet" {
 }
 
 # Created manually
-# module "db" {
-#   source = "../modules/db"
-#   project_name             = var.project_name
-#   environment              = var.environment
-#   location                 = var.location
-#   resource_group_name      = var.resource_group_name
-#   vnet_resource_group_name = var.vnet_resource_group_name
-#   tags                     = var.tags
-
-#   # Network
-#   vnet_name                            = var.vnet_name
-#   postgresql_subnet_name               = var.postgresql_subnet_name
-#   private_dns_zone_name                = var.private_dns_zone_name
-#   private_dns_zone_resource_group_name = var.private_dns_zone_resource_group_name
+module "db" {
+  source = "../modules/db"
   
-#   # PostgreSQL Configuration
-#   postgresql_admin_username = var.postgresql_admin_username
-#   postgresql_admin_password = var.postgresql_admin_password
-#   postgresql_sku_name       = var.postgresql_sku_name
-#   postgresql_storage_mb     = var.postgresql_storage_mb
-#   postgresql_version        = var.postgresql_version
-# }
+  project_name             = var.project_name
+  environment              = var.environment
+  location                 = var.location
+  resource_group_name      = var.resource_group_name
+  vnet_resource_group_name = var.vnet_resource_group_name
+  tags                     = var.tags
 
-module "pgadmin" {
-  source = "../modules/pgadmin"
-  
-  project_name                 = var.project_name
-  environment                  = var.environment
-  resource_group_name          = var.resource_group_name
-  container_app_environment_id = azurerm_container_app_environment.nachet.id
-  pgadmin_password             = var.pgadmin_password
-  tags                         = var.tags
+  # Network
+  vnet_name                            = var.vnet_name
+  postgresql_subnet_name               = var.postgresql_subnet_name
+
+  # PostgreSQL Configuration
+  postgresql_admin_username = var.postgresql_admin_username
+  postgresql_admin_password = var.postgresql_admin_password
+  postgresql_sku_name       = var.postgresql_sku_name
+  postgresql_storage_mb     = var.postgresql_storage_mb
+  postgresql_version        = var.postgresql_version
+  public_network_access_enabled = var.public_network_access_enabled
 }
+
+# module "pgadmin" {
+#   source = "../modules/pgadmin"
+
+#   project_name                 = var.project_name
+#   environment                  = var.environment
+#   resource_group_name          = var.resource_group_name
+#   container_app_environment_id = azurerm_container_app_environment.nachet.id
+#   pgadmin_password             = var.pgadmin_password
+#   tags                         = var.tags
+# }
 
 # Module 3: Nachet Application (Storage and Backend) - Commented out for now
 # module "nachet" {

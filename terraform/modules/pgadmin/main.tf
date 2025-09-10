@@ -11,7 +11,7 @@ resource "azurerm_container_app" "pgadmin" {
   template {
     container {
       name   = "pgadmin"
-      image  = "docker.io/dpage/pgadmin4:8.11"
+      image  = "mcr.microsoft.com/oss/dpage/pgadmin4:latest"
       cpu    = 0.25
       memory = "0.5Gi"
 

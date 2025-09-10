@@ -24,6 +24,12 @@ variable "vnet_resource_group_name" {
   type        = string
 }
 
+variable "public_network_access_enabled" {
+  description = "Enable the db for public access"
+  type = bool
+  
+}
+
 variable "tags" {
   description = "Resource tags"
   type        = map(string)
@@ -44,15 +50,7 @@ variable "postgresql_subnet_name" {
   default     = "nachet-postgresql-subnet-dev"
 }
 
-variable "private_dns_zone_name" {
-  description = "Name of the Private DNS Zone for PostgreSQL (required for VNet integration)"
-  type        = string
-}
-
-variable "private_dns_zone_resource_group_name" {
-  description = "Resource group name of the centralized Private DNS Zone"
-  type        = string
-}
+# Removed private DNS zone variables - no longer needed
 
 variable "postgresql_admin_username" {
   description = "PostgreSQL admin username"

@@ -316,6 +316,11 @@ variable "pgadmin_password" {
 }
 
 # PostgreSQL Configuration
+variable "public_network_access_enabled" {
+  description = "Enable the db for public access"
+  type = bool
+}
+
 variable "postgresql_subnet_name" {
   description = "Name of the existing PostgreSQL subnet (created by pipeline)"
   type        = string
