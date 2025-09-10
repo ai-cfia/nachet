@@ -15,6 +15,12 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@common/*": ["src/common/*"]
+    },
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
