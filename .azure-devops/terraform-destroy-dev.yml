@@ -9,7 +9,7 @@ variables:
 
 stages:
   - stage: DestroyPlan
-    displayName: "Destroy Plan"
+    displayName: "Destroy NACHET DEV Plan"
     jobs:
       - job: TerraformDestroyPlan
         displayName: "Terraform Destroy Plan"
@@ -56,7 +56,7 @@ stages:
               environmentServiceNameAzureRM: "$(serviceConnectionName)"
 
   - stage: DestroyApproval
-    displayName: "DESTROY Infrastructure"
+    displayName: "DESTROY NACHET DEV"
     dependsOn: DestroyPlan
     condition: succeeded()
     jobs:
@@ -64,7 +64,7 @@ stages:
         displayName: "DESTROY ALL RESOURCES"
         pool:
           vmImage: "ubuntu-latest"
-        environment: "TFDestroyApproval"
+        environment: "TFApproval"
         strategy:
           runOnce:
             deploy:
