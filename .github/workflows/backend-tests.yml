@@ -127,14 +127,15 @@ jobs:
 
       - name: Run OSHP validator security headers test
         run: |
-          # Run the tests and capture exit code
+          # Create output directory and run tests
+          mkdir -p ${{ github.workspace }}/test-results
           set +e
           docker run --rm --network="host" \
             -v ${{ github.workspace }}/oshp-validator:/workspace \
-            -v /tmp:/tmp \
+            -v ${{ github.workspace }}/test-results:/test-results \
             ovhcom/venom:latest run \
             --var="target_site=http://127.0.0.1:5174/health" \
-            --output-dir=/tmp \
+            --output-dir=/test-results \
             --format=xml \
             /workspace/tests_suite.yml
           VENOM_EXIT_CODE=$?
