@@ -180,8 +180,20 @@ jobs:
               
               for testcase in root.findall('.//testcase'):
                   test_name = testcase.get('name', '')
-                  is_failure = testcase.find('failure') is not None
+                  # Check both 'failure' and 'error' elements, and check if test passed
+                  is_failure = (testcase.find('failure') is not None or 
+                               testcase.find('error') is not None or
+                               testcase.get('status') == 'FAIL')
+                  
+                  # Also check if the test suite itself shows failures
+                  if not is_failure:
+                      # Look for any failure indicators in the test
+                      failure_text = testcase.text or ''
+                      if 'FAIL' in failure_text or 'failed' in failure_text.lower():
+                          is_failure = True
+                  
                   all_tests.append(f"{test_name} ({'FAIL' if is_failure else 'PASS'})")
+                  print(f"Debug - {test_name}: failure_elem={testcase.find('failure') is not None}, error_elem={testcase.find('error') is not None}, status={testcase.get('status')}")
                   
                   if is_failure and test_name not in expected_failures:
                       unexpected_failures.append(test_name)
