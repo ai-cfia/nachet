@@ -1,8 +1,8 @@
 # import hypercorn
 # from fastapi import FastAPI
 
-from api.routes import router as api_router
-from api.config import create_app, lifespan, Settings
+from app.api.routes import router as api_router
+from app.api.config import create_app, lifespan, Settings
 # from core import config
 
 
