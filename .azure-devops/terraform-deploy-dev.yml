@@ -125,6 +125,73 @@ stages:
                   fi
                 fi
 
+          - task: AzureCLI@2
+            displayName: "Create PostgreSQL Flexible Server"
+            inputs:
+              azureSubscription: $(serviceConnectionName)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                SERVER_NAME="$(postgresqlServerName)"
+                RESOURCE_GROUP="$(resourceGroupName)"
+                LOCATION="$(location)"
+                VNET_NAME="$(vnetName)"
+                SUBNET_NAME="$(postgresqlSubnetName)"
+                VNET_RG="$(vnetResourceGroupName)"
+                ADMIN_USERNAME="$(postgresqlAdminUsername)"
+                ADMIN_PASSWORD="$(postgresqlAdminPassword)"
+                
+                echo "Checking if PostgreSQL server exists..."
+                if az postgres flexible-server show \
+                  --resource-group "$RESOURCE_GROUP" \
+                  --name "$SERVER_NAME" \
+                  --query "name" -o tsv 2>/dev/null; then
+                  
+                  echo "✓ PostgreSQL server '$SERVER_NAME' already exists"
+                else
+                  echo "Creating PostgreSQL Flexible Server..."
+                  az postgres flexible-server create \
+                    --resource-group "$RESOURCE_GROUP" \
+                    --location "$LOCATION" \
+                    --name "$SERVER_NAME" \
+                    --admin-user "$ADMIN_USERNAME" \
+                    --admin-password "$ADMIN_PASSWORD" \
+                    --version "17" \
+                    --sku-name "Standard_B1ms" \
+                    --storage-size 32 \
+                    --storage-tier "P4" \
+                    --tier "Burstable" \
+                    --backup-retention 7 \
+                    --zone 1 \
+                    --vnet "$VNET_NAME" \
+                    --subnet "$SUBNET_NAME" \
+                    --vnet-resource-group "$VNET_RG" \
+                    --yes
+                    
+                  if [ $? -eq 0 ]; then
+                    echo "✓ Successfully created PostgreSQL server '$SERVER_NAME'"
+                  else
+                    echo "✗ Failed to create PostgreSQL server"
+                    exit 1
+                  fi
+                fi
+                
+                echo "Configuring PostgreSQL extensions..."
+                az postgres flexible-server parameter set \
+                  --resource-group "$RESOURCE_GROUP" \
+                  --server-name "$SERVER_NAME" \
+                  --name "azure.extensions" \
+                  --value "PGCRYPTO,UUID-OSSP"
+                  
+                echo "Creating nachet_db database..."
+                az postgres flexible-server db create \
+                  --resource-group "$RESOURCE_GROUP" \
+                  --server-name "$SERVER_NAME" \
+                  --database-name "nachet_db" \
+                  --charset "utf8" \
+                  --collation "en_US.utf8" \
+                  --output table || echo "Database may already exist"
+
           - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
             displayName: "Install Terraform (latest)"
             inputs:
