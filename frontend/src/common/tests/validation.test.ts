@@ -1070,12 +1070,14 @@ describe("XSS-Safe Validation Schemas", () => {
   });
 
   describe("safeHtmlSchema", () => {
-    it("should strip dangerous HTML while preserving safe content", () => {
+    it("should reject HTML input entirely", () => {
       const input =
         '<p>Hello</p><script>alert("xss")</script><strong>World</strong>';
       const result = safeHtmlSchema.safeParse(input);
-      expect(result.success).toBe(true);
-      expect(result.data).toBe("<p>Hello</p><strong>World</strong>");
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toContain(
+        "HTML tags are not allowed",
+      );
     });
 
     it("should handle content length limits", () => {
@@ -1083,7 +1085,7 @@ describe("XSS-Safe Validation Schemas", () => {
       expect(safeHtmlSchema.safeParse("a".repeat(10000)).success).toBe(true);
     });
 
-    it("should remove all dangerous elements", () => {
+    it("should reject all HTML content", () => {
       const dangerousHtml = `
         <script>alert('xss')</script>
         <iframe src="evil.com"></iframe>
@@ -1096,12 +1098,27 @@ describe("XSS-Safe Validation Schemas", () => {
       `;
 
       const result = safeHtmlSchema.safeParse(dangerousHtml);
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toContain(
+        "HTML tags are not allowed",
+      );
+    });
+
+    it("should reject HTML entities", () => {
+      const htmlWithEntities =
+        "Hello &lt;script&gt;alert('xss')&lt;/script&gt; World";
+      const result = safeHtmlSchema.safeParse(htmlWithEntities);
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toContain(
+        "HTML entities are not allowed",
+      );
+    });
+
+    it("should accept plain text", () => {
+      const plainText = "This is just plain text without any HTML";
+      const result = safeHtmlSchema.safeParse(plainText);
       expect(result.success).toBe(true);
-      expect(result.data).toContain("<p>Safe content</p>");
-      expect(result.data).not.toContain("<script>");
-      expect(result.data).not.toContain("<iframe>");
-      expect(result.data).not.toContain("onclick");
-      expect(result.data).not.toContain("javascript:");
+      expect(result.data).toBe(plainText);
     });
   });
 });

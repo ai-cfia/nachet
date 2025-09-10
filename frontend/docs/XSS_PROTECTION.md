@@ -4,14 +4,16 @@ This guide explains how to use the comprehensive XSS (Cross-Site Scripting) prot
 
 ## Overview
 
-XSS attacks occur when malicious scripts are injected into web pages and executed by users' browsers. Our validation system now includes comprehensive protection against these attacks.
+XSS attacks occur when malicious scripts are injected into web pages and executed by users' browsers. Our validation system now includes comprehensive protection against these attacks using a **security-first approach that rejects potentially dangerous input** rather than attempting complex sanitization.
 
 ## Key Principles
 
-1. **Escape Output, Not Input** - Store original data and escape when rendering
-2. **Validate All User Input** - Use strict validation schemas
-3. **Use Content Security Policy** - Add an extra layer of protection
-4. **Never Trust User Data** - Always sanitize before rendering
+1. **Reject Dangerous Input Early** - Block HTML and script content at input validation
+2. **Escape Output, Not Input** - Store original data and escape when rendering
+3. **Validate All User Input** - Use strict validation schemas that reject unsafe content
+4. **Use Content Security Policy** - Add an extra layer of protection
+5. **Never Trust User Data** - Always validate before processing or rendering
+6. **Fail-Safe Defaults** - When in doubt, reject the input
 
 ## Available Functions
 
@@ -49,22 +51,24 @@ const dataUrl = sanitizeUrl('data:text/html,<script>alert("xss")</script>'); // 
 
 ### Validation Schemas
 
-Use these schemas for form validation:
+Use these schemas for form validation - they now **reject HTML content** instead of sanitizing:
 
 ```typescript
 import { 
   safeTextSchema, 
   safeUserInputSchema, 
   safeUrlSchema,
-  safeImageLabelSchema 
+  safeImageLabelSchema,
+  safeHtmlSchema,
+  containsHtml
 } from './validation';
 
-// Validate user text input
+// Validate user text input (rejects HTML)
 try {
   const safeText = safeTextSchema.parse(userInput);
   // Use safeText - it's been validated and trimmed
 } catch (error) {
-  // Handle validation error
+  // Handle validation error - may include HTML rejection
 }
 
 // Validate URLs
@@ -74,6 +78,19 @@ try {
 } catch (error) {
   // Handle invalid/unsafe URL
 }
+
+// Check for HTML content before processing
+if (containsHtml(userInput)) {
+  throw new Error('HTML content is not allowed - please use plain text only');
+}
+
+// Safe HTML schema now rejects any HTML input
+try {
+  const plainText = safeHtmlSchema.parse(userContent);
+  // Only plain text is accepted
+} catch (error) {
+  // HTML content is rejected with clear error message
+}
 ```
 
 ## Usage Examples
@@ -81,30 +98,44 @@ try {
 ### React Components
 
 ```typescript
-import { escapeHtml, escapeHtmlAttribute } from './validation';
+import { escapeHtml, escapeHtmlAttribute, containsHtml } from './validation';
 
 // ✅ SAFE: Properly escaped user content
-const SafeUserContent = ({ userText, userTitle }) => (
-  <div 
-    title={escapeHtmlAttribute(userTitle)}
-    dangerouslySetInnerHTML={{ __html: escapeHtml(userText) }}
-  />
-);
+const SafeUserContent = ({ userText, userTitle }) => {
+  // Check for HTML before rendering
+  if (containsHtml(userText)) {
+    return <div className="error">HTML content is not allowed</div>;
+  }
+  
+  return (
+    <div 
+      title={escapeHtmlAttribute(userTitle)}
+      dangerouslySetInnerHTML={{ __html: escapeHtml(userText) }}
+    />
+  );
+};
 
-// ❌ DANGEROUS: Never do this
-const DangerousComponent = ({ userText }) => (
-  <div dangerouslySetInnerHTML={{ __html: userText }} />
+// ✅ BETTER: Reject HTML at input level
+const SecureUserContent = ({ userText, userTitle }) => (
+  <div title={escapeHtmlAttribute(userTitle)}>
+    {escapeHtml(userText)}
+  </div>
 );
 ```
 
 ### Form Handling
 
 ```typescript
-import { safeUserInputSchema } from './validation';
+import { safeUserInputSchema, containsHtml } from './validation';
 
 const handleFormSubmit = (formData) => {
   try {
-    // Validate all user inputs
+    // Pre-check for HTML content
+    if (containsHtml(formData.comment) || containsHtml(formData.title)) {
+      throw new Error('HTML content is not allowed in form inputs');
+    }
+    
+    // Validate all user inputs (will also reject HTML)
     const safeComment = safeUserInputSchema.parse(formData.comment);
     const safeTitle = safeUserInputSchema.parse(formData.title);
     
@@ -112,7 +143,7 @@ const handleFormSubmit = (formData) => {
     submitData({ comment: safeComment, title: safeTitle });
   } catch (error) {
     // Show validation error to user
-    setError('Please check your input for invalid characters');
+    setError(error.message || 'Please check your input for invalid characters');
   }
 };
 ```
@@ -178,32 +209,38 @@ Our protection handles these attack types:
 
 ### ✅ DO
 
-- Always escape user input when rendering HTML
+- Always validate user input before processing
+- Reject HTML content at input validation using `containsHtml()`
 - Use validation schemas for all user inputs
+- Escape output at the last possible moment before rendering
 - Set up Content Security Policy headers
 - Test your XSS protection regularly
-- Escape output at the last possible moment before rendering
+- Use plain text input fields when HTML is not needed
 
 ### ❌ DON'T
 
 - Never trust user input
-- Don't use `dangerouslySetInnerHTML` without escaping
-- Don't strip/sanitize input unless absolutely necessary
+- Don't attempt to sanitize HTML - reject it instead
+- Don't use `dangerouslySetInnerHTML` without proper validation
 - Don't rely only on client-side validation
 - Don't concatenate user input directly into HTML strings
+- Don't use complex sanitization libraries when simple rejection works
 
 ## Migration Guide
 
 ### Updating Existing Code
 
-1. **Replace basic sanitization**:
+1. **Replace HTML sanitization with rejection**:
 
    ```typescript
-   // Old
-   const clean = userInput.replace(/[<>]/g, '');
+   // Old approach (sanitization)
+   const clean = stripDangerousHtml(userInput);
    
-   // New
-   const safe = escapeHtml(userInput);
+   // New approach (rejection)
+   if (containsHtml(userInput)) {
+     throw new Error('HTML content is not allowed');
+   }
+   const safe = userInput;
    ```
 
 2. **Update form validation**:
@@ -212,44 +249,45 @@ Our protection handles these attack types:
    // Old
    const isValid = userInput.length > 0 && userInput.length < 100;
    
-   // New
+   // New - includes HTML rejection
    const validated = safeUserInputSchema.parse(userInput);
    ```
 
-3. **Secure URL handling**:
+3. **Secure content handling**:
+
+   ```typescript
+   // Old - attempted sanitization
+   const safeContent = stripDangerousHtml(userContent);
+   
+   // New - reject HTML entirely
+   if (containsHtml(userContent)) {
+     throw new Error('HTML content is not allowed - please use plain text');
+   }
+   const safeContent = userContent;
+   ```
+
+4. **Update error messages**:
 
    ```typescript
    // Old
-   const url = userInput.trim();
+   catch (error) {
+     setError('Invalid input');
+   }
    
-   // New
-   const url = sanitizeUrl(userInput);
-   if (!url) throw new Error('Invalid URL');
+   // New - more specific
+   catch (error) {
+     if (error.message.includes('HTML')) {
+       setError('HTML content is not allowed - please use plain text only');
+     } else {
+       setError('Invalid input characters detected');
+     }
+   }
    ```
-
-## Performance Notes
-
-- Escaping functions are lightweight and performant
-- Validation schemas cache compiled regexes
-- Use validation schemas for forms, escaping for output
-- Consider memoizing escaped content for frequently displayed data
-
-## Development vs Production
-
-The system includes development helpers:
-
-```typescript
-// Only logs in development
-warnUnsafeContent(userInput, 'user comment');
-
-// Test XSS protection in development
-if (process.env.NODE_ENV === 'development') {
-  testXSSProtection();
-}
-```
 
 ## Additional Resources
 
 - [OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
 - [Content Security Policy Guide](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP)
 - [HTML Escaping Best Practices](https://www.owasp.org/index.php/XSS_(Cross_Site_Scripting)_Prevention_Cheat_Sheet)
+- [Input Validation vs Sanitization](https://owasp.org/www-community/Injection_Theory) - Why rejection is often better than sanitization
+- [Fail-Safe Defaults Principle](https://owasp.org/www-pdf-archive/OWASP_Top_10_2010.pdf) - OWASP guidance on secure defaults

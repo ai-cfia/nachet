@@ -138,13 +138,21 @@ export const safeTextSchema = z
   .refine((val) => val.length > 0, "Text cannot be empty");
 
 /**
- * Safe HTML content that strips dangerous elements
+ * Safe HTML content that rejects any HTML input
  * Use sparingly - prefer plain text when possible
  */
 export const safeHtmlSchema = z
   .string()
   .max(10000, "Content is too long")
-  .transform((val) => stripDangerousHtml(val.trim()));
+  .transform((val) => val.trim())
+  .refine(
+    (val) => !/<[^>]*>/.test(val),
+    "HTML tags are not allowed - please use plain text only",
+  )
+  .refine(
+    (val) => !/&lt;|&gt;|&amp;|&quot;|&#x27;|&#x2F;|&#x60;|&#x3D;/.test(val),
+    "HTML entities are not allowed - please use plain text only",
+  );
 
 /**
  * Safe URL validation that prevents XSS via URLs
@@ -158,7 +166,7 @@ export const safeUrlSchema = z
 
 /**
  * Safe user input for display names, comments, etc.
- * Automatically trims and validates length
+ * Rejects any input containing HTML tags or entities
  */
 export const safeUserInputSchema = z
   .string()
@@ -167,12 +175,20 @@ export const safeUserInputSchema = z
   .transform((val) => val.trim())
   .refine((val) => val.length > 0, "Input cannot be empty after trimming")
   .refine(
+    (val) => !/<[^>]*>/.test(val),
+    "HTML tags are not allowed - please use plain text only",
+  )
+  .refine(
+    (val) => !/&lt;|&gt;|&amp;|&quot;|&#x27;|&#x2F;|&#x60;|&#x3D;/.test(val),
+    "HTML entities are not allowed - please use plain text only",
+  )
+  .refine(
     (val) => !/<script|javascript:|data:|vbscript:/i.test(val),
-    "Input contains potentially unsafe content",
+    "Potentially unsafe content detected",
   );
 
 /**
- * Enhanced image label with XSS protection
+ * Enhanced image label with XSS protection - rejects HTML
  */
 export const safeImageLabelSchema = z
   .string()
@@ -184,12 +200,20 @@ export const safeImageLabelSchema = z
   )
   .transform((val) => val.trim())
   .refine(
-    (val) => !/<|>|&lt;|&gt;|javascript:|data:/i.test(val),
-    "Image label contains unsafe characters",
+    (val) => !/<[^>]*>/.test(val),
+    "HTML tags are not allowed in image labels",
+  )
+  .refine(
+    (val) => !/&lt;|&gt;|&amp;|&quot;|&#x27;|&#x2F;|&#x60;|&#x3D;/.test(val),
+    "HTML entities are not allowed in image labels",
+  )
+  .refine(
+    (val) => !/javascript:|data:|vbscript:/i.test(val),
+    "Unsafe protocols are not allowed in image labels",
   );
 
 /**
- * Enhanced class label with XSS protection
+ * Enhanced class label with XSS protection - rejects HTML
  */
 export const safeClassLabelSchema = z
   .string()
@@ -201,8 +225,16 @@ export const safeClassLabelSchema = z
   )
   .transform((val) => val.trim())
   .refine(
-    (val) => !/<|>|&lt;|&gt;|javascript:|data:/i.test(val),
-    "Class label contains unsafe characters",
+    (val) => !/<[^>]*>/.test(val),
+    "HTML tags are not allowed in class labels",
+  )
+  .refine(
+    (val) => !/&lt;|&gt;|&amp;|&quot;|&#x27;|&#x2F;|&#x60;|&#x3D;/.test(val),
+    "HTML entities are not allowed in class labels",
+  )
+  .refine(
+    (val) => !/javascript:|data:|vbscript:/i.test(val),
+    "Unsafe protocols are not allowed in class labels",
   );
 
 // XSS Protection and Sanitization Helpers
@@ -291,7 +323,23 @@ export const sanitizeUrl = (url: string): string | null => {
 };
 
 /**
+ * Checks if a string contains HTML tags or entities
+ * Returns true if HTML is detected, false otherwise
+ */
+export const containsHtml = (str: string): boolean => {
+  // Check for HTML tags
+  if (/<[^>]*>/.test(str)) return true;
+
+  // Check for common HTML entities
+  const htmlEntities = /&lt;|&gt;|&amp;|&quot;|&#x27;|&#x2F;|&#x60;|&#x3D;/;
+  if (htmlEntities.test(str)) return true;
+
+  return false;
+};
+
+/**
  * Removes potentially dangerous HTML tags and attributes
+ * @deprecated Use containsHtml() to reject HTML input instead of sanitizing
  * Use sparingly - prefer escaping over stripping when possible
  */
 export const stripDangerousHtml = (str: string): string => {
