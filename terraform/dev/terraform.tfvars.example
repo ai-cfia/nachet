@@ -4,13 +4,10 @@ environment         = "dev"
 location            = "canadacentral"
 resource_group_name = "nachet-dev-rg"
 
-# Network Configuration (Required - VNet must exist, subnets will be created)
-vnet_name                  = "my-vnet"
-vnet_resource_group_name   = "network-rg"
-container_apps_subnet_cidr = "10.0.1.0/26"  # 59 usable IPs for Container Apps
-postgresql_subnet_cidr     = "10.0.2.0/28"  # 11 usable IPs for PostgreSQL
-# storage_subnet_cidr      = "10.0.3.0/29"  # Optional: 3 usable IPs for Storage private endpoints
-enable_public_access       = true   # Container Apps accessible directly (with IP restrictions)
+# Network Configuration (Required - Only for Container Apps)
+vnet_name                = "my-vnet"
+vnet_resource_group_name = "network-rg"
+enable_public_access     = true   # Container Apps accessible directly (with IP restrictions)
 
 # Security - Only your IP address can access the applications
 allowed_ip_addresses = [
@@ -48,12 +45,14 @@ grafana_admin_password = "ChangeThisSecurePassword123!"  # REQUIRED: Change this
 backend_image    = "ghcr.io/ai-cfia/nachet-backend:dev"
 triton_image     = "nvcr.io/nvidia/tritonserver:24.10-py3"
 
-# PostgreSQL Configuration
-postgresql_admin_username = "nachetadmin"
-postgresql_admin_password = "YourDevPasswordHere123!"
-postgresql_sku_name       = "B_Standard_B1ms"  # 1 vCPU, 2GB RAM - Cheapest
-postgresql_storage_mb     = 32768              # 32GB - Minimum
-postgresql_version        = "16"
+# PostgreSQL Configuration (Public access - no VNet integration)
+postgresql_admin_username     = "nachetadmin"
+postgresql_admin_password     = "YourDevPasswordHere123!"
+postgresql_sku_name           = "B_Standard_B1ms"  # 1 vCPU, 2GB RAM - Cheapest
+postgresql_storage_mb         = 32768              # 32GB - Minimum
+postgresql_version            = "16"
+public_network_access_enabled = true               # Enable public access
+database_url                  = "postgresql://nachetadmin:YourDevPasswordHere123!@nachet-psql-dev.postgres.database.azure.com:5432/nachet_db"
 
 # Container Apps Resources (Minimum configurations for cost optimization)
 container_app_cpu    = 0.25   # Minimum CPU

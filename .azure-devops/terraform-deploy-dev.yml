@@ -65,7 +65,6 @@ stages:
                     --route-table "$ROUTE_TABLE_ID" \
                     --network-security-group "$NSG_ID" \
                     --service-endpoints Microsoft.Storage \
-                    --delegations Microsoft.DBforPostgreSQL/flexibleServers \
                     --output table
                     
                   if [ $? -eq 0 ]; then

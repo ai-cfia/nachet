@@ -36,20 +36,15 @@ resource "azurerm_container_app_environment" "nachet" {
   }
 }
 
-# Created manually
+# PostgreSQL Database
 module "db" {
   source = "../modules/db"
   
-  project_name             = var.project_name
-  environment              = var.environment
-  location                 = var.location
-  resource_group_name      = var.resource_group_name
-  vnet_resource_group_name = var.vnet_resource_group_name
-  tags                     = var.tags
-
-  # Network
-  vnet_name                            = var.vnet_name
-  postgresql_subnet_name               = var.postgresql_subnet_name
+  project_name        = var.project_name
+  environment         = var.environment
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  tags                = var.tags
 
   # PostgreSQL Configuration
   postgresql_admin_username = var.postgresql_admin_username

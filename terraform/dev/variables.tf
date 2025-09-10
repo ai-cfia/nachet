@@ -321,21 +321,7 @@ variable "public_network_access_enabled" {
   type = bool
 }
 
-variable "postgresql_subnet_name" {
-  description = "Name of the existing PostgreSQL subnet (created by pipeline)"
-  type        = string
-  default     = "nachet-postgresql-subnet-dev"
-}
-
-variable "private_dns_zone_name" {
-  description = "Name of the Private DNS Zone for PostgreSQL (required for VNet integration)"
-  type        = string
-}
-
-variable "private_dns_zone_resource_group_name" {
-  description = "Name of the Private DNS Zone rg"
-  type        = string
-}
+# PostgreSQL subnet and private DNS zone variables removed - using public access
 
 variable "postgresql_admin_username" {
   description = "PostgreSQL admin username"
@@ -365,4 +351,11 @@ variable "postgresql_version" {
   description = "PostgreSQL version"
   type        = string
   default     = "16"
+}
+
+# Database connection string (used by application modules)
+variable "database_url" {
+  description = "Database connection URL"
+  type        = string
+  sensitive   = true
 }

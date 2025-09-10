@@ -1,14 +1,3 @@
-data "azurerm_virtual_network" "existing" {
-  name                = var.vnet_name
-  resource_group_name = var.vnet_resource_group_name
-}
-
-data "azurerm_subnet" "postgresql" {
-  name                 = var.postgresql_subnet_name
-  virtual_network_name = var.vnet_name
-  resource_group_name  = var.vnet_resource_group_name
-}
-
 # PostgreSQL Flexible Server
 resource "azurerm_postgresql_flexible_server" "nachet" {
   name                         = "${var.project_name}-psql-${var.environment}"
@@ -25,7 +14,6 @@ resource "azurerm_postgresql_flexible_server" "nachet" {
   geo_redundant_backup_enabled = false
   auto_grow_enabled            = false
 
-  delegated_subnet_id           = data.azurerm_subnet.postgresql.id
   public_network_access_enabled = var.public_network_access_enabled
 
   authentication {
