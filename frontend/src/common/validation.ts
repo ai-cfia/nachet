@@ -441,11 +441,14 @@ export const stripDangerousHtml = (str: string): string => {
     });
 
     // Remove event handlers and dangerous URLs
-    // result = result
-    //   .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "") // Remove event handlers
-    //   .replace(/javascript\s*:/gi, "") // Remove javascript: URLs
-    //   .replace(/data\s*:/gi, "") // Remove data: URLs
-    //   .replace(/vbscript\s*:/gi, ""); // Remove vbscript: URLs
+    result = result
+      // Remove event handlers - more comprehensive pattern to avoid partial matches
+      .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, "") // Remove complete event handlers
+      .replace(/\bon\w+\s*=\s*[^"'\s>][^\s>]*/gi, "") // Remove unquoted event handlers
+      .replace(/\bon\w+(?=[\s>=]|$)/gi, "") // Remove any remaining partial "on*" attributes
+      .replace(/javascript\s*:/gi, "") // Remove javascript: URLs
+      .replace(/data\s*:/gi, "") // Remove data: URLs
+      .replace(/vbscript\s*:/gi, ""); // Remove vbscript: URLs
 
     // If no changes were made, we're done
     if (result === beforePass) {

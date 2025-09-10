@@ -509,9 +509,9 @@ describe("Sanitization Helpers", () => {
   describe("sanitizeString", () => {
     it("should remove angle brackets", () => {
       expect(sanitizeString("<script>alert('xss')</script>")).toBe(
-        "scriptalert('xss')script",
+        "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;&#x2F;script&gt;",
       );
-      expect(sanitizeString("test < test >")).toBe("test  test");
+      expect(sanitizeString("test < test >")).toBe("test &lt; test &gt;");
     });
 
     it("should trim whitespace", () => {
@@ -628,7 +628,7 @@ describe("Edge Cases", () => {
 
   it("should handle special characters in strings", () => {
     expect(sanitizeString("test<script>alert('xss')</script>test")).toBe(
-      "testscriptalert('xss')scripttest",
+      "test&lt;script&gt;alert(&#x27;xss&#x27;)&lt;&#x2F;script&gt;test",
     );
     expect(sanitizeFileName("test<file>name.png")).toBe("testfilename.png");
   });
