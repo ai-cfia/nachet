@@ -12,7 +12,7 @@ data "azurerm_subnet" "container_apps" {
 resource "azurerm_log_analytics_workspace" "nachet" {
   name                = "${var.project_name}-law-${var.environment}"
   location            = var.location
-  resource_group_name = var.rg_nachet
+  resource_group_name = var.resource_group_name
   sku                 = "PerGB2018"
   retention_in_days   = 30
   tags                = var.tags
@@ -21,7 +21,7 @@ resource "azurerm_log_analytics_workspace" "nachet" {
 resource "azurerm_container_app_environment" "nachet" {
   name                           = "${var.project_name}-cae-${var.environment}"
   location                       = var.location
-  resource_group_name            = var.rg_nachet
+  resource_group_name            = var.resource_group_name
   log_analytics_workspace_id     = azurerm_log_analytics_workspace.nachet.id
   infrastructure_subnet_id       = data.azurerm_subnet.container_apps.id
   internal_load_balancer_enabled = true
@@ -36,40 +36,38 @@ resource "azurerm_container_app_environment" "nachet" {
   }
 }
 
-# Created manually
-# module "db" {
-#   source = "../modules/db"
+module "db" {
+  source = "../modules/db"
+  project_name             = var.project_name
+  environment              = var.environment
+  location                 = var.location
+  resource_group_name      = var.resource_group_name
+  vnet_resource_group_name = var.vnet_resource_group_name
+  tags                     = var.tags
 
-#   project_name             = var.project_name
-#   environment              = var.environment
-#   location                 = var.location
-#   resource_group_name      = var.rg_nachet
-#   vnet_resource_group_name = var.vnet_resource_group_name
-#   tags                     = var.tags
-
-#   # Network
-#   vnet_name                            = var.vnet_name
-#   postgresql_subnet_name               = var.postgresql_subnet_name
-#   private_dns_zone_name                = var.private_dns_zone_name
-#   private_dns_zone_resource_group_name = var.rg_nachet
-
-#   # PostgreSQL Configuration
-#   postgresql_admin_username = var.postgresql_admin_username
-#   postgresql_admin_password = var.postgresql_admin_password
-#   postgresql_sku_name       = var.postgresql_sku_name
-#   postgresql_storage_mb     = var.postgresql_storage_mb
-#   postgresql_version        = var.postgresql_version
-# }
-
-module "pgadmin" {
-  source = "../modules/pgadmin"
-  project_name                 = var.project_name
-  environment                  = var.environment
-  resource_group_name          = var.rg_nachet
-  container_app_environment_id = azurerm_container_app_environment.nachet.id
-  pgadmin_password             = var.pgadmin_password
-  tags                         = var.tags
+  # Network
+  vnet_name                            = var.vnet_name
+  postgresql_subnet_name               = var.postgresql_subnet_name
+  private_dns_zone_name                = var.private_dns_zone_name
+  private_dns_zone_resource_group_name = var.private_dns_zone_resource_group_name
+  
+  # PostgreSQL Configuration
+  postgresql_admin_username = var.postgresql_admin_username
+  postgresql_admin_password = var.postgresql_admin_password
+  postgresql_sku_name       = var.postgresql_sku_name
+  postgresql_storage_mb     = var.postgresql_storage_mb
+  postgresql_version        = var.postgresql_version
 }
+
+# module "pgadmin" {
+#   source = "../modules/pgadmin"
+#   project_name                 = var.project_name
+#   environment                  = var.environment
+#   resource_group_name          = var.rg_nachet
+#   container_app_environment_id = azurerm_container_app_environment.nachet.id
+#   pgadmin_password             = var.pgadmin_password
+#   tags                         = var.tags
+# }
 
 # Module 3: Nachet Application (Storage and Backend) - Commented out for now
 # module "nachet" {

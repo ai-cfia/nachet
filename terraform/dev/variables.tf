@@ -16,16 +16,10 @@ variable "location" {
   default     = "canadacentral"
 }
 
-variable "rg_nachet" {
-  description = "Nachet resource group"
-  type = string
-  default = "rg-nachet"
-}
-
 variable "resource_group_name" {
-  description = "Resource group name"
+  description = "Main resource group name"
   type        = string
-  default     = "nachet-dev-rg"
+  default     = "rg-nachet"
 }
 
 variable "tags" {
@@ -315,8 +309,55 @@ variable "session_secret" {
   sensitive   = true
 }
 
-variable "pgadmin_password" {
-  description = "PgAdmin admin password"
+# variable "pgadmin_password" {
+#   description = "PgAdmin admin password"
+#   type        = string
+#   sensitive   = true
+# }
+
+# PostgreSQL Configuration
+variable "postgresql_subnet_name" {
+  description = "Name of the existing PostgreSQL subnet (created by pipeline)"
+  type        = string
+  default     = "nachet-postgresql-subnet-dev"
+}
+
+variable "private_dns_zone_name" {
+  description = "Name of the Private DNS Zone for PostgreSQL (required for VNet integration)"
+  type        = string
+}
+
+variable "private_dns_zone_resource_group_name" {
+  description = "Name of the Private DNS Zone rg"
+  type        = string
+}
+
+variable "postgresql_admin_username" {
+  description = "PostgreSQL admin username"
   type        = string
   sensitive   = true
+}
+
+variable "postgresql_admin_password" {
+  description = "PostgreSQL admin password"
+  type        = string
+  sensitive   = true
+}
+
+variable "postgresql_sku_name" {
+  description = "SKU for PostgreSQL flexible server"
+  type        = string
+  default     = "Standard_B1ms"
+}
+
+variable "postgresql_storage_mb" {
+  description = "Storage size in MB for PostgreSQL"
+  type        = number
+  default     = 32768
+}
+
+variable "postgresql_version" {
+  description = "PostgreSQL version"
+  type        = string
+  default     = "16"
 }
