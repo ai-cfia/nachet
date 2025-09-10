@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Overlay, InfoContainer } from "./signupElements";
 import {
   Box,
@@ -14,6 +14,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
 import Cookies from "js-cookie";
+import { emailSchema, passwordSchema, booleanSchema } from "@common/validation";
 
 interface params {
   setSignUpOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -21,15 +22,76 @@ interface params {
 }
 
 const SignUp: React.FC<params> = (props) => {
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [rememberMe, setRememberMe] = useState<boolean>(false);
+  const [emailError, setEmailError] = useState<string>("");
+  const [passwordError, setPasswordError] = useState<string>("");
+
   const handleClose = (): void => {
     props.setSignUpOpen(false);
+    // Clear form and errors
+    setEmail("");
+    setPassword("");
+    setRememberMe(false);
+    setEmailError("");
+    setPasswordError("");
   };
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    Cookies.set("user-email", String(data.get("email") ?? ""), { expires: 30 });
+
+    // Validate email
+    const emailValidation = emailSchema.safeParse(email);
+    if (!emailValidation.success) {
+      setEmailError(emailValidation.error.issues[0].message);
+      return;
+    }
+
+    // Validate password
+    const passwordValidation = passwordSchema.safeParse(password);
+    if (!passwordValidation.success) {
+      setPasswordError(passwordValidation.error.issues[0].message);
+      return;
+    }
+
+    // Validate remember me checkbox
+    const rememberValidation = booleanSchema.safeParse(rememberMe);
+    if (!rememberValidation.success) {
+      // This shouldn't happen for a boolean, but just in case
+      return;
+    }
+
+    // Clear errors
+    setEmailError("");
+    setPasswordError("");
+
+    // Store sanitized email
+    Cookies.set("user-email", emailValidation.data, { expires: 30 });
     props.onSignIn();
     handleClose();
+  };
+
+  const handleEmailChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): void => {
+    const value = event.target.value;
+    setEmail(value);
+    if (emailError) setEmailError("");
+  };
+
+  const handlePasswordChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): void => {
+    const value = event.target.value;
+    setPassword(value);
+    if (passwordError) setPasswordError("");
+  };
+
+  const handleRememberMeChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): void => {
+    setRememberMe(event.target.checked);
   };
 
   return (
@@ -79,6 +141,10 @@ const SignUp: React.FC<params> = (props) => {
               autoComplete="email"
               autoFocus
               size="small"
+              value={email}
+              onChange={handleEmailChange}
+              error={!!emailError}
+              helperText={emailError}
             />
             <TextField
               margin="normal"
@@ -90,6 +156,10 @@ const SignUp: React.FC<params> = (props) => {
               id="password"
               autoComplete="current-password"
               size="small"
+              value={password}
+              onChange={handlePasswordChange}
+              error={!!passwordError}
+              helperText={passwordError}
             />
             <FormControlLabel
               control={
@@ -97,6 +167,8 @@ const SignUp: React.FC<params> = (props) => {
                   value="remember"
                   color="primary"
                   size="small"
+                  checked={rememberMe}
+                  onChange={handleRememberMeChange}
                   sx={{ fontSize: "0.5vh" }}
                 />
               }

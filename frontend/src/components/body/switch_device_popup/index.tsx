@@ -1,9 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import { Overlay, InfoContainer } from "./indexElements";
-import { Box, CardHeader, IconButton, Select, MenuItem } from "@mui/material";
+import {
+  Box,
+  CardHeader,
+  IconButton,
+  Select,
+  MenuItem,
+  Typography,
+} from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material/Select";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
+import { deviceIdSchema } from "@common/validation";
 
 interface params {
   setSwitchDeviceOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -13,15 +21,29 @@ interface params {
 }
 
 const SwitchDevice: React.FC<params> = (props) => {
+  const [deviceError, setDeviceError] = useState<string>("");
+
   const handleClose = (): void => {
     props.setSwitchDeviceOpen(false);
+    setDeviceError("");
   };
 
   const handleSwitch = (event: SelectChangeEvent): void => {
+    const selectedDeviceId = event.target.value;
+
+    // Validate device ID
+    const validation = deviceIdSchema.safeParse(selectedDeviceId);
+    if (!validation.success) {
+      setDeviceError(validation.error.issues[0].message);
+      return;
+    }
+
+    // Clear error and proceed
+    setDeviceError("");
     if (props.setDeviceId === undefined) {
       return;
     }
-    props.setDeviceId(event.target.value);
+    props.setDeviceId(selectedDeviceId);
     props.setSwitchDeviceOpen(false);
   };
 
@@ -73,6 +95,15 @@ const SwitchDevice: React.FC<params> = (props) => {
               </MenuItem>
             ))}
           </Select>
+          {deviceError && (
+            <Typography
+              color="error"
+              variant="caption"
+              sx={{ marginTop: "0.5vh" }}
+            >
+              {deviceError}
+            </Typography>
+          )}
         </InfoContainer>
       </Box>
     </Overlay>

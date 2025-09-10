@@ -57,7 +57,8 @@ if [[ "$(basename "$PROJECT_DIR")" == "frontend" ]]; then
       nvm use $NODE_VERSION && \
       npm install -g npm@$NPM_VERSION && \
       npm install && \
-      npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo '' >> sbom.json"
+      npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo '' >> sbom.json && \
+      chown -R 1000:1000 node_modules"
 else
     echo "Detected Python/uv project"
     # Generate SBOM for Python/uv project

@@ -14,6 +14,7 @@ import {
   ListSubheader,
   Stack,
   TextField,
+  Typography,
   createFilterOptions,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
@@ -35,6 +36,13 @@ import {
   requestClassList,
 } from "../../../common/api";
 import { BatchUploadMetadata, ClassData } from "../../../common/types";
+import {
+  folderNameSchema,
+  seedCountSchema,
+  zoomLevelSchema,
+  fileListSchema,
+  classLabelSchema,
+} from "@common/validation";
 
 export const Overlay = styled.div`
   position: fixed;
@@ -84,6 +92,13 @@ const BatchUploadPopup = (props: params) => {
   const [zoom, setZoom] = useState<number>(0);
   const [seedCount, setSeedCount] = useState<number>(0);
   const [sessionId, setSessionId] = useState<string>("");
+
+  // Validation error states
+  const [folderNameError, setFolderNameError] = useState<string>("");
+  const [seedCountError, setSeedCountError] = useState<string>("");
+  const [zoomError, setZoomError] = useState<string>("");
+  const [filesError, setFilesError] = useState<string>("");
+  const [classError, setClassError] = useState<string>("");
 
   const [classList, setClassList] = useState<ClassData[]>([]);
 
@@ -142,13 +157,20 @@ const BatchUploadPopup = (props: params) => {
   };
 
   const handleFilesSelected = (event: ChangeEvent<HTMLInputElement>): void => {
-    // TODO validation
-    const files = event.target.files;
-    if (files !== null) {
-      console.log(files);
-      setFiles(files);
-      setFileCount(files.length);
-      setFileStatus(new Array(files.length).fill(false));
+    const selectedFiles = event.target.files;
+    if (selectedFiles !== null) {
+      // Validate files
+      const validationResult = fileListSchema.safeParse(selectedFiles);
+      if (!validationResult.success) {
+        setFilesError(validationResult.error.issues[0].message);
+        return;
+      }
+
+      // Clear any previous errors
+      setFilesError("");
+      setFiles(selectedFiles);
+      setFileCount(selectedFiles.length);
+      setFileStatus(new Array(selectedFiles.length).fill(false));
     }
   };
 
@@ -171,24 +193,62 @@ const BatchUploadPopup = (props: params) => {
   };
 
   const handleUpload = (): void => {
-    resetUpload();
-    if (selectedClass == null) {
-      setUploadError("Please select a class");
-      return;
-    }
-    if (seedCount < 1) {
-      setUploadError("Please enter a seed count");
-      return;
-    }
-    if (zoom < 1) {
-      setUploadError("Please enter a zoom level");
-      return;
-    }
-    if (files == null || files.length === 0) {
-      setUploadError("Please select an image");
+    // Clear previous errors
+    setUploadError(null);
+    setFolderNameError("");
+    setSeedCountError("");
+    setZoomError("");
+    setFilesError("");
+    setClassError("");
+
+    // Validate folder name
+    const folderValidation = folderNameSchema.safeParse(folderName);
+    if (!folderValidation.success) {
+      setFolderNameError(folderValidation.error.issues[0].message);
       return;
     }
 
+    // Validate seed count
+    const seedCountValidation = seedCountSchema.safeParse(seedCount);
+    if (!seedCountValidation.success) {
+      setSeedCountError(seedCountValidation.error.issues[0].message);
+      return;
+    }
+
+    // Validate zoom level
+    const zoomValidation = zoomLevelSchema.safeParse(zoom);
+    if (!zoomValidation.success) {
+      setZoomError(zoomValidation.error.issues[0].message);
+      return;
+    }
+
+    // Validate files
+    if (files == null) {
+      setFilesError("Please select files to upload");
+      return;
+    }
+    const filesValidation = fileListSchema.safeParse(files);
+    if (!filesValidation.success) {
+      setFilesError(filesValidation.error.issues[0].message);
+      return;
+    }
+
+    // Validate class selection
+    if (selectedClass == null) {
+      setClassError("Please select a class");
+      return;
+    }
+
+    // Validate class label if it's a custom class
+    if (selectedClass.label && selectedClass.id === -1) {
+      const classValidation = classLabelSchema.safeParse(selectedClass.label);
+      if (!classValidation.success) {
+        setClassError(classValidation.error.issues[0].message);
+        return;
+      }
+    }
+
+    resetUpload();
     setUploading(true);
 
     batchUploadInit(backendUrl, uuid, folderName, containerName, fileCount)
@@ -392,7 +452,10 @@ const BatchUploadPopup = (props: params) => {
               label="Folder Name"
               variant="outlined"
               value={folderName}
-              onChange={(e) => setFolderName(e.target.value)}
+              onChange={(e) => {
+                setFolderName(e.target.value);
+                if (folderNameError) setFolderNameError("");
+              }}
               sx={{
                 marginTop: "10px",
                 width: "100%",
@@ -402,6 +465,8 @@ const BatchUploadPopup = (props: params) => {
                 max: 100,
                 style: { textAlign: "center" },
               }}
+              error={!!folderNameError}
+              helperText={folderNameError}
               disabled={uploading}
             />
 
@@ -411,12 +476,16 @@ const BatchUploadPopup = (props: params) => {
                 <TextField
                   {...params}
                   label="Class"
-                  error={selectedClass == null}
+                  error={!!classError}
+                  helperText={classError}
                 />
               )}
               options={classList}
               value={selectedClass}
-              onChange={handleClassChange}
+              onChange={(event, newValue) => {
+                handleClassChange(event, newValue);
+                if (classError) setClassError("");
+              }}
               isOptionEqualToValue={(option, value) =>
                 option.label === value.label
               }
@@ -440,7 +509,10 @@ const BatchUploadPopup = (props: params) => {
               variant="outlined"
               type="number"
               value={seedCount > 0 ? seedCount : ""}
-              onChange={(e) => setSeedCount(parseInt(e.target.value))}
+              onChange={(e) => {
+                setSeedCount(parseInt(e.target.value) || 0);
+                if (seedCountError) setSeedCountError("");
+              }}
               sx={{
                 marginTop: "10px",
                 width: "100%",
@@ -450,7 +522,8 @@ const BatchUploadPopup = (props: params) => {
                 max: 100,
                 style: { textAlign: "center" },
               }}
-              error={seedCount < 1}
+              error={!!seedCountError}
+              helperText={seedCountError}
               disabled={uploading}
             />
             <TextField
@@ -459,7 +532,10 @@ const BatchUploadPopup = (props: params) => {
               variant="outlined"
               type="number"
               value={zoom > 0 ? zoom : ""}
-              onChange={(e) => setZoom(parseInt(e.target.value))}
+              onChange={(e) => {
+                setZoom(parseInt(e.target.value) || 0);
+                if (zoomError) setZoomError("");
+              }}
               sx={{
                 marginTop: "10px",
                 width: "100%",
@@ -469,7 +545,8 @@ const BatchUploadPopup = (props: params) => {
                 max: 100,
                 style: { textAlign: "center" },
               }}
-              error={zoom < 1}
+              error={!!zoomError}
+              helperText={zoomError}
               disabled={uploading}
             />
 
@@ -490,6 +567,15 @@ const BatchUploadPopup = (props: params) => {
                 hidden
               />
             </Button>
+            {filesError && (
+              <Typography
+                variant="caption"
+                color="error"
+                sx={{ marginTop: "5px", fontSize: "0.75rem" }}
+              >
+                {filesError}
+              </Typography>
+            )}
             {/* scrollable list of file names */}
             {files && fileCount > 0 && (
               <Box
