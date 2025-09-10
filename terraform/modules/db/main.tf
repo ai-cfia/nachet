@@ -1,10 +1,3 @@
-# Resource Group for Database
-resource "azurerm_resource_group" "db" {
-  name     = var.resource_group_name
-  location = var.location
-  tags     = var.tags
-}
-
 data "azurerm_virtual_network" "existing" {
   name                = var.vnet_name
   resource_group_name = var.vnet_resource_group_name
@@ -19,7 +12,7 @@ data "azurerm_subnet" "postgresql" {
 # PostgreSQL Flexible Server
 resource "azurerm_postgresql_flexible_server" "nachet" {
   name                         = "${var.project_name}-psql-${var.environment}"
-  resource_group_name          = azurerm_resource_group.db.name
+  resource_group_name          = var.resource_group_name
   location                     = azurerm_resource_group.db.location
   version                      = var.postgresql_version
   administrator_login          = var.postgresql_admin_username
