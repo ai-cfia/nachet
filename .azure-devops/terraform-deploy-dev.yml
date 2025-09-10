@@ -152,20 +152,20 @@ stages:
                   echo "Creating PostgreSQL Flexible Server..."
                   az postgres flexible-server create \
                     --resource-group "$RESOURCE_GROUP" \
-                    --location "$LOCATION" \
+                    --location "canadacentral" \
                     --name "$SERVER_NAME" \
                     --admin-user "$ADMIN_USERNAME" \
                     --admin-password "$ADMIN_PASSWORD" \
                     --version "17" \
                     --sku-name "Standard_B1ms" \
                     --storage-size 32 \
-                    --storage-tier "P4" \
+                    --storage-type "Premium_LRS" \
                     --tier "Burstable" \
                     --backup-retention 7 \
                     --zone 1 \
                     --vnet "$VNET_NAME" \
                     --subnet "$SUBNET_NAME" \
-                    --vnet-resource-group "$VNET_RG" \
+                    --public-access Disabled \
                     --yes
                     
                   if [ $? -eq 0 ]; then
