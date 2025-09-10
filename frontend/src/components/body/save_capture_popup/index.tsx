@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Overlay, ButtonWrap, InfoContainer } from "./indexElements";
 import {
   Box,
@@ -16,7 +16,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
 import { saveAs } from "file-saver";
 import JSZip from "jszip";
-import { Images } from "../../../common/types";
+import { Images } from "@common/types";
+import { imageLabelSchema, imageFormatSchema } from "@common/validation";
 
 interface params {
   imageSrc: string;
@@ -31,7 +32,21 @@ interface params {
 }
 
 const SavePopup: React.FC<params> = (props) => {
+  const [labelError, setLabelError] = useState<string>("");
+
   const saveImage = (): void => {
+    // Validate image label if saving individual image
+    if (props.saveIndividualImage === "0" && props.imageLabel) {
+      const labelValidation = imageLabelSchema.safeParse(props.imageLabel);
+      if (!labelValidation.success) {
+        setLabelError(labelValidation.error.issues[0].message);
+        return;
+      }
+    }
+
+    // Clear any previous errors
+    setLabelError("");
+
     // saves image to local storage or compresses the entire cache into a zip file which is then saved to local storage
     (async () => {
       // save individual image
@@ -71,7 +86,8 @@ const SavePopup: React.FC<params> = (props) => {
         props.setSaveOpen?.(false);
       }
     })().catch((error) => {
-      alert(error);
+      console.error("Save error:", error);
+      alert("Error saving image: " + error);
     });
   };
 
@@ -94,6 +110,8 @@ const SavePopup: React.FC<params> = (props) => {
       return;
     }
     props.setImageLabel(event.target.value);
+    // Clear validation error when user types
+    if (labelError) setLabelError("");
   };
 
   const handleToggle = (): void => {
@@ -105,6 +123,32 @@ const SavePopup: React.FC<params> = (props) => {
     } else {
       props.setSaveIndividualImage("0");
     }
+  };
+
+  const validateFields = (): boolean => {
+    let isValid = true;
+
+    // Validate image label
+    if (props.saveIndividualImage === "0") {
+      try {
+        imageLabelSchema.parse(props.imageLabel);
+        setLabelError("");
+      } catch (error) {
+        setLabelError("Capture name must be at least 3 characters long");
+        isValid = false;
+        console.error("Label validation error:", error);
+      }
+    }
+
+    // Validate image format
+    try {
+      imageFormatSchema.parse(props.imageFormat);
+    } catch (error) {
+      isValid = false;
+      console.error("Format validation error:", error);
+    }
+
+    return isValid;
   };
 
   return (
@@ -179,6 +223,8 @@ const SavePopup: React.FC<params> = (props) => {
                   size="small"
                   fullWidth
                   InputLabelProps={{ shrink: true }}
+                  error={!!labelError}
+                  helperText={labelError}
                   sx={{
                     height: "2vh",
                     marginBottom: "2vh",
@@ -232,7 +278,11 @@ const SavePopup: React.FC<params> = (props) => {
                   border: `0.01vh solid LightGrey`,
                 },
               }}
-              onClick={saveImage}
+              onClick={() => {
+                if (validateFields()) {
+                  saveImage();
+                }
+              }}
             >
               SAVE
             </Button>

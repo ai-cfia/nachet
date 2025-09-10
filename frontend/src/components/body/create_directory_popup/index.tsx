@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { Overlay, InfoContainer, ButtonWrap } from "./indexElements";
 import { Box, CardHeader, IconButton, TextField, Button } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
 import { useBackendUrl } from "../../../hooks";
-import { createAzureStorageDir } from "../../../common/api";
+import { createAzureStorageDir } from "@common/api";
+import { directoryNameSchema } from "@common/validation";
 
 interface params {
   setCreateDirectoryOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -25,10 +26,20 @@ const CreateFolder: React.FC<params> = (props) => {
     uuid,
   } = props;
   const backendURL = useBackendUrl();
+  const [validationError, setValidationError] = useState<string>("");
 
   const handleCreateDirectory = (): void => {
-    // makes a post request to the backend to create a new directory in azure storage
+    // Validate directory name
+    const validationResult = directoryNameSchema.safeParse(curDir);
+    if (!validationResult.success) {
+      setValidationError(validationResult.error.issues[0].message);
+      return;
+    }
 
+    // Clear any previous validation errors
+    setValidationError("");
+
+    // makes a post request to the backend to create a new directory in azure storage
     createAzureStorageDir(backendURL, uuid, curDir)
       .then(() => {
         setCreateDirectoryOpen(false);
@@ -44,6 +55,19 @@ const CreateFolder: React.FC<params> = (props) => {
   const handleClose = (): void => {
     setCreateDirectoryOpen(false);
     handeDirChange("General");
+    setValidationError("");
+  };
+
+  const handleInputChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): void => {
+    const value = event.target.value;
+    handeDirChange(value);
+
+    // Clear validation error when user starts typing
+    if (validationError) {
+      setValidationError("");
+    }
   };
 
   return (
@@ -83,10 +107,10 @@ const CreateFolder: React.FC<params> = (props) => {
             variant="outlined"
             fullWidth
             InputLabelProps={{ shrink: true }}
-            onChange={(event) => {
-              handeDirChange(event.target.value);
-            }}
+            onChange={handleInputChange}
             value={curDir}
+            error={!!validationError}
+            helperText={validationError}
             sx={{ fontSize: "1.2vh" }}
             size="small"
           />
