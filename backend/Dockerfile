@@ -15,4 +15,4 @@ COPY . ./
 
 RUN uv sync --frozen
 
-CMD uv run hypercorn -b :$BACKEND_DEV_PORT app:app
+CMD ["sh", "-c", "uv run hypercorn -b :$BACKEND_DEV_PORT app/main:app"]

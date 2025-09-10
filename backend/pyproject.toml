@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nachet-backend"
-version = "1.0.4"
+version = "1.10.0"
 description = "Canadian government (CFIA) AI-powered seed identification system backend"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
+    { name = "Joseffus Santos", email = "Joseffus.Santos@inspection.gc.ca" },
     { name = "Francois Werbrouck", email = "francois.werbrouck@inspection.gc.ca" },
-    { name = "Sylvanie You", email = "Sylvanie.You@inspection.gc.ca" },
-    { name = "Joseffus Santos", email = "Joseffus.Santos@inspection.gc.ca" }
+    { name = "Sylvanie You", email = "Sylvanie.You@inspection.gc.ca" }
 ]
 keywords = ["nachet", "ai", "seed", "identification", "cfia"]
 classifiers = [
@@ -28,23 +28,24 @@ classifiers = [
 ]
 
 dependencies = [
-    "nachet-datastore @ git+https://github.com/ai-cfia/nachet.git@nachet-datastore-v1.1.11#subdirectory=datastore",
-    # "nachet-datastore @ file:///home/path/to/nachet/datastore",
     "numpy==1.26.4",
-    "azure-storage-blob",
-    "azure-identity",
-    "flask==3.0.3",
-    "quart==0.19.6",
-    "quart-cors",
-    "python-dotenv",
-    "hypercorn",
+    "azure-storage-blob==12.26.0",
+    "azure-identity==1.24.0",
+    "python-dotenv==1.1.1",
+    "hypercorn==0.17.3",
     "Pillow==10.3.0",
-    "cryptography",
-    "pyyaml",
-    "pydantic==2.7.1",
-    "pydantic-core==2.18.2",
-    "python-magic",
-    "PyJWT",
+    "cryptography==45.0.7",
+    "pyyaml==6.0.2",
+    "pydantic==2.11.7",
+    "pydantic-core==2.33.2",
+    "python-magic==0.4.27",
+    "PyJWT==2.10.1",
+    "fastapi[standard-no-fastapi-cloud-cli]>=0.116.1",
+    "beartype>=0.21.0",
+    "psycopg>=3.2.10",
+    "psycopg-pool>=3.2.6",
+    "pydantic-settings>=2.10.1",
+    "httpx>=0.28.1",
 ]
 
 [tool.nachet-db]

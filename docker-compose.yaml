@@ -44,10 +44,10 @@ services:
 
   nachet-backend:
     container_name: nachet-backend
-    # build:
-    #   context: ./backend
-    #   dockerfile: Dockerfile.local
-    image: ghcr.io/ai-cfia/nachet-backend:1.0.4
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.local
+    # image: ghcr.io/ai-cfia/nachet-backend:1.0.4
     # command: ["hypercorn -b :5174 app:app"]
     env_file:
       # - ./nachet-backend/.env.secrets.local
