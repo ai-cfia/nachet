@@ -13,7 +13,7 @@ data "azurerm_subnet" "postgresql" {
 resource "azurerm_postgresql_flexible_server" "nachet" {
   name                         = "${var.project_name}-psql-${var.environment}"
   resource_group_name          = var.resource_group_name
-  location                     = azurerm_resource_group.db.location
+  location                     = var.location
   version                      = var.postgresql_version
   administrator_login          = var.postgresql_admin_username
   administrator_password       = var.postgresql_admin_password
