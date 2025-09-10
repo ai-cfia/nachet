@@ -18,6 +18,7 @@ from pydantic_settings import BaseSettings
 # from sqlmodel import StaticPool, create_engine
 
 from app.exceptions import log_error
+from app.middleware.headers.headers import HeadersMiddleware
 # from app.models.bucket_name import MinioBucketName
 # from app.services.file_storage import FertiscanStorage, MinIOStorageManager
 
@@ -153,6 +154,8 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    app.add_middleware(HeadersMiddleware, preset="strict")
 
     pool = ConnectionPool(
         open=False,
