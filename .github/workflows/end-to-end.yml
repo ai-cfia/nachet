@@ -158,7 +158,7 @@ jobs:
             -e BACKEND_DEV_PORT="5174" \
             -e FRONTEND_DEV_PORT="12436" \
             -p 12435:5174 \
-            ghcr.io/ai-cfia/nachet-backend:1fbcf12d2243ac1dc3a77576e9caaf8c77f381a7
+            ghcr.io/ai-cfia/nachet-backend:1.0.4
 
       - name: Cache Node Modules
         id: cache-node-modules
