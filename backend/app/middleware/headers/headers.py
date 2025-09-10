@@ -1,8 +1,8 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.types import ASGIApp
-from fastapi_armor.presets import PRESETS
-from fastapi_armor.header_map import PARAM_TO_HEADER
+from headers.presets import PRESETS
+from headers.header_map import PARAM_TO_HEADER
 
 
 class HeadersMiddleware(BaseHTTPMiddleware):

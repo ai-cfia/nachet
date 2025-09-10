@@ -91,7 +91,7 @@ jobs:
       - name: Start backend server
         working-directory: backend
         run: |
-          uv run hypercorn -b :5174 app:app &
+          uv run hypercorn -b :5174 app/main:app &
           # Wait for server to start
           timeout 30 bash -c 'until curl -f http://localhost:5174/health 2>/dev/null; do sleep 1; done'
         env:
