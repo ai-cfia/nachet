@@ -3,6 +3,7 @@ import { Overlay, InfoContainer } from "./indexElements";
 import { Box, CardHeader, IconButton, Input } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
+import { imageFileSchema } from "@common/validation";
 
 interface params {
   setUploadOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -16,7 +17,15 @@ const UploadPopup: React.FC<params> = (props) => {
     // loads image from local storage to cache when upload button is pressed
     event.preventDefault();
     const file = event.target.files[0];
+
     if (file !== undefined) {
+      // Validate the file
+      const validation = imageFileSchema.safeParse(file);
+      if (!validation.success) {
+        alert(validation.error.issues[0].message);
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         if (typeof reader.result !== "string") {

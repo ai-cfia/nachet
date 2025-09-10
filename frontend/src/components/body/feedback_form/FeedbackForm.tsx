@@ -23,9 +23,10 @@ import {
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import { SyntheticEvent, useEffect, useMemo, useState } from "react";
-import { BoxCSS, ClassData, FeedbackDataNegative } from "../../../common/types";
+import { BoxCSS, ClassData, FeedbackDataNegative } from "@common/types";
 import Draggable from "react-draggable";
 import LoadingIndicator from "../loading_indicator";
+import { classLabelSchema } from "@common/validation";
 
 interface SimpleFeedbackFormProps {
   anchorEl: HTMLButtonElement | null;
@@ -145,6 +146,7 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
   } = props;
   const [selectedClass, setSelectedClass] = useState<ClassData>(defaultClass);
   const [comment, setComment] = useState<string>(reasons[1]);
+  const [classError, setClassError] = useState<string>("");
 
   const filter = createFilterOptions<ClassData>();
 
@@ -179,9 +181,20 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
     newValue: string | ClassData | null,
   ) => {
     event.preventDefault();
+
+    // Clear previous error
+    setClassError("");
+
     if (newValue == null) {
       setSelectedClass(defaultClass);
     } else if (typeof newValue === "string") {
+      // Validate custom class label
+      const validation = classLabelSchema.safeParse(newValue);
+      if (!validation.success) {
+        setClassError(validation.error.issues[0].message);
+        return;
+      }
+
       setSelectedClass({
         ...defaultClass,
         label: newValue,
@@ -317,7 +330,12 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
               <Autocomplete
                 id="feedback-class"
                 renderInput={(params) => (
-                  <TextField {...params} label="Class" />
+                  <TextField
+                    {...params}
+                    label="Class"
+                    error={!!classError}
+                    helperText={classError}
+                  />
                 )}
                 options={classList}
                 value={selectedClass}
