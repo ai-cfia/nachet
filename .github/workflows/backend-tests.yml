@@ -128,12 +128,12 @@ jobs:
       - name: Run OSHP validator security headers test
         run: |
           docker run --rm --network="host" \
-            -v $(pwd)/oshp-validator:/oshp-validator \
+            -v ${{ github.workspace }}/oshp-validator:/workspace \
             ovhcom/venom:latest run \
             --var="target_site=http://localhost:5174" \
             --output-dir=/tmp \
             --format=xml \
-            /oshp-validator/tests_suite.yml
+            /workspace/tests_suite.yml
 
   business-logic-tests:
     runs-on: ubuntu-latest
