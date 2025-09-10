@@ -10,6 +10,18 @@ import {
   ModelMetadata,
   ReadAzureStorageDirApi,
 } from "./types";
+import { z } from "zod";
+import {
+  validateApiResponse,
+  UserIdResponseSchema,
+  SessionIdResponseSchema,
+  BooleanResponseSchema,
+  VoidResponseSchema,
+  ReadAzureStorageDirApiSchema,
+  ApiInferenceDataSchema,
+  ModelMetadataSchema,
+  ApiSpeciesDataSchema,
+} from "./validation";
 
 const handleAxios = async <T>(request: {
   method: string;
@@ -64,7 +76,12 @@ export const readAzureStorageDir = async (
       container_name: uuid,
     },
   };
-  return handleAxios(request);
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(
+    ReadAzureStorageDirApiSchema,
+    response,
+    "readAzureStorageDir",
+  );
 };
 
 export const createAzureStorageDir = async (
@@ -93,7 +110,9 @@ export const createAzureStorageDir = async (
       folder_name: folderName,
     },
   };
-  return handleAxios(request);
+  const response = await handleAxios<unknown>(request);
+  validateApiResponse(VoidResponseSchema, response, "createAzureStorageDir");
+  return;
 };
 
 export const deleteAzureStorageDir = async (
@@ -122,7 +141,9 @@ export const deleteAzureStorageDir = async (
       folder_name: folderName,
     },
   };
-  return handleAxios(request);
+  const response = await handleAxios<unknown>(request);
+  validateApiResponse(VoidResponseSchema, response, "deleteAzureStorageDir");
+  return;
 };
 
 export const inferenceRequest = async (
@@ -164,7 +185,12 @@ export const inferenceRequest = async (
       container_name: container_uuid,
     },
   };
-  return handleAxios<ApiInferenceData>(request);
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(
+    ApiInferenceDataSchema,
+    response,
+    "inferenceRequest",
+  );
 };
 
 export const fetchModelMetadata = async (
@@ -182,7 +208,12 @@ export const fetchModelMetadata = async (
     },
     data: {},
   };
-  return handleAxios<ModelMetadata[]>(request);
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(
+    z.array(ModelMetadataSchema),
+    response,
+    "fetchModelMetadata",
+  );
 };
 
 export const sendFeedbackNewBox = async (
@@ -201,7 +232,12 @@ export const sendFeedbackNewBox = async (
     },
     data: feedbackData,
   };
-  return handleAxios<ApiInferenceData>(request);
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(
+    ApiInferenceDataSchema,
+    response,
+    "sendFeedbackNewBox",
+  );
 };
 
 export const sendPositiveFeedback = async (
@@ -220,7 +256,12 @@ export const sendPositiveFeedback = async (
     },
     data: feedbackData,
   };
-  return handleAxios<ApiInferenceData>(request);
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(
+    ApiInferenceDataSchema,
+    response,
+    "sendPositiveFeedback",
+  );
 };
 
 export const sendNegativeFeedback = async (
@@ -239,7 +280,12 @@ export const sendNegativeFeedback = async (
     },
     data: feedbackData,
   };
-  return handleAxios<ApiInferenceData>(request);
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(
+    ApiInferenceDataSchema,
+    response,
+    "sendNegativeFeedback",
+  );
 };
 
 export const requestUUID = async (
@@ -263,9 +309,8 @@ export const requestUUID = async (
     },
     withCredentials: true,
   };
-  return handleAxios<{
-    user_id: string;
-  }>(request);
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(UserIdResponseSchema, response, "requestUUID");
 };
 
 export const requestClassList = async (
@@ -290,7 +335,12 @@ export const requestClassList = async (
     //   uuid: uuid,
     // },
   };
-  return handleAxios<ApiSpeciesData>(request);
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(
+    ApiSpeciesDataSchema,
+    response,
+    "requestClassList",
+  );
 };
 
 export const batchUploadInit = async (
@@ -328,9 +378,12 @@ export const batchUploadInit = async (
       nb_pictures: nbPictures,
     },
   };
-  return handleAxios<{
-    session_id: string;
-  }>(request);
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(
+    SessionIdResponseSchema,
+    response,
+    "batchUploadInit",
+  );
 };
 
 export const batchUploadImage = async (
@@ -389,5 +442,10 @@ export const batchUploadImage = async (
       image: imageDataUrl,
     },
   };
-  return handleAxios(request);
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(
+    BooleanResponseSchema,
+    response,
+    "batchUploadImage",
+  );
 };
