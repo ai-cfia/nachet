@@ -211,7 +211,10 @@ variable "container_app_memory" {
   default     = "0.5Gi" # Minimum memory allocation
 }
 
-# infrastructure_resource_group_name is now created automatically as: {resource_group_name}-cae-infra
+variable "infrastructure_resource_group_name" {
+  description = "Infra resource group name"
+  type = string 
+}
 
 # variable "triton_cpu" {
 #   description = "CPU for Triton server containers"
