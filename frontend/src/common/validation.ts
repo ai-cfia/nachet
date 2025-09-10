@@ -305,15 +305,71 @@ export const escapeJavaScript = (str: string): string => {
 export const sanitizeUrl = (url: string): string | null => {
   const trimmed = url.trim();
 
-  // Block dangerous protocols
-  const dangerousProtocols = /^(javascript|data|vbscript|file|about):/i;
-  if (dangerousProtocols.test(trimmed)) {
+  // Block dangerous protocols with comprehensive normalization
+  const normalizedForCheck = (() => {
+    // Remove control chars, whitespace, and null bytes that could be used for obfuscation
+    let compact = trimmed.replace(
+      // eslint-disable-next-line no-control-regex
+      /[\u0000-\u001F\s\u007F-\u009F\u00A0\uFEFF]+/g,
+      "",
+    );
+
+    // Multiple decode passes to handle nested encoding
+    for (let i = 0; i < 3; i++) {
+      try {
+        const decoded = decodeURIComponent(compact);
+        if (decoded === compact) break; // No more changes
+        compact = decoded;
+      } catch {
+        break;
+      }
+    }
+
+    // Additional normalization for HTML entities and Unicode
+    compact = compact
+      .replace(/&\w+;/g, "") // Remove HTML entities
+      .replace(/\\u[\da-f]{4}/gi, "") // Remove Unicode escapes
+      .replace(/\\x[\da-f]{2}/gi, "") // Remove hex escapes
+      .toLowerCase();
+
+    return compact;
+  })();
+
+  // Comprehensive dangerous protocol detection
+  const dangerousPatterns = [
+    /^(javascript|data|vbscript|file|about|blob|chrome|chrome-extension|moz-extension):/i,
+    /javascript\s*:/i,
+    /data\s*:/i,
+    /vbscript\s*:/i,
+    // eslint-disable-next-line no-control-regex
+    /^[\s\u0000-\u001F]*javascript:/i, // With leading whitespace/control chars
+    // eslint-disable-next-line no-control-regex
+    /^[\s\u0000-\u001F]*data:/i,
+    // eslint-disable-next-line no-control-regex
+    /^[\s\u0000-\u001F]*vbscript:/i,
+  ];
+
+  // Check both original and normalized versions
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(trimmed) || pattern.test(normalizedForCheck)) {
+      return null;
+    }
+  }
+
+  // Additional checks for obfuscated scripts
+  if (
+    normalizedForCheck.includes("script") ||
+    normalizedForCheck.includes("eval") ||
+    normalizedForCheck.includes("expression")
+  ) {
     return null;
   }
 
   // Allow only safe protocols
   const safeProtocols = /^(https?|ftp|mailto):/i;
-  const isRelative = /^[./]/.test(trimmed) || !trimmed.includes(":");
+  const isRelative =
+    /^[./]/.test(trimmed) ||
+    (!trimmed.includes(":") && !trimmed.startsWith("//"));
 
   if (!safeProtocols.test(trimmed) && !isRelative) {
     return null;
@@ -343,17 +399,63 @@ export const containsHtml = (str: string): boolean => {
  * Use sparingly - prefer escaping over stripping when possible
  */
 export const stripDangerousHtml = (str: string): string => {
-  return str
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
-    .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, "")
-    .replace(/<embed\b[^>]*>/gi, "")
-    .replace(/<link\b[^>]*>/gi, "")
-    .replace(/<meta\b[^>]*>/gi, "")
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
-    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "") // Remove event handlers
-    .replace(/javascript:/gi, "") // Remove javascript: URLs
-    .replace(/data:/gi, ""); // Remove data: URLs
+  let result = str;
+
+  // Remove dangerous tags with comprehensive multi-pass sanitization
+  const dangerousPatterns = [
+    // Tag patterns - more comprehensive to catch nested and malformed tags with flexible whitespace
+    /<\s*script\b[^>]*>[\s\S]*?<\s*\/\s*script\s*>/gi,
+    /<\s*iframe\b[^>]*>[\s\S]*?<\s*\/\s*iframe\s*>/gi,
+    /<\s*object\b[^>]*>[\s\S]*?<\s*\/\s*object\s*>/gi,
+    /<\s*style\b[^>]*>[\s\S]*?<\s*\/\s*style\s*>/gi,
+    /<\s*embed\b[^>]*>/gi,
+    /<\s*link\b[^>]*>/gi,
+    /<\s*meta\b[^>]*>/gi,
+    // Self-closing and malformed variations
+    /<\s*script\b[^>]*\/?\s*>/gi,
+    /<\s*iframe\b[^>]*\/?\s*>/gi,
+    /<\s*object\b[^>]*\/?\s*>/gi,
+    /<\s*embed\b[^>]*\/?\s*>/gi,
+    // Additional patterns to catch malformed end tags with spaces
+    /<\s*\/\s*script[\s>]/gi,
+    /<\s*\/\s*iframe[\s>]/gi,
+    /<\s*\/\s*object[\s>]/gi,
+    /<\s*\/\s*style[\s>]/gi,
+    // Partial tag patterns to catch incomplete sanitization
+    /<\s*script/gi,
+    /<\s*iframe/gi,
+    /<\s*object/gi,
+    /<\s*embed/gi,
+  ];
+
+  // Apply multiple complete passes until result stabilizes
+  const maxIterations = 10;
+  let iteration = 0;
+
+  while (iteration < maxIterations) {
+    const beforePass = result;
+
+    // Apply all patterns in each pass
+    dangerousPatterns.forEach((pattern) => {
+      result = result.replace(pattern, "");
+    });
+
+    // Remove event handlers and dangerous URLs
+    result = result
+      .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "") // Remove event handlers
+      .replace(/javascript\s*:/gi, "") // Remove javascript: URLs
+      .replace(/data\s*:/gi, "") // Remove data: URLs
+      .replace(/vbscript\s*:/gi, ""); // Remove vbscript: URLs
+
+    // If no changes were made, we're done
+    if (result === beforePass) {
+      break;
+    }
+
+    iteration++;
+  }
+
+  return result;
 };
 
 /**
@@ -396,15 +498,11 @@ export const generateCSP = (): string => {
 // Legacy sanitization helpers (maintained for backward compatibility)
 /**
  * Trims whitespace and provides basic text cleaning with XSS protection.
- * Now uses `escapeHtml()` internally for better security while maintaining backward compatibility.
+ * Now strictly returns an escaped version of the string (no partial unescaping) to avoid incomplete multi-character sanitization issues.
  * For advanced XSS protection, consider using `safeTextSchema` for input validation.
  */
 export const sanitizeString = (str: string): string => {
-  // First escape for security, then restore quotes for backward compatibility
-  return escapeHtml(str)
-    .replace(/&lt;|&gt;|&#x2F;/g, "")
-    .replace(/&#x27;/g, "'")
-    .trim();
+  return escapeHtml(str).trim();
 };
 
 /**
