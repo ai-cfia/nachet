@@ -16,6 +16,20 @@ import {
   sanitizeString,
   sanitizeEmail,
   sanitizeFileName,
+  // XSS Protection functions
+  escapeHtml,
+  escapeHtmlAttribute,
+  escapeJavaScript,
+  sanitizeUrl,
+  stripDangerousHtml,
+  generateCSP,
+  // XSS-Safe validation schemas
+  safeTextSchema,
+  safeHtmlSchema,
+  safeUrlSchema,
+  safeUserInputSchema,
+  safeImageLabelSchema,
+  safeClassLabelSchema,
   type DirectoryName,
   type Email,
   type Password,
@@ -26,6 +40,7 @@ import {
   type ClassLabel,
   type DeviceId,
   type ImageFormat,
+  // XSS-Safe types
 } from "../validation";
 
 describe("Validation Schemas", () => {
@@ -494,9 +509,9 @@ describe("Sanitization Helpers", () => {
   describe("sanitizeString", () => {
     it("should remove angle brackets", () => {
       expect(sanitizeString("<script>alert('xss')</script>")).toBe(
-        "scriptalert('xss')script",
+        "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;&#x2F;script&gt;",
       );
-      expect(sanitizeString("test < test >")).toBe("test  test");
+      expect(sanitizeString("test < test >")).toBe("test &lt; test &gt;");
     });
 
     it("should trim whitespace", () => {
@@ -613,7 +628,7 @@ describe("Edge Cases", () => {
 
   it("should handle special characters in strings", () => {
     expect(sanitizeString("test<script>alert('xss')</script>test")).toBe(
-      "testscriptalert('xss')scripttest",
+      "test&lt;script&gt;alert(&#x27;xss&#x27;)&lt;&#x2F;script&gt;test",
     );
     expect(sanitizeFileName("test<file>name.png")).toBe("testfilename.png");
   });
@@ -622,5 +637,582 @@ describe("Edge Cases", () => {
     const longString = "a".repeat(1000);
     expect(directoryNameSchema.safeParse(longString).success).toBe(false);
     expect(folderNameSchema.safeParse(longString).success).toBe(false);
+  });
+});
+
+describe("XSS Protection Functions", () => {
+  describe("escapeHtml", () => {
+    it("should escape HTML special characters", () => {
+      expect(escapeHtml("<script>alert('xss')</script>")).toBe(
+        "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;&#x2F;script&gt;",
+      );
+      expect(escapeHtml('Hello "World" & <test>')).toBe(
+        "Hello &quot;World&quot; &amp; &lt;test&gt;",
+      );
+      expect(escapeHtml("Test `code` = value")).toBe(
+        "Test &#x60;code&#x60; &#x3D; value",
+      );
+    });
+
+    it("should handle empty and normal strings", () => {
+      expect(escapeHtml("")).toBe("");
+      expect(escapeHtml("normal text")).toBe("normal text");
+      expect(escapeHtml("123456")).toBe("123456");
+    });
+
+    it("should escape all dangerous characters", () => {
+      const dangerous = "&<>\"'`=/";
+      const expected = "&amp;&lt;&gt;&quot;&#x27;&#x60;&#x3D;&#x2F;";
+      expect(escapeHtml(dangerous)).toBe(expected);
+    });
+  });
+
+  describe("escapeHtmlAttribute", () => {
+    it("should escape HTML attribute characters", () => {
+      expect(escapeHtmlAttribute('value="test"')).toBe(
+        "value=&quot;test&quot;",
+      );
+      expect(escapeHtmlAttribute("value='test'")).toBe(
+        "value=&#x27;test&#x27;",
+      );
+      expect(escapeHtmlAttribute("onclick=alert('xss')")).toBe(
+        "onclick=alert(&#x27;xss&#x27;)",
+      );
+    });
+
+    it("should handle ampersands and angle brackets", () => {
+      expect(escapeHtmlAttribute("value & <test>")).toBe(
+        "value &amp; &lt;test&gt;",
+      );
+    });
+  });
+
+  describe("escapeJavaScript", () => {
+    it("should escape JavaScript special characters", () => {
+      expect(escapeJavaScript('alert("Hello")')).toBe('alert(\\"Hello\\")');
+      expect(escapeJavaScript("line1\nline2")).toBe("line1\\nline2");
+      expect(escapeJavaScript("tab\there")).toBe("tab\\there");
+    });
+
+    it("should escape dangerous Unicode characters", () => {
+      expect(escapeJavaScript("<script>")).toBe("\\u003Cscript\\u003E");
+      expect(escapeJavaScript("</script>")).toBe("\\u003C/script\\u003E");
+      expect(escapeJavaScript("a & b = c")).toBe("a \\u0026 b \\u003D c");
+    });
+
+    it("should handle control characters", () => {
+      expect(escapeJavaScript("test\r\n")).toBe("test\\r\\n");
+      expect(escapeJavaScript("test\t\b\f")).toBe("test\\t\\b\\f");
+      expect(escapeJavaScript("test\v\0")).toBe("test\\v\\0");
+    });
+  });
+
+  describe("sanitizeUrl", () => {
+    it("should allow safe URLs", () => {
+      expect(sanitizeUrl("https://example.com")).toBe("https://example.com");
+      expect(sanitizeUrl("http://test.org")).toBe("http://test.org");
+      expect(sanitizeUrl("ftp://files.com")).toBe("ftp://files.com");
+      expect(sanitizeUrl("mailto:test@example.com")).toBe(
+        "mailto:test@example.com",
+      );
+    });
+
+    it("should allow relative URLs", () => {
+      expect(sanitizeUrl("/path/to/page")).toBe("/path/to/page");
+      expect(sanitizeUrl("./relative/path")).toBe("./relative/path");
+      expect(sanitizeUrl("../parent/path")).toBe("../parent/path");
+      expect(sanitizeUrl("path/without/slash")).toBe("path/without/slash");
+    });
+
+    it("should block dangerous URLs", () => {
+      expect(sanitizeUrl("javascript:alert('xss')")).toBe(null);
+      expect(sanitizeUrl("data:text/html,<script>alert('xss')</script>")).toBe(
+        null,
+      );
+      expect(sanitizeUrl("vbscript:alert('xss')")).toBe(null);
+      expect(sanitizeUrl("file:///etc/passwd")).toBe(null);
+      expect(sanitizeUrl("about:blank")).toBe(null);
+    });
+
+    it("should block unsafe protocols case-insensitively", () => {
+      expect(sanitizeUrl("JAVASCRIPT:alert('xss')")).toBe(null);
+      expect(sanitizeUrl("Data:text/html,<script>")).toBe(null);
+      expect(sanitizeUrl("VBScript:alert('xss')")).toBe(null);
+    });
+
+    it("should handle whitespace", () => {
+      expect(sanitizeUrl("  https://example.com  ")).toBe(
+        "https://example.com",
+      );
+      expect(sanitizeUrl("\t\njavascript:alert('xss')\r\n")).toBe(null);
+    });
+  });
+
+  describe("stripDangerousHtml", () => {
+    it("should remove script tags", () => {
+      expect(stripDangerousHtml("<script>alert('xss')</script>")).toBe("");
+      expect(
+        stripDangerousHtml("Hello <script src='evil.js'></script> World"),
+      ).toBe("Hello  World");
+    });
+
+    it("should remove dangerous tags", () => {
+      expect(stripDangerousHtml("<iframe src='evil.com'></iframe>")).toBe("");
+      expect(stripDangerousHtml("<object data='evil.swf'></object>")).toBe("");
+      expect(stripDangerousHtml("<embed src='evil.swf'>")).toBe("");
+      expect(
+        stripDangerousHtml("<link rel='stylesheet' href='evil.css'>"),
+      ).toBe("");
+      expect(
+        stripDangerousHtml(
+          "<meta http-equiv='refresh' content='0;url=evil.com'>",
+        ),
+      ).toBe("");
+      expect(
+        stripDangerousHtml(
+          "<style>body{background:url(javascript:alert('xss'))}</style>",
+        ),
+      ).toBe("");
+    });
+
+    it("should remove event handlers", () => {
+      const result1 = stripDangerousHtml(
+        "<div onclick=\"alert('xss')\">Click</div>",
+      );
+      expect(result1).not.toContain('onclick="alert(');
+      expect(result1).toContain("Click");
+
+      const result2 = stripDangerousHtml(
+        '<img onload="alert(\'xss\')" src="test.jpg">',
+      );
+      expect(result2).not.toContain('onload="alert(');
+      expect(result2).toContain('src="test.jpg"');
+
+      const result3 = stripDangerousHtml(
+        "<button onmouseover=\"alert('xss')\">Hover</button>",
+      );
+      expect(result3).not.toContain('onmouseover="alert(');
+      expect(result3).toContain("Hover");
+    });
+
+    it("should remove javascript: and data: URLs", () => {
+      const result1 = stripDangerousHtml(
+        "<a href=\"javascript:alert('xss')\">Link</a>",
+      );
+      expect(result1).not.toContain("javascript:alert(");
+      expect(result1).toContain("Link");
+
+      const result2 = stripDangerousHtml(
+        "<img src=\"data:text/html,<script>alert('xss')</script>\">",
+      );
+      expect(result2).not.toContain("data:text/html");
+      expect(result2).not.toContain("<script>");
+    });
+
+    it("should preserve safe HTML", () => {
+      const safeHtml =
+        "<p>Hello <strong>World</strong></p><ul><li>Item 1</li></ul>";
+      expect(stripDangerousHtml(safeHtml)).toBe(safeHtml);
+    });
+  });
+
+  describe("generateCSP", () => {
+    it("should generate valid CSP header", () => {
+      const csp = generateCSP();
+      expect(csp).toContain("default-src 'self'");
+      expect(csp).toContain("script-src 'self' 'unsafe-inline'");
+      expect(csp).toContain("object-src 'none'");
+      expect(csp).toContain("upgrade-insecure-requests");
+    });
+
+    it("should format directives correctly", () => {
+      const csp = generateCSP();
+      // Should use kebab-case for directive names
+      expect(csp).toContain("default-src");
+      expect(csp).toContain("script-src");
+      expect(csp).toContain("style-src");
+      expect(csp).toContain("img-src");
+      expect(csp).toContain("frame-ancestors");
+      // Should separate directives with semicolons
+      expect(csp.split(";").length).toBeGreaterThan(5);
+    });
+  });
+});
+
+describe("XSS-Safe Validation Schemas", () => {
+  describe("safeTextSchema", () => {
+    it("should validate safe text input", () => {
+      const validTexts = [
+        "Hello World",
+        "This is a normal text",
+        "Text with numbers 123 and symbols !@#",
+        "Multi word text input",
+      ];
+
+      validTexts.forEach((text) => {
+        const result = safeTextSchema.safeParse(text);
+        expect(result.success).toBe(true);
+        expect(result.data).toBe(text.trim());
+      });
+    });
+
+    it("should reject empty or too long text", () => {
+      expect(safeTextSchema.safeParse("").success).toBe(false);
+      expect(safeTextSchema.safeParse("   ").success).toBe(false);
+      expect(safeTextSchema.safeParse("a".repeat(1001)).success).toBe(false);
+    });
+
+    it("should trim whitespace", () => {
+      const result = safeTextSchema.safeParse("  Hello World  ");
+      expect(result.success).toBe(true);
+      expect(result.data).toBe("Hello World");
+    });
+  });
+
+  describe("safeUserInputSchema", () => {
+    it("should validate safe user input", () => {
+      const validInputs = [
+        "John Doe",
+        "This is my comment",
+        "Email: user@example.com",
+        "Phone: +1-234-567-8900",
+      ];
+
+      validInputs.forEach((input) => {
+        const result = safeUserInputSchema.safeParse(input);
+        expect(result.success).toBe(true);
+        expect(result.data).toBe(input.trim());
+      });
+    });
+
+    it("should reject dangerous input patterns", () => {
+      const dangerousInputs = [
+        "<script>alert('xss')</script>",
+        "javascript:alert('xss')",
+        "data:text/html,<script>alert('xss')</script>",
+        "vbscript:alert('xss')",
+        "Hello <script>alert('xss')</script> World",
+      ];
+
+      dangerousInputs.forEach((input) => {
+        const result = safeUserInputSchema.safeParse(input);
+        expect(result.success).toBe(false);
+      });
+    });
+
+    it("should handle length limits", () => {
+      expect(safeUserInputSchema.safeParse("").success).toBe(false);
+      expect(safeUserInputSchema.safeParse("a".repeat(501)).success).toBe(
+        false,
+      );
+      expect(safeUserInputSchema.safeParse("a".repeat(500)).success).toBe(true);
+    });
+  });
+
+  describe("safeUrlSchema", () => {
+    it("should validate safe URLs", () => {
+      const validUrls = [
+        "https://example.com",
+        "http://test.org/path",
+        "/relative/path",
+        "./file.html",
+        "mailto:test@example.com",
+      ];
+
+      validUrls.forEach((url) => {
+        const result = safeUrlSchema.safeParse(url);
+        expect(result.success).toBe(true);
+        expect(result.data).toBe(url.trim());
+      });
+    });
+
+    it("should reject dangerous URLs", () => {
+      const dangerousUrls = [
+        "javascript:alert('xss')",
+        "data:text/html,<script>alert('xss')</script>",
+        "vbscript:alert('xss')",
+        "file:///etc/passwd",
+      ];
+
+      dangerousUrls.forEach((url) => {
+        const result = safeUrlSchema.safeParse(url);
+        expect(result.success).toBe(false);
+      });
+    });
+
+    it("should handle URL length limits", () => {
+      expect(safeUrlSchema.safeParse("").success).toBe(false);
+      expect(safeUrlSchema.safeParse("a".repeat(2049)).success).toBe(false);
+
+      // Test a URL that's within the limit and valid
+      const validUrl = "https://example.com";
+      expect(safeUrlSchema.safeParse(validUrl).success).toBe(true);
+
+      // Test a URL that exceeds the 2048 character limit
+      const tooLongUrl = "https://" + "a".repeat(2050) + ".com";
+      expect(safeUrlSchema.safeParse(tooLongUrl).success).toBe(false);
+    });
+  });
+
+  describe("safeImageLabelSchema", () => {
+    it("should validate safe image labels", () => {
+      const validLabels = [
+        "My Image",
+        "Test_Image-123",
+        "Image (version 2.0)",
+        "file.name",
+        "Dataset, Part 1",
+      ];
+
+      validLabels.forEach((label) => {
+        const result = safeImageLabelSchema.safeParse(label);
+        expect(result.success).toBe(true);
+        expect(result.data).toBe(label.trim());
+      });
+    });
+
+    it("should reject labels with dangerous characters", () => {
+      const dangerousLabels = [
+        "<script>alert('xss')</script>",
+        "javascript:alert('xss')",
+        "data:text/html,<script>",
+        "Image <test>",
+        "Label > test",
+        "Label &lt;script&gt;",
+      ];
+
+      dangerousLabels.forEach((label) => {
+        const result = safeImageLabelSchema.safeParse(label);
+        expect(result.success).toBe(false);
+      });
+    });
+
+    it("should reject invalid characters", () => {
+      const invalidLabels = [
+        "label@email.com",
+        "label#hashtag",
+        "label$money",
+        "label%percent",
+        "label&amp;",
+        "label*star",
+        "label+plus",
+        "label[bracket]",
+        "label{brace}",
+        "label|pipe",
+        "label\\backslash",
+        "label:colon",
+        "label;semicolon",
+        "label<less>",
+        "label=equals",
+        "label?question",
+        "label^caret",
+        "label~tilde",
+        "label`backtick",
+      ];
+
+      invalidLabels.forEach((label) => {
+        const result = safeImageLabelSchema.safeParse(label);
+        expect(result.success).toBe(false);
+      });
+    });
+  });
+
+  describe("safeClassLabelSchema", () => {
+    it("should validate safe class labels", () => {
+      const validLabels = [
+        "ClassName",
+        "Class_Name",
+        "Class-Name",
+        "Class Name 123",
+        "Dataset_v2",
+      ];
+
+      validLabels.forEach((label) => {
+        const result = safeClassLabelSchema.safeParse(label);
+        expect(result.success).toBe(true);
+        expect(result.data).toBe(label.trim());
+      });
+    });
+
+    it("should reject labels with dangerous patterns", () => {
+      const dangerousLabels = [
+        "<script>alert('xss')</script>",
+        "javascript:alert('xss')",
+        "data:text/html,<script>",
+        "Class <test>",
+        "Class &lt;script&gt;",
+      ];
+
+      dangerousLabels.forEach((label) => {
+        const result = safeClassLabelSchema.safeParse(label);
+        expect(result.success).toBe(false);
+      });
+    });
+
+    it("should reject invalid characters", () => {
+      const invalidLabels = [
+        "class.name",
+        "class,name",
+        "class(name)",
+        "class@name",
+        "class#name",
+        "class$name",
+        "class%name",
+        "class&name",
+        "class*name",
+      ];
+
+      invalidLabels.forEach((label) => {
+        const result = safeClassLabelSchema.safeParse(label);
+        expect(result.success).toBe(false);
+      });
+    });
+  });
+
+  describe("safeHtmlSchema", () => {
+    it("should reject HTML input entirely", () => {
+      const input =
+        '<p>Hello</p><script>alert("xss")</script><strong>World</strong>';
+      const result = safeHtmlSchema.safeParse(input);
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toContain(
+        "HTML tags are not allowed",
+      );
+    });
+
+    it("should handle content length limits", () => {
+      expect(safeHtmlSchema.safeParse("a".repeat(10001)).success).toBe(false);
+      expect(safeHtmlSchema.safeParse("a".repeat(10000)).success).toBe(true);
+    });
+
+    it("should reject all HTML content", () => {
+      const dangerousHtml = `
+        <script>alert('xss')</script>
+        <iframe src="evil.com"></iframe>
+        <object data="evil.swf"></object>
+        <embed src="evil.swf">
+        <link rel="stylesheet" href="evil.css">
+        <style>body{background:url(javascript:alert('xss'))}</style>
+        <div onclick="alert('xss')">Click me</div>
+        <p>Safe content</p>
+      `;
+
+      const result = safeHtmlSchema.safeParse(dangerousHtml);
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toContain(
+        "HTML tags are not allowed",
+      );
+    });
+
+    it("should reject HTML entities", () => {
+      const htmlWithEntities =
+        "Hello &lt;script&gt;alert('xss')&lt;/script&gt; World";
+      const result = safeHtmlSchema.safeParse(htmlWithEntities);
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toContain(
+        "HTML entities are not allowed",
+      );
+    });
+
+    it("should accept plain text", () => {
+      const plainText = "This is just plain text without any HTML";
+      const result = safeHtmlSchema.safeParse(plainText);
+      expect(result.success).toBe(true);
+      expect(result.data).toBe(plainText);
+    });
+  });
+});
+
+describe("XSS Attack Vector Tests", () => {
+  const xssPayloads = [
+    '<script>alert("XSS")</script>',
+    '<img src="x" onerror="alert(\'XSS\')">',
+    "<svg onload=\"alert('XSS')\">",
+    "<iframe src=\"javascript:alert('XSS')\"></iframe>",
+    "<object data=\"javascript:alert('XSS')\"></object>",
+    "<embed src=\"javascript:alert('XSS')\">",
+    '<link rel="stylesheet" href="javascript:alert(\'XSS\')">',
+    "<style>body{background:url(\"javascript:alert('XSS')\")}</style>",
+    '"><script>alert("XSS")</script>',
+    "'><script>alert('XSS')</script>",
+    "<div onclick=\"alert('XSS')\">Click me</div>",
+    "<a href=\"javascript:alert('XSS')\">Click me</a>",
+    "<form action=\"javascript:alert('XSS')\">",
+    '<meta http-equiv="refresh" content="0;url=javascript:alert(\'XSS\')">',
+    'javascript:alert("XSS")',
+    'data:text/html,<script>alert("XSS")</script>',
+    'vbscript:alert("XSS")',
+  ];
+
+  describe("escapeHtml protection", () => {
+    it("should neutralize all XSS payloads", () => {
+      xssPayloads.forEach((payload) => {
+        const escaped = escapeHtml(payload);
+        expect(escaped).not.toContain("<script");
+        // Note: javascript: will be escaped but still visible as text - this is expected
+        expect(escaped).not.toContain("onerror=");
+        expect(escaped).not.toContain("onload=");
+        expect(escaped).not.toContain("onclick=");
+        // Should contain escaped versions
+        if (payload.includes("<")) {
+          expect(escaped).toContain("&lt;");
+        }
+        if (payload.includes(">")) {
+          expect(escaped).toContain("&gt;");
+        }
+      });
+    });
+  });
+
+  describe("sanitizeUrl protection", () => {
+    it("should block dangerous URL payloads", () => {
+      const urlPayloads = [
+        'javascript:alert("XSS")',
+        'data:text/html,<script>alert("XSS")</script>',
+        'vbscript:alert("XSS")',
+        "file:///etc/passwd",
+        "about:blank",
+      ];
+
+      urlPayloads.forEach((payload) => {
+        const result = sanitizeUrl(payload);
+        expect(result).toBe(null);
+      });
+    });
+  });
+
+  describe("stripDangerousHtml protection", () => {
+    it("should remove dangerous elements from XSS payloads", () => {
+      xssPayloads.forEach((payload) => {
+        const cleaned = stripDangerousHtml(payload);
+        expect(cleaned).not.toContain("<script");
+        expect(cleaned).not.toContain("<iframe");
+        expect(cleaned).not.toContain("<object");
+        expect(cleaned).not.toContain("<embed");
+        expect(cleaned).not.toContain("<link");
+        expect(cleaned).not.toContain("<style");
+        expect(cleaned).not.toContain("javascript:");
+        expect(cleaned).not.toContain("data:");
+        expect(cleaned).not.toContain("onclick=");
+        expect(cleaned).not.toContain("onerror=");
+        expect(cleaned).not.toContain("onload=");
+      });
+    });
+  });
+
+  describe("safeUserInputSchema protection", () => {
+    it("should reject dangerous input patterns", () => {
+      const dangerousPatterns = [
+        '<script>alert("XSS")</script>',
+        'javascript:alert("XSS")',
+        'data:text/html,<script>alert("XSS")</script>',
+        'vbscript:alert("XSS")',
+      ];
+
+      dangerousPatterns.forEach((pattern) => {
+        const result = safeUserInputSchema.safeParse(pattern);
+        expect(result.success).toBe(false);
+      });
+    });
   });
 });

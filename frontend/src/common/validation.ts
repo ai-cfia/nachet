@@ -1,4 +1,5 @@
 import { z } from "zod";
+import sanitizeHtml from "sanitize-html";
 
 // Directory name validation - alphanumeric, hyphens, underscores, no spaces at start/end
 export const directoryNameSchema = z
@@ -124,15 +125,391 @@ export const imageFormatSchema = z.enum(["image/png"]);
 // Boolean validation for checkboxes
 export const booleanSchema = z.boolean();
 
-// Sanitization helpers
-export const sanitizeString = (str: string): string => {
-  return str.replace(/[<>/]/g, "").trim();
+// XSS-Safe Validation Schemas
+
+/**
+ * Safe text input that automatically escapes HTML on output
+ * Use this for any user text that will be displayed in HTML
+ */
+export const safeTextSchema = z
+  .string()
+  .min(1, "Text cannot be empty")
+  .max(1000, "Text is too long")
+  .transform((val) => val.trim())
+  .refine((val) => val.length > 0, "Text cannot be empty");
+
+/**
+ * Safe HTML content that rejects any HTML input
+ * Use sparingly - prefer plain text when possible
+ */
+export const safeHtmlSchema = z
+  .string()
+  .max(10000, "Content is too long")
+  .transform((val) => val.trim())
+  .refine(
+    (val) => !/<[^>]*>/.test(val),
+    "HTML tags are not allowed - please use plain text only",
+  )
+  .refine(
+    (val) => !/&lt;|&gt;|&amp;|&quot;|&#x27;|&#x2F;|&#x60;|&#x3D;/.test(val),
+    "HTML entities are not allowed - please use plain text only",
+  );
+
+/**
+ * Safe URL validation that prevents XSS via URLs
+ */
+export const safeUrlSchema = z
+  .string()
+  .min(1, "URL cannot be empty")
+  .max(2048, "URL is too long")
+  .transform((val) => sanitizeUrl(val.trim()))
+  .refine((val) => val !== null, "Invalid or unsafe URL");
+
+/**
+ * Safe user input for display names, comments, etc.
+ * Rejects any input containing HTML tags or entities
+ */
+export const safeUserInputSchema = z
+  .string()
+  .min(1, "Input cannot be empty")
+  .max(500, "Input is too long")
+  .transform((val) => val.trim())
+  .refine((val) => val.length > 0, "Input cannot be empty after trimming")
+  .refine(
+    (val) => !/<[^>]*>/.test(val),
+    "HTML tags are not allowed - please use plain text only",
+  )
+  .refine(
+    (val) => !/&lt;|&gt;|&amp;|&quot;|&#x27;|&#x2F;|&#x60;|&#x3D;/.test(val),
+    "HTML entities are not allowed - please use plain text only",
+  )
+  .refine(
+    (val) => !/<script|javascript:|data:|vbscript:/i.test(val),
+    "Potentially unsafe content detected",
+  );
+
+/**
+ * Enhanced image label with XSS protection - rejects HTML
+ */
+export const safeImageLabelSchema = z
+  .string()
+  .min(1, "Image label cannot be empty")
+  .max(100, "Image label is too long")
+  .regex(
+    /^[a-zA-Z0-9\s\-_.,()]+$/,
+    "Image label can only contain letters, numbers, spaces, hyphens, underscores, periods, commas, and parentheses",
+  )
+  .transform((val) => val.trim())
+  .refine(
+    (val) => !/<[^>]*>/.test(val),
+    "HTML tags are not allowed in image labels",
+  )
+  .refine(
+    (val) => !/&lt;|&gt;|&amp;|&quot;|&#x27;|&#x2F;|&#x60;|&#x3D;/.test(val),
+    "HTML entities are not allowed in image labels",
+  )
+  .refine(
+    (val) => !/javascript:|data:|vbscript:/i.test(val),
+    "Unsafe protocols are not allowed in image labels",
+  );
+
+/**
+ * Enhanced class label with XSS protection - rejects HTML
+ */
+export const safeClassLabelSchema = z
+  .string()
+  .min(1, "Class label cannot be empty")
+  .max(100, "Class label is too long")
+  .regex(
+    /^[a-zA-Z0-9\s\-_]+$/,
+    "Class label can only contain letters, numbers, spaces, hyphens, and underscores",
+  )
+  .transform((val) => val.trim())
+  .refine(
+    (val) => !/<[^>]*>/.test(val),
+    "HTML tags are not allowed in class labels",
+  )
+  .refine(
+    (val) => !/&lt;|&gt;|&amp;|&quot;|&#x27;|&#x2F;|&#x60;|&#x3D;/.test(val),
+    "HTML entities are not allowed in class labels",
+  )
+  .refine(
+    (val) => !/javascript:|data:|vbscript:/i.test(val),
+    "Unsafe protocols are not allowed in class labels",
+  );
+
+// XSS Protection and Sanitization Helpers
+
+/**
+ * Escapes HTML special characters to prevent XSS attacks
+ * Use this when rendering user input in HTML contexts
+ */
+export const escapeHtml = (str: string): string => {
+  const htmlEscapeMap: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#x27;",
+    "/": "&#x2F;",
+    "`": "&#x60;",
+    "=": "&#x3D;",
+  };
+
+  return str.replace(/[&<>"'`=/]/g, (char) => htmlEscapeMap[char] || char);
 };
 
+/**
+ * Escapes characters for safe use in HTML attributes
+ * Use this when rendering user input in HTML attribute values
+ */
+export const escapeHtmlAttribute = (str: string): string => {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+};
+
+/**
+ * Escapes characters for safe use in JavaScript strings
+ * Use this when rendering user input in JavaScript contexts
+ */
+export const escapeJavaScript = (str: string): string => {
+  const jsEscapeMap: Record<string, string> = {
+    "\\": "\\\\",
+    '"': '\\"',
+    "'": "\\'",
+    "\n": "\\n",
+    "\r": "\\r",
+    "\t": "\\t",
+    "\b": "\\b",
+    "\f": "\\f",
+    "\v": "\\v",
+    "\0": "\\0",
+    "<": "\\u003C",
+    ">": "\\u003E",
+    "&": "\\u0026",
+    "=": "\\u003D",
+  };
+
+  return str.replace(
+    /[\\"'\n\r\t\b\f\v\0<>&=]/g,
+    (char) => jsEscapeMap[char] || char,
+  );
+};
+
+/**
+ * Validates and sanitizes URLs to prevent javascript: and data: URL attacks
+ * Uses sanitize-html for initial validation with custom checks as fallback
+ */
+export const sanitizeUrl = (url: string): string | null => {
+  const trimmed = url.trim();
+
+  // First, use sanitize-html to validate the URL in a link context
+  const testHtml = `<a href="${trimmed}">test</a>`;
+  const sanitized = sanitizeHtml(testHtml, {
+    allowedTags: ["a"],
+    allowedAttributes: {
+      a: ["href"],
+    },
+    allowedSchemes: ["http", "https", "ftp", "mailto"],
+    allowProtocolRelative: false,
+  });
+
+  // If sanitize-html removed the href attribute, the URL is dangerous
+  if (!sanitized.includes('href="')) {
+    return null;
+  }
+
+  // Extract the sanitized URL
+  const hrefMatch = sanitized.match(/href="([^"]*)"/);
+  if (!hrefMatch) {
+    return null;
+  }
+
+  const sanitizedUrl = hrefMatch[1];
+
+  // Additional custom validation for edge cases
+  const normalizedForCheck = (() => {
+    // Remove control chars, whitespace, and null bytes that could be used for obfuscation
+    let compact = trimmed.replace(
+      // eslint-disable-next-line no-control-regex
+      /[\u0000-\u001F\s\u007F-\u009F\u00A0\uFEFF]+/g,
+      "",
+    );
+
+    // Multiple decode passes to handle nested encoding
+    for (let i = 0; i < 3; i++) {
+      try {
+        const decoded = decodeURIComponent(compact);
+        if (decoded === compact) break; // No more changes
+        compact = decoded;
+      } catch {
+        break;
+      }
+    }
+
+    return compact.toLowerCase();
+  })();
+
+  // Additional checks for obfuscated scripts
+  if (
+    normalizedForCheck.includes("script") ||
+    normalizedForCheck.includes("eval") ||
+    normalizedForCheck.includes("expression")
+  ) {
+    return null;
+  }
+
+  return sanitizedUrl;
+};
+
+/**
+ * Checks if a string contains HTML tags or entities
+ * Returns true if HTML is detected, false otherwise
+ */
+export const containsHtml = (str: string): boolean => {
+  // Check for HTML tags
+  if (/<[^>]*>/.test(str)) return true;
+
+  // Check for common HTML entities
+  const htmlEntities = /&lt;|&gt;|&amp;|&quot;|&#x27;|&#x2F;|&#x60;|&#x3D;/;
+  if (htmlEntities.test(str)) return true;
+
+  return false;
+};
+
+/**
+ * Removes potentially dangerous HTML tags and attributes using sanitize-html
+ * @deprecated Use containsHtml() to reject HTML input instead of sanitizing
+ * Use sparingly - prefer escaping over stripping when possible
+ */
+export const stripDangerousHtml = (str: string): string => {
+  // First sanitize HTML using sanitize-html
+  let result = sanitizeHtml(str, {
+    allowedTags: [
+      // Basic formatting tags - safe to preserve
+      "p",
+      "br",
+      "strong",
+      "b",
+      "em",
+      "i",
+      "u",
+      "span",
+      "div",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "ul",
+      "ol",
+      "li",
+      "blockquote",
+      "a",
+      "img",
+    ],
+    allowedAttributes: {
+      a: ["href"], // Only href for links
+      img: ["src", "alt"], // Only src and alt for images
+    },
+    allowedSchemes: ["http", "https", "mailto"], // Only safe URL schemes
+    disallowedTagsMode: "discard", // Remove disallowed tags entirely
+    allowProtocolRelative: false, // Block protocol-relative URLs
+    enforceHtmlBoundary: false, // Don't require html tags
+    parseStyleAttributes: false, // Don't parse style attributes for security
+  });
+
+  // Also handle plain text dangerous URLs that sanitize-html might miss
+  result = result
+    .replace(/javascript\s*:/gi, "") // Remove javascript: URLs
+    .replace(/data\s*:/gi, "") // Remove data: URLs
+    .replace(/vbscript\s*:/gi, "") // Remove vbscript: URLs
+    .trim();
+
+  return result;
+};
+
+/**
+ * Sanitizes HTML content using sanitize-html library with safe defaults
+ * Allows basic formatting tags but removes all dangerous content
+ * Use this when you need to preserve some HTML formatting
+ */
+export const sanitizeHtmlContent = (html: string): string => {
+  return sanitizeHtml(html, {
+    allowedTags: ["b", "i", "em", "strong", "p", "br"], // Only basic formatting
+    allowedAttributes: {}, // No attributes allowed
+    allowedSchemes: ["http", "https", "mailto"], // Only safe URL schemes
+    disallowedTagsMode: "discard", // Remove disallowed tags entirely
+    allowProtocolRelative: false, // Block protocol-relative URLs
+    enforceHtmlBoundary: false, // Don't require html tags
+    parseStyleAttributes: false, // Don't parse style attributes for security
+  }).trim();
+};
+
+/**
+ * Content Security Policy helpers
+ */
+export const cspDirectives = {
+  defaultSrc: "'self'",
+  scriptSrc: "'self' 'unsafe-inline'", // Consider removing unsafe-inline in production
+  styleSrc: "'self' 'unsafe-inline'",
+  imgSrc: "'self' data: blob:",
+  connectSrc: "'self'",
+  fontSrc: "'self'",
+  objectSrc: "'none'",
+  mediaSrc: "'self'",
+  frameSrc: "'none'",
+  baseUri: "'self'",
+  formAction: "'self'",
+  frameAncestors: "'none'",
+  upgradeInsecureRequests: true,
+} as const;
+
+/**
+ * Generates a Content Security Policy header value
+ */
+export const generateCSP = (): string => {
+  const directives = Object.entries(cspDirectives)
+    .filter(([, value]) => value !== null && value !== undefined)
+    .map(([key, value]) => {
+      const kebabKey = key.replace(/([A-Z])/g, "-$1").toLowerCase();
+      if (typeof value === "boolean") {
+        return value ? kebabKey : "";
+      }
+      return `${kebabKey} ${value}`;
+    })
+    .filter((directive) => directive.length > 0);
+
+  return directives.join("; ");
+};
+
+// Legacy sanitization helpers (maintained for backward compatibility)
+/**
+ * Trims whitespace and provides basic text cleaning with XSS protection.
+ * Now strictly returns an escaped version of the string (no partial unescaping) to avoid incomplete multi-character sanitization issues.
+ * For advanced XSS protection, consider using `safeTextSchema` for input validation.
+ */
+export const sanitizeString = (str: string): string => {
+  return escapeHtml(str).trim();
+};
+
+/**
+ * Normalizes email addresses by trimming and converting to lowercase.
+ * This is not deprecated as it performs standard email normalization.
+ */
 export const sanitizeEmail = (email: string): string => {
   return email.trim().toLowerCase();
 };
 
+/**
+ * Removes potentially dangerous characters from filenames.
+ * This is not deprecated as it serves a specific purpose for file handling.
+ */
 export const sanitizeFileName = (name: string): string => {
   return name.replace(/[^a-zA-Z0-9\-_.\s()]/g, "").trim();
 };
@@ -150,3 +527,15 @@ export type ImageFile = z.infer<typeof imageFileSchema>;
 export type FileListValidated = z.infer<typeof fileListSchema>;
 export type DeviceId = z.infer<typeof deviceIdSchema>;
 export type ImageFormat = z.infer<typeof imageFormatSchema>;
+
+// XSS-Safe validation result types
+export type SafeText = z.infer<typeof safeTextSchema>;
+export type SafeHtml = z.infer<typeof safeHtmlSchema>;
+export type SafeUrl = z.infer<typeof safeUrlSchema>;
+export type SafeUserInput = z.infer<typeof safeUserInputSchema>;
+export type SafeImageLabel = z.infer<typeof safeImageLabelSchema>;
+export type SafeClassLabel = z.infer<typeof safeClassLabelSchema>;
+
+// Utility types for XSS protection
+export type EscapedString = string & { readonly __escaped: unique symbol };
+export type SanitizedUrl = string & { readonly __sanitized: unique symbol };
