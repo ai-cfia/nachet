@@ -14,5 +14,3 @@ async def get_version():
 @router.get('/ready', status_code=status.HTTP_200_OK, name="Get Readiness Status [NO AUTH REQUIRED]")
 async def get_readiness_status():
     return {"status": "ready"}
-
-
