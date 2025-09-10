@@ -146,11 +146,7 @@ jobs:
           ls -la ${{ github.workspace }}/test-results/
           
           # Define expected failures (tests we know will fail)
-          EXPECTED_FAILURES=(
-            "Clear-Site-Data"
-            "Cache-Control"
-            "Permissions-Policy"
-          )
+          export EXPECTED_FAILURES="Clear-Site-Data Cache-Control Permissions-Policy"
           
           # Parse results and check for unexpected failures
           python3 - <<EOF
@@ -175,17 +171,24 @@ jobs:
               tree = ET.parse(xml_files[0])
               root = tree.getroot()
               
+              print(f"XML file: {xml_files[0]}")
+              print(f"Root element: {root.tag}")
+              
               unexpected_failures = []
               expected_but_passed = []
+              all_tests = []
               
               for testcase in root.findall('.//testcase'):
                   test_name = testcase.get('name', '')
                   is_failure = testcase.find('failure') is not None
+                  all_tests.append(f"{test_name} ({'FAIL' if is_failure else 'PASS'})")
                   
                   if is_failure and test_name not in expected_failures:
                       unexpected_failures.append(test_name)
                   elif not is_failure and test_name in expected_failures:
                       expected_but_passed.append(test_name)
+              
+              print(f"All tests found: {all_tests}")
               
               print(f"Expected failures: {expected_failures}")
               print(f"Unexpected failures: {unexpected_failures}")
