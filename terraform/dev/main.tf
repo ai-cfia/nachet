@@ -60,15 +60,16 @@ resource "azurerm_container_app_environment" "nachet" {
 #   postgresql_version        = var.postgresql_version
 # }
 
-# module "pgadmin" {
-#   source = "../modules/pgadmin"
-#   project_name                 = var.project_name
-#   environment                  = var.environment
-#   resource_group_name          = var.rg_nachet
-#   container_app_environment_id = azurerm_container_app_environment.nachet.id
-#   pgadmin_password             = var.pgadmin_password
-#   tags                         = var.tags
-# }
+module "pgadmin" {
+  source = "../modules/pgadmin"
+  
+  project_name                 = var.project_name
+  environment                  = var.environment
+  resource_group_name          = var.resource_group_name
+  container_app_environment_id = azurerm_container_app_environment.nachet.id
+  pgadmin_password             = var.pgadmin_password
+  tags                         = var.tags
+}
 
 # Module 3: Nachet Application (Storage and Backend) - Commented out for now
 # module "nachet" {

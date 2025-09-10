@@ -309,11 +309,11 @@ variable "session_secret" {
   sensitive   = true
 }
 
-# variable "pgadmin_password" {
-#   description = "PgAdmin admin password"
-#   type        = string
-#   sensitive   = true
-# }
+variable "pgadmin_password" {
+  description = "PgAdmin admin password"
+  type        = string
+  sensitive   = true
+}
 
 # PostgreSQL Configuration
 variable "postgresql_subnet_name" {
