@@ -139,6 +139,7 @@ stages:
                 VNET_RG="$(vnetResourceGroupName)"
                 ADMIN_USERNAME="$(postgresqlAdminUsername)"
                 ADMIN_PASSWORD="$(postgresqlAdminPassword)"
+                PRIVATE_DNS_ZONE_ID="$(postgresqlPrivateDnsZoneID)"
                 
                 echo "Checking if PostgreSQL server exists..."
                 if az postgres flexible-server show \
@@ -163,6 +164,7 @@ stages:
                     --backup-retention 7 \
                     --zone 1 \
                     --subnet "$SUBNET_ID" \
+                    --private-dns-zone "$PRIVATE_DNS_ZONE_ID" \
                     --yes
                     
                   if [ $? -eq 0 ]; then
