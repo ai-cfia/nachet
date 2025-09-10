@@ -165,7 +165,6 @@ stages:
                     --zone 1 \
                     --vnet "$VNET_NAME" \
                     --subnet "$SUBNET_NAME" \
-                    --public-access Disabled \
                     --yes
                     
                   if [ $? -eq 0 ]; then
