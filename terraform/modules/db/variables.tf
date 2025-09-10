@@ -34,7 +34,22 @@ variable "tags" {
   }
 }
 
-# Network Configuration - no longer needed for public access
+# Network Configuration for private endpoint
+variable "vnet_name" {
+  description = "Name of the existing VNet"
+  type        = string
+}
+
+variable "vnet_resource_group_name" {
+  description = "Resource group name where VNet exists"
+  type        = string
+}
+
+variable "postgresql_subnet_name" {
+  description = "Name of the existing PostgreSQL subnet (created by pipeline)"
+  type        = string
+  default     = "nachet-postgresql-subnet-dev"
+}
 
 variable "postgresql_admin_username" {
   description = "PostgreSQL admin username"

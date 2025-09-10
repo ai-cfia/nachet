@@ -211,6 +211,11 @@ variable "container_app_memory" {
   default     = "0.5Gi" # Minimum memory allocation
 }
 
+variable "infrastructure_resource_group_name" {
+  description = "ACE infrastructure_resource_group_name"
+  type        = string
+}
+
 # variable "triton_cpu" {
 #   description = "CPU for Triton server containers"
 #   type        = number
@@ -318,10 +323,17 @@ variable "pgadmin_password" {
 # PostgreSQL Configuration
 variable "public_network_access_enabled" {
   description = "Enable the db for public access"
-  type = bool
+  type        = bool
 }
 
-# PostgreSQL subnet and private DNS zone variables removed - using public access
+# Network Configuration (restored for private endpoint)
+variable "postgresql_subnet_name" {
+  description = "Name of the existing PostgreSQL subnet (created by pipeline)"
+  type        = string
+  default     = "nachet-postgresql-subnet-dev"
+}
+
+# Private endpoint is always enabled - no variable needed
 
 variable "postgresql_admin_username" {
   description = "PostgreSQL admin username"

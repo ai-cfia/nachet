@@ -4,10 +4,13 @@ environment         = "dev"
 location            = "canadacentral"
 resource_group_name = "nachet-dev-rg"
 
-# Network Configuration (Required - Only for Container Apps)
+# Network Configuration
 vnet_name                = "my-vnet"
 vnet_resource_group_name = "network-rg"
 enable_public_access     = true   # Container Apps accessible directly (with IP restrictions)
+
+# PostgreSQL Private Endpoint (always enabled)
+postgresql_subnet_name = "nachet-postgresql-subnet-dev"  # Created by pipeline
 
 # Security - Only your IP address can access the applications
 allowed_ip_addresses = [

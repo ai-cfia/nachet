@@ -19,13 +19,14 @@ resource "azurerm_log_analytics_workspace" "nachet" {
 }
 
 resource "azurerm_container_app_environment" "nachet" {
-  name                           = "${var.project_name}-cae-${var.environment}"
-  location                       = var.location
-  resource_group_name            = var.resource_group_name
-  log_analytics_workspace_id     = azurerm_log_analytics_workspace.nachet.id
-  infrastructure_subnet_id       = data.azurerm_subnet.container_apps.id
-  internal_load_balancer_enabled = true
-  tags                           = var.tags
+  name                               = "${var.project_name}-cae-${var.environment}"
+  location                           = var.location
+  resource_group_name                = var.resource_group_name
+  log_analytics_workspace_id         = azurerm_log_analytics_workspace.nachet.id
+  infrastructure_subnet_id           = data.azurerm_subnet.container_apps.id
+  infrastructure_resource_group_name = var.infrastructure_resource_group_name
+  internal_load_balancer_enabled     = true
+  tags                               = var.tags
 
   # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/container_app_environment#workload_profile_type-1
   workload_profile {
@@ -39,19 +40,24 @@ resource "azurerm_container_app_environment" "nachet" {
 # PostgreSQL Database
 module "db" {
   source = "../modules/db"
-  
+
   project_name        = var.project_name
   environment         = var.environment
   location            = var.location
   resource_group_name = var.resource_group_name
   tags                = var.tags
 
+  # Network (for private endpoint)
+  vnet_name                = var.vnet_name
+  vnet_resource_group_name = var.vnet_resource_group_name
+  postgresql_subnet_name   = var.postgresql_subnet_name
+
   # PostgreSQL Configuration
-  postgresql_admin_username = var.postgresql_admin_username
-  postgresql_admin_password = var.postgresql_admin_password
-  postgresql_sku_name       = var.postgresql_sku_name
-  postgresql_storage_mb     = var.postgresql_storage_mb
-  postgresql_version        = var.postgresql_version
+  postgresql_admin_username     = var.postgresql_admin_username
+  postgresql_admin_password     = var.postgresql_admin_password
+  postgresql_sku_name           = var.postgresql_sku_name
+  postgresql_storage_mb         = var.postgresql_storage_mb
+  postgresql_version            = var.postgresql_version
   public_network_access_enabled = var.public_network_access_enabled
 }
 
