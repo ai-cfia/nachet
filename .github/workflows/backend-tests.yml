@@ -119,14 +119,21 @@ jobs:
           NACHET_FRONTEND_DEV_URL: "http://localhost:5173"
           PORT: 5174
 
+      - name: Checkout OSHP validator
+        uses: actions/checkout@v4
+        with:
+          repository: oshp/oshp-validator
+          path: oshp-validator
+
       - name: Run OSHP validator security headers test
         run: |
           docker run --rm --network="host" \
+            -v $(pwd)/oshp-validator:/oshp-validator \
             ovhcom/venom:latest run \
             --var="target_site=http://localhost:5174" \
             --output-dir=/tmp \
             --format=xml \
-            https://raw.githubusercontent.com/oshp/oshp-validator/main/tests_suite.yml
+            /oshp-validator/tests_suite.yml
 
   business-logic-tests:
     runs-on: ubuntu-latest
