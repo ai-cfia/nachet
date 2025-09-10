@@ -2,7 +2,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.types import ASGIApp
 from app.middleware.headers.presets import PRESETS
-from app.middleware.headers.header_map import PARAM_TO_HEADER
+from app.middleware.headers.header_mapping import PARAM_TO_HEADER
 
 
 class HeadersMiddleware(BaseHTTPMiddleware):
