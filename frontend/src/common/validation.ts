@@ -440,15 +440,20 @@ export const stripDangerousHtml = (str: string): string => {
       result = result.replace(pattern, "");
     });
 
-    // Remove event handlers and dangerous URLs
+    // Remove event handlers and dangerous URLs with comprehensive multi-pass approach
     result = result
-      // Remove event handlers - more comprehensive pattern to avoid partial matches
-      .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, "") // Remove complete event handlers
-      .replace(/\bon\w+\s*=\s*[^"'\s>][^\s>]*/gi, "") // Remove unquoted event handlers
-      .replace(/\bon\w+(?=[\s>=]|$)/gi, "") // Remove any remaining partial "on*" attributes
+      // Complete removal of any "on*" attribute patterns to prevent partial sanitization
+      .replace(/\s+on\w*\s*=\s*["'][^"']*["']/gi, " ") // Quoted event handlers with leading space
+      .replace(/\s+on\w*\s*=\s*[^"'\s>][^\s>]*/gi, " ") // Unquoted event handlers with leading space
+      .replace(/\bon\w*\s*=\s*["'][^"']*["']/gi, "") // Word boundary quoted handlers
+      .replace(/\bon\w*\s*=\s*[^"'\s>][^\s>]*/gi, "") // Word boundary unquoted handlers
+      .replace(/\s+on\w*/gi, " ") // Any remaining "on*" patterns with space
+      .replace(/\bon\w*/gi, "") // Any remaining "on*" patterns at word boundaries
       .replace(/javascript\s*:/gi, "") // Remove javascript: URLs
       .replace(/data\s*:/gi, "") // Remove data: URLs
-      .replace(/vbscript\s*:/gi, ""); // Remove vbscript: URLs
+      .replace(/vbscript\s*:/gi, "") // Remove vbscript: URLs
+      .replace(/\s+/g, " ") // Normalize whitespace after removals
+      .trim(); // Clean up any leading/trailing whitespace
 
     // If no changes were made, we're done
     if (result === beforePass) {
