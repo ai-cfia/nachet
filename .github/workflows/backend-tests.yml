@@ -141,6 +141,10 @@ jobs:
           VENOM_EXIT_CODE=$?
           set -e
           
+          # Fix file permissions created by Docker
+          sudo chmod -R 755 ${{ github.workspace }}/test-results/
+          ls -la ${{ github.workspace }}/test-results/
+          
           # Define expected failures (tests we know will fail)
           EXPECTED_FAILURES=(
             "Clear-Site-Data"
