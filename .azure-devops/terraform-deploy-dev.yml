@@ -5,6 +5,15 @@ trigger:
 
 pr: none
 
+parameters:
+  - name: action
+    displayName: 'Terraform Action'
+    type: string
+    default: 'apply'
+    values:
+      - apply
+      - destroy
+
 pool:
   vmImage: "ubuntu-latest"
 
@@ -34,7 +43,7 @@ stages:
               secureFile: "nachet-dev.tfvars"
 
           - task: AzureCLI@2
-            displayName: "Pre-create PostgreSQL Subnet with Route Table"
+            displayName: "Pre-create PostgreSQL Subnet"
             inputs:
               azureSubscription: $(serviceConnectionName)
               scriptType: "bash"
@@ -75,8 +84,18 @@ stages:
                     exit 1
                   fi
                 fi
-                
-                # Container Apps Subnet
+
+          - task: AzureCLI@2
+            displayName: "Pre-create Container Apps Subnet"
+            inputs:
+              azureSubscription: $(serviceConnectionName)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                VNET_NAME="$(vnetName)"
+                VNET_RG="$(vnetResourceGroupName)"
+                ROUTE_TABLE_ID="$(routeTableId)"
+                NSG_ID="$(networkSecurityGroupId)"
                 CONTAINER_SUBNET_NAME="$(containerAppsSubnetName)"
                 CONTAINER_SUBNET_CIDR="$(containerAppsSubnetCidr)"
                 
@@ -137,17 +156,17 @@ stages:
             inputs:
               provider: "azurerm"
               command: "plan"
-              commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath)"
+              commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath) ${{ eq(parameters.action, 'destroy') && '-destroy' || '' }}"
               workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
               environmentServiceNameAzureRM: "$(serviceConnectionName)"
 
   - stage: Apply
-    displayName: "Apply Terraform Plan"
+    displayName: "Terraform ${{ parameters.action }}"
     dependsOn: InitAndPlan
     condition: succeeded()
     jobs:
       - deployment: TerraformApply
-        displayName: "Terraform Apply"
+        displayName: "Terraform ${{ parameters.action }}"
         pool:
           vmImage: "ubuntu-latest"
         environment: "TFApproval"
@@ -156,6 +175,19 @@ stages:
             deploy:
               steps:
                 - checkout: self
+
+                - script: |
+                    echo "⚠️  WARNING: About to ${{ upper(parameters.action) }} all infrastructure!"
+                    echo "Environment: DEV"
+                    echo "Action: ${{ upper(parameters.action) }}"
+                    echo ""
+                    echo "This will affect:"
+                    echo "- PostgreSQL Flexible Server"
+                    echo "- Container Apps Environment"
+                    echo "- PgAdmin Container App"
+                    echo "- All associated resources"
+                  condition: eq('${{ parameters.action }}', 'destroy')
+                  displayName: "⚠️ DESTROY Warning"
 
                 - task: AzureCLI@2
                   displayName: "Azure CLI Login"
@@ -190,10 +222,10 @@ stages:
                     backendAzureRmKey: "$(stateKey)"
 
                 - task: TerraformTask@5
-                  displayName: "Terraform Apply"
+                  displayName: "Terraform ${{ parameters.action }}"
                   inputs:
                     provider: "azurerm"
-                    command: "apply"
+                    command: "${{ parameters.action }}"
                     commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath)"
                     workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
                     environmentServiceNameAzureRM: "$(serviceConnectionName)"

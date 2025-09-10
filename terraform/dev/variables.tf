@@ -16,6 +16,12 @@ variable "location" {
   default     = "canadacentral"
 }
 
+variable "rg_nachet" {
+  description = "Nachet resource group"
+  type = string
+  default = "rg-nachet"
+}
+
 variable "resource_group_name" {
   description = "Resource group name"
   type        = string
