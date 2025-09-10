@@ -2094,6 +2094,117 @@
       "version": "2.0.0"
     },
     {
+      "bom-ref": "psycopg==3.2.10",
+      "description": "PostgreSQL database adapter for Python",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Download",
+          "type": "distribution",
+          "url": "https://pypi.org/project/psycopg/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://psycopg.org/psycopg3/docs/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issue Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/psycopg/psycopg/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Code",
+          "type": "other",
+          "url": "https://github.com/psycopg/psycopg"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Funding",
+          "type": "other",
+          "url": "https://github.com/sponsors/dvarrazzo"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changes",
+          "type": "release-notes",
+          "url": "https://psycopg.org/psycopg3/docs/news.html"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://psycopg.org/"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://psycopg.org/psycopg3/"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "LGPL-3.0-only"
+          }
+        }
+      ],
+      "name": "psycopg",
+      "purl": "pkg:pypi/psycopg@3.2.10",
+      "type": "library",
+      "version": "3.2.10"
+    },
+    {
+      "bom-ref": "psycopg-pool==3.2.6",
+      "description": "Connection Pool for Psycopg",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Download",
+          "type": "distribution",
+          "url": "https://pypi.org/project/psycopg-pool/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://www.psycopg.org/psycopg3/docs/advanced/pool.html"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issue Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/psycopg/psycopg/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Code",
+          "type": "other",
+          "url": "https://github.com/psycopg/psycopg"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changes",
+          "type": "release-notes",
+          "url": "https://psycopg.org/psycopg3/docs/news_pool.html"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://psycopg.org/"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://psycopg.org/psycopg3/"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "LGPL-3.0-only"
+          }
+        }
+      ],
+      "name": "psycopg-pool",
+      "purl": "pkg:pypi/psycopg-pool@3.2.6",
+      "type": "library",
+      "version": "3.2.6"
+    },
+    {
       "bom-ref": "py-serializable==2.1.0",
       "description": "Library for serializing and deserializing Python Objects to and from JSON and XML.",
       "externalReferences": [
@@ -2208,6 +2319,49 @@
       "purl": "pkg:pypi/pydantic@2.11.7",
       "type": "library",
       "version": "2.11.7"
+    },
+    {
+      "bom-ref": "pydantic-settings==2.10.1",
+      "description": "Settings management using Pydantic",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://docs.pydantic.dev/dev-v2/concepts/pydantic_settings/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/pydantic/pydantic-settings"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Funding",
+          "type": "other",
+          "url": "https://github.com/sponsors/samuelcolvin"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://github.com/pydantic/pydantic-settings/releases"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/pydantic/pydantic-settings"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "pydantic-settings",
+      "purl": "pkg:pypi/pydantic-settings@2.10.1",
+      "type": "library",
+      "version": "2.10.1"
     },
     {
       "bom-ref": "pydantic_core==2.33.2",
@@ -3646,6 +3800,7 @@
         "email-validator==2.3.0",
         "fastapi-cli==0.0.10",
         "httpx==0.28.1",
+        "pydantic-settings==2.10.1",
         "pydantic==2.11.7",
         "python-multipart==0.0.20",
         "starlette==0.47.3",
@@ -3827,12 +3982,39 @@
     },
     {
       "dependsOn": [
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "psycopg-pool==3.2.6"
+    },
+    {
+      "dependsOn": [
+        "anyio==4.10.0",
+        "dnspython==2.7.0",
+        "psycopg-pool==3.2.6",
+        "pytest-cov==6.2.1",
+        "pytest==8.4.1",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "psycopg==3.2.10"
+    },
+    {
+      "dependsOn": [
         "defusedxml==0.7.1"
       ],
       "ref": "py-serializable==2.1.0"
     },
     {
       "ref": "pycparser==2.22"
+    },
+    {
+      "dependsOn": [
+        "PyYAML==6.0.2",
+        "azure-identity==1.24.0",
+        "pydantic==2.11.7",
+        "python-dotenv==1.1.1",
+        "typing-inspection==0.4.1"
+      ],
+      "ref": "pydantic-settings==2.10.1"
     },
     {
       "dependsOn": [
@@ -3962,6 +4144,9 @@
         "fastapi==0.116.1",
         "numpy==1.26.4",
         "pillow==10.3.0",
+        "psycopg-pool==3.2.6",
+        "psycopg==3.2.10",
+        "pydantic-settings==2.10.1",
         "pydantic==2.11.7",
         "pydantic_core==2.33.2",
         "python-dotenv==1.1.1",

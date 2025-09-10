@@ -15,7 +15,7 @@ from psycopg.conninfo import make_conninfo
 from psycopg_pool import ConnectionPool
 from pydantic import computed_field #, Field
 from pydantic_settings import BaseSettings
-from sqlmodel import StaticPool, create_engine
+# from sqlmodel import StaticPool, create_engine
 
 from app.exceptions import log_error
 # from app.models.bucket_name import MinioBucketName
@@ -42,12 +42,12 @@ class Settings(BaseSettings):
     auth_client_secret: str | None = None
 
     # database settings
-    db_user: str
-    db_password: str
-    db_host: str
-    db_port: int
-    db_name: str
-    nachet_schema: str
+    db_user: str | None = None
+    db_password: str | None = None
+    db_host: str | None = None
+    db_port: int | None = None
+    db_name: str | None = None
+    nachet_schema: str | None = None
 
     # blob storage settings
     azure_storage_account_name: str | None = None
@@ -56,10 +56,11 @@ class Settings(BaseSettings):
     azure_storage_endpoint_suffix: str | None = None
 
     # api settings
+    base_path: str = ""
     project_name: str = "Nachet API"
     swagger_path: str = "/docs"
     swagger_ui_client_id: str | None = None
-    allowed_origins: list[str]
+    allowed_origins: list[str] = ["localhost", "http://localhost:5173", "http://localhost:5174"]
     testing: bool = True
     debug: bool = False
 
@@ -91,7 +92,7 @@ class Settings(BaseSettings):
             return {
                 "url": "sqlite://",
                 "connect_args": {"check_same_thread": False},
-                "poolclass": StaticPool,
+                # "poolclass": StaticPool,
             }
         return {
             "url": f"postgresql+psycopg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}",
@@ -160,7 +161,7 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     )
     app.pool = pool
 
-    app.engine = create_engine(**settings.db_conn_info)
+    # app.engine = create_engine(**settings.db_conn_info)
 
     app.include_router(router)
 
