@@ -403,11 +403,11 @@ export const stripDangerousHtml = (str: string): string => {
 
   // Remove dangerous tags with comprehensive multi-pass sanitization
   const dangerousPatterns = [
-    // Tag patterns - more comprehensive to catch nested and malformed tags with flexible whitespace
-    /<\s*script\b[^>]*>[\s\S]*?<\s*\/\s*script\s*>/gi,
-    /<\s*iframe\b[^>]*>[\s\S]*?<\s*\/\s*iframe\s*>/gi,
-    /<\s*object\b[^>]*>[\s\S]*?<\s*\/\s*object\s*>/gi,
-    /<\s*style\b[^>]*>[\s\S]*?<\s*\/\s*style\s*>/gi,
+    // Tag patterns - match closing tags with extra attributes, whitespace, or malformed variants
+    /<\s*script\b[^>]*>[\s\S]*?<\s*\/\s*script\b[^>]*>/gi,
+    /<\s*iframe\b[^>]*>[\s\S]*?<\s*\/\s*iframe\b[^>]*>/gi,
+    /<\s*object\b[^>]*>[\s\S]*?<\s*\/\s*object\b[^>]*>/gi,
+    /<\s*style\b[^>]*>[\s\S]*?<\s*\/\s*style\b[^>]*>/gi,
     /<\s*embed\b[^>]*>/gi,
     /<\s*link\b[^>]*>/gi,
     /<\s*meta\b[^>]*>/gi,
@@ -441,11 +441,11 @@ export const stripDangerousHtml = (str: string): string => {
     });
 
     // Remove event handlers and dangerous URLs
-    result = result
-      .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "") // Remove event handlers
-      .replace(/javascript\s*:/gi, "") // Remove javascript: URLs
-      .replace(/data\s*:/gi, "") // Remove data: URLs
-      .replace(/vbscript\s*:/gi, ""); // Remove vbscript: URLs
+    // result = result
+    //   .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "") // Remove event handlers
+    //   .replace(/javascript\s*:/gi, "") // Remove javascript: URLs
+    //   .replace(/data\s*:/gi, "") // Remove data: URLs
+    //   .replace(/vbscript\s*:/gi, ""); // Remove vbscript: URLs
 
     // If no changes were made, we're done
     if (result === beforePass) {
