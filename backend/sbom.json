@@ -4142,6 +4142,7 @@
         "beartype==0.21.0",
         "cryptography==45.0.7",
         "fastapi==0.116.1",
+        "httpx==0.28.1",
         "numpy==1.26.4",
         "pillow==10.3.0",
         "psycopg-pool==3.2.6",
