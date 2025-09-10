@@ -133,7 +133,7 @@ stages:
               scriptLocation: "inlineScript"
               inlineScript: |
                 SERVER_NAME="$(postgresqlServerName)"
-                RESOURCE_GROUP="$(resourceGroupName)"
+                RESOURCE_GROUP="$(vnetResourceGroupName)"
                 LOCATION="$(location)"
                 VNET_NAME="$(vnetName)"
                 SUBNET_NAME="$(postgresqlSubnetName)"
@@ -163,7 +163,6 @@ stages:
                     --tier "Burstable" \
                     --backup-retention 7 \
                     --zone 1 \
-                    --vnet "$VNET_NAME" \
                     --subnet "$SUBNET_NAME" \
                     --yes
                     
