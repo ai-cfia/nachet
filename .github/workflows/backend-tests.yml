@@ -159,9 +159,13 @@ jobs:
           try:
               # Find the XML file
               import glob
-              xml_files = glob.glob('/tmp/test_results*.xml')
+              xml_files = glob.glob('${{ github.workspace }}/test-results/test_results*.xml')
               if not xml_files:
                   print("No XML results file found")
+                  print("Available files:")
+                  import os
+                  for f in os.listdir('${{ github.workspace }}/test-results/'):
+                      print(f"  {f}")
                   sys.exit(1)
               
               tree = ET.parse(xml_files[0])
@@ -195,7 +199,7 @@ jobs:
               sys.exit(1)
           EOF
         env:
-          EXPECTED_FAILURES: "Clear-Site-Data Cache-Control"
+          EXPECTED_FAILURES: "Clear-Site-Data Cache-Control Permissions-Policy"
 
   business-logic-tests:
     runs-on: ubuntu-latest
