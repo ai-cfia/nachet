@@ -28,7 +28,7 @@ resource "azurerm_container_app_environment" "nachet" {
   log_analytics_workspace_id         = azurerm_log_analytics_workspace.nachet.id
   infrastructure_subnet_id           = data.azurerm_subnet.container_apps.id
   infrastructure_resource_group_name = var.infrastructure_resource_group_name
-  internal_load_balancer_enabled     = true
+  internal_load_balancer_enabled     = false
   tags                               = var.tags
 
   workload_profile {
