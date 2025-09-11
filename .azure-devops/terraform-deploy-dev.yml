@@ -141,6 +141,38 @@ stages:
               backendAzureRmContainerName: "$(containerName)"
               backendAzureRmKey: "$(stateKey)"
 
+          - task: AzureCLI@2
+            displayName: "Terraform State Move Resources to Modules"
+            inputs:
+              azureSubscription: $(serviceConnectionName)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
+              inlineScript: |
+                echo "Moving Terraform state resources to new modules..."
+                
+                # Check if resources exist in state before moving
+                echo "Checking existing state resources..."
+                terraform state list
+                
+                # Move Log Analytics Workspace to new module (if exists)
+                if terraform state list | grep -q "azurerm_log_analytics_workspace.nachet"; then
+                  echo "Moving Log Analytics Workspace to module..."
+                  terraform state mv azurerm_log_analytics_workspace.nachet module.container_app_environment.azurerm_log_analytics_workspace.nachet
+                else
+                  echo "Log Analytics Workspace not found in state - skipping"
+                fi
+                
+                # Move Container App Environment to new module (if exists)
+                if terraform state list | grep -q "azurerm_container_app_environment.nachet"; then
+                  echo "Moving Container App Environment to module..."
+                  terraform state mv azurerm_container_app_environment.nachet module.container_app_environment.azurerm_container_app_environment.nachet
+                else
+                  echo "Container App Environment not found in state - skipping"
+                fi
+                
+                echo "State move operations completed."
+
           - task: TerraformTask@5
             displayName: "Terraform Plan"
             inputs:
