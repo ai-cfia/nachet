@@ -50,6 +50,12 @@ variable "container_apps_subnet_name" {
   default     = "nachet-container-apps-subnet-dev"
 }
 
+variable "private_endpoints_subnet_name" {
+  description = "Name of the existing Private Endpoints subnet (created by pipeline)"
+  type        = string
+  default     = "nachet-private-endpoints-subnet-dev"
+}
+
 # variable "storage_subnet_cidr" {
 #   description = "CIDR block for Storage subnet - optional (e.g., 10.0.3.0/29)"
 #   type        = string

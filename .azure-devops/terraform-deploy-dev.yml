@@ -116,6 +116,48 @@ stages:
                   fi
                 fi
 
+          - task: AzureCLI@2
+            displayName: "Pre-create Private Endpoints Subnet"
+            inputs:
+              azureSubscription: $(serviceConnectionName)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                VNET_NAME="$(vnetName)"
+                VNET_RG="$(vnetResourceGroupName)"
+                ROUTE_TABLE_ID="$(routeTableId)"
+                NSG_ID="$(networkSecurityGroupId)"
+                PRIVATE_ENDPOINTS_SUBNET_NAME="$(privateEndpointsSubnetName)"
+                PRIVATE_ENDPOINTS_SUBNET_CIDR="$(privateEndpointsSubnetCidr)"
+                
+                echo "Checking if Private Endpoints subnet exists..."
+                if az network vnet subnet show \
+                  --resource-group "$VNET_RG" \
+                  --vnet-name "$VNET_NAME" \
+                  --name "$PRIVATE_ENDPOINTS_SUBNET_NAME" \
+                  --query "id" -o tsv 2>/dev/null; then
+                  
+                  echo "✓ Subnet '$PRIVATE_ENDPOINTS_SUBNET_NAME' already exists"
+                else
+                  echo "Creating Private Endpoints subnet..."
+                  az network vnet subnet create \
+                    --resource-group "$VNET_RG" \
+                    --vnet-name "$VNET_NAME" \
+                    --name "$PRIVATE_ENDPOINTS_SUBNET_NAME" \
+                    --address-prefixes "$PRIVATE_ENDPOINTS_SUBNET_CIDR" \
+                    --route-table "$ROUTE_TABLE_ID" \
+                    --network-security-group "$NSG_ID" \
+                    --disable-private-endpoint-network-policies true \
+                    --output table
+                    
+                  if [ $? -eq 0 ]; then
+                    echo "✓ Successfully created Private Endpoints subnet"
+                  else
+                    echo "✗ Failed to create Private Endpoints subnet"
+                    exit 1
+                  fi
+                fi
+
           - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
             displayName: "Install Terraform (latest)"
             inputs:

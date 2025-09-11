@@ -12,6 +12,7 @@ module "container_app_environment" {
   vnet_name                          = var.vnet_name
   vnet_resource_group_name           = var.vnet_resource_group_name
   container_apps_subnet_name         = var.container_apps_subnet_name
+  private_endpoints_subnet_name      = var.private_endpoints_subnet_name
   infrastructure_resource_group_name = var.infrastructure_resource_group_name
 }
 

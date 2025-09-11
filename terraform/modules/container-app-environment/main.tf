@@ -10,6 +10,12 @@ data "azurerm_subnet" "container_apps" {
   resource_group_name  = var.vnet_resource_group_name
 }
 
+data "azurerm_subnet" "private_endpoints" {
+  name                 = var.private_endpoints_subnet_name
+  virtual_network_name = var.vnet_name
+  resource_group_name  = var.vnet_resource_group_name
+}
+
 # Log Analytics Workspace
 resource "azurerm_log_analytics_workspace" "nachet" {
   name                = "${var.project_name}-law-${var.environment}"
@@ -39,19 +45,19 @@ resource "azurerm_container_app_environment" "nachet" {
   }
 }
 
-# # Private Endpoint for Container App Environment
-# resource "azurerm_private_endpoint" "container_app_environment" {
-#   name                = "${var.project_name}-cae-pe-${var.environment}"
-#   location            = var.location
-#   resource_group_name = var.resource_group_name
-#   subnet_id           = data.azurerm_subnet.container_apps.id
+# Private Endpoint for Container App Environment
+resource "azurerm_private_endpoint" "container_app_environment" {
+  name                = "${var.project_name}-cae-pe-${var.environment}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  subnet_id           = data.azurerm_subnet.private_endpoints.id
 
-#   private_service_connection {
-#     name                           = "${var.project_name}-cae-connection-${var.environment}"
-#     is_manual_connection           = false
-#     private_connection_resource_id = azurerm_container_app_environment.nachet.id
-#     subresource_names              = ["managedEnvironments"]
-#   }
+  private_service_connection {
+    name                           = "${var.project_name}-cae-connection-${var.environment}"
+    is_manual_connection           = false
+    private_connection_resource_id = azurerm_container_app_environment.nachet.id
+    subresource_names              = ["managedEnvironments"]
+  }
 
-#   tags = var.tags
-# }
+  tags = var.tags
+}
