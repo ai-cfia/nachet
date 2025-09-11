@@ -1,19 +1,19 @@
 # Container App Environment
-# module "container_app_environment" {
-#   source = "../modules/container-app-environment"
+module "container_app_environment" {
+  source = "../modules/container-app-environment"
 
-#   project_name        = var.project_name
-#   environment         = var.environment
-#   location            = var.location
-#   resource_group_name = var.resource_group_name
-#   tags                = var.tags
+  project_name        = var.project_name
+  environment         = var.environment
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  tags                = var.tags
 
-#   # Network configuration
-#   vnet_name                          = var.vnet_name
-#   vnet_resource_group_name           = var.vnet_resource_group_name
-#   container_apps_subnet_name         = var.container_apps_subnet_name
-#   infrastructure_resource_group_name = var.infrastructure_resource_group_name
-# }
+  # Network configuration
+  vnet_name                          = var.vnet_name
+  vnet_resource_group_name           = var.vnet_resource_group_name
+  container_apps_subnet_name         = var.container_apps_subnet_name
+  # infrastructure_resource_group_name = var.infrastructure_resource_group_name
+}
 
 # PostgreSQL Database
 module "db" {
