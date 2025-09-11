@@ -1,41 +1,18 @@
-data "azurerm_virtual_network" "existing" {
-  name                = var.vnet_name
-  resource_group_name = var.vnet_resource_group_name
-}
+# Container App Environment
+module "container_app_environment" {
+  source = "../modules/container-app-environment"
 
-data "azurerm_subnet" "container_apps" {
-  name                 = var.container_apps_subnet_name
-  virtual_network_name = var.vnet_name
-  resource_group_name  = var.vnet_resource_group_name
-}
-
-resource "azurerm_log_analytics_workspace" "nachet" {
-  name                = "${var.project_name}-law-${var.environment}"
+  project_name        = var.project_name
+  environment         = var.environment
   location            = var.location
   resource_group_name = var.resource_group_name
-  sku                 = "PerGB2018"
-  retention_in_days   = 30
   tags                = var.tags
-}
 
-resource "azurerm_container_app_environment" "nachet" {
-  name                               = "${var.project_name}-cae-${var.environment}"
-  location                           = var.location
-  resource_group_name                = var.resource_group_name
-  log_analytics_workspace_id         = azurerm_log_analytics_workspace.nachet.id
-  infrastructure_subnet_id           = data.azurerm_subnet.container_apps.id
+  # Network configuration
+  vnet_name                          = var.vnet_name
+  vnet_resource_group_name           = var.vnet_resource_group_name
+  container_apps_subnet_name         = var.container_apps_subnet_name
   infrastructure_resource_group_name = var.infrastructure_resource_group_name
-  internal_load_balancer_enabled     = true
-  tags                               = var.tags
-
-
-  # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/container_app_environment#workload_profile_type-1
-  workload_profile {
-    name                  = "Consumption"
-    workload_profile_type = "Consumption"
-    maximum_count         = 10
-    minimum_count         = 0
-  }
 }
 
 # PostgreSQL Database
@@ -62,16 +39,16 @@ module "db" {
   public_network_access_enabled = var.public_network_access_enabled
 }
 
-# module "pgadmin" {
-#   source = "../modules/pgadmin"
-
-#   project_name                 = var.project_name
-#   environment                  = var.environment
-#   resource_group_name          = var.resource_group_name
-#   container_app_environment_id = azurerm_container_app_environment.nachet.id
-#   pgadmin_password             = var.pgadmin_password
-#   tags                         = var.tags
-# }
+module "pgadmin" {
+  source = "../modules/pgadmin"
+  
+  project_name                 = var.project_name
+  environment                  = var.environment
+  resource_group_name          = var.resource_group_name
+  container_app_environment_id = module.container_app_environment.container_app_environment_id
+  pgadmin_password             = var.pgadmin_password
+  tags                         = var.tags
+}
 
 # Module 3: Nachet Application (Storage and Backend) - Commented out for now
 # module "nachet" {
@@ -81,7 +58,7 @@ module "db" {
 #   environment                  = var.environment
 #   location                     = var.location
 #   resource_group_name          = var.rg_nachet
-#   container_app_environment_id = azurerm_container_app_environment.nachet.id
+#   container_app_environment_id = module.container_app_environment.container_app_environment_id
 #   tags                         = var.tags
 
 #   # Container configuration

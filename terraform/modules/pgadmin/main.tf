@@ -1,17 +1,13 @@
-# PgAdmin Container App for database management
 resource "azurerm_container_app" "pgadmin" {
   name                         = "${var.project_name}-pgadmin-ca-${var.environment}"
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
 
-  # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/container_app#workload_profile_name-1
-  # workload_profile_name = "Consumption"
-
   template {
     container {
       name   = "pgadmin"
-      image  = "mcr.microsoft.com/oss/dpage/pgadmin4:latest"
+      image  = "docker.io/dpage/pgadmin4"
       cpu    = 0.25
       memory = "0.5Gi"
 
