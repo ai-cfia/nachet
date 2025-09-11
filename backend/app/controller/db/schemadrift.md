@@ -157,4 +157,3 @@
   }
 
   The key is early detection and preventing direct database access in production environments.
-  
