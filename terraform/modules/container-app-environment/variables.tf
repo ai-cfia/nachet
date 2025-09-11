@@ -18,10 +18,10 @@ variable "resource_group_name" {
   type        = string
 }
 
-# variable "infrastructure_resource_group_name" {
-#   description = "The name of the resource group for infrastructure components"
-#   type        = string
-# }
+variable "infrastructure_resource_group_name" {
+  description = "The name of the resource group for infrastructure components"
+  type        = string
+}
 
 variable "vnet_name" {
   description = "The name of the virtual network"

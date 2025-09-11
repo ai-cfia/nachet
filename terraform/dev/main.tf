@@ -12,7 +12,7 @@ module "container_app_environment" {
   vnet_name                          = var.vnet_name
   vnet_resource_group_name           = var.vnet_resource_group_name
   container_apps_subnet_name         = var.container_apps_subnet_name
-  # infrastructure_resource_group_name = var.infrastructure_resource_group_name
+  infrastructure_resource_group_name = var.infrastructure_resource_group_name
 }
 
 # PostgreSQL Database
@@ -39,16 +39,16 @@ module "db" {
   public_network_access_enabled = var.public_network_access_enabled
 }
 
-# module "pgadmin" {
-#   source = "../modules/pgadmin"
-
-#   project_name                 = var.project_name
-#   environment                  = var.environment
-#   resource_group_name          = var.resource_group_name
-#   container_app_environment_id = module.container_app_environment.container_app_environment_id
-#   pgadmin_password             = var.pgadmin_password
-#   tags                         = var.tags
-# }
+module "pgadmin" {
+  source = "../modules/pgadmin"
+  
+  project_name                 = var.project_name
+  environment                  = var.environment
+  resource_group_name          = var.resource_group_name
+  container_app_environment_id = module.container_app_environment.container_app_environment_id
+  pgadmin_password             = var.pgadmin_password
+  tags                         = var.tags
+}
 
 # Module 3: Nachet Application (Storage and Backend) - Commented out for now
 # module "nachet" {
