@@ -13,7 +13,7 @@ output "log_analytics_workspace_id" {
   value       = azurerm_log_analytics_workspace.nachet.id
 }
 
-output "private_endpoint_id" {
-  description = "The ID of the Container App Environment private endpoint"
-  value       = azurerm_private_endpoint.container_app_environment.id
-}
+# output "private_endpoint_id" {
+#   description = "The ID of the Container App Environment private endpoint"
+#   value       = azurerm_private_endpoint.container_app_environment.id
+# }
