@@ -16,6 +16,7 @@ from psycopg_pool import ConnectionPool
 from pydantic import computed_field #, Field
 from pydantic_settings import BaseSettings
 # from sqlmodel import StaticPool, create_engine
+from sqlalchemy import create_engine
 
 from app.exceptions import log_error
 from app.middleware.headers.headers import HeadersMiddleware
@@ -91,15 +92,13 @@ class Settings(BaseSettings):
     def db_conn_info(self) -> dict:
         if self.testing:
             return {
-                "url": "sqlite://",
-                "connect_args": {"check_same_thread": False},
-                # "poolclass": StaticPool,
+                "url": "sqlite+pysqlite:///:memory:",
+                "echo": True,
             }
         return {
             "url": f"postgresql+psycopg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}",
-            "connect_args": {
-                "options": f"-c search_path={self.nachet_schema},public"
-            },
+            "pool_recycle": 3600,
+            "echo": True if self.debug else False,
         }
 
 
@@ -164,7 +163,7 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     )
     app.pool = pool
 
-    # app.engine = create_engine(**settings.db_conn_info)
+    app.engine = create_engine(**settings.db_conn_info)
 
     app.include_router(router)
 
