@@ -27,8 +27,8 @@ resource "azurerm_container_app_environment" "nachet" {
   resource_group_name                = var.resource_group_name
   log_analytics_workspace_id         = azurerm_log_analytics_workspace.nachet.id
   infrastructure_subnet_id           = data.azurerm_subnet.container_apps.id
-  # infrastructure_resource_group_name = var.infrastructure_resource_group_name
-  internal_load_balancer_enabled     = true # Container apps with ingress.enabled = true will get a private IP from the subnet (same subnet as infrastructure_subnet_id)
+  infrastructure_resource_group_name = var.infrastructure_resource_group_name
+  internal_load_balancer_enabled     = true
   tags                               = var.tags
 
   workload_profile {
@@ -39,19 +39,19 @@ resource "azurerm_container_app_environment" "nachet" {
   }
 }
 
-# Private Endpoint for Container App Environment
-resource "azurerm_private_endpoint" "container_app_environment" {
-  name                = "${var.project_name}-cae-pe-${var.environment}"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  subnet_id           = data.azurerm_subnet.container_apps.id
+# # Private Endpoint for Container App Environment
+# resource "azurerm_private_endpoint" "container_app_environment" {
+#   name                = "${var.project_name}-cae-pe-${var.environment}"
+#   location            = var.location
+#   resource_group_name = var.resource_group_name
+#   subnet_id           = data.azurerm_subnet.container_apps.id
 
-  private_service_connection {
-    name                           = "${var.project_name}-cae-connection-${var.environment}"
-    is_manual_connection           = false
-    private_connection_resource_id = azurerm_container_app_environment.nachet.id
-    subresource_names              = ["managedEnvironments"]
-  }
+#   private_service_connection {
+#     name                           = "${var.project_name}-cae-connection-${var.environment}"
+#     is_manual_connection           = false
+#     private_connection_resource_id = azurerm_container_app_environment.nachet.id
+#     subresource_names              = ["managedEnvironments"]
+#   }
 
-  tags = var.tags
-}
+#   tags = var.tags
+# }
