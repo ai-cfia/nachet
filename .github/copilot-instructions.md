@@ -10,7 +10,11 @@ When working with this repository, **ignore these folders completely**:
 - `datastore/` - Legacy data management code (not actively maintained)
 - `backend/old/` - Legacy backend code (replaced by current backend)
 
-Focus your work on the primary codebase: `frontend/`, `backend/` (excluding old folder), `db/`, and related configuration files.
+**Local Development Only**:
+- `db/` - Database setup and management (local development purposes only)
+- `blob/` - Local blob storage configuration (local development purposes only)
+
+Focus your work on the primary codebase: `frontend/`, `backend/` (excluding old folder), and related configuration files.
 
 ## Working Effectively
 
@@ -176,10 +180,11 @@ sudo usermod -a -G docker $USER
 - **Note:** Ignore the `old/` folder - contains legacy code
 
 
-**Database Management:**
+**Database Management (Local Development):**
 - Schema versions managed in `db/bytebase/` folder
 - Current schema: `nachet_0.0.12`
 - Setup script: `db/dev_setup.sh`
+- **Note:** `db/` folder is for local development purposes only
 
 ## Architecture Notes
 
