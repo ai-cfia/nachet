@@ -1,11 +1,14 @@
 from sqlalchemy.orm import configure_mappers
 import traceback
-from app.controller.db.database import Base  # Import your models
+from app.controller.db.database import Base
 
 
 def validate_orm_classes():
     """Validate all registered ORM classes."""
     try:
+        schema_version = Base.metadata.tables.get("schema_version")
+        print(f"Found table: {schema_version}")
+        print(f"Columns: {schema_version.columns}")
         # This will raise exceptions if there are mapping issues
         configure_mappers()
         print("✅ All ORM classes are valid")
