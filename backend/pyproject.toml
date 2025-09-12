@@ -48,6 +48,7 @@ dependencies = [
     "httpx>=0.28.1",
     "sqlalchemy[asyncio]>=2.0.43",
     "alembic>=1.16.5",
+    "aiosqlite>=0.21.0",
 ]
 
 [tool.nachet-db]

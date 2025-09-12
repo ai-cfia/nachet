@@ -323,6 +323,34 @@
       "version": "2.0.43"
     },
     {
+      "bom-ref": "aiosqlite==0.21.0",
+      "description": "asyncio bridge to the standard sqlite3 module",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://aiosqlite.omnilib.dev"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Github",
+          "type": "vcs",
+          "url": "https://github.com/omnilib/aiosqlite"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "aiosqlite",
+      "purl": "pkg:pypi/aiosqlite@0.21.0",
+      "type": "library",
+      "version": "0.21.0"
+    },
+    {
       "bom-ref": "alembic==1.16.5",
       "description": "A database migration tool for SQLAlchemy.",
       "externalReferences": [
@@ -3804,11 +3832,19 @@
     },
     {
       "dependsOn": [
+        "aiosqlite==0.21.0",
         "greenlet==3.2.4",
         "psycopg==3.2.10",
         "typing_extensions==4.14.1"
       ],
       "ref": "SQLAlchemy==2.0.43"
+    },
+    {
+      "dependsOn": [
+        "coverage==7.10.6",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "aiosqlite==0.21.0"
     },
     {
       "dependsOn": [
@@ -4328,6 +4364,7 @@
         "PyJWT==2.10.1",
         "PyYAML==6.0.2",
         "SQLAlchemy==2.0.43",
+        "aiosqlite==0.21.0",
         "alembic==1.16.5",
         "azure-identity==1.24.0",
         "azure-storage-blob==12.26.0",
