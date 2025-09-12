@@ -1,6 +1,6 @@
 from sqlalchemy.orm import configure_mappers
 import traceback
-from app.controller.db.database import Base
+from app.db.model import Base
 
 
 def validate_orm_classes():
