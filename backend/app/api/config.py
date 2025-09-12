@@ -17,10 +17,11 @@ from pydantic import computed_field  # , Field
 from pydantic_settings import BaseSettings
 
 # from sqlmodel import StaticPool, create_engine
-from sqlalchemy import create_engine
+# from sqlalchemy import create_engine
 
 from app.exceptions import log_error
 from app.middleware.headers.headers import HeadersMiddleware
+from app.db.utils import get_database_engine, initialize_database, close_database_engine
 # from app.models.bucket_name import MinioBucketName
 # from app.services.file_storage import FertiscanStorage, MinIOStorageManager
 
@@ -109,8 +110,15 @@ class Settings(BaseSettings):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Startup
     # settings: Settings = app.settings
+
+    # Initialize database (validates schema version)
+    await initialize_database()
+
+    # Open connection pool
     app.pool.open()
+
     # resource = Resource.create(
     #     {
     #         "service.name": "nachet-backend",
@@ -139,8 +147,12 @@ async def lifespan(app: FastAPI):
     # )
     # handler = LoggingHandler(logger_provider=logger_provider)
     # logger.addHandler(handler)
+
     yield
+
+    # Shutdown
     app.pool.close()
+    await close_database_engine()
     # logger_provider.shutdown()
     # tracer_provider.shutdown()
 
@@ -168,7 +180,8 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     )
     app.pool = pool
 
-    app.engine = create_engine(**settings.db_conn_info)
+    # app.engine = create_engine(**settings.db_conn_info)
+    app.engine = get_database_engine(**settings.db_conn_info)
 
     app.include_router(router)
 
