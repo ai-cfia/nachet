@@ -364,7 +364,9 @@ class Folder(Base):
     # Relationships
     user: Mapped["Users"] = relationship("Users", back_populates="folders")
     pictures: Mapped[List["Picture"]] = relationship("Picture", back_populates="folder")
-    org_admin_role: Mapped["RbacRole"] = relationship("RbacRole", back_populates="folders")
+    org_admin_role: Mapped["RbacRole"] = relationship(
+        "RbacRole", back_populates="folders"
+    )
 
 
 class Picture(Base):
@@ -520,7 +522,9 @@ class Object(Base):
 class RbacUserRole(Base):
     __tablename__ = "rbac_user_role"
 
-    user_id: Mapped[UUID] = mapped_column(UUID, ForeignKey("users.id"), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("users.id"), primary_key=True
+    )
     role_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("rbac_role.id"), primary_key=True
     )

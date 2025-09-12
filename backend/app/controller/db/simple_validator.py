@@ -2,6 +2,7 @@ from sqlalchemy.orm import configure_mappers
 import traceback
 from app.controller.db.database import Base  # Import your models
 
+
 def validate_orm_classes():
     """Validate all registered ORM classes."""
     try:
@@ -13,6 +14,7 @@ def validate_orm_classes():
         print(f"❌ ORM validation failed: {e}")
         traceback.print_exc()
         return False
+
 
 # Usage
 if __name__ == "__main__":

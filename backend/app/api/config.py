@@ -13,8 +13,9 @@ from fastapi.responses import JSONResponse
 
 from psycopg.conninfo import make_conninfo
 from psycopg_pool import ConnectionPool
-from pydantic import computed_field #, Field
+from pydantic import computed_field  # , Field
 from pydantic_settings import BaseSettings
+
 # from sqlmodel import StaticPool, create_engine
 from sqlalchemy import create_engine
 
@@ -62,7 +63,11 @@ class Settings(BaseSettings):
     project_name: str = "Nachet API"
     swagger_path: str = "/docs"
     swagger_ui_client_id: str | None = None
-    allowed_origins: list[str] = ["localhost", "http://localhost:5173", "http://localhost:5174"]
+    allowed_origins: list[str] = [
+        "localhost",
+        "http://localhost:5173",
+        "http://localhost:5174",
+    ]
     testing: bool = True
     debug: bool = False
 
@@ -96,7 +101,7 @@ class Settings(BaseSettings):
                 "echo": True,
             }
         return {
-            "url": f"postgresql+psycopg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}",
+            "url": f"postgresql+psycopg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}?options=-csearch_path={self.nachet_schema}",
             "pool_recycle": 3600,
             "echo": True if self.debug else False,
         }
