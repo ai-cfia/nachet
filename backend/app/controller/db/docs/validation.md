@@ -634,11 +634,11 @@ fi
 # In Makefile
 .PHONY: validate-models
 validate-models:
-	cd backend && python app/controller/db/validate_models.py --verbose
+ cd backend && python app/controller/db/validate_models.py --verbose
 
 .PHONY: validate-models-db
 validate-models-db:
-	cd backend && python app/controller/db/validate_models.py --database-url $(DATABASE_URL) --verbose
+ cd backend && python app/controller/db/validate_models.py --database-url $(DATABASE_URL) --verbose
 ```
 
 This comprehensive validation system helps maintain high-quality ORM models and prevents common deployment issues related to schema mismatches and relationship errors.
