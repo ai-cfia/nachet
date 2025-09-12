@@ -377,3 +377,10 @@ variable "database_url" {
   type        = string
   sensitive   = true
 }
+
+# Container Registry Configuration
+variable "acr_allowed_ip_ranges" {
+  description = "List of IP ranges allowed to access the Container Registry"
+  type        = list(string)
+  default     = []
+}

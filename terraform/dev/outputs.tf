@@ -80,3 +80,36 @@
 #   description = "Loki logs endpoint (if enabled)"
 #   value       = var.enable_observability_stack && length(module.monitoring) > 0 ? module.monitoring[0].loki_url : "Monitoring disabled"
 # }
+
+# Container Registry Outputs
+output "container_registry_id" {
+  description = "Container Registry ID"
+  value       = module.container_registry.id
+}
+
+output "container_registry_name" {
+  description = "Container Registry name"
+  value       = module.container_registry.name
+}
+
+output "container_registry_login_server" {
+  description = "Container Registry login server URL"
+  value       = module.container_registry.login_server
+}
+
+output "container_registry_admin_username" {
+  description = "Container Registry admin username"
+  value       = module.container_registry.admin_username
+  sensitive   = true
+}
+
+output "container_registry_admin_password" {
+  description = "Container Registry admin password"
+  value       = module.container_registry.admin_password
+  sensitive   = true
+}
+
+output "container_registry_private_endpoint_ip" {
+  description = "Container Registry private endpoint IP address"
+  value       = module.container_registry.private_endpoint_ip
+}

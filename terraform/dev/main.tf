@@ -40,6 +40,22 @@ module "db" {
   public_network_access_enabled = var.public_network_access_enabled
 }
 
+# Container Registry
+module "container_registry" {
+  source = "../modules/container-registry"
+
+  name                = "${var.project_name}-${var.environment}-acr"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  tags                = var.tags
+
+  vnet_name                     = var.vnet_name
+  vnet_resource_group_name      = var.vnet_resource_group_name
+  private_endpoints_subnet_name = var.private_endpoints_subnet_name
+
+  allowed_ip_ranges = var.acr_allowed_ip_ranges
+}
+
 # module "pgadmin" {
 #   source = "../modules/pgadmin"
   
