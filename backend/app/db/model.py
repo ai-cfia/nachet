@@ -10,13 +10,14 @@ from sqlalchemy import (
     Double,
     UUID,
 )
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.sql import func
 from typing import List, Optional
 from uuid import uuid4  # , UUID
 from datetime import datetime
 
 
-class Base(DeclarativeBase):
+class Base(AsyncAttrs, DeclarativeBase):
     pass
 
 
