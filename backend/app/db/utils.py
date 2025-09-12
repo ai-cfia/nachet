@@ -133,3 +133,5 @@ async def initialize_database(db_url: str = None):
     await validate_database_startup(db_url)
 
     print("✅ Database initialization completed successfully")
+    print("\n" + "=" * 60)
+    print("\n\n\n")
