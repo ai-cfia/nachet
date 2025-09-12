@@ -312,6 +312,12 @@
         }
       ],
       "name": "SQLAlchemy",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "asyncio"
+        }
+      ],
       "purl": "pkg:pypi/sqlalchemy@2.0.43",
       "type": "library",
       "version": "2.0.43"
