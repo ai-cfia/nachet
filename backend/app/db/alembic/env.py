@@ -1,10 +1,9 @@
-import sys
-import os
 import asyncio
 from logging.config import fileConfig
 
 from sqlalchemy import pool
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.engine import Connection
+from sqlalchemy.ext.asyncio import create_async_engine  # async_engine_from_config
 
 from alembic import context
 from app.db.model import Base
@@ -21,7 +20,8 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+# from myapp import mymodel
+# target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -55,8 +55,18 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+def do_run_migrations(connection: Connection) -> None:
+    context.configure(connection=connection, target_metadata=target_metadata)
+
+    with context.begin_transaction():
+        context.run_migrations()
+
+
 async def run_async_migrations() -> None:
-    """Run migrations in 'online' mode with an async engine."""
+    """In this scenario we need to create an Engine
+    and associate a connection with the context.
+
+    """
 
     connectable = create_async_engine(
         Settings().db_conn_info["url"],
@@ -71,22 +81,24 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
+    """Run migrations in 'online' mode."""
 
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
+    try:
+        # Check if we're already in an event loop
+        asyncio.get_running_loop()
+        # If we reach here, we're in an event loop already
+        # We need to run the coroutine differently
+        import concurrent.futures
 
-    """
-    connectable = config.attributes.get("connection", None)
-
-    if connectable is None:
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(asyncio.run, run_async_migrations())
+            future.result()
+    except RuntimeError:
+        # No event loop is running, safe to use asyncio.run()
         asyncio.run(run_async_migrations())
-    else:
-        do_run_migrations(connectable)
 
 
-def do_run_migrations(connection):
-    context.configure(connection=connection, target_metadata=target_metadata)
-
-    with context.begin_transaction():
-        context.run_migrations()
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    run_migrations_online()
