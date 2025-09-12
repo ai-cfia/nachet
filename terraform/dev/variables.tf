@@ -384,3 +384,45 @@ variable "acr_allowed_ip_ranges" {
   type        = list(string)
   default     = []
 }
+
+# Container Instance Configuration
+variable "container_instances_subnet_name" {
+  description = "Name of the subnet for container instances"
+  type        = string
+  default     = "nachet-containerinstances-subnet-dev"
+}
+
+variable "acr_login_server" {
+  description = "Container Registry login server"
+  type        = string
+}
+
+variable "acr_username" {
+  description = "Container Registry username"
+  type        = string
+}
+
+variable "acr_password" {
+  description = "Container Registry password"
+  type        = string
+  sensitive   = true
+}
+
+variable "pgadmin_image" {
+  description = "Docker image for PgAdmin container"
+  type        = string
+  default     = "nachetdev.azurecr.io/nachet/pgadmin"
+}
+
+variable "pgadmin_environment_variables" {
+  description = "Environment variables for PgAdmin container"
+  type        = map(string)
+  default     = {}
+}
+
+variable "pgadmin_secure_environment_variables" {
+  description = "Secure environment variables for PgAdmin container"
+  type        = map(string)
+  default     = {}
+  sensitive   = true
+}

@@ -113,3 +113,14 @@ output "container_registry_private_endpoint_ip" {
   description = "Container Registry private endpoint IP address"
   value       = module.container_registry.private_endpoint_ip
 }
+
+# PgAdmin Container Instance Outputs
+output "pgadmin_ip_address" {
+  description = "PgAdmin container private IP address"
+  value       = module.pgadmin.ip_address
+}
+
+output "pgadmin_fqdn" {
+  description = "PgAdmin container FQDN"
+  value       = module.pgadmin.fqdn
+}

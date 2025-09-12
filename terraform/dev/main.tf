@@ -41,31 +41,52 @@ module "db" {
 }
 
 # Container Registry
-module "container_registry" {
-  source = "../modules/container-registry"
+# module "container_registry" {
+#   source = "../modules/container-registry"
 
-  name                = "${var.project_name}-${var.environment}-acr"
-  resource_group_name = var.resource_group_name
+#   name                = "${var.project_name}-${var.environment}-acr"
+#   resource_group_name = var.resource_group_name
+#   location            = var.location
+#   tags                = var.tags
+
+#   vnet_name                     = var.vnet_name
+#   vnet_resource_group_name      = var.vnet_resource_group_name
+#   private_endpoints_subnet_name = var.private_endpoints_subnet_name
+
+#   allowed_ip_ranges = var.acr_allowed_ip_ranges
+# }
+
+# PgAdmin Container Instance
+module "pgadmin" {
+  source = "../modules/container-instance"
+
+  name                = "pgadmin"
   location            = var.location
+  resource_group_name = var.resource_group_name
   tags                = var.tags
 
-  vnet_name                     = var.vnet_name
-  vnet_resource_group_name      = var.vnet_resource_group_name
-  private_endpoints_subnet_name = var.private_endpoints_subnet_name
+  # Network configuration
+  vnet_name                = var.vnet_name
+  vnet_resource_group_name = var.vnet_resource_group_name
+  subnet_name              = var.container_instances_subnet_name
 
-  allowed_ip_ranges = var.acr_allowed_ip_ranges
+  # Container Registry configuration
+  registry_login_server = var.acr_login_server
+  registry_username     = var.acr_username
+  registry_password     = var.acr_password
+
+  # Container configuration
+  container_name = "pgadmin"
+  image          = var.pgadmin_image
+  cpu            = 1
+  memory         = 1.5
+  port           = 80
+  protocol       = "TCP"
+
+  # Environment variables
+  environment_variables = var.pgadmin_environment_variables
+  secure_environment_variables = var.pgadmin_secure_environment_variables
 }
-
-# module "pgadmin" {
-#   source = "../modules/pgadmin"
-  
-#   project_name                 = var.project_name
-#   environment                  = var.environment
-#   resource_group_name          = var.resource_group_name
-#   container_app_environment_id = module.container_app_environment.container_app_environment_id
-#   pgadmin_password             = var.pgadmin_password
-#   tags                         = var.tags
-# }
 
 # Module 3: Nachet Application (Storage and Backend) - Commented out for now
 # module "nachet" {
