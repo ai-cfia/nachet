@@ -18,6 +18,7 @@ resource "azurerm_container_group" "main" {
   os_type             = var.os_type
   
   # Network configuration
+  ip_address_type = "Private"
   subnet_ids = [data.azurerm_subnet.container_instances.id]
   
   # Container Registry credentials
