@@ -30,6 +30,7 @@ class ModelTask(Base):
         DateTime(timezone=True), nullable=False, default=func.current_timestamp()
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
+    # description: Mapped[Optional[str]] = mapped_column(Text) # test change
 
     # Relationships
     models: Mapped[List["Model"]] = relationship("Model", back_populates="model_task")
