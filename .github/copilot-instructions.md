@@ -4,6 +4,14 @@ Canadian government (CFIA) AI-powered seed identification system with React Type
 
 **ALWAYS follow these instructions first and fallback to additional search and context gathering only if the information here is incomplete or found to be in error.**
 
+## Important: Folders to Ignore
+
+When working with this repository, **ignore these folders completely**:
+- `datastore/` - Legacy data management code (not actively maintained)
+- `backend/old/` - Legacy backend code (replaced by current backend)
+
+Focus your work on the primary codebase: `frontend/`, `backend/` (excluding old folder), `db/`, and related configuration files.
+
 ## Working Effectively
 
 ### Bootstrap and Build Repository
@@ -42,12 +50,7 @@ uv sync                         # Takes ~10 seconds. NEVER CANCEL. Set timeout t
 uv run python -c "import app.main; print('Backend ready')"  # Validate import
 ```
 
-**Build Datastore:**
-```bash
-cd datastore/
-uv sync                         # Takes ~5 seconds. NEVER CANCEL. Set timeout to 30+ seconds.
-uv run python -c "import datastore; print('Datastore ready')"  # Validate import
-```
+
 
 ### Run Applications
 
@@ -81,7 +84,6 @@ docker compose up -d
    ```bash
    cd frontend/ && npm run build && npm run test
    cd ../backend/ && uv run python -c "import app.main"
-   cd ../datastore/ && uv run python -c "import datastore"
    ```
 
 2. **Lint and Format Before Committing:**
@@ -171,14 +173,11 @@ sudo usermod -a -G docker $USER
 - `storage/` - Data storage integration
 - `tests/` - Backend test suite
 - `auth/` - Authentication and authorization
+- **Note:** Ignore the `old/` folder - contains legacy code
 
-**Datastore (`datastore/`):**
-- `datastore/` - Core data management package
-- `nachet/db/` - Database schemas and migrations
-- `tests/` - Datastore test suite
 
 **Database Management:**
-- Schema versions managed in `datastore/nachet/db/bytebase/`
+- Schema versions managed in `db/bytebase/` folder
 - Current schema: `nachet_0.0.12`
 - Setup script: `db/dev_setup.sh`
 
@@ -200,7 +199,6 @@ cd ../backend/ && uv run python -c "import app.main"
 # Full rebuild
 cd frontend/ && rm -rf node_modules && npm install && npm run build
 cd ../backend/ && uv sync
-cd ../datastore/ && uv sync
 
 # Development servers
 cd frontend/ && npm run dev &
