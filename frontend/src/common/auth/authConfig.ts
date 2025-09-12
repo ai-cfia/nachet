@@ -13,8 +13,8 @@ export const msalConfig: Configuration = {
       window.location.origin, // Post logout redirect URI
   },
   cache: {
-    cacheLocation: "memory", // This configures where your cache will be stored
-    storeAuthStateInCookie: false, // Set this to "true" if you are having issues on IE11 or Edge
+    cacheLocation: "sessionStorage", // Store tokens in sessionStorage for security and persistence during session
+    storeAuthStateInCookie: true, // Store auth state in cookies for improved SSO experience
   },
 };
 

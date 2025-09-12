@@ -14,8 +14,8 @@ const mockMsalConfig = {
     redirectUri: "http://localhost:3000",
   },
   cache: {
-    cacheLocation: "memory",
-    storeAuthStateInCookie: false,
+    cacheLocation: "sessionStorage",
+    storeAuthStateInCookie: true,
   },
 };
 
