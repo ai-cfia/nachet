@@ -97,7 +97,7 @@ class Settings(BaseSettings):
     def db_conn_info(self) -> dict:
         if self.testing:
             return {
-                "url": "sqlite+pysqlite:///:memory:",
+                "url": "sqlite+aiosqlite:///:memory:",
                 "echo": True,
             }
         return {
