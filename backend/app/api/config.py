@@ -11,8 +11,8 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from psycopg.conninfo import make_conninfo
-from psycopg_pool import ConnectionPool
+# from psycopg.conninfo import make_conninfo
+# from psycopg_pool import ConnectionPool
 from pydantic import computed_field  # , Field
 from pydantic_settings import BaseSettings
 
@@ -82,16 +82,16 @@ class Settings(BaseSettings):
             f"EndpointSuffix={self.azure_storage_endpoint_suffix}"
         )
 
-    @computed_field
-    @property
-    def pg_conn_info(self) -> str:
-        return make_conninfo(
-            user=self.db_user,
-            password=self.db_password,
-            host=self.db_host,
-            port=self.db_port,
-            dbname=self.db_name,
-        )
+    # @computed_field
+    # @property
+    # def pg_conn_info(self) -> str:
+    #     return make_conninfo(
+    #         user=self.db_user,
+    #         password=self.db_password,
+    #         host=self.db_host,
+    #         port=self.db_port,
+    #         dbname=self.db_name,
+    #     )
 
     @computed_field
     @property
@@ -105,6 +105,11 @@ class Settings(BaseSettings):
             "url": f"postgresql+psycopg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}?options=-csearch_path={self.nachet_schema}",
             "pool_recycle": 3600,
             "echo": True if self.debug else False,
+            # Additional pool options
+            "pool_size": 20,  # Number of connections to maintain
+            "max_overflow": 10,  # Additional connections beyond pool_size
+            "pool_timeout": 30,  # Timeout for getting connection
+            "pool_pre_ping": True,  # Verify connections before use
         }
 
 
@@ -117,7 +122,7 @@ async def lifespan(app: FastAPI):
     await initialize_database()
 
     # Open connection pool
-    app.pool.open()
+    # app.pool.open()
 
     # resource = Resource.create(
     #     {
@@ -151,7 +156,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    app.pool.close()
+    # app.pool.close()
     await close_database_engine()
     # logger_provider.shutdown()
     # tracer_provider.shutdown()
@@ -173,12 +178,12 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
 
     app.add_middleware(HeadersMiddleware, preset="strict")
 
-    pool = ConnectionPool(
-        open=False,
-        conninfo=settings.pg_conn_info,
-        kwargs={"options": f"-c search_path={settings.nachet_schema},public"},
-    )
-    app.pool = pool
+    # pool = ConnectionPool(
+    #     open=False,
+    #     conninfo=settings.pg_conn_info,
+    #     kwargs={"options": f"-c search_path={settings.nachet_schema},public"},
+    # )
+    # app.pool = pool
 
     # app.engine = create_engine(**settings.db_conn_info)
     app.engine = get_database_engine(**settings.db_conn_info)
