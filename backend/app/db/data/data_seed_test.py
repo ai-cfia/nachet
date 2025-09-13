@@ -36,7 +36,7 @@ from app.db.model import (
 )
 
 
-async def seed_dev_data(sessionmanager: SessionManager) -> None:
+async def seed_test_data(sessionmanager: SessionManager) -> None:
     """
     Seed the development database with initial data using ORM models.
 
