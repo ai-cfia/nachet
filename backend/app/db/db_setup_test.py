@@ -1,27 +1,14 @@
-# Dev Setup script to initialize the database with necessary tables and data.
-# This is intended for development use only and should not be run in production.
+# Tesst database setup script to initialize the database with necessary tables and data.
+# This is intended for ci test use only and should not be run in production.
 # This script is idempotent - it can be run multiple times safely.
 import os
 import asyncio
 import logging
-from dotenv import load_dotenv
 from tqdm import tqdm
 from sqlalchemy import text
 from app.db.utils import run_migrations, sessionmanager
 from app.api.config import get_settings
-from app.db.data.dev_data import seed_dev_data
-
-# Configure logging to suppress SQLAlchemy INFO messages
-# logging.basicConfig(level=logging.WARNING)
-# logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
-# logging.getLogger('sqlalchemy.engine').setLevel(logging.ERROR)
-# logging.getLogger('sqlalchemy.pool').setLevel(logging.ERROR)
-# logging.getLogger('sqlalchemy.dialects').setLevel(logging.ERROR)
-# logging.getLogger('sqlalchemy.orm').setLevel(logging.ERROR)
-# logging.getLogger().setLevel(logging.WARNING)
-
-
-load_dotenv("../../.env.local")
+from app.db.data.data_seed_test import seed_test_data
 
 
 async def reset_database_schema(async_engine):
@@ -49,7 +36,8 @@ async def execute_sql_file(async_engine, sql_file_path):
     print(f"📄 Executing SQL file: {sql_file_path}")
 
     with open(sql_file_path, "r", encoding="utf-8") as file:
-        sql_content = file.read()
+        # read 15 lines
+        sql_content = "".join([next(file) for _ in range(15)])
 
     # Split SQL statements (basic splitting on semicolons)
     statements = [stmt.strip() for stmt in sql_content.split(";") if stmt.strip()]
@@ -82,33 +70,38 @@ async def load_database():
 
     db_url = settings.db_conn_info["url"]
 
+    db_name = settings.db_name if db_url.startswith("postgresql") else "SQLite"
+
+    print("\n" + "=" * 60)
+    print(f"🚀 Starting development database setup for db {db_name}")
+
     # Initialize SessionManager
-    print("🔌 Initializing database SessionManager...")
-    db_conn_info = settings.db_conn_info.copy()
-    db_conn_info["echo"] = False  # Override echo to suppress SQL output
-    sessionmanager.init(**db_conn_info)
+    print("\n🔌 Initializing database SessionManager...")
+    sessionmanager.init(**settings.db_conn_info)
     async_engine = sessionmanager.get_engine()
 
     # Reset database to ensure clean state
     await reset_database_schema(async_engine)
 
-    print("🔄 Running migrations...")
+    print("\n🔄 Running migrations...")
     # Set environment variable to control SQLAlchemy logging during migrations
 
     os.environ["SQLALCHEMY_MIGRATION_LOG_LEVEL"] = "WARNING"
     os.environ["ALEMBIC_MIGRATION_LOG_LEVEL"] = "WARNING"
-    await run_migrations(async_engine=async_engine, url=db_url, target_version="head")
+    await run_migrations(async_engine=async_engine, target_version="head")
 
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
-    print("📊 Loading ISTA seed data...")
+    print("\n📊 Loading ISTA seed data...")
     sql_file_path = os.path.join(
         os.path.dirname(__file__), "data", "seed_data_ista_list.sql"
     )
     await execute_sql_file(async_engine, sql_file_path)
 
-    print("🌱 Seeding development data...")
-    await seed_dev_data(sessionmanager)
+    print("\n🌱 Seeding test data...")
+    await seed_test_data(sessionmanager)
+    print("\n" + "=" * 60)
+    print()
 
 
 if __name__ == "__main__":
