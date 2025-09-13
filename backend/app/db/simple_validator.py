@@ -6,9 +6,9 @@ from app.db.model import Base
 def validate_orm_classes():
     """Validate all registered ORM classes."""
     try:
-        schema_version = Base.metadata.tables.get("schema_version")
-        print(f"Found table: {schema_version}")
-        print(f"Columns: {schema_version.columns}")
+        semver = Base.metadata.tables.get("semver")
+        print(f"Found table: {semver}")
+        print(f"Columns: {semver.columns}")
         # This will raise exceptions if there are mapping issues
         configure_mappers()
         print("✅ All ORM classes are valid")

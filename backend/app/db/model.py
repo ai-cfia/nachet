@@ -601,8 +601,8 @@ class ChangeLog(Base):
     date_created: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=func.current_timestamp(), nullable=False
     )
-    schema_version_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("schema_version.id"), nullable=False
+    semver_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("semver.id"), nullable=False
     )
     user_id: Mapped[UUID] = mapped_column(UUID, ForeignKey("users.id"), nullable=False)
     table: Mapped[Optional[str]] = mapped_column("table", Text)
@@ -617,8 +617,8 @@ class ChangeLog(Base):
     )
 
 
-class SchemaVersion(Base):
-    __tablename__ = "schema_version"
+class SemVer(Base):
+    __tablename__ = "semver"
 
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
     semver: Mapped[str] = mapped_column(Text, nullable=False)
