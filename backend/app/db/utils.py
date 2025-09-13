@@ -156,7 +156,9 @@ def cleanup_temp_db(db_url: str):
             pass  # File doesn't exist, which is what we want
 
 
-async def run_migrations(async_engine: AsyncEngine, url: str):
+async def run_migrations(
+    async_engine: AsyncEngine, url: str, target_version: str = "head"
+):
     """Run migrations using the provided async engine."""
     # Change to the correct directory for alembic to find migrations
     original_cwd = os.getcwd()
@@ -182,7 +184,7 @@ async def run_migrations(async_engine: AsyncEngine, url: str):
             except Exception:
                 print("No alembic_version table exists yet")
 
-            await conn.run_sync(run_upgrade, alembic_cfg, target="head")
+            await conn.run_sync(run_upgrade, alembic_cfg, target=target_version)
             print("✅ Migrations completed successfully \n\n\n")
     except Exception as e:
         print(f"❌ Migration failed: {e}")
