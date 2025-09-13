@@ -42,7 +42,16 @@ def get_database_engine(
                 "Database URL must be provided for initial engine creation"
             )
 
-        _engine_instance = create_async_engine(url, echo=echo)
+        _engine_instance = create_async_engine(
+            url,
+            echo=echo,
+            pool_recycle=pool_recycle,
+            pool_size=pool_size,
+            max_overflow=max_overflow,
+            pool_timeout=pool_timeout,
+            pool_pre_ping=pool_pre_ping,
+        )
+        print("🔌 Database engine created")
 
     return _engine_instance
 
