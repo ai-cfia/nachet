@@ -31,7 +31,7 @@
     "@testing-library/jest-dom": "^6.6.4",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
-    "axios": "^1.11.0",
+    "axios": "^1.12.0",
     "browser-image-compression": "^2.0.2",
     "dompurify": "^3.2.6",
     "express": "^5.1.0",
