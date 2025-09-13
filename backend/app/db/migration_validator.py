@@ -1,17 +1,11 @@
-import asyncio
 import os
+import asyncio
 from alembic.config import Config
-from alembic import command
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import inspect, text
 from app.db.model import Base
 from app.api.config import Settings
-
-
-def run_upgrade(connection, cfg):
-    """Run alembic upgrade within a synchronous connection context."""
-    cfg.attributes["connection"] = connection
-    command.upgrade(cfg, "head")
+from app.db.utils import cleanup_temp_db, run_migrations
 
 
 async def validate_migrations():
@@ -23,13 +17,7 @@ async def validate_migrations():
 
         test_db_url = Settings().db_conn_info["url"]
 
-        temp_db_name = test_db_url.split("///")[-1]
-        print(f"Using temporary database at: {temp_db_name}")
-        # Ensure clean slate by removing file if it exists (for idempotent tests)
-        try:
-            os.unlink(temp_db_name)
-        except FileNotFoundError:
-            pass  # File doesn't exist, which is what we want
+        cleanup_temp_db(test_db_url)
 
         async_engine = create_async_engine(test_db_url, echo=False)
 
@@ -44,23 +32,7 @@ async def validate_migrations():
         finally:
             os.chdir(original_cwd)
         try:
-            # First, run migrations in their own transaction
-            async with async_engine.begin() as conn:
-                # Check current alembic version before migration
-                try:
-                    current_version = await conn.run_sync(
-                        lambda sync_conn: sync_conn.execute(
-                            text("SELECT version_num FROM alembic_version")
-                        ).fetchone()
-                    )
-                    print(
-                        f"Current alembic version before migration: {current_version}"
-                    )
-                except Exception:
-                    print("No alembic_version table exists yet")
-
-                await conn.run_sync(run_upgrade, alembic_cfg)
-                print("✅ Migrations completed successfully \n\n\n")
+            await run_migrations(async_engine, test_db_url)
 
             # Now check the results in a separate transaction to ensure visibility
             async with async_engine.begin() as conn:
@@ -100,11 +72,7 @@ async def validate_migrations():
             return {"success": False, "error": str(orm_error)}
         finally:
             # Close the engine and cleanup the temporary database
-            await async_engine.dispose()
-            try:
-                os.unlink(temp_db_name)
-            except Exception:
-                pass  # Ignore cleanup errors
+            cleanup_temp_db(test_db_url)
 
     except Exception as e:
         print(f"❌ Migration validation failed with error: {e}")

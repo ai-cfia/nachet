@@ -103,9 +103,9 @@ class Settings(BaseSettings):
             }
         return {
             "url": f"postgresql+psycopg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}?options=-csearch_path={self.nachet_schema}",
-            "pool_recycle": 3600,
             "echo": True if self.debug else False,
             # Additional pool options
+            "pool_recycle": 3600,
             "pool_size": 20,  # Number of connections to maintain
             "max_overflow": 10,  # Additional connections beyond pool_size
             "pool_timeout": 30,  # Timeout for getting connection
@@ -113,13 +113,29 @@ class Settings(BaseSettings):
         }
 
 
+# Global settings instance
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    """Get or create the global settings instance."""
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     # settings: Settings = app.settings
 
+    settings = get_settings()
+    if settings is None:
+        raise ValueError("Settings instance could not be created")
+
     # Initialize database (validates schema version)
-    await initialize_database()
+    await initialize_database(settings)
 
     # Open connection pool
     # app.pool.open()
@@ -186,7 +202,9 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     # app.pool = pool
 
     # app.engine = create_engine(**settings.db_conn_info)
-    app.engine = get_database_engine(**settings.db_conn_info)
+    app.engine = get_database_engine()
+    if app.engine is None:
+        raise ValueError("Database engine could not be created")
 
     app.include_router(router)
 

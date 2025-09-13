@@ -1,5 +1,6 @@
 from app.db.model import Base
 from app.api.config import Settings
+from app.db.utils import cleanup_temp_db
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncio
@@ -10,11 +11,9 @@ def get_table_names_sync(engine):
     return inspector.get_table_names()
 
 
-def validate_orm_classes_sync(debug: bool = False):
+def validate_orm_classes_sync(db_url: str, debug: bool = False):
     """Validate all registered ORM classes."""
     try:
-        db_url = Settings().db_conn_info["url"]
-
         # Ensure sync URL format (remove async drivers if present)
         if "://" in db_url:
             protocol_end = db_url.find("://")
@@ -50,11 +49,9 @@ async def get_table_names_async(engine):
         return result
 
 
-async def validate_orm_classes_async(debug: bool = False):
+async def validate_orm_classes_async(db_url: str, debug: bool = False):
     """Validate all registered ORM classes using async engine."""
     try:
-        # Create async engine using the same database URL as sync version
-        db_url = Settings().db_conn_info["url"]
         # Convert sync URL to async URL if needed
         if "://" in db_url:
             protocol_end = db_url.find("://")
@@ -93,10 +90,15 @@ if __name__ == "__main__":
     print("Running ORM Validation Tests")
     print("=" * 50)
 
-    sync_valid = validate_orm_classes_sync(debug=False)
-    print()
-    async_valid = asyncio.run(validate_orm_classes_async(debug=False))
+    db_url = Settings().db_conn_info["url"]
+    cleanup_temp_db(db_url)
 
+    DEBUG = False
+    sync_valid = validate_orm_classes_sync(db_url=db_url, debug=DEBUG)
+    print()
+    async_valid = asyncio.run(validate_orm_classes_async(db_url=db_url, debug=DEBUG))
+
+    cleanup_temp_db(db_url)
     print("\n" + "=" * 50)
     print("VALIDATION SUMMARY")
     print("=" * 50)
