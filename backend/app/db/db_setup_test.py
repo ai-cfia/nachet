@@ -61,7 +61,7 @@ async def execute_sql_file(async_engine, sql_file_path):
 
 async def load_database():
     """
-    Set up the development database by resetting, running migrations and seeding data.
+    Set up the testing database by resetting, running migrations and seeding data.
     This function is idempotent - it can be run multiple times safely.
     """
     settings = get_settings()
@@ -73,7 +73,7 @@ async def load_database():
     db_name = settings.db_name if db_url.startswith("postgresql") else "SQLite"
 
     print("\n" + "=" * 60)
-    print(f"🚀 Starting development database setup for db {db_name}")
+    print(f"🚀 Starting testing database setup for db {db_name}")
 
     # Initialize SessionManager
     print("\n🔌 Initializing database SessionManager...")
@@ -100,10 +100,10 @@ async def load_database():
 
     print("\n🌱 Seeding test data...")
     await seed_test_data(sessionmanager)
+    print("\n✅ Testing database setup complete.")
     print("\n" + "=" * 60)
     print()
 
 
 if __name__ == "__main__":
     asyncio.run(load_database())
-    print("✅ Development database setup complete.")

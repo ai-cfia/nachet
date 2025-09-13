@@ -114,10 +114,10 @@ async def load_database():
 
     print("\n🌱 Seeding development data...")
     await seed_dev_data(sessionmanager)
+    print("\n✅ Development database setup complete.")
     print("\n" + "=" * 60)
     print()
 
 
 if __name__ == "__main__":
     asyncio.run(load_database())
-    print("✅ Development database setup complete.")
