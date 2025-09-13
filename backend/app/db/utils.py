@@ -1,7 +1,12 @@
 import sys
 import os
-from typing import TYPE_CHECKING, Optional
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
+from typing import TYPE_CHECKING, Optional, AsyncGenerator
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+)
 from sqlalchemy.sql import text
 from alembic import command
 from alembic.config import Config
@@ -11,49 +16,69 @@ from alembic.runtime import migration
 if TYPE_CHECKING:
     from app.api.config import Settings
 
-# Global engine instance for reuse
-_engine_instance: Optional[AsyncEngine] = None
+
+class SessionManager:
+    """Manages asynchronous DB sessions with connection pooling."""
+
+    def __init__(self) -> None:
+        self.engine: Optional[AsyncEngine] = None
+        self._sessionmaker: Optional[async_sessionmaker] = None
+
+    def init(self, url: str, **engine_kwargs):
+        """Initialize the SessionManager with database URL and engine options."""
+        self.engine = create_async_engine(url, **engine_kwargs)
+        self._sessionmaker = async_sessionmaker(self.engine, expire_on_commit=False)
+        print("🔌 Database SessionManager initialized")
+
+    def get_session_factory(self) -> async_sessionmaker:
+        """Get the async sessionmaker factory."""
+        if not self._sessionmaker:
+            raise RuntimeError("SessionManager not initialized. Call init() first.")
+        return self._sessionmaker
+
+    async def get_session(self) -> AsyncSession:
+        """Get a new async session."""
+        if not self._sessionmaker:
+            raise RuntimeError("SessionManager not initialized. Call init() first.")
+        return self._sessionmaker()
+
+    def get_engine(self) -> AsyncEngine:
+        """Get the async engine."""
+        if not self.engine:
+            raise RuntimeError("SessionManager not initialized. Call init() first.")
+        return self.engine
+
+    async def close(self):
+        """Close the database engine and cleanup resources."""
+        if self.engine:
+            await self.engine.dispose()
+            self.engine = None
+            self._sessionmaker = None
+            print("🔌 Database SessionManager closed")
 
 
-def get_database_engine(
-    url: str = None,
-    echo: bool = False,
-    pool_recycle: Optional[int] = None,
-    pool_size: Optional[int] = None,
-    max_overflow: Optional[int] = None,
-    pool_timeout: Optional[int] = None,
-    pool_pre_ping: Optional[bool] = None,
-) -> AsyncEngine:
+# Global SessionManager singleton
+sessionmanager = SessionManager()
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
-    Get the database engine instance (singleton pattern).
+    FastAPI dependency to get database session.
 
-    Args:
-        db_url: Database connection URL. If None, will get from Settings.
-        echo: Whether to echo SQL statements for debugging.
-
-    Returns:
-        AsyncEngine: SQLAlchemy async engine instance.
+    Usage in routes:
+        @app.get("/")
+        async def read_root(db: AsyncSession = Depends(get_db)):
+            # Use db session here
     """
-    global _engine_instance
-
-    if _engine_instance is None:
-        if url is None:
-            raise ValueError(
-                "Database URL must be provided for initial engine creation"
-            )
-
-        _engine_instance = create_async_engine(
-            url,
-            echo=echo,
-            pool_recycle=pool_recycle,
-            pool_size=pool_size,
-            max_overflow=max_overflow,
-            pool_timeout=pool_timeout,
-            pool_pre_ping=pool_pre_ping,
-        )
-        print("🔌 Database engine created")
-
-    return _engine_instance
+    async with sessionmanager.get_session() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
 
 async def close_database_engine():
@@ -61,20 +86,16 @@ async def close_database_engine():
     Close the database engine and cleanup resources.
     Should be called during application shutdown.
     """
-    global _engine_instance
-
-    if _engine_instance:
-        await _engine_instance.dispose()
-        _engine_instance = None
-        print("🔌 Database engine closed")
+    # Close SessionManager
+    await sessionmanager.close()
 
 
 def reset_database_engine():
     """
-    Reset the engine instance (useful for testing).
+    Reset the SessionManager instance (useful for testing).
     """
-    global _engine_instance
-    _engine_instance = None
+    sessionmanager.engine = None
+    sessionmanager._sessionmaker = None
 
 
 async def validate_database_startup(async_engine: AsyncEngine):
@@ -112,15 +133,18 @@ async def initialize_database(settings: "Settings" = None):
     to ensure the database is properly set up and schema is current.
 
     Args:
-        db_url: Database connection URL. If None, will get from Settings.
+        settings: Settings instance containing database connection info.
     """
     print("🔧 Initializing database...")
 
     if settings is None:
         raise ValueError("Settings instance must be provided")
 
-    # Initialize the engine
-    engine = get_database_engine(**settings.db_conn_info)
+    # Initialize the SessionManager
+    sessionmanager.init(**settings.db_conn_info)
+
+    # Get engine for validation
+    engine = sessionmanager.get_engine()
 
     # Validate database schema version
     await validate_database_startup(engine)

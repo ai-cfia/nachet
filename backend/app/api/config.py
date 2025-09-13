@@ -17,11 +17,10 @@ from pydantic import computed_field  # , Field
 from pydantic_settings import BaseSettings
 
 # from sqlmodel import StaticPool, create_engine
-# from sqlalchemy import create_engine
 
 from app.exceptions import log_error
 from app.middleware.headers.headers import HeadersMiddleware
-from app.db.utils import get_database_engine, initialize_database, close_database_engine
+from app.db.utils import initialize_database, close_database_engine, sessionmanager
 # from app.models.bucket_name import MinioBucketName
 # from app.services.file_storage import FertiscanStorage, MinIOStorageManager
 
@@ -134,8 +133,11 @@ async def lifespan(app: FastAPI):
     if settings is None:
         raise ValueError("Settings instance could not be created")
 
-    # Initialize database (validates schema version)
+    # Initialize database (validates schema version and sets up SessionManager)
     await initialize_database(settings)
+    
+    # Store SessionManager in app state for access throughout the app
+    app.state.sessionmanager = sessionmanager
 
     # Open connection pool
     # app.pool.open()
@@ -201,10 +203,7 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     # )
     # app.pool = pool
 
-    # app.engine = create_engine(**settings.db_conn_info)
-    app.engine = get_database_engine()
-    if app.engine is None:
-        raise ValueError("Database engine could not be created")
+    # Database SessionManager will be available via app.state.sessionmanager after lifespan startup
 
     app.include_router(router)
 

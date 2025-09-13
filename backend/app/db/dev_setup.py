@@ -7,8 +7,8 @@ import logging
 from dotenv import load_dotenv
 from tqdm import tqdm
 from sqlalchemy import text
-from app.db.utils import run_migrations
-from app.api.config import get_settings, get_database_engine
+from app.db.utils import run_migrations, sessionmanager
+from app.api.config import get_settings
 from app.db.data.dev_data import seed_dev_data
 
 # Configure logging to suppress SQLAlchemy INFO messages
@@ -82,18 +82,19 @@ async def load_database():
 
     db_url = settings.db_conn_info["url"]
 
-    # Create the async engine
-    print("🔌 Creating database engine...")
+    # Initialize SessionManager
+    print("🔌 Initializing database SessionManager...")
     db_conn_info = settings.db_conn_info.copy()
     db_conn_info["echo"] = False  # Override echo to suppress SQL output
-    async_engine = get_database_engine(**db_conn_info)
+    sessionmanager.init(**db_conn_info)
+    async_engine = sessionmanager.get_engine()
 
     # Reset database to ensure clean state
     await reset_database_schema(async_engine)
 
     print("🔄 Running migrations...")
     # Set environment variable to control SQLAlchemy logging during migrations
-    
+
     os.environ["SQLALCHEMY_MIGRATION_LOG_LEVEL"] = "WARNING"
     os.environ["ALEMBIC_MIGRATION_LOG_LEVEL"] = "WARNING"
     await run_migrations(async_engine=async_engine, url=db_url, target_version="head")
@@ -107,7 +108,7 @@ async def load_database():
     await execute_sql_file(async_engine, sql_file_path)
 
     print("🌱 Seeding development data...")
-    await seed_dev_data(async_engine)
+    await seed_dev_data(sessionmanager)
 
 
 if __name__ == "__main__":
