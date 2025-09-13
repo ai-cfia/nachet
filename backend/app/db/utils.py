@@ -6,6 +6,7 @@ from sqlalchemy.sql import text
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
+from alembic.runtime import migration
 
 if TYPE_CHECKING:
     from app.api.config import Settings
@@ -71,43 +72,19 @@ async def validate_database_startup(async_engine: AsyncEngine):
     """
     Lightweight startup validation - just check migration version.
     Ensures database is migrated to the expected version.
+    https://alembic.sqlalchemy.org/en/latest/cookbook.html
     """
     try:
-        async with async_engine.begin() as conn:
-            # Check if migrations are up to date
-            try:
-                result = await conn.execute(
-                    text("SELECT version_num FROM alembic_version")
-                )
-                current_version_row = result.fetchone()
-                current_version = (
-                    current_version_row[0] if current_version_row else None
-                )
-            except Exception:
-                raise Exception(
-                    "No alembic_version table found - database may be uninitialized"
-                )
-
-            if not current_version:
-                raise Exception("No migration version found - run migrations first")
-
-            # Get expected version from alembic
-            try:
-                alembic_cfg = Config("alembic.ini")
-                script_dir = ScriptDirectory.from_config(alembic_cfg)
-                head_version = script_dir.get_current_head()
-            except Exception as e:
-                raise Exception(f"Failed to read alembic configuration: {e}")
-
-            if current_version != head_version:
-                raise Exception(
-                    f"Migration version mismatch. "
-                    f"Current: {current_version}, Expected: {head_version}. "
-                    f"Please run 'alembic upgrade head'"
-                )
-
-            print(f"✅ Database migration version validated: {current_version}")
-            return True
+        # Get expected version from alembic
+        alembic_cfg = Config("alembic.ini")
+        script_dir = ScriptDirectory.from_config(alembic_cfg)
+        async with async_engine.begin() as connection:
+            context = migration.MigrationContext.configure(connection)
+            if set(context.get_current_heads()) == set(script_dir.get_heads()):
+                print("✅ Target DB is up to date")
+            else:
+                print("❌ Target DB is NOT up to date")
+                raise RuntimeError("Database schema is not up to date")
 
     except Exception as e:
         print(f"❌ Database startup validation failed: {e}")
