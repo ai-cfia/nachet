@@ -1,5 +1,6 @@
 import asyncio
-from logging.config import fileConfig
+import os
+from logging.config import dictConfig
 
 # for typing purposes
 from collections.abc import Iterable
@@ -23,8 +24,51 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# if config.config_file_name is not None:
+#     fileConfig(config.config_file_name)
+
+# Configure logging using dictConfig with environment variable support
+alembic_log_level = os.getenv("ALEMBIC_MIGRATION_LOG_LEVEL", "INFO")
+sqlalchemy_log_level = os.getenv("SQLALCHEMY_MIGRATION_LOG_LEVEL", "INFO")
+
+LOGGING_CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "generic": {
+            "format": "%(levelname)-5.5s [%(name)s] %(message)s",
+            "datefmt": "%H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stderr",
+            "level": "NOTSET",
+            "formatter": "generic",
+        },
+    },
+    "loggers": {
+        "root": {
+            "level": "WARNING",
+            "handlers": ["console"],
+        },
+        "sqlalchemy.engine": {
+            "level": sqlalchemy_log_level,
+            "handlers": ["console"],
+            "qualname": "sqlalchemy.engine",
+            "propagate": False,
+        },
+        "alembic": {
+            "level": alembic_log_level,
+            "handlers": ["console"],
+            "qualname": "alembic",
+            "propagate": False,
+        },
+    },
+}
+
+dictConfig(LOGGING_CONFIG)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
