@@ -1,11 +1,19 @@
 import asyncio
 from logging.config import fileConfig
 
+# for typing purposes
+from collections.abc import Iterable
+
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine  # async_engine_from_config
 
 from alembic import context
+from alembic.environment import MigrationContext
+
+# this typing-only import requires alembic 1.12.1 or above
+from alembic.operations import MigrationScript
+
 from app.db.model import Base
 from app.api.config import Settings
 
@@ -30,6 +38,33 @@ target_metadata = Base.metadata
 # ... etc.
 
 
+# Prevent Alembic from generating empty migration scripts
+# This is important to avoid cluttering the migration history with no-op files
+def process_revision_directives(
+    context: MigrationContext,
+    revision: str | Iterable[str | None] | Iterable[str],
+    directives: list[MigrationScript],
+):
+    assert config.cmd_opts is not None
+    if getattr(config.cmd_opts, "autogenerate", False):
+        script = directives[0]
+        assert script.upgrade_ops is not None
+        if script.upgrade_ops.is_empty():
+            directives[:] = []
+            print("No changes in schema detected.")
+
+
+# Prevent Alembic from trying to drop tables that aren't in the ORM
+# This is important for avoiding accidental drops of legacy or unmanaged tables
+# This will prevent autogenerate from detecting tables removed from the
+# local metadata as well however this is only a small caveat
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table" and reflected and compare_to is None:
+        return False
+    else:
+        return True
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
@@ -49,6 +84,8 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
+        process_revision_directives=process_revision_directives,
     )
 
     with context.begin_transaction():
@@ -56,7 +93,12 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=include_object,
+        process_revision_directives=process_revision_directives,
+    )
 
     with context.begin_transaction():
         context.run_migrations()
