@@ -1,7 +1,6 @@
 import os
 import pytest
 import tempfile
-import asyncio
 from unittest.mock import patch, AsyncMock, MagicMock
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.sql import text
