@@ -74,6 +74,17 @@ jobs:
         working-directory: backend/app/db
         run: |
           uv run db_setup_test.py
+        env:
+          ALEMBIC_MIGRATION_LOG_LEVEL: ${{ secrets.ALEMBIC_MIGRATION_LOG_LEVEL }}
+          SQLALCHEMY_MIGRATION_LOG_LEVEL: ${{ secrets.SQLALCHEMY_MIGRATION_LOG_LEVEL }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          TESTING: "false"
+          DEBUG: ${{ secrets.DEBUG }}
+          NACHET_SCHEMA: "${{ secrets.NACHET_SCHEMA }}"
 
       - name: Start backend server
         working-directory: backend
@@ -266,6 +277,17 @@ jobs:
         working-directory: backend/app/db
         run: |
           uv run db_setup_test.py
+        env:
+          ALEMBIC_MIGRATION_LOG_LEVEL: ${{ secrets.ALEMBIC_MIGRATION_LOG_LEVEL }}
+          SQLALCHEMY_MIGRATION_LOG_LEVEL: ${{ secrets.SQLALCHEMY_MIGRATION_LOG_LEVEL }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          TESTING: "false"
+          DEBUG: ${{ secrets.DEBUG }}
+          NACHET_SCHEMA: "${{ secrets.NACHET_SCHEMA }}"
 
       - name: Run tests
         run: |
