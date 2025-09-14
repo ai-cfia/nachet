@@ -77,6 +77,13 @@ nachet/backend$ source .venv/bin/activate
 nachet/backend$ cd app/db
 nachet/backend/app/db$ uv run setup_db_local.py
 
+# run all db tests with coverage
+nachet/backend/app/db$ uv run pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
+
+# run integration tests or unit tests only
+nachet/backend/app/db$ uv run pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing -m "integration"
+nachet/backend/app/db$ uv run pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing -m "not integration"
+
 # run tests
 nachet/backend$ ./run_tests.sh
 nachet/backend$ deactivate

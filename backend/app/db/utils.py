@@ -18,18 +18,6 @@ if TYPE_CHECKING:
     from app.api.config import Settings
 
 
-@contextmanager
-def alembic_directory_context():
-    """Context manager for changing to alembic directory and back."""
-    original_cwd = os.getcwd()
-    db_dir = os.path.dirname(__file__)  # This is the app/db directory
-    os.chdir(db_dir)
-    try:
-        yield db_dir
-    finally:
-        os.chdir(original_cwd)
-
-
 class SessionManager:
     """Manages asynchronous DB sessions with connection pooling."""
 
@@ -83,15 +71,15 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         async def read_root(db: AsyncSession = Depends(get_db)):
             # Use db session here
     """
-    async with sessionmanager.get_session() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+    session = await sessionmanager.get_session()
+    try:
+        yield session
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
 
 
 async def close_database_engine():
@@ -109,45 +97,6 @@ def reset_database_engine():
     """
     sessionmanager.engine = None
     sessionmanager._sessionmaker = None
-
-
-def _check_migration_version_sync(connection, script_dir):
-    """Synchronous helper function to check migration version."""
-    context = migration.MigrationContext.configure(connection)
-    current_heads = set(context.get_current_heads())
-    expected_heads = set(script_dir.get_heads())
-    return current_heads, expected_heads
-
-
-async def validate_database_startup(async_engine: AsyncEngine):
-    """
-    Lightweight startup validation - just check migration version.
-    Ensures database is migrated to the expected version.
-    https://alembic.sqlalchemy.org/en/latest/cookbook.html
-    """
-
-    with alembic_directory_context():
-        alembic_cfg = Config("alembic.ini")
-        script_dir = ScriptDirectory.from_config(alembic_cfg)
-        async with async_engine.begin() as connection:
-            current_heads, expected_heads = await connection.run_sync(
-                _check_migration_version_sync, script_dir
-            )
-            if current_heads == expected_heads:
-                print(f"""
-                ✅ Target DB is up to date
-                Current DB version(s) : {current_heads}
-                Expected DB version(s): {expected_heads}
-                Database startup validation passed
-                """)
-            else:
-                raise RuntimeError(f"""
-                ❌ Target DB is NOT up to date 
-                Current DB version(s) : {current_heads}
-                Expected DB version(s): {expected_heads}
-                ❌ Database startup validation failed 
-                ❌ Application cannot start with invalid database state
-                """)
 
 
 async def initialize_database(settings: "Settings" = None):
@@ -189,6 +138,113 @@ def cleanup_temp_db(db_url: str):
             os.unlink(temp_db_name)
         except FileNotFoundError:
             pass  # File doesn't exist, which is what we want
+
+
+async def reset_database_schema(async_engine):
+    """
+    Reset the database by dropping and recreating the schema.
+    This ensures a clean state for development.
+    """
+    print("🗑️  Resetting database schema...")
+
+    async with async_engine.begin() as conn:
+        # Drop and recreate the schema
+        db_schema = os.getenv("NACHET_SCHEMA")
+        db_user = os.getenv("DB_USER")
+        await conn.execute(text(f'DROP SCHEMA IF EXISTS "{db_schema}" CASCADE'))
+        await conn.execute(text(f'CREATE SCHEMA "{db_schema}"'))
+        # Restore default permissions
+        await conn.execute(text(f'GRANT ALL ON SCHEMA "{db_schema}" TO "{db_user}"'))
+        await conn.execute(text(f'GRANT ALL ON SCHEMA "{db_schema}" TO public'))
+
+    print("✅ Database schema reset complete")
+
+
+async def execute_sql_file(async_engine, sql_file_path):
+    """Execute a SQL file using the provided async engine."""
+    print(f"📄 Executing SQL file: {sql_file_path}")
+
+    with open(sql_file_path, "r", encoding="utf-8") as file:
+        sql_content = file.read()
+
+    # remove comments
+    sql_content = "\n".join(
+        line for line in sql_content.splitlines() if not line.strip().startswith("--")
+    )
+    # Split SQL statements (basic splitting on semicolons)
+    statements = [stmt.strip() for stmt in sql_content.split(";") if stmt.strip()]
+
+    async with async_engine.begin() as conn:
+        with tqdm(
+            total=len(statements), desc="   Executing SQL statements", unit="stmt"
+        ) as pbar:
+            for i, statement in enumerate(statements):
+                if statement:  # Skip empty statements
+                    try:
+                        await conn.execute(text(statement))
+                        pbar.update(1)
+                    except Exception as e:
+                        print(f"\n❌ Error executing statement {i + 1}: {e}")
+                        print(f"   Statement: {statement[:100]}...")
+                        raise
+
+    print(f"✅ Successfully executed {len(statements)} SQL statements")
+
+
+##########################################################################################
+# Alembic command wrappers
+##########################################################################################
+
+
+@contextmanager
+def alembic_directory_context():
+    """Context manager for changing to alembic directory and back."""
+    original_cwd = os.getcwd()
+    db_dir = os.path.dirname(__file__)  # This is the app/db directory
+    os.chdir(db_dir)
+    try:
+        yield db_dir
+    finally:
+        os.chdir(original_cwd)
+
+
+def _check_migration_version_sync(connection, script_dir):
+    """Synchronous helper function to check migration version."""
+    context = migration.MigrationContext.configure(connection)
+    current_heads = set(context.get_current_heads())
+    expected_heads = set(script_dir.get_heads())
+    return current_heads, expected_heads
+
+
+async def validate_database_startup(async_engine: AsyncEngine):
+    """
+    Lightweight startup validation - just check migration version.
+    Ensures database is migrated to the expected version.
+    https://alembic.sqlalchemy.org/en/latest/cookbook.html
+    """
+
+    with alembic_directory_context():
+        alembic_cfg = Config("alembic.ini")
+        script_dir = ScriptDirectory.from_config(alembic_cfg)
+        async with async_engine.begin() as connection:
+            current_heads, expected_heads = await connection.run_sync(
+                _check_migration_version_sync, script_dir
+            )
+            if current_heads == expected_heads:
+                print(f"""
+                ✅ Target DB is up to date
+                Current DB version(s) : {current_heads}
+                Expected DB version(s): {expected_heads}
+                Database startup validation passed
+                """)
+            else:
+                raise RuntimeError(f"""
+                ❌ Target DB is NOT up to date 
+                Current DB version(s) : {current_heads}
+                Expected DB version(s): {expected_heads}
+                ❌ Database startup validation failed 
+                ❌ Application cannot start with invalid database state
+                """)
 
 
 def _alembic_upgrade(connection, cfg, target="head"):
@@ -253,54 +309,3 @@ async def create_migration_file(async_engine: AsyncEngine, message: str):
     except Exception as e:
         print(f"❌ Failed to create new migration file: {e}")
         raise
-
-
-async def reset_database_schema(async_engine):
-    """
-    Reset the database by dropping and recreating the schema.
-    This ensures a clean state for development.
-    """
-    print("🗑️  Resetting database schema...")
-
-    async with async_engine.begin() as conn:
-        # Drop and recreate the schema
-        db_schema = os.getenv("NACHET_SCHEMA")
-        db_user = os.getenv("DB_USER")
-        await conn.execute(text(f"DROP SCHEMA IF EXISTS {db_schema} CASCADE"))
-        await conn.execute(text(f"CREATE SCHEMA {db_schema}"))
-        # Restore default permissions
-        await conn.execute(text(f"GRANT ALL ON SCHEMA {db_schema} TO {db_user}"))
-        await conn.execute(text(f"GRANT ALL ON SCHEMA {db_schema} TO public"))
-
-    print("✅ Database schema reset complete")
-
-
-async def execute_sql_file(async_engine, sql_file_path):
-    """Execute a SQL file using the provided async engine."""
-    print(f"📄 Executing SQL file: {sql_file_path}")
-
-    with open(sql_file_path, "r", encoding="utf-8") as file:
-        sql_content = file.read()
-
-    # remove comments
-    sql_content = "\n".join(
-        line for line in sql_content.splitlines() if not line.strip().startswith("--")
-    )
-    # Split SQL statements (basic splitting on semicolons)
-    statements = [stmt.strip() for stmt in sql_content.split(";") if stmt.strip()]
-
-    async with async_engine.begin() as conn:
-        with tqdm(
-            total=len(statements), desc="   Executing SQL statements", unit="stmt"
-        ) as pbar:
-            for i, statement in enumerate(statements):
-                if statement:  # Skip empty statements
-                    try:
-                        await conn.execute(text(statement))
-                        pbar.update(1)
-                    except Exception as e:
-                        print(f"\n❌ Error executing statement {i + 1}: {e}")
-                        print(f"   Statement: {statement[:100]}...")
-                        raise
-
-    print(f"✅ Successfully executed {len(statements)} SQL statements")
