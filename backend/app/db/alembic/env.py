@@ -84,18 +84,19 @@ target_metadata = Base.metadata
 
 # Prevent Alembic from generating empty migration scripts
 # This is important to avoid cluttering the migration history with no-op files
-def process_revision_directives(
-    context: MigrationContext,
-    revision: str | Iterable[str | None] | Iterable[str],
-    directives: list[MigrationScript],
-):
-    assert config.cmd_opts is not None
-    if getattr(config.cmd_opts, "autogenerate", False):
-        script = directives[0]
-        assert script.upgrade_ops is not None
-        if script.upgrade_ops.is_empty():
-            directives[:] = []
-            print("No changes in schema detected.")
+# def process_revision_directives(
+#     context: MigrationContext,
+#     revision: str | Iterable[str | None] | Iterable[str],
+#     directives: list[MigrationScript],
+# ):
+#     # assert config.cmd_opts is not None
+#     # if getattr(config.cmd_opts, "autogenerate", False):
+#     if config.cmd_opts is not None and getattr(config.cmd_opts, "autogenerate", False):
+#         script = directives[0]
+#         assert script.upgrade_ops is not None
+#         if script.upgrade_ops.is_empty():
+#             directives[:] = []
+#             print("No changes in schema detected.")
 
 
 # Prevent Alembic from trying to drop tables that aren't in the ORM
@@ -129,7 +130,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         include_object=include_object,
-        process_revision_directives=process_revision_directives,
+        # process_revision_directives=process_revision_directives,
     )
 
     with context.begin_transaction():
@@ -141,7 +142,7 @@ def do_run_migrations(connection: Connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         include_object=include_object,
-        process_revision_directives=process_revision_directives,
+        # process_revision_directives=process_revision_directives,
     )
 
     with context.begin_transaction():
