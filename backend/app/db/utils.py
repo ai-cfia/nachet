@@ -1,5 +1,6 @@
 import sys
 import os
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Optional, AsyncGenerator
 from tqdm import tqdm
 from sqlalchemy.ext.asyncio import (
@@ -16,6 +17,18 @@ from alembic.runtime import migration
 
 if TYPE_CHECKING:
     from app.api.config import Settings
+
+
+@contextmanager
+def alembic_directory_context():
+    """Context manager for changing to alembic directory and back."""
+    original_cwd = os.getcwd()
+    db_dir = os.path.dirname(__file__)  # This is the app/db directory
+    os.chdir(db_dir)
+    try:
+        yield db_dir
+    finally:
+        os.chdir(original_cwd)
 
 
 class SessionManager:
@@ -104,7 +117,7 @@ def _check_migration_version_sync(connection, script_dir):
     context = migration.MigrationContext.configure(connection)
     current_heads = set(context.get_current_heads())
     expected_heads = set(script_dir.get_heads())
-    return current_heads == expected_heads
+    return current_heads, expected_heads
 
 
 async def validate_database_startup(async_engine: AsyncEngine):
@@ -113,32 +126,29 @@ async def validate_database_startup(async_engine: AsyncEngine):
     Ensures database is migrated to the expected version.
     https://alembic.sqlalchemy.org/en/latest/cookbook.html
     """
-    try:
-        # Change to the correct directory for alembic to find migrations
-        original_cwd = os.getcwd()
-        db_dir = os.path.dirname(__file__)  # This is the app/db directory
-        os.chdir(db_dir)
-        # Get expected version from alembic
+
+    with alembic_directory_context():
         alembic_cfg = Config("alembic.ini")
         script_dir = ScriptDirectory.from_config(alembic_cfg)
         async with async_engine.begin() as connection:
-            is_up_to_date = await connection.run_sync(
+            current_heads, expected_heads = await connection.run_sync(
                 _check_migration_version_sync, script_dir
             )
-            if is_up_to_date:
-                print("✅ Target DB is up to date")
+            if current_heads == expected_heads:
+                print(f"""
+                ✅ Target DB is up to date
+                Current DB version(s) : {current_heads}
+                Expected DB version(s): {expected_heads}
+                Database startup validation passed
+                """)
             else:
-                print("❌ Target DB is NOT up to date")
-                raise RuntimeError("Database schema is not up to date")
-
-    except Exception as e:
-        print(f"❌ Database startup validation failed: {e}")
-        print("🚨 Application cannot start with invalid database state")
-        sys.exit(1)
-    finally:
-        os.chdir(original_cwd)
-        if "async_engine" in locals():
-            await async_engine.dispose()
+                raise RuntimeError(f"""
+                ❌ Target DB is NOT up to date 
+                Current DB version(s) : {current_heads}
+                Expected DB version(s): {expected_heads}
+                ❌ Database startup validation failed 
+                ❌ Application cannot start with invalid database state
+                """)
 
 
 async def initialize_database(settings: "Settings" = None):
@@ -182,47 +192,68 @@ def cleanup_temp_db(db_url: str):
             pass  # File doesn't exist, which is what we want
 
 
-async def run_migrations(async_engine: AsyncEngine, target_version: str = "head"):
-    """Run migrations using the provided async engine."""
-    # Change to the correct directory for alembic to find migrations
-    original_cwd = os.getcwd()
-    db_dir = os.path.dirname(__file__)  # This is the app/db directory
-    os.chdir(db_dir)
-
-    try:
-        alembic_cfg = Config("alembic.ini")
-    except Exception as e:
-        print(f"❌ Failed to configure Alembic: {e}")
-        raise
-    finally:
-        os.chdir(original_cwd)
-    try:
-        # First, run migrations in their own transaction
-        async with async_engine.begin() as conn:
-            # Check current alembic version before migration
-            try:
-                current_version = await conn.run_sync(
-                    lambda sync_conn: sync_conn.execute(
-                        text("SELECT version_num FROM alembic_version")
-                    ).fetchone()
-                )
-                print(f"Current alembic version before migration: {current_version}")
-            except Exception:
-                print("No alembic_version table exists yet")
-
-            await conn.run_sync(run_upgrade, alembic_cfg, target=target_version)
-            print("✅ Migrations completed successfully")
-    except Exception as e:
-        print(f"❌ Migration failed: {e}")
-        raise
-    finally:
-        await async_engine.dispose()
-
-
-def run_upgrade(connection, cfg, target="head"):
+def _alembic_upgrade(connection, cfg, target="head"):
     """Run alembic upgrade within a synchronous connection context."""
     cfg.attributes["connection"] = connection
     command.upgrade(cfg, target)
+    print("✅ Migrations completed successfully")
+
+
+def _alembic_check(connection, cfg):
+    """Check if revision command with autogenerate has pending upgrade ops."""
+    cfg.attributes["connection"] = connection
+    command.check(cfg)
+    print("✅ Alembic check successful - no new migration file needed")
+
+
+def _alembic_generate(connection, cfg, message: str):
+    """Run alembic revision with autogenerate within a synchronous connection context."""
+    cfg.attributes["connection"] = connection
+    command.revision(cfg, autogenerate=False, message=message)
+    print(f"✅ New migration file created with message: {message}")
+
+
+async def run_alembic_func(async_engine: AsyncEngine, alembic_func, *args, **kwargs):
+    """Run an Alembic function within the context of the async engine."""
+    with alembic_directory_context():
+        alembic_cfg = Config("alembic.ini")
+
+        async with async_engine.begin() as conn:
+            await conn.run_sync(alembic_func, alembic_cfg, *args, **kwargs)
+
+
+async def run_migrations(async_engine: AsyncEngine, target_version: str = "head"):
+    """Run migrations using the provided async engine."""
+    try:
+        await run_alembic_func(async_engine, _alembic_upgrade, target=target_version)
+    except Exception as e:
+        print(f"❌ Migration failed: {e}")
+        raise
+
+
+async def check_if_new_migration_file_needed(async_engine: AsyncEngine):
+    """Check if a new migration file is needed."""
+    try:
+        await run_alembic_func(async_engine, _alembic_check)
+    except Exception as e:
+        print(f"❌ New migration file is needed: {e}")
+        raise
+
+
+async def create_migration_file(async_engine: AsyncEngine, message: str):
+    """Create a new migration file if needed."""
+    # if exception is raised, new migration file is needed
+    try:
+        await check_if_new_migration_file_needed(async_engine)
+        return
+    except Exception:
+        pass
+
+    try:
+        await run_alembic_func(async_engine, _alembic_generate, message=message)
+    except Exception as e:
+        print(f"❌ Failed to create new migration file: {e}")
+        raise
 
 
 async def reset_database_schema(async_engine):
