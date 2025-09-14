@@ -106,6 +106,10 @@ async def validate_database_startup(async_engine: AsyncEngine):
     https://alembic.sqlalchemy.org/en/latest/cookbook.html
     """
     try:
+        # Change to the correct directory for alembic to find migrations
+        original_cwd = os.getcwd()
+        db_dir = os.path.dirname(__file__)  # This is the app/db directory
+        os.chdir(db_dir)
         # Get expected version from alembic
         alembic_cfg = Config("alembic.ini")
         script_dir = ScriptDirectory.from_config(alembic_cfg)
@@ -122,6 +126,7 @@ async def validate_database_startup(async_engine: AsyncEngine):
         print("🚨 Application cannot start with invalid database state")
         sys.exit(1)
     finally:
+        os.chdir(original_cwd)
         if "async_engine" in locals():
             await async_engine.dispose()
 
