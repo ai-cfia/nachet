@@ -77,6 +77,39 @@
       "version": "3.1.6"
     },
     {
+      "bom-ref": "Mako==1.3.10",
+      "description": "A super-fast templating language that borrows the best ideas from the existing templating languages.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://docs.makotemplates.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issue Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/sqlalchemy/mako"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://www.makotemplates.org/"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "Mako",
+      "purl": "pkg:pypi/mako@1.3.10",
+      "type": "library",
+      "version": "1.3.10"
+    },
+    {
       "bom-ref": "MarkupSafe==3.0.2",
       "description": "Safely add untrusted strings to HTML/XML markup.",
       "externalReferences": [
@@ -249,6 +282,116 @@
       "purl": "pkg:pypi/pygments@2.19.2",
       "type": "library",
       "version": "2.19.2"
+    },
+    {
+      "bom-ref": "SQLAlchemy==2.0.43",
+      "description": "Database Abstraction Library",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://docs.sqlalchemy.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issue Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/sqlalchemy/sqlalchemy/"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://www.sqlalchemy.org"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "SQLAlchemy",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "asyncio"
+        }
+      ],
+      "purl": "pkg:pypi/sqlalchemy@2.0.43",
+      "type": "library",
+      "version": "2.0.43"
+    },
+    {
+      "bom-ref": "aiosqlite==0.21.0",
+      "description": "asyncio bridge to the standard sqlite3 module",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://aiosqlite.omnilib.dev"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Github",
+          "type": "vcs",
+          "url": "https://github.com/omnilib/aiosqlite"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "aiosqlite",
+      "purl": "pkg:pypi/aiosqlite@0.21.0",
+      "type": "library",
+      "version": "0.21.0"
+    },
+    {
+      "bom-ref": "alembic==1.16.5",
+      "description": "A database migration tool for SQLAlchemy.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://alembic.sqlalchemy.org/en/latest/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issue Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/sqlalchemy/alembic/issues/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/sqlalchemy/alembic/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://alembic.sqlalchemy.org/en/latest/changelog.html"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://alembic.sqlalchemy.org"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "alembic",
+      "purl": "pkg:pypi/alembic@1.16.5",
+      "type": "library",
+      "version": "1.16.5"
     },
     {
       "bom-ref": "annotated-types==0.7.0",
@@ -1156,6 +1299,47 @@
       "purl": "pkg:pypi/fqdn@1.5.1",
       "type": "library",
       "version": "1.5.1"
+    },
+    {
+      "bom-ref": "greenlet==3.2.4",
+      "description": "Lightweight in-process concurrent programming",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://greenlet.readthedocs.io/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Bug Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/python-greenlet/greenlet/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source Code",
+          "type": "other",
+          "url": "https://github.com/python-greenlet/greenlet/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changes",
+          "type": "release-notes",
+          "url": "https://greenlet.readthedocs.io/en/latest/changes.html"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://greenlet.readthedocs.io/"
+        }
+      ],
+      "licenses": [
+        {
+          "acknowledgement": "declared",
+          "expression": "MIT AND Python-2.0"
+        }
+      ],
+      "name": "greenlet",
+      "purl": "pkg:pypi/greenlet@3.2.4",
+      "type": "library",
+      "version": "3.2.4"
     },
     {
       "bom-ref": "h11==0.16.0",
@@ -2147,6 +2331,12 @@
         }
       ],
       "name": "psycopg",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "binary"
+        }
+      ],
       "purl": "pkg:pypi/psycopg@3.2.10",
       "type": "library",
       "version": "3.2.10"
@@ -3138,6 +3328,58 @@
       "version": "0.10.2"
     },
     {
+      "bom-ref": "tqdm==4.67.1",
+      "description": "Fast, Extensible Progress Meter",
+      "evidence": {
+        "licenses": [
+          {
+            "license": {
+              "acknowledgement": "declared",
+              "id": "MIT"
+            }
+          },
+          {
+            "license": {
+              "acknowledgement": "declared",
+              "name": "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"
+            }
+          }
+        ]
+      },
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: wiki",
+          "type": "other",
+          "url": "https://github.com/tqdm/tqdm/wiki"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: changelog",
+          "type": "release-notes",
+          "url": "https://tqdm.github.io/releases"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: repository",
+          "type": "vcs",
+          "url": "https://github.com/tqdm/tqdm"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: homepage",
+          "type": "website",
+          "url": "https://tqdm.github.io"
+        }
+      ],
+      "licenses": [
+        {
+          "acknowledgement": "declared",
+          "expression": "MPL-2.0 AND MIT"
+        }
+      ],
+      "name": "tqdm",
+      "purl": "pkg:pypi/tqdm@4.67.1",
+      "type": "library",
+      "version": "4.67.1"
+    },
+    {
       "bom-ref": "typer==0.17.3",
       "description": "Typer, build great CLIs. Easy to code. Based on Python type hints.",
       "externalReferences": [
@@ -3617,6 +3859,13 @@
       "ref": "Jinja2==3.1.6"
     },
     {
+      "dependsOn": [
+        "MarkupSafe==3.0.2",
+        "pytest==8.4.1"
+      ],
+      "ref": "Mako==1.3.10"
+    },
+    {
       "ref": "MarkupSafe==3.0.2"
     },
     {
@@ -3632,6 +3881,30 @@
     },
     {
       "ref": "Pygments==2.19.2"
+    },
+    {
+      "dependsOn": [
+        "aiosqlite==0.21.0",
+        "greenlet==3.2.4",
+        "psycopg==3.2.10",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "SQLAlchemy==2.0.43"
+    },
+    {
+      "dependsOn": [
+        "coverage==7.10.6",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "aiosqlite==0.21.0"
+    },
+    {
+      "dependsOn": [
+        "Mako==1.3.10",
+        "SQLAlchemy==2.0.43",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "alembic==1.16.5"
     },
     {
       "dependsOn": [
@@ -3693,6 +3966,7 @@
     {
       "dependsOn": [
         "Pygments==2.19.2",
+        "SQLAlchemy==2.0.43",
         "click==8.2.1",
         "coverage==7.10.6",
         "numpy==1.26.4",
@@ -3811,6 +4085,9 @@
     },
     {
       "ref": "fqdn==1.5.1"
+    },
+    {
+      "ref": "greenlet==3.2.4"
     },
     {
       "ref": "h11==0.16.0"
@@ -3944,6 +4221,7 @@
     },
     {
       "dependsOn": [
+        "SQLAlchemy==2.0.43",
         "pytest==8.4.1"
       ],
       "ref": "packageurl-python==0.17.5"
@@ -4137,6 +4415,9 @@
         "Hypercorn==0.17.3",
         "PyJWT==2.10.1",
         "PyYAML==6.0.2",
+        "SQLAlchemy==2.0.43",
+        "aiosqlite==0.21.0",
+        "alembic==1.16.5",
         "azure-identity==1.24.0",
         "azure-storage-blob==12.26.0",
         "beartype==0.21.0",
@@ -4183,6 +4464,15 @@
     },
     {
       "ref": "toml==0.10.2"
+    },
+    {
+      "dependsOn": [
+        "pytest-asyncio==1.0.0",
+        "pytest-cov==6.2.1",
+        "pytest==8.4.1",
+        "requests==2.32.4"
+      ],
+      "ref": "tqdm==4.67.1"
     },
     {
       "dependsOn": [
@@ -4286,7 +4576,7 @@
       ],
       "name": "nachet-backend",
       "type": "application",
-      "version": "1.10.1"
+      "version": "1.10.2"
     },
     "properties": [
       {

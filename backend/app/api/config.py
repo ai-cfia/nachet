@@ -11,14 +11,16 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from psycopg.conninfo import make_conninfo
-from psycopg_pool import ConnectionPool
-from pydantic import computed_field #, Field
+# from psycopg.conninfo import make_conninfo
+# from psycopg_pool import ConnectionPool
+from pydantic import computed_field  # , Field
 from pydantic_settings import BaseSettings
+
 # from sqlmodel import StaticPool, create_engine
 
 from app.exceptions import log_error
 from app.middleware.headers.headers import HeadersMiddleware
+from app.db.utils import initialize_database, close_database_engine, sessionmanager
 # from app.models.bucket_name import MinioBucketName
 # from app.services.file_storage import FertiscanStorage, MinIOStorageManager
 
@@ -61,7 +63,11 @@ class Settings(BaseSettings):
     project_name: str = "Nachet API"
     swagger_path: str = "/docs"
     swagger_ui_client_id: str | None = None
-    allowed_origins: list[str] = ["localhost", "http://localhost:5173", "http://localhost:5174"]
+    allowed_origins: list[str] = [
+        "localhost",
+        "http://localhost:5173",
+        "http://localhost:5174",
+    ]
     testing: bool = True
     debug: bool = False
 
@@ -75,38 +81,67 @@ class Settings(BaseSettings):
             f"EndpointSuffix={self.azure_storage_endpoint_suffix}"
         )
 
-    @computed_field
-    @property
-    def pg_conn_info(self) -> str:
-        return make_conninfo(
-            user=self.db_user,
-            password=self.db_password,
-            host=self.db_host,
-            port=self.db_port,
-            dbname=self.db_name,
-        )
+    # @computed_field
+    # @property
+    # def pg_conn_info(self) -> str:
+    #     return make_conninfo(
+    #         user=self.db_user,
+    #         password=self.db_password,
+    #         host=self.db_host,
+    #         port=self.db_port,
+    #         dbname=self.db_name,
+    #     )
 
     @computed_field
     @property
     def db_conn_info(self) -> dict:
         if self.testing:
             return {
-                "url": "sqlite://",
-                "connect_args": {"check_same_thread": False},
-                # "poolclass": StaticPool,
+                "url": "sqlite+aiosqlite:///test_migration.db.local",
+                "echo": True,
             }
         return {
-            "url": f"postgresql+psycopg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}",
-            "connect_args": {
-                "options": f"-c search_path={self.nachet_schema},public"
-            },
+            "url": f"postgresql+psycopg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}?options=-csearch_path={self.nachet_schema}",
+            "echo": True if self.debug else False,
+            # Additional pool options
+            "pool_recycle": 3600,
+            "pool_size": 20,  # Number of connections to maintain
+            "max_overflow": 10,  # Additional connections beyond pool_size
+            "pool_timeout": 30,  # Timeout for getting connection
+            "pool_pre_ping": True,  # Verify connections before use
         }
+
+
+# Global settings instance
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    """Get or create the global settings instance."""
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Startup
     # settings: Settings = app.settings
-    app.pool.open()
+
+    settings = get_settings()
+    if settings is None:
+        raise ValueError("Settings instance could not be created")
+
+    # Initialize database (validates schema version and sets up SessionManager)
+    await initialize_database(settings)
+    
+    # Store SessionManager in app state for access throughout the app
+    app.state.sessionmanager = sessionmanager
+
+    # Open connection pool
+    # app.pool.open()
+
     # resource = Resource.create(
     #     {
     #         "service.name": "nachet-backend",
@@ -135,8 +170,12 @@ async def lifespan(app: FastAPI):
     # )
     # handler = LoggingHandler(logger_provider=logger_provider)
     # logger.addHandler(handler)
+
     yield
-    app.pool.close()
+
+    # Shutdown
+    # app.pool.close()
+    await close_database_engine()
     # logger_provider.shutdown()
     # tracer_provider.shutdown()
 
@@ -157,14 +196,14 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
 
     app.add_middleware(HeadersMiddleware, preset="strict")
 
-    pool = ConnectionPool(
-        open=False,
-        conninfo=settings.pg_conn_info,
-        kwargs={"options": f"-c search_path={settings.nachet_schema},public"},
-    )
-    app.pool = pool
+    # pool = ConnectionPool(
+    #     open=False,
+    #     conninfo=settings.pg_conn_info,
+    #     kwargs={"options": f"-c search_path={settings.nachet_schema},public"},
+    # )
+    # app.pool = pool
 
-    # app.engine = create_engine(**settings.db_conn_info)
+    # Database SessionManager will be available via app.state.sessionmanager after lifespan startup
 
     app.include_router(router)
 

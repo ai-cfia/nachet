@@ -12,33 +12,32 @@ on:
       - opened
       - synchronize
     paths:
-      - 'backend/**'
-      - '.github/workflows/backend-*'
+      - "backend/**"
+      - ".github/workflows/backend-*"
   push:
     branches:
       - main
     paths:
-      - 'backend/**'
-      - '.github/workflows/backend-*'
+      - "backend/**"
+      - ".github/workflows/backend-*"
 
 defaults:
   run:
     working-directory: backend
 
 jobs:
-
   security-headers-tests:
     runs-on: ubuntu-latest
     environment: backend-test-env
     timeout-minutes: 10
-    
+
     services:
       postgres:
-        image: postgres:13
+        image: postgres:15
         env:
-          POSTGRES_PASSWORD: ${{ secrets.PG_PASS }}
-          POSTGRES_DB: ${{ secrets.PG_DB }}
-          POSTGRES_USER: ${{ secrets.PG_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.DB_NAME }}
+          POSTGRES_USER: ${{ secrets.DB_USER }}
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -54,7 +53,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install uv
         uses: astral-sh/setup-uv@142240426d0e82f3e584603c3aa194c582f5aed3
@@ -63,30 +62,29 @@ jobs:
         run: |
           uv sync --dev
         working-directory: backend
-      
+
       - name: Install Azurite
         run: npm install -g azurite
-      
+
       - name: Start Azurite Blob Storage Emulator
         shell: bash
         run: azurite --loose --blobHost 127.0.0.1 --blobPort 10000 &
 
-      - name: Extract schema version
-        id: schema-version
-        working-directory: backend
+      - name: Alembic migration to repo head
+        working-directory: backend/app/db
         run: |
-          SCHEMA_VERSION=$(uv run python -c "import toml; config = toml.load('pyproject.toml'); print(config['tool']['nachet-db']['db-schema-version'])")
-          echo "version=$SCHEMA_VERSION" >> $GITHUB_OUTPUT
-          echo "Schema version: $SCHEMA_VERSION"
-
-      - name: Set up database schema
-        working-directory: backend
-        run: |
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "CREATE SCHEMA IF NOT EXISTS \"nachet_${{ steps.schema-version.outputs.version }}\";"
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/nachet/db/bytebase/schema_nachet_${{ steps.schema-version.outputs.version }}.sql
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/nachet/db/bytebase/constants_nachet_${{ steps.schema-version.outputs.version }}.sql
+          uv run db_setup_test.py
         env:
-          PGPASSWORD:  ${{ secrets.PG_PASS }}
+          ALEMBIC_MIGRATION_LOG_LEVEL: ${{ secrets.ALEMBIC_MIGRATION_LOG_LEVEL }}
+          SQLALCHEMY_MIGRATION_LOG_LEVEL: ${{ secrets.SQLALCHEMY_MIGRATION_LOG_LEVEL }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          TESTING: "false"
+          DEBUG: ${{ secrets.DEBUG }}
+          NACHET_SCHEMA: "${{ secrets.NACHET_SCHEMA }}"
 
       - name: Start backend server
         working-directory: backend
@@ -95,13 +93,10 @@ jobs:
           # Wait for server to start
           timeout 30 bash -c 'until curl -f http://localhost:5174/health 2>/dev/null; do sleep 1; done'
         env:
-          TESTING: "true"
           NACHET_AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           NACHET_STORAGE_URL_TESTING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           NACHET_STORAGE_URL: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           NACHET_DB_URL: "postgresql://${{ secrets.PG_USER }}:${{ secrets.PG_PASS }}@127.0.0.1:5432/${{ secrets.PG_DB }}"
-          NACHET_SCHEMA_TESTING: "nachet_${{ steps.schema-version.outputs.version }}"
-          NACHET_SCHEMA: "nachet_${{ steps.schema-version.outputs.version }}"
           NACHET_DATA: "https://raw.githubusercontent.com/ai-cfia/nachet-data/main/"
           NACHET_MAX_CONTENT_LENGTH: "200"
           NACHET_BLOB_PIPELINE_NAME: sg-nachet-pipeline-dev
@@ -117,7 +112,17 @@ jobs:
           NACHET_ENV: "local"
           NACHET_FRONTEND_PUBLIC_URL: "https://nachet.inspection.alpha.canada.ca"
           NACHET_FRONTEND_DEV_URL: "http://localhost:5173"
-          PORT: 5174
+          BACKEND_DEV_PORT: ${{ secrets.BACKEND_DEV_PORT }}
+          ALEMBIC_MIGRATION_LOG_LEVEL: ${{ secrets.ALEMBIC_MIGRATION_LOG_LEVEL }}
+          SQLALCHEMY_MIGRATION_LOG_LEVEL: ${{ secrets.SQLALCHEMY_MIGRATION_LOG_LEVEL }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          TESTING: "false"
+          DEBUG: ${{ secrets.DEBUG }}
+          NACHET_SCHEMA: "${{ secrets.NACHET_SCHEMA }}"
 
       - name: Checkout OSHP validator
         uses: actions/checkout@v4
@@ -140,22 +145,22 @@ jobs:
             /workspace/tests_suite.yml
           VENOM_EXIT_CODE=$?
           set -e
-          
+
           # Fix file permissions created by Docker
           sudo chmod -R 755 ${{ github.workspace }}/test-results/
           ls -la ${{ github.workspace }}/test-results/
-          
+
           # Define expected failures (tests we know will fail)
           export EXPECTED_FAILURES="Clear-Site-Data Cache-Control Permissions-Policy"
-          
+
           # Parse results and check for unexpected failures
           python3 - <<EOF
           import xml.etree.ElementTree as ET
           import sys
           import os
-          
+
           expected_failures = os.environ.get('EXPECTED_FAILURES', '').split()
-          
+
           try:
               # Find the XML file
               import glob
@@ -224,14 +229,14 @@ jobs:
     runs-on: ubuntu-latest
     environment: backend-test-env
     timeout-minutes: 15
-    
+
     services:
       postgres:
-        image: postgres:13
+        image: postgres:15
         env:
-          POSTGRES_PASSWORD: ${{ secrets.PG_PASS }}
-          POSTGRES_DB: ${{ secrets.PG_DB }}
-          POSTGRES_USER: ${{ secrets.PG_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.DB_NAME }}
+          POSTGRES_USER: ${{ secrets.DB_USER }}
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -247,7 +252,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install uv
         uses: astral-sh/setup-uv@142240426d0e82f3e584603c3aa194c582f5aed3
@@ -256,51 +261,42 @@ jobs:
         run: |
           uv sync --dev
           uv add toml pytest-cov
-      
+
       - name: Install Azurite
         run: npm install -g azurite
-      
+
       - name: Start Azurite Blob Storage Emulator
         shell: bash
         run: azurite --loose --blobHost 127.0.0.1 --blobPort 10000 &
-      
+
       # - name: Wait for Azurite to be ready
       #   run: |
       #     timeout 30 bash -c 'until curl -f http://127.0.0.1:10000/ 2>/dev/null; do sleep 1; done'
 
-      - name: Extract schema version
-        id: schema-version
+      - name: Alembic migration to repo head
+        working-directory: backend/app/db
         run: |
-          SCHEMA_VERSION=$(uv run python -c "import toml; config = toml.load('pyproject.toml'); print(config['tool']['nachet-db']['db-schema-version'])")
-          echo "version=$SCHEMA_VERSION" >> $GITHUB_OUTPUT
-          echo "Schema version: $SCHEMA_VERSION"
-
-      - name: Set up database schema
-        run: |
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "CREATE SCHEMA IF NOT EXISTS \"nachet_${{ steps.schema-version.outputs.version }}\";"
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/nachet/db/bytebase/schema_nachet_${{ steps.schema-version.outputs.version }}.sql
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/nachet/db/bytebase/constants_nachet_${{ steps.schema-version.outputs.version }}.sql
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f ../datastore/tests/test_data_nachet_${{ steps.schema-version.outputs.version }}.sql
+          uv run db_setup_test.py
         env:
-          PGPASSWORD:  ${{ secrets.PG_PASS }}
-
-      - name: Verify schema setup
-        run: |
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "\dt \"nachet_${{ steps.schema-version.outputs.version }}\".*" -c "\df \"nachet_${{ steps.schema-version.outputs.version }}\".*" -c "SELECT * FROM \"nachet_${{ steps.schema-version.outputs.version }}\".seed;"
-        env:
-          PGPASSWORD: ${{ secrets.PG_PASS }}
+          ALEMBIC_MIGRATION_LOG_LEVEL: ${{ secrets.ALEMBIC_MIGRATION_LOG_LEVEL }}
+          SQLALCHEMY_MIGRATION_LOG_LEVEL: ${{ secrets.SQLALCHEMY_MIGRATION_LOG_LEVEL }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          TESTING: "false"
+          DEBUG: ${{ secrets.DEBUG }}
+          NACHET_SCHEMA: "${{ secrets.NACHET_SCHEMA }}"
 
       - name: Run tests
         run: |
           uv run pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
         env:
-          TESTING: "true"
           NACHET_AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           NACHET_STORAGE_URL_TESTING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           NACHET_STORAGE_URL: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           NACHET_DB_URL: "postgresql://${{ secrets.PG_USER }}:${{ secrets.PG_PASS }}@127.0.0.1:5432/${{ secrets.PG_DB }}"
-          NACHET_SCHEMA_TESTING: "nachet_${{ steps.schema-version.outputs.version }}"
-          NACHET_SCHEMA: "nachet_${{ steps.schema-version.outputs.version }}"
           NACHET_DATA: "https://raw.githubusercontent.com/ai-cfia/nachet-data/main/"
           NACHET_MAX_CONTENT_LENGTH: "200"
           NACHET_BLOB_PIPELINE_NAME: sg-nachet-pipeline-dev
@@ -313,10 +309,20 @@ jobs:
           NACHET_VALID_EXTENSION: '["jpeg", "jpg", "png", "gif", "bmp", "tiff", "webp"]'
           NACHET_VALID_DIMENSION: '{"width": 1920, "height": 1080}'
           DEV_USER_EMAIL: ${{ secrets.DEV_USER_EMAIL }}
-          NACHET_ENV: "local" # local, dev, prod
+          NACHET_ENV: "local"
           NACHET_FRONTEND_PUBLIC_URL: "https://nachet.inspection.alpha.canada.ca"
           NACHET_FRONTEND_DEV_URL: "http://localhost:5173"
-          PORT: 5174
+          BACKEND_DEV_PORT: ${{ secrets.BACKEND_DEV_PORT }}
+          ALEMBIC_MIGRATION_LOG_LEVEL: ${{ secrets.ALEMBIC_MIGRATION_LOG_LEVEL }}
+          SQLALCHEMY_MIGRATION_LOG_LEVEL: ${{ secrets.SQLALCHEMY_MIGRATION_LOG_LEVEL }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          TESTING: "false"
+          DEBUG: ${{ secrets.DEBUG }}
+          NACHET_SCHEMA: "${{ secrets.NACHET_SCHEMA }}"
 
       # - name: Upload coverage to Codecov
       #   if: success()
