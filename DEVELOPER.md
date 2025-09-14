@@ -29,10 +29,6 @@ nachet/db$ nano .env.config.local
 # create database and pgadmin containers
 nachet/db$ cd ..
 nachet$ docker compose -f docker-compose.yaml up -d nachet-db nachet-pgadmin nachet-blob
-nachet$ chmod +x db/dev_setup.sh
-
-# load the dev schema
-nachet$ db/./dev_setup.sh <your_schema_version> <your_db_name> <your_db_user> <your_db_password>
 ```  
 
 - access pgadmin at <http://localhost:12433>  
@@ -40,7 +36,7 @@ nachet$ db/./dev_setup.sh <your_schema_version> <your_db_name> <your_db_user> <y
 - create a new server with the database connection details from the .env.config.local file  
 - browse your database and schema using pgadmin
 
-### Datastore setup
+<!-- ### Datastore setup deprecated
 
 ```bash
 nachet$ cd datastore
@@ -58,7 +54,7 @@ nachet/datastore$ uv sync
 nachet/datastore$ source .venv/bin/activate
 nachet/datastore$ ./run_tests.sh
 nachet/datastore$ deactivate
-```
+``` -->
 
 ### Backend setup
 
@@ -76,6 +72,12 @@ nachet/backend$ nano .env.test.local
 # initialize venv
 nachet/backend$ uv sync
 nachet/backend$ source .venv/bin/activate
+
+# initialize the database (creates tables, runs migrations, creates initial user)
+nachet/backend$ cd app/db
+nachet/backend/app/db$ uv run setup_db_local.py
+
+# run tests
 nachet/backend$ ./run_tests.sh
 nachet/backend$ deactivate
 ```

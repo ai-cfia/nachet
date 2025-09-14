@@ -1,4 +1,3 @@
-import sys
 import os
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Optional, AsyncGenerator

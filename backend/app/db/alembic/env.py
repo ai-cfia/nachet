@@ -2,18 +2,14 @@ import asyncio
 import os
 from logging.config import dictConfig
 
-# for typing purposes
-from collections.abc import Iterable
-
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine  # async_engine_from_config
 
 from alembic import context
-from alembic.environment import MigrationContext
-
-# this typing-only import requires alembic 1.12.1 or above
-from alembic.operations import MigrationScript
+# from collections.abc import Iterable
+# from alembic.environment import MigrationContext
+# from alembic.operations import MigrationScript
 
 from app.db.model import Base
 from app.api.config import Settings
