@@ -7,12 +7,37 @@ from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 import pytest_asyncio
 
-from app.db.utils import initialize_database, sessionmanager, reset_database_engine
+from app.db.utils import (
+    initialize_database,
+    sessionmanager,
+    reset_database_engine,
+    cleanup_temp_db,
+)
 from app.api.config import Settings
 
 # Load test environment variables
 if not os.getenv("NACHET_SCHEMA"):
     load_dotenv("../../.env.test.local")
+
+
+# SQLite database file cleanup
+SQLITE_DB_FILES = [
+    "test_migration.db.local",
+    "test.db",
+    "test1.db",
+    "test2.db",
+    "first.db",
+    "second.db",
+]
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_sqlite_db():
+    """Auto-cleanup fixture that runs at the end of the test session."""
+    yield  # Run tests
+    # Use the utils cleanup function for all potential SQLite files
+    for db_file in SQLITE_DB_FILES:
+        cleanup_temp_db(f"sqlite+aiosqlite:///{db_file}")
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -83,6 +108,9 @@ class TestInitializeDatabase:
     def teardown_method(self):
         """Clean up after each test."""
         reset_database_engine()
+        # Clean up any SQLite database files that might have been created
+        for db_file in SQLITE_DB_FILES:
+            cleanup_temp_db(f"sqlite+aiosqlite:///{db_file}")
 
     @pytest.mark.asyncio
     @patch("app.db.utils.validate_database_startup")
