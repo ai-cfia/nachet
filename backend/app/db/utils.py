@@ -99,6 +99,14 @@ def reset_database_engine():
     sessionmanager._sessionmaker = None
 
 
+def _check_migration_version_sync(connection, script_dir):
+    """Synchronous helper function to check migration version."""
+    context = migration.MigrationContext.configure(connection)
+    current_heads = set(context.get_current_heads())
+    expected_heads = set(script_dir.get_heads())
+    return current_heads == expected_heads
+
+
 async def validate_database_startup(async_engine: AsyncEngine):
     """
     Lightweight startup validation - just check migration version.
@@ -114,8 +122,10 @@ async def validate_database_startup(async_engine: AsyncEngine):
         alembic_cfg = Config("alembic.ini")
         script_dir = ScriptDirectory.from_config(alembic_cfg)
         async with async_engine.begin() as connection:
-            context = migration.MigrationContext.configure(connection)
-            if set(context.get_current_heads()) == set(script_dir.get_heads()):
+            is_up_to_date = await connection.run_sync(
+                _check_migration_version_sync, script_dir
+            )
+            if is_up_to_date:
                 print("✅ Target DB is up to date")
             else:
                 print("❌ Target DB is NOT up to date")
