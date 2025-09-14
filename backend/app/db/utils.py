@@ -148,14 +148,23 @@ async def reset_database_schema(async_engine):
     print("🗑️  Resetting database schema...")
 
     async with async_engine.begin() as conn:
-        # Drop and recreate the schema
+        # Get schema and user names
         db_schema = os.getenv("NACHET_SCHEMA")
         db_user = os.getenv("DB_USER")
-        await conn.execute(text(f'DROP SCHEMA IF EXISTS "{db_schema}" CASCADE'))
-        await conn.execute(text(f'CREATE SCHEMA "{db_schema}"'))
+
+        # Use SQLAlchemy's quote_identifier for safe identifier quoting
+        dialect = conn.dialect
+        quoted_schema = dialect.identifier_preparer.quote_identifier(db_schema)
+        quoted_user = dialect.identifier_preparer.quote_identifier(db_user)
+
+        # Execute DDL statements with properly quoted identifiers
+        await conn.execute(text(f"DROP SCHEMA IF EXISTS {quoted_schema} CASCADE"))
+        await conn.execute(text(f"CREATE SCHEMA {quoted_schema}"))
         # Restore default permissions
-        await conn.execute(text(f'GRANT ALL ON SCHEMA "{db_schema}" TO "{db_user}"'))
-        await conn.execute(text(f'GRANT ALL ON SCHEMA "{db_schema}" TO public'))
+        await conn.execute(
+            text(f"GRANT ALL ON SCHEMA {quoted_schema} TO {quoted_user}")
+        )
+        await conn.execute(text(f"GRANT ALL ON SCHEMA {quoted_schema} TO public"))
 
     print("✅ Database schema reset complete")
 

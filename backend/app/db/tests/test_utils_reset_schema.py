@@ -48,19 +48,30 @@ async def postgresql_engine():
 class TestResetDatabaseSchema:
     """Test cases for the reset_database_schema function."""
 
-    @pytest.mark.asyncio
-    @patch.dict(os.environ, {"NACHET_SCHEMA": "test_schema", "DB_USER": "test_user"})
-    async def test_reset_database_schema_with_mock_engine(self):
-        """Test reset_database_schema with mocked engine operations."""
-        # Create mock connection and engine
-        mock_conn = AsyncMock()
+    def _setup_mock_engine_with_dialect(self):
+        """Helper method to set up mock engine with dialect and identifier preparer."""
         executed_statements = []
+
+        # Create a regular mock instead of AsyncMock to avoid coroutine issues
+        mock_conn = MagicMock()
 
         async def mock_execute(statement):
             executed_statements.append(str(statement))
             return MagicMock()
 
         mock_conn.execute = mock_execute
+
+        # Mock the dialect and identifier preparer
+        mock_dialect = MagicMock()
+        mock_identifier_preparer = MagicMock()
+
+        # Configure the quote_identifier method to return properly quoted identifiers
+        def quote_identifier(name):
+            return f'"{name}"'
+
+        mock_identifier_preparer.quote_identifier = quote_identifier
+        mock_dialect.identifier_preparer = mock_identifier_preparer
+        mock_conn.dialect = mock_dialect
 
         # Create proper async context manager
         mock_context_manager = AsyncMock()
@@ -69,6 +80,14 @@ class TestResetDatabaseSchema:
 
         mock_engine = MagicMock()
         mock_engine.begin.return_value = mock_context_manager
+
+        return mock_engine, executed_statements
+
+    @pytest.mark.asyncio
+    @patch.dict(os.environ, {"NACHET_SCHEMA": "test_schema", "DB_USER": "test_user"})
+    async def test_reset_database_schema_with_mock_engine(self):
+        """Test reset_database_schema with mocked engine operations."""
+        mock_engine, executed_statements = self._setup_mock_engine_with_dialect()
 
         # Execute the function
         await reset_database_schema(mock_engine)
@@ -94,21 +113,7 @@ class TestResetDatabaseSchema:
     )
     async def test_reset_database_schema_uses_environment_variables(self):
         """Test that the function uses correct environment variables."""
-        mock_conn = AsyncMock()
-        executed_statements = []
-
-        async def mock_execute(statement):
-            executed_statements.append(str(statement))
-            return MagicMock()
-
-        mock_conn.execute = mock_execute
-
-        mock_context_manager = AsyncMock()
-        mock_context_manager.__aenter__.return_value = mock_conn
-        mock_context_manager.__aexit__.return_value = None
-
-        mock_engine = MagicMock()
-        mock_engine.begin.return_value = mock_context_manager
+        mock_engine, executed_statements = self._setup_mock_engine_with_dialect()
 
         await reset_database_schema(mock_engine)
 
@@ -127,11 +132,12 @@ class TestResetDatabaseSchema:
     @patch.dict(os.environ, {"NACHET_SCHEMA": "test_schema", "DB_USER": "test_user"})
     async def test_reset_database_schema_database_error(self):
         """Test error handling when database operations fail."""
-        mock_conn = AsyncMock()
+        mock_conn = MagicMock()
 
-        # Mock the first execute call to fail
+        # Mock the execute method to raise an error
         mock_conn.execute.side_effect = SQLAlchemyError("Database connection error")
 
+        # Create proper async context manager
         mock_context_manager = AsyncMock()
         mock_context_manager.__aenter__.return_value = mock_conn
         mock_context_manager.__aexit__.return_value = None
@@ -147,21 +153,7 @@ class TestResetDatabaseSchema:
     @patch.dict(os.environ, {"NACHET_SCHEMA": "", "DB_USER": "test_user"})
     async def test_reset_database_schema_missing_schema_env(self):
         """Test behavior when NACHET_SCHEMA environment variable is missing."""
-        mock_conn = AsyncMock()
-        executed_statements = []
-
-        async def mock_execute(statement):
-            executed_statements.append(str(statement))
-            return MagicMock()
-
-        mock_conn.execute = mock_execute
-
-        mock_context_manager = AsyncMock()
-        mock_context_manager.__aenter__.return_value = mock_conn
-        mock_context_manager.__aexit__.return_value = None
-
-        mock_engine = MagicMock()
-        mock_engine.begin.return_value = mock_context_manager
+        mock_engine, executed_statements = self._setup_mock_engine_with_dialect()
 
         await reset_database_schema(mock_engine)
 
@@ -173,21 +165,7 @@ class TestResetDatabaseSchema:
     @patch.dict(os.environ, {"NACHET_SCHEMA": "test_schema", "DB_USER": ""})
     async def test_reset_database_schema_missing_user_env(self):
         """Test behavior when DB_USER environment variable is missing."""
-        mock_conn = AsyncMock()
-        executed_statements = []
-
-        async def mock_execute(statement):
-            executed_statements.append(str(statement))
-            return MagicMock()
-
-        mock_conn.execute = mock_execute
-
-        mock_context_manager = AsyncMock()
-        mock_context_manager.__aenter__.return_value = mock_conn
-        mock_context_manager.__aexit__.return_value = None
-
-        mock_engine = MagicMock()
-        mock_engine.begin.return_value = mock_context_manager
+        mock_engine, executed_statements = self._setup_mock_engine_with_dialect()
 
         await reset_database_schema(mock_engine)
 
@@ -206,7 +184,7 @@ class TestResetDatabaseSchema:
     @patch.dict(os.environ, {"NACHET_SCHEMA": "test_schema", "DB_USER": "test_user"})
     async def test_reset_database_schema_transaction_behavior(self):
         """Test that all operations happen within a single transaction."""
-        mock_conn = AsyncMock()
+        mock_conn = MagicMock()
         execute_call_count = 0
 
         async def mock_execute(statement):
@@ -219,6 +197,7 @@ class TestResetDatabaseSchema:
 
         mock_conn.execute = mock_execute
 
+        # Create proper async context manager
         mock_context_manager = AsyncMock()
         mock_context_manager.__aenter__.return_value = mock_conn
         mock_context_manager.__aexit__.return_value = None
@@ -243,21 +222,7 @@ class TestResetDatabaseSchema:
     )
     async def test_reset_database_schema_special_characters_in_names(self):
         """Test that the function properly handles schema and user names with special characters."""
-        mock_conn = AsyncMock()
-        executed_statements = []
-
-        async def mock_execute(statement):
-            executed_statements.append(str(statement))
-            return MagicMock()
-
-        mock_conn.execute = mock_execute
-
-        mock_context_manager = AsyncMock()
-        mock_context_manager.__aenter__.return_value = mock_conn
-        mock_context_manager.__aexit__.return_value = None
-
-        mock_engine = MagicMock()
-        mock_engine.begin.return_value = mock_context_manager
+        mock_engine, executed_statements = self._setup_mock_engine_with_dialect()
 
         # Should now work with proper quoting
         await reset_database_schema(mock_engine)
@@ -350,21 +315,7 @@ class TestResetDatabaseSchema:
     )
     async def test_reset_database_schema_sql_injection_safety(self):
         """Test that the function handles special characters safely with quoting."""
-        mock_conn = AsyncMock()
-        executed_statements = []
-
-        async def mock_execute(statement):
-            executed_statements.append(str(statement))
-            return MagicMock()
-
-        mock_conn.execute = mock_execute
-
-        mock_context_manager = AsyncMock()
-        mock_context_manager.__aenter__.return_value = mock_conn
-        mock_context_manager.__aexit__.return_value = None
-
-        mock_engine = MagicMock()
-        mock_engine.begin.return_value = mock_context_manager
+        mock_engine, executed_statements = self._setup_mock_engine_with_dialect()
 
         await reset_database_schema(mock_engine)
 
@@ -381,15 +332,7 @@ class TestResetDatabaseSchema:
     @patch.dict(os.environ, {"NACHET_SCHEMA": "test_schema", "DB_USER": "test_user"})
     async def test_reset_database_schema_output_messages(self, mock_print):
         """Test that the function prints appropriate status messages."""
-        mock_conn = AsyncMock()
-        mock_conn.execute.return_value = MagicMock()
-
-        mock_context_manager = AsyncMock()
-        mock_context_manager.__aenter__.return_value = mock_conn
-        mock_context_manager.__aexit__.return_value = None
-
-        mock_engine = MagicMock()
-        mock_engine.begin.return_value = mock_context_manager
+        mock_engine, executed_statements = self._setup_mock_engine_with_dialect()
 
         await reset_database_schema(mock_engine)
 
