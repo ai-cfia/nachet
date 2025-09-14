@@ -87,7 +87,7 @@ async def validate_orm_classes_async(db_url: str, debug: bool = False):
 
 if __name__ == "__main__":
     print("=" * 50)
-    print("Running ORM Validation Tests")
+    print("🔍 Running runtime ORM validation with database connection...")
     print("=" * 50)
 
     db_url = Settings().db_conn_info["url"]
