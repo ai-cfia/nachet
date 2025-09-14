@@ -13,7 +13,9 @@ from app.db.utils import (
 )
 from app.api.config import get_settings
 from app.db.data.data_seed_local import seed_dev_data
-
+from app.db.validate_orm_online import validate_orm_classes_async
+from app.db.validate_orm_alembic import check_migration_file_needed
+from app.db.validate_db_synchronized import check_db_synchronization
 
 load_dotenv("../../.env.local")
 
@@ -34,6 +36,10 @@ async def load_database():
     print("\n" + "=" * 60)
     print(f"🚀 Starting development database setup for db {db_name}")
 
+    await validate_orm_classes_async(db_url)
+
+    await check_migration_file_needed()
+
     # Initialize SessionManager
     print("\n🔌 Initializing database SessionManager...")
     db_conn_info = settings.db_conn_info.copy()
@@ -53,6 +59,9 @@ async def load_database():
 
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
+    print("\n🔍 Validating database synchronization with alembic head...")
+    await check_db_synchronization()
+
     print("\n📊 Loading ISTA seed data...")
     sql_file_path = os.path.join(
         os.path.dirname(__file__), "data", "seed_data_ista_list.sql"
@@ -62,6 +71,7 @@ async def load_database():
     print("\n🌱 Seeding development data...")
     await seed_dev_data(sessionmanager)
     print("\n✅ Development database setup complete.")
+
     print("\n" + "=" * 60)
     print()
 

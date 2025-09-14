@@ -134,6 +134,33 @@ nachet$ docker compose -f docker-compose.yaml start
 nachet$ docker compose -f docker-compose.yaml restart
 nachet$ docker compose -f docker-compose.yaml rm
 nachet$ docker compose -f docker-compose.yaml pull
+# create a first migration file
+nachet/backend/app/db $ uv run alembic revision --autogenerate -m "First migration 0.2.0"
+
+# create a new migration file
+nachet/backend/app/db $ uv run alembic revision --autogenerate -m "Add new_field to MyTable"
+
+# apply migrations
+nachet/backend/app/db $ uv run alembic upgrade head
+
+# downgrade to a previous migration
+nachet/backend/app/db $ uv run alembic downgrade <revision_id>
+
+# check current migration version
+nachet/backend/app/db $ uv run alembic current
+
+# show the history of migrations
+nachet/backend/app/db $ uv run alembic history
+
+# check if your orm models are valid
+nachet/backend/app/db $ uv run validate_orm_offline.py
+nachet/backend/app/db $ uv run validate_orm_online.py
+
+# check if you need to generate a new migration
+nachet/backend/app/db $ uv run validate_orm_alembic.py
+
+# check if your database is synchronized with the alembic head
+nachet/backend/app/db $ uv run validate_db_synchronized.py
 ```
 
 ## Development
