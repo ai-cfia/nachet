@@ -1,6 +1,7 @@
 import sys
 import os
 from typing import TYPE_CHECKING, Optional, AsyncGenerator
+from tqdm import tqdm
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
     AsyncEngine,
@@ -207,3 +208,54 @@ def run_upgrade(connection, cfg, target="head"):
     """Run alembic upgrade within a synchronous connection context."""
     cfg.attributes["connection"] = connection
     command.upgrade(cfg, target)
+
+
+async def reset_database_schema(async_engine):
+    """
+    Reset the database by dropping and recreating the schema.
+    This ensures a clean state for development.
+    """
+    print("🗑️  Resetting database schema...")
+
+    async with async_engine.begin() as conn:
+        # Drop and recreate the schema
+        db_schema = os.getenv("NACHET_SCHEMA")
+        db_user = os.getenv("DB_USER")
+        await conn.execute(text(f"DROP SCHEMA IF EXISTS {db_schema} CASCADE"))
+        await conn.execute(text(f"CREATE SCHEMA {db_schema}"))
+        # Restore default permissions
+        await conn.execute(text(f"GRANT ALL ON SCHEMA {db_schema} TO {db_user}"))
+        await conn.execute(text(f"GRANT ALL ON SCHEMA {db_schema} TO public"))
+
+    print("✅ Database schema reset complete")
+
+
+async def execute_sql_file(async_engine, sql_file_path):
+    """Execute a SQL file using the provided async engine."""
+    print(f"📄 Executing SQL file: {sql_file_path}")
+
+    with open(sql_file_path, "r", encoding="utf-8") as file:
+        sql_content = file.read()
+
+    # remove comments
+    sql_content = "\n".join(
+        line for line in sql_content.splitlines() if not line.strip().startswith("--")
+    )
+    # Split SQL statements (basic splitting on semicolons)
+    statements = [stmt.strip() for stmt in sql_content.split(";") if stmt.strip()]
+
+    async with async_engine.begin() as conn:
+        with tqdm(
+            total=len(statements), desc="   Executing SQL statements", unit="stmt"
+        ) as pbar:
+            for i, statement in enumerate(statements):
+                if statement:  # Skip empty statements
+                    try:
+                        await conn.execute(text(statement))
+                        pbar.update(1)
+                    except Exception as e:
+                        print(f"\n❌ Error executing statement {i + 1}: {e}")
+                        print(f"   Statement: {statement[:100]}...")
+                        raise
+
+    print(f"✅ Successfully executed {len(statements)} SQL statements")
