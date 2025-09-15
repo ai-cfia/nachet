@@ -17,10 +17,10 @@ resource "azurerm_container_registry" "main" {
   sku                 = "Premium"
   admin_enabled       = true
 
-  public_network_access_enabled = false
+  public_network_access_enabled = true
 
   network_rule_set {
-    default_action = "Allow"
+    default_action = "Deny"
     
     ip_rule {
       action   = "Allow"
