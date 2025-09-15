@@ -38,13 +38,13 @@ variable "container_apps_subnet_name" {
   type        = string
 }
 
-variable "private_endpoints_subnet_name" {
-  description = "The name of the subnet for private endpoints"
-  type        = string
-}
-
 variable "tags" {
   description = "A map of tags to assign to the resource"
   type        = map(string)
   default     = {}
+}
+
+variable "private_endpoint_subnet_id" {
+  description = "CAE PE subnet id"
+  type        = string
 }

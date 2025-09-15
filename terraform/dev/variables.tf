@@ -1,3 +1,5 @@
+# DEFAULT
+
 variable "project_name" {
   description = "Project name"
   type        = string
@@ -50,17 +52,10 @@ variable "container_apps_subnet_name" {
   default     = "nachet-container-apps-subnet-dev"
 }
 
-variable "private_endpoints_subnet_name" {
-  description = "Name of the existing Private Endpoints subnet (created by pipeline)"
+variable "private_endpoint_subnet_id" {
+  description = "CAE PE subnet id"
   type        = string
-  default     = "nachet-private-endpoints-subnet-dev"
 }
-
-# variable "storage_subnet_cidr" {
-#   description = "CIDR block for Storage subnet - optional (e.g., 10.0.3.0/29)"
-#   type        = string
-#   default     = "" # Optional - leave empty if not using private endpoints
-# }
 
 variable "enable_public_access" {
   description = "Enable public access for Container Apps (set to false for full private deployment)"
@@ -217,9 +212,9 @@ variable "container_app_memory" {
   default     = "0.5Gi" # Minimum memory allocation
 }
 
-variable "infrastructure_resource_group_name" {
+variable "cae_infrastructure_resource_group_name" {
   description = "Infra resource group name"
-  type = string 
+  type        = string
 }
 
 # variable "triton_cpu" {
@@ -327,7 +322,7 @@ variable "pgadmin_password" {
 }
 
 # PostgreSQL Configuration
-variable "public_network_access_enabled" {
+variable "postgresql_public_network_access_enabled" {
   description = "Enable the db for public access"
   type        = bool
 }
@@ -379,12 +374,12 @@ variable "database_url" {
 }
 
 # Container Registry Configuration
-variable "allowed_ip_1" {
+variable "acr_allowed_ip_1" {
   description = "First IP address allowed to access the Container Registry"
   type        = string
 }
 
-variable "allowed_ip_2" {
+variable "acr_allowed_ip_2" {
   description = "Second IP address allowed to access the Container Registry"
   type        = string
 }

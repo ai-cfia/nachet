@@ -10,12 +10,6 @@ data "azurerm_subnet" "container_apps" {
   resource_group_name  = var.vnet_resource_group_name
 }
 
-data "azurerm_subnet" "private_endpoints" {
-  name                 = var.private_endpoints_subnet_name
-  virtual_network_name = var.vnet_name
-  resource_group_name  = var.vnet_resource_group_name
-}
-
 # Log Analytics Workspace
 resource "azurerm_log_analytics_workspace" "nachet" {
   name                = "${var.project_name}-law-${var.environment}"
@@ -50,7 +44,7 @@ resource "azurerm_private_endpoint" "container_app_environment" {
   name                = "${var.project_name}-cae-pe-${var.environment}"
   location            = var.location
   resource_group_name = var.resource_group_name
-  subnet_id           = data.azurerm_subnet.private_endpoints.id
+  subnet_id           = var.private_endpoint_subnet_id
 
   private_service_connection {
     name                           = "${var.project_name}-cae-connection-${var.environment}"

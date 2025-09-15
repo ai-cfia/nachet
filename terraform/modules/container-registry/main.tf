@@ -4,12 +4,6 @@ data "azurerm_virtual_network" "existing" {
   resource_group_name = var.vnet_resource_group_name
 }
 
-data "azurerm_subnet" "private_endpoints" {
-  name                 = var.private_endpoints_subnet_name
-  virtual_network_name = var.vnet_name
-  resource_group_name  = var.vnet_resource_group_name
-}
-
 resource "azurerm_container_registry" "main" {
   name                = var.name
   resource_group_name = var.resource_group_name
@@ -21,12 +15,12 @@ resource "azurerm_container_registry" "main" {
 
   network_rule_set {
     default_action = "Deny"
-    
+
     ip_rule {
       action   = "Allow"
       ip_range = "${var.allowed_ip_1}/32"
     }
-    
+
     ip_rule {
       action   = "Allow"
       ip_range = "${var.allowed_ip_2}/32"
@@ -40,7 +34,7 @@ resource "azurerm_private_endpoint" "container_registry" {
   name                = "${var.name}-pe"
   location            = var.location
   resource_group_name = var.resource_group_name
-  subnet_id           = data.azurerm_subnet.private_endpoints.id
+  subnet_id           = var.private_endpoint_subnet_id
 
   private_service_connection {
     name                           = "${var.name}-connection"

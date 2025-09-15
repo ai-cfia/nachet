@@ -2,31 +2,35 @@
 module "container_app_environment" {
   source = "../modules/container-app-environment"
 
+  # Default
   project_name        = var.project_name
   environment         = var.environment
   location            = var.location
   resource_group_name = var.resource_group_name
   tags                = var.tags
 
-  # Network configuration
-  vnet_name                          = var.vnet_name
-  vnet_resource_group_name           = var.vnet_resource_group_name
-  container_apps_subnet_name         = var.container_apps_subnet_name
-  private_endpoints_subnet_name      = var.private_endpoints_subnet_name
-  infrastructure_resource_group_name = var.infrastructure_resource_group_name
+  # Networking
+  vnet_name                  = var.vnet_name
+  vnet_resource_group_name   = var.vnet_resource_group_name
+  private_endpoint_subnet_id = var.private_endpoint_subnet_id
+  container_apps_subnet_name = var.container_apps_subnet_name
+
+  # CAE
+  infrastructure_resource_group_name = var.cae_infrastructure_resource_group_name
 }
 
 # PostgreSQL Database
 module "db" {
-  source = "../modules/db"
+  source = "../modules/postgresql-flexible-server"
 
+  # Default
   project_name        = var.project_name
   environment         = var.environment
   location            = var.location
   resource_group_name = var.resource_group_name
   tags                = var.tags
 
-  # Network (for private endpoint)
+  # Network
   vnet_name                = var.vnet_name
   vnet_resource_group_name = var.vnet_resource_group_name
   postgresql_subnet_name   = var.postgresql_subnet_name
@@ -37,21 +41,27 @@ module "db" {
   postgresql_sku_name           = var.postgresql_sku_name
   postgresql_storage_mb         = var.postgresql_storage_mb
   postgresql_version            = var.postgresql_version
-  public_network_access_enabled = var.public_network_access_enabled
+  public_network_access_enabled = var.postgresql_public_network_access_enabled
 }
 
 # Container Registry
 module "container_registry" {
   source = "../modules/container-registry"
+
+  # Default
   name                = "${var.project_name}${var.environment}acr"
   resource_group_name = var.resource_group_name
   location            = var.location
   tags                = var.tags
-  vnet_name                     = var.vnet_name
-  vnet_resource_group_name      = var.vnet_resource_group_name
-  private_endpoints_subnet_name = var.private_endpoints_subnet_name
-  allowed_ip_1 = var.allowed_ip_1
-  allowed_ip_2 = var.allowed_ip_2
+
+  # Network
+  vnet_name                  = var.vnet_name
+  vnet_resource_group_name   = var.vnet_resource_group_name
+  private_endpoint_subnet_id = var.private_endpoint_subnet_id
+
+  # ACR
+  allowed_ip_1 = var.acr_allowed_ip_1
+  allowed_ip_2 = var.acr_allowed_ip_2
 }
 
 # Module 3: Nachet Application (Storage and Backend) - Commented out for now
