@@ -50,7 +50,8 @@ module "container_registry" {
   vnet_name                     = var.vnet_name
   vnet_resource_group_name      = var.vnet_resource_group_name
   private_endpoints_subnet_name = var.private_endpoints_subnet_name
-  allowed_ip_ranges = var.acr_allowed_ip_ranges
+  allowed_ip_1 = var.allowed_ip_1
+  allowed_ip_2 = var.allowed_ip_2
 }
 
 # Module 3: Nachet Application (Storage and Backend) - Commented out for now

@@ -379,10 +379,14 @@ variable "database_url" {
 }
 
 # Container Registry Configuration
-variable "acr_allowed_ip_ranges" {
-  description = "List of IP ranges allowed to access the Container Registry"
-  type        = list(string)
-  default     = []
+variable "allowed_ip_1" {
+  description = "First IP address allowed to access the Container Registry"
+  type        = string
+}
+
+variable "allowed_ip_2" {
+  description = "Second IP address allowed to access the Container Registry"
+  type        = string
 }
 
 # Container Instance Configuration

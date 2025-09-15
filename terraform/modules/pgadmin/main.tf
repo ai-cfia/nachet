@@ -23,7 +23,7 @@ resource "azurerm_container_app" "pgadmin" {
 
       env {
         name  = "PGADMIN_LISTEN_PORT"
-        value = "80"
+        value = "8080"
       }
 
       env {
@@ -38,7 +38,7 @@ resource "azurerm_container_app" "pgadmin" {
 
   ingress {
     external_enabled = false
-    target_port      = 80
+    target_port      = 8080
 
     traffic_weight {
       percentage      = 100
