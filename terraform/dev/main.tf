@@ -43,7 +43,7 @@ module "db" {
 # Container Registry
 module "container_registry" {
   source = "../modules/container-registry"
-  name                = "${var.project_name}-${var.environment}-acr"
+  name                = "${var.project_name}${var.environment}acr"
   resource_group_name = var.resource_group_name
   location            = var.location
   tags                = var.tags
