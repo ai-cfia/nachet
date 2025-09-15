@@ -10,7 +10,8 @@ This module provides a unified interface for managing blob storage operations in
 - ✅ **Container Management**: All container operations fully implemented and tested
 - ✅ **File Operations**: All core file operations implemented and tested
 - ✅ **Blob Tier Management**: Hot/Cool tier management for cost optimization
-- ✅ **Comprehensive Testing**: 28 passing tests covering all operations
+- ✅ **Comprehensive Testing**: 64 passing tests covering all operations
+- ✅ **Singleton Architecture**: Optimized with Azure SDK singleton client pattern
 
 ## Architecture
 
@@ -21,15 +22,16 @@ app/blob/
 ├── interface.py          # ✅ Abstract base classes and interfaces  
 ├── exceptions.py         # ✅ Custom exceptions
 ├── models.py            # ✅ Pydantic data models for blob operations
-├── manager.py           # ✅ BlobStorageManager for connection pooling
+├── manager.py           # ✅ BlobStorageManager with singleton client
 ├── tests/               # ✅ Comprehensive test suite implemented
-│   ├── test_azure_connectivity.py      # ✅ Basic connectivity tests
-│   ├── test_container_operations.py    # ✅ Complete container operation tests
+│   ├── test_azure_connectivity.py      # ✅ Basic connectivity tests (17 tests)
+│   ├── test_container_operations.py    # ✅ Complete container operation tests (19 tests)
+│   ├── test_file_operations.py         # ✅ Complete file operation tests (28 tests)
 │   └── README.md
 └── azure/               # ✅ Azure-specific implementation
     ├── __init__.py      # ✅ Complete
     ├── client.py        # ✅ Azure client utilities (working)
-    └── storage.py       # ✅ Main Azure storage (listing + containers complete, file ops pending)
+    └── storage.py       # ✅ Main Azure storage (all operations complete)
 ```
 
 ## Core Interface
@@ -215,18 +217,18 @@ class BlobTierInfo(BaseModel):
   - `last_accessed_on` - Last access time for lifecycle management
 - **✅ Client Management**: Proper Azure client initialization and error handling
 - **✅ Validation**: All operations return validated Pydantic models
-- **✅ Testing Framework**: Comprehensive test coverage with 55+ tests total
+- **✅ Testing Framework**: Comprehensive test coverage with 64 tests total
   - Basic connectivity tests in `tests/test_azure_connectivity.py` (17 tests)
   - Complete container operation tests in `tests/test_container_operations.py` (19 tests)
   - Complete file operation tests in `tests/test_file_operations.py` (28 tests)
 
-### ✅ **COMPLETED - Factory Pattern Architecture & Testing**
+### ✅ **COMPLETED - Singleton Architecture & Testing**
 
-- **✅ Factory Pattern**: Successfully implemented for scalable client management
-  - Replaced singleton pattern with per-request client creation for better scalability
-  - Each client gets isolated connection pool (no shared state issues)
-  - Optional thread-local caching available for performance optimization
-  - Better resource isolation and garbage collection
+- **✅ Singleton Pattern**: Successfully implemented following Azure SDK best practices
+  - Single BlobServiceClient instance reused across all requests (Azure SDK recommendation)
+  - Thread-safe client with optimal connection pooling
+  - Simplified architecture with better performance and memory efficiency
+  - Eliminated factory pattern complexity for optimal Azure SDK usage
   
 - **✅ Configuration Integration**: Seamless integration with Settings system
   - Flat configuration structure properly aligned with Settings.blob_storage_config
@@ -238,7 +240,7 @@ class BlobTierInfo(BaseModel):
   - Configuration structure validation  
   - Manager initialization tests
   - Connection string generation tests
-  - All test cases now compatible with factory pattern architecture
+  - All test cases now compatible with singleton pattern architecture
 
 ### ✅ **COMPLETED - Core File Operations**
 
@@ -381,8 +383,6 @@ The Azure Blob Storage module is now production-ready with all core functionalit
 - ✅ Settings integration - `blob_storage_config` computed field working
 - ✅ FastAPI integration - Lifecycle management and dependency injection
 
-#### 🚀 **PENDING IMPLEMENTATION** (Ready for Development)
-
 **File Operations** ✅ **COMPLETE**:
 
 - ✅ `upload_blob()` - File upload with validation and metadata
@@ -393,14 +393,6 @@ The Azure Blob Storage module is now production-ready with all core functionalit
 - ✅ `get_blob_properties()` - Full blob metadata retrieval including tier information
 - ✅ `set_blob_tier()` - Blob tier management for cost optimization
 
-**Advanced Features**:
-
-- [ ] `copy_blob()`, `move_blob()` - File operations
-- [ ] `generate_sas_token()` - Blob-specific SAS tokens
-- [ ] `generate_container_sas_token()` - Container SAS tokens
-- [ ] Metadata and tags management (`set_blob_metadata`, `get_blob_metadata`, etc.)
-- [ ] `get_blob_url()` - URL generation
-
 **Testing & Documentation** ✅ **COMPLETE**:
 
 - ✅ Comprehensive test suite for file operations (28 tests)
@@ -408,26 +400,58 @@ The Azure Blob Storage module is now production-ready with all core functionalit
 - ✅ Lifecycle testing and error scenario coverage
 - ✅ Blob tier management testing
 
-#### Phase 2: Advanced Features
+#### 🚀 **IMPLEMENTATION ROADMAP** - Advanced Features
 
-- [ ] Blob metadata and tags management
-- [ ] Container management operations
-- [ ] SAS token generation for specific blobs/containers
-- [ ] Blob copying and moving operations
+Based on priority analysis, the following features will be implemented in phases:
 
-#### Phase 3: Performance & Reliability
+## Phase 1: High Priority Features (Current Focus)
 
-- [ ] Streaming upload/download for large files
-- [ ] Retry mechanisms and error recovery
-- [ ] Connection pooling and optimization
-- [ ] Comprehensive unit tests
+### 1.1 File Operations - HIGH PRIORITY ⚡
 
-#### Phase 4: Extensibility
+- [ ] `copy_blob()` - Copy blobs within or across containers
+- [ ] `move_blob()` - Move blobs with transaction safety (copy + delete)
 
-- [ ] Abstract base classes for other storage providers
-- [ ] Configuration management
-- [ ] Monitoring and metrics integration
-- [ ] Documentation and examples
+### 1.2 Metadata & Tags Management - HIGH PRIORITY ⚡
+
+- [ ] `set_blob_metadata()` - Set custom metadata on blobs
+- [ ] `get_blob_metadata()` - Retrieve blob metadata
+- [ ] `set_blob_tags()` - Set blob index tags for searchability
+- [ ] `get_blob_tags()` - Retrieve blob tags
+
+## Phase 2: Medium Priority Features
+
+### 2.1 Security & Access Control - MEDIUM PRIORITY 🔐
+
+- [ ] `generate_sas_token()` - Generate blob-specific SAS tokens with permissions/expiry
+- [ ] `generate_container_sas_token()` - Generate container-level SAS tokens
+
+### 2.2 URL Generation - MEDIUM PRIORITY 🔗
+
+- [ ] `get_blob_url()` - Generate blob URLs with optional SAS token inclusion
+
+## Phase 3: Additional Improvements - MEDIUM PRIORITY 🔧
+
+### 3.1 Error Recovery & Reliability
+
+- [ ] Retry mechanisms with exponential backoff for transient failures
+- [ ] Enhanced error recovery for network issues
+
+## Implementation Notes
+
+**✅ Container Management**: All container operations already complete - no additional work needed
+
+- `create_container()`, `delete_container()`, `container_exists()`, `get_container_properties()`, `list_containers()`
+
+**📏 File Size Considerations**: All files under 10MB - streaming optimizations not required
+
+**🔗 Connection Management**: Singleton pattern already optimized - connection pooling not required
+
+**📋 Deferred Features** (Low Priority):
+
+- Abstract base classes for other storage providers
+- Configuration management enhancements
+- Monitoring and metrics integration
+- Additional documentation and examples
 
 ## Configuration
 
@@ -451,11 +475,12 @@ config = {
 
 ## Connection Management
 
-The module uses a `BlobStorageManager` (similar to the database `SessionManager`) for efficient connection pooling and lifecycle management:
+The module uses a `BlobStorageManager` with singleton pattern for optimal Azure SDK usage and lifecycle management:
 
 ### BlobStorageManager Features
 
-- **Connection Pooling**: Reuses blob storage clients across requests
+- **Singleton Client**: Single BlobServiceClient instance following Azure SDK best practices
+- **Thread Safety**: Azure SDK guarantees thread-safe operations across requests
 - **Health Monitoring**: Built-in health checks and connection validation
 - **Resource Management**: Proper initialization and cleanup
 - **FastAPI Integration**: Seamless dependency injection
@@ -483,7 +508,7 @@ async def upload_file(
     file: UploadFile,
     storage: BlobStorageInterface = Depends(get_blob_storage)
 ):
-    # Use storage client directly - no need to manage connections
+    # Use singleton storage client - optimal performance and resource usage
     result = await storage.upload_blob(
         container="uploads",
         name=file.filename,
@@ -499,7 +524,7 @@ from app.blob.manager import blob_storage_context
 
 async def process_files():
     async with blob_storage_context() as storage:
-        # Automatic error handling and resource cleanup
+        # Uses singleton client with automatic error handling
         blobs = await storage.list_blobs("input-data")
         for blob in blobs.blobs:
             data = await storage.download_blob("input-data", blob.name)
@@ -654,7 +679,7 @@ The module defines custom exceptions for different error scenarios:
 - **Blob tier management** for cost optimization (Hot/Cool tiers)
 - **Enhanced blob properties** with tier information and lifecycle data
 - Complete integration with Azure SDK
-- **Comprehensive testing framework** with 55+ tests covering all implemented operations
+- **Comprehensive testing framework** with 64 tests covering all implemented operations
 
 ### ✅ **Production Ready**
 
@@ -663,7 +688,8 @@ The module defines custom exceptions for different error scenarios:
 1. **File Operations**: All implemented - `upload_blob()`, `download_blob()`, `download_blob_stream()`, `delete_blob()`, `blob_exists()`, `get_blob_properties()`
 2. **Container Management**: All implemented - `create_container()`, `delete_container()`, `container_exists()`, `get_container_properties()`
 3. **Cost Optimization**: `set_blob_tier()` for Hot/Cool tier management
-4. **Comprehensive Testing**: 28 file operation tests + 19 container tests + 17 connectivity tests
+4. **Comprehensive Testing**: 64 total tests (28 file + 19 container + 17 connectivity)
+5. **Singleton Architecture**: Optimized Azure SDK integration with singleton client pattern
 
 **The Azure Blob Storage module is now production-ready with all core functionality implemented and thoroughly tested.**
 
