@@ -1,37 +1,29 @@
 """
-Blob storage manager for connection pooling and lifecycle management.
+Blob storage manager with singleton BlobServiceClient.
 
-This module provides a factory pattern for blob storage clients, creating
-fresh client instances per request rather than sharing a singleton client.
+This module provides a singleton pattern for Azure Blob Storage client, following
+Azure SDK best practices for reusing the thread-safe BlobServiceClient.
 
-DESIGN RATIONALE - Factory vs Singleton:
+DESIGN RATIONALE - Singleton Pattern:
 
-✅ BENEFITS of Factory Pattern:
-- **Scalability**: Each client has its own connection pool (more concurrent connections)
-- **Isolation**: Client failures don't affect other requests
-- **Resource Management**: Clients can be garbage collected after request completion
-- **Threading**: Better concurrent request handling
-- **Debugging**: Easier to trace issues to specific requests
+✅ BENEFITS of Singleton BlobServiceClient:
+- **Performance**: Single client reuse across all requests (Azure SDK recommendation)
+- **Connection Pooling**: Single connection pool shared efficiently
+- **Memory Efficient**: One client instance instead of many
+- **Authentication**: Single authentication flow
+- **Thread Safe**: Azure SDK guarantees thread safety
 
-⚠️ CONSIDERATIONS:
-- **Initialization Cost**: Creating clients per request has slight overhead
-- **Memory**: Multiple clients use more memory than singleton
-- **Connection Limits**: More clients = more connections (monitor Azure limits)
+📚 AZURE SDK DOCUMENTATION:
+"BlobServiceClient is thread-safe and should be reused across requests for optimal performance"
 
-💡 MITIGATION:
-- Azure SDK handles connection pooling internally per client
-- Client creation is lightweight (mostly config validation)
-- Benefits outweigh costs for production workloads
-
-The manager validates configuration once at startup, then acts as a factory
-for creating Azure Blob Storage clients on-demand.
+The manager creates and maintains a single BlobServiceClient instance and provides
+access to container and blob clients derived from it.
 """
 
 from typing import Optional, Dict, Any, AsyncGenerator, TYPE_CHECKING
 from contextlib import asynccontextmanager
 import asyncio
 from datetime import datetime
-import threading
 
 if TYPE_CHECKING:
     from app.api.config import Settings
@@ -40,105 +32,88 @@ from app.blob.exceptions import InvalidConfigurationError, ConnectionError
 from app.blob.interface import BlobStorageInterface
 
 
-# Thread-local storage for optional client caching
-_thread_local = threading.local()
-
-
 class BlobStorageManager:
     """
-    Manages blob storage client factory and configuration.
-    
-    This manager acts as a factory for creating blob storage clients rather than
-    maintaining a singleton client, enabling better scalability and isolation.
+    Manages a singleton blob storage client following Azure SDK best practices.
+
+    This manager maintains a single BlobServiceClient instance that is thread-safe
+    and reused across all requests for optimal performance.
     """
 
     def __init__(self) -> None:
         self._provider: Optional[str] = None
         self._config: Optional[Dict[str, Any]] = None
+        self._client: Optional[BlobStorageInterface] = None
         self._initialized: bool = False
         self._lock = asyncio.Lock()
-        self._enable_thread_caching: bool = False  # Optional optimization
 
-    def init(self, provider: str, config: Dict[str, Any], enable_thread_caching: bool = False, **kwargs):
+    async def init(self, provider: str, config: Dict[str, Any], **kwargs):
         """
-        Initialize the BlobStorageManager with provider and configuration.
-        
-        This only stores configuration - actual clients are created on-demand.
+        Initialize the BlobStorageManager with a singleton client.
 
         Args:
             provider: Storage provider name (e.g., 'azure')
             config: Provider-specific configuration
-            enable_thread_caching: If True, cache one client per thread for performance
             **kwargs: Additional initialization options
         """
-        try:
-            # Validate config by creating a test client
-            from .. import get_blob_storage
-            _ = get_blob_storage(provider, config)  # Test configuration
-            
-            # Store config for future client creation
-            self._provider = provider
-            self._config = config.copy()
-            self._initialized = True
-            self._enable_thread_caching = enable_thread_caching
-            cache_status = "with thread caching" if enable_thread_caching else "without caching"
-            print(f"🗄️  BlobStorageManager initialized as factory for provider: {provider} ({cache_status})")
-        except Exception as e:
-            raise InvalidConfigurationError(
-                "initialization", f"Failed to initialize blob storage factory: {str(e)}"
-            )
-
-    def create_client(self) -> BlobStorageInterface:
-        """
-        Create a new blob storage client instance.
-        
-        Returns:
-            A new BlobStorageInterface instance for this request
-            
-        Note: Each call creates a fresh client with its own connection pool,
-        enabling better scalability and isolation between requests.
-        
-        If thread caching is enabled, returns cached client for current thread.
-        """
-        if not self._initialized or not self._config or not self._provider:
-            raise RuntimeError("BlobStorageManager not initialized. Call init() first.")
-            
-        # Optional thread-local caching for performance
-        if self._enable_thread_caching:
-            if not hasattr(_thread_local, 'client') or _thread_local.client is None:
+        async with self._lock:
+            try:
+                # Create the singleton client
                 from .. import get_blob_storage
-                _thread_local.client = get_blob_storage(self._provider, self._config)
-            return _thread_local.client
-        
-        # Default: new client per call
-        from .. import get_blob_storage
-        return get_blob_storage(self._provider, self._config)
+
+                self._client = get_blob_storage(provider, config)
+
+                # Test the client works
+                await self._client.list_containers()
+
+                # Store config
+                self._provider = provider
+                self._config = config.copy()
+                self._initialized = True
+                print(
+                    f"🗄️  BlobStorageManager initialized with singleton client for provider: {provider}"
+                )
+            except Exception as e:
+                raise InvalidConfigurationError(
+                    "initialization",
+                    f"Failed to initialize blob storage client: {str(e)}",
+                )
 
     def get_client(self) -> BlobStorageInterface:
         """
-        Get a blob storage client (kept for backward compatibility).
-        
-        Note: This now creates a new client each time for better scalability.
+        Get the singleton blob storage client.
+
+        Returns:
+            The singleton BlobStorageInterface instance
+
+        Note: This client is thread-safe and should be reused across requests.
         """
-        return self.create_client()
+        if not self._initialized or not self._client:
+            raise RuntimeError("BlobStorageManager not initialized. Call init() first.")
+
+        return self._client
+
+    def create_client(self) -> BlobStorageInterface:
+        """
+        Create a blob storage client (kept for backward compatibility).
+
+        Note: Returns the singleton client for optimal performance.
+        """
+        return self.get_client()
 
     async def health_check(self) -> bool:
         """
         Perform a health check on the blob storage connection.
-        
-        Creates a temporary client to test connectivity.
 
         Returns:
             True if connection is healthy, False otherwise
         """
-        if not self._initialized:
+        if not self._initialized or not self._client:
             return False
 
         try:
-            # Create a temporary client for health check
-            client = self.create_client()
-            # Try to list containers as a health check
-            await client.list_containers()
+            # Test connectivity with the singleton client
+            await self._client.list_containers()
             return True
         except Exception as e:
             print(f"⚠️  Blob storage health check failed: {e}")
@@ -146,32 +121,35 @@ class BlobStorageManager:
 
     async def refresh_connection(self):
         """
-        Refresh the blob storage configuration.
-        
-        Note: With factory pattern, this validates the config is still valid.
-        Individual clients will be created fresh on each request.
+        Refresh the blob storage client connection.
         """
         async with self._lock:
             if not self._config or not self._provider:
                 raise RuntimeError("Cannot refresh: no configuration available")
 
             try:
-                # Test that we can still create clients with current config
+                # Recreate the singleton client
                 from .. import get_blob_storage
-                _ = get_blob_storage(self._provider, self._config)  # Test configuration
-                print("🔄 Blob storage configuration validated")
+
+                self._client = get_blob_storage(self._provider, self._config)
+
+                # Test the new client
+                await self._client.list_containers()
+                print("🔄 Blob storage client refreshed successfully")
             except Exception as e:
                 raise ConnectionError(
-                    f"Failed to validate blob storage configuration: {str(e)}"
+                    f"Failed to refresh blob storage client: {str(e)}"
                 )
 
     async def close(self):
-        """Close the blob storage manager and cleanup configuration."""
-        # With factory pattern, no persistent clients to close
-        self._provider = None
-        self._config = None
-        self._initialized = False
-        print("🗄️  BlobStorageManager factory closed")
+        """Close the blob storage manager and cleanup resources."""
+        async with self._lock:
+            # With Azure SDK, no explicit close needed - client handles cleanup
+            self._provider = None
+            self._config = None
+            self._client = None
+            self._initialized = False
+            print("🗄️  BlobStorageManager singleton client closed")
 
     def is_initialized(self) -> bool:
         """Check if the manager is initialized."""
@@ -189,32 +167,30 @@ blob_storage_manager = BlobStorageManager()
 async def get_blob_storage() -> BlobStorageInterface:
     """
     FastAPI dependency to get blob storage client.
-    
-    Creates a new client instance for each request, providing:
-    - Better scalability (separate connection pools)
-    - Request isolation (failures don't affect other requests)  
-    - Proper resource cleanup per request
+
+    Returns the singleton BlobStorageInterface client that is thread-safe
+    and optimized for reuse across requests.
 
     Usage in routes:
         @app.get("/upload")
         async def upload_file(storage: BlobStorageInterface = Depends(get_blob_storage)):
-            # Use storage client here - fresh client per request
+            # Use storage client here - same singleton client for all requests
     """
-    return blob_storage_manager.create_client()  # New client per request
+    return blob_storage_manager.get_client()
 
 
 @asynccontextmanager
 async def blob_storage_context() -> AsyncGenerator[BlobStorageInterface, None]:
     """
     Context manager for blob storage operations with automatic error handling.
-    
-    Creates a new client instance for this context, ensuring isolation.
+
+    Uses the singleton client for consistency and performance.
 
     Usage:
         async with blob_storage_context() as storage:
             result = await storage.upload_blob(...)
     """
-    storage = blob_storage_manager.create_client()  # New client per context
+    storage = blob_storage_manager.get_client()
     try:
         yield storage
     except Exception as e:
@@ -237,6 +213,7 @@ def reset_blob_storage():
     """
     blob_storage_manager._provider = None
     blob_storage_manager._config = None
+    blob_storage_manager._client = None
     blob_storage_manager._initialized = False
 
 
@@ -258,9 +235,9 @@ async def initialize_blob_storage(settings: "Settings" = None):
     # Get config and extract provider
     blob_config = settings.blob_storage_config
     provider = blob_config.get("blob_storage_provider") or "azure"
-    
-    # Initialize the BlobStorageManager with provider and config
-    blob_storage_manager.init(provider, blob_config)
+
+    # Initialize the BlobStorageManager with singleton client
+    await blob_storage_manager.init(provider, blob_config)
 
     # Validate connection
     if await blob_storage_manager.health_check():

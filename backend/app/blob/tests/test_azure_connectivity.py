@@ -61,12 +61,15 @@ class TestAzureBlobStorageConnectivity:
             AzureBlobStorage(config)
 
         # Should fail because required config fields are missing
-        assert any(key in str(exc_info.value) for key in [
-            "blob_storage_endpoint_protocol", 
-            "blob_storage_name", 
-            "blob_storage_key",
-            "blob_storage_endpoint_suffix"
-        ])
+        assert any(
+            key in str(exc_info.value)
+            for key in [
+                "blob_storage_endpoint_protocol",
+                "blob_storage_name",
+                "blob_storage_key",
+                "blob_storage_endpoint_suffix",
+            ]
+        )
 
     def test_init_with_empty_config_fields(self):
         """Test initialization fails with empty config fields."""
@@ -75,18 +78,21 @@ class TestAzureBlobStorageConnectivity:
             "blob_storage_name": "",
             "blob_storage_key": "",
             "blob_storage_endpoint_suffix": "",
-            "blob_storage_endpoint_base": ""
+            "blob_storage_endpoint_base": "",
         }
 
         with pytest.raises(InvalidConfigurationError) as exc_info:
             AzureBlobStorage(config)
 
         # Azure SDK will complain about invalid connection string format
-        assert any(phrase in str(exc_info.value) for phrase in [
-            "Azure storage connection string is required",
-            "connection string is invalid",
-            "Failed to initialize Azure Blob Storage client"
-        ])
+        assert any(
+            phrase in str(exc_info.value)
+            for phrase in [
+                "Azure storage connection string is required",
+                "connection string is invalid",
+                "Failed to initialize Azure Blob Storage client",
+            ]
+        )
 
     def test_init_with_invalid_config(self):
         """Test initialization fails when Azure client creation fails."""
@@ -95,7 +101,7 @@ class TestAzureBlobStorageConnectivity:
             "blob_storage_name": "invalid-account",
             "blob_storage_key": "invalid-key==",
             "blob_storage_endpoint_suffix": "core.windows.net",
-            "blob_storage_endpoint_base": "https://invalid-account.blob.core.windows.net"
+            "blob_storage_endpoint_base": "https://invalid-account.blob.core.windows.net",
         }
 
         # This may or may not raise during initialization (depends on Azure SDK validation)
@@ -200,24 +206,24 @@ class TestConnectionStringGeneration:
             "blob_storage_name": "testaccount",
             "blob_storage_key": "dGVzdGtleQ==",
             "blob_storage_endpoint_suffix": "core.windows.net",
-            "blob_storage_endpoint_base": "https://testaccount.blob.core.windows.net"
+            "blob_storage_endpoint_base": "https://testaccount.blob.core.windows.net",
         }
-        
+
         storage = AzureBlobStorage(config)
         connection_string = storage.azure_storage_connection_string()
-        
+
         # Verify the format
         expected_parts = [
             "DefaultEndpointsProtocol=https",
-            "AccountName=testaccount", 
+            "AccountName=testaccount",
             "AccountKey=dGVzdGtleQ==",
             "EndpointSuffix=core.windows.net",
-            "BlobEndpoint=https://testaccount.blob.core.windows.net/testaccount"
+            "BlobEndpoint=https://testaccount.blob.core.windows.net/testaccount",
         ]
-        
+
         for part in expected_parts:
             assert part in connection_string, f"Missing part: {part}"
-            
+
         print(f"✅ Generated connection string: {connection_string}")
 
     @pytest.mark.parametrize(
@@ -230,17 +236,17 @@ class TestConnectionStringGeneration:
                     "blob_storage_name": "testaccount",
                     "blob_storage_key": "dGVzdGtleQ==",  # base64 encoded "testkey"
                     "blob_storage_endpoint_suffix": "core.windows.net",
-                    "blob_storage_endpoint_base": "https://testaccount.blob.core.windows.net"
+                    "blob_storage_endpoint_base": "https://testaccount.blob.core.windows.net",
                 },
                 True,
             ),
             (
                 {
                     "blob_storage_endpoint_protocol": "http",
-                    "blob_storage_name": "devstoreaccount1", 
+                    "blob_storage_name": "devstoreaccount1",
                     "blob_storage_key": "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==",
                     "blob_storage_endpoint_suffix": "core.windows.net",
-                    "blob_storage_endpoint_base": "http://127.0.0.1:10000"
+                    "blob_storage_endpoint_base": "http://127.0.0.1:10000",
                 },
                 True,
             ),
@@ -312,10 +318,10 @@ class TestRealConnectivity:
         """Test that invalid connection strings fail properly."""
         config = {
             "blob_storage_endpoint_protocol": "https",
-            "blob_storage_name": "nonexistent", 
+            "blob_storage_name": "nonexistent",
             "blob_storage_key": "invalidkey==",
             "blob_storage_endpoint_suffix": "core.windows.net",
-            "blob_storage_endpoint_base": "https://nonexistent.blob.core.windows.net"
+            "blob_storage_endpoint_base": "https://nonexistent.blob.core.windows.net",
         }
 
         # Should initialize but fail on actual use
@@ -335,12 +341,12 @@ class TestConfigurationIntegration:
 
         # Config should have the blob storage fields we expect
         required_fields = [
-            "blob_storage_endpoint_protocol", 
-            "blob_storage_name", 
+            "blob_storage_endpoint_protocol",
+            "blob_storage_name",
             "blob_storage_key",
-            "blob_storage_endpoint_suffix"
+            "blob_storage_endpoint_suffix",
         ]
-        
+
         for field in required_fields:
             assert field in config, f"Missing required config field: {field}"
             assert config[field] is not None, f"Config field {field} is None"
@@ -349,7 +355,10 @@ class TestConfigurationIntegration:
         if settings.blob_storage_name and settings.blob_storage_key:
             expected_config = settings.blob_storage_config
             assert config == expected_config  # Compare with flat config
-            assert config["blob_storage_provider"] == settings.blob_storage_provider or None
+            assert (
+                config["blob_storage_provider"] == settings.blob_storage_provider
+                or None
+            )
             assert config["blob_storage_name"] == settings.blob_storage_name
             assert config["blob_storage_key"] == settings.blob_storage_key
 
@@ -360,7 +369,7 @@ class TestConfigurationIntegration:
         # Get valid config and create storage instance
         config = get_test_config()
         storage = AzureBlobStorage(config)
-        
+
         # Use the storage method to get connection string
         connection_string = storage.azure_storage_connection_string()
 
@@ -375,7 +384,7 @@ class TestConfigurationIntegration:
         assert "None" not in connection_string
 
         print(f"🔗 Connection string format: {connection_string[:50]}...")
-        
+
         # Verify it contains actual values from config
         assert config["blob_storage_name"] in connection_string
         assert config["blob_storage_key"] in connection_string
@@ -389,16 +398,16 @@ class TestConfigurationIntegration:
 
         blob_config = settings.blob_storage_config
         assert isinstance(blob_config, dict)
-        
+
         # Should have the expected flat config structure
         required_fields = [
             "blob_storage_provider",
-            "blob_storage_endpoint_protocol", 
-            "blob_storage_name", 
+            "blob_storage_endpoint_protocol",
+            "blob_storage_name",
             "blob_storage_key",
-            "blob_storage_endpoint_suffix"
+            "blob_storage_endpoint_suffix",
         ]
-        
+
         for field in required_fields:
             assert field in blob_config, f"Missing config field: {field}"
 
