@@ -58,10 +58,10 @@ class BlobStorageManager:
         """
         async with self._lock:
             try:
-                # Create the singleton client
-                from app.blob import get_blob_storage
+                # Create the singleton client using the factory function
+                from app.blob import create_blob_storage_client
 
-                self._client = get_blob_storage(provider, config)
+                self._client = create_blob_storage_client(provider, config)
 
                 # Test the client works
                 await self._client.list_containers()
@@ -128,10 +128,18 @@ class BlobStorageManager:
                 raise RuntimeError("Cannot refresh: no configuration available")
 
             try:
-                # Recreate the singleton client
-                from .. import get_blob_storage
+                # Recreate the singleton client using the factory function
+                from app.blob import create_blob_storage_client
 
-                self._client = get_blob_storage(self._provider, self._config)
+                self._client = create_blob_storage_client(self._provider, self._config)
+
+                # Test the new client
+                await self._client.list_containers()
+                print("🔄 Blob storage client refreshed successfully")
+            except Exception as e:
+                raise ConnectionError(
+                    f"Failed to refresh blob storage client: {str(e)}"
+                )
 
                 # Test the new client
                 await self._client.list_containers()

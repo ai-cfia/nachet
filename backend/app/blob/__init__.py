@@ -83,19 +83,22 @@ __all__ = [
     "close_blob_storage",
     "reset_blob_storage",
     "BlobStorageHealthCheck",
+    # Factory and Singleton
+    "create_blob_storage_client",
+    "get_blob_storage",
 ]
 
 
-def get_blob_storage(provider: str, config: dict) -> BlobStorageInterface:
+def create_blob_storage_client(provider: str, config: dict) -> BlobStorageInterface:
     """
-    Factory function to get a blob storage implementation.
+    Factory function to create a new blob storage client instance.
 
     Args:
         provider: Storage provider name (e.g., 'azure', 'aws', 'gcp')
         config: Provider-specific configuration
 
     Returns:
-        BlobStorageInterface implementation
+        New BlobStorageInterface implementation
 
     Raises:
         InvalidConfigurationError: If provider is not supported or config is invalid
@@ -108,3 +111,16 @@ def get_blob_storage(provider: str, config: dict) -> BlobStorageInterface:
         raise InvalidConfigurationError(
             "provider", f"Unsupported provider: {provider}. Supported providers: azure"
         )
+
+
+def get_blob_storage() -> BlobStorageInterface:
+    """
+    Get the singleton blob storage client from the manager.
+
+    Returns:
+        BlobStorageInterface singleton instance
+
+    Raises:
+        RuntimeError: If blob storage manager is not initialized
+    """
+    return blob_storage_manager.get_client()
