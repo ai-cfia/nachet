@@ -912,3 +912,699 @@ class TestFileErrorHandling(TestFileOperations):
 
         with pytest.raises(ContainerNotFoundError):
             await storage.set_blob_tier(non_existent_container, blob_path, "Cool")
+
+    # =============================================================================
+    # Copy and Move Operations Tests
+    # =============================================================================
+
+    @pytest.mark.asyncio
+    async def test_copy_blob_same_container(self, storage, sample_image_data):
+        """Test copying a blob within the same container."""
+        source_path = f"copy-test/original-{uuid.uuid4()}.png"
+        dest_path = f"copy-test/copy-{uuid.uuid4()}.png"
+
+        try:
+            # Upload source blob
+            upload_result = await storage.upload_blob(
+                TEST_CONTAINER, source_path, sample_image_data
+            )
+            assert upload_result["name"] == source_path
+
+            # Copy the blob
+            copy_result = await storage.copy_blob(
+                TEST_CONTAINER, source_path, TEST_CONTAINER, dest_path
+            )
+
+            # Verify copy result
+            assert copy_result["source_container"] == TEST_CONTAINER
+            assert copy_result["source_name"] == source_path
+            assert copy_result["dest_container"] == TEST_CONTAINER
+            assert copy_result["dest_name"] == dest_path
+            assert copy_result["copy_status"] == "success"
+            assert "etag" in copy_result
+            assert "last_modified" in copy_result
+            assert "size" in copy_result
+            assert "copy_id" in copy_result
+
+            # Verify both blobs exist
+            source_exists = await storage.blob_exists(TEST_CONTAINER, source_path)
+            dest_exists = await storage.blob_exists(TEST_CONTAINER, dest_path)
+            assert source_exists
+            assert dest_exists
+
+            # Verify copied blob has same content
+            original_data = await storage.download_blob(TEST_CONTAINER, source_path)
+            copied_data = await storage.download_blob(TEST_CONTAINER, dest_path)
+            assert original_data == copied_data
+            assert original_data == sample_image_data
+
+        finally:
+            # Cleanup
+            try:
+                await storage.delete_blob(TEST_CONTAINER, source_path)
+                await storage.delete_blob(TEST_CONTAINER, dest_path)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_copy_blob_different_containers(self, storage, sample_image_data):
+        """Test copying a blob between different containers."""
+        source_container = TEST_CONTAINER
+        dest_container = f"nachet-unit-test-copy-dest-{uuid.uuid4().hex[:8]}"
+        source_path = f"copy-test/source-{uuid.uuid4()}.png"
+        dest_path = f"copy-test/dest-{uuid.uuid4()}.png"
+
+        try:
+            # Create destination container
+            await storage.create_container(dest_container)
+
+            # Upload source blob
+            await storage.upload_blob(source_container, source_path, sample_image_data)
+
+            # Copy between containers
+            copy_result = await storage.copy_blob(
+                source_container, source_path, dest_container, dest_path
+            )
+
+            # Verify copy result
+            assert copy_result["source_container"] == source_container
+            assert copy_result["dest_container"] == dest_container
+            assert copy_result["copy_status"] == "success"
+
+            # Verify both blobs exist
+            source_exists = await storage.blob_exists(source_container, source_path)
+            dest_exists = await storage.blob_exists(dest_container, dest_path)
+            assert source_exists
+            assert dest_exists
+
+            # Verify content matches
+            original_data = await storage.download_blob(source_container, source_path)
+            copied_data = await storage.download_blob(dest_container, dest_path)
+            assert original_data == copied_data
+
+        finally:
+            # Cleanup
+            try:
+                await storage.delete_blob(source_container, source_path)
+                await storage.delete_blob(dest_container, dest_path)
+                await storage.delete_container(dest_container)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_copy_blob_source_not_found(self, storage):
+        """Test copying a non-existent source blob."""
+        source_path = f"copy-test/non-existent-{uuid.uuid4()}.png"
+        dest_path = f"copy-test/dest-{uuid.uuid4()}.png"
+
+        with pytest.raises(BlobNotFoundError):
+            await storage.copy_blob(
+                TEST_CONTAINER, source_path, TEST_CONTAINER, dest_path
+            )
+
+    @pytest.mark.asyncio
+    async def test_copy_blob_source_container_not_found(
+        self, storage, sample_image_data
+    ):
+        """Test copying from a non-existent source container."""
+        non_existent_container = "non-existent-source-container"
+        source_path = f"copy-test/source-{uuid.uuid4()}.png"
+        dest_path = f"copy-test/dest-{uuid.uuid4()}.png"
+
+        with pytest.raises(ContainerNotFoundError):
+            await storage.copy_blob(
+                non_existent_container, source_path, TEST_CONTAINER, dest_path
+            )
+
+    @pytest.mark.asyncio
+    async def test_copy_blob_dest_container_not_found(self, storage, sample_image_data):
+        """Test copying to a non-existent destination container."""
+        non_existent_container = "non-existent-dest-container"
+        source_path = f"copy-test/source-{uuid.uuid4()}.png"
+        dest_path = f"copy-test/dest-{uuid.uuid4()}.png"
+
+        try:
+            # Upload source blob
+            await storage.upload_blob(TEST_CONTAINER, source_path, sample_image_data)
+
+            # Try to copy to non-existent container
+            with pytest.raises(ContainerNotFoundError):
+                await storage.copy_blob(
+                    TEST_CONTAINER, source_path, non_existent_container, dest_path
+                )
+
+        finally:
+            try:
+                await storage.delete_blob(TEST_CONTAINER, source_path)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_move_blob_same_container(self, storage, sample_image_data):
+        """Test moving a blob within the same container."""
+        source_path = f"move-test/original-{uuid.uuid4()}.png"
+        dest_path = f"move-test/moved-{uuid.uuid4()}.png"
+
+        try:
+            # Upload source blob
+            await storage.upload_blob(TEST_CONTAINER, source_path, sample_image_data)
+
+            # Verify source exists before move
+            source_exists_before = await storage.blob_exists(
+                TEST_CONTAINER, source_path
+            )
+            assert source_exists_before
+
+            # Move the blob
+            move_result = await storage.move_blob(
+                TEST_CONTAINER, source_path, TEST_CONTAINER, dest_path
+            )
+
+            # Verify move result
+            assert move_result["source_container"] == TEST_CONTAINER
+            assert move_result["source_name"] == source_path
+            assert move_result["dest_container"] == TEST_CONTAINER
+            assert move_result["dest_name"] == dest_path
+            assert move_result["copy_status"] == "success"
+            assert move_result["delete_successful"] is True
+            assert move_result["move_completed"] is True
+            assert "etag" in move_result
+            assert "last_modified" in move_result
+
+            # Verify source no longer exists and destination exists
+            source_exists_after = await storage.blob_exists(TEST_CONTAINER, source_path)
+            dest_exists = await storage.blob_exists(TEST_CONTAINER, dest_path)
+            assert not source_exists_after
+            assert dest_exists
+
+            # Verify moved blob has same content
+            moved_data = await storage.download_blob(TEST_CONTAINER, dest_path)
+            assert moved_data == sample_image_data
+
+        finally:
+            # Cleanup (in case move failed partially)
+            try:
+                await storage.delete_blob(TEST_CONTAINER, source_path)
+                await storage.delete_blob(TEST_CONTAINER, dest_path)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_move_blob_different_containers(self, storage, sample_image_data):
+        """Test moving a blob between different containers."""
+        source_container = TEST_CONTAINER
+        dest_container = f"nachet-unit-test-move-dest-{uuid.uuid4().hex[:8]}"
+        source_path = f"move-test/source-{uuid.uuid4()}.png"
+        dest_path = f"move-test/dest-{uuid.uuid4()}.png"
+
+        try:
+            # Create destination container
+            await storage.create_container(dest_container)
+
+            # Upload source blob
+            await storage.upload_blob(source_container, source_path, sample_image_data)
+
+            # Move between containers
+            move_result = await storage.move_blob(
+                source_container, source_path, dest_container, dest_path
+            )
+
+            # Verify move result
+            assert move_result["source_container"] == source_container
+            assert move_result["dest_container"] == dest_container
+            assert move_result["move_completed"] is True
+
+            # Verify source no longer exists and destination exists
+            source_exists = await storage.blob_exists(source_container, source_path)
+            dest_exists = await storage.blob_exists(dest_container, dest_path)
+            assert not source_exists
+            assert dest_exists
+
+            # Verify content matches
+            moved_data = await storage.download_blob(dest_container, dest_path)
+            assert moved_data == sample_image_data
+
+        finally:
+            # Cleanup
+            try:
+                await storage.delete_blob(source_container, source_path)
+                await storage.delete_blob(dest_container, dest_path)
+                await storage.delete_container(dest_container)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_move_blob_source_not_found(self, storage):
+        """Test moving a non-existent source blob."""
+        source_path = f"move-test/non-existent-{uuid.uuid4()}.png"
+        dest_path = f"move-test/dest-{uuid.uuid4()}.png"
+
+        with pytest.raises(BlobNotFoundError):
+            await storage.move_blob(
+                TEST_CONTAINER, source_path, TEST_CONTAINER, dest_path
+            )
+
+    @pytest.mark.asyncio
+    async def test_move_blob_with_rollback(self, storage, sample_image_data):
+        """Test move operation rollback when delete fails."""
+        source_path = f"move-test/source-rollback-{uuid.uuid4()}.png"
+        dest_path = f"move-test/dest-rollback-{uuid.uuid4()}.png"
+
+        try:
+            # Upload source blob
+            await storage.upload_blob(TEST_CONTAINER, source_path, sample_image_data)
+
+            # Mock the delete_blob method to simulate failure after successful copy
+            with patch.object(storage, "delete_blob", return_value=False):
+                move_result = await storage.move_blob(
+                    TEST_CONTAINER, source_path, TEST_CONTAINER, dest_path
+                )
+
+                # Move should report partial success (copy succeeded, delete failed)
+                assert move_result["copy_status"] == "success"
+                assert move_result["delete_successful"] is False
+                assert move_result["move_completed"] is False
+
+                # Both blobs should exist (move was incomplete)
+                source_exists = await storage.blob_exists(TEST_CONTAINER, source_path)
+                dest_exists = await storage.blob_exists(TEST_CONTAINER, dest_path)
+                assert source_exists  # Still exists because delete failed
+                assert dest_exists  # Exists because copy succeeded
+
+        finally:
+            # Cleanup both blobs
+            try:
+                await storage.delete_blob(TEST_CONTAINER, source_path)
+                await storage.delete_blob(TEST_CONTAINER, dest_path)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_move_blob_complete_lifecycle(
+        self, storage, sample_image_data, sample_metadata_data
+    ):
+        """Test complete move workflow with multiple blob types."""
+        base_uuid = uuid.uuid4()
+
+        # Test files in different folders
+        test_files = [
+            (f"lifecycle/original/{base_uuid}.png", sample_image_data, "image/png"),
+            (
+                f"lifecycle/metadata/{base_uuid}.json",
+                sample_metadata_data.encode("utf-8"),
+                "application/json",
+            ),
+        ]
+
+        moved_files = []
+
+        try:
+            # Upload test files
+            for file_path, file_data, content_type in test_files:
+                await storage.upload_blob(TEST_CONTAINER, file_path, file_data)
+
+            # Move each file to processed folder
+            for file_path, file_data, content_type in test_files:
+                # Generate destination path (original -> processed)
+                dest_path = file_path.replace("/original/", "/processed/").replace(
+                    "/metadata/", "/processed/"
+                )
+                moved_files.append((file_path, dest_path, file_data))
+
+                # Perform move
+                move_result = await storage.move_blob(
+                    TEST_CONTAINER, file_path, TEST_CONTAINER, dest_path
+                )
+
+                assert move_result["move_completed"] is True
+
+                # Verify move
+                source_exists = await storage.blob_exists(TEST_CONTAINER, file_path)
+                dest_exists = await storage.blob_exists(TEST_CONTAINER, dest_path)
+                assert not source_exists
+                assert dest_exists
+
+                # Verify content integrity
+                moved_data = await storage.download_blob(TEST_CONTAINER, dest_path)
+                assert moved_data == file_data
+
+        finally:
+            # Cleanup all files (both source and destination paths)
+            for source_path, dest_path, _ in moved_files:
+                try:
+                    await storage.delete_blob(TEST_CONTAINER, source_path)
+                    await storage.delete_blob(TEST_CONTAINER, dest_path)
+                except Exception:
+                    pass
+
+    # =============================================================================
+    # Metadata and Tags Operations Tests
+    # =============================================================================
+
+    @pytest.mark.asyncio
+    async def test_set_blob_metadata_basic(self, storage, sample_image_data):
+        """Test setting basic blob metadata."""
+        blob_path = f"metadata-test/basic-{uuid.uuid4()}.png"
+        metadata = {
+            "source": "test_suite",
+            "processed": "false",
+            "version": "1.0",
+            "author": "nachet-unit-test",
+        }
+
+        try:
+            # Upload blob first
+            await storage.upload_blob(TEST_CONTAINER, blob_path, sample_image_data)
+
+            # Set metadata
+            await storage.set_blob_metadata(TEST_CONTAINER, blob_path, metadata)
+
+            # Verify metadata was set by retrieving it
+            retrieved_metadata = await storage.get_blob_metadata(
+                TEST_CONTAINER, blob_path
+            )
+            assert retrieved_metadata == metadata
+
+            # Verify metadata is also available through blob properties
+            properties = await storage.get_blob_properties(TEST_CONTAINER, blob_path)
+            assert properties["metadata"] == metadata
+
+        finally:
+            try:
+                await storage.delete_blob(TEST_CONTAINER, blob_path)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_get_blob_metadata_empty(self, storage, sample_image_data):
+        """Test getting metadata from blob with no metadata."""
+        blob_path = f"metadata-test/empty-{uuid.uuid4()}.png"
+
+        try:
+            # Upload blob without metadata
+            await storage.upload_blob(TEST_CONTAINER, blob_path, sample_image_data)
+
+            # Get metadata (should be empty)
+            metadata = await storage.get_blob_metadata(TEST_CONTAINER, blob_path)
+            assert metadata == {}
+
+        finally:
+            try:
+                await storage.delete_blob(TEST_CONTAINER, blob_path)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_set_blob_metadata_update_existing(self, storage, sample_image_data):
+        """Test updating existing blob metadata."""
+        blob_path = f"metadata-test/update-{uuid.uuid4()}.png"
+
+        try:
+            # Upload blob first
+            await storage.upload_blob(TEST_CONTAINER, blob_path, sample_image_data)
+
+            # Set initial metadata
+            initial_metadata = {"version": "1.0", "status": "draft"}
+            await storage.set_blob_metadata(TEST_CONTAINER, blob_path, initial_metadata)
+
+            # Verify initial metadata
+            retrieved_metadata = await storage.get_blob_metadata(
+                TEST_CONTAINER, blob_path
+            )
+            assert retrieved_metadata == initial_metadata
+
+            # Update metadata (replaces all existing metadata)
+            updated_metadata = {
+                "version": "1.1",
+                "status": "published",
+                "author": "system",
+            }
+            await storage.set_blob_metadata(TEST_CONTAINER, blob_path, updated_metadata)
+
+            # Verify updated metadata
+            final_metadata = await storage.get_blob_metadata(TEST_CONTAINER, blob_path)
+            assert final_metadata == updated_metadata
+            assert "status" in final_metadata
+            assert final_metadata["status"] == "published"
+
+        finally:
+            try:
+                await storage.delete_blob(TEST_CONTAINER, blob_path)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_set_blob_metadata_empty_dict(self, storage, sample_image_data):
+        """Test setting empty metadata dictionary."""
+        blob_path = f"metadata-test/empty-dict-{uuid.uuid4()}.png"
+
+        try:
+            # Upload blob first
+            await storage.upload_blob(TEST_CONTAINER, blob_path, sample_image_data)
+
+            # Set initial metadata
+            initial_metadata = {"version": "1.0"}
+            await storage.set_blob_metadata(TEST_CONTAINER, blob_path, initial_metadata)
+
+            # Clear metadata with empty dict
+            await storage.set_blob_metadata(TEST_CONTAINER, blob_path, {})
+
+            # Verify metadata is cleared
+            metadata = await storage.get_blob_metadata(TEST_CONTAINER, blob_path)
+            assert metadata == {}
+
+        finally:
+            try:
+                await storage.delete_blob(TEST_CONTAINER, blob_path)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_set_blob_metadata_blob_not_found(self, storage):
+        """Test setting metadata on non-existent blob."""
+        blob_path = f"metadata-test/non-existent-{uuid.uuid4()}.png"
+        metadata = {"test": "value"}
+
+        with pytest.raises(BlobNotFoundError):
+            await storage.set_blob_metadata(TEST_CONTAINER, blob_path, metadata)
+
+    @pytest.mark.asyncio
+    async def test_get_blob_metadata_blob_not_found(self, storage):
+        """Test getting metadata from non-existent blob."""
+        blob_path = f"metadata-test/non-existent-{uuid.uuid4()}.png"
+
+        with pytest.raises(BlobNotFoundError):
+            await storage.get_blob_metadata(TEST_CONTAINER, blob_path)
+
+    @pytest.mark.asyncio
+    async def test_set_blob_tags_basic(self, storage, sample_image_data):
+        """Test setting basic blob tags."""
+        blob_path = f"tags-test/basic-{uuid.uuid4()}.png"
+        tags = {
+            "category": "test-data",
+            "environment": "unittest",
+            "priority": "high",
+            "type": "image",
+        }
+
+        try:
+            # Upload blob first
+            await storage.upload_blob(TEST_CONTAINER, blob_path, sample_image_data)
+
+            # Set tags
+            await storage.set_blob_tags(TEST_CONTAINER, blob_path, tags)
+
+            # Verify tags were set by retrieving them
+            retrieved_tags = await storage.get_blob_tags(TEST_CONTAINER, blob_path)
+            assert retrieved_tags == tags
+
+        finally:
+            try:
+                await storage.delete_blob(TEST_CONTAINER, blob_path)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_get_blob_tags_empty(self, storage, sample_image_data):
+        """Test getting tags from blob with no tags."""
+        blob_path = f"tags-test/empty-{uuid.uuid4()}.png"
+
+        try:
+            # Upload blob without tags
+            await storage.upload_blob(TEST_CONTAINER, blob_path, sample_image_data)
+
+            # Get tags (should be empty)
+            tags = await storage.get_blob_tags(TEST_CONTAINER, blob_path)
+            assert tags == {}
+
+        finally:
+            try:
+                await storage.delete_blob(TEST_CONTAINER, blob_path)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_set_blob_tags_update_existing(self, storage, sample_image_data):
+        """Test updating existing blob tags."""
+        blob_path = f"tags-test/update-{uuid.uuid4()}.png"
+
+        try:
+            # Upload blob first
+            await storage.upload_blob(TEST_CONTAINER, blob_path, sample_image_data)
+
+            # Set initial tags
+            initial_tags = {"version": "1.0", "status": "draft"}
+            await storage.set_blob_tags(TEST_CONTAINER, blob_path, initial_tags)
+
+            # Verify initial tags
+            retrieved_tags = await storage.get_blob_tags(TEST_CONTAINER, blob_path)
+            assert retrieved_tags == initial_tags
+
+            # Update tags (replaces all existing tags)
+            updated_tags = {"version": "1.1", "status": "published", "approved": "true"}
+            await storage.set_blob_tags(TEST_CONTAINER, blob_path, updated_tags)
+
+            # Verify updated tags
+            final_tags = await storage.get_blob_tags(TEST_CONTAINER, blob_path)
+            assert final_tags == updated_tags
+            assert "approved" in final_tags
+            assert final_tags["approved"] == "true"
+
+        finally:
+            try:
+                await storage.delete_blob(TEST_CONTAINER, blob_path)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_set_blob_tags_empty_dict(self, storage, sample_image_data):
+        """Test setting empty tags dictionary."""
+        blob_path = f"tags-test/empty-dict-{uuid.uuid4()}.png"
+
+        try:
+            # Upload blob first
+            await storage.upload_blob(TEST_CONTAINER, blob_path, sample_image_data)
+
+            # Set initial tags
+            initial_tags = {"version": "1.0"}
+            await storage.set_blob_tags(TEST_CONTAINER, blob_path, initial_tags)
+
+            # Clear tags with empty dict
+            await storage.set_blob_tags(TEST_CONTAINER, blob_path, {})
+
+            # Verify tags are cleared
+            tags = await storage.get_blob_tags(TEST_CONTAINER, blob_path)
+            assert tags == {}
+
+        finally:
+            try:
+                await storage.delete_blob(TEST_CONTAINER, blob_path)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_set_blob_tags_blob_not_found(self, storage):
+        """Test setting tags on non-existent blob."""
+        blob_path = f"tags-test/non-existent-{uuid.uuid4()}.png"
+        tags = {"test": "value"}
+
+        with pytest.raises(BlobNotFoundError):
+            await storage.set_blob_tags(TEST_CONTAINER, blob_path, tags)
+
+    @pytest.mark.asyncio
+    async def test_get_blob_tags_blob_not_found(self, storage):
+        """Test getting tags from non-existent blob."""
+        blob_path = f"tags-test/non-existent-{uuid.uuid4()}.png"
+
+        with pytest.raises(BlobNotFoundError):
+            await storage.get_blob_tags(TEST_CONTAINER, blob_path)
+
+    @pytest.mark.asyncio
+    async def test_metadata_and_tags_combined(self, storage, sample_image_data):
+        """Test setting both metadata and tags on same blob."""
+        blob_path = f"combined-test/metadata-tags-{uuid.uuid4()}.png"
+        metadata = {
+            "creator": "unit-test",
+            "purpose": "combined-testing",
+            "timestamp": "2025-09-15",
+        }
+        tags = {
+            "test-type": "combined",
+            "category": "metadata-tags",
+            "validated": "true",
+        }
+
+        try:
+            # Upload blob first
+            await storage.upload_blob(TEST_CONTAINER, blob_path, sample_image_data)
+
+            # Set metadata and tags
+            await storage.set_blob_metadata(TEST_CONTAINER, blob_path, metadata)
+            await storage.set_blob_tags(TEST_CONTAINER, blob_path, tags)
+
+            # Verify both metadata and tags are set correctly
+            retrieved_metadata = await storage.get_blob_metadata(
+                TEST_CONTAINER, blob_path
+            )
+            retrieved_tags = await storage.get_blob_tags(TEST_CONTAINER, blob_path)
+
+            assert retrieved_metadata == metadata
+            assert retrieved_tags == tags
+
+            # Verify they don't interfere with each other
+            updated_metadata = {"creator": "updated-test", "purpose": "validation"}
+            await storage.set_blob_metadata(TEST_CONTAINER, blob_path, updated_metadata)
+
+            # Tags should remain unchanged
+            final_metadata = await storage.get_blob_metadata(TEST_CONTAINER, blob_path)
+            final_tags = await storage.get_blob_tags(TEST_CONTAINER, blob_path)
+
+            assert final_metadata == updated_metadata
+            assert final_tags == tags  # Tags should be unchanged
+
+        finally:
+            try:
+                await storage.delete_blob(TEST_CONTAINER, blob_path)
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_metadata_tags_validation_errors(self, storage, sample_image_data):
+        """Test validation errors for metadata and tags."""
+        blob_path = f"validation-test/errors-{uuid.uuid4()}.png"
+
+        try:
+            # Upload blob first
+            await storage.upload_blob(TEST_CONTAINER, blob_path, sample_image_data)
+
+            # Test invalid metadata types
+            with pytest.raises(BlobStorageError, match="must be strings"):
+                await storage.set_blob_metadata(TEST_CONTAINER, blob_path, {"key": 123})
+
+            with pytest.raises(BlobStorageError, match="must be strings"):
+                await storage.set_blob_metadata(
+                    TEST_CONTAINER, blob_path, {123: "value"}
+                )
+
+            # Test empty metadata key
+            with pytest.raises(BlobStorageError, match="cannot be empty"):
+                await storage.set_blob_metadata(
+                    TEST_CONTAINER, blob_path, {"": "value"}
+                )
+
+            # Test invalid tags types
+            with pytest.raises(BlobStorageError, match="must be strings"):
+                await storage.set_blob_tags(TEST_CONTAINER, blob_path, {"key": 123})
+
+            with pytest.raises(BlobStorageError, match="must be strings"):
+                await storage.set_blob_tags(TEST_CONTAINER, blob_path, {123: "value"})
+
+            # Test empty tag key
+            with pytest.raises(BlobStorageError, match="cannot be empty"):
+                await storage.set_blob_tags(TEST_CONTAINER, blob_path, {"": "value"})
+
+        finally:
+            try:
+                await storage.delete_blob(TEST_CONTAINER, blob_path)
+            except Exception:
+                pass

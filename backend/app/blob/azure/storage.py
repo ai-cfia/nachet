@@ -7,12 +7,20 @@ using Pydantic models.
 """
 
 from typing import Dict, Any, List, Optional, Union, BinaryIO, AsyncIterator
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 # import io
 import base64
 
-from azure.storage.blob import BlobServiceClient, StandardBlobTier, ContentSettings
+from azure.storage.blob import (
+    BlobServiceClient,
+    StandardBlobTier,
+    ContentSettings,
+    BlobSasPermissions,
+    ContainerSasPermissions,
+    generate_blob_sas,
+    generate_container_sas,
+)
 from azure.core.exceptions import ServiceRequestError, ResourceNotFoundError
 
 from ..interface import BlobStorageInterface
@@ -664,8 +672,114 @@ class AzureBlobStorage(BlobStorageInterface):
         dest_name: str,
         **kwargs,
     ) -> Dict[str, Any]:
-        """Not implemented yet."""
-        raise NotImplementedError("copy_blob not implemented yet")
+        """
+        Copy a blob from source to destination.
+
+        Args:
+            source_container: Source container name
+            source_name: Source blob name
+            dest_container: Destination container name
+            dest_name: Destination blob name
+            **kwargs: Additional options
+
+        Returns:
+            Dict containing copy result information
+
+        Raises:
+            BlobNotFoundError: If source blob doesn't exist
+            ContainerNotFoundError: If source or dest container doesn't exist
+            BlobStorageError: If copy operation fails
+        """
+        try:
+            # Check if source blob exists
+            if not await self.blob_exists(source_container, source_name):
+                raise BlobNotFoundError(
+                    source_container,
+                    source_name,
+                    "Source blob not found for copy operation",
+                )
+
+            # Check if source and destination containers exist
+            if not await self.container_exists(source_container):
+                raise ContainerNotFoundError(
+                    source_container, "Source container not found for copy operation"
+                )
+
+            if not await self.container_exists(dest_container):
+                raise ContainerNotFoundError(
+                    dest_container, "Destination container not found for copy operation"
+                )
+
+            # Get source blob URL for copy operation
+            source_blob_client = self._blob_service_client.get_blob_client(
+                container=source_container, blob=source_name
+            )
+            source_blob_url = source_blob_client.url
+
+            # Get destination blob client
+            dest_blob_client = self._blob_service_client.get_blob_client(
+                container=dest_container, blob=dest_name
+            )
+
+            # Start copy operation
+            copy_props = dest_blob_client.start_copy_from_url(source_blob_url)
+            copy_status = copy_props["copy_status"]
+            copy_id = copy_props["copy_id"]
+
+            # For same-account copies, the copy is usually immediate
+            # But we'll check the status to be safe
+            if copy_status != "success":
+                # Poll for completion if needed (though usually immediate for same-account)
+                properties = dest_blob_client.get_blob_properties()
+                if properties.copy.status == "pending":
+                    # In practice, intra-account copies are usually immediate
+                    # If still pending, we'll return the current status
+                    pass
+                elif properties.copy.status == "failed":
+                    raise BlobStorageError(
+                        f"Copy operation failed: {properties.copy.status_description}"
+                    )
+
+            # Get final properties of the copied blob
+            final_properties = dest_blob_client.get_blob_properties()
+
+            return {
+                "source_container": source_container,
+                "source_name": source_name,
+                "dest_container": dest_container,
+                "dest_name": dest_name,
+                "copy_id": copy_id,
+                "copy_status": final_properties.copy.status,
+                "etag": final_properties.etag,
+                "last_modified": final_properties.last_modified,
+                "size": final_properties.size,
+                "url": dest_blob_client.url,
+            }
+
+        except (ContainerNotFoundError, BlobNotFoundError) as e:
+            raise e
+        except ServiceRequestError as e:
+            if e.status_code == 404:
+                if "ContainerNotFound" in str(e):
+                    # Try to determine which container is missing
+                    if not await self.container_exists(source_container):
+                        raise ContainerNotFoundError(
+                            source_container, f"Source container not found: {str(e)}"
+                        )
+                    else:
+                        raise ContainerNotFoundError(
+                            dest_container, f"Destination container not found: {str(e)}"
+                        )
+                else:
+                    raise BlobNotFoundError(
+                        source_container,
+                        source_name,
+                        f"Source blob not found: {str(e)}",
+                    )
+            else:
+                raise BlobStorageError(f"Failed to copy blob: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(f"Unexpected error during blob copy: {str(e)}")
 
     async def move_blob(
         self,
@@ -675,8 +789,124 @@ class AzureBlobStorage(BlobStorageInterface):
         dest_name: str,
         **kwargs,
     ) -> Dict[str, Any]:
-        """Not implemented yet."""
-        raise NotImplementedError("move_blob not implemented yet")
+        """
+        Move a blob from source to destination with transaction safety.
+
+        This operation performs a copy followed by delete with rollback capability
+        to ensure data integrity.
+
+        Args:
+            source_container: Source container name
+            source_name: Source blob name
+            dest_container: Destination container name
+            dest_name: Destination blob name
+            **kwargs: Additional options
+
+        Returns:
+            Dict containing move result information
+
+        Raises:
+            BlobNotFoundError: If source blob doesn't exist
+            ContainerNotFoundError: If source or dest container doesn't exist
+            BlobStorageError: If move operation fails
+        """
+        copy_successful = False
+        copy_result = None
+
+        try:
+            # Step 1: Copy the blob to destination
+            copy_result = await self.copy_blob(
+                source_container, source_name, dest_container, dest_name, **kwargs
+            )
+            copy_successful = True
+
+            # Step 2: Verify the copy was successful
+            if copy_result.get("copy_status") == "failed":
+                raise BlobStorageError(
+                    f"Copy operation failed during move: {copy_result.get('copy_status')}"
+                )
+
+            # Step 3: Verify destination blob exists and matches source
+            try:
+                dest_properties = await self.get_blob_properties(
+                    dest_container, dest_name
+                )
+                source_properties = await self.get_blob_properties(
+                    source_container, source_name
+                )
+
+                # Verify size matches (basic integrity check)
+                if dest_properties.get("size") != source_properties.get("size"):
+                    raise BlobStorageError(
+                        "Size mismatch between source and destination blobs during move"
+                    )
+
+            except Exception as e:
+                raise BlobStorageError(
+                    f"Failed to verify copied blob integrity: {str(e)}"
+                )
+
+            # Step 4: Delete the source blob only after successful copy and verification
+            delete_successful = await self.delete_blob(source_container, source_name)
+
+            if not delete_successful:
+                # Copy succeeded but delete failed - this is not ideal but not catastrophic
+                # The destination blob exists, we just have a duplicate
+                print(
+                    f"Warning: Failed to delete source blob after successful copy. "
+                    f"Source: {source_container}/{source_name}, "
+                    f"Destination: {dest_container}/{dest_name}"
+                )
+
+            return {
+                "source_container": source_container,
+                "source_name": source_name,
+                "dest_container": dest_container,
+                "dest_name": dest_name,
+                "copy_id": copy_result.get("copy_id"),
+                "copy_status": copy_result.get("copy_status"),
+                "etag": copy_result.get("etag"),
+                "last_modified": copy_result.get("last_modified"),
+                "size": copy_result.get("size"),
+                "url": copy_result.get("url"),
+                "delete_successful": delete_successful,
+                "move_completed": delete_successful,
+            }
+
+        except (ContainerNotFoundError, BlobNotFoundError) as e:
+            # These exceptions are from the copy operation
+            raise e
+        except BlobStorageError as e:
+            # If copy was successful but something else failed, try to cleanup
+            if copy_successful and copy_result:
+                try:
+                    # Attempt to clean up the copied blob to maintain consistency
+                    await self.delete_blob(dest_container, dest_name)
+                    print(
+                        f"Rollback: Successfully deleted destination blob after failed move: "
+                        f"{dest_container}/{dest_name}"
+                    )
+                except Exception as cleanup_error:
+                    print(
+                        f"Rollback failed: Could not delete destination blob after failed move: "
+                        f"{dest_container}/{dest_name}. Error: {str(cleanup_error)}"
+                    )
+            raise e
+        except Exception as e:
+            # Unexpected error - attempt rollback if copy was successful
+            if copy_successful and copy_result:
+                try:
+                    await self.delete_blob(dest_container, dest_name)
+                    print(
+                        f"Rollback: Successfully deleted destination blob after unexpected error: "
+                        f"{dest_container}/{dest_name}"
+                    )
+                except Exception as cleanup_error:
+                    print(
+                        f"Rollback failed: Could not delete destination blob after unexpected error: "
+                        f"{dest_container}/{dest_name}. Error: {str(cleanup_error)}"
+                    )
+            raise BlobStorageError(f"Unexpected error during blob move: {str(e)}")
 
     async def create_container(self, name: str, **kwargs) -> Dict[str, Any]:
         """
@@ -861,36 +1091,477 @@ class AzureBlobStorage(BlobStorageInterface):
             )
 
     async def generate_sas_token(
-        self, container: str, name: str, permissions: List[str], expiry, **kwargs
+        self,
+        container: str,
+        name: str,
+        permissions: List[str],
+        expiry: timedelta,
+        **kwargs,
     ) -> Dict[str, Any]:
-        """Not implemented yet."""
-        raise NotImplementedError("generate_sas_token not implemented yet")
+        """
+        Generate a SAS token for a specific blob with given permissions and expiry.
+
+        Args:
+            container: Container name
+            name: Blob name
+            permissions: List of permissions ('read', 'write', 'delete', 'add', 'create')
+            expiry: Token expiry duration from now
+            **kwargs: Optional parameters:
+                - start_time: When the token becomes valid (default: now)
+                - ip: IP address or range to restrict access
+                - content_type: Content type header for blob
+                - content_disposition: Content disposition header
+                - content_encoding: Content encoding header
+                - content_language: Content language header
+                - cache_control: Cache control header
+
+        Returns:
+            Dictionary containing:
+                - sas_token: The SAS token string
+                - sas_url: Full URL with SAS token
+                - permissions: List of granted permissions
+                - expiry: Token expiry datetime
+                - start_time: Token start datetime (if specified)
+
+        Raises:
+            BlobNotFoundError: If blob doesn't exist
+            ContainerNotFoundError: If container doesn't exist
+            BlobStorageError: If SAS token generation fails
+            InvalidConfigurationError: If account key is not available
+        """
+        try:
+            # Validate container and blob exist
+            if not await self.container_exists(container):
+                raise ContainerNotFoundError(f"Container '{container}' does not exist")
+
+            if not await self.blob_exists(container, name):
+                raise BlobNotFoundError(container, name)
+
+            # Get account key from connection string
+            client = self._blob_service_client
+            if (
+                not hasattr(client.credential, "account_key")
+                or not client.credential.account_key
+            ):
+                raise InvalidConfigurationError(
+                    "Account key is required for SAS token generation. "
+                    "Ensure connection string contains AccountKey parameter."
+                )
+
+            account_name = client.account_name
+            account_key = client.credential.account_key
+
+            # Create permissions object using keyword arguments
+            valid_permissions = {"read", "write", "delete", "add", "create"}
+
+            # Validate permissions first
+            for permission in permissions:
+                if permission not in valid_permissions:
+                    raise BlobStorageError(
+                        f"Invalid permission '{permission}'. "
+                        f"Valid permissions for blobs: {', '.join(valid_permissions)}"
+                    )
+
+            # Create permissions dict for constructor
+            permission_kwargs = {perm: True for perm in permissions}
+            sas_permissions = BlobSasPermissions(**permission_kwargs)
+            # Calculate expiry time
+            start_time = kwargs.get("start_time", datetime.now(timezone.utc))
+            expiry_time = (
+                start_time + expiry
+                if isinstance(start_time, datetime)
+                else datetime.now(timezone.utc) + expiry
+            )
+
+            # Generate SAS token
+            sas_token = generate_blob_sas(
+                account_name=account_name,
+                container_name=container,
+                blob_name=name,
+                account_key=account_key,
+                permission=sas_permissions,
+                expiry=expiry_time,
+                start=start_time if isinstance(start_time, datetime) else None,
+                ip=kwargs.get("ip"),
+                content_type=kwargs.get("content_type"),
+                content_disposition=kwargs.get("content_disposition"),
+                content_encoding=kwargs.get("content_encoding"),
+                content_language=kwargs.get("content_language"),
+                cache_control=kwargs.get("cache_control"),
+            )
+
+            # Construct full URL
+            blob_url = (
+                f"https://{account_name}.blob.core.windows.net/{container}/{name}"
+            )
+            sas_url = f"{blob_url}?{sas_token}"
+
+            result = {
+                "sas_token": sas_token,
+                "sas_url": sas_url,
+                "blob_url": blob_url,
+                "permissions": permissions,
+                "expiry": expiry_time.isoformat(),
+                "container": container,
+                "blob_name": name,
+            }
+
+            if isinstance(start_time, datetime):
+                result["start_time"] = start_time.isoformat()
+
+            return result
+
+        except (ContainerNotFoundError, BlobNotFoundError, InvalidConfigurationError):
+            raise
+        except Exception as e:
+            raise BlobStorageError(
+                f"Failed to generate SAS token for blob '{name}': {str(e)}"
+            )
 
     async def generate_container_sas_token(
-        self, container: str, permissions: List[str], expiry, **kwargs
+        self, container: str, permissions: List[str], expiry: timedelta, **kwargs
     ) -> Dict[str, Any]:
-        """Not implemented yet."""
-        raise NotImplementedError("generate_container_sas_token not implemented yet")
+        """
+        Generate a SAS token for a container with given permissions and expiry.
+
+        Args:
+            container: Container name
+            permissions: List of permissions ('read', 'write', 'delete', 'list', 'add', 'create')
+            expiry: Token expiry duration from now
+            **kwargs: Optional parameters:
+                - start_time: When the token becomes valid (default: now)
+                - ip: IP address or range to restrict access
+
+        Returns:
+            Dictionary containing:
+                - sas_token: The SAS token string
+                - sas_url: Full container URL with SAS token
+                - permissions: List of granted permissions
+                - expiry: Token expiry datetime
+                - start_time: Token start datetime (if specified)
+
+        Raises:
+            ContainerNotFoundError: If container doesn't exist
+            BlobStorageError: If SAS token generation fails
+            InvalidConfigurationError: If account key is not available
+        """
+        try:
+            # Validate container exists
+            if not await self.container_exists(container):
+                raise ContainerNotFoundError(f"Container '{container}' does not exist")
+
+            # Get account key from connection string
+            client = self._blob_service_client
+            if (
+                not hasattr(client.credential, "account_key")
+                or not client.credential.account_key
+            ):
+                raise InvalidConfigurationError(
+                    "Account key is required for SAS token generation. "
+                    "Ensure connection string contains AccountKey parameter."
+                )
+
+            account_name = client.account_name
+            account_key = client.credential.account_key
+
+            # Create permissions object using keyword arguments
+            valid_permissions = {"read", "write", "delete", "list", "add", "create"}
+
+            # Validate permissions first
+            for permission in permissions:
+                if permission not in valid_permissions:
+                    raise BlobStorageError(
+                        f"Invalid permission '{permission}'. "
+                        f"Valid permissions for containers: {', '.join(valid_permissions)}"
+                    )
+
+            # Create permissions dict for constructor
+            permission_kwargs = {perm: True for perm in permissions}
+            sas_permissions = ContainerSasPermissions(**permission_kwargs)
+
+            # Calculate expiry time
+            start_time = kwargs.get("start_time", datetime.now(timezone.utc))
+            expiry_time = (
+                start_time + expiry
+                if isinstance(start_time, datetime)
+                else datetime.now(timezone.utc) + expiry
+            )
+
+            # Generate SAS token
+            sas_token = generate_container_sas(
+                account_name=account_name,
+                container_name=container,
+                account_key=account_key,
+                permission=sas_permissions,
+                expiry=expiry_time,
+                start=start_time if isinstance(start_time, datetime) else None,
+                ip=kwargs.get("ip"),
+            )
+
+            # Construct full URL
+            container_url = f"https://{account_name}.blob.core.windows.net/{container}"
+            sas_url = f"{container_url}?{sas_token}"
+
+            result = {
+                "sas_token": sas_token,
+                "sas_url": sas_url,
+                "container_url": container_url,
+                "permissions": permissions,
+                "expiry": expiry_time.isoformat(),
+                "container": container,
+            }
+
+            if isinstance(start_time, datetime):
+                result["start_time"] = start_time.isoformat()
+
+            return result
+
+        except (ContainerNotFoundError, InvalidConfigurationError):
+            raise
+        except Exception as e:
+            raise BlobStorageError(
+                f"Failed to generate SAS token for container '{container}': {str(e)}"
+            )
 
     async def set_blob_metadata(
         self, container: str, name: str, metadata: Dict[str, str]
     ) -> None:
-        """Not implemented yet."""
-        raise NotImplementedError("set_blob_metadata not implemented yet")
+        """
+        Set custom metadata for a blob.
+
+        Args:
+            container: Container name
+            name: Blob name
+            metadata: Dictionary of metadata key-value pairs
+
+        Raises:
+            BlobNotFoundError: If blob doesn't exist
+            ContainerNotFoundError: If container doesn't exist
+            BlobStorageError: If metadata setting operation fails
+        """
+        try:
+            # Validate metadata keys and values
+            if metadata:
+                for key, value in metadata.items():
+                    if not isinstance(key, str) or not isinstance(value, str):
+                        raise BlobStorageError(
+                            "Metadata keys and values must be strings"
+                        )
+                    if not key.strip():
+                        raise BlobStorageError("Metadata keys cannot be empty")
+
+            # Check if container exists
+            if not await self.container_exists(container):
+                raise ContainerNotFoundError(
+                    container, "Container not found for metadata operation"
+                )
+
+            # Check if blob exists
+            if not await self.blob_exists(container, name):
+                raise BlobNotFoundError(
+                    container, name, "Blob not found for metadata operation"
+                )
+
+            # Get blob client and set metadata
+            blob_client = self._blob_service_client.get_blob_client(
+                container=container, blob=name
+            )
+
+            # Azure blob metadata is set as a dictionary
+            blob_client.set_blob_metadata(metadata=metadata or {})
+
+        except (ContainerNotFoundError, BlobNotFoundError) as e:
+            raise e
+        except ServiceRequestError as e:
+            if e.status_code == 404:
+                if "ContainerNotFound" in str(e):
+                    raise ContainerNotFoundError(
+                        container, f"Container not found: {str(e)}"
+                    )
+                else:
+                    raise BlobNotFoundError(
+                        container, name, f"Blob not found: {str(e)}"
+                    )
+            else:
+                raise BlobStorageError(f"Failed to set blob metadata: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(f"Unexpected error setting blob metadata: {str(e)}")
 
     async def get_blob_metadata(self, container: str, name: str) -> Dict[str, str]:
-        """Not implemented yet."""
-        raise NotImplementedError("get_blob_metadata not implemented yet")
+        """
+        Get custom metadata for a blob.
+
+        Args:
+            container: Container name
+            name: Blob name
+
+        Returns:
+            Dictionary of metadata key-value pairs
+
+        Raises:
+            BlobNotFoundError: If blob doesn't exist
+            ContainerNotFoundError: If container doesn't exist
+            BlobStorageError: If metadata retrieval operation fails
+        """
+        try:
+            # Check if container exists
+            if not await self.container_exists(container):
+                raise ContainerNotFoundError(
+                    container, "Container not found for metadata operation"
+                )
+
+            # Check if blob exists
+            if not await self.blob_exists(container, name):
+                raise BlobNotFoundError(
+                    container, name, "Blob not found for metadata operation"
+                )
+
+            # Get blob client and retrieve metadata
+            blob_client = self._blob_service_client.get_blob_client(
+                container=container, blob=name
+            )
+
+            # Get blob properties which includes metadata
+            properties = blob_client.get_blob_properties()
+
+            # Return metadata as a regular dictionary (Azure returns BlobProperties with metadata attribute)
+            return dict(properties.metadata) if properties.metadata else {}
+
+        except (ContainerNotFoundError, BlobNotFoundError) as e:
+            raise e
+        except ServiceRequestError as e:
+            if e.status_code == 404:
+                if "ContainerNotFound" in str(e):
+                    raise ContainerNotFoundError(
+                        container, f"Container not found: {str(e)}"
+                    )
+                else:
+                    raise BlobNotFoundError(
+                        container, name, f"Blob not found: {str(e)}"
+                    )
+            else:
+                raise BlobStorageError(f"Failed to get blob metadata: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(f"Unexpected error getting blob metadata: {str(e)}")
 
     async def set_blob_tags(
         self, container: str, name: str, tags: Dict[str, str]
     ) -> None:
-        """Not implemented yet."""
-        raise NotImplementedError("set_blob_tags not implemented yet")
+        """
+        Set blob index tags for searchability.
+
+        Args:
+            container: Container name
+            name: Blob name
+            tags: Dictionary of tag key-value pairs
+
+        Raises:
+            BlobNotFoundError: If blob doesn't exist
+            ContainerNotFoundError: If container doesn't exist
+            BlobStorageError: If tags setting operation fails
+        """
+        try:
+            # Validate tags keys and values
+            if tags:
+                for key, value in tags.items():
+                    if not isinstance(key, str) or not isinstance(value, str):
+                        raise BlobStorageError("Tag keys and values must be strings")
+                    if not key.strip():
+                        raise BlobStorageError("Tag keys cannot be empty")
+
+            # Check if container exists
+            if not await self.container_exists(container):
+                raise ContainerNotFoundError(
+                    container, "Container not found for tags operation"
+                )
+
+            # Check if blob exists
+            if not await self.blob_exists(container, name):
+                raise BlobNotFoundError(
+                    container, name, "Blob not found for tags operation"
+                )
+
+            # Get blob client and set tags
+            blob_client = self._blob_service_client.get_blob_client(
+                container=container, blob=name
+            )
+
+            # Azure blob tags are set as a dictionary
+            blob_client.set_blob_tags(tags=tags or {})
+
+        except (ContainerNotFoundError, BlobNotFoundError) as e:
+            raise e
+        except ServiceRequestError as e:
+            if e.status_code == 404:
+                if "ContainerNotFound" in str(e):
+                    raise ContainerNotFoundError(
+                        container, f"Container not found: {str(e)}"
+                    )
+                else:
+                    raise BlobNotFoundError(
+                        container, name, f"Blob not found: {str(e)}"
+                    )
+            else:
+                raise BlobStorageError(f"Failed to set blob tags: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(f"Unexpected error setting blob tags: {str(e)}")
 
     async def get_blob_tags(self, container: str, name: str) -> Dict[str, str]:
-        """Not implemented yet."""
-        raise NotImplementedError("get_blob_tags not implemented yet")
+        """
+        Get blob index tags.
+
+        Args:
+            container: Container name
+            name: Blob name
+
+        Returns:
+            Dictionary of tag key-value pairs
+
+        Raises:
+            BlobNotFoundError: If blob doesn't exist
+            ContainerNotFoundError: If container doesn't exist
+            BlobStorageError: If tags retrieval operation fails
+        """
+        try:
+            # Check if container exists
+            if not await self.container_exists(container):
+                raise ContainerNotFoundError(
+                    container, "Container not found for tags operation"
+                )
+
+            # Check if blob exists
+            if not await self.blob_exists(container, name):
+                raise BlobNotFoundError(
+                    container, name, "Blob not found for tags operation"
+                )
+
+            # Get blob client and retrieve tags
+            blob_client = self._blob_service_client.get_blob_client(
+                container=container, blob=name
+            )
+
+            # Get blob tags
+            tags_response = blob_client.get_blob_tags()
+
+            # Return tags as a regular dictionary
+            return dict(tags_response) if tags_response else {}
+
+        except (ContainerNotFoundError, BlobNotFoundError) as e:
+            raise e
+        except ServiceRequestError as e:
+            if e.status_code == 404:
+                if "ContainerNotFound" in str(e):
+                    raise ContainerNotFoundError(
+                        container, f"Container not found: {str(e)}"
+                    )
+                else:
+                    raise BlobNotFoundError(
+                        container, name, f"Blob not found: {str(e)}"
+                    )
+            else:
+                raise BlobStorageError(f"Failed to get blob tags: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(f"Unexpected error getting blob tags: {str(e)}")
 
     async def get_blob_url(self, container: str, name: str, **kwargs) -> str:
         """Not implemented yet."""
