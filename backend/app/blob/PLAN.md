@@ -523,10 +523,398 @@ download_token = await storage.generate_sas_token(
 
 ## Phase 3: Additional Improvements - MEDIUM PRIORITY 🔧
 
-### 3.1 Error Recovery & Reliability
+### 3.1 Error Recovery & Reliability - DETAILED IMPLEMENTATION PLAN
 
-- [ ] Retry mechanisms with exponential backoff for transient failures
-- [ ] Enhanced error recovery for network issues
+#### 🔄 Retry Mechanisms with Exponential Backoff
+
+**Core Implementation:**
+
+```python
+@dataclass
+class RetryPolicy:
+    max_attempts: int = 3
+    base_delay: float = 1.0  # seconds
+    max_delay: float = 60.0  # seconds
+    exponential_base: float = 2.0
+    jitter: bool = True
+    retry_on: List[Type[Exception]] = field(default_factory=lambda: [
+        ClientError,
+        ServiceRequestError,
+        HttpResponseError,
+        ConnectionError,
+        TimeoutError
+    ])
+
+class RetryableOperation:
+    """Decorator for adding retry logic to blob operations"""
+
+    def __init__(self, policy: RetryPolicy = None):
+        self.policy = policy or RetryPolicy()
+
+    async def __call__(self, func):
+        async def wrapper(*args, **kwargs):
+            last_exception = None
+
+            for attempt in range(1, self.policy.max_attempts + 1):
+                try:
+                    return await func(*args, **kwargs)
+                except tuple(self.policy.retry_on) as e:
+                    last_exception = e
+                    if attempt == self.policy.max_attempts:
+                        raise
+
+                    delay = min(
+                        self.policy.base_delay * (self.policy.exponential_base ** (attempt - 1)),
+                        self.policy.max_delay
+                    )
+
+                    if self.policy.jitter:
+                        delay = delay * (0.5 + random.random() * 0.5)
+
+                    await asyncio.sleep(delay)
+
+            raise last_exception
+        return wrapper
+```
+
+**Integration Example:**
+
+```python
+class AzureBlobStorage(BlobStorageInterface):
+
+    @RetryableOperation(RetryPolicy(max_attempts=5, base_delay=2.0))
+    async def upload_blob(self, container: str, name: str, data: Union[bytes, str, BinaryIO], **kwargs):
+        # Existing implementation with automatic retry on transient failures
+        pass
+
+    @RetryableOperation(RetryPolicy(max_attempts=3, base_delay=1.0))
+    async def download_blob(self, container: str, name: str, **kwargs):
+        # Existing implementation with automatic retry on network issues
+        pass
+```
+
+#### 🔌 Circuit Breaker Pattern
+
+**Implementation Strategy:**
+
+```python
+@dataclass
+class CircuitBreakerConfig:
+    failure_threshold: int = 5
+    recovery_timeout: float = 60.0  # seconds
+    success_threshold: int = 2  # successful calls to close circuit
+
+class CircuitBreaker:
+    """Circuit breaker for preventing cascade failures"""
+
+    def __init__(self, config: CircuitBreakerConfig):
+        self.config = config
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
+
+    async def call(self, func, *args, **kwargs):
+        if self.state == "OPEN":
+            if time.time() - self.last_failure_time > self.config.recovery_timeout:
+                self.state = "HALF_OPEN"
+            else:
+                raise CircuitBreakerOpenError("Circuit breaker is OPEN")
+
+        try:
+            result = await func(*args, **kwargs)
+            self._on_success()
+            return result
+        except Exception as e:
+            self._on_failure()
+            raise
+
+    def _on_success(self):
+        self.failure_count = 0
+        if self.state == "HALF_OPEN":
+            self.state = "CLOSED"
+
+    def _on_failure(self):
+        self.failure_count += 1
+        self.last_failure_time = time.time()
+        if self.failure_count >= self.config.failure_threshold:
+            self.state = "OPEN"
+```
+
+#### 🌐 Enhanced Network Error Recovery
+
+**Connection Health Monitoring:**
+
+```python
+class NetworkHealthMonitor:
+    """Monitor and manage network connection health"""
+
+    def __init__(self, storage_client):
+        self.client = storage_client
+        self.last_health_check = None
+        self.health_status = "UNKNOWN"
+        self.consecutive_failures = 0
+
+    async def check_health(self) -> Dict[str, Any]:
+        try:
+            # Lightweight operation to test connectivity
+            containers = await self.client.list_containers(max_results=1)
+            self.health_status = "HEALTHY"
+            self.consecutive_failures = 0
+            self.last_health_check = datetime.now(timezone.utc)
+
+            return {
+                "status": "healthy",
+                "timestamp": self.last_health_check,
+                "response_time": "< 1s",
+                "consecutive_failures": 0
+            }
+        except Exception as e:
+            self.consecutive_failures += 1
+            self.health_status = "UNHEALTHY"
+            self.last_health_check = datetime.now(timezone.utc)
+
+            return {
+                "status": "unhealthy",
+                "error": str(e),
+                "timestamp": self.last_health_check,
+                "consecutive_failures": self.consecutive_failures
+            }
+
+    async def ensure_healthy_connection(self):
+        """Ensure connection is healthy before operations"""
+        if self.consecutive_failures > 3:
+            # Attempt connection reset
+            await self._reset_connection()
+
+    async def _reset_connection(self):
+        """Reset the underlying connection"""
+        # Implement connection pool refresh logic
+        pass
+```
+
+**Progressive Timeout Strategy:**
+
+```python
+class TimeoutConfig:
+    """Progressive timeout configuration for operations"""
+
+    def __init__(self):
+        self.operation_timeouts = {
+            "upload_blob": [30, 60, 120],      # seconds per attempt
+            "download_blob": [30, 60, 120],
+            "list_blobs": [10, 20, 40],
+            "container_ops": [15, 30, 60]
+        }
+
+    def get_timeout(self, operation: str, attempt: int) -> float:
+        timeouts = self.operation_timeouts.get(operation, [30, 60, 120])
+        return timeouts[min(attempt - 1, len(timeouts) - 1)]
+
+# Usage in operations:
+async def upload_blob_with_timeout(self, container: str, name: str, data, attempt: int = 1):
+    timeout = TimeoutConfig().get_timeout("upload_blob", attempt)
+
+    try:
+        async with asyncio.timeout(timeout):
+            return await self._upload_blob_impl(container, name, data)
+    except asyncio.TimeoutError:
+        raise BlobOperationTimeoutError(f"Upload timed out after {timeout}s (attempt {attempt})")
+```
+
+#### 🏥 Error Classification System
+
+**Enhanced Error Handling:**
+
+```python
+class ErrorClassifier:
+    """Classify errors for appropriate retry strategies"""
+
+    TRANSIENT_ERRORS = {
+        "ServiceRequestError",
+        "ClientError",
+        "HttpResponseError",
+        "ConnectionError",
+        "TimeoutError",
+        "ServiceUnavailableError"
+    }
+
+    PERMANENT_ERRORS = {
+        "AuthenticationError",
+        "AuthorizationError",
+        "ResourceNotFoundError",
+        "InvalidRequestError"
+    }
+
+    RATE_LIMIT_ERRORS = {
+        "TooManyRequestsError",
+        "ThrottlingError"
+    }
+
+    @classmethod
+    def is_retryable(cls, error: Exception) -> bool:
+        error_name = error.__class__.__name__
+        return error_name in cls.TRANSIENT_ERRORS or error_name in cls.RATE_LIMIT_ERRORS
+
+    @classmethod
+    def get_retry_delay(cls, error: Exception, attempt: int) -> float:
+        error_name = error.__class__.__name__
+
+        if error_name in cls.RATE_LIMIT_ERRORS:
+            # Longer delays for rate limiting
+            return min(30 * (2 ** attempt), 300)  # Up to 5 minutes
+
+        if error_name in cls.TRANSIENT_ERRORS:
+            # Standard exponential backoff
+            return min(2 ** attempt, 60)  # Up to 1 minute
+
+        return 0  # No retry for permanent errors
+```
+
+#### 📊 Reliability Metrics & Monitoring
+
+**Implementation Components:**
+
+```python
+@dataclass
+class ReliabilityMetrics:
+    """Track reliability metrics for monitoring"""
+
+    total_operations: int = 0
+    successful_operations: int = 0
+    failed_operations: int = 0
+    retried_operations: int = 0
+    circuit_breaker_trips: int = 0
+    average_retry_count: float = 0.0
+
+    @property
+    def success_rate(self) -> float:
+        if self.total_operations == 0:
+            return 0.0
+        return self.successful_operations / self.total_operations
+
+    @property
+    def retry_rate(self) -> float:
+        if self.total_operations == 0:
+            return 0.0
+        return self.retried_operations / self.total_operations
+
+class ReliabilityMonitor:
+    """Monitor and report on system reliability"""
+
+    def __init__(self):
+        self.metrics = ReliabilityMetrics()
+        self.operation_history = deque(maxlen=1000)
+
+    def record_operation(self, operation: str, success: bool, attempts: int):
+        self.metrics.total_operations += 1
+        if success:
+            self.metrics.successful_operations += 1
+        else:
+            self.metrics.failed_operations += 1
+
+        if attempts > 1:
+            self.metrics.retried_operations += 1
+
+        self.operation_history.append({
+            "timestamp": datetime.now(timezone.utc),
+            "operation": operation,
+            "success": success,
+            "attempts": attempts
+        })
+
+    def get_health_report(self) -> Dict[str, Any]:
+        return {
+            "success_rate": self.metrics.success_rate,
+            "retry_rate": self.metrics.retry_rate,
+            "total_operations": self.metrics.total_operations,
+            "circuit_breaker_trips": self.metrics.circuit_breaker_trips,
+            "recent_failures": [
+                op for op in list(self.operation_history)[-50:]
+                if not op["success"]
+            ]
+        }
+```
+
+#### 🧪 Testing Strategy
+
+**Comprehensive Test Coverage:**
+
+1. **Unit Tests for Retry Logic**
+
+   ```python
+   class TestRetryMechanisms:
+       async def test_exponential_backoff_calculation(self):
+       async def test_retry_budget_limits(self):
+       async def test_jitter_randomization(self):
+       async def test_error_classification(self):
+   ```
+
+2. **Integration Tests with Failure Simulation**
+
+   ```python
+   class TestNetworkResilience:
+       async def test_connection_recovery_after_network_partition(self):
+       async def test_timeout_progression(self):
+       async def test_circuit_breaker_state_transitions(self):
+       async def test_health_monitoring_accuracy(self):
+   ```
+
+3. **Performance Impact Assessment**
+
+   ```python
+   class TestPerformanceImpact:
+       async def test_retry_overhead_measurement(self):
+       async def test_circuit_breaker_latency(self):
+       async def test_health_check_frequency_optimization(self):
+   ```
+
+#### 📋 Implementation Checklist
+
+**Phase 3.1 Implementation Tasks:**
+
+- [ ] **Retry System Foundation**
+  - [ ] Implement `RetryPolicy` and `RetryableOperation` classes
+  - [ ] Create configurable retry strategies for different operation types
+  - [ ] Add exponential backoff with jitter support
+  - [ ] Implement retry budget system to prevent resource exhaustion
+
+- [ ] **Circuit Breaker Implementation**
+  - [ ] Develop `CircuitBreaker` class with state management
+  - [ ] Integration with existing blob storage operations
+  - [ ] Configurable failure thresholds and recovery timeouts
+  - [ ] Circuit breaker metrics and state monitoring
+
+- [ ] **Network Health Monitoring**
+  - [ ] Implement `NetworkHealthMonitor` with lightweight health checks
+  - [ ] Connection pool health monitoring and refresh logic
+  - [ ] Progressive timeout strategies for different operation types
+  - [ ] Dead connection detection and cleanup mechanisms
+
+- [ ] **Error Classification & Recovery**
+  - [ ] Enhanced `ErrorClassifier` for better error categorization
+  - [ ] Specific retry strategies for different error types
+  - [ ] Rate limiting detection and adaptive delays
+  - [ ] Permanent vs transient error handling
+
+- [ ] **Monitoring & Metrics**
+  - [ ] `ReliabilityMetrics` tracking system
+  - [ ] Operation success/failure rate monitoring
+  - [ ] Circuit breaker trip frequency tracking
+  - [ ] Health reporting and alerting mechanisms
+
+- [ ] **Testing & Validation**
+  - [ ] Comprehensive test suite for all retry mechanisms
+  - [ ] Network failure simulation and recovery testing
+  - [ ] Performance impact analysis and optimization
+  - [ ] Integration testing with real Azure Storage scenarios
+
+**Expected Outcomes:**
+
+- **99.9% Operation Success Rate** under normal conditions
+- **Automatic Recovery** from transient network failures within 30 seconds
+- **Circuit Breaker Protection** preventing cascade failures
+- **Comprehensive Monitoring** with real-time reliability metrics
+- **Zero Manual Intervention** for common network issues
 
 ## Implementation Notes
 
