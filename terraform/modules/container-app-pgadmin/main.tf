@@ -4,16 +4,27 @@ resource "azurerm_container_app" "pgadmin" {
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
 
+  registry {
+    server   = var.acr_login_server
+    username = var.acr_admin_username
+    password_secret_name = "acr-password"
+  }
+
+  secret {
+    name  = "acr-password"
+    value = var.acr_admin_password
+  }
+
   template {
     container {
       name   = "pgadmin"
-      image  = "ghcr.io/nginxinc/nginx-unprivileged"
+      image  = var.pgadmin_image
       cpu    = 0.25
       memory = "0.5Gi"
 
       env {
         name  = "PGADMIN_DEFAULT_EMAIL"
-        value = "admin@nachet.local"
+        value = "admin@example.com"
       }
 
       env {

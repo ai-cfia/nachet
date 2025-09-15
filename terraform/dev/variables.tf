@@ -321,6 +321,12 @@ variable "pgadmin_password" {
   sensitive   = true
 }
 
+variable "pgadmin_image" {
+  description = "PgAdmin container image from ACR"
+  type        = string
+  default     = "your-acr-name.azurecr.io/pgadmin:latest"
+}
+
 # PostgreSQL Configuration
 variable "postgresql_public_network_access_enabled" {
   description = "Enable the db for public access"

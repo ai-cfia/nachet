@@ -64,6 +64,29 @@ module "container_registry" {
   allowed_ip_2 = var.acr_allowed_ip_2
 }
 
+# PgAdmin Container App
+module "pgadmin" {
+  source = "../modules/container-app-pgadmin"
+
+  # Default
+  project_name        = var.project_name
+  environment         = var.environment
+  resource_group_name = var.resource_group_name
+  tags                = var.tags
+
+  # Container App Environment
+  container_app_environment_id = module.container_app_environment.container_app_environment_id
+
+  # PgAdmin Configuration
+  pgadmin_password = var.pgadmin_password
+  pgadmin_image    = var.pgadmin_image
+
+  # ACR Integration
+  acr_login_server    = module.container_registry.login_server
+  acr_admin_username  = module.container_registry.admin_username
+  acr_admin_password  = module.container_registry.admin_password
+}
+
 # Module 3: Nachet Application (Storage and Backend) - Commented out for now
 # module "nachet" {
 #   source = "../modules/nachet"
