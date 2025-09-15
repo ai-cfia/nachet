@@ -858,8 +858,8 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_connection_error_handling(self, storage):
         """Test handling of connection errors."""
-        # Mock the blob service client to raise ServiceRequestError
-        with patch.object(storage, "_blob_service_client") as mock_client:
+        # Mock the blob operations client to raise ServiceRequestError
+        with patch.object(storage._blob_ops, "_client") as mock_client:
             mock_container_client = MagicMock()
             mock_client.get_container_client.return_value = mock_container_client
 
@@ -1174,8 +1174,10 @@ class TestFileErrorHandling(TestFileOperations):
             # Upload source blob
             await storage.upload_blob(TEST_CONTAINER, source_path, sample_image_data)
 
-            # Mock the delete_blob method to simulate failure after successful copy
-            with patch.object(storage, "delete_blob", return_value=False):
+            # Mock the _delete_blob_for_move method to simulate failure after successful copy
+            with patch.object(
+                storage._advanced_ops, "_delete_blob_for_move", return_value=False
+            ):
                 move_result = await storage.move_blob(
                     TEST_CONTAINER, source_path, TEST_CONTAINER, dest_path
                 )

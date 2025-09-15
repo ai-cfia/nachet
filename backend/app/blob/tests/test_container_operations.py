@@ -461,8 +461,8 @@ class TestContainerErrorHandling(TestContainerOperations):
     @pytest.mark.asyncio
     async def test_connection_error_handling(self, storage):
         """Test handling of connection errors."""
-        # Mock the blob service client to raise ServiceRequestError
-        with patch.object(storage, "_blob_service_client") as mock_client:
+        # Mock the container operations client to raise ServiceRequestError
+        with patch.object(storage._container_ops, "_client") as mock_client:
             mock_container_client = MagicMock()
             mock_client.get_container_client.return_value = mock_container_client
 
@@ -480,8 +480,8 @@ class TestContainerErrorHandling(TestContainerOperations):
     @pytest.mark.asyncio
     async def test_generic_error_handling(self, storage):
         """Test handling of generic errors."""
-        # Mock the blob service client to raise generic exception
-        with patch.object(storage, "_blob_service_client") as mock_client:
+        # Mock the container operations client to raise generic exception
+        with patch.object(storage._container_ops, "_client") as mock_client:
             mock_container_client = MagicMock()
             mock_client.get_container_client.return_value = mock_container_client
 
