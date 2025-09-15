@@ -20,7 +20,7 @@ resource "azurerm_container_registry" "main" {
   public_network_access_enabled = false
 
   network_rule_set {
-    default_action = "Deny"
+    default_action = "Allow"
     
     ip_rule {
       action   = "Allow"
