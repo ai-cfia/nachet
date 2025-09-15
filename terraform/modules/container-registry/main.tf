@@ -26,7 +26,7 @@ resource "azurerm_container_registry" "main" {
       for_each = var.allowed_ip_ranges
       content {
         action   = "Allow"
-        ip_range = each.value
+        ip_range = ip_rule.value
       }
     }
   }

@@ -115,12 +115,12 @@
 # }
 
 # PgAdmin Container Instance Outputs
-output "pgadmin_ip_address" {
-  description = "PgAdmin container private IP address"
-  value       = module.pgadmin.ip_address
-}
+# output "pgadmin_ip_address" {
+#   description = "PgAdmin container private IP address"
+#   value       = module.pgadmin.ip_address
+# }
 
-output "pgadmin_fqdn" {
-  description = "PgAdmin container FQDN"
-  value       = module.pgadmin.fqdn
-}
+# output "pgadmin_fqdn" {
+#   description = "PgAdmin container FQDN"
+#   value       = module.pgadmin.fqdn
+# }
