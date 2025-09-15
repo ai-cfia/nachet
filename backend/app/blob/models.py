@@ -184,6 +184,16 @@ class BlobProperties(BaseModel):
     server_encrypted: Optional[bool] = Field(
         None, description="Whether blob is encrypted on server"
     )
+    blob_tier: Optional[str] = Field(None, description="Access tier (Hot, Cool)")
+    blob_tier_change_time: Optional[datetime] = Field(
+        None, description="Timestamp when tier was last changed"
+    )
+    blob_tier_inferred: Optional[bool] = Field(
+        None, description="Whether tier was inferred or explicitly set"
+    )
+    last_accessed_on: Optional[datetime] = Field(
+        None, description="Last access timestamp for lifecycle management"
+    )
 
 
 class UploadOptions(BaseModel):
@@ -234,3 +244,23 @@ class ListOptions(BaseModel):
     timeout: Optional[int] = Field(
         None, gt=0, description="Operation timeout in seconds"
     )
+
+
+class BlobTierInfo(BaseModel):
+    """Information about blob tier operation."""
+
+    container: str = Field(..., description="Container name")
+    name: str = Field(..., description="Blob name")
+    tier: str = Field(..., description="Access tier (Hot, Cool)")
+    tier_change_time: Optional[datetime] = Field(
+        None, description="When the tier was last changed"
+    )
+
+    @field_validator("tier")
+    @classmethod
+    def validate_tier(cls, v):
+        """Validate blob tier value."""
+        valid_tiers = {"Hot", "Cool"}
+        if v not in valid_tiers:
+            raise ValueError(f"Invalid tier: {v}. Must be one of {valid_tiers}")
+        return v

@@ -6,10 +6,13 @@ providing list operations for containers and blobs with proper validation
 using Pydantic models.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union, BinaryIO, AsyncIterator
+from datetime import datetime
+# import io
+import base64
 
-from azure.storage.blob import BlobServiceClient
-from azure.core.exceptions import ServiceRequestError
+from azure.storage.blob import BlobServiceClient, StandardBlobTier, ContentSettings
+from azure.core.exceptions import ServiceRequestError, ResourceNotFoundError
 
 from ..interface import BlobStorageInterface
 from ..models import (
@@ -18,10 +21,14 @@ from ..models import (
     BlobListResult,
     ContainerListResult,
     ListOptions,
+    UploadResult,
+    BlobProperties,
+    BlobTierInfo,
 )
 from ..exceptions import (
     BlobStorageError,
     ContainerNotFoundError,
+    BlobNotFoundError,
     ConnectionError,
     InvalidConfigurationError,
 )
@@ -208,30 +215,445 @@ class AzureBlobStorage(BlobStorageInterface):
 
     # Stub implementations for required interface methods (not implemented yet)
     async def upload_blob(
-        self, container: str, name: str, data, **kwargs
+        self, container: str, name: str, data: Union[bytes, str, BinaryIO], **kwargs
     ) -> Dict[str, Any]:
-        """Not implemented yet."""
-        raise NotImplementedError("upload_blob not implemented yet")
+        """
+        Upload a blob to storage.
+
+        Args:
+            container: Container name
+            name: Blob name
+            data: Data to upload (bytes, str, or file-like object)
+            **kwargs: Additional options (content_type, metadata, tags, overwrite, etc.)
+
+        Returns:
+            UploadResult as dict
+
+        Raises:
+            ContainerNotFoundError: If container doesn't exist
+            BlobStorageError: If upload fails
+            ConnectionError: If unable to connect to Azure storage
+        """
+        try:
+            # Get container client to check if container exists
+            container_client = self._blob_service_client.get_container_client(container)
+            if not container_client.exists():
+                raise ContainerNotFoundError(container)
+
+            # Get blob client
+            blob_client = container_client.get_blob_client(name)
+
+            # Extract options
+            content_type = kwargs.get("content_type", "application/octet-stream")
+            metadata = kwargs.get("metadata", {})
+            tags = kwargs.get("tags", {})
+            overwrite = kwargs.get("overwrite", True)
+
+            # Convert data to bytes if it's a string
+            if isinstance(data, str):
+                data = data.encode("utf-8")
+
+            # Validate data
+            if data is None:
+                raise BlobStorageError("Data cannot be None")
+
+            # Create content settings
+            content_settings = ContentSettings(
+                content_type=content_type,
+                content_encoding=kwargs.get("content_encoding"),
+                content_language=kwargs.get("content_language"),
+                cache_control=kwargs.get("cache_control"),
+                content_disposition=kwargs.get("content_disposition"),
+            )
+
+            # Upload blob
+            upload_response = blob_client.upload_blob(
+                data,
+                content_settings=content_settings,
+                metadata=metadata if metadata else None,
+                tags=tags if tags else None,
+                overwrite=overwrite,
+                timeout=kwargs.get("timeout"),
+            )
+
+            # Get blob properties to build result
+            blob_properties = blob_client.get_blob_properties()
+
+            # Create UploadResult
+            content_md5 = None
+            if (
+                blob_properties.content_settings
+                and blob_properties.content_settings.content_md5
+            ):
+                # Convert bytearray/bytes to base64 string
+                if isinstance(
+                    blob_properties.content_settings.content_md5, (bytes, bytearray)
+                ):
+                    content_md5 = base64.b64encode(
+                        blob_properties.content_settings.content_md5
+                    ).decode("utf-8")
+                else:
+                    content_md5 = str(blob_properties.content_settings.content_md5)
+
+            upload_result = UploadResult(
+                container=container,
+                name=name,
+                etag=upload_response["etag"],
+                last_modified=upload_response["last_modified"],
+                url=blob_client.url,
+                size=blob_properties.size,
+                content_md5=content_md5,
+            )
+
+            return upload_result.model_dump()
+
+        except ContainerNotFoundError:
+            raise
+        except ResourceNotFoundError:
+            raise ContainerNotFoundError(container)
+        except ServiceRequestError as e:
+            raise ConnectionError(f"Failed to connect to Azure storage: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(
+                f"Failed to upload blob '{name}' to container '{container}': {str(e)}"
+            )
 
     async def download_blob(self, container: str, name: str, **kwargs) -> bytes:
-        """Not implemented yet."""
-        raise NotImplementedError("download_blob not implemented yet")
+        """
+        Download a blob from storage.
 
-    async def download_blob_stream(self, container: str, name: str, **kwargs):
-        """Not implemented yet."""
-        raise NotImplementedError("download_blob_stream not implemented yet")
+        Args:
+            container: Container name
+            name: Blob name
+            **kwargs: Additional options (offset, length, validate_content, timeout)
+
+        Returns:
+            Blob data as bytes
+
+        Raises:
+            ContainerNotFoundError: If container doesn't exist
+            BlobNotFoundError: If blob doesn't exist
+            BlobStorageError: If download fails
+            ConnectionError: If unable to connect to Azure storage
+        """
+        try:
+            # Get container client to check if container exists
+            container_client = self._blob_service_client.get_container_client(container)
+            if not container_client.exists():
+                raise ContainerNotFoundError(container)
+
+            # Get blob client
+            blob_client = container_client.get_blob_client(name)
+
+            # Check if blob exists
+            if not blob_client.exists():
+                raise BlobNotFoundError(container, name)
+
+            # Extract download options
+            offset = kwargs.get("offset")
+            length = kwargs.get("length")
+            validate_content = kwargs.get("validate_content", False)
+            timeout = kwargs.get("timeout")
+
+            # Download blob
+            download_stream = blob_client.download_blob(
+                offset=offset,
+                length=length,
+                validate_content=validate_content,
+                timeout=timeout,
+            )
+
+            # Read all data
+            blob_data = download_stream.readall()
+            return blob_data
+
+        except ContainerNotFoundError:
+            raise
+        except BlobNotFoundError:
+            raise
+        except ResourceNotFoundError:
+            # This could be either container or blob not found
+            # Check if container exists to determine which error to raise
+            container_client = self._blob_service_client.get_container_client(container)
+            if not container_client.exists():
+                raise ContainerNotFoundError(container)
+            else:
+                raise BlobNotFoundError(container, name)
+        except ServiceRequestError as e:
+            raise ConnectionError(f"Failed to connect to Azure storage: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(
+                f"Failed to download blob '{name}' from container '{container}': {str(e)}"
+            )
+
+    async def download_blob_stream(
+        self, container: str, name: str, **kwargs
+    ) -> AsyncIterator[bytes]:
+        """
+        Download a blob as a stream.
+
+        Args:
+            container: Container name
+            name: Blob name
+            **kwargs: Additional options (offset, length, validate_content, timeout, chunk_size)
+
+        Returns:
+            AsyncIterator yielding chunks of blob data
+
+        Raises:
+            ContainerNotFoundError: If container doesn't exist
+            BlobNotFoundError: If blob doesn't exist
+            BlobStorageError: If download fails
+            ConnectionError: If unable to connect to Azure storage
+        """
+        try:
+            # Get container client to check if container exists
+            container_client = self._blob_service_client.get_container_client(container)
+            if not container_client.exists():
+                raise ContainerNotFoundError(container)
+
+            # Get blob client
+            blob_client = container_client.get_blob_client(name)
+
+            # Check if blob exists
+            if not blob_client.exists():
+                raise BlobNotFoundError(container, name)
+
+            # Extract download options
+            offset = kwargs.get("offset")
+            length = kwargs.get("length")
+            validate_content = kwargs.get("validate_content", False)
+            timeout = kwargs.get("timeout")
+            # chunk_size = kwargs.get("chunk_size", 4096)
+
+            # Download blob as stream
+            download_stream = blob_client.download_blob(
+                offset=offset,
+                length=length,
+                validate_content=validate_content,
+                timeout=timeout,
+            )
+
+            # Yield chunks
+            async for chunk in download_stream.chunks():
+                yield chunk
+
+        except ContainerNotFoundError:
+            raise
+        except BlobNotFoundError:
+            raise
+        except ResourceNotFoundError:
+            # This could be either container or blob not found
+            # Check if container exists to determine which error to raise
+            container_client = self._blob_service_client.get_container_client(container)
+            if not container_client.exists():
+                raise ContainerNotFoundError(container)
+            else:
+                raise BlobNotFoundError(container, name)
+        except ServiceRequestError as e:
+            raise ConnectionError(f"Failed to connect to Azure storage: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(
+                f"Failed to download blob stream '{name}' from container '{container}': {str(e)}"
+            )
 
     async def delete_blob(self, container: str, name: str) -> bool:
-        """Not implemented yet."""
-        raise NotImplementedError("delete_blob not implemented yet")
+        """
+        Delete a blob from storage.
+
+        Args:
+            container: Container name
+            name: Blob name
+
+        Returns:
+            True if blob was deleted successfully, False if blob didn't exist
+
+        Raises:
+            ContainerNotFoundError: If container doesn't exist
+            BlobStorageError: If deletion operation fails
+            ConnectionError: If unable to connect to Azure storage
+        """
+        try:
+            # Get container client to check if container exists
+            container_client = self._blob_service_client.get_container_client(container)
+            if not container_client.exists():
+                raise ContainerNotFoundError(container)
+
+            # Get blob client
+            blob_client = container_client.get_blob_client(name)
+
+            # Check if blob exists
+            if not blob_client.exists():
+                return False  # Blob doesn't exist, consider it "successfully deleted"
+
+            # Delete the blob
+            blob_client.delete_blob()
+
+            # Verify deletion was successful
+            return not blob_client.exists()
+
+        except ContainerNotFoundError:
+            raise
+        except ResourceNotFoundError:
+            # This could be either container or blob not found
+            # Check if container exists to determine which error to raise
+            container_client = self._blob_service_client.get_container_client(container)
+            if not container_client.exists():
+                raise ContainerNotFoundError(container)
+            else:
+                return False  # Blob not found, consider it deleted
+        except ServiceRequestError as e:
+            raise ConnectionError(f"Failed to connect to Azure storage: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(
+                f"Failed to delete blob '{name}' from container '{container}': {str(e)}"
+            )
 
     async def blob_exists(self, container: str, name: str) -> bool:
-        """Not implemented yet."""
-        raise NotImplementedError("blob_exists not implemented yet")
+        """
+        Check if a blob exists.
+
+        Args:
+            container: Container name
+            name: Blob name
+
+        Returns:
+            True if blob exists, False otherwise
+
+        Raises:
+            ContainerNotFoundError: If container doesn't exist
+            ConnectionError: If unable to connect to Azure storage
+            BlobStorageError: If check operation fails
+        """
+        try:
+            # Get container client to check if container exists
+            container_client = self._blob_service_client.get_container_client(container)
+            if not container_client.exists():
+                raise ContainerNotFoundError(container)
+
+            # Get blob client
+            blob_client = container_client.get_blob_client(name)
+
+            # Check if blob exists
+            return blob_client.exists()
+
+        except ContainerNotFoundError:
+            raise
+        except ServiceRequestError as e:
+            raise ConnectionError(f"Failed to connect to Azure storage: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(
+                f"Failed to check blob existence '{name}' in container '{container}': {str(e)}"
+            )
 
     async def get_blob_properties(self, container: str, name: str) -> Dict[str, Any]:
-        """Not implemented yet."""
-        raise NotImplementedError("get_blob_properties not implemented yet")
+        """
+        Get detailed properties of a blob.
+
+        Args:
+            container: Container name
+            name: Blob name
+
+        Returns:
+            BlobProperties as dict
+
+        Raises:
+            ContainerNotFoundError: If container doesn't exist
+            BlobNotFoundError: If blob doesn't exist
+            BlobStorageError: If operation fails
+            ConnectionError: If unable to connect to Azure storage
+        """
+        try:
+            # Get container client to check if container exists
+            container_client = self._blob_service_client.get_container_client(container)
+            if not container_client.exists():
+                raise ContainerNotFoundError(container)
+
+            # Get blob client
+            blob_client = container_client.get_blob_client(name)
+
+            # Check if blob exists
+            if not blob_client.exists():
+                raise BlobNotFoundError(container, name)
+
+            # Get blob properties
+            props = blob_client.get_blob_properties()
+
+            # Handle content_md5 conversion
+            content_md5 = None
+            if props.content_settings and props.content_settings.content_md5:
+                # Convert bytearray/bytes to base64 string
+                if isinstance(props.content_settings.content_md5, (bytes, bytearray)):
+                    content_md5 = base64.b64encode(
+                        props.content_settings.content_md5
+                    ).decode("utf-8")
+                else:
+                    content_md5 = str(props.content_settings.content_md5)
+
+            # Convert to our BlobProperties model
+            blob_properties = BlobProperties(
+                name=name,
+                container=container,
+                size=props.size,
+                last_modified=props.last_modified,
+                creation_time=getattr(props, "creation_time", None),
+                etag=props.etag,
+                content_type=props.content_settings.content_type
+                if props.content_settings
+                else "application/octet-stream",
+                content_encoding=props.content_settings.content_encoding
+                if props.content_settings
+                else None,
+                content_language=props.content_settings.content_language
+                if props.content_settings
+                else None,
+                cache_control=props.content_settings.cache_control
+                if props.content_settings
+                else None,
+                content_disposition=props.content_settings.content_disposition
+                if props.content_settings
+                else None,
+                content_md5=content_md5,
+                metadata=props.metadata or {},
+                tags=getattr(props, "tags", {}) or {},
+                blob_type=str(props.blob_type)
+                if hasattr(props, "blob_type")
+                else "BlockBlob",
+                lease_status=str(props.lease.status)
+                if hasattr(props, "lease") and props.lease
+                else None,
+                lease_state=str(props.lease.state)
+                if hasattr(props, "lease") and props.lease
+                else None,
+                server_encrypted=getattr(props, "server_encrypted", None),
+                blob_tier=str(props.blob_tier)
+                if hasattr(props, "blob_tier") and props.blob_tier
+                else None,
+                blob_tier_change_time=getattr(props, "blob_tier_change_time", None),
+                blob_tier_inferred=getattr(props, "blob_tier_inferred", None),
+                last_accessed_on=getattr(props, "last_accessed_on", None),
+            )
+
+            return blob_properties.model_dump()
+
+        except ContainerNotFoundError:
+            raise
+        except BlobNotFoundError:
+            raise
+        except ResourceNotFoundError:
+            # This could be either container or blob not found
+            # Check if container exists to determine which error to raise
+            container_client = self._blob_service_client.get_container_client(container)
+            if not container_client.exists():
+                raise ContainerNotFoundError(container)
+            else:
+                raise BlobNotFoundError(container, name)
+        except ServiceRequestError as e:
+            raise ConnectionError(f"Failed to connect to Azure storage: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(
+                f"Failed to get blob properties '{name}' in container '{container}': {str(e)}"
+            )
 
     async def copy_blob(
         self,
@@ -256,20 +678,186 @@ class AzureBlobStorage(BlobStorageInterface):
         raise NotImplementedError("move_blob not implemented yet")
 
     async def create_container(self, name: str, **kwargs) -> Dict[str, Any]:
-        """Not implemented yet."""
-        raise NotImplementedError("create_container not implemented yet")
+        """
+        Create a new container.
+
+        Args:
+            name: Container name
+            **kwargs: Additional options (can include metadata, public_access)
+
+        Returns:
+            ContainerInfo as dict
+
+        Raises:
+            InvalidConfigurationError: If container name is invalid
+            BlobStorageError: If container creation fails
+        """
+        try:
+            # Validate container name using our ContainerInfo model
+            # This will raise validation errors if the name doesn't meet Azure requirements
+            ContainerInfo(
+                name=name,
+                last_modified=datetime.now(),
+                etag="temp",
+                metadata=kwargs.get("metadata", {}),
+                public_access=kwargs.get("public_access"),
+            )
+
+            # Get container client (don't auto-create)
+            container_client = self._blob_service_client.get_container_client(name)
+
+            # Check if container already exists
+            if container_client.exists():
+                # Return existing container properties
+                properties = container_client.get_container_properties()
+                container_info = ContainerInfo(
+                    name=properties.name,
+                    last_modified=properties.last_modified,
+                    etag=properties.etag,
+                    metadata=properties.metadata or {},
+                    public_access=getattr(properties, "public_access", None),
+                )
+                return container_info.model_dump()
+
+            # Set metadata if provided
+            metadata = kwargs.get("metadata", {})
+            public_access = kwargs.get("public_access")
+
+            # Create the container
+            container_client.create_container(
+                metadata=metadata if metadata else None, public_access=public_access
+            )
+
+            # Get the created container properties
+            properties = container_client.get_container_properties()
+            container_info = ContainerInfo(
+                name=properties.name,
+                last_modified=properties.last_modified,
+                etag=properties.etag,
+                metadata=properties.metadata or {},
+                public_access=getattr(properties, "public_access", None),
+            )
+
+            return container_info.model_dump()
+
+        except ValueError as e:
+            # This catches Pydantic validation errors
+            raise InvalidConfigurationError(
+                "container_name", f"Invalid container name: {str(e)}"
+            )
+        except ServiceRequestError as e:
+            raise ConnectionError(f"Failed to connect to Azure storage: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(f"Failed to create container '{name}': {str(e)}")
 
     async def delete_container(self, name: str) -> bool:
-        """Not implemented yet."""
-        raise NotImplementedError("delete_container not implemented yet")
+        """
+        Delete a container.
+
+        Args:
+            name: Container name
+
+        Returns:
+            True if container was deleted successfully, False if container didn't exist
+
+        Raises:
+            ConnectionError: If unable to connect to Azure storage
+            BlobStorageError: If deletion operation fails
+        """
+        try:
+            # Get container client (but don't create it)
+            container_client = self._blob_service_client.get_container_client(name)
+
+            # Check if container exists
+            if not container_client.exists():
+                return (
+                    False  # Container doesn't exist, consider it "successfully deleted"
+                )
+
+            # Delete the container
+            container_client.delete_container()
+
+            # Verify deletion was successful
+            return not container_client.exists()
+
+        except ServiceRequestError as e:
+            raise ConnectionError(f"Failed to connect to Azure storage: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(f"Failed to delete container '{name}': {str(e)}")
 
     async def container_exists(self, name: str) -> bool:
-        """Not implemented yet."""
-        raise NotImplementedError("container_exists not implemented yet")
+        """
+        Check if a container exists.
+
+        Args:
+            name: Container name
+
+        Returns:
+            True if container exists, False otherwise
+
+        Raises:
+            ConnectionError: If unable to connect to Azure storage
+            BlobStorageError: If check operation fails
+        """
+        try:
+            # Get container client (but don't create it)
+            container_client = self._blob_service_client.get_container_client(name)
+
+            # Check if container exists
+            return container_client.exists()
+
+        except ServiceRequestError as e:
+            raise ConnectionError(f"Failed to connect to Azure storage: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(
+                f"Failed to check container existence '{name}': {str(e)}"
+            )
 
     async def get_container_properties(self, name: str) -> Dict[str, Any]:
-        """Not implemented yet."""
-        raise NotImplementedError("get_container_properties not implemented yet")
+        """
+        Get properties of a container.
+
+        Args:
+            name: Container name
+
+        Returns:
+            ContainerInfo as dict with full metadata
+
+        Raises:
+            ContainerNotFoundError: If container doesn't exist
+            ConnectionError: If unable to connect to Azure storage
+            BlobStorageError: If operation fails
+        """
+        try:
+            # Get container client (but don't create it)
+            container_client = self._blob_service_client.get_container_client(name)
+
+            # Check if container exists
+            if not container_client.exists():
+                raise ContainerNotFoundError(name)
+
+            # Get container properties
+            properties = container_client.get_container_properties()
+
+            # Convert to our ContainerInfo model
+            container_info = ContainerInfo(
+                name=properties.name,
+                last_modified=properties.last_modified,
+                etag=properties.etag,
+                metadata=properties.metadata or {},
+                public_access=getattr(properties, "public_access", None),
+            )
+
+            return container_info.model_dump()
+
+        except ContainerNotFoundError:
+            raise
+        except ServiceRequestError as e:
+            raise ConnectionError(f"Failed to connect to Azure storage: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(
+                f"Failed to get container properties '{name}': {str(e)}"
+            )
 
     async def generate_sas_token(
         self, container: str, name: str, permissions: List[str], expiry, **kwargs
@@ -306,3 +894,84 @@ class AzureBlobStorage(BlobStorageInterface):
     async def get_blob_url(self, container: str, name: str, **kwargs) -> str:
         """Not implemented yet."""
         raise NotImplementedError("get_blob_url not implemented yet")
+
+    async def set_blob_tier(
+        self, container: str, name: str, tier: str, **kwargs
+    ) -> bool:
+        """
+        Set the access tier for a blob (Hot, Cool).
+
+        Args:
+            container: Container name
+            name: Blob name
+            tier: Access tier (Hot, Cool)
+            **kwargs: Additional options
+
+        Returns:
+            True if tier was set successfully
+
+        Raises:
+            ContainerNotFoundError: If container doesn't exist
+            BlobNotFoundError: If blob doesn't exist
+            BlobStorageError: If tier setting fails or invalid tier
+            ConnectionError: If unable to connect to Azure storage
+        """
+        try:
+            # Validate tier using our BlobTierInfo model
+            BlobTierInfo(
+                container=container,
+                name=name,
+                tier=tier,
+            )
+
+            # Get container client to check if container exists
+            container_client = self._blob_service_client.get_container_client(container)
+            if not container_client.exists():
+                raise ContainerNotFoundError(container)
+
+            # Get blob client
+            blob_client = container_client.get_blob_client(name)
+
+            # Check if blob exists
+            if not blob_client.exists():
+                raise BlobNotFoundError(container, name)
+
+            # Map tier string to Azure StandardBlobTier
+            tier_mapping = {
+                "Hot": StandardBlobTier.Hot,
+                "Cool": StandardBlobTier.Cool,
+            }
+
+            if tier not in tier_mapping:
+                raise BlobStorageError(
+                    f"Invalid tier '{tier}'. Must be one of: Hot, Cool"
+                )
+
+            azure_tier = tier_mapping[tier]
+
+            # Set blob tier
+            blob_client.set_standard_blob_tier(azure_tier)
+
+            return True
+
+        except ContainerNotFoundError:
+            raise
+        except BlobNotFoundError:
+            raise
+        except ValueError as e:
+            # This catches Pydantic validation errors
+            raise BlobStorageError(f"Invalid tier '{tier}': {str(e)}")
+        except ResourceNotFoundError:
+            # This could be either container or blob not found
+            # Check if container exists to determine which error to raise
+            container_client = self._blob_service_client.get_container_client(container)
+            if not container_client.exists():
+                raise ContainerNotFoundError(container)
+            else:
+                raise BlobNotFoundError(container, name)
+        except ServiceRequestError as e:
+            raise ConnectionError(f"Failed to connect to Azure storage: {str(e)}")
+        except Exception as e:
+            raise BlobStorageError(
+                f"Failed to set blob tier '{tier}' for '{name}' in container '{container}': {str(e)}"
+            )

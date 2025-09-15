@@ -152,3 +152,10 @@ class BlobStorageInterface(ABC):
     async def get_blob_url(self, container: str, name: str, **kwargs) -> str:
         """Get the URL for a blob."""
         pass
+
+    @abstractmethod
+    async def set_blob_tier(
+        self, container: str, name: str, tier: str, **kwargs
+    ) -> bool:
+        """Set the access tier for a blob (Hot, Cool)."""
+        pass
