@@ -59,7 +59,7 @@ class BlobStorageManager:
         async with self._lock:
             try:
                 # Create the singleton client
-                from .. import get_blob_storage
+                from app.blob.manager import get_blob_storage
 
                 self._client = get_blob_storage(provider, config)
 
