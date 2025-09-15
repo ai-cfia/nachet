@@ -1,4 +1,4 @@
-name: datastore tests
+name: database module tests
 
 permissions:
   contents: read
@@ -12,13 +12,13 @@ on:
       - synchronize
     paths:
       - "backend/app/db/**"
-      - ".github/workflows/datastore-*"
+      - ".github/workflows/db-*"
   push:
     branches:
       - main
     paths:
       - "backend/app/db/**"
-      - ".github/workflows/datastore-*"
+      - ".github/workflows/db-*"
 
 defaults:
   run:
@@ -111,20 +111,3 @@ jobs:
       #     file: ./datastore/coverage.xml
       #     flags: datastore
       #     name: datastore-coverage
-
-  trigger-release:
-    name: Trigger release workflow
-    # This job triggers the publish workflow automatically when a PR is merged to main
-    # The publish workflow can also be triggered manually via workflow_dispatch
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Trigger Release Workflow for Nachet Datastore
-        run: |
-          gh workflow run datastore-publish-package.yml \
-          --ref main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
