@@ -22,12 +22,14 @@ resource "azurerm_container_registry" "main" {
   network_rule_set {
     default_action = "Deny"
     
-    dynamic "ip_rule" {
-      for_each = var.allowed_ip_ranges
-      content {
-        action   = "Allow"
-        ip_range = ip_rule.value
-      }
+    ip_rule {
+      action   = "Allow"
+      ip_range = "${var.allowed_ip_1}/32"
+    }
+    
+    ip_rule {
+      action   = "Allow"
+      ip_range = "${var.allowed_ip_2}/32"
     }
   }
 
