@@ -18,8 +18,8 @@ class ValidationHelper:
     @staticmethod
     def validate_blob_name(name: str) -> str:
         """
-        Validate blob name is not empty, and contains only lower case 
-        letters, numbers, hyphens, and slashes. must start with letter.
+        Validate blob name is not empty, and contains only lower case
+        letters, numbers, hyphens, periods, and slashes. Must start with letter.
 
         Args:
             name: Blob name to validate
@@ -28,20 +28,22 @@ class ValidationHelper:
             Validated blob name
 
         Raises:
-            BlobStorageError: If name is empty
+            BlobStorageError: If name is invalid
         """
         if not name or name.strip() == "":
             raise BlobStorageError("Blob name cannot be empty")
         if not name[0].isalpha():
             raise BlobStorageError("Blob name must start with a letter")
-        if not all(c.islower() or c.isdigit() or c in "-/" for c in name):
-            raise BlobStorageError("Blob name can only contain lower case letters, numbers, hyphens, and slashes")
+        if not all(c.islower() or c.isdigit() or c in "-/." for c in name):
+            raise BlobStorageError(
+                "Blob name can only contain lower case letters, numbers, hyphens, periods, and slashes"
+            )
         return name.strip()
 
     @staticmethod
     def validate_container_name(container: str) -> str:
         """
-        Validate container name not empty, and contains only lower case 
+        Validate container name not empty, and contains only lower case
         letters, numbers, hyphens, and slashes. must start with letter.
 
         Args:
@@ -58,7 +60,9 @@ class ValidationHelper:
         if not container[0].isalpha():
             raise BlobStorageError("Container name must start with a letter")
         if not all(c.islower() or c.isdigit() or c in "-/" for c in container):
-            raise BlobStorageError("Container name can only contain lower case letters, numbers, hyphens, and slashes")
+            raise BlobStorageError(
+                "Container name can only contain lower case letters, numbers, hyphens, and slashes"
+            )
         return container.strip().lower()
 
     @staticmethod

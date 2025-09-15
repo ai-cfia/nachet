@@ -49,7 +49,7 @@ class AzureBlobStorage(BlobStorageInterface):
         """Initialize the Azure Blob Service client."""
         try:
             connection_string = self.azure_storage_connection_string()
-            print(f"🔗 Using Azure Storage connection string: \n{connection_string}")
+            # print(f"🔗 Using Azure Storage connection string: \n{connection_string}")
             if not connection_string:
                 raise InvalidConfigurationError(
                     "connection_string", "Azure storage connection string is required"
@@ -119,7 +119,9 @@ class AzureBlobStorage(BlobStorageInterface):
         self, container: str, name: str, **kwargs
     ) -> AsyncIterator[bytes]:
         """Download a blob as a stream."""
-        async for chunk in self._blob_ops.download_blob_stream(container, name, **kwargs):
+        async for chunk in self._blob_ops.download_blob_stream(
+            container, name, **kwargs
+        ):
             yield chunk
 
     async def delete_blob(self, container: str, name: str) -> bool:

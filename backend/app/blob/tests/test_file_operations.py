@@ -73,7 +73,7 @@ def get_test_config():
 
 def generate_test_blob_paths():
     """Generate unique blob paths for testing."""
-    test_uuid = uuid.uuid4()
+    test_uuid = str(uuid.uuid4()).lower()
     return {
         "original": f"original/{test_uuid}.png",
         "clean": f"clean/{test_uuid}.png",
@@ -389,7 +389,7 @@ class TestDownloadBlob(TestFileOperations):
     @pytest.mark.asyncio
     async def test_download_non_existent_blob(self, storage):
         """Test downloading non-existent blob."""
-        non_existent_blob = f"non-existent/{uuid.uuid4()}.png"
+        non_existent_blob = f"non-existent/{str(uuid.uuid4()).lower()}.png"
 
         # Should raise BlobNotFoundError
         with pytest.raises(BlobNotFoundError):
@@ -419,7 +419,7 @@ class TestBlobExists(TestFileOperations):
     @pytest.mark.asyncio
     async def test_blob_exists_false(self, storage):
         """Test blob_exists returns False for non-existing blob."""
-        non_existent_blob = f"non-existent/{uuid.uuid4()}.png"
+        non_existent_blob = f"non-existent/{str(uuid.uuid4()).lower()}.png"
 
         # Check existence of non-existent blob
         exists = await storage.blob_exists(TEST_CONTAINER, non_existent_blob)
@@ -505,7 +505,7 @@ class TestGetBlobProperties(TestFileOperations):
     @pytest.mark.asyncio
     async def test_get_blob_properties_not_found(self, storage):
         """Test getting properties of non-existent blob."""
-        non_existent_blob = f"non-existent/{uuid.uuid4()}.png"
+        non_existent_blob = f"non-existent/{str(uuid.uuid4()).lower()}.png"
 
         # Should raise BlobNotFoundError
         with pytest.raises(BlobNotFoundError):
@@ -539,7 +539,7 @@ class TestDeleteBlob(TestFileOperations):
     @pytest.mark.asyncio
     async def test_delete_blob_not_found(self, storage):
         """Test deleting non-existent blob."""
-        non_existent_blob = f"non-existent/{uuid.uuid4()}.png"
+        non_existent_blob = f"non-existent/{str(uuid.uuid4()).lower()}.png"
 
         # Should return False for non-existent blob
         deleted = await storage.delete_blob(TEST_CONTAINER, non_existent_blob)
@@ -812,7 +812,7 @@ class TestBlobTier(TestFileOperations):
     @pytest.mark.asyncio
     async def test_set_blob_tier_non_existent_blob(self, storage):
         """Test setting tier for non-existent blob."""
-        non_existent_blob = f"non-existent/{uuid.uuid4()}.png"
+        non_existent_blob = f"non-existent/{str(uuid.uuid4()).lower()}.png"
 
         # Should raise BlobNotFoundError
         with pytest.raises(BlobNotFoundError):
@@ -920,8 +920,8 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_copy_blob_same_container(self, storage, sample_image_data):
         """Test copying a blob within the same container."""
-        source_path = f"copy-test/original-{uuid.uuid4()}.png"
-        dest_path = f"copy-test/copy-{uuid.uuid4()}.png"
+        source_path = f"copy-test/original-{str(uuid.uuid4()).lower()}.png"
+        dest_path = f"copy-test/copy-{str(uuid.uuid4()).lower()}.png"
 
         try:
             # Upload source blob
@@ -971,8 +971,8 @@ class TestFileErrorHandling(TestFileOperations):
         """Test copying a blob between different containers."""
         source_container = TEST_CONTAINER
         dest_container = f"nachet-unit-test-copy-dest-{uuid.uuid4().hex[:8]}"
-        source_path = f"copy-test/source-{uuid.uuid4()}.png"
-        dest_path = f"copy-test/dest-{uuid.uuid4()}.png"
+        source_path = f"copy-test/source-{str(uuid.uuid4()).lower()}.png"
+        dest_path = f"copy-test/dest-{str(uuid.uuid4()).lower()}.png"
 
         try:
             # Create destination container
@@ -1014,8 +1014,8 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_copy_blob_source_not_found(self, storage):
         """Test copying a non-existent source blob."""
-        source_path = f"copy-test/non-existent-{uuid.uuid4()}.png"
-        dest_path = f"copy-test/dest-{uuid.uuid4()}.png"
+        source_path = f"copy-test/non-existent-{str(uuid.uuid4()).lower()}.png"
+        dest_path = f"copy-test/dest-{str(uuid.uuid4()).lower()}.png"
 
         with pytest.raises(BlobNotFoundError):
             await storage.copy_blob(
@@ -1028,8 +1028,8 @@ class TestFileErrorHandling(TestFileOperations):
     ):
         """Test copying from a non-existent source container."""
         non_existent_container = "non-existent-source-container"
-        source_path = f"copy-test/source-{uuid.uuid4()}.png"
-        dest_path = f"copy-test/dest-{uuid.uuid4()}.png"
+        source_path = f"copy-test/source-{str(uuid.uuid4()).lower()}.png"
+        dest_path = f"copy-test/dest-{str(uuid.uuid4()).lower()}.png"
 
         with pytest.raises(ContainerNotFoundError):
             await storage.copy_blob(
@@ -1040,8 +1040,8 @@ class TestFileErrorHandling(TestFileOperations):
     async def test_copy_blob_dest_container_not_found(self, storage, sample_image_data):
         """Test copying to a non-existent destination container."""
         non_existent_container = "non-existent-dest-container"
-        source_path = f"copy-test/source-{uuid.uuid4()}.png"
-        dest_path = f"copy-test/dest-{uuid.uuid4()}.png"
+        source_path = f"copy-test/source-{str(uuid.uuid4()).lower()}.png"
+        dest_path = f"copy-test/dest-{str(uuid.uuid4()).lower()}.png"
 
         try:
             # Upload source blob
@@ -1062,8 +1062,8 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_move_blob_same_container(self, storage, sample_image_data):
         """Test moving a blob within the same container."""
-        source_path = f"move-test/original-{uuid.uuid4()}.png"
-        dest_path = f"move-test/moved-{uuid.uuid4()}.png"
+        source_path = f"move-test/original-{str(uuid.uuid4()).lower()}.png"
+        dest_path = f"move-test/moved-{str(uuid.uuid4()).lower()}.png"
 
         try:
             # Upload source blob
@@ -1114,8 +1114,8 @@ class TestFileErrorHandling(TestFileOperations):
         """Test moving a blob between different containers."""
         source_container = TEST_CONTAINER
         dest_container = f"nachet-unit-test-move-dest-{uuid.uuid4().hex[:8]}"
-        source_path = f"move-test/source-{uuid.uuid4()}.png"
-        dest_path = f"move-test/dest-{uuid.uuid4()}.png"
+        source_path = f"move-test/source-{str(uuid.uuid4()).lower()}.png"
+        dest_path = f"move-test/dest-{str(uuid.uuid4()).lower()}.png"
 
         try:
             # Create destination container
@@ -1156,8 +1156,8 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_move_blob_source_not_found(self, storage):
         """Test moving a non-existent source blob."""
-        source_path = f"move-test/non-existent-{uuid.uuid4()}.png"
-        dest_path = f"move-test/dest-{uuid.uuid4()}.png"
+        source_path = f"move-test/non-existent-{str(uuid.uuid4()).lower()}.png"
+        dest_path = f"move-test/dest-{str(uuid.uuid4()).lower()}.png"
 
         with pytest.raises(BlobNotFoundError):
             await storage.move_blob(
@@ -1167,8 +1167,8 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_move_blob_with_rollback(self, storage, sample_image_data):
         """Test move operation rollback when delete fails."""
-        source_path = f"move-test/source-rollback-{uuid.uuid4()}.png"
-        dest_path = f"move-test/dest-rollback-{uuid.uuid4()}.png"
+        source_path = f"move-test/source-rollback-{str(uuid.uuid4()).lower()}.png"
+        dest_path = f"move-test/dest-rollback-{str(uuid.uuid4()).lower()}.png"
 
         try:
             # Upload source blob
@@ -1266,7 +1266,7 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_set_blob_metadata_basic(self, storage, sample_image_data):
         """Test setting basic blob metadata."""
-        blob_path = f"metadata-test/basic-{uuid.uuid4()}.png"
+        blob_path = f"metadata-test/basic-{str(uuid.uuid4()).lower()}.png"
         metadata = {
             "source": "test_suite",
             "processed": "false",
@@ -1300,7 +1300,7 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_get_blob_metadata_empty(self, storage, sample_image_data):
         """Test getting metadata from blob with no metadata."""
-        blob_path = f"metadata-test/empty-{uuid.uuid4()}.png"
+        blob_path = f"metadata-test/empty-{str(uuid.uuid4()).lower()}.png"
 
         try:
             # Upload blob without metadata
@@ -1319,7 +1319,7 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_set_blob_metadata_update_existing(self, storage, sample_image_data):
         """Test updating existing blob metadata."""
-        blob_path = f"metadata-test/update-{uuid.uuid4()}.png"
+        blob_path = f"metadata-test/update-{str(uuid.uuid4()).lower()}.png"
 
         try:
             # Upload blob first
@@ -1358,7 +1358,7 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_set_blob_metadata_empty_dict(self, storage, sample_image_data):
         """Test setting empty metadata dictionary."""
-        blob_path = f"metadata-test/empty-dict-{uuid.uuid4()}.png"
+        blob_path = f"metadata-test/empty-dict-{str(uuid.uuid4()).lower()}.png"
 
         try:
             # Upload blob first
@@ -1384,7 +1384,7 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_set_blob_metadata_blob_not_found(self, storage):
         """Test setting metadata on non-existent blob."""
-        blob_path = f"metadata-test/non-existent-{uuid.uuid4()}.png"
+        blob_path = f"metadata-test/non-existent-{str(uuid.uuid4()).lower()}.png"
         metadata = {"test": "value"}
 
         with pytest.raises(BlobNotFoundError):
@@ -1393,7 +1393,7 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_get_blob_metadata_blob_not_found(self, storage):
         """Test getting metadata from non-existent blob."""
-        blob_path = f"metadata-test/non-existent-{uuid.uuid4()}.png"
+        blob_path = f"metadata-test/non-existent-{str(uuid.uuid4()).lower()}.png"
 
         with pytest.raises(BlobNotFoundError):
             await storage.get_blob_metadata(TEST_CONTAINER, blob_path)
@@ -1401,7 +1401,7 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_set_blob_tags_basic(self, storage, sample_image_data):
         """Test setting basic blob tags."""
-        blob_path = f"tags-test/basic-{uuid.uuid4()}.png"
+        blob_path = f"tags-test/basic-{str(uuid.uuid4()).lower()}.png"
         tags = {
             "category": "test-data",
             "environment": "unittest",
@@ -1429,7 +1429,7 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_get_blob_tags_empty(self, storage, sample_image_data):
         """Test getting tags from blob with no tags."""
-        blob_path = f"tags-test/empty-{uuid.uuid4()}.png"
+        blob_path = f"tags-test/empty-{str(uuid.uuid4()).lower()}.png"
 
         try:
             # Upload blob without tags
@@ -1448,7 +1448,7 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_set_blob_tags_update_existing(self, storage, sample_image_data):
         """Test updating existing blob tags."""
-        blob_path = f"tags-test/update-{uuid.uuid4()}.png"
+        blob_path = f"tags-test/update-{str(uuid.uuid4()).lower()}.png"
 
         try:
             # Upload blob first
@@ -1481,7 +1481,7 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_set_blob_tags_empty_dict(self, storage, sample_image_data):
         """Test setting empty tags dictionary."""
-        blob_path = f"tags-test/empty-dict-{uuid.uuid4()}.png"
+        blob_path = f"tags-test/empty-dict-{str(uuid.uuid4()).lower()}.png"
 
         try:
             # Upload blob first
@@ -1507,7 +1507,7 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_set_blob_tags_blob_not_found(self, storage):
         """Test setting tags on non-existent blob."""
-        blob_path = f"tags-test/non-existent-{uuid.uuid4()}.png"
+        blob_path = f"tags-test/non-existent-{str(uuid.uuid4()).lower()}.png"
         tags = {"test": "value"}
 
         with pytest.raises(BlobNotFoundError):
@@ -1516,7 +1516,7 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_get_blob_tags_blob_not_found(self, storage):
         """Test getting tags from non-existent blob."""
-        blob_path = f"tags-test/non-existent-{uuid.uuid4()}.png"
+        blob_path = f"tags-test/non-existent-{str(uuid.uuid4()).lower()}.png"
 
         with pytest.raises(BlobNotFoundError):
             await storage.get_blob_tags(TEST_CONTAINER, blob_path)
@@ -1524,7 +1524,7 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_metadata_and_tags_combined(self, storage, sample_image_data):
         """Test setting both metadata and tags on same blob."""
-        blob_path = f"combined-test/metadata-tags-{uuid.uuid4()}.png"
+        blob_path = f"combined-test/metadata-tags-{str(uuid.uuid4()).lower()}.png"
         metadata = {
             "creator": "unit-test",
             "purpose": "combined-testing",
@@ -1573,7 +1573,7 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_metadata_tags_validation_errors(self, storage, sample_image_data):
         """Test validation errors for metadata and tags."""
-        blob_path = f"validation-test/errors-{uuid.uuid4()}.png"
+        blob_path = f"validation-test/errors-{str(uuid.uuid4()).lower()}.png"
 
         try:
             # Upload blob first
