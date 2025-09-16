@@ -18,6 +18,8 @@ stages:
       - job: TerraformInitPlan
         displayName: "Terraform Init and Plan"
         steps:
+          - checkout: self
+
           - task: Bash@3
             displayName: "Check Agent Public IP"
             inputs:
@@ -26,21 +28,49 @@ stages:
                 echo "Agent public IP address:"
                 curl -s ifconfig.me
                 echo ""
-          
+        
+          - task: DownloadSecureFile@1
+            name: DownloadSecureVars
+            displayName: "Download nachet-dev.tfvars"
+            inputs:
+              secureFile: "nachet-dev.tfvar
+
           - task: AzureCLI@2
-            displayName: "Azure CLI Login"
+            displayName: "Azure CLI Login, terraform init and plan"
             inputs:
               azureSubscription: $(serviceConnectionName)
               scriptType: "bash"
               scriptLocation: "inlineScript"
               inlineScript: |
-                echo "Successfully logged in with Azure CLI"
+                echo "Successfully logged in with Azure CL
 
-          - task: DownloadSecureFile@1
-            name: DownloadSecureVars
-            displayName: "Download nachet-dev.tfvars"
-            inputs:
-              secureFile: "nachet-dev.tfvars"
+                cd $(System.DefaultWorkingDirectory)/terraform/dev
+
+                echo "Running Terraform Init..."
+
+                terraform init \
+                  -backend-config="resource_group_name=$(resourceGroupName)" \
+                  -backend-config="storage_account_name=$(storageAccountName)" \
+                  -backend-config="container_name=$(containerName)" \
+                  -backend-config="key=$(stateKey)" \
+                  -backend-config="use_azuread_auth=true"
+
+                if [ $? -eq 0 ]; then
+                  echo "✓ Terraform init succeeded"
+                else
+                  echo "✗ Terraform init failed"
+                  exit 1
+                
+                echo "Running Terraform Plan..."
+
+                terraform plan -var-file=$(DownloadSecureVars.SecureFilePat
+
+                if [ $? -eq 0 ]; then
+                  echo "✓ Terraform plan succeeded"
+                else
+                  echo "✗ Terraform plan failed"
+                  exit 1
+                fi
 
           - task: AzureCLI@2
             displayName: "Pre-create PostgreSQL Subnet"
@@ -204,8 +234,14 @@ stages:
               steps:
                 - checkout: self
 
+                - task: DownloadSecureFile@1
+                  name: DownloadSecureVars
+                  displayName: "Download nachet-dev.tfvars"
+                  inputs:
+                    secureFile: "nachet-dev.tfvars"
+
                 - task: AzureCLI@2
-                  displayName: "Azure CLI Login"
+                  displayName: "Azure CLI Login, terraform init and plan"
                   inputs:
                     azureSubscription: $(serviceConnectionName)
                     scriptType: "bash"
@@ -215,6 +251,7 @@ stages:
 
                       cd $(System.DefaultWorkingDirectory)/terraform/dev
 
+                      echo "Running Terraform Init..."
                       terraform init \
                         -backend-config="resource_group_name=$(resourceGroupName)" \
                         -backend-config="storage_account_name=$(storageAccountName)" \
@@ -222,11 +259,22 @@ stages:
                         -backend-config="key=$(stateKey)" \
                         -backend-config="use_azuread_auth=true"
 
-                - task: DownloadSecureFile@1
-                  name: DownloadSecureVars
-                  displayName: "Download nachet-dev.tfvars"
-                  inputs:
-                    secureFile: "nachet-dev.tfvars"
+                      if [ $? -eq 0 ]; then
+                        echo "✓ Terraform init succeeded"
+                      else
+                        echo "✗ Terraform init failed"
+                        exit 1
+                      fi
+
+                      echo "Running Terraform Plan..."
+                      terraform plan -var-file=$(DownloadSecureVars.SecureFilePath)
+
+                      if [ $? -eq 0 ]; then
+                        echo "✓ Terraform plan succeeded"
+                      else
+                        echo "✗ Terraform plan failed"
+                        exit 1
+                      fi
 
                 - task: TerraformTask@5
                   displayName: "Terraform Init"
