@@ -1,8 +1,14 @@
 # import hypercorn
 # from fastapi import FastAPI
 
+print("🔄 Starting main.py imports...")
+print("🔄 Importing routes...")
 from app.api.routes import router as api_router
+print("✅ Routes imported successfully")
+
+print("🔄 Importing config...")
 from app.api.config import create_app, lifespan, Settings
+print("✅ Config imported successfully")
 # from core import config
 
 
@@ -22,7 +28,9 @@ from app.api.config import create_app, lifespan, Settings
 #     return application
 
 
+print("🔄 Creating FastAPI app...")
 app = create_app(Settings(), api_router, lifespan=lifespan)
+print("✅ FastAPI app created successfully")
 
 
 # if __name__ == "__main__":
