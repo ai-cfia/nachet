@@ -33,7 +33,7 @@ stages:
             name: DownloadSecureVars
             displayName: "Download nachet-dev.tfvars"
             inputs:
-              secureFile: "nachet-dev.tfvar"
+              secureFile: "nachet-dev.tfvars"
 
           - task: AzureCLI@2
             displayName: "Azure CLI Login, terraform init and plan"
@@ -64,7 +64,7 @@ stages:
                 
                 echo "Running Terraform Plan..."
 
-                terraform plan -var-file=$(DownloadSecureVars.SecureFilePat)
+                terraform plan -var-file=$(DownloadSecureVars.SecureFilePath)
 
                 if [ $? -eq 0 ]; then
                   echo "✓ Terraform plan succeeded"
