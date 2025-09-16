@@ -97,6 +97,12 @@ export const imageFileSchema = z
     "File must be a valid image format (PNG)",
   );
 
+/**
+ * Enhanced image file schema with dimension validation
+ * Note: This only does basic file validation. Use validateImageFile() utility for dimension checking
+ */
+export const imageFileWithDimensionsSchema = imageFileSchema;
+
 export const fileListSchema = z
   .instanceof(FileList)
   .refine((files) => files.length > 0, "At least one file must be selected")

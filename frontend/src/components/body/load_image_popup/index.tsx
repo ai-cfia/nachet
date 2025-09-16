@@ -3,7 +3,7 @@ import { Overlay, InfoContainer } from "./indexElements";
 import { Box, CardHeader, IconButton, Input } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
-import { imageFileSchema } from "@common/validation";
+import { validateImageFile } from "@common";
 
 interface params {
   setUploadOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -13,16 +13,16 @@ interface params {
 const UploadPopup: React.FC<params> = (props) => {
   const { setUploadOpen, pushImageToCache } = props;
 
-  const uploadImage = (event: any): void => {
+  const uploadImage = async (event: any): Promise<void> => {
     // loads image from local storage to cache when upload button is pressed
     event.preventDefault();
     const file = event.target.files[0];
 
     if (file !== undefined) {
-      // Validate the file
-      const validation = imageFileSchema.safeParse(file);
-      if (!validation.success) {
-        alert(validation.error.issues[0].message);
+      // Validate the file with comprehensive checks including dimensions
+      const validation = await validateImageFile(file);
+      if (!validation.isValid) {
+        alert(validation.errors.join("\n"));
         return;
       }
 
@@ -77,6 +77,9 @@ const UploadPopup: React.FC<params> = (props) => {
             type="file"
             fullWidth
             onChange={uploadImage}
+            inputProps={{
+              accept: "image/png",
+            }}
             sx={{
               fontSize: "0.7vw",
             }}

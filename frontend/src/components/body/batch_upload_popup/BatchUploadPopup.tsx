@@ -34,8 +34,9 @@ import {
   batchUploadImage,
   batchUploadInit,
   requestClassList,
-} from "../../../common/api";
-import { BatchUploadMetadata, ClassData } from "../../../common/types";
+} from "@common/api";
+import { validateImageFile } from "@common";
+import { BatchUploadMetadata, ClassData } from "@common/types";
 import {
   folderNameSchema,
   seedCountSchema,
@@ -156,13 +157,31 @@ const BatchUploadPopup = (props: params) => {
     }
   };
 
-  const handleFilesSelected = (event: ChangeEvent<HTMLInputElement>): void => {
+  const handleFilesSelected = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> => {
     const selectedFiles = event.target.files;
     if (selectedFiles !== null) {
-      // Validate files
+      // Basic validation first (count, etc.)
       const validationResult = fileListSchema.safeParse(selectedFiles);
       if (!validationResult.success) {
         setFilesError(validationResult.error.issues[0].message);
+        return;
+      }
+
+      // Comprehensive validation for each file including dimensions
+      const errors: string[] = [];
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const fileValidation = await validateImageFile(selectedFiles[i]);
+        if (!fileValidation.isValid) {
+          errors.push(
+            `${selectedFiles[i].name}: ${fileValidation.errors.join(", ")}`,
+          );
+        }
+      }
+
+      if (errors.length > 0) {
+        setFilesError(`File validation failed:\n${errors.join("\n")}`);
         return;
       }
 
@@ -563,6 +582,7 @@ const BatchUploadPopup = (props: params) => {
               <input
                 type="file"
                 multiple
+                accept="image/png"
                 onChange={handleFilesSelected}
                 hidden
               />
