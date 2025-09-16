@@ -91,8 +91,17 @@ jobs:
         run: |
           nohup uv run hypercorn -b :5174 app/main:app > hypercorn.log 2>&1 &
           sleep 5 && cat hypercorn.log
-          # Wait for server to start
-          timeout 30 bash -c 'until curl -f http://localhost:5174/health 2>/dev/null; do sleep 1; done'
+          # Check if hypercorn is running
+          ps aux | grep hypercorn
+          # Wait for server to start with better error reporting
+          timeout 30 bash -c 'until curl -f http://localhost:5174/health 2>/dev/null; do echo "Waiting for health endpoint..."; sleep 2; done' || {
+            echo "Health check failed after 30 seconds"
+            echo "Final hypercorn log:"
+            cat hypercorn.log
+            echo "Process status:"
+            ps aux | grep hypercorn || echo "No hypercorn process found"
+            exit 1
+          }
         env:
           # NACHET_AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           # NACHET_STORAGE_URL_TESTING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
