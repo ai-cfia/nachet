@@ -127,20 +127,27 @@ def get_settings() -> Settings:
 async def lifespan(app: FastAPI):
     # Startup
     # settings: Settings = app.settings
+    print("🚀 Starting lifespan startup...")
 
     settings = get_settings()
     if settings is None:
         raise ValueError("Settings instance could not be created")
+    print("✅ Settings loaded successfully")
 
     # Initialize database (validates schema version and sets up SessionManager)
+    print("🔄 Initializing database...")
     await initialize_database(settings)
+    print("✅ Database initialized successfully")
 
     # Initialize blob storage
+    print("🔄 Initializing blob storage...")
     await initialize_blob_storage(settings)
+    print("✅ Blob storage initialized successfully")
 
     # Store managers in app state for access throughout the app
     app.state.sessionmanager = sessionmanager
     app.state.blob_storage_manager = blob_storage_manager
+    print("✅ App state configured successfully")
 
     # Open connection pool
     # app.pool.open()
@@ -174,12 +181,15 @@ async def lifespan(app: FastAPI):
     # handler = LoggingHandler(logger_provider=logger_provider)
     # logger.addHandler(handler)
 
+    print("🎉 FastAPI app startup complete!")
     yield
 
     # Shutdown
+    print("🛑 Starting app shutdown...")
     # app.pool.close()
     await close_database_engine()
     await close_blob_storage()
+    print("✅ App shutdown complete")
     # logger_provider.shutdown()
     # tracer_provider.shutdown()
 

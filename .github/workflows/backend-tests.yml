@@ -89,10 +89,13 @@ jobs:
       - name: Start backend server
         working-directory: backend
         run: |
-          nohup uv run hypercorn -b :5174 app/main:app > hypercorn.log 2>&1 &
-          sleep 5 && cat hypercorn.log
+          echo "Starting hypercorn with verbose logging..."
+          nohup uv run hypercorn -b :5174 app/main:app --access-log --error-log --log-level debug > hypercorn.log 2>&1 &
+          sleep 5 && echo "Initial log output:" && cat hypercorn.log
           # Check if hypercorn is running
-          ps aux | grep hypercorn
+          echo "Process check:" && ps aux | grep hypercorn
+          # Test if port is listening
+          echo "Port check:" && netstat -tlnp | grep :5174 || echo "Port 5174 not listening"
           # Wait for server to start with better error reporting
           timeout 30 bash -c 'until curl -f http://localhost:5174/health 2>/dev/null; do echo "Waiting for health endpoint..."; sleep 2; done' || {
             echo "Health check failed after 30 seconds"
@@ -100,6 +103,8 @@ jobs:
             cat hypercorn.log
             echo "Process status:"
             ps aux | grep hypercorn || echo "No hypercorn process found"
+            echo "Port status:"
+            netstat -tlnp | grep :5174 || echo "Port 5174 not listening"
             exit 1
           }
         env:
