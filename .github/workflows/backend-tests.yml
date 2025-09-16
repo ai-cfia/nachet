@@ -89,9 +89,11 @@ jobs:
       - name: Start backend server
         working-directory: backend
         run: |
-          uv run hypercorn -b :5174 app/main:app &
+          echo "Starting hypercorn with logging..."
+          nohup uv run hypercorn -b :5174 app/main:app --access-logfile - --error-logfile - --log-level debug > hypercorn.log 2>&1 &
+          sleep 5
           # Wait for server to start
-          timeout 30 bash -c 'until curl -f http://localhost:5174/health 2>/dev/null; do sleep 1; done'
+          timeout 30 bash -c 'until curl -f http://localhost:5174/health 2>/dev/null; do echo "Waiting for health endpoint..."; sleep 2; done'
         env:
           # NACHET_AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           # NACHET_STORAGE_URL_TESTING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
@@ -230,6 +232,17 @@ jobs:
           EOF
         env:
           EXPECTED_FAILURES: "Clear-Site-Data Cache-Control Permissions-Policy"
+
+      - name: Show server logs (for debugging)
+        if: always()
+        working-directory: backend
+        run: |
+          echo "=== Hypercorn startup logs ==="
+          cat hypercorn.log || echo "No log file found"
+          echo "=== Process status ==="
+          ps aux | grep hypercorn || echo "No hypercorn process found"
+          echo "=== Port status ==="
+          netstat -tlnp | grep :5174 || echo "Port 5174 not listening"
 
   business-logic-tests:
     runs-on: ubuntu-latest
