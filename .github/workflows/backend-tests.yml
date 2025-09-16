@@ -90,7 +90,7 @@ jobs:
         working-directory: backend
         run: |
           echo "Starting hypercorn with verbose logging..."
-          nohup uv run hypercorn -b :5174 app/main:app --access-log --error-log --log-level debug > hypercorn.log 2>&1 &
+          nohup uv run hypercorn -b :5174 app/main:app --access-logfile - --error-logfile - --log-level debug > hypercorn.log 2>&1 &
           sleep 5 && echo "Initial log output:" && cat hypercorn.log
           # Check if hypercorn is running
           echo "Process check:" && ps aux | grep hypercorn
