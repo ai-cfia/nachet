@@ -17,7 +17,6 @@ terraform {
     storage_account_name = "tfstatenachet"
     container_name       = "tfstate"
     key                  = "tf/nachet-dev.tfstate"
-    use_azuread_auth = true
   }
 }
 

@@ -167,11 +167,6 @@ stages:
                   fi
                 fi
 
-          # - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
-          #   displayName: "Install Terraform (latest)"
-          #   inputs:
-          #     terraformVersion: 'latest'
-
           - task: TerraformTask@5
             displayName: "Terraform Init"
             inputs:
@@ -218,16 +213,20 @@ stages:
                     inlineScript: |
                       echo "Successfully logged in with Azure CLI"
 
+                      cd $(System.DefaultWorkingDirectory)/terraform/dev
+
+                      terraform init \
+                        -backend-config="resource_group_name=$(resourceGroupName)" \
+                        -backend-config="storage_account_name=$(storageAccountName)" \
+                        -backend-config="container_name=$(containerName)" \
+                        -backend-config="key=$(stateKey)" \
+                        -backend-config="use_azuread_auth=true"
+
                 - task: DownloadSecureFile@1
                   name: DownloadSecureVars
                   displayName: "Download nachet-dev.tfvars"
                   inputs:
                     secureFile: "nachet-dev.tfvars"
-
-                # - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
-                #   displayName: "Install Terraform (latest)"
-                #   inputs:
-                #     terraformVersion: 'latest'
 
                 - task: TerraformTask@5
                   displayName: "Terraform Init"
