@@ -21,6 +21,11 @@ from pydantic_settings import BaseSettings
 from app.exceptions import log_error
 from app.middleware.headers.headers import HeadersMiddleware
 from app.db.utils import initialize_database, close_database_engine, sessionmanager
+from app.blob.manager import (
+    initialize_blob_storage,
+    close_blob_storage,
+    blob_storage_manager,
+)
 # from app.models.bucket_name import MinioBucketName
 # from app.services.file_storage import FertiscanStorage, MinIOStorageManager
 
@@ -53,10 +58,12 @@ class Settings(BaseSettings):
     nachet_schema: str | None = None
 
     # blob storage settings
-    azure_storage_account_name: str | None = None
-    azure_storage_account_key: str | None = None
-    azure_storage_default_endpoint_protocol: str | None = None
-    azure_storage_endpoint_suffix: str | None = None
+    blob_storage_provider: str | None = None
+    blob_storage_name: str | None = None
+    blob_storage_key: str | None = None
+    blob_storage_endpoint_protocol: str | None = None
+    blob_storage_endpoint_suffix: str | None = None
+    blob_storage_endpoint_base: str | None = None
 
     # api settings
     base_path: str = ""
@@ -73,24 +80,16 @@ class Settings(BaseSettings):
 
     @computed_field
     @property
-    def azure_storage_connection_string(self) -> str:
-        return (
-            f"DefaultEndpointsProtocol={self.azure_storage_default_endpoint_protocol};"
-            f"AccountName={self.azure_storage_account_name};"
-            f"AccountKey={self.azure_storage_account_key};"
-            f"EndpointSuffix={self.azure_storage_endpoint_suffix}"
-        )
-
-    # @computed_field
-    # @property
-    # def pg_conn_info(self) -> str:
-    #     return make_conninfo(
-    #         user=self.db_user,
-    #         password=self.db_password,
-    #         host=self.db_host,
-    #         port=self.db_port,
-    #         dbname=self.db_name,
-    #     )
+    def blob_storage_config(self) -> dict:
+        """Configuration for blob storage initialization."""
+        return {
+            "blob_storage_provider": self.blob_storage_provider,
+            "blob_storage_name": self.blob_storage_name,
+            "blob_storage_key": self.blob_storage_key,
+            "blob_storage_endpoint_protocol": self.blob_storage_endpoint_protocol,
+            "blob_storage_endpoint_suffix": self.blob_storage_endpoint_suffix,
+            "blob_storage_endpoint_base": self.blob_storage_endpoint_base,
+        }
 
     @computed_field
     @property
@@ -128,16 +127,27 @@ def get_settings() -> Settings:
 async def lifespan(app: FastAPI):
     # Startup
     # settings: Settings = app.settings
+    print("🚀 Starting lifespan startup...")
 
     settings = get_settings()
     if settings is None:
         raise ValueError("Settings instance could not be created")
+    print("✅ Settings loaded successfully")
 
     # Initialize database (validates schema version and sets up SessionManager)
+    print("🔄 Initializing database...")
     await initialize_database(settings)
-    
-    # Store SessionManager in app state for access throughout the app
+    print("✅ Database initialized successfully")
+
+    # Initialize blob storage
+    print("🔄 Initializing blob storage...")
+    await initialize_blob_storage(settings)
+    print("✅ Blob storage initialized successfully")
+
+    # Store managers in app state for access throughout the app
     app.state.sessionmanager = sessionmanager
+    app.state.blob_storage_manager = blob_storage_manager
+    print("✅ App state configured successfully")
 
     # Open connection pool
     # app.pool.open()
@@ -171,11 +181,15 @@ async def lifespan(app: FastAPI):
     # handler = LoggingHandler(logger_provider=logger_provider)
     # logger.addHandler(handler)
 
+    print("🎉 FastAPI app startup complete!")
     yield
 
     # Shutdown
+    print("🛑 Starting app shutdown...")
     # app.pool.close()
     await close_database_engine()
+    await close_blob_storage()
+    print("✅ App shutdown complete")
     # logger_provider.shutdown()
     # tracer_provider.shutdown()
 

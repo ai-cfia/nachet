@@ -323,6 +323,154 @@
       "version": "2.0.43"
     },
     {
+      "bom-ref": "aiohappyeyeballs==2.6.1",
+      "description": "Happy Eyeballs for asyncio",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://aiohappyeyeballs.readthedocs.io"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Bug Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/aio-libs/aiohappyeyeballs/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://github.com/aio-libs/aiohappyeyeballs/blob/main/CHANGELOG.md"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/aio-libs/aiohappyeyeballs"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "PSF-2.0"
+          }
+        },
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Python-2.0"
+          }
+        }
+      ],
+      "name": "aiohappyeyeballs",
+      "purl": "pkg:pypi/aiohappyeyeballs@2.6.1",
+      "type": "library",
+      "version": "2.6.1"
+    },
+    {
+      "bom-ref": "aiohttp==3.12.15",
+      "description": "Async http client/server framework (asyncio)",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Coverage: codecov",
+          "type": "other",
+          "url": "https://codecov.io/github/aio-libs/aiohttp"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: RTD",
+          "type": "other",
+          "url": "https://docs.aiohttp.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: Changelog",
+          "type": "other",
+          "url": "https://docs.aiohttp.org/en/stable/changes.html"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: repo",
+          "type": "other",
+          "url": "https://github.com/aio-libs/aiohttp"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: CI: GitHub Actions",
+          "type": "other",
+          "url": "https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: issues",
+          "type": "other",
+          "url": "https://github.com/aio-libs/aiohttp/issues"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/aio-libs/aiohttp"
+        }
+      ],
+      "licenses": [
+        {
+          "acknowledgement": "declared",
+          "expression": "Apache-2.0 AND MIT"
+        }
+      ],
+      "name": "aiohttp",
+      "purl": "pkg:pypi/aiohttp@3.12.15",
+      "type": "library",
+      "version": "3.12.15"
+    },
+    {
+      "bom-ref": "aiosignal==1.4.0",
+      "description": "aiosignal: a list of registered asynchronous callbacks",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Coverage: codecov",
+          "type": "other",
+          "url": "https://codecov.io/github/aio-libs/aiosignal"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: RTD",
+          "type": "other",
+          "url": "https://docs.aiosignal.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: repo",
+          "type": "other",
+          "url": "https://github.com/aio-libs/aiosignal"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: CI: GitHub Actions",
+          "type": "other",
+          "url": "https://github.com/aio-libs/aiosignal/actions"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: issues",
+          "type": "other",
+          "url": "https://github.com/aio-libs/aiosignal/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Chat: Gitter",
+          "type": "other",
+          "url": "https://gitter.im/aio-libs/Lobby"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/aio-libs/aiosignal"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: Apache Software License"
+          }
+        }
+      ],
+      "name": "aiosignal",
+      "purl": "pkg:pypi/aiosignal@1.4.0",
+      "type": "library",
+      "version": "1.4.0"
+    },
+    {
       "bom-ref": "aiosqlite==0.21.0",
       "description": "asyncio bridge to the standard sqlite3 module",
       "externalReferences": [
@@ -588,6 +736,12 @@
         }
       ],
       "name": "azure-identity",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "aio"
+        }
+      ],
       "purl": "pkg:pypi/azure-identity@1.24.0",
       "type": "library",
       "version": "1.24.0"
@@ -611,6 +765,12 @@
         }
       ],
       "name": "azure-storage-blob",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "aio"
+        }
+      ],
       "purl": "pkg:pypi/azure-storage-blob@12.26.0",
       "type": "library",
       "version": "12.26.0"
@@ -1299,6 +1459,64 @@
       "purl": "pkg:pypi/fqdn@1.5.1",
       "type": "library",
       "version": "1.5.1"
+    },
+    {
+      "bom-ref": "frozenlist==1.7.0",
+      "description": "A list-like structure which implements collections.abc.MutableSequence",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Coverage: codecov",
+          "type": "other",
+          "url": "https://codecov.io/github/aio-libs/frozenlist"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: RTD",
+          "type": "other",
+          "url": "https://frozenlist.aio-libs.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Code of Conduct",
+          "type": "other",
+          "url": "https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: repo",
+          "type": "other",
+          "url": "https://github.com/aio-libs/frozenlist"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: CI: Github Actions",
+          "type": "other",
+          "url": "https://github.com/aio-libs/frozenlist/actions"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: Changelog",
+          "type": "other",
+          "url": "https://github.com/aio-libs/frozenlist/blob/master/CHANGES.rst#changelog"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: issues",
+          "type": "other",
+          "url": "https://github.com/aio-libs/frozenlist/issues"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/aio-libs/frozenlist"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "frozenlist",
+      "purl": "pkg:pypi/frozenlist@1.7.0",
+      "type": "library",
+      "version": "1.7.0"
     },
     {
       "bom-ref": "greenlet==3.2.4",
@@ -2033,6 +2251,56 @@
       "version": "1.3.1"
     },
     {
+      "bom-ref": "multidict==6.6.4",
+      "description": "multidict implementation",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Coverage: codecov",
+          "type": "other",
+          "url": "https://codecov.io/github/aio-libs/multidict"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Code of Conduct",
+          "type": "other",
+          "url": "https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: repo",
+          "type": "other",
+          "url": "https://github.com/aio-libs/multidict"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: CI: GitHub",
+          "type": "other",
+          "url": "https://github.com/aio-libs/multidict/actions"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: issues",
+          "type": "other",
+          "url": "https://github.com/aio-libs/multidict/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: RTD",
+          "type": "other",
+          "url": "https://multidict.aio-libs.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: Changelog",
+          "type": "other",
+          "url": "https://multidict.aio-libs.org/en/latest/changes/"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/aio-libs/multidict"
+        }
+      ],
+      "name": "multidict",
+      "purl": "pkg:pypi/multidict@6.6.4",
+      "type": "library",
+      "version": "6.6.4"
+    },
+    {
       "bom-ref": "numpy==1.26.4",
       "description": "Fundamental package for array computing in Python",
       "externalReferences": [
@@ -2276,6 +2544,70 @@
       "purl": "pkg:pypi/priority@2.0.0",
       "type": "library",
       "version": "2.0.0"
+    },
+    {
+      "bom-ref": "propcache==0.3.2",
+      "description": "Accelerated property cache",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Coverage: codecov",
+          "type": "other",
+          "url": "https://codecov.io/github/aio-libs/propcache"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Code of Conduct",
+          "type": "other",
+          "url": "https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: repo",
+          "type": "other",
+          "url": "https://github.com/aio-libs/propcache"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: CI: GitHub Workflows",
+          "type": "other",
+          "url": "https://github.com/aio-libs/propcache/actions?query=branch:master"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: issues",
+          "type": "other",
+          "url": "https://github.com/aio-libs/propcache/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: RTD",
+          "type": "other",
+          "url": "https://propcache.readthedocs.io"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: Changelog",
+          "type": "other",
+          "url": "https://propcache.readthedocs.io/en/latest/changes/"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/aio-libs/propcache"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        },
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: Apache Software License"
+          }
+        }
+      ],
+      "name": "propcache",
+      "purl": "pkg:pypi/propcache@0.3.2",
+      "type": "library",
+      "version": "0.3.2"
     },
     {
       "bom-ref": "psycopg==3.2.10",
@@ -3838,6 +4170,70 @@
       "purl": "pkg:pypi/wsproto@1.2.0",
       "type": "library",
       "version": "1.2.0"
+    },
+    {
+      "bom-ref": "yarl==1.20.1",
+      "description": "Yet another URL library",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Coverage: codecov",
+          "type": "other",
+          "url": "https://codecov.io/github/aio-libs/yarl"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Code of Conduct",
+          "type": "other",
+          "url": "https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: repo",
+          "type": "other",
+          "url": "https://github.com/aio-libs/yarl"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: CI: GitHub Workflows",
+          "type": "other",
+          "url": "https://github.com/aio-libs/yarl/actions?query=branch:master"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: issues",
+          "type": "other",
+          "url": "https://github.com/aio-libs/yarl/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: RTD",
+          "type": "other",
+          "url": "https://yarl.aio-libs.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: Changelog",
+          "type": "other",
+          "url": "https://yarl.aio-libs.org/en/latest/changes/"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/aio-libs/yarl"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        },
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: Apache Software License"
+          }
+        }
+      ],
+      "name": "yarl",
+      "purl": "pkg:pypi/yarl@1.20.1",
+      "type": "library",
+      "version": "1.20.1"
     }
   ],
   "dependencies": [
@@ -3892,6 +4288,28 @@
       "ref": "SQLAlchemy==2.0.43"
     },
     {
+      "ref": "aiohappyeyeballs==2.6.1"
+    },
+    {
+      "dependsOn": [
+        "aiohappyeyeballs==2.6.1",
+        "aiosignal==1.4.0",
+        "attrs==25.3.0",
+        "frozenlist==1.7.0",
+        "multidict==6.6.4",
+        "propcache==0.3.2",
+        "yarl==1.20.1"
+      ],
+      "ref": "aiohttp==3.12.15"
+    },
+    {
+      "dependsOn": [
+        "frozenlist==1.7.0",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "aiosignal==1.4.0"
+    },
+    {
       "dependsOn": [
         "coverage==7.10.6",
         "typing_extensions==4.14.1"
@@ -3938,6 +4356,7 @@
     },
     {
       "dependsOn": [
+        "aiohttp==3.12.15",
         "requests==2.32.4",
         "six==1.17.0",
         "typing_extensions==4.14.1"
@@ -4087,6 +4506,9 @@
       "ref": "fqdn==1.5.1"
     },
     {
+      "ref": "frozenlist==1.7.0"
+    },
+    {
       "ref": "greenlet==3.2.4"
     },
     {
@@ -4217,6 +4639,12 @@
       "ref": "msal==1.32.3"
     },
     {
+      "dependsOn": [
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "multidict==6.6.4"
+    },
+    {
       "ref": "numpy==1.26.4"
     },
     {
@@ -4257,6 +4685,9 @@
     },
     {
       "ref": "priority==2.0.0"
+    },
+    {
+      "ref": "propcache==0.3.2"
     },
     {
       "dependsOn": [
@@ -4519,6 +4950,9 @@
       "ref": "uvicorn==0.35.0"
     },
     {
+      "dependsOn": [
+        "aiohttp==3.12.15"
+      ],
       "ref": "uvloop==0.21.0"
     },
     {
@@ -4538,6 +4972,14 @@
         "h11==0.16.0"
       ],
       "ref": "wsproto==1.2.0"
+    },
+    {
+      "dependsOn": [
+        "idna==3.10",
+        "multidict==6.6.4",
+        "propcache==0.3.2"
+      ],
+      "ref": "yarl==1.20.1"
     }
   ],
   "metadata": {
@@ -4576,7 +5018,7 @@
       ],
       "name": "nachet-backend",
       "type": "application",
-      "version": "1.10.2"
+      "version": "1.11.0"
     },
     "properties": [
       {

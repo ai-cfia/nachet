@@ -35,9 +35,9 @@ jobs:
       nachet-db:
         image: postgres:15
         env:
-          POSTGRES_PASSWORD: ${{ secrets.PG_PASS }}
-          POSTGRES_DB: ${{ secrets.PG_DB }}
-          POSTGRES_USER: ${{ secrets.PG_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.DB_NAME }}
+          POSTGRES_USER: ${{ secrets.DB_USER }}
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -65,7 +65,7 @@ jobs:
           - ./e2e/mocks/nachet-27spp-classifier:/home/wiremock/mappings
       nachet-frontend:
         image: ghcr.io/ai-cfia/nachet-frontend:0.10.2
-        env: 
+        env:
           PUBLIC_URL: "."
           VITE_BACKEND_URL: "http://localhost:12435"
           VITE_APP_MODE: ""
@@ -104,42 +104,44 @@ jobs:
         run: |
           cd backend
           uv sync --dev
-          uv add toml pytest-cov
 
-      - name: Extract schema version
-        id: schema-version
+      - name: Alembic migration to repo head
+        working-directory: backend/app/db
         run: |
-          cd backend
-          SCHEMA_VERSION=$(uv run python -c "import toml; config = toml.load('pyproject.toml'); print(config['tool']['nachet-db']['db-schema-version'])")
-          echo "version=$SCHEMA_VERSION" >> $GITHUB_OUTPUT
-          echo "Schema version: $SCHEMA_VERSION"
-
-      - name: Set up database schema
-        run: |
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "CREATE SCHEMA IF NOT EXISTS \"nachet_${{ steps.schema-version.outputs.version }}\";"
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f datastore/nachet/db/bytebase/schema_nachet_${{ steps.schema-version.outputs.version }}.sql
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f datastore/nachet/db/bytebase/constants_nachet_${{ steps.schema-version.outputs.version }}.sql
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -f datastore/tests/test_data_nachet_${{ steps.schema-version.outputs.version }}.sql
+          uv run db_setup_test.py
         env:
-          PGPASSWORD: ${{ secrets.PG_PASS }}
-
-      - name: Verify schema setup
-        run: |
-          psql -h 127.0.0.1 -U ${{ secrets.PG_USER }} -d ${{ secrets.PG_DB }} -c "\dt \"nachet_${{ steps.schema-version.outputs.version }}\".*" -c "\df \"nachet_${{ steps.schema-version.outputs.version }}\".*" -c "SELECT * FROM \"nachet_${{ steps.schema-version.outputs.version }}\".seed;"
-        env:
-          PGPASSWORD: ${{ secrets.PG_PASS }}
+          ALEMBIC_MIGRATION_LOG_LEVEL: ${{ secrets.ALEMBIC_MIGRATION_LOG_LEVEL }}
+          SQLALCHEMY_MIGRATION_LOG_LEVEL: ${{ secrets.SQLALCHEMY_MIGRATION_LOG_LEVEL }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          TESTING: "false"
+          DEBUG: ${{ secrets.DEBUG }}
+          NACHET_SCHEMA: "${{ secrets.NACHET_SCHEMA }}"
 
       - name: Start backend service
         run: |
           docker run -d --name nachet-backend \
             --network host \
-            -e TESTING="true" \
-            -e NACHET_AZURE_STORAGE_CONNECTION_STRING="${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}" \
-            -e NACHET_STORAGE_URL_TESTING="${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}" \
-            -e NACHET_STORAGE_URL="${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}" \
-            -e NACHET_DB_URL="postgresql://${{ secrets.PG_USER }}:${{ secrets.PG_PASS }}@127.0.0.1:5432/${{ secrets.PG_DB }}" \
-            -e NACHET_SCHEMA_TESTING="nachet_${{ steps.schema-version.outputs.version }}" \
-            -e NACHET_SCHEMA="nachet_${{ steps.schema-version.outputs.version }}" \
+            -e TESTING="false" \
+            -e BACKEND_DEV_PORT=${{ secrets.BACKEND_DEV_PORT }} \
+            -e ALEMBIC_MIGRATION_LOG_LEVEL=${{ secrets.ALEMBIC_MIGRATION_LOG_LEVEL }} \
+            -e SQLALCHEMY_MIGRATION_LOG_LEVEL=${{ secrets.SQLALCHEMY_MIGRATION_LOG_LEVEL }} \
+            -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+            -e DB_NAME=${{ secrets.DB_NAME }} \
+            -e DB_USER=${{ secrets.DB_USER }} \
+            -e DB_HOST=${{ secrets.DB_HOST }} \
+            -e DB_PORT=${{ secrets.DB_PORT }} \
+            -e DEBUG=${{ secrets.DEBUG }} \
+            -e NACHET_SCHEMA="${{ secrets.NACHET_SCHEMA }}" \
+            -e BLOB_STORAGE_PROVIDER=${{ secrets.BLOB_STORAGE_PROVIDER }} \
+            -e BLOB_STORAGE_NAME=${{ secrets.BLOB_STORAGE_NAME }} \
+            -e BLOB_STORAGE_KEY=${{ secrets.BLOB_STORAGE_KEY }} \
+            -e BLOB_STORAGE_ENDPOINT_PROTOCOL=${{ secrets.BLOB_STORAGE_ENDPOINT_PROTOCOL }} \
+            -e BLOB_STORAGE_ENDPOINT_SUFFIX=${{ secrets.BLOB_STORAGE_ENDPOINT_SUFFIX }} \
+            -e BLOB_STORAGE_ENDPOINT_BASE=${{ secrets.BLOB_STORAGE_ENDPOINT_BASE }} \
             -e NACHET_DATA="https://raw.githubusercontent.com/ai-cfia/nachet-data/main/" \
             -e NACHET_MAX_CONTENT_LENGTH="200" \
             -e NACHET_BLOB_PIPELINE_NAME="sg-nachet-pipeline-dev" \
@@ -167,7 +169,7 @@ jobs:
           path: |
             node_modules
           key: modules-${{ hashFiles('package-lock.json') }}
-      
+
       - name: Cache Playwright Binaries
         id: cache-playwright
         uses: actions/cache@v4
