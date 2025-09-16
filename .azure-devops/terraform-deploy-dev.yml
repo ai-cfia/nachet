@@ -184,7 +184,6 @@ stages:
               backendAzureRmContainerName: "$(containerName)"
               backendAzureRmKey: "$(stateKey)"
 
-
           - task: TerraformTask@5
             displayName: "Terraform Plan"
             inputs:
