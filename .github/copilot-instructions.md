@@ -4,114 +4,114 @@ Canadian government (CFIA) AI-powered seed identification system with React Type
 
 **ALWAYS follow these instructions first and fallback to additional search and context gathering only if the information here is incomplete or found to be in error.**
 
-## Important: Folders to Ignore
+## Repository Structure and Focus
 
-When working with this repository, **ignore these folders completely**:
+**Ignore these folders completely**:
 - `datastore/` - Legacy data management code (not actively maintained)
 - `backend/old/` - Legacy backend code (replaced by current backend)
 
-**Local Development Only**:
-- `db/` - Database setup and management (local development purposes only)
-- `blob/` - Local blob storage configuration (local development purposes only)
+**Local Development Container Infrastructure**:
+- `db/` - PostgreSQL database container mounting and configuration (local development only)
+- `blob/` - Azurite blob storage container mounting and configuration (local development only)
 
-Focus your work on the primary codebase: `frontend/`, `backend/` (excluding old folder), and related configuration files.
+**Primary Work Areas**:
+Focus your development work on: `frontend/`, `backend/` (excluding old/ subfolder), and root configuration files.
 
-## Working Effectively
+## Setup and Build Process
 
-### Bootstrap and Build Repository
-Run these commands in sequence to set up a working development environment:
+### Prerequisites
+Install required tools for development:
 
-**Install Node.js and npm (if needed):**
+**Node.js and npm setup:**
 ```bash
-# Check current versions
+# Verify current versions
 node --version && npm --version
 
-# Download and install Node.js 24.5.0 if needed (preferred version)
+# Install Node.js 24.5.0 if needed (recommended version)
 wget https://nodejs.org/dist/v24.5.0/node-v24.5.0-linux-x64.tar.xz
 tar -xf node-v24.5.0-linux-x64.tar.xz
 sudo cp -r node-v24.5.0-linux-x64/* /usr/local/
 ```
 
-**Install uv (Python package manager):**
+**Python package manager:**
 ```bash
 pip install uv
 ```
 
-**Build Frontend:**
+### Frontend Build Process
 ```bash
 cd frontend/
 npm config set strict-ssl false  # Only if SSL certificate issues occur
-npm install                     # Takes ~60 seconds. NEVER CANCEL. Set timeout to 120+ seconds.
-npm run lint                    # Takes ~15 seconds  
-npm run build                   # Takes ~40 seconds. NEVER CANCEL. Set timeout to 90+ seconds.
-npm run test                    # Takes ~15 seconds. All 241 tests should pass.
+npm install                     # ~60 seconds. NEVER CANCEL. Set timeout to 120+ seconds.
+npm run lint                    # ~15 seconds  
+npm run build                   # ~40 seconds. NEVER CANCEL. Set timeout to 90+ seconds.
+npm run test                    # ~15 seconds. All 241 tests should pass.
 ```
 
-**Build Backend:**
+### Backend Build Process
 ```bash
 cd backend/
-uv sync                         # Takes ~10 seconds. NEVER CANCEL. Set timeout to 60+ seconds.
-uv run python -c "import app.main; print('Backend ready')"  # Validate import
+uv sync                         # ~10 seconds. NEVER CANCEL. Set timeout to 60+ seconds.
+uv run python -c "import app.main; print('Backend ready')"  # Validate setup
 ```
 
 
+## Development Servers
 
-### Run Applications
-
-**Frontend Development Server:**
+**Frontend Development:**
 ```bash
 cd frontend/
 npm run dev                     # Starts on http://localhost:5173
 ```
 
-**Backend Development Server:**
+**Backend Development:**
 ```bash
 cd backend/
 # Requires environment setup - see Environment Configuration section
 uv run hypercorn -b :8080 app.main:app  # Starts on http://localhost:8080
 ```
 
-**Full Stack with Docker:**
+**Docker Container Services:**
 ```bash
-# Start database and storage services
+# Start PostgreSQL and Azurite containers (uses db/ and blob/ folder configurations)
 docker compose up -d nachet-db nachet-pgadmin nachet-blob
 
-# Start all services (requires environment configuration)
+# Start all services (requires full environment configuration)
 docker compose up -d
 ```
 
-## Validation
+## Code Validation and Testing
 
-**ALWAYS manually validate code changes by running these scenarios:**
+**Essential validation steps before committing:**
 
-1. **Build Validation:**
+1. **Build Verification:**
    ```bash
    cd frontend/ && npm run build && npm run test
    cd ../backend/ && uv run python -c "import app.main"
    ```
 
-2. **Lint and Format Before Committing:**
+2. **Code Quality Checks:**
    ```bash
    cd frontend/ && npm run lint && npm run format:check
-   # Backend uses pytest for validation when environment is configured
+   # Backend validation requires environment configuration
    ```
 
-3. **End-to-End Testing (when backend is running):**
+3. **End-to-End Testing:**
    ```bash
-   npm run test:e2e  # Takes ~10 minutes. NEVER CANCEL. Set timeout to 20+ minutes.
+   npm run test:e2e  # ~10 minutes. NEVER CANCEL. Set timeout to 20+ minutes.
    ```
 
-**Critical Build Timings - NEVER CANCEL:**
-- Frontend npm install: 60 seconds (timeout: 120+ seconds)
-- Frontend build: 40 seconds (timeout: 90+ seconds)  
-- Backend tests: 15 minutes (timeout: 30+ minutes)
-- E2E tests: 10 minutes (timeout: 20+ minutes)
+**Critical Timing Guidelines - NEVER CANCEL PREMATURELY:**
+- Frontend npm install: 60 seconds (set timeout: 120+ seconds)
+- Frontend build: 40 seconds (set timeout: 90+ seconds)  
+- Backend tests: 15 minutes (set timeout: 30+ minutes)
+- E2E tests: 10 minutes (set timeout: 20+ minutes)
 
 ## Environment Configuration
 
-**Required for Runtime (not basic builds):**
+**Runtime Configuration (required for backend/database operations):**
 
-Create `.env` files from templates:
+Environment template setup:
 ```bash
 # Backend environment
 cd backend/
@@ -123,13 +123,13 @@ cd frontend/
 cp .env.template .env.config.local
 # Edit with backend URL and environment settings
 
-# Database setup
+# Database configuration (uses db/ folder for container mounting)
 cd db/
 cp .env.config.template .env.config.local
-# Edit with PostgreSQL credentials
+# Edit with PostgreSQL credentials for container setup
 ```
 
-**Minimal environment for basic functionality:**
+**Basic environment variables:**
 ```bash
 export NACHET_ENV=local
 export NACHET_FRONTEND_DEV_URL=http://localhost:5173
@@ -137,83 +137,80 @@ export BACKEND_DEV_PORT=5174
 export FRONTEND_DEV_PORT=5173
 ```
 
-## Common Issues and Workarounds
+## Troubleshooting Common Issues
 
-**Node.js Version Mismatch:**
-- Package requires Node.js ^24.5.0 and npm ^11.5.2
-- Current system may have older versions
-- **Workaround:** Builds work with warnings on Node.js 20.x and npm 10.x
+**Node.js Version Compatibility:**
+- Requires Node.js ^24.5.0 and npm ^11.5.2
+- **Workaround:** Works with warnings on Node.js 20.x and npm 10.x
 
-**npm SSL Certificate Issues:**
+**Network and SSL Issues:**
 ```bash
 npm config set strict-ssl false
 npm config set registry http://registry.npmjs.org/
 ```
 
-**uv Installation Issues:**
+**Python Package Manager Issues:**
 ```bash
-# If curl fails to reach astral.sh, use pip instead
+# Alternative if curl fails to reach astral.sh
 pip install uv
 ```
 
-**Docker Permission Issues:**
+**Docker Access Issues:**
 ```bash
 sudo usermod -a -G docker $USER
-# Logout and login again
+# Logout and login to apply changes
 ```
 
-## Key Projects and Navigation
+## Codebase Navigation
 
-**Frontend (`frontend/`):**
-- `src/components/` - React components by feature
-- `src/pages/` - Page-level components  
-- `src/common/` - Utilities, API client, types
+**Frontend Structure (`frontend/`):**
+- `src/components/` - React components organized by feature
+- `src/pages/` - Top-level page components  
+- `src/common/` - Shared utilities, API client, and type definitions
 - `src/hooks/` - Custom React hooks
-- Main entry: `src/main.tsx`
+- `src/main.tsx` - Application entry point
 
-**Backend (`backend/`):**
-- `app/main.py` - FastAPI application entry point
-- `model/` - ML inference request functions
-- `storage/` - Data storage integration
+**Backend Structure (`backend/`):**
+- `app/main.py` - FastAPI application entry point and configuration
+- `model/` - Machine learning inference request handling
+- `storage/` - Data storage layer integration (Azure Blob + PostgreSQL)
 - `tests/` - Backend test suite
-- `auth/` - Authentication and authorization
-- **Note:** Ignore the `old/` folder - contains legacy code
+- `auth/` - Authentication and authorization logic
+- **Important:** Skip the `old/` subfolder - contains deprecated code
 
+**Container Infrastructure (Local Development):**
+- `db/` - PostgreSQL database schema and container configuration for mounting
+- `blob/` - Azurite blob storage container configuration for mounting
+- These folders support local development via Docker container mounting only
 
-**Database Management (Local Development):**
-- Schema versions managed in `db/bytebase/` folder
-- Current schema: `nachet_0.0.12`
-- Setup script: `db/dev_setup.sh`
-- **Note:** `db/` folder is for local development purposes only
+## System Architecture
 
-## Architecture Notes
+- **Machine Learning:** Remote inference via HTTP endpoints (no local ML processing)
+- **Data Architecture:** Azure Blob Storage for images, PostgreSQL for metadata
+- **Multi-tenancy:** UUID-based entity isolation  
+- **Authentication:** Cookie-based sessions with JWT tokens
+- **State Management:** React state and context patterns (no global state store)
 
-- **No local ML processing** - All inference via HTTP endpoints
-- **UUID-based entities** for multi-tenant isolation  
-- **Azure Blob Storage** for images, PostgreSQL for metadata
-- **Cookie-based authentication** with JWT tokens
-- **No global state management** - React state and context only
-
-## Frequent Commands Reference
+## Quick Reference Commands
 
 ```bash
-# Quick status check
+# Development workflow validation
 cd frontend/ && npm run build && npm run test
 cd ../backend/ && uv run python -c "import app.main"
 
-# Full rebuild
+# Complete environment rebuild
 cd frontend/ && rm -rf node_modules && npm install && npm run build
 cd ../backend/ && uv sync
 
-# Development servers
+# Start development servers
 cd frontend/ && npm run dev &
 cd ../backend/ && uv run hypercorn -b :8080 app.main:app &
 
-# Docker services only
+# Container services (uses db/ and blob/ configurations)
 docker compose up -d nachet-db nachet-pgadmin nachet-blob
 
-# Check running services
+# Service status check
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 ```
 
-**Always build and exercise your changes before committing. The CI will fail if linting, building, or tests fail.**
+**Always validate your changes through build and test cycles before committing. CI pipeline failures indicate unresolved build, lint, or test issues.**
