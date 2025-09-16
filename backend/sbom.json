@@ -2800,7 +2800,7 @@
       "version": "2.22"
     },
     {
-      "bom-ref": "pydantic==2.11.7",
+      "bom-ref": "pydantic==2.11.9",
       "description": "Data validation using Python type hints",
       "externalReferences": [
         {
@@ -2838,9 +2838,9 @@
         }
       ],
       "name": "pydantic",
-      "purl": "pkg:pypi/pydantic@2.11.7",
+      "purl": "pkg:pypi/pydantic@2.11.9",
       "type": "library",
-      "version": "2.11.7"
+      "version": "2.11.9"
     },
     {
       "bom-ref": "pydantic-settings==2.10.1",
@@ -4494,7 +4494,7 @@
         "fastapi-cli==0.0.10",
         "httpx==0.28.1",
         "pydantic-settings==2.10.1",
-        "pydantic==2.11.7",
+        "pydantic==2.11.9",
         "python-multipart==0.0.20",
         "starlette==0.47.3",
         "typing_extensions==4.14.1",
@@ -4719,7 +4719,7 @@
       "dependsOn": [
         "PyYAML==6.0.2",
         "azure-identity==1.24.0",
-        "pydantic==2.11.7",
+        "pydantic==2.11.9",
         "python-dotenv==1.1.1",
         "typing-inspection==0.4.1"
       ],
@@ -4733,7 +4733,7 @@
         "typing-inspection==0.4.1",
         "typing_extensions==4.14.1"
       ],
-      "ref": "pydantic==2.11.7"
+      "ref": "pydantic==2.11.9"
     },
     {
       "dependsOn": [
@@ -4860,7 +4860,7 @@
         "psycopg-pool==3.2.6",
         "psycopg==3.2.10",
         "pydantic-settings==2.10.1",
-        "pydantic==2.11.7",
+        "pydantic==2.11.9",
         "pydantic_core==2.33.2",
         "python-dotenv==1.1.1",
         "python-magic==0.4.27"
@@ -5018,7 +5018,7 @@
       ],
       "name": "nachet-backend",
       "type": "application",
-      "version": "1.11.0"
+      "version": "1.11.1"
     },
     "properties": [
       {
