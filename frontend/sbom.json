@@ -29754,6 +29754,32 @@
           "value": "node_modules/zod"
         }
       ]
+    },
+    {
+      "type": "library",
+      "name": "zustand",
+      "version": "5.0.8",
+      "bom-ref": "nachet-frontend@0.10.3|zustand@5.0.8",
+      "purl": "pkg:npm/zustand@5.0.8",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/zustand/-/zustand-5.0.8.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "8323caa486b163d5dc3b6bd232b2db88447b40c00c18e419551749e998bbf368e46f367282ae4623d9c6f20fac3208ad46d9ddc1a05297bba2a82e3da354928b"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/zustand"
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -29830,7 +29856,8 @@
         "nachet-frontend@0.10.3|vite@7.1.5",
         "nachet-frontend@0.10.3|vitest@3.2.4",
         "nachet-frontend@0.10.3|web-vitals@5.1.0",
-        "nachet-frontend@0.10.3|zod@4.1.8"
+        "nachet-frontend@0.10.3|zod@4.1.8",
+        "nachet-frontend@0.10.3|zustand@5.0.8"
       ]
     },
     {
@@ -35984,6 +36011,13 @@
     },
     {
       "ref": "nachet-frontend@0.10.3|zod@4.1.8"
+    },
+    {
+      "ref": "nachet-frontend@0.10.3|zustand@5.0.8",
+      "dependsOn": [
+        "nachet-frontend@0.10.3|@types/react@19.1.13",
+        "nachet-frontend@0.10.3|react@19.1.1"
+      ]
     }
   ]
 }
