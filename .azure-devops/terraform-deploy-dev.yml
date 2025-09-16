@@ -47,31 +47,14 @@ stages:
                 cd $(System.DefaultWorkingDirectory)/terraform/dev
 
                 echo "Running Terraform Init..."
-
                 terraform init \
                   -backend-config="resource_group_name=$(resourceGroupName)" \
                   -backend-config="storage_account_name=$(storageAccountName)" \
                   -backend-config="container_name=$(containerName)" \
-                  -backend-config="key=$(stateKey)" \
-                  -backend-config="use_azuread_auth=true"
+                  -backend-config="key=$(stateKey)"
 
-                if [ $? -eq 0 ]; then
-                  echo "✓ Terraform init succeeded"
-                else
-                  echo "✗ Terraform init failed"
-                  exit 1
-                fi
-                
                 echo "Running Terraform Plan..."
-
                 terraform plan -var-file=$(DownloadSecureVars.SecureFilePath)
-
-                if [ $? -eq 0 ]; then
-                  echo "✓ Terraform plan succeeded"
-                else
-                  echo "✗ Terraform plan failed"
-                  exit 1
-                fi
 
           - task: AzureCLI@2
             displayName: "Pre-create PostgreSQL Subnet"
