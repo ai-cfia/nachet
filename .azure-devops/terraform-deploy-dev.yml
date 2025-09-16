@@ -44,18 +44,6 @@ stages:
               inlineScript: |
                 echo "Successfully logged in with Azure CLI"
 
-                cd $(System.DefaultWorkingDirectory)/terraform/dev
-
-                echo "Running Terraform Init..."
-                terraform init \
-                  -backend-config="resource_group_name=$(resourceGroupName)" \
-                  -backend-config="storage_account_name=$(storageAccountName)" \
-                  -backend-config="container_name=$(containerName)" \
-                  -backend-config="key=$(stateKey)"
-
-                echo "Running Terraform Plan..."
-                terraform plan -var-file=$(DownloadSecureVars.SecureFilePath)
-
           - task: AzureCLI@2
             displayName: "Pre-create PostgreSQL Subnet"
             inputs:
