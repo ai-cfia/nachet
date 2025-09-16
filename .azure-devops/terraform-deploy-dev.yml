@@ -167,10 +167,10 @@ stages:
                   fi
                 fi
 
-          - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
-            displayName: "Install Terraform (latest)"
-            inputs:
-              terraformVersion: 'latest'
+          # - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
+          #   displayName: "Install Terraform (latest)"
+          #   inputs:
+          #     terraformVersion: 'latest'
 
           - task: TerraformTask@5
             displayName: "Terraform Init"
@@ -225,10 +225,10 @@ stages:
                   inputs:
                     secureFile: "nachet-dev.tfvars"
 
-                - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
-                  displayName: "Install Terraform (latest)"
-                  inputs:
-                    terraformVersion: 'latest'
+                # - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
+                #   displayName: "Install Terraform (latest)"
+                #   inputs:
+                #     terraformVersion: 'latest'
 
                 - task: TerraformTask@5
                   displayName: "Terraform Init"
