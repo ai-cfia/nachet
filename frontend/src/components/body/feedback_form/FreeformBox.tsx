@@ -6,7 +6,7 @@ import SaveIcon from "@mui/icons-material/Save";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import OpenInFullOutlinedIcon from "@mui/icons-material/OpenInFullOutlined";
 import { useState } from "react";
-import { BoxCSS } from "../../../common/types";
+import { BoxCSS } from "@common/types";
 
 interface FreeformBoxProps {
   position: BoxCSS;

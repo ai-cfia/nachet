@@ -3,7 +3,7 @@ import { Overlay, InfoContainer, ButtonWrap } from "./indexElements";
 import { Box, CardHeader, IconButton, TextField, Button } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
-import { useBackendUrl } from "../../../hooks";
+import { useBackendUrl } from "@hooks";
 import { createAzureStorageDir } from "@common/api";
 import { directoryNameSchema } from "@common/validation";
 

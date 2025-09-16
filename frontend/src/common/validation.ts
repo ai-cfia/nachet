@@ -613,7 +613,13 @@ export const ApiSpeciesDataSchema = z.object({
   seeds: z.array(
     z.object({
       seed_id: z.string(),
-      seed_name: z.string(),
+      seed_name: z.string().nullable().optional(),
+      name_code: z.string(),
+      family: z.string(),
+      genus: z.string(),
+      species: z.string(),
+      id: z.number().optional(),
+      label: z.string().optional(),
     }),
   ),
 });

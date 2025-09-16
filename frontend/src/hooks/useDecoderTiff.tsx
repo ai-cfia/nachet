@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { decodeTiff } from "../common";
+import { decodeTiff } from "@common";
 
 export interface DecodedTiff {
   rgba: Uint8Array<ArrayBufferLike>;

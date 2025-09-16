@@ -83,17 +83,18 @@ export interface LabelOccurrences {
   [label: string]: number;
 }
 
-interface ClassData {
-  id: number;
-  classId: string;
-  label: string;
+export interface SpeciesData {
+  id?: number;
+  label?: string;
+  seed_id: string;
+  name_code: string;
+  family: string;
+  genus: string;
+  species: string;
 }
 
-interface ApiSpeciesData {
-  seeds: Array<{
-    seed_id: string;
-    seed_name: string;
-  }>;
+export interface ApiSpeciesData {
+  seeds: SpeciesData[];
 }
 
 export interface ModelMetadata {

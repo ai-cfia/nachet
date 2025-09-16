@@ -18,21 +18,21 @@ import FormatShapesOutlinedIcon from "@mui/icons-material/FormatShapesOutlined";
 import CircularProgress from "@mui/material/CircularProgress";
 import {
   BoxCSS,
-  ClassData,
+  SpeciesData,
   FeedbackDataNegative,
   FeedbackDataPositive,
   Images,
-} from "../../../common/types";
+} from "@common/types";
 
 import ScaledInferenceBox from "../scaled_inference_box";
 import {
-  requestClassList,
   sendNegativeFeedback,
   sendPositiveFeedback,
   loadResultsToCache,
-} from "../../../common";
+} from "@common";
+import { useSpeciesData } from "@hooks/useSpeciesData";
 import { FreeformBox, NegativeFeedbackForm } from "../feedback_form";
-import { getUnscaledCoordinates } from "../../../common/imageutils";
+import { getUnscaledCoordinates } from "@common/imageutils";
 import ApiAction from "../api_action";
 import { colours } from "../../../styles/colours";
 interface MicroscopeFeedProps {
@@ -150,32 +150,21 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
   );
   const [inferenceForRevision, setInferenceForRevision] =
     useState<FeedbackDataNegative | null>(null);
-  const [classListLoading, setClassListLoading] = useState<boolean>(true);
   const [apiLoading, setApiLoading] = useState<boolean>(false);
   const [apiSuccess, setApiSuccess] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [apiResultDismissed, setApiResultDismissed] = useState<boolean>(true);
 
-  const classList: ClassData[] = useMemo(() => {
-    const classes: ClassData[] = [];
-    const getClasses = async () => {
-      setClassListLoading(true);
-      const response = await requestClassList(backendUrl);
-      return response.seeds;
-    };
-    getClasses().then((data) => {
-      for (let i = 0; i < data.length; i++) {
-        classes.push({
-          id: i,
-          classId: data[i].seed_id,
-          label: data[i].seed_name,
-        });
-      }
-      setClassListLoading(false);
-    });
+  const { speciesData, isLoading: classListLoading } =
+    useSpeciesData(backendUrl);
 
-    return classes;
-  }, [backendUrl]);
+  const classList: SpeciesData[] = useMemo(() => {
+    if (!speciesData?.seeds) return [];
+    return speciesData.seeds.map((seed, index) => ({
+      ...seed,
+      id: index,
+    }));
+  }, [speciesData]);
 
   const iconStyle = {
     fontSize: "1.7vh",

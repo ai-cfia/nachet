@@ -14,7 +14,7 @@ import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import CloseIcon from "@mui/icons-material/Close";
 import FolderIcon from "@mui/icons-material/Folder";
 import FilterIcon from "@mui/icons-material/Filter";
-import { AzureStorageDirectoryItem } from "../../../common/types";
+import { AzureStorageDirectoryItem } from "@common/types";
 
 interface params {
   azureStorageDir: AzureStorageDirectoryItem[];

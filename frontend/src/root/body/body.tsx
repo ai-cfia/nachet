@@ -11,7 +11,7 @@ import CreateDirectory from "../../components/body/create_directory_popup";
 import DeleteDirectoryPopup from "../../components/body/del_directory_popup";
 import SignUp from "../../components/body/authentication/signup";
 import CreativeCommonsPopup from "../../components/body/creative_commons_popup";
-import { useBackendUrl, useDecoderTiff } from "../../hooks";
+import { useBackendUrl, useDecoderTiff } from "@hooks";
 import {
   getLabelOccurrence,
   loadCaptureToCache,
@@ -22,14 +22,14 @@ import {
   inferenceRequest,
   readAzureStorageDir,
   requestUUID,
-} from "../../common";
+} from "@common";
 import {
   AzureStorageDirectoryItem,
   AzureStorageDirectoryItemApi,
   Images,
   LabelOccurrences,
   ModelMetadata,
-} from "../../common/types";
+} from "@common/types";
 import Cookies from "js-cookie";
 import BatchUploadPopup from "../../components/body/batch_upload_popup";
 

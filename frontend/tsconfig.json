@@ -25,6 +25,12 @@
       ],
       "@common": [
         "src/common"
+      ],
+      "@hooks/*": [
+        "src/hooks/*"
+      ],
+      "@hooks": [
+        "src/hooks"
       ]
     },
     /* Linting */

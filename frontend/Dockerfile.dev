@@ -35,8 +35,6 @@ RUN git config --global --add safe.directory /app && \
 
 WORKDIR /app
 
-# Use existing ubuntu user (1000:1000)
-USER ubuntu
 
 # Set up nvm environment for ubuntu user
 RUN echo 'export NVM_DIR="/usr/local/nvm"' >> /home/ubuntu/.bashrc && \
@@ -45,7 +43,9 @@ RUN echo 'export NVM_DIR="/usr/local/nvm"' >> /home/ubuntu/.bashrc && \
 
 # Install dependencies when container starts to ensure they're always fresh
 # This is done via command in docker-compose to allow for hot reload
+
 EXPOSE ${FRONTEND_DEV_PORT:-5173}
 
 # Keep container running for VS Code to connect
-CMD ["tail", "-f", "/dev/null"]
+# CMD ["tail", "-f", "/dev/null"]
+CMD ["sh", "-c", "npm ci && npm run dev -- --host --port ${FRONTEND_DEV_PORT:-5173}"]
