@@ -30,27 +30,11 @@ defaults:
 
 jobs:
   get-version:
-    runs-on: ubuntu-latest
-
-    outputs:
-      app-version: ${{ steps.versions.outputs.app-version }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Extract versions from package.json
-        id: versions
-        run: |
-          APP_VERSION=$(jq -r '.version' package.json | sed 's/\^//')
-          if [ -z "$APP_VERSION" ]; then
-            echo "Error: Could not extract versions from package.json"
-            exit 1
-          fi
-          echo "Detected application version: $APP_VERSION"
-          echo "app-version=$APP_VERSION" >> $GITHUB_OUTPUT
+    uses: ./.github/workflows/reusable-frontend-versions.yml
+    with:
+      working-directory: frontend
+      package-name: nachet-frontend
+      skip-version-check: true
 
   build-and-push-gcr:
     needs: get-version

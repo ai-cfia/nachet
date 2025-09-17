@@ -718,13 +718,13 @@
       "version": "1.35.0"
     },
     {
-      "bom-ref": "azure-identity==1.24.0",
+      "bom-ref": "azure-identity==1.25.0",
       "description": "Microsoft Azure Identity Library for Python",
       "externalReferences": [
         {
-          "comment": "from packaging metadata: Home-page",
-          "type": "website",
-          "url": "https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/identity/azure-identity"
+          "comment": "from packaging metadata Project-URL: repository",
+          "type": "vcs",
+          "url": "https://github.com/Azure/azure-sdk-for-python"
         }
       ],
       "licenses": [
@@ -742,9 +742,9 @@
           "value": "aio"
         }
       ],
-      "purl": "pkg:pypi/azure-identity@1.24.0",
+      "purl": "pkg:pypi/azure-identity@1.25.0",
       "type": "library",
-      "version": "1.24.0"
+      "version": "1.25.0"
     },
     {
       "bom-ref": "azure-storage-blob==12.26.0",
@@ -2411,7 +2411,7 @@
       "version": "25.0"
     },
     {
-      "bom-ref": "pillow==10.3.0",
+      "bom-ref": "pillow==10.4.0",
       "description": "Python Imaging Library (Fork)",
       "externalReferences": [
         {
@@ -2459,9 +2459,9 @@
         }
       ],
       "name": "pillow",
-      "purl": "pkg:pypi/pillow@10.3.0",
+      "purl": "pkg:pypi/pillow@10.4.0",
       "type": "library",
-      "version": "10.3.0"
+      "version": "10.4.0"
     },
     {
       "bom-ref": "pip-requirements-parser==32.0.1",
@@ -4371,7 +4371,7 @@
         "msal==1.32.3",
         "typing_extensions==4.14.1"
       ],
-      "ref": "azure-identity==1.24.0"
+      "ref": "azure-identity==1.25.0"
     },
     {
       "dependsOn": [
@@ -4666,7 +4666,7 @@
         "pytest==8.4.1",
         "typing_extensions==4.14.1"
       ],
-      "ref": "pillow==10.3.0"
+      "ref": "pillow==10.4.0"
     },
     {
       "dependsOn": [
@@ -4718,7 +4718,7 @@
     {
       "dependsOn": [
         "PyYAML==6.0.2",
-        "azure-identity==1.24.0",
+        "azure-identity==1.25.0",
         "pydantic==2.11.9",
         "python-dotenv==1.1.1",
         "typing-inspection==0.4.1"
@@ -4849,14 +4849,14 @@
         "SQLAlchemy==2.0.43",
         "aiosqlite==0.21.0",
         "alembic==1.16.5",
-        "azure-identity==1.24.0",
+        "azure-identity==1.25.0",
         "azure-storage-blob==12.26.0",
         "beartype==0.21.0",
         "cryptography==45.0.7",
         "fastapi==0.116.1",
         "httpx==0.28.1",
         "numpy==1.26.4",
-        "pillow==10.3.0",
+        "pillow==10.4.0",
         "psycopg-pool==3.2.6",
         "psycopg==3.2.10",
         "pydantic-settings==2.10.1",
@@ -5018,7 +5018,7 @@
       ],
       "name": "nachet-backend",
       "type": "application",
-      "version": "1.11.2"
+      "version": "1.11.3"
     },
     "properties": [
       {
