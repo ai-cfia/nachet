@@ -94,7 +94,7 @@ jobs:
           echo "Files and directories after cleanup:"
           find . -maxdepth 2 -type f -o -type d | head -20
 
-      - uses: EndBug/add-and-commit@af62f267410b647327457e1a82a6686727fcb8a0
+      - uses: EndBug/add-and-commit@396414845612f3d50a93ddf57ff3ba0b3df58d89
         with:
           message: "Release nachet-backend-v${{ steps.versions.outputs.app-version }}"
           add: "."
@@ -183,7 +183,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
-        uses: ncipollo/release-action@bcfe5470707e8832e12347755757cec0eb3c22af
+        uses: ncipollo/release-action@b7eabc95ff50cbeeedec83973935c8f306dfcd0b
         with:
           tag: "nachet-backend-v${{ steps.versions.outputs.app-version }}"
           name: "nachet-backend v${{ steps.versions.outputs.app-version }}"
