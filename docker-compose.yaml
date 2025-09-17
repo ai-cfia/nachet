@@ -66,10 +66,10 @@ services:
 
   nachet-frontend:
     container_name: nachet-frontend
-    # build:
-    #   context: ./frontend
-    #   dockerfile: Dockerfile.dev
-    image: ghcr.io/ai-cfia/nachet-frontend:0.9.31
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    # image: ghcr.io/ai-cfia/nachet-frontend:0.10.3
     # command: ["npm run dev --host"]
     env_file:
       - ./frontend/.env.config.local
@@ -77,7 +77,7 @@ services:
       - ./frontend:/app
     ports:
       # - "12436:5173" 
-      - "12436:3000" # for ghcr images
+      - "12436:12436" # for ghcr images
     depends_on:
       - nachet-backend
 

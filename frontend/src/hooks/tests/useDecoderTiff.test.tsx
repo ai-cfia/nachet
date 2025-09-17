@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import useDecoderTiff from "../useDecoderTiff";
-import * as common from "../../common";
+import * as common from "@common";
 
 describe("useDecoderTiff", () => {
   vi.spyOn(common, "decodeTiff").mockImplementation(async () => {

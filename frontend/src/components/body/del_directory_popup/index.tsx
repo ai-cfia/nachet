@@ -3,8 +3,8 @@ import { Overlay, InfoContainer, ButtonWrap, Text } from "./indexElements";
 import { Box, CardHeader, IconButton, Button } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
-import { useBackendUrl } from "../../../hooks";
-import { deleteAzureStorageDir } from "../../../common/api";
+import { useBackendUrl } from "@hooks";
+import { deleteAzureStorageDir } from "@common/api";
 
 interface params {
   setDelDirectoryOpen: React.Dispatch<React.SetStateAction<boolean>>;

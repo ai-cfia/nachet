@@ -23,7 +23,7 @@ import {
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import { SyntheticEvent, useEffect, useMemo, useState } from "react";
-import { BoxCSS, ClassData, FeedbackDataNegative } from "@common/types";
+import { BoxCSS, SpeciesData, FeedbackDataNegative } from "@common/types";
 import Draggable from "react-draggable";
 import LoadingIndicator from "../loading_indicator";
 import { classLabelSchema } from "@common/validation";
@@ -104,7 +104,7 @@ export const SimpleFeedbackForm = (props: SimpleFeedbackFormProps) => {
 interface NegativeFeedbackFormProps {
   inference: FeedbackDataNegative;
   position: BoxCSS;
-  classList: ClassData[];
+  classList: SpeciesData[];
   onCancel: () => void;
   onSubmit: (feedbackDataNegative: FeedbackDataNegative) => void;
   isNewAnnotation: boolean;
@@ -128,7 +128,11 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
   const defaultClass = useMemo(() => {
     return {
       id: -1,
-      classId: "",
+      seed_id: "",
+      name_code: "",
+      family: "",
+      genus: "",
+      species: "",
       label: "",
     };
   }, []);
@@ -144,16 +148,16 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
     isNewAnnotation,
     classListLoading,
   } = props;
-  const [selectedClass, setSelectedClass] = useState<ClassData>(defaultClass);
+  const [selectedClass, setSelectedClass] = useState<SpeciesData>(defaultClass);
   const [comment, setComment] = useState<string>(reasons[1]);
   const [classError, setClassError] = useState<string>("");
 
-  const filter = createFilterOptions<ClassData>();
+  const filter = createFilterOptions<SpeciesData>();
 
   const filteredClassList = (
-    options: ClassData[],
-    params: FilterOptionsState<ClassData>,
-  ): ClassData[] => {
+    options: SpeciesData[],
+    params: FilterOptionsState<SpeciesData>,
+  ): SpeciesData[] => {
     const { inputValue } = params;
     if (inputValue === "") {
       return options;
@@ -172,13 +176,13 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
     return filtered;
   };
 
-  const getClassLabel = (option: string | ClassData): string => {
-    return typeof option === "string" ? option : option.label;
+  const getClassLabel = (option: string | SpeciesData): string => {
+    return typeof option === "string" ? option : option.label || "";
   };
 
   const handleClassChange = (
     event: SyntheticEvent<Element, Event>,
-    newValue: string | ClassData | null,
+    newValue: string | SpeciesData | null,
   ) => {
     event.preventDefault();
 
@@ -214,8 +218,8 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
       boxes: [
         {
           ...inference.boxes[0],
-          classId: selectedClass.classId,
-          label: selectedClass.label,
+          classId: selectedClass.seed_id,
+          label: selectedClass.label || "",
           comment: comment,
         },
       ],
@@ -230,7 +234,7 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
     if (inference != null) {
       setSelectedClass(
         classList.find((item) => {
-          return item.classId === inference.boxes[0].classId;
+          return item.seed_id === inference.boxes[0].classId;
         }) ?? defaultClass,
       );
     }
@@ -240,7 +244,11 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
     if (comment === "No Seed") {
       setSelectedClass({
         id: -1,
-        classId: "",
+        seed_id: "",
+        name_code: "",
+        family: "",
+        genus: "",
+        species: "",
         label: "",
       });
     }

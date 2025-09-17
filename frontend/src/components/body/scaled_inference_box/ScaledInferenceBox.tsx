@@ -1,8 +1,8 @@
 import { Button } from "@mui/material";
 import { MouseEvent, useState } from "react";
-import { BoxCSS, InferenceBox } from "../../../common/types";
+import { BoxCSS, InferenceBox } from "@common/types";
 import { SimpleFeedbackForm } from "../feedback_form";
-import { getScaledBounds } from "../../../common";
+import { getScaledBounds } from "@common";
 
 const ScaledInferenceBox = (props: {
   index: number;

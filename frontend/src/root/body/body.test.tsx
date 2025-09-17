@@ -4,8 +4,8 @@ import Body from "./body";
 
 process.env.VITE_BACKEND_URL = "somebackendurl";
 
-vi.mock("../../common", async (importOriginal) => {
-  const mod = await importOriginal<typeof import("../../common")>();
+vi.mock("@common", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("@common")>();
   return {
     ...mod,
     readAzureStorageDir: vi.fn(() => {

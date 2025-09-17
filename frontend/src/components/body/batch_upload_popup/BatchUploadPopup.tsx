@@ -30,12 +30,10 @@ import {
   useMemo,
   useState,
 } from "react";
-import {
-  batchUploadImage,
-  batchUploadInit,
-  requestClassList,
-} from "../../../common/api";
-import { BatchUploadMetadata, ClassData } from "../../../common/types";
+import { batchUploadImage, batchUploadInit } from "@common/api";
+import { validateImageFile } from "@common";
+import { BatchUploadMetadata, SpeciesData } from "@common/types";
+import { useSpeciesData } from "@hooks/useSpeciesData";
 import {
   folderNameSchema,
   seedCountSchema,
@@ -100,22 +98,34 @@ const BatchUploadPopup = (props: params) => {
   const [filesError, setFilesError] = useState<string>("");
   const [classError, setClassError] = useState<string>("");
 
-  const [classList, setClassList] = useState<ClassData[]>([]);
+  const { speciesData } = useSpeciesData(backendUrl);
+
+  const classList = useMemo(() => {
+    if (!speciesData?.seeds) return [];
+    return speciesData.seeds.map((seed, index) => ({
+      ...seed,
+      id: index,
+    }));
+  }, [speciesData]);
 
   const defaultClass = useMemo(() => {
     return {
       id: -1,
-      classId: "",
+      seed_id: "",
+      name_code: "",
+      family: "",
+      genus: "",
+      species: "",
       label: "",
     };
   }, []);
-  const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
-  const filter = createFilterOptions<ClassData>();
+  const [selectedClass, setSelectedClass] = useState<SpeciesData | null>(null);
+  const filter = createFilterOptions<SpeciesData>();
 
   const filteredClassList = (
-    options: ClassData[],
-    params: FilterOptionsState<ClassData>,
-  ): ClassData[] => {
+    options: SpeciesData[],
+    params: FilterOptionsState<SpeciesData>,
+  ): SpeciesData[] => {
     const { inputValue } = params;
     if (inputValue === "") {
       return options;
@@ -134,13 +144,13 @@ const BatchUploadPopup = (props: params) => {
     return filtered;
   };
 
-  const getClassLabel = (option: string | ClassData): string => {
-    return typeof option === "string" ? option : option.label;
+  const getClassLabel = (option: string | SpeciesData): string => {
+    return typeof option === "string" ? option : option.label || "";
   };
 
   const handleClassChange = (
     event: SyntheticEvent<Element, Event>,
-    newValue: string | ClassData | null,
+    newValue: string | SpeciesData | null,
   ) => {
     event.preventDefault();
     if (newValue == null) {
@@ -152,17 +162,35 @@ const BatchUploadPopup = (props: params) => {
       });
     } else {
       setSelectedClass(newValue);
-      setSeedId(newValue.classId);
+      setSeedId(newValue.seed_id);
     }
   };
 
-  const handleFilesSelected = (event: ChangeEvent<HTMLInputElement>): void => {
+  const handleFilesSelected = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> => {
     const selectedFiles = event.target.files;
     if (selectedFiles !== null) {
-      // Validate files
+      // Basic validation first (count, etc.)
       const validationResult = fileListSchema.safeParse(selectedFiles);
       if (!validationResult.success) {
         setFilesError(validationResult.error.issues[0].message);
+        return;
+      }
+
+      // Comprehensive validation for each file including dimensions
+      const errors: string[] = [];
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const fileValidation = await validateImageFile(selectedFiles[i]);
+        if (!fileValidation.isValid) {
+          errors.push(
+            `${selectedFiles[i].name}: ${fileValidation.errors.join(", ")}`,
+          );
+        }
+      }
+
+      if (errors.length > 0) {
+        setFilesError(`File validation failed:\n${errors.join("\n")}`);
         return;
       }
 
@@ -276,27 +304,6 @@ const BatchUploadPopup = (props: params) => {
     }
     setUploadSuccess(true);
   }, [fileStatus]);
-
-  useEffect(() => {
-    if (backendUrl == null || backendUrl === "") {
-      return;
-    }
-    requestClassList(backendUrl)
-      .then((response) => {
-        const list: ClassData[] = [];
-        response.seeds.forEach((element, index) => {
-          list.push({
-            id: index,
-            classId: element.seed_id,
-            label: element.seed_name,
-          });
-        });
-        setClassList(list);
-      })
-      .catch((error) => {
-        console.error("Error fetching class list: ", error);
-      });
-  }, [backendUrl]);
 
   useEffect(() => {
     if (sessionId === "" || files == null) {
@@ -563,6 +570,7 @@ const BatchUploadPopup = (props: params) => {
               <input
                 type="file"
                 multiple
+                accept="image/png"
                 onChange={handleFilesSelected}
                 hidden
               />

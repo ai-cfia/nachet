@@ -618,8 +618,22 @@ describe("requestClassList", () => {
   it("should return species data on success", async () => {
     const mockSpeciesData = {
       seeds: [
-        { seed_id: "1", seed_name: "Wheat" },
-        { seed_id: "2", seed_name: "Oat" },
+        {
+          seed_id: "1",
+          seed_name: "Wheat",
+          name_code: "WHEAT_001",
+          family: "Poaceae",
+          genus: "Triticum",
+          species: "aestivum",
+        },
+        {
+          seed_id: "2",
+          seed_name: "Oat",
+          name_code: "OAT_001",
+          family: "Poaceae",
+          genus: "Avena",
+          species: "sativa",
+        },
       ],
     };
     mockedAxios.mockResolvedValue({

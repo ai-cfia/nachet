@@ -97,6 +97,12 @@ export const imageFileSchema = z
     "File must be a valid image format (PNG)",
   );
 
+/**
+ * Enhanced image file schema with dimension validation
+ * Note: This only does basic file validation. Use validateImageFile() utility for dimension checking
+ */
+export const imageFileWithDimensionsSchema = imageFileSchema;
+
 export const fileListSchema = z
   .instanceof(FileList)
   .refine((files) => files.length > 0, "At least one file must be selected")
@@ -607,7 +613,13 @@ export const ApiSpeciesDataSchema = z.object({
   seeds: z.array(
     z.object({
       seed_id: z.string(),
-      seed_name: z.string(),
+      seed_name: z.string().nullable().optional(),
+      name_code: z.string(),
+      family: z.string(),
+      genus: z.string(),
+      species: z.string(),
+      id: z.number().optional(),
+      label: z.string().optional(),
     }),
   ),
 });

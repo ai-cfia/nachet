@@ -1,7 +1,7 @@
 {
   "name": "nachet-frontend",
   "private": true,
-  "version": "0.10.2",
+  "version": "0.10.3",
   "acia-cfia": {
     "backend-version": "1.10.1"
   },
@@ -29,9 +29,9 @@
     "@mui/material": "^7.3.1",
     "@saithodev/ts-appversion": "^2.2.0",
     "@testing-library/jest-dom": "^6.6.4",
-    "@types/react": "^19.1.9",
-    "@types/react-dom": "^19.1.7",
-    "axios": "^1.11.0",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "axios": "^1.12.0",
     "browser-image-compression": "^2.0.2",
     "dompurify": "^3.2.6",
     "express": "^5.1.0",
@@ -56,7 +56,8 @@
     "utif": "^3.1.0",
     "uuid": "^11.1.0",
     "web-vitals": "^5.1.0",
-    "zod": "^4.1.5"
+    "zod": "^4.1.5",
+    "zustand": "^5.0.8"
   },
   "browserslist": {
     "production": [
@@ -82,7 +83,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/file-saver": "^2.0.7",
     "@types/js-cookie": "^3.0.6",
-    "@types/node": "^20.19.10",
+    "@types/node": "^22.18.4",
     "@types/pako": "^2.0.3",
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.7",
