@@ -108,6 +108,7 @@ docker compose up -d
    ```
 
 3. **End-to-End Testing:**
+
    ```bash
    npm run test:e2e  # ~10 minutes. NEVER CANCEL. Set timeout to 20+ minutes.
    ```
