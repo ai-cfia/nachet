@@ -1,32 +1,36 @@
 name: Reusable Frontend Versions
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
 
 on:
   workflow_call:
     inputs:
       working-directory:
-        description: 'Working directory for the workflow'
+        description: "Working directory for the workflow"
         required: false
-        default: 'frontend'
+        default: "frontend"
         type: string
       package-name:
-        description: 'Package name for version checking'
+        description: "Package name for version checking"
         required: false
-        default: 'nachet-frontend'
+        default: "nachet-frontend"
         type: string
       skip-version-check:
-        description: 'Skip version comparison (for build workflows)'
+        description: "Skip version comparison (for build workflows)"
         required: false
         default: false
         type: boolean
     outputs:
       app-version:
-        description: 'Application version from package.json'
+        description: "Application version from package.json"
         value: ${{ jobs.versions.outputs.app-version }}
       node-version:
-        description: 'Node.js version from package.json engines'
+        description: "Node.js version from package.json engines"
         value: ${{ jobs.versions.outputs.node-version }}
       npm-version:
-        description: 'npm version from package.json engines'
+        description: "npm version from package.json engines"
         value: ${{ jobs.versions.outputs.npm-version }}
 
 jobs:
