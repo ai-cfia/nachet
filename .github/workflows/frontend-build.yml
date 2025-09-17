@@ -34,7 +34,7 @@ jobs:
     with:
       working-directory: frontend
       package-name: nachet-frontend
-      skip-version-check: true
+      skip-version-check: false
 
   build-and-push-gcr:
     needs: get-version
