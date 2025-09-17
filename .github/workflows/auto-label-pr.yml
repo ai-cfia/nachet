@@ -49,7 +49,7 @@ jobs:
 
       - name: Add frontend label
         if: steps.changed-files.outputs.frontend_changed == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             github.rest.issues.addLabels({
@@ -61,7 +61,7 @@ jobs:
 
       - name: Add backend label
         if: steps.changed-files.outputs.backend_changed == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             github.rest.issues.addLabels({
@@ -73,7 +73,7 @@ jobs:
 
       - name: Add datastore label
         if: steps.changed-files.outputs.datastore_changed == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             github.rest.issues.addLabels({
