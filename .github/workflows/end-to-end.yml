@@ -64,7 +64,7 @@ jobs:
         volumes:
           - ./e2e/mocks/nachet-27spp-classifier:/home/wiremock/mappings
       nachet-frontend:
-        image: ghcr.io/ai-cfia/nachet-frontend:0.10.2
+        image: ghcr.io/ai-cfia/nachet-frontend:0.10.5
         env:
           PUBLIC_URL: "."
           VITE_BACKEND_URL: "http://localhost:12435"
@@ -84,7 +84,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
       - name: Install Azurite
         run: npm install -g azurite
