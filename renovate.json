@@ -1,23 +1,43 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    ":dependencyDashboard"
-  ],
+  "extends": ["config:recommended", ":dependencyDashboard"],
   "packageRules": [
     {
-      "matchDepTypes": [
-        "*"
-      ],
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
-      ],
-      "groupName": "all non-major dependencies",
-      "groupSlug": "all-minor-patch",
-      "matchPackageNames": [
-        "*"
-      ]
+      "matchDepTypes": ["*"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "frontend non-major dependencies",
+      "groupSlug": "frontend-minor-patch",
+      "matchConfidence": ["high", "very high"],
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["frontend/**"]
+    },
+
+    {
+      "matchDepTypes": ["*"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "backend non-major dependencies",
+      "groupSlug": "backend-minor-patch",
+      "matchConfidence": ["high", "very high"],
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["backend/**"]
+    },
+
+    {
+      "matchDepTypes": ["*"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "frontend major dependencies",
+      "groupSlug": "frontend-major",
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["frontend/**"]
+    },
+
+    {
+      "matchDepTypes": ["*"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "backend major dependencies",
+      "groupSlug": "backend-major",
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["backend/**"]
     }
   ]
 }
