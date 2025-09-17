@@ -25,6 +25,24 @@
     {
       "matchDepTypes": ["*"],
       "matchUpdateTypes": ["major"],
+      "groupName": "frontend workflows major dependencies",
+      "groupSlug": "frontend-workflows-major",
+      "matchPackageNames": ["*"],
+      "matchFileNames": [".github/workflows/frontend-*"]
+    },
+
+    {
+      "matchDepTypes": ["*"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "backend workflows major dependencies",
+      "groupSlug": "backend-workflows-major",
+      "matchPackageNames": ["*"],
+      "matchFileNames": [".github/workflows/backend-*"]
+    },
+
+    {
+      "matchDepTypes": ["*"],
+      "matchUpdateTypes": ["major"],
       "groupName": "frontend major dependencies",
       "groupSlug": "frontend-major",
       "matchPackageNames": ["*"],
@@ -38,6 +56,16 @@
       "groupSlug": "backend-major",
       "matchPackageNames": ["*"],
       "matchFileNames": ["backend/**"]
+    },
+
+    {
+      "matchDepTypes": ["*"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "other minor dependencies",
+      "groupSlug": "other-minor",
+      "matchConfidence": ["low", "neutral"],
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["*"]
     }
   ]
 }
