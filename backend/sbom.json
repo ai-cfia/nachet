@@ -736,12 +736,6 @@
         }
       ],
       "name": "azure-identity",
-      "properties": [
-        {
-          "name": "cdx:python:package:required-extra",
-          "value": "aio"
-        }
-      ],
       "purl": "pkg:pypi/azure-identity@1.25.0",
       "type": "library",
       "version": "1.25.0"
@@ -1583,7 +1577,7 @@
       "version": "0.16.0"
     },
     {
-      "bom-ref": "h2==4.2.0",
+      "bom-ref": "h2==4.3.0",
       "description": "Pure-Python HTTP/2 protocol implementation",
       "externalReferences": [
         {
@@ -1616,9 +1610,9 @@
         }
       ],
       "name": "h2",
-      "purl": "pkg:pypi/h2@4.2.0",
+      "purl": "pkg:pypi/h2@4.3.0",
       "type": "library",
-      "version": "4.2.0"
+      "version": "4.3.0"
     },
     {
       "bom-ref": "hpack==4.1.0",
@@ -4240,7 +4234,7 @@
     {
       "dependsOn": [
         "h11==0.16.0",
-        "h2==4.2.0",
+        "h2==4.3.0",
         "priority==2.0.0",
         "typing_extensions==4.14.1",
         "uvloop==0.21.0",
@@ -4462,7 +4456,7 @@
         "Hypercorn==0.17.3",
         "coverage==7.10.6",
         "cryptography==45.0.7",
-        "h2==4.2.0",
+        "h2==4.3.0",
         "httpcore==1.0.9",
         "httpx==0.28.1",
         "idna==3.10",
@@ -4519,7 +4513,7 @@
         "hpack==4.1.0",
         "hyperframe==6.1.0"
       ],
-      "ref": "h2==4.2.0"
+      "ref": "h2==4.3.0"
     },
     {
       "ref": "hpack==4.1.0"
@@ -4529,7 +4523,7 @@
         "anyio==4.10.0",
         "certifi==2025.7.14",
         "h11==0.16.0",
-        "h2==4.2.0"
+        "h2==4.3.0"
       ],
       "ref": "httpcore==1.0.9"
     },
@@ -4542,7 +4536,7 @@
         "anyio==4.10.0",
         "certifi==2025.7.14",
         "click==8.2.1",
-        "h2==4.2.0",
+        "h2==4.3.0",
         "httpcore==1.0.9",
         "idna==3.10",
         "rich==14.1.0"
@@ -4854,6 +4848,7 @@
         "beartype==0.21.0",
         "cryptography==45.0.7",
         "fastapi==0.116.1",
+        "h2==4.3.0",
         "httpx==0.28.1",
         "numpy==1.26.4",
         "pillow==10.4.0",
@@ -4931,7 +4926,7 @@
     },
     {
       "dependsOn": [
-        "h2==4.2.0"
+        "h2==4.3.0"
       ],
       "ref": "urllib3==2.5.0"
     },
