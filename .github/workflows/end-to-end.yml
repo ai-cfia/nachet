@@ -79,7 +79,7 @@ jobs:
           sudo chown -R $USER:$USER $GITHUB_WORKSPACE
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
         uses: actions/setup-python@v4
