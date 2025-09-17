@@ -1096,7 +1096,7 @@
       "version": "7.10.6"
     },
     {
-      "bom-ref": "cryptography==45.0.7",
+      "bom-ref": "cryptography==46.0.0",
       "description": "cryptography is a package which provides cryptographic recipes and primitives to Python developers.",
       "externalReferences": [
         {
@@ -1132,9 +1132,9 @@
         }
       ],
       "name": "cryptography",
-      "purl": "pkg:pypi/cryptography@45.0.7",
+      "purl": "pkg:pypi/cryptography@46.0.0",
       "type": "library",
-      "version": "45.0.7"
+      "version": "46.0.0"
     },
     {
       "bom-ref": "cyclonedx-bom==7.0.0",
@@ -2295,41 +2295,36 @@
       "version": "6.6.4"
     },
     {
-      "bom-ref": "numpy==1.26.4",
+      "bom-ref": "numpy==2.3.3",
       "description": "Fundamental package for array computing in Python",
       "externalReferences": [
         {
-          "comment": "from packaging metadata Project-URL: Download",
+          "comment": "from packaging metadata Project-URL: download",
           "type": "distribution",
           "url": "https://pypi.org/project/numpy/#files"
         },
         {
-          "comment": "from packaging metadata Project-URL: Documentation",
+          "comment": "from packaging metadata Project-URL: documentation",
           "type": "documentation",
           "url": "https://numpy.org/doc/"
         },
         {
-          "comment": "from packaging metadata Project-URL: Tracker",
+          "comment": "from packaging metadata Project-URL: tracker",
           "type": "issue-tracker",
           "url": "https://github.com/numpy/numpy/issues"
         },
         {
-          "comment": "from packaging metadata Project-URL: Source",
+          "comment": "from packaging metadata Project-URL: source",
           "type": "other",
           "url": "https://github.com/numpy/numpy"
         },
         {
-          "comment": "from packaging metadata Project-URL: Release notes",
+          "comment": "from packaging metadata Project-URL: release notes",
           "type": "other",
           "url": "https://numpy.org/doc/stable/release"
         },
         {
-          "comment": "from packaging metadata Project-URL: Homepage",
-          "type": "website",
-          "url": "https://numpy.org"
-        },
-        {
-          "comment": "from packaging metadata: Home-page",
+          "comment": "from packaging metadata Project-URL: homepage",
           "type": "website",
           "url": "https://numpy.org"
         }
@@ -2343,9 +2338,9 @@
         }
       ],
       "name": "numpy",
-      "purl": "pkg:pypi/numpy@1.26.4",
+      "purl": "pkg:pypi/numpy@2.3.3",
       "type": "library",
-      "version": "1.26.4"
+      "version": "2.3.3"
     },
     {
       "bom-ref": "packageurl-python==0.17.5",
@@ -2405,7 +2400,7 @@
       "version": "25.0"
     },
     {
-      "bom-ref": "pillow==10.4.0",
+      "bom-ref": "pillow==11.3.0",
       "description": "Python Imaging Library (Fork)",
       "externalReferences": [
         {
@@ -2436,26 +2431,26 @@
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/python-pillow/Pillow/blob/main/CHANGES.rst"
+          "url": "https://github.com/python-pillow/Pillow/releases"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://python-pillow.org"
+          "url": "https://python-pillow.github.io"
         }
       ],
       "licenses": [
         {
           "license": {
             "acknowledgement": "declared",
-            "id": "HPND"
+            "id": "MIT-CMU"
           }
         }
       ],
       "name": "pillow",
-      "purl": "pkg:pypi/pillow@10.4.0",
+      "purl": "pkg:pypi/pillow@11.3.0",
       "type": "library",
-      "version": "10.4.0"
+      "version": "11.3.0"
     },
     {
       "bom-ref": "pip-requirements-parser==32.0.1",
@@ -4261,7 +4256,7 @@
     {
       "dependsOn": [
         "coverage==7.10.6",
-        "cryptography==45.0.7",
+        "cryptography==46.0.0",
         "pytest==8.4.1"
       ],
       "ref": "PyJWT==2.10.1"
@@ -4360,7 +4355,7 @@
     {
       "dependsOn": [
         "azure-core==1.35.0",
-        "cryptography==45.0.7",
+        "cryptography==46.0.0",
         "msal-extensions==1.3.1",
         "msal==1.32.3",
         "typing_extensions==4.14.1"
@@ -4370,7 +4365,7 @@
     {
       "dependsOn": [
         "azure-core==1.35.0",
-        "cryptography==45.0.7",
+        "cryptography==46.0.0",
         "isodate==0.7.2",
         "typing_extensions==4.14.1"
       ],
@@ -4382,7 +4377,7 @@
         "SQLAlchemy==2.0.43",
         "click==8.2.1",
         "coverage==7.10.6",
-        "numpy==1.26.4",
+        "numpy==2.3.3",
         "pytest==8.4.1",
         "typing_extensions==4.14.1"
       ],
@@ -4421,9 +4416,10 @@
         "cffi==1.17.1",
         "click==8.2.1",
         "pytest-cov==6.2.1",
-        "pytest==8.4.1"
+        "pytest==8.4.1",
+        "typing_extensions==4.14.1"
       ],
-      "ref": "cryptography==45.0.7"
+      "ref": "cryptography==46.0.0"
     },
     {
       "dependsOn": [
@@ -4455,7 +4451,7 @@
       "dependsOn": [
         "Hypercorn==0.17.3",
         "coverage==7.10.6",
-        "cryptography==45.0.7",
+        "cryptography==46.0.0",
         "h2==4.3.0",
         "httpcore==1.0.9",
         "httpx==0.28.1",
@@ -4627,7 +4623,7 @@
     {
       "dependsOn": [
         "PyJWT==2.10.1",
-        "cryptography==45.0.7",
+        "cryptography==46.0.0",
         "requests==2.32.4"
       ],
       "ref": "msal==1.32.3"
@@ -4639,7 +4635,7 @@
       "ref": "multidict==6.6.4"
     },
     {
-      "ref": "numpy==1.26.4"
+      "ref": "numpy==2.3.3"
     },
     {
       "dependsOn": [
@@ -4660,7 +4656,7 @@
         "pytest==8.4.1",
         "typing_extensions==4.14.1"
       ],
-      "ref": "pillow==10.4.0"
+      "ref": "pillow==11.3.0"
     },
     {
       "dependsOn": [
@@ -4846,12 +4842,12 @@
         "azure-identity==1.25.0",
         "azure-storage-blob==12.26.0",
         "beartype==0.21.0",
-        "cryptography==45.0.7",
+        "cryptography==46.0.0",
         "fastapi==0.116.1",
         "h2==4.3.0",
         "httpx==0.28.1",
-        "numpy==1.26.4",
-        "pillow==10.4.0",
+        "numpy==2.3.3",
+        "pillow==11.3.0",
         "psycopg-pool==3.2.6",
         "psycopg==3.2.10",
         "pydantic-settings==2.10.1",
@@ -5013,7 +5009,7 @@
       ],
       "name": "nachet-backend",
       "type": "application",
-      "version": "1.11.3"
+      "version": "1.11.4"
     },
     "properties": [
       {
