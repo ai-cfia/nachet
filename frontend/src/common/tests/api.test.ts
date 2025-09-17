@@ -624,7 +624,7 @@ describe("requestClassList", () => {
           name_code: "WHEAT_001",
           family: "Poaceae",
           genus: "Triticum",
-          species: "aestivum"
+          species: "aestivum",
         },
         {
           seed_id: "2",
@@ -632,7 +632,7 @@ describe("requestClassList", () => {
           name_code: "OAT_001",
           family: "Poaceae",
           genus: "Avena",
-          species: "sativa"
+          species: "sativa",
         },
       ],
     };
