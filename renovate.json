@@ -63,6 +63,15 @@
       "groupSlug": "other-minor",
       "matchPackageNames": ["*"],
       "matchFileNames": ["*"]
+    },
+
+    {
+      "matchDepTypes": ["*"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "other major dependencies",
+      "groupSlug": "other-major",
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["*"]
     }
   ]
 }
