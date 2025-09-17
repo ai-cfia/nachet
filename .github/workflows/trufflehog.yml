@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Trufflehog
-        uses: trufflesecurity/trufflehog@0f58ae7c5036094a1e3e750d18772af92821b503
+        uses: trufflesecurity/trufflehog@bd45a706e14dfe1909578fc62285fbe31a1e5312
         with:
           base: ""
           head: ${{ github.ref_name }}
