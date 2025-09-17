@@ -7,7 +7,6 @@
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "frontend non-major dependencies",
       "groupSlug": "frontend-minor-patch",
-      "matchConfidence": ["high", "very high"],
       "matchPackageNames": ["*"],
       "matchFileNames": ["frontend/**"]
     },
@@ -17,7 +16,6 @@
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "backend non-major dependencies",
       "groupSlug": "backend-minor-patch",
-      "matchConfidence": ["high", "very high"],
       "matchPackageNames": ["*"],
       "matchFileNames": ["backend/**"]
     },
@@ -63,7 +61,6 @@
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "other minor dependencies",
       "groupSlug": "other-minor",
-      "matchConfidence": ["low", "neutral"],
       "matchPackageNames": ["*"],
       "matchFileNames": ["*"]
     }
