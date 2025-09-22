@@ -2,7 +2,7 @@ trigger: none
 pr: none
 
 pool:
-  name: linux-internal-vmss-agent
+  vmImage: 'ubuntu-latest'
 
 variables:
   - group: nachet-dev
@@ -63,7 +63,7 @@ stages:
       - deployment: TerraformDestroy
         displayName: "DESTROY ALL RESOURCES"
         pool:
-          name: linux-internal-vmss-agent
+          vmImage: 'ubuntu-latest'
         environment: "TFApproval"
         strategy:
           runOnce:

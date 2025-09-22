@@ -1,3 +1,25 @@
+# Terraform State Storage Account Private Endpoint
+data "azurerm_storage_account" "tfstate" {
+  name                = "tfstatenachet"
+  resource_group_name = var.resource_group_name
+}
+
+resource "azurerm_private_endpoint" "tfstate_storage" {
+  name                = "tfstatenachet-pe"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  subnet_id           = var.private_endpoint_subnet_id
+
+  private_service_connection {
+    name                           = "tfstatenachet-connection"
+    is_manual_connection           = false
+    private_connection_resource_id = data.azurerm_storage_account.tfstate.id
+    subresource_names              = ["blob"]
+  }
+
+  tags = var.tags
+}
+
 # Container App Environment
 module "container_app_environment" {
   source = "../modules/container-app-environment"
