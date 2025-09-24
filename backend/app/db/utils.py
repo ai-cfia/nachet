@@ -37,7 +37,7 @@ class SessionManager:
             raise RuntimeError("SessionManager not initialized. Call init() first.")
         return self._sessionmaker
 
-    async def get_session(self) -> AsyncSession:
+    def get_session(self) -> AsyncSession:
         """Get a new async session."""
         if not self._sessionmaker:
             raise RuntimeError("SessionManager not initialized. Call init() first.")
@@ -71,7 +71,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         async def read_root(db: AsyncSession = Depends(get_db)):
             # Use db session here
     """
-    session = await sessionmanager.get_session()
+    session = sessionmanager.get_session()
     try:
         yield session
         await session.commit()
