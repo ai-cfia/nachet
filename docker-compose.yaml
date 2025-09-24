@@ -44,11 +44,16 @@ services:
 
   nachet-backend:
     container_name: nachet-backend
+
+    # uncomment these to build backend from source
     build:
       context: ./backend
       dockerfile: Dockerfile.local
+    image: local/nachet-backend:latest
+
+    # uncomment these to use prebuilt image from ghcr
     # image: ghcr.io/ai-cfia/nachet-backend:1.0.4
-    # command: ["hypercorn -b :5174 app:app"]
+    command: ["uv", "run", "hypercorn", "-b", ":5174", "app/main:app"]
     env_file:
       # - ./nachet-backend/.env.secrets.local
       # - ./nachet-backend/.env.config.local
@@ -63,6 +68,26 @@ services:
     # network_mode: bridge
     networks:
       - nachet-local-network
+  
+  nachet-backend-v1:
+    container_name: nachet-backend-v1
+    image: ghcr.io/ai-cfia/nachet-backend:265
+    command: ["uv", "run", "hypercorn", "-b", ":5175", "app:app"]
+    env_file:
+      # - ./nachet-backend/.env.secrets.local
+      # - ./nachet-backend/.env.config.local
+      - ./backend/.env.bkp.local
+    ports:
+      - "12437:5175"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      - nachet-db
+      - nachet-blob
+    # network_mode: bridge
+    networks:
+      - nachet-local-network
+      - nachet-network
 
   nachet-frontend:
     container_name: nachet-frontend
@@ -180,3 +205,5 @@ services:
 
 networks:
   nachet-local-network: {}
+  nachet-network:
+    external: true
