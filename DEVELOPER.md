@@ -173,3 +173,10 @@ nachet/backend/app/db $ uv run validate_db_synchronized.py
 ## Development
 
 At this point you will have the full stack, you will be able to test integration with all components.
+
+## Backend changes
+
+- When making changes to the backend, ensure that you update the database schema if necessary. Use Alembic for managing database migrations.
+- the first step should be to bump the version in the `backend/pyproject.toml` file.
+- build your changes locally `nachet $ docker compose -f docker-compose.yaml build nachet-backend --no-cache`
+- deploy your changes locally `nachet $ docker compose -f docker-compose.yaml up -d nachet-backend --force-recreate`
