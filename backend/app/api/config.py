@@ -65,18 +65,24 @@ class Settings(BaseSettings):
     blob_storage_endpoint_suffix: str | None = None
     blob_storage_endpoint_base: str | None = None
 
+    nachet_frontend_url: str | None = None
+
     # api settings
     base_path: str = ""
     project_name: str = "Nachet API"
     swagger_path: str = "/docs"
     swagger_ui_client_id: str | None = None
-    allowed_origins: list[str] = [
-        "localhost",
-        "http://localhost:5173",
-        "http://localhost:5174",
-    ]
     testing: bool = True
     debug: bool = False
+    security_headers_preset: str = "strict"
+
+    @computed_field
+    @property
+    def allowed_origins(self) -> list[str]:
+        origins = []
+        if self.nachet_frontend_url:
+            origins.append(self.nachet_frontend_url)
+        return origins or ["http://localhost:5173"]  # fallback default
 
     @computed_field
     @property
@@ -203,12 +209,13 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
+        allow_origin_regex="/^https?:\/\/localhost(:[0-9]{1,5})?$/",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
-    app.add_middleware(HeadersMiddleware, preset="strict")
+    app.add_middleware(HeadersMiddleware, preset=settings.security_headers_preset)
 
     # pool = ConnectionPool(
     #     open=False,

@@ -64,10 +64,10 @@ async def get_seed_data():
     return seed_data
 
 
-@router.get(
+@router.post(
     "/get-user-id",
     status_code=status.HTTP_200_OK,
     name="Get User ID from email [NO AUTH REQUIRED]",
 )
-async def get_user_id(email: str):
+async def get_user_id():
     return {"user_id": "8ea46a6b-7d37-4fbb-a66f-775112376e16"}
