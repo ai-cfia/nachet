@@ -146,10 +146,23 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
 
     async with async_session.begin() as session:
         # Create pipeline
+        from datetime import date
+
         pipeline = Pipeline(
             id=uuid.UUID("cc901051-34e0-4e21-803f-76e159848046"),
             name="27 spp RCNN SWIN",
             active=True,
+            # Use new normalized columns
+            created_by="Test User",
+            creation_date=date(2025, 1, 30),
+            description="Use a Swin transformer to classify the seeds",
+            job_name="",
+            version="1",
+            dataset="",
+            identifiable=[],
+            metrics=[],
+            default=True,
+            # Keep data field for backward compatibility with existing structure
             data={
                 "models": ["seed-detector-rcnn-1", "swin-27-spp", "swin-15e-spp"],
                 "created_by": "Test User",

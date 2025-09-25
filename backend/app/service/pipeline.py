@@ -34,7 +34,16 @@ class PipelineService:
                     pipeline_dict = {
                         "pipeline_id": str(pipeline.id),
                         "pipeline_name": pipeline.name,
-                        "data": pipeline.data,
+                        "created_by": pipeline.created_by,
+                        "creation_date": pipeline.creation_date.isoformat()
+                        if pipeline.creation_date
+                        else None,
+                        "description": pipeline.description,
+                        "job_name": pipeline.job_name,
+                        "version": pipeline.version,
+                        "dataset": pipeline.dataset,
+                        "identifiable": pipeline.identifiable or [],
+                        "metrics": pipeline.metrics or [],
                         "models": [],
                     }
 
@@ -84,27 +93,31 @@ class PipelineService:
                     # Get model names for this pipeline
                     pipeline_models = []
                     for pipeline_model in pipeline.pipeline_models:
-                        if pipeline_model.active and pipeline_model.model.active:
-                            pipeline_models.append(pipeline_model.model.name)
+                        pipeline_models.append(pipeline_model.model.name)
+                        # if a model is inactive, the entire pipeline should be made inactive
+                        # if a model is being replaced a new pipeline should be created
 
                     # Create a ModelMetadata entry for this pipeline
                     if pipeline_models:  # Only include pipelines that have models
                         metadata = {
-                            "created_by": pipeline_models[0] if pipeline_models else "unknown",  # Use first model's creator as placeholder
-                            "creation_date": pipeline.date_created.isoformat(),
-                            "dataset": pipeline.data.get("dataset", "") if isinstance(pipeline.data, dict) else "",
-                            "description": pipeline.data.get("description", "") if isinstance(pipeline.data, dict) else "",
-                            "identifiable": pipeline.data.get("identifiable", []) if isinstance(pipeline.data, dict) else [],
-                            "job_name": pipeline.data.get("job_name", "") if isinstance(pipeline.data, dict) else "",
-                            "metrics": pipeline.data.get("metrics", []) if isinstance(pipeline.data, dict) else [],
+                            "created_by": pipeline.created_by or "unknown",
+                            "creation_date": pipeline.creation_date.isoformat()
+                            if pipeline.creation_date
+                            else pipeline.date_created.isoformat(),
+                            "dataset": pipeline.dataset or "",
+                            "description": pipeline.description or "",
+                            "identifiable": pipeline.identifiable or [],
+                            "job_name": pipeline.job_name or "",
+                            "metrics": pipeline.metrics or [],
                             "model_name": pipeline.name,
                             "models": pipeline_models,
                             "pipeline_name": pipeline.name,
+                            "pipeline_id": str(pipeline.id),
+                            "version": pipeline.version or "",
                         }
 
-                        # Check if this is the default pipeline (you may need to adjust this logic)
-                        # For now, we'll mark the first pipeline as default or check pipeline.data
-                        metadata["default"] = pipeline.data.get("default", False) if isinstance(pipeline.data, dict) else False
+                        # Use the new default column
+                        metadata["default"] = pipeline.default or False
 
                         metadata_list.append(metadata)
 
@@ -141,7 +154,16 @@ class PipelineService:
                 pipeline_dict = {
                     "pipeline_id": str(pipeline.id),
                     "pipeline_name": pipeline.name,
-                    "data": pipeline.data,
+                    "created_by": pipeline.created_by,
+                    "creation_date": pipeline.creation_date.isoformat()
+                    if pipeline.creation_date
+                    else None,
+                    "description": pipeline.description,
+                    "job_name": pipeline.job_name,
+                    "version": pipeline.version,
+                    "dataset": pipeline.dataset,
+                    "identifiable": pipeline.identifiable or [],
+                    "metrics": pipeline.metrics or [],
                     "models": [],
                 }
 

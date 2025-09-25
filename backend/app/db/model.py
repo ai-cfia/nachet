@@ -4,6 +4,7 @@ from sqlalchemy import (
     Integer,
     Boolean,
     DateTime,
+    Date,
     Text,
     JSON,
     ForeignKey,
@@ -14,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.sql import func
 from typing import List, Optional
 from uuid import uuid4  # , UUID
-from datetime import datetime
+from datetime import datetime, date
 
 
 class Base(AsyncAttrs, DeclarativeBase):
@@ -117,6 +118,21 @@ class Pipeline(Base):
         DateTime(timezone=True), nullable=False, default=func.current_timestamp()
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # New normalized columns from JSON data field
+    created_by: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    creation_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    job_name: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    version: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    dataset: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    identifiable: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    metrics: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    default: Mapped[Optional[bool]] = mapped_column(
+        Boolean, nullable=True, default=False
+    )
+
+    # Keep data field for backward compatibility during migration
     data: Mapped[dict] = mapped_column(JSON, nullable=False)
 
     # Relationships
