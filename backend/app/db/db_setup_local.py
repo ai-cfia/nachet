@@ -10,6 +10,7 @@ from app.db.utils import (
     sessionmanager,
     reset_database_schema,
     execute_sql_file,
+    check_if_new_migration_file_needed,
 )
 from app.api.config import get_settings
 from app.db.data.data_seed_local import seed_dev_data
@@ -38,8 +39,6 @@ async def load_database():
 
     await validate_orm_classes_async(db_url)
 
-    await check_migration_file_needed()
-
     # Initialize SessionManager
     print("\n🔌 Initializing database SessionManager...")
     db_conn_info = settings.db_conn_info.copy()
@@ -56,6 +55,10 @@ async def load_database():
     os.environ["SQLALCHEMY_MIGRATION_LOG_LEVEL"] = "WARNING"
     os.environ["ALEMBIC_MIGRATION_LOG_LEVEL"] = "WARNING"
     await run_migrations(async_engine=async_engine, target_version="head")
+
+    # This check happens here because alembic check does not take into account unapplied migrations
+    print("\n🔍 Checking if a new migration file is needed...")
+    await check_if_new_migration_file_needed(async_engine)
 
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
