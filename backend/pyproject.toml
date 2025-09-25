@@ -53,8 +53,8 @@ dependencies = [
 ]
 
 [tool.nachet-db]
-db-schema-version = "0.0.12"
-previous-db-schema-version = "0.0.11"
+db-schema-version = "e47e20232a02"
+previous-db-schema-version = "e63d0798d58d"
 
 [dependency-groups]
 dev = [
