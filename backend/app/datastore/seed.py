@@ -13,7 +13,7 @@ class SeedDataService:
 
     async def get_seed_data(self) -> List[Dict[str, Any]]:
         query = select(
-            Seed.id,
+            Seed.id.label("seed_id"),
             Seed.name_code,
             Seed.family,
             Seed.genus,
