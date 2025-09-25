@@ -54,12 +54,12 @@ async def get_model_endpoints_metadata():
 
 
 @router.get(
-    "/seed",
+    "/seeds",
     status_code=status.HTTP_200_OK,
     name="Get Seed Data [NO AUTH REQUIRED]",
 )
 async def get_seed_data():
-    print("/seed")
+    print("/seeds")
     seed_data = await SeedService.get_seed_data()
     return seed_data
 
