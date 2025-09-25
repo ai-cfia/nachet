@@ -1,5 +1,5 @@
 from fastapi import APIRouter, status
-from app.service.pipeline import PipelineService
+from app.service import PipelineService, SeedService
 
 router = APIRouter()
 
@@ -48,8 +48,21 @@ async def get_pipelines():
     name="Get Model Endpoints Metadata [NO AUTH REQUIRED]",
 )
 async def get_model_endpoints_metadata():
+    print("/model-endpoints-metadata")
     metadata = await PipelineService.get_model_endpoints_metadata()
     return metadata
+
+
+@router.get(
+    "/seed",
+    status_code=status.HTTP_200_OK,
+    name="Get Seed Data [NO AUTH REQUIRED]",
+)
+async def get_seed_data():
+    print("/seed")
+    seed_data = await SeedService.get_seed_data()
+    return seed_data
+
 
 @router.get(
     "/get-user-id",

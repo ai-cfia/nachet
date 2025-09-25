@@ -5,7 +5,7 @@ Pipeline service module.
 from typing import List, Dict, Any, Optional
 from fastapi import HTTPException
 from app.db.utils import sessionmanager
-from app.datastore.pipeline import PipelineDataService
+from app.datastore import PipelineDataService
 
 
 class PipelineService:

@@ -180,3 +180,4 @@ At this point you will have the full stack, you will be able to test integration
 - the first step should be to bump the version in the `backend/pyproject.toml` file.
 - build your changes locally `nachet $ docker compose -f docker-compose.yaml build nachet-backend --no-cache`
 - deploy your changes locally `nachet $ docker compose -f docker-compose.yaml up -d nachet-backend --force-recreate`
+- quick check module imports are good `nachet/backend $  python -c "import app.main"`
