@@ -57,7 +57,7 @@ services:
     env_file:
       # - ./nachet-backend/.env.secrets.local
       # - ./nachet-backend/.env.config.local
-      - ./backend/.env.local
+      - ./backend/.env.container.local
     ports:
       - "12435:5174"
     extra_hosts:
