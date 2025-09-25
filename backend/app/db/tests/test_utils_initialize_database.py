@@ -394,7 +394,7 @@ class TestInitializeDatabaseIntegration:
             assert sessionmanager._sessionmaker is not None
 
             # Verify we can get sessions
-            session = await sessionmanager.get_session()
+            session = sessionmanager.get_session()
             assert session is not None
             await session.close()
 
@@ -443,7 +443,7 @@ class TestInitializeDatabaseIntegration:
             assert sessionmanager._sessionmaker is not None
 
             # Verify we can get sessions
-            session = await sessionmanager.get_session()
+            session = sessionmanager.get_session()
             assert session is not None
             await session.close()
 

@@ -75,8 +75,7 @@ class TestSessionManager:
         ):
             sm.get_session_factory()
 
-    @pytest.mark.asyncio
-    async def test_session_manager_get_session_success(self):
+    def test_session_manager_get_session_success(self):
         """Test successful get_session."""
         sm = SessionManager()
         mock_session = AsyncMock(spec=AsyncSession)
@@ -84,20 +83,19 @@ class TestSessionManager:
         mock_sessionmaker.return_value = mock_session
         sm._sessionmaker = mock_sessionmaker
 
-        result = await sm.get_session()
+        result = sm.get_session()
 
         mock_sessionmaker.assert_called_once()
         assert result == mock_session
 
-    @pytest.mark.asyncio
-    async def test_session_manager_get_session_not_initialized(self):
+    def test_session_manager_get_session_not_initialized(self):
         """Test get_session when not initialized."""
         sm = SessionManager()
 
         with pytest.raises(
             RuntimeError, match="SessionManager not initialized. Call init\\(\\) first."
         ):
-            await sm.get_session()
+            sm.get_session()
 
     def test_session_manager_get_engine_success(self):
         """Test successful get_engine."""
@@ -222,11 +220,8 @@ class TestGetDb:
         # Setup mock session
         mock_session = AsyncMock(spec=AsyncSession)
 
-        # Mock the get_session method to return our mock session as a coroutine
-        async def mock_get_session():
-            return mock_session
-
-        with patch.object(sessionmanager, 'get_session', side_effect=mock_get_session):
+        # Mock the get_session method to return our mock session directly (synchronously)
+        with patch.object(sessionmanager, 'get_session', return_value=mock_session):
             # Test get_db
             async_gen = get_db()
             yielded_session = await async_gen.__anext__()
@@ -254,11 +249,8 @@ class TestGetDb:
         # Setup mock session
         mock_session = AsyncMock(spec=AsyncSession)
 
-        # Mock the get_session method to return our mock session as a coroutine
-        async def mock_get_session():
-            return mock_session
-
-        with patch.object(sessionmanager, 'get_session', side_effect=mock_get_session):
+        # Mock the get_session method to return our mock session directly (synchronously)
+        with patch.object(sessionmanager, 'get_session', return_value=mock_session):
             # Test get_db with exception
             async_gen = get_db()
             await async_gen.__anext__()
@@ -383,7 +375,7 @@ class TestSessionManagerIntegration:
         assert engine is not None
 
         # Get session
-        session = await sessionmanager.get_session()
+        session = sessionmanager.get_session()
         assert session is not None
         await session.close()
 
@@ -416,8 +408,8 @@ class TestSessionManagerIntegration:
         sessionmanager.init("sqlite+aiosqlite:///:memory:", echo=False)
 
         # Get multiple sessions
-        session1 = await sessionmanager.get_session()
-        session2 = await sessionmanager.get_session()
+        session1 = sessionmanager.get_session()
+        session2 = sessionmanager.get_session()
 
         assert session1 is not session2
 
