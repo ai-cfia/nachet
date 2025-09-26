@@ -71,7 +71,7 @@ services:
   
   nachet-backend-v1:
     container_name: nachet-backend-v1
-    image: ghcr.io/ai-cfia/nachet-backend:265
+    image: ghcr.io/ai-cfia/nachet-backend:362
     command: ["uv", "run", "hypercorn", "-b", ":5175", "app:app"]
     env_file:
       # - ./nachet-backend/.env.secrets.local
