@@ -31,7 +31,7 @@ import {
   LabelOccurrences,
   ModelMetadata,
 } from "@common/types";
-import Cookies from "js-cookie";
+// import Cookies from "js-cookie";
 import BatchUploadPopup from "../../components/body/batch_upload_popup";
 
 interface params {
