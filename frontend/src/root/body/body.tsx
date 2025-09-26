@@ -9,9 +9,10 @@ import ModelInfoPopup from "../../components/body/model_popup";
 import SwitchDevice from "../../components/body/switch_device_popup";
 import CreateDirectory from "../../components/body/create_directory_popup";
 import DeleteDirectoryPopup from "../../components/body/del_directory_popup";
-import SignUp from "../../components/body/authentication/signup";
+import OAuthLogin from "../../components/body/authentication/OAuthLogin";
 import CreativeCommonsPopup from "../../components/body/creative_commons_popup";
 import { useBackendUrl, useDecoderTiff } from "@hooks";
+import { AccountInfo } from "@azure/msal-browser";
 import {
   getLabelOccurrence,
   loadCaptureToCache,
@@ -30,7 +31,7 @@ import {
   LabelOccurrences,
   ModelMetadata,
 } from "@common/types";
-import Cookies from "js-cookie";
+// import Cookies from "js-cookie";
 import BatchUploadPopup from "../../components/body/batch_upload_popup";
 
 interface params {
@@ -46,7 +47,7 @@ interface params {
   signUpOpen: boolean;
   signedIn: boolean;
   setUuid: React.Dispatch<React.SetStateAction<string>>;
-  setSignedIn: React.Dispatch<React.SetStateAction<boolean>>;
+  user: AccountInfo | null;
 }
 
 const Body: React.FC<params> = (props) => {
@@ -92,41 +93,28 @@ const Body: React.FC<params> = (props) => {
   const decodedTiff = useDecoderTiff(imageTiff);
   const backendUrl = useBackendUrl();
 
-  const onSignIn = (): void => {
-    props.setSignedIn(true);
-  };
-  const { setSignUpOpen, setUuid, signedIn, setSignedIn } = props;
+  const { setSignUpOpen, setUuid, signedIn } = props;
 
-  // uuid will check if an email is already stored in the cookie, if not setsignup open
+  // OAuth-based UUID fetching
   const getUuid = useCallback(async (): Promise<void> => {
+    if (!signedIn || !props.user?.username) {
+      if (!signedIn) {
+        setSignUpOpen(true);
+      }
+      return;
+    }
+
     try {
-      await requestUUID(backendUrl, "").then((response) => {
+      // Use the user's email from OAuth token for UUID request
+      const email = props.user.username; // In Azure AD, username typically contains the email
+      await requestUUID(backendUrl, email).then((response) => {
         setUuid(response.user_id);
-        setSignedIn(true);
       });
     } catch (error) {
-      // External devs do not have access to the jxVouchCookie
-      const INTERNAL = true;
-      if (INTERNAL) {
-        console.error(error);
-        alert("Error fetching UUID, see console for details");
-      } else {
-        const email = Cookies.get("user-email");
-        if (email == null || !email.includes("@") || !signedIn) {
-          setSignUpOpen(true);
-        } else {
-          await requestUUID(backendUrl, email)
-            .then((response) => {
-              setUuid(response.user_id);
-            })
-            .catch((error) => {
-              console.error(error);
-              alert("Error fetching UUID, see console for details");
-            });
-        }
-      }
+      console.error("Error fetching UUID:", error);
+      alert("Error fetching UUID, see console for details");
     }
-  }, [backendUrl, setUuid, setSignUpOpen, signedIn, setSignedIn]);
+  }, [backendUrl, setUuid, setSignUpOpen, signedIn, props.user]);
 
   useEffect(() => {
     getUuid();
@@ -406,9 +394,7 @@ const Body: React.FC<params> = (props) => {
           setReadAzureStorage={setReadAzureStorage}
         />
       )}
-      {props.signUpOpen && (
-        <SignUp setSignUpOpen={props.setSignUpOpen} onSignIn={onSignIn} />
-      )}
+      {props.signUpOpen && <OAuthLogin setSignUpOpen={props.setSignUpOpen} />}
       {props.creativeCommonsPopupOpen && (
         <CreativeCommonsPopup
           setCreativeCommonsPopupOpen={props.setCreativeCommonsPopupOpen}

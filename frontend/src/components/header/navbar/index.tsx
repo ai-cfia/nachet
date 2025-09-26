@@ -4,6 +4,7 @@ import { Nav, NavbarContainer, NavLogo, NavMenu } from "./indexElements";
 import { Button, IconButton } from "@mui/material";
 import { colours } from "../../../styles/colours";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import { useAuth } from "../../../common/auth/useAuth";
 
 interface params {
   windowSize: {
@@ -11,12 +12,12 @@ interface params {
     height: number;
   };
   signedIn: boolean;
-  setSignedIn: React.Dispatch<React.SetStateAction<boolean>>;
   setSignUpOpen: React.Dispatch<React.SetStateAction<boolean>>;
   signUpOpen: boolean;
 }
 
 const Navbar: React.FC<params> = (props) => {
+  const { logout } = useAuth();
   const buttonStyle = {
     marginRight: 0,
     marginLeft: 0,
@@ -63,8 +64,12 @@ const Navbar: React.FC<params> = (props) => {
             <div style={{ marginRight: "1.6vh" }}>
               <IconButton
                 sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
-                onClick={() => {
-                  props.setSignedIn(!props.signedIn);
+                onClick={async () => {
+                  try {
+                    await logout();
+                  } catch (error) {
+                    console.error("Logout failed:", error);
+                  }
                 }}
               >
                 <AccountCircleIcon

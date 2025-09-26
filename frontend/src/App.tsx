@@ -1,11 +1,11 @@
 import { HashRouter as Router, Route, Routes } from "react-router-dom";
 import { useCallback, Fragment, useState, useEffect } from "react";
-// import { v4 as uuidv4 } from "uuid";
 import Cookies from "js-cookie";
 import Navbar from "./components/header/navbar";
 import Body from "./root/body";
 import Footer from "./components/footer";
 import Appbar from "./components/header/appbar";
+import { useAuth } from "./common/auth/useAuth";
 
 interface AppProps {
   basename?: string;
@@ -17,12 +17,13 @@ function App({ basename = process.env.REACT_APP_BASENAME ?? "/" }: AppProps) {
     height: window.innerHeight,
   });
   const [uuid, setUuid] = useState<string>("");
-  // const [container_uuid, setContainerUuid] = useState<string>("");
   const [creativeCommonsPopupOpen, setCreativeCommonsPopupOpen] =
     useState<boolean>(false);
   const [switchLanguage, setSwitchLanguage] = useState<boolean>(false);
-  const [signedIn, setSignedIn] = useState<boolean>(true);
   const [signUpOpen, setSignUpOpen] = useState<boolean>(false);
+
+  // Use OAuth authentication state
+  const { isAuthenticated, user } = useAuth();
 
   const handleCreativeCommonsAgreement = (agree: boolean): void => {
     // set a cookie to remember the users choice for 10 years (user choice should be stored in authentication database in the future)
@@ -69,8 +70,7 @@ function App({ basename = process.env.REACT_APP_BASENAME ?? "/" }: AppProps) {
       <Fragment>
         <Navbar
           windowSize={windowSize}
-          setSignedIn={setSignedIn}
-          signedIn={signedIn}
+          signedIn={isAuthenticated}
           setSignUpOpen={setSignUpOpen}
           signUpOpen={signUpOpen}
         />
@@ -91,9 +91,9 @@ function App({ basename = process.env.REACT_APP_BASENAME ?? "/" }: AppProps) {
                 handleCreativeCommonsAgreement={handleCreativeCommonsAgreement}
                 setSignUpOpen={setSignUpOpen}
                 signUpOpen={signUpOpen}
-                signedIn={signedIn}
-                setSignedIn={setSignedIn}
+                signedIn={isAuthenticated}
                 setUuid={setUuid}
+                user={user}
               />
             }
           />
