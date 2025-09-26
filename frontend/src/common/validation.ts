@@ -613,11 +613,11 @@ export const ApiSpeciesDataSchema = z.object({
   seeds: z.array(
     z.object({
       seed_id: z.string(),
-      seed_name: z.string().nullable().optional(),
       name_code: z.string(),
       family: z.string(),
       genus: z.string(),
       species: z.string(),
+      seed_name: z.string().nullable().optional(),
       id: z.number().optional(),
       label: z.string().optional(),
     }),
@@ -632,14 +632,16 @@ export const DirectoryPictureApiSchema = z.object({
 });
 
 export const AzureStorageDirectoryItemApiSchema = z.object({
-  folder_name: z.string(),
-  nb_pictures: z.number(),
-  picture_set_id: z.string(),
-  pictures: z.array(DirectoryPictureApiSchema),
+  id: z.string(),
+  name: z.string(),
+  folder_prefix: z.string(),
+  description: z.string().nullable(),
+  picture_count: z.number(),
+  // pictures: z.array(DirectoryPictureApiSchema),
 });
 
 export const ReadAzureStorageDirApiSchema = z.object({
-  folders: z.array(AzureStorageDirectoryItemApiSchema),
+  directories: z.array(AzureStorageDirectoryItemApiSchema),
 });
 
 // Simple response schemas

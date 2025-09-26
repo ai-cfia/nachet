@@ -129,23 +129,31 @@ interface DirectoryPicture {
 }
 
 interface AzureStorageDirectoryItem {
+  folderId: string;
   folderName: string;
-  nbPictures: number;
-  pictureSetId: string;
-  pictures: DirectoryPicture[];
+  folderPrefix: string;
+  description: string | null;
+  pictureCount: number;
 }
 
 interface AzureStorageDirectoryItemApi {
-  folder_name: string;
-  nb_pictures: number;
-  picture_set_id: string;
-  pictures: {
-    inference_exists: boolean;
-    is_validation: boolean;
-    picture_id: string;
-  }[];
+  id: string;
+  name: string;
+  folder_prefix: string;
+  description: string | null;
+  picture_count: number;
+  // pictures: DirectoryPictureApi[];
 }
+//   folder_name: string;
+//   nb_pictures: number;
+//   picture_set_id: string;
+//   pictures: {
+//     inference_exists: boolean;
+//     is_validation: boolean;
+//     picture_id: string;
+//   }[];
+// }
 
 interface ReadAzureStorageDirApi {
-  folders: AzureStorageDirectoryItemApi[];
+  directories: AzureStorageDirectoryItemApi[];
 }

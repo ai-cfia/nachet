@@ -27,12 +27,13 @@ beforeEach(() => {
 describe("readAzureStorageDir", () => {
   it("should return data on success", async () => {
     const mockData = {
-      folders: [
+      directories: [
         {
-          folder_name: "test-folder",
-          nb_pictures: 5,
-          picture_set_id: "set-123",
-          pictures: [],
+          id: "set-123",
+          name: "test-folder",
+          folder_prefix: "test-prefix",
+          description: "Test folder description",
+          picture_count: 5,
         },
       ],
     };
