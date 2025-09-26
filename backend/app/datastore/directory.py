@@ -34,3 +34,62 @@ class DirectoryDataService:
         print(stmt.compile(dialect=postgresql.dialect()))
         result = await self.session.execute(stmt)
         return result.all()
+
+    async def create_directory(
+        self,
+        user_id: str,
+        org_admin_id: str,
+        name: str,
+        folder_prefix: str,
+        description: str = "",
+    ) -> str:
+        """
+        Create a new directory in the database.
+
+        Args:
+            user_id: The ID of the user creating the directory.
+            name: The name of the directory.
+            folder_prefix: The folder prefix (path) for the directory.
+            description: Optional description of the directory.
+
+        Returns:
+            The created Folder object.
+        """
+        new_directory = Folder(
+            user_id=user_id,
+            org_admin_id=org_admin_id,
+            name=name,
+            folder_prefix=folder_prefix,
+            description=description,
+            active=True,
+        )
+        self.session.add(new_directory)
+        await self.session.flush()  # Ensure the new directory gets an ID
+        return new_directory._asdict()["id"]
+
+    async def rename_directory(self, directory_id: str, new_name: str) -> str:
+        """
+        Rename an existing directory in the database.
+
+        Args:
+            directory_id: The ID of the directory to be renamed.
+            new_name: The new name for the directory.
+
+        Returns:
+            None
+        """
+        stmt = (
+            select(Folder)
+            .where(Folder.id == directory_id)
+            .where(Folder.active.is_(True))
+        )
+        result = await self.session.execute(stmt)
+        directory = result.scalar_one_or_none()
+
+        if directory:
+            directory.name = new_name
+            self.session.add(directory)
+            await self.session.flush()  # Ensure changes are applied
+        else:
+            raise ValueError(f"Directory with ID {directory_id} not found or inactive.")
+        return directory._asdict()["id"]

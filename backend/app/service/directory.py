@@ -23,3 +23,29 @@ class DirectoryService:
             }
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    @staticmethod
+    async def create_directory(
+        user_id: str, name: str, folder_prefix: str, description: str = ""
+    ) -> str:
+        try:
+            async with sessionmanager.get_session() as session:
+                new_directory = await DirectoryDataService(session).create_directory(
+                    user_id, name, folder_prefix, description
+                )
+                await session.commit()
+                return new_directory._asdict()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @staticmethod
+    async def rename_directory(directory_id: str, new_name: str) -> str:
+        try:
+            async with sessionmanager.get_session() as session:
+                updated_directory = await DirectoryDataService(
+                    session
+                ).rename_directory(directory_id, new_name)
+                await session.commit()
+                return updated_directory
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
