@@ -101,8 +101,8 @@ const mockProps = {
   setSignUpOpen: vi.fn(),
   signUpOpen: false,
   signedIn: false,
-  setSignedIn: vi.fn(),
   setUuid: vi.fn(),
+  user: null, // Add the missing user property
 };
 
 const mockAddEventListener = vi.fn();
