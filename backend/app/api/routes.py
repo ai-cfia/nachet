@@ -80,7 +80,7 @@ async def get_user_id():
     status_code=status.HTTP_200_OK,
     name="Get Directories [NO AUTH REQUIRED]",
 )
-async def get_directories(container_name: DirectoryRequest):
+async def get_directories(req_body: DirectoryRequest):
     print("/get-directories")
-    directories = await DirectoryService.get_directories(container_name=container_name)
+    directories = await DirectoryService.get_user_directories(req_body.container_name)
     return directories

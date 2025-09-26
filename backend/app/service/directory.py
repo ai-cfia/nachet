@@ -12,9 +12,9 @@ class DirectoryService:
         try:
             directories = None
             async with sessionmanager.get_session() as session:
-                directories = await DirectoryDataService(session).get_user_directories(
-                    user_id
-                )
+                directories = await DirectoryDataService(
+                    session
+                ).get_user_directories_count(user_id)
 
             return {
                 "directories": [directory._asdict() for directory in directories]
