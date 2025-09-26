@@ -8548,45 +8548,6 @@
     },
     {
       "type": "library",
-      "name": "uuid",
-      "group": "@types",
-      "version": "11.0.0",
-      "bom-ref": "nachet-frontend@0.12.0|@types/uuid@11.0.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/%40types/uuid@11.0.0",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/@types/uuid/-/uuid-11.0.0.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "1d5ca4f278f69be8dc15135acf3ab254a8997b3ca10caac6500de3944720fe767a32cfaa1f0a1c6dad58fc06956b39c94c033dc697454a1fa9b5b36b84e1af64"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:development",
-          "value": "true"
-        },
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/@types/uuid"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "name": "yargs-parser",
       "group": "@types",
       "version": "21.0.3",
@@ -29941,7 +29902,6 @@
         "nachet-frontend@0.12.0|@types/react@19.1.13",
         "nachet-frontend@0.12.0|@types/sanitize-html@2.16.0",
         "nachet-frontend@0.12.0|@types/utif@3.0.6",
-        "nachet-frontend@0.12.0|@types/uuid@11.0.0",
         "nachet-frontend@0.12.0|@typescript-eslint/eslint-plugin@8.44.0",
         "nachet-frontend@0.12.0|@typescript-eslint/parser@8.44.0",
         "nachet-frontend@0.12.0|@vitejs/plugin-react-swc@4.0.1",
@@ -31764,12 +31724,6 @@
       "ref": "nachet-frontend@0.12.0|@types/utif@3.0.6",
       "dependsOn": [
         "nachet-frontend@0.12.0|@types/node@22.18.5"
-      ]
-    },
-    {
-      "ref": "nachet-frontend@0.12.0|@types/uuid@11.0.0",
-      "dependsOn": [
-        "nachet-frontend@0.12.0|uuid@13.0.0"
       ]
     },
     {
