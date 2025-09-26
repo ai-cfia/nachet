@@ -117,14 +117,6 @@ services:
 
   # nachet-frontend-v1:
   #   container_name: nachet-frontend-v1
-
-  #   # uncomment these to build frontend from source
-  #   # build:
-  #   #   context: ./frontend
-  #   #   dockerfile: Dockerfile.dev
-  #   # image: local/nachet-frontend:latest
-
-  #   # uncomment these to use prebuilt image from ghcr
   #   image: ghcr.io/ai-cfia/nachet-frontend:0.9.31
   #   command: ["npm run dev --host"]
   #   env_file:
