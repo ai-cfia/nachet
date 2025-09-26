@@ -116,7 +116,7 @@ services:
   #     - nachet-network
 
   # nachet-frontend-v1:
-  #   container_name: nachet-frontend
+  #   container_name: nachet-frontend-v1
 
   #   # uncomment these to build frontend from source
   #   # build:
