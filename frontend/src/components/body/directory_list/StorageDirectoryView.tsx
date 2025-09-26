@@ -100,7 +100,7 @@ const StorageDirectoryView: React.FC<params> = (props) => {
                   key={index}
                   sx={{
                     backgroundColor:
-                      item.pictureSetId === curDir
+                      item.folderId === curDir
                         ? "#F5F5F5"
                         : colours.CFIA_Background_White,
                     "&:hover": {
@@ -124,7 +124,7 @@ const StorageDirectoryView: React.FC<params> = (props) => {
                       color: colours.CFIA_Font_Black,
                     }}
                     onClick={() => {
-                      handleSelect(item.pictureSetId);
+                      handleSelect(item.folderId);
                     }}
                     data-testid={"folder-icon" + (index + 1)}
                   >
@@ -146,7 +146,7 @@ const StorageDirectoryView: React.FC<params> = (props) => {
                           paddingRight: "0.3vw",
                         }}
                       />
-                      <span>{item.folderName ?? item.pictureSetId}</span>
+                      <span>{item.folderName ?? item.folderId}</span>
                     </div>
                   </TableCell>
                   <TableCell
@@ -160,7 +160,7 @@ const StorageDirectoryView: React.FC<params> = (props) => {
                       color: colours.CFIA_Font_Black,
                     }}
                     onClick={() => {
-                      handleSelect(item.pictureSetId);
+                      handleSelect(item.folderId);
                     }}
                   >
                     <div
@@ -173,7 +173,7 @@ const StorageDirectoryView: React.FC<params> = (props) => {
                       }}
                     >
                       <span style={{ marginRight: "0.1vw" }}>
-                        {item.nbPictures}
+                        {item.pictureCount}
                       </span>
                       <FilterIcon
                         style={{
@@ -201,10 +201,10 @@ const StorageDirectoryView: React.FC<params> = (props) => {
                   >
                     <IconButton
                       onClick={() => {
-                        handleDelete(item.pictureSetId);
+                        handleDelete(item.folderId);
                       }}
                       sx={{ padding: 0 }}
-                      disabled={item.pictureSetId === "General"}
+                      disabled={item.folderId === "General"}
                       data-testid={"delete-icon" + (index + 1)}
                     >
                       <CloseIcon

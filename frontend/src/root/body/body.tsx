@@ -297,19 +297,14 @@ const Body: React.FC<params> = (props) => {
     readAzureStorageDir(backendUrl, props.uuid)
       .then((response) => {
         const directories: AzureStorageDirectoryItem[] = [];
-        const folders = response.folders;
+        const folders = response.directories;
         folders.forEach((item: AzureStorageDirectoryItemApi) => {
           directories.push({
-            folderName: item.folder_name,
-            nbPictures: item.nb_pictures,
-            pictureSetId: item.picture_set_id,
-            pictures: item.pictures.map((pic) => {
-              return {
-                inferenceExists: pic.inference_exists,
-                isValidation: pic.is_validation,
-                pictureId: pic.picture_id,
-              };
-            }),
+            folderId: item.id,
+            folderName: item.name,
+            folderPrefix: item.folder_prefix,
+            description: item.description,
+            pictureCount: item.picture_count,
           });
         });
         setAzureStorageDir(directories);
