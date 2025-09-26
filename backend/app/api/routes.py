@@ -1,5 +1,6 @@
 from fastapi import APIRouter, status
-from app.service import PipelineService, SeedService
+from app.service import PipelineService, SeedService, DirectoryService
+from app.model import DirectoryRequest
 
 router = APIRouter()
 
@@ -70,4 +71,16 @@ async def get_seed_data():
     name="Get User ID from email [NO AUTH REQUIRED]",
 )
 async def get_user_id():
+    print("/get-user-id")
     return {"user_id": "8ea46a6b-7d37-4fbb-a66f-775112376e16"}
+
+
+@router.post(
+    "/get-directories",
+    status_code=status.HTTP_200_OK,
+    name="Get Directories [NO AUTH REQUIRED]",
+)
+async def get_directories(req_body: DirectoryRequest):
+    print("/get-directories")
+    directories = await DirectoryService.get_user_directories(req_body.container_name)
+    return directories
