@@ -1,6 +1,5 @@
 from fastapi import APIRouter, status, Depends
 from app.service import PipelineService, SeedService, DirectoryService
-from app.model import DirectoryRequest
 from app.middleware.auth.jwt_auth import get_current_user
 from app.middleware.auth.user import User
 
@@ -38,9 +37,9 @@ async def get_readiness_status():
 @router.get(
     "/pipelines",
     status_code=status.HTTP_200_OK,
-    name="Get Pipelines [NO AUTH REQUIRED]",
+    name="Get Pipelines [AUTH REQUIRED]",
 )
-async def get_pipelines():
+async def get_pipelines(current_user: User = Depends(get_current_user)):
     pipelines = await PipelineService.get_pipelines()
     return {"pipelines": pipelines}
 
@@ -48,9 +47,9 @@ async def get_pipelines():
 @router.get(
     "/model-endpoints-metadata",
     status_code=status.HTTP_200_OK,
-    name="Get Model Endpoints Metadata [NO AUTH REQUIRED]",
+    name="Get Model Endpoints Metadata [AUTH REQUIRED]",
 )
-async def get_model_endpoints_metadata():
+async def get_model_endpoints_metadata(current_user: User = Depends(get_current_user)):
     print("/model-endpoints-metadata")
     metadata = await PipelineService.get_model_endpoints_metadata()
     return metadata
@@ -62,8 +61,8 @@ async def get_model_endpoints_metadata():
     name="Get Seed Data [AUTH REQUIRED]",
 )
 async def get_seed_data(current_user: User = Depends(get_current_user)):
-    print(f"/seeds - authenticated user: {current_user.oid}")
-    print(f"/seeds - user: {current_user.__dict__}")
+    # print(f"/seeds - authenticated user: {current_user.oid}")
+    # print(f"/seeds - user: {current_user.__dict__}")
     seed_data = await SeedService.get_seed_data()
     return seed_data
 
@@ -71,11 +70,11 @@ async def get_seed_data(current_user: User = Depends(get_current_user)):
 @router.post(
     "/get-user-id",
     status_code=status.HTTP_200_OK,
-    name="Get User ID from email [NO AUTH REQUIRED]",
+    name="Get User ID from email [AUTH REQUIRED]",
 )
-async def get_user_id():
+async def get_user_id(current_user: User = Depends(get_current_user)):
     print("/get-user-id")
-    return {"user_id": "8ea46a6b-7d37-4fbb-a66f-775112376e16"}
+    return {"user_id": current_user.oid}
 
 
 @router.get(
@@ -83,7 +82,7 @@ async def get_user_id():
     status_code=status.HTTP_200_OK,
     name="Get Directories [NO AUTH REQUIRED]",
 )
-async def get_directories():
+async def get_directories(current_user: User = Depends(get_current_user)):
     print("/get-directories")
-    directories = await DirectoryService.get_user_directories("8ea46a6b-7d37-4fbb-a66f-775112376e16")
+    directories = await DirectoryService.get_user_directories(current_user.oid)
     return directories
