@@ -2,8 +2,8 @@ import React from "react";
 import { Overlay, InfoContainer, ButtonWrap, Text } from "./indexElements";
 import { Box, CardHeader, IconButton, Button } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { colours } from "../../../styles/colours";
-import { useBackendUrl } from "@hooks";
+import { colours } from "@styles/colours";
+import { useAuth, useBackendUrl } from "@hooks";
 import { deleteAzureStorageDir } from "@common/api";
 
 interface params {
@@ -11,25 +11,41 @@ interface params {
   curDir: string;
   setCurDir: React.Dispatch<React.SetStateAction<string>>;
   setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
-  uuid: string;
+  apiScopeClaim: string;
 }
 
 const DeleteDirectoryPopup: React.FC<params> = (props) => {
-  const { uuid, setDelDirectoryOpen, curDir, setCurDir, setReadAzureStorage } =
-    props;
+  const {
+    apiScopeClaim,
+    setDelDirectoryOpen,
+    curDir,
+    setCurDir,
+    setReadAzureStorage,
+  } = props;
   const backendURL = useBackendUrl();
+  const { fetchAccessToken } = useAuth(apiScopeClaim);
 
   const handleDelFromDirectory = (): void => {
-    // makes a post request to the backend to delete a directory in azure storage
-    deleteAzureStorageDir(backendURL, uuid, curDir)
-      .then(() => {
-        setCurDir("General");
-        setReadAzureStorage((prev) => !prev);
+    fetchAccessToken().then((accessToken) => {
+      if (!accessToken) {
+        console.error("Failed to obtain access token");
+        return;
+      }
+      // makes a post request to the backend to delete a directory in azure storage
+      deleteAzureStorageDir({
+        backendUrl: backendURL,
+        folderName: curDir,
+        accessToken,
       })
-      .catch((error) => {
-        alert("Error deleting directory, see console for more details");
-        console.error(error);
-      });
+        .then(() => {
+          setCurDir("General");
+          setReadAzureStorage((prev) => !prev);
+        })
+        .catch((error) => {
+          alert("Error deleting directory, see console for more details");
+          console.error(error);
+        });
+    });
   };
 
   const handleClose = (): void => {
