@@ -287,14 +287,12 @@ const Body: React.FC<params> = (props) => {
         setAzureStorageDir(directories);
       } catch (error) {
         console.error(error);
-        alert(
-          "Error reading Azure storage directory, see console for details",
-        );
+        alert("Error reading Azure storage directory, see console for details");
       }
     };
 
     loadAzureStorageDir();
-  }, [props.uuid, backendUrl]);
+  }, [props.uuid, backendUrl, fetchAccessToken]);
 
   const handleImageUpload = (): void => {
     // Set the logic for handling image upload and then:
@@ -329,7 +327,7 @@ const Body: React.FC<params> = (props) => {
     };
 
     loadModelMetadata();
-  }, [backendUrl]);
+  }, [backendUrl, fetchAccessToken]);
 
   return (
     <BodyContainer width={props.windowSize.width} data-testid="body-component">

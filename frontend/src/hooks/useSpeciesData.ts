@@ -44,6 +44,10 @@ export const useSpeciesData = (backendUrl: string, apiScopeClaim: string) => {
     fetchSpeciesData();
   }, [
     backendUrl,
+    fetchAccessToken,
+    setError,
+    setLoading,
+    setSpeciesData,
     speciesData,
   ]);
 
