@@ -264,40 +264,37 @@ const Body: React.FC<params> = (props) => {
     if (props.uuid == null || props.uuid === "") {
       return;
     }
-    // async function fetchToken() {
-    //   const accessToken = await getAccessToken(msalInstance, {
-    //     scopes: [apiScopeClaim],
-    //   });
-    //   return accessToken;
-    // }
-    fetchAccessToken().then((accessToken) => {
-      if (!accessToken) {
-        console.error("Failed to obtain access token");
-        return;
-      }
-      readAzureStorageDir({ backendUrl, accessToken })
-        .then((response) => {
-          const directories: AzureStorageDirectoryItem[] = [];
-          const folders = response.directories;
-          folders.forEach((item: AzureStorageDirectoryItemApi) => {
-            directories.push({
-              folderId: item.id,
-              folderName: item.name,
-              folderPrefix: item.folder_prefix,
-              description: item.description,
-              pictureCount: item.picture_count,
-            });
+
+    const loadAzureStorageDir = async () => {
+      try {
+        const accessToken = await fetchAccessToken();
+        if (!accessToken) {
+          console.error("Failed to obtain access token");
+          return;
+        }
+        const response = await readAzureStorageDir({ backendUrl, accessToken });
+        const directories: AzureStorageDirectoryItem[] = [];
+        const folders = response.directories;
+        folders.forEach((item: AzureStorageDirectoryItemApi) => {
+          directories.push({
+            folderId: item.id,
+            folderName: item.name,
+            folderPrefix: item.folder_prefix,
+            description: item.description,
+            pictureCount: item.picture_count,
           });
-          setAzureStorageDir(directories);
-        })
-        .catch((error) => {
-          console.error(error);
-          alert(
-            "Error reading Azure storage directory, see console for details",
-          );
         });
-    });
-  }, [props.uuid, backendUrl, fetchAccessToken]);
+        setAzureStorageDir(directories);
+      } catch (error) {
+        console.error(error);
+        alert(
+          "Error reading Azure storage directory, see console for details",
+        );
+      }
+    };
+
+    loadAzureStorageDir();
+  }, [props.uuid, backendUrl]);
 
   const handleImageUpload = (): void => {
     // Set the logic for handling image upload and then:
@@ -308,28 +305,31 @@ const Body: React.FC<params> = (props) => {
     if (!backendUrl || process.env.REACT_APP_MODE === "test") {
       return;
     }
-    fetchAccessToken().then((accessToken) => {
-      if (!accessToken) {
-        console.error("Failed to obtain access token");
-        return;
+
+    const loadModelMetadata = async () => {
+      try {
+        const accessToken = await fetchAccessToken();
+        if (!accessToken) {
+          console.error("Failed to obtain access token");
+          return;
+        }
+
+        const metadata = await fetchModelMetadata({ backendUrl, accessToken });
+        setMetadata(metadata);
+
+        // Find the default model from the metadata
+        const defaultModel = metadata.find((model) => model.default);
+        if (defaultModel) {
+          setSelectedModel(defaultModel.model_name);
+        }
+      } catch (error) {
+        console.error(error);
+        alert("Error fetching model metadata, see console for details");
       }
+    };
 
-      fetchModelMetadata({ backendUrl, accessToken })
-        .then((metadata: ModelMetadata[]) => {
-          setMetadata(metadata);
-
-          // Find the default model from the metadata
-          const defaultModel = metadata.find((model) => model.default);
-          if (defaultModel) {
-            setSelectedModel(defaultModel.model_name);
-          }
-        })
-        .catch((error) => {
-          console.error(error);
-          alert("Error fetching model metadata, see console for details");
-        });
-    });
-  }, [backendUrl, fetchAccessToken]);
+    loadModelMetadata();
+  }, [backendUrl]);
 
   return (
     <BodyContainer width={props.windowSize.width} data-testid="body-component">
