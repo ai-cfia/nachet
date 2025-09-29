@@ -65,15 +65,13 @@ stages:
 
                 cd $(System.DefaultWorkingDirectory)/terraform/dev
 
-                echo "Verifying Terraform installation..."
-                terraform version
-
                 echo "Running Terraform Init with OIDC..."
-                terraform init \
+                terraform init -reconfigure \
                   -backend-config="resource_group_name=$(resourceGroupName)" \
                   -backend-config="storage_account_name=$(storageAccountName)" \
                   -backend-config="container_name=$(containerName)" \
-                  -backend-config="key=$(stateKey)"
+                  -backend-config="key=$(stateKey)" \
+                  -backend-config="use_azuread_auth=true"
 
                 echo "Running Terraform Plan with OIDC..."
                 terraform plan -var-file=$(DownloadSecureVars.SecureFilePath)
@@ -262,11 +260,12 @@ stages:
                       terraform version
 
                       echo "Running Terraform Init with OIDC..."
-                      terraform init \
+                      terraform init -reconfigure \
                         -backend-config="resource_group_name=$(resourceGroupName)" \
                         -backend-config="storage_account_name=$(storageAccountName)" \
                         -backend-config="container_name=$(containerName)" \
-                        -backend-config="key=$(stateKey)"
+                        -backend-config="key=$(stateKey)" \
+                        -backend-config="use_azuread_auth=true"
 
                       echo "Running Terraform Apply with OIDC..."
                       terraform apply -auto-approve -var-file=$(DownloadSecureVars.SecureFilePath)
