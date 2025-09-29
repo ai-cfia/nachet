@@ -7,13 +7,16 @@ import SavePopup from "../../components/body/save_capture_popup";
 import UploadPopup from "../../components/body/load_image_popup";
 import ModelInfoPopup from "../../components/body/model_popup";
 import SwitchDevice from "../../components/body/switch_device_popup";
-import CreateDirectory from "../../components/body/create_directory_popup";
-import DeleteDirectoryPopup from "../../components/body/del_directory_popup";
+import {
+  CreateDirectoryPopup,
+  BatchUploadPopup,
+  DeleteDirectoryPopup,
+} from "@components/body";
 import CreativeCommonsPopup from "../../components/body/creative_commons_popup";
-import { useBackendUrl, useDecoderTiff } from "@hooks";
+import { useBackendUrl, useDecoderTiff, useAuth } from "@hooks";
 import { AccountInfo } from "@azure/msal-browser";
-import { useMsal } from "@azure/msal-react";
-import { getAccessToken } from "@common/auth";
+// import { useMsal } from "@azure/msal-react";
+// import { getAccessToken } from "@common/auth";
 import {
   getLabelOccurrence,
   loadCaptureToCache,
@@ -33,7 +36,6 @@ import {
   ModelMetadata,
 } from "@common/types";
 // import Cookies from "js-cookie";
-import BatchUploadPopup from "../../components/body/batch_upload_popup";
 
 interface params {
   windowSize: {
@@ -91,7 +93,8 @@ const Body: React.FC<params> = (props) => {
   const decodedTiff = useDecoderTiff(imageTiff);
   const backendUrl = useBackendUrl();
   const apiScopeClaim = props.apiScopeClaim;
-  const { instance: msalInstance } = useMsal();
+  // const { instance: msalInstance } = useMsal();
+  const { fetchAccessToken } = useAuth(apiScopeClaim);
 
   const captureFeed = (): void => {
     // takes screenshot of webcam feed and loads it to cache when capture button is pressed
@@ -137,26 +140,32 @@ const Body: React.FC<params> = (props) => {
         return;
       }
       setIsLoading(true);
-      inferenceRequest(
-        backendUrl,
-        selectedModel,
-        imageObject,
-        curDir,
-        props.uuid,
-        props.uuid,
-      )
-        .then((response) => {
-          setReadAzureStorage(!readAzureStorage);
-          setImageCache(loadResultsToCache(response, imageCache, imageIndex));
-          setModelDisplayName(selectedModel);
+      fetchAccessToken().then((accessToken) => {
+        if (!accessToken) {
+          console.error("Failed to obtain access token");
+          return;
+        }
+        inferenceRequest({
+          backendUrl,
+          selectedModel,
+          imageObject,
+          curDir,
+          accessToken,
+          container_uuid: props.uuid,
         })
-        .catch((error) => {
-          alert("Error fetching inference data, see console for details");
-          console.error(error);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
+          .then((response) => {
+            setReadAzureStorage(!readAzureStorage);
+            setImageCache(loadResultsToCache(response, imageCache, imageIndex));
+            setModelDisplayName(selectedModel);
+          })
+          .catch((error) => {
+            alert("Error fetching inference data, see console for details");
+            console.error(error);
+          })
+          .finally(() => {
+            setIsLoading(false);
+          });
+      });
     } else {
       alert("Please select a directory");
     }
@@ -255,15 +264,18 @@ const Body: React.FC<params> = (props) => {
     if (props.uuid == null || props.uuid === "") {
       return;
     }
-    async function fetchToken() {
-      const accessToken = await getAccessToken(msalInstance, {
-        scopes: [apiScopeClaim],
-      });
-      return accessToken;
-    }
-    fetchToken().then((accessToken) => {
-      console.log(accessToken);
-      readAzureStorageDir(backendUrl, accessToken)
+    // async function fetchToken() {
+    //   const accessToken = await getAccessToken(msalInstance, {
+    //     scopes: [apiScopeClaim],
+    //   });
+    //   return accessToken;
+    // }
+    fetchAccessToken().then((accessToken) => {
+      if (!accessToken) {
+        console.error("Failed to obtain access token");
+        return;
+      }
+      readAzureStorageDir({ backendUrl, accessToken })
         .then((response) => {
           const directories: AzureStorageDirectoryItem[] = [];
           const folders = response.directories;
@@ -285,7 +297,7 @@ const Body: React.FC<params> = (props) => {
           );
         });
     });
-  }, [props.uuid, readAzureStorage, backendUrl, msalInstance, apiScopeClaim]);
+  }, [props.uuid, backendUrl, fetchAccessToken]);
 
   const handleImageUpload = (): void => {
     // Set the logic for handling image upload and then:
@@ -296,22 +308,28 @@ const Body: React.FC<params> = (props) => {
     if (!backendUrl || process.env.REACT_APP_MODE === "test") {
       return;
     }
+    fetchAccessToken().then((accessToken) => {
+      if (!accessToken) {
+        console.error("Failed to obtain access token");
+        return;
+      }
 
-    fetchModelMetadata(backendUrl)
-      .then((metadata: ModelMetadata[]) => {
-        setMetadata(metadata);
+      fetchModelMetadata({ backendUrl, accessToken })
+        .then((metadata: ModelMetadata[]) => {
+          setMetadata(metadata);
 
-        // Find the default model from the metadata
-        const defaultModel = metadata.find((model) => model.default);
-        if (defaultModel) {
-          setSelectedModel(defaultModel.model_name);
-        }
-      })
-      .catch((error) => {
-        console.error(error);
-        alert("Error fetching model metadata, see console for details");
-      });
-  }, [backendUrl]);
+          // Find the default model from the metadata
+          const defaultModel = metadata.find((model) => model.default);
+          if (defaultModel) {
+            setSelectedModel(defaultModel.model_name);
+          }
+        })
+        .catch((error) => {
+          console.error(error);
+          alert("Error fetching model metadata, see console for details");
+        });
+    });
+  }, [backendUrl, fetchAccessToken]);
 
   return (
     <BodyContainer width={props.windowSize.width} data-testid="body-component">
@@ -334,6 +352,7 @@ const Body: React.FC<params> = (props) => {
           backendUrl={backendUrl}
           uuid={props.uuid}
           containerName={props.uuid}
+          apiScopeClaim={apiScopeClaim}
         />
       )}
       {uploadOpen && (
@@ -362,20 +381,20 @@ const Body: React.FC<params> = (props) => {
       {delDirectoryOpen && (
         <DeleteDirectoryPopup
           setDelDirectoryOpen={setDelDirectoryOpen}
-          uuid={props.uuid}
           curDir={curDir}
           setCurDir={setCurDir}
           setReadAzureStorage={setReadAzureStorage}
+          apiScopeClaim={apiScopeClaim}
         />
       )}
       {createDirectoryOpen && (
-        <CreateDirectory
+        <CreateDirectoryPopup
           setCreateDirectoryOpen={setCreateDirectoryOpen}
           handeDirChange={handleDirChange}
           curDir={curDir}
           setCurDir={setCurDir}
-          uuid={props.uuid}
           setReadAzureStorage={setReadAzureStorage}
+          apiScopeClaim={apiScopeClaim}
         />
       )}
       {props.creativeCommonsPopupOpen && (
@@ -426,6 +445,7 @@ const Body: React.FC<params> = (props) => {
         toggleShowInference={(state: boolean) => setShowInference(state)}
         backendUrl={backendUrl}
         uuid={props.uuid}
+        apiScopeClaim={apiScopeClaim}
       />
     </BodyContainer>
   );

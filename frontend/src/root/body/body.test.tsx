@@ -2,6 +2,49 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import Body from "./body";
 
+// Mock the hooks
+vi.mock("@hooks", () => ({
+  useBackendUrl: () => "http://localhost:8080",
+  useDecoderTiff: () => null,
+  useAuth: () => ({
+    fetchAccessToken: vi.fn(() => Promise.resolve("mock-access-token")),
+    msalInstance: {},
+  }),
+  useSpeciesData: () => ({
+    speciesData: {
+      seeds: [
+        {
+          seed_id: "1",
+          seed_name: "seed_name1",
+        },
+        {
+          seed_id: "2",
+          seed_name: "seed_name2",
+        },
+      ],
+    },
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+// Mock react-webcam
+vi.mock("react-webcam", () => ({
+  default: vi.fn(() => <div data-testid="webcam-mock">Webcam Mock</div>),
+}));
+
+// Mock the species store
+vi.mock("@stores/useSpeciesStore", () => ({
+  useSpeciesStore: () => ({
+    speciesData: null,
+    isLoading: false,
+    error: null,
+    setSpeciesData: vi.fn(),
+    setLoading: vi.fn(),
+    setError: vi.fn(),
+  }),
+}));
+
 process.env.VITE_BACKEND_URL = "somebackendurl";
 
 vi.mock("@common", async (importOriginal) => {
@@ -10,35 +53,20 @@ vi.mock("@common", async (importOriginal) => {
     ...mod,
     readAzureStorageDir: vi.fn(() => {
       return Promise.resolve({
-        folders: [
+        directories: [
           {
-            folder_name: "testDir1",
-            nb_pictures: 1,
-            picture_set_id: "testDir1ID",
-            pictures: [
-              {
-                inference_exists: false,
-                is_validation: false,
-                picture_id: "testDir1Pic1",
-              },
-            ],
+            id: "testDir1ID",
+            name: "testDir1",
+            folder_prefix: "testDir1",
+            description: "Test directory 1",
+            picture_count: 1,
           },
           {
-            folder_name: "testDir2",
-            nb_pictures: 2,
-            picture_set_id: "testDir2ID",
-            pictures: [
-              {
-                inference_exists: false,
-                is_validation: false,
-                picture_id: "testDir2Pic1",
-              },
-              {
-                inference_exists: false,
-                is_validation: false,
-                picture_id: "testDir2Pic2",
-              },
-            ],
+            id: "testDir2ID",
+            name: "testDir2",
+            folder_prefix: "testDir2",
+            description: "Test directory 2",
+            picture_count: 2,
           },
         ],
       });
@@ -102,7 +130,8 @@ const mockProps = {
   signUpOpen: false,
   signedIn: false,
   setUuid: vi.fn(),
-  user: null, // Add the missing user property
+  user: null,
+  apiScopeClaim: "test-api-scope-claim",
 };
 
 const mockAddEventListener = vi.fn();

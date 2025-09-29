@@ -13,6 +13,7 @@ import CropFreeIcon from "@mui/icons-material/CropFree";
 import ToggleButton from "../buttons/ToggleButton";
 import DonutSmallIcon from "@mui/icons-material/DonutSmall";
 import FormatShapesOutlinedIcon from "@mui/icons-material/FormatShapesOutlined";
+import { colours } from "@styles/colours";
 
 // Import a loading icon component (ensure you have this)
 import CircularProgress from "@mui/material/CircularProgress";
@@ -23,18 +24,17 @@ import {
   FeedbackDataPositive,
   Images,
 } from "@common/types";
-
-import ScaledInferenceBox from "../scaled_inference_box";
 import {
   sendNegativeFeedback,
   sendPositiveFeedback,
   loadResultsToCache,
 } from "@common";
-import { useSpeciesData } from "@hooks/useSpeciesData";
-import { FreeformBox, NegativeFeedbackForm } from "../feedback_form";
+import { useSpeciesData, useAuth } from "@hooks";
 import { getUnscaledCoordinates } from "@common/imageutils";
+import { FreeformBox, NegativeFeedbackForm } from "../feedback_form";
 import ApiAction from "../api_action";
-import { colours } from "../../../styles/colours";
+import ScaledInferenceBox from "../scaled_inference_box";
+
 interface MicroscopeFeedProps {
   webcamRef: React.RefObject<Webcam | null>;
   capture: () => void;
@@ -59,6 +59,7 @@ interface MicroscopeFeedProps {
   toggleShowInference: (state: boolean) => void;
   backendUrl: string;
   uuid: string;
+  apiScopeClaim: string;
 }
 
 const ButtonMicroscopeFeed = (props: {
@@ -128,6 +129,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     toggleShowInference,
     backendUrl,
     uuid,
+    apiScopeClaim,
   } = props;
 
   const width = windowSize.width * 0.575;
@@ -155,8 +157,11 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
   const [apiError, setApiError] = useState<string | null>(null);
   const [apiResultDismissed, setApiResultDismissed] = useState<boolean>(true);
 
-  const { speciesData, isLoading: classListLoading } =
-    useSpeciesData(backendUrl);
+  const { fetchAccessToken } = useAuth(apiScopeClaim);
+  const { speciesData, isLoading: classListLoading } = useSpeciesData(
+    backendUrl,
+    apiScopeClaim,
+  );
 
   const classList: SpeciesData[] = useMemo(() => {
     if (!speciesData?.seeds) return [];
@@ -192,20 +197,30 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
 
     setApiLoading(true);
     setApiResultDismissed(false);
-    sendPositiveFeedback(feedbackDataPositive, backendUrl)
-      .then((response) => {
-        console.log("Positive Feedback submitted successfully");
-        setImageCache(loadResultsToCache(response, imageCache, imageIndex));
-        setApiSuccess(true);
+    fetchAccessToken().then((accessToken) => {
+      if (!accessToken) {
+        console.error("Failed to obtain access token");
+        return;
+      }
+      sendPositiveFeedback({
+        feedbackData: feedbackDataPositive,
+        backendUrl,
+        accessToken,
       })
-      .catch((error) => {
-        console.error("Error submitting feedback: ", error);
-        setApiError(error.message);
-      })
-      .finally(() => {
-        setApiLoading(false);
-        // exitFeedbackMode();
-      });
+        .then((response) => {
+          console.log("Positive Feedback submitted successfully");
+          setImageCache(loadResultsToCache(response, imageCache, imageIndex));
+          setApiSuccess(true);
+        })
+        .catch((error) => {
+          console.error("Error submitting feedback: ", error);
+          setApiError(error.message);
+        })
+        .finally(() => {
+          setApiLoading(false);
+          // exitFeedbackMode();
+        });
+    });
   };
 
   const submitNegativeFeedback = (
@@ -217,20 +232,30 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     console.log("Submitting negative feedback");
     setApiLoading(true);
     setApiResultDismissed(false);
-    sendNegativeFeedback(feedbackDataNegative, backendUrl)
-      .then((response) => {
-        console.log("Negative Feedback submitted successfully");
-        setImageCache(loadResultsToCache(response, imageCache, imageIndex));
-        setApiSuccess(true);
+    fetchAccessToken().then((accessToken) => {
+      if (!accessToken) {
+        console.error("Failed to obtain access token");
+        return;
+      }
+      sendNegativeFeedback({
+        feedbackData: feedbackDataNegative,
+        backendUrl,
+        accessToken,
       })
-      .catch((error) => {
-        console.error("Error submitting feedback: ", error);
-        setApiError(error.message);
-      })
-      .finally(() => {
-        setApiLoading(false);
-        // exitFeedbackMode();
-      });
+        .then((response) => {
+          console.log("Negative Feedback submitted successfully");
+          setImageCache(loadResultsToCache(response, imageCache, imageIndex));
+          setApiSuccess(true);
+        })
+        .catch((error) => {
+          console.error("Error submitting feedback: ", error);
+          setApiError(error.message);
+        })
+        .finally(() => {
+          setApiLoading(false);
+          // exitFeedbackMode();
+        });
+    });
   };
 
   const handleFreeformSubmit = (box: BoxCSS) => {

@@ -56,6 +56,7 @@ interface params {
   toggleShowInference: (state: boolean) => void;
   backendUrl: string;
   uuid: string;
+  apiScopeClaim: string;
 }
 
 const Classifier: React.FC<params> = (props) => {
@@ -84,6 +85,7 @@ const Classifier: React.FC<params> = (props) => {
             toggleShowInference={props.toggleShowInference}
             backendUrl={props.backendUrl}
             uuid={props.uuid}
+            apiScopeClaim={props.apiScopeClaim}
           />
         </LeftContent>
         <InfoContent>
