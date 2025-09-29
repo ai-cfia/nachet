@@ -1,9 +1,34 @@
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, Request, HTTPException
 from app.service import PipelineService, SeedService, DirectoryService
 from app.middleware.auth.jwt_auth import get_current_user
 from app.middleware.auth.user import User
 
 router = APIRouter()
+
+
+def get_client_ip(request: Request) -> str:
+    """Extract client IP address, handling reverse proxy headers."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else None
+
+
+async def validate_ip_address(
+    request: Request, current_user: User = Depends(get_current_user)
+) -> User:
+    """Validate that request IP matches token IP claim."""
+    client_ip = get_client_ip(request)
+    token_ip = current_user.ipaddr
+
+    if token_ip and client_ip != token_ip:
+        # raise HTTPException(
+        #     status_code=status.HTTP_403_FORBIDDEN,
+        #     detail="IP address mismatch"
+        # )
+        print(f"Warning: IP address mismatch (client: {client_ip}, token: {token_ip})")
+
+    return current_user
 
 
 # no authentication needed
@@ -32,6 +57,16 @@ async def get_version():
 )
 async def get_readiness_status():
     return {"status": "ready"}
+
+
+@router.post(
+    "/get-user-id",
+    status_code=status.HTTP_200_OK,
+    name="Get User ID from email [AUTH REQUIRED]",
+)
+async def get_user_id(current_user: User = Depends(get_current_user)):
+    print("/get-user-id")
+    return {"user_id": current_user.oid}
 
 
 @router.get(
@@ -67,20 +102,10 @@ async def get_seed_data(current_user: User = Depends(get_current_user)):
     return seed_data
 
 
-@router.post(
-    "/get-user-id",
-    status_code=status.HTTP_200_OK,
-    name="Get User ID from email [AUTH REQUIRED]",
-)
-async def get_user_id(current_user: User = Depends(get_current_user)):
-    print("/get-user-id")
-    return {"user_id": current_user.oid}
-
-
 @router.get(
     "/get-directories",
     status_code=status.HTTP_200_OK,
-    name="Get Directories [NO AUTH REQUIRED]",
+    name="Get Directories [AUTH REQUIRED]",
 )
 async def get_directories(current_user: User = Depends(get_current_user)):
     print("/get-directories")
