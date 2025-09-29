@@ -45,6 +45,9 @@ if [[ "$(basename "$PROJECT_DIR")" == "frontend" ]]; then
         echo "package.json not found, using default versions"
         exit 1
     fi
+
+    # delete existing node_modules to ensure clean install
+    sudo rm -rf "$PROJECT_DIR/node_modules"
     
     # Generate SBOM for npm/Node.js project using versions from package.json engines
     docker run --rm -v "$PROJECT_DIR":/app -w /app ubuntu:24.04 sh -c "\
@@ -57,8 +60,10 @@ if [[ "$(basename "$PROJECT_DIR")" == "frontend" ]]; then
       nvm use $NODE_VERSION && \
       npm install -g npm@$NPM_VERSION && \
       npm install && \
-      npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo '' >> sbom.json && \
-      chown -R 1000:1000 node_modules"
+      npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo '' >> sbom.json"
+    
+    # chown node_modules to avoid permission issues
+    sudo chown -R 1000:1000 "$PROJECT_DIR/node_modules"
 else
     echo "Detected Python/uv project"
     # Generate SBOM for Python/uv project
@@ -69,6 +74,7 @@ else
       /root/.local/bin/uv sync && \
       /root/.local/bin/uv lock && \
       /root/.local/bin/uv run cyclonedx-py environment --output-reproducible -v --sv 1.6 --pyproject pyproject.toml -o sbom.json && \
-      echo "" >> sbom.json && \
-      chown -R 1000:1000 .venv"
+      echo "" >> sbom.json"
+    
+    chown -R 1000:1000 "$PROJECT_DIR/.venv"
 fi
