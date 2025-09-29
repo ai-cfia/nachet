@@ -1,5 +1,5 @@
 // root\body\index.tsx
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import type Webcam from "react-webcam";
 import { BodyContainer } from "./indexElements";
 import Classifier from "../../pages/classifier";
@@ -9,10 +9,11 @@ import ModelInfoPopup from "../../components/body/model_popup";
 import SwitchDevice from "../../components/body/switch_device_popup";
 import CreateDirectory from "../../components/body/create_directory_popup";
 import DeleteDirectoryPopup from "../../components/body/del_directory_popup";
-import OAuthLogin from "../../components/body/authentication/OAuthLogin";
 import CreativeCommonsPopup from "../../components/body/creative_commons_popup";
 import { useBackendUrl, useDecoderTiff } from "@hooks";
 import { AccountInfo } from "@azure/msal-browser";
+import { useMsal } from "@azure/msal-react";
+import { getAccessToken } from "@common/auth";
 import {
   getLabelOccurrence,
   loadCaptureToCache,
@@ -22,7 +23,7 @@ import {
   fetchModelMetadata,
   inferenceRequest,
   readAzureStorageDir,
-  requestUUID,
+  // requestUUID,
 } from "@common";
 import {
   AzureStorageDirectoryItem,
@@ -43,11 +44,8 @@ interface params {
   creativeCommonsPopupOpen: boolean;
   setCreativeCommonsPopupOpen: React.Dispatch<React.SetStateAction<boolean>>;
   handleCreativeCommonsAgreement: (agree: boolean) => void;
-  setSignUpOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  signUpOpen: boolean;
-  signedIn: boolean;
-  setUuid: React.Dispatch<React.SetStateAction<string>>;
   user: AccountInfo | null;
+  apiScopeClaim: string;
 }
 
 const Body: React.FC<params> = (props) => {
@@ -92,33 +90,8 @@ const Body: React.FC<params> = (props) => {
   const [showInference, setShowInference] = useState<boolean>(true);
   const decodedTiff = useDecoderTiff(imageTiff);
   const backendUrl = useBackendUrl();
-
-  const { setSignUpOpen, setUuid, signedIn } = props;
-
-  // OAuth-based UUID fetching
-  const getUuid = useCallback(async (): Promise<void> => {
-    if (!signedIn || !props.user?.username) {
-      if (!signedIn) {
-        setSignUpOpen(true);
-      }
-      return;
-    }
-
-    try {
-      // Use the user's email from OAuth token for UUID request
-      const email = props.user.username; // In Azure AD, username typically contains the email
-      await requestUUID(backendUrl, email).then((response) => {
-        setUuid(response.user_id);
-      });
-    } catch (error) {
-      console.error("Error fetching UUID:", error);
-      alert("Error fetching UUID, see console for details");
-    }
-  }, [backendUrl, setUuid, setSignUpOpen, signedIn, props.user]);
-
-  useEffect(() => {
-    getUuid();
-  }, [getUuid]);
+  const apiScopeClaim = props.apiScopeClaim;
+  const { instance: msalInstance } = useMsal();
 
   const captureFeed = (): void => {
     // takes screenshot of webcam feed and loads it to cache when capture button is pressed
@@ -282,26 +255,37 @@ const Body: React.FC<params> = (props) => {
     if (props.uuid == null || props.uuid === "") {
       return;
     }
-    readAzureStorageDir(backendUrl, props.uuid)
-      .then((response) => {
-        const directories: AzureStorageDirectoryItem[] = [];
-        const folders = response.directories;
-        folders.forEach((item: AzureStorageDirectoryItemApi) => {
-          directories.push({
-            folderId: item.id,
-            folderName: item.name,
-            folderPrefix: item.folder_prefix,
-            description: item.description,
-            pictureCount: item.picture_count,
-          });
-        });
-        setAzureStorageDir(directories);
-      })
-      .catch((error) => {
-        console.error(error);
-        alert("Error reading Azure storage directory, see console for details");
+    async function fetchToken() {
+      const accessToken = await getAccessToken(msalInstance, {
+        scopes: [apiScopeClaim],
       });
-  }, [props.uuid, readAzureStorage, backendUrl]);
+      return accessToken;
+    }
+    fetchToken().then((accessToken) => {
+      console.log(accessToken);
+      readAzureStorageDir(backendUrl, accessToken)
+        .then((response) => {
+          const directories: AzureStorageDirectoryItem[] = [];
+          const folders = response.directories;
+          folders.forEach((item: AzureStorageDirectoryItemApi) => {
+            directories.push({
+              folderId: item.id,
+              folderName: item.name,
+              folderPrefix: item.folder_prefix,
+              description: item.description,
+              pictureCount: item.picture_count,
+            });
+          });
+          setAzureStorageDir(directories);
+        })
+        .catch((error) => {
+          console.error(error);
+          alert(
+            "Error reading Azure storage directory, see console for details",
+          );
+        });
+    });
+  }, [props.uuid, readAzureStorage, backendUrl, msalInstance, apiScopeClaim]);
 
   const handleImageUpload = (): void => {
     // Set the logic for handling image upload and then:
@@ -394,7 +378,6 @@ const Body: React.FC<params> = (props) => {
           setReadAzureStorage={setReadAzureStorage}
         />
       )}
-      {props.signUpOpen && <OAuthLogin setSignUpOpen={props.setSignUpOpen} />}
       {props.creativeCommonsPopupOpen && (
         <CreativeCommonsPopup
           setCreativeCommonsPopupOpen={props.setCreativeCommonsPopupOpen}
