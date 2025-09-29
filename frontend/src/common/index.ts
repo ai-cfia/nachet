@@ -14,7 +14,7 @@ import {
   requestClassList,
   sendNegativeFeedback,
   sendPositiveFeedback,
-  requestUUID,
+  // requestUUID,
 } from "./api";
 import {
   loadToCanvas,
@@ -56,7 +56,7 @@ export {
   requestClassList,
   sendNegativeFeedback,
   sendPositiveFeedback,
-  requestUUID,
+  // requestUUID,
   getAccessToken,
   getIdToken,
 };
