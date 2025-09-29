@@ -4,7 +4,6 @@ from fastapi import HTTPException, status
 from fastapi.security import SecurityScopes
 from starlette.requests import HTTPConnection
 from app.middleware.auth import SingleTenantAzureAuthorizationCodeBearer
-from app.middleware.auth.user import User
 from app.api.config import get_settings
 
 
@@ -39,7 +38,9 @@ class JWTAuthenticator:
 
         return self._auth_scheme
 
-    async def __call__(self, request: HTTPConnection = None, security_scopes: SecurityScopes = None):
+    async def __call__(
+        self, request: HTTPConnection = None, security_scopes: SecurityScopes = None
+    ):
         """Make this callable as a FastAPI dependency"""
         auth_scheme = self._get_auth_scheme()
         return await auth_scheme(request, security_scopes)
