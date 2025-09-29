@@ -30,6 +30,7 @@ import {
   validateImageFile,
   getImageDimensions,
 } from "./imageutils";
+import { getAccessToken, getIdToken } from "./auth";
 
 export {
   AzureAPIError,
@@ -56,4 +57,6 @@ export {
   sendNegativeFeedback,
   sendPositiveFeedback,
   requestUUID,
+  getAccessToken,
+  getIdToken,
 };
