@@ -1,23 +1,45 @@
-import React from "react";
+import React, { useEffect } from "react";
 import CFIALogo from "../../../assets/CFIA_blackfont.png";
 import { Nav, NavbarContainer, NavLogo, NavMenu } from "./indexElements";
 import { Button, IconButton } from "@mui/material";
 import { colours } from "../../../styles/colours";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { useAuth } from "../../../common/auth/useAuth";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 
 interface params {
   windowSize: {
     width: number;
     height: number;
   };
-  signedIn: boolean;
-  setSignUpOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  signUpOpen: boolean;
+  setUuid: React.Dispatch<React.SetStateAction<string>>;
+  setUserAccount: React.Dispatch<
+    React.SetStateAction<import("@azure/msal-browser").AccountInfo | null>
+  >;
 }
 
 const Navbar: React.FC<params> = (props) => {
-  const { logout } = useAuth();
+  const { instance, accounts, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
+  const { setUuid, setUserAccount } = props;
+  const logout = async (): Promise<void> => {
+    try {
+      await instance.logoutPopup();
+    } catch (error) {
+      console.error("Logout failed:", error);
+      throw error;
+    }
+  };
+  const login = async (): Promise<void> => {
+    try {
+      await instance.loginPopup({
+        // scopes: ["openid", "profile", "email"],
+        scopes: ["User.Read"],
+      });
+    } catch (error) {
+      console.error("Login failed:", error);
+      throw error;
+    }
+  };
   const buttonStyle = {
     marginRight: 0,
     marginLeft: 0,
@@ -36,6 +58,20 @@ const Navbar: React.FC<params> = (props) => {
       border: `0.01vh solid LightGrey`,
     },
   };
+
+  useEffect(() => {
+    if (inProgress === "none" && accounts.length > 0) {
+      // https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-common/docs/Accounts.md
+      setUuid(accounts[0].idTokenClaims?.oid ?? "");
+      // console.log("User Account: ", accounts[0]);
+      setUserAccount(accounts[0]);
+      instance.setActiveAccount(accounts[0]);
+    } else {
+      setUuid("");
+      setUserAccount(null);
+    }
+  }, [accounts, inProgress, instance, setUserAccount, setUuid]);
+
   return (
     <Nav width={props.windowSize.width} height={props.windowSize.height}>
       <NavbarContainer
@@ -49,18 +85,22 @@ const Navbar: React.FC<params> = (props) => {
         />
 
         <NavMenu>
-          {!props.signedIn && (
+          {!isAuthenticated && (
             <Button
               variant="outlined"
-              onClick={() => {
-                props.setSignUpOpen(true);
+              onClick={async () => {
+                try {
+                  await login();
+                } catch (error) {
+                  console.error("Login failed:", error);
+                }
               }}
               sx={buttonStyle}
             >
               SIGN IN
             </Button>
           )}
-          {props.signedIn && (
+          {isAuthenticated && (
             <div style={{ marginRight: "1.6vh" }}>
               <IconButton
                 sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
