@@ -1,6 +1,44 @@
 {
   "components": [
     {
+      "bom-ref": "Deprecated==1.2.18",
+      "description": "Python @deprecated decorator to deprecate old python classes, functions or methods.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://deprecated.readthedocs.io/en/latest/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Bug Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/laurent-laporte-pro/deprecated/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/laurent-laporte-pro/deprecated"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/laurent-laporte-pro/deprecated"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "Deprecated",
+      "purl": "pkg:pypi/deprecated@1.2.18",
+      "type": "library",
+      "version": "1.2.18"
+    },
+    {
       "bom-ref": "Hypercorn==0.17.3",
       "description": "A ASGI Server based on Hyper libraries and inspired by Gunicorn",
       "externalReferences": [
@@ -2084,6 +2122,39 @@
       "version": "30.4.4"
     },
     {
+      "bom-ref": "limits==5.6.0",
+      "description": "Rate limiting utilities",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://limits.readthedocs.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/alisaifee/limits"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://limits.readthedocs.org"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "limits",
+      "purl": "pkg:pypi/limits@5.6.0",
+      "type": "library",
+      "version": "5.6.0"
+    },
+    {
       "bom-ref": "lxml==6.0.0",
       "description": "Powerful and Pythonic XML processing library combining libxml2/libxslt with the ElementTree API.",
       "externalReferences": [
@@ -3546,6 +3617,39 @@
       "version": "1.17.0"
     },
     {
+      "bom-ref": "slowapi==0.1.9",
+      "description": "A rate limiting extension for Starlette and Fastapi",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://slowapi.readthedocs.io/en/latest/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/laurents/slowapi"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/laurents/slowapi"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "slowapi",
+      "purl": "pkg:pypi/slowapi@0.1.9",
+      "type": "library",
+      "version": "0.1.9"
+    },
+    {
       "bom-ref": "sniffio==1.3.1",
       "description": "Sniff out which async library your code is running under",
       "evidence": {
@@ -4171,6 +4275,44 @@
       "version": "15.0.1"
     },
     {
+      "bom-ref": "wrapt==1.17.3",
+      "description": "Module for decorators, wrappers and monkey patching.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://wrapt.readthedocs.io/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Bug Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/GrahamDumpleton/wrapt/issues/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://wrapt.readthedocs.io/en/latest/changes.html"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/GrahamDumpleton/wrapt"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: BSD License"
+          }
+        }
+      ],
+      "name": "wrapt",
+      "purl": "pkg:pypi/wrapt@1.17.3",
+      "type": "library",
+      "version": "1.17.3"
+    },
+    {
       "bom-ref": "wsproto==1.2.0",
       "description": "WebSockets state-machine based protocol implementation",
       "externalReferences": [
@@ -4259,6 +4401,14 @@
     }
   ],
   "dependencies": [
+    {
+      "dependsOn": [
+        "pytest-cov==6.2.1",
+        "pytest==8.4.1",
+        "wrapt==1.17.3"
+      ],
+      "ref": "Deprecated==1.2.18"
+    },
     {
       "dependsOn": [
         "h11==0.16.0",
@@ -4634,6 +4784,14 @@
       "ref": "license-expression==30.4.4"
     },
     {
+      "dependsOn": [
+        "Deprecated==1.2.18",
+        "packaging==25.0",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "limits==5.6.0"
+    },
+    {
       "ref": "lxml==6.0.0"
     },
     {
@@ -4890,7 +5048,8 @@
         "pydantic==2.11.9",
         "pydantic_core==2.33.2",
         "python-dotenv==1.1.1",
-        "python-magic==0.4.27"
+        "python-magic==0.4.27",
+        "slowapi==0.1.9"
       ],
       "ref": "root-component"
     },
@@ -4905,6 +5064,12 @@
     },
     {
       "ref": "six==1.17.0"
+    },
+    {
+      "dependsOn": [
+        "limits==5.6.0"
+      ],
+      "ref": "slowapi==0.1.9"
     },
     {
       "ref": "sniffio==1.3.1"
@@ -4998,6 +5163,9 @@
       "ref": "websockets==15.0.1"
     },
     {
+      "ref": "wrapt==1.17.3"
+    },
+    {
       "dependsOn": [
         "h11==0.16.0"
       ],
@@ -5048,7 +5216,7 @@
       ],
       "name": "nachet-backend",
       "type": "application",
-      "version": "1.14.0"
+      "version": "1.15.0"
     },
     "properties": [
       {
