@@ -182,7 +182,7 @@
       "version": "2.10.1"
     },
     {
-      "bom-ref": "PyYAML==6.0.2",
+      "bom-ref": "PyYAML==6.0.3",
       "description": "YAML parser and emitter for Python",
       "externalReferences": [
         {
@@ -230,9 +230,9 @@
         }
       ],
       "name": "PyYAML",
-      "purl": "pkg:pypi/pyyaml@6.0.2",
+      "purl": "pkg:pypi/pyyaml@6.0.3",
       "type": "library",
-      "version": "6.0.2"
+      "version": "6.0.3"
     },
     {
       "bom-ref": "Pygments==2.19.2",
@@ -870,13 +870,13 @@
       "version": "2025.7.14"
     },
     {
-      "bom-ref": "cffi==1.17.1",
+      "bom-ref": "cffi==2.0.0",
       "description": "Foreign Function Interface for Python calling C code.",
       "externalReferences": [
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "http://cffi.readthedocs.org/"
+          "url": "https://cffi.readthedocs.io/"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue Tracker",
@@ -902,11 +902,6 @@
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
           "url": "https://cffi.readthedocs.io/en/latest/whatsnew.html"
-        },
-        {
-          "comment": "from packaging metadata: Home-page",
-          "type": "website",
-          "url": "http://cffi.readthedocs.org"
         }
       ],
       "licenses": [
@@ -918,9 +913,9 @@
         }
       ],
       "name": "cffi",
-      "purl": "pkg:pypi/cffi@1.17.1",
+      "purl": "pkg:pypi/cffi@2.0.0",
       "type": "library",
-      "version": "1.17.1"
+      "version": "2.0.0"
     },
     {
       "bom-ref": "chardet==5.2.0",
@@ -1096,7 +1091,7 @@
       "version": "7.10.6"
     },
     {
-      "bom-ref": "cryptography==46.0.0",
+      "bom-ref": "cryptography==46.0.1",
       "description": "cryptography is a package which provides cryptographic recipes and primitives to Python developers.",
       "externalReferences": [
         {
@@ -1132,9 +1127,9 @@
         }
       ],
       "name": "cryptography",
-      "purl": "pkg:pypi/cryptography@46.0.0",
+      "purl": "pkg:pypi/cryptography@46.0.1",
       "type": "library",
-      "version": "46.0.0"
+      "version": "46.0.1"
     },
     {
       "bom-ref": "cyclonedx-bom==7.0.0",
@@ -4294,13 +4289,13 @@
     {
       "dependsOn": [
         "coverage==7.10.6",
-        "cryptography==46.0.0",
+        "cryptography==46.0.1",
         "pytest==8.4.1"
       ],
       "ref": "PyJWT==2.10.1"
     },
     {
-      "ref": "PyYAML==6.0.2"
+      "ref": "PyYAML==6.0.3"
     },
     {
       "ref": "Pygments==2.19.2"
@@ -4393,7 +4388,7 @@
     {
       "dependsOn": [
         "azure-core==1.35.0",
-        "cryptography==46.0.0",
+        "cryptography==46.0.1",
         "msal-extensions==1.3.1",
         "msal==1.32.3",
         "typing_extensions==4.14.1"
@@ -4403,7 +4398,7 @@
     {
       "dependsOn": [
         "azure-core==1.35.0",
-        "cryptography==46.0.0",
+        "cryptography==46.0.1",
         "isodate==0.7.2",
         "typing_extensions==4.14.1"
       ],
@@ -4434,7 +4429,7 @@
       "dependsOn": [
         "pycparser==2.22"
       ],
-      "ref": "cffi==1.17.1"
+      "ref": "cffi==2.0.0"
     },
     {
       "ref": "chardet==5.2.0"
@@ -4451,14 +4446,14 @@
     {
       "dependsOn": [
         "certifi==2025.7.14",
-        "cffi==1.17.1",
+        "cffi==2.0.0",
         "click==8.2.1",
         "pytest-cov==6.2.1",
         "pytest==8.4.1",
         "ruff==0.13.2",
         "typing_extensions==4.14.1"
       ],
-      "ref": "cryptography==46.0.0"
+      "ref": "cryptography==46.0.1"
     },
     {
       "dependsOn": [
@@ -4490,7 +4485,7 @@
       "dependsOn": [
         "Hypercorn==0.17.3",
         "coverage==7.10.6",
-        "cryptography==46.0.0",
+        "cryptography==46.0.1",
         "h2==4.3.0",
         "httpcore==1.0.9",
         "httpx==0.28.1",
@@ -4518,7 +4513,7 @@
     {
       "dependsOn": [
         "Jinja2==3.1.6",
-        "PyYAML==6.0.2",
+        "PyYAML==6.0.3",
         "email-validator==2.3.0",
         "fastapi-cli==0.0.10",
         "httpx==0.28.1",
@@ -4643,7 +4638,7 @@
     },
     {
       "dependsOn": [
-        "PyYAML==6.0.2",
+        "PyYAML==6.0.3",
         "coverage==7.10.6",
         "mdurl==0.1.2",
         "pytest-cov==6.2.1",
@@ -4664,7 +4659,7 @@
     {
       "dependsOn": [
         "PyJWT==2.10.1",
-        "cryptography==46.0.0",
+        "cryptography==46.0.1",
         "requests==2.32.4"
       ],
       "ref": "msal==1.32.3"
@@ -4748,7 +4743,7 @@
     },
     {
       "dependsOn": [
-        "PyYAML==6.0.2",
+        "PyYAML==6.0.3",
         "azure-identity==1.25.0",
         "pydantic==2.11.9",
         "python-dotenv==1.1.1",
@@ -4876,14 +4871,14 @@
       "dependsOn": [
         "Hypercorn==0.17.3",
         "PyJWT==2.10.1",
-        "PyYAML==6.0.2",
+        "PyYAML==6.0.3",
         "SQLAlchemy==2.0.43",
         "aiosqlite==0.21.0",
         "alembic==1.16.5",
         "azure-identity==1.25.0",
         "azure-storage-blob==12.26.0",
         "beartype==0.21.0",
-        "cryptography==46.0.0",
+        "cryptography==46.0.1",
         "fastapi==0.116.1",
         "h2==4.3.0",
         "httpx==0.28.1",
@@ -4920,7 +4915,7 @@
     {
       "dependsOn": [
         "Jinja2==3.1.6",
-        "PyYAML==6.0.2",
+        "PyYAML==6.0.3",
         "anyio==4.10.0",
         "httpx==0.28.1",
         "python-multipart==0.0.20",
@@ -4972,7 +4967,7 @@
     },
     {
       "dependsOn": [
-        "PyYAML==6.0.2",
+        "PyYAML==6.0.3",
         "click==8.2.1",
         "h11==0.16.0",
         "httptools==0.6.4",
