@@ -1,6 +1,8 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Depends
 from app.service import PipelineService, SeedService, DirectoryService
 from app.model import DirectoryRequest
+from app.middleware.auth.jwt_auth import get_current_user
+from app.middleware.auth.user import User
 
 router = APIRouter()
 
@@ -57,10 +59,11 @@ async def get_model_endpoints_metadata():
 @router.get(
     "/seeds",
     status_code=status.HTTP_200_OK,
-    name="Get Seed Data [NO AUTH REQUIRED]",
+    name="Get Seed Data [AUTH REQUIRED]",
 )
-async def get_seed_data():
-    print("/seeds")
+async def get_seed_data(current_user: User = Depends(get_current_user)):
+    print(f"/seeds - authenticated user: {current_user.oid}")
+    print(f"/seeds - user: {current_user.__dict__}")
     seed_data = await SeedService.get_seed_data()
     return seed_data
 
@@ -75,12 +78,12 @@ async def get_user_id():
     return {"user_id": "8ea46a6b-7d37-4fbb-a66f-775112376e16"}
 
 
-@router.post(
+@router.get(
     "/get-directories",
     status_code=status.HTTP_200_OK,
     name="Get Directories [NO AUTH REQUIRED]",
 )
-async def get_directories(req_body: DirectoryRequest):
+async def get_directories():
     print("/get-directories")
-    directories = await DirectoryService.get_user_directories(req_body.container_name)
+    directories = await DirectoryService.get_user_directories("8ea46a6b-7d37-4fbb-a66f-775112376e16")
     return directories
