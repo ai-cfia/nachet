@@ -48,7 +48,6 @@ stages:
               backendAzureRmKey: '$(stateKey)'
             env:
               ARM_USE_AZUREAD: true
-              ARM_SKIP_PROVIDER_REGISTRATION: true
 
           - task: TerraformTaskV4@4
             displayName: "Terraform Plan"

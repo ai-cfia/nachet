@@ -5,13 +5,13 @@ data "azurerm_storage_account" "tfstate" {
 }
 
 resource "azurerm_private_endpoint" "tfstate_storage" {
-  name                = "tfstatenachet-pe"
+  name                = "tfstatenachet-sa-pe"
   location            = var.location
   resource_group_name = var.resource_group_name
   subnet_id           = var.private_endpoint_subnet_id
 
   private_service_connection {
-    name                           = "tfstatenachet-connection"
+    name                           = "tfstatenachet-sa-connection"
     is_manual_connection           = false
     private_connection_resource_id = data.azurerm_storage_account.tfstate.id
     subresource_names              = ["blob"]
@@ -87,27 +87,27 @@ module "container_registry" {
 }
 
 # PgAdmin Container App
-module "pgadmin" {
-  source = "../modules/container-app-pgadmin"
+# module "pgadmin" {
+#   source = "../modules/container-app-pgadmin"
 
-  # Default
-  project_name        = var.project_name
-  environment         = var.environment
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
+#   # Default
+#   project_name        = var.project_name
+#   environment         = var.environment
+#   resource_group_name = var.resource_group_name
+#   tags                = var.tags
 
-  # Container App Environment
-  container_app_environment_id = module.container_app_environment.container_app_environment_id
+#   # Container App Environment
+#   container_app_environment_id = module.container_app_environment.container_app_environment_id
 
-  # PgAdmin Configuration
-  pgadmin_password = var.pgadmin_password
-  pgadmin_image    = var.pgadmin_image
+#   # PgAdmin Configuration
+#   pgadmin_password = var.pgadmin_password
+#   pgadmin_image    = var.pgadmin_image
 
-  # ACR Integration
-  acr_login_server    = module.container_registry.login_server
-  acr_admin_username  = module.container_registry.admin_username
-  acr_admin_password  = module.container_registry.admin_password
-}
+#   # ACR Integration
+#   acr_login_server    = module.container_registry.login_server
+#   acr_admin_username  = module.container_registry.admin_username
+#   acr_admin_password  = module.container_registry.admin_password
+# }
 
 # Module 3: Nachet Application (Storage and Backend) - Commented out for now
 # module "nachet" {
