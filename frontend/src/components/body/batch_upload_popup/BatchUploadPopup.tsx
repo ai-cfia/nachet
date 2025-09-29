@@ -20,7 +20,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
-import { colours } from "../../../styles/colours";
+import { colours } from "@styles/colours";
 import {
   ChangeEvent,
   Dispatch,
@@ -33,7 +33,7 @@ import {
 import { batchUploadImage, batchUploadInit } from "@common/api";
 import { validateImageFile } from "@common";
 import { BatchUploadMetadata, SpeciesData } from "@common/types";
-import { useSpeciesData } from "@hooks/useSpeciesData";
+import { useSpeciesData, useAuth } from "@hooks";
 import {
   folderNameSchema,
   seedCountSchema,
@@ -72,10 +72,12 @@ interface params {
   backendUrl: string;
   containerName: string;
   uuid: string;
+  apiScopeClaim: string;
 }
 
 const BatchUploadPopup = (props: params) => {
-  const { setBatchUploadOpen, containerName, uuid, backendUrl } = props;
+  const { setBatchUploadOpen, containerName, uuid, backendUrl, apiScopeClaim } =
+    props;
 
   const [files, setFiles] = useState<FileList | null>(null);
   const [fileCount, setFileCount] = useState<number>(0);
@@ -98,7 +100,8 @@ const BatchUploadPopup = (props: params) => {
   const [filesError, setFilesError] = useState<string>("");
   const [classError, setClassError] = useState<string>("");
 
-  const { speciesData } = useSpeciesData(backendUrl);
+  const { speciesData } = useSpeciesData(backendUrl, apiScopeClaim);
+  const { fetchAccessToken } = useAuth(apiScopeClaim);
 
   const classList = useMemo(() => {
     if (!speciesData?.seeds) return [];
@@ -279,13 +282,25 @@ const BatchUploadPopup = (props: params) => {
     resetUpload();
     setUploading(true);
 
-    batchUploadInit(backendUrl, uuid, folderName, containerName, fileCount)
-      .then((response) => {
-        setSessionId(response.session_id);
+    fetchAccessToken().then((accessToken) => {
+      if (!accessToken) {
+        console.error("Failed to obtain access token");
+        return;
+      }
+      batchUploadInit({
+        backendUrl,
+        accessToken,
+        folderName,
+        containerUuid: containerName,
+        fileCount,
       })
-      .catch((error) => {
-        setUploadError(error.toString());
-      });
+        .then((response) => {
+          setSessionId(response.session_id);
+        })
+        .catch((error) => {
+          setUploadError(error.toString());
+        });
+    });
   };
 
   const handleClose = (): void => {
@@ -338,17 +353,28 @@ const BatchUploadPopup = (props: params) => {
             imageDataUrl: imageDataUrl,
             sessionId: sessionId,
           };
-          batchUploadImage(backendUrl, data)
-            .then((response) => {
-              if (response) {
-                console.log("Successfully uploaded image: ", file.name);
-              }
-              resolve(true);
+
+          fetchAccessToken().then((accessToken) => {
+            if (!accessToken) {
+              console.error("Failed to obtain access token");
+              return;
+            }
+            batchUploadImage({
+              backendUrl: backendUrl,
+              data: data,
+              accessToken: accessToken,
             })
-            .catch((error) => {
-              console.error("Error uploading image: ", file.name);
-              reject(error);
-            });
+              .then((response) => {
+                if (response) {
+                  console.log("Successfully uploaded image: ", file.name);
+                }
+                resolve(true);
+              })
+              .catch((error) => {
+                console.error("Error uploading image: ", file.name);
+                reject(error);
+              });
+          });
         };
         reader.readAsDataURL(file);
       });
@@ -387,18 +413,18 @@ const BatchUploadPopup = (props: params) => {
 
     batchUpload();
   }, [
-    sessionId,
-    files,
-    fileStatus,
-    uploading,
     backendUrl,
-    folderName,
-    seedId,
-    seedCount,
-    selectedClass,
-    zoom,
     containerName,
+    fetchAccessToken,
+    fileStatus,
+    files,
+    seedCount,
+    seedId,
+    selectedClass?.label,
+    sessionId,
+    uploading,
     uuid,
+    zoom,
   ]);
 
   return (
