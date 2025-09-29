@@ -99,6 +99,14 @@ nachet/frontend$ cp .env.template .env.config.local
 nachet/frontend$ nano .env.config.local
 nachet/frontend$ npm run update
 nachet/frontend$ npm run test
+
+# run dev with env vars from .env.config.local
+# nachet/frontend$ source .env.config.local # requires export keyword in the file
+nachet/frontend$ export $(grep -v '^#' .env.config.local | xargs)
+nachet/frontend$ npm run dev -- --port 12438
+
+# unset env vars
+nachet/frontend$ unset $(grep -v '^#' .env.config.local | grep -v '^$' | cut -d= -f1)
 ```
 
 ### Update the compose file as needed

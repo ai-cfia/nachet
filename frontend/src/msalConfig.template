@@ -1,0 +1,60 @@
+const msalConfig = {
+    auth: {
+        clientId: "enter_client_id_here",
+        authority: "https://login.microsoftonline.com/common",
+        knownAuthorities: [],
+        cloudDiscoveryMetadata: "",
+        redirectUri: "enter_redirect_uri_here",
+        postLogoutRedirectUri: "enter_postlogout_uri_here",
+        navigateToLoginRequestUrl: true,
+        clientCapabilities: ["CP1"],
+        protocolMode: "AAD"
+    },
+    cache: {
+        cacheLocation: "sessionStorage",
+        temporaryCacheLocation: "sessionStorage",
+        storeAuthStateInCookie: false,
+        secureCookies: false,
+        claimsBasedCachingEnabled: true,
+    },
+    system: {
+        loggerOptions: {
+            loggerCallback: (
+                level: LogLevel,
+                message: string,
+                containsPii: boolean
+            ): void => {
+                if (containsPii) {
+                    return;
+                }
+                switch (level) {
+                    case LogLevel.Error:
+                        console.error(message);
+                        return;
+                    case LogLevel.Info:
+                        console.info(message);
+                        return;
+                    case LogLevel.Verbose:
+                        console.debug(message);
+                        return;
+                    case LogLevel.Warning:
+                        console.warn(message);
+                        return;
+                }
+            },
+            piiLoggingEnabled: false,
+        },
+        windowHashTimeout: 60000,
+        iframeHashTimeout: 6000,
+        loadFrameTimeout: 0,
+        asyncPopups: false,
+    },
+    telemetry: {
+        application: {
+            appName: "My Application",
+            appVersion: "1.0.0",
+        },
+    },
+};
+
+const msalInstance = new PublicClientApplication(msalConfig);
