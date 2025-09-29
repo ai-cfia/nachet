@@ -87,6 +87,9 @@ nachet/backend/app/db$ uv run pytest tests/ -v --tb=short --cov=. --cov-report=x
 # run tests
 nachet/backend$ ./run_tests.sh
 nachet/backend$ deactivate
+
+# lint
+nachet/backend$  uv run ruff check .
 ```
 
 ### Frontend setup

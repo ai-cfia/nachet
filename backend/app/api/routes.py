@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends, Request, HTTPException
+from fastapi import APIRouter, status, Depends, Request
 from app.service import PipelineService, SeedService, DirectoryService
 from app.middleware.auth.jwt_auth import get_current_user
 from app.middleware.auth.user import User
