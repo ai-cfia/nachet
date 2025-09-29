@@ -37,7 +37,7 @@ dependencies = [
     "cryptography==46.0.1",
     "pyyaml==6.0.3",
     "pydantic==2.11.9",
-    "pydantic-core==2.39.0",
+    "pydantic-core==2.33.2",
     "python-magic==0.4.27",
     "PyJWT==2.10.1",
     "fastapi[standard-no-fastapi-cloud-cli]>=0.116.1",
