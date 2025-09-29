@@ -42,12 +42,10 @@ class Settings(BaseSettings):
     # otel_exporter_otlp_endpoint: str = Field(alias="otel_exporter_otlp_endpoint")
 
     # auth settings
-    auth_enabled: bool = True
-    auth_audience: str | None = None
-    auth_instance: str | None = "https://login.microsoftonline.com"
-    auth_tenant_id: str | None = None
-    auth_client_id: str | None = None
-    auth_client_secret: str | None = None
+    azure_auth_enabled: bool = True
+    azure_client_id: str | None = None
+    azure_tenant_id: str | None = None
+    azure_api_scope_claim: str | None = None
 
     # database settings
     db_user: str | None = None
@@ -209,7 +207,7 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
-        allow_origin_regex="/^https?:\/\/localhost(:[0-9]{1,5})?$/",
+        allow_origin_regex=r"/^https?:\/\/localhost(:[0-9]{1,5})?$/",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
