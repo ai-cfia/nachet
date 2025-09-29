@@ -64,6 +64,7 @@ dev = [
     "toml>=0.10.2",
     "pytest-cov>=6.2.1",
     "tqdm>=4.67.1",
+    "ruff>=0.13.2",
 ]
 
 [project.urls]

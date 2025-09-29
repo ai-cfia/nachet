@@ -3467,6 +3467,44 @@
       "version": "0.27.0"
     },
     {
+      "bom-ref": "ruff==0.13.2",
+      "description": "An extremely fast Python linter and code formatter, written in Rust.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://docs.astral.sh/ruff/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://github.com/astral-sh/ruff/blob/main/CHANGELOG.md"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/astral-sh/ruff"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://docs.astral.sh/ruff"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "ruff",
+      "purl": "pkg:pypi/ruff@0.13.2",
+      "type": "library",
+      "version": "0.13.2"
+    },
+    {
       "bom-ref": "shellingham==1.5.4",
       "description": "Tool to Detect Surrounding Shell",
       "externalReferences": [
@@ -4417,6 +4455,7 @@
         "click==8.2.1",
         "pytest-cov==6.2.1",
         "pytest==8.4.1",
+        "ruff==0.13.2",
         "typing_extensions==4.14.1"
       ],
       "ref": "cryptography==46.0.0"
@@ -4544,7 +4583,8 @@
     },
     {
       "dependsOn": [
-        "pytest==8.4.1"
+        "pytest==8.4.1",
+        "ruff==0.13.2"
       ],
       "ref": "idna==3.10"
     },
@@ -4593,7 +4633,8 @@
     {
       "dependsOn": [
         "boolean.py==5.0",
-        "pytest==8.4.1"
+        "pytest==8.4.1",
+        "ruff==0.13.2"
       ],
       "ref": "license-expression==30.4.4"
     },
@@ -4860,6 +4901,9 @@
     },
     {
       "ref": "rpds-py==0.27.0"
+    },
+    {
+      "ref": "ruff==0.13.2"
     },
     {
       "ref": "shellingham==1.5.4"
