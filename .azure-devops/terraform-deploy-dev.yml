@@ -6,7 +6,7 @@ trigger:
 pr: none
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: linux-internal-vmss-agent
 
 variables:
   - group: nachet-dev
@@ -36,13 +36,47 @@ stages:
               secureFile: "nachet-dev.tfvars"
 
           - task: AzureCLI@2
-            displayName: "Azure CLI Login, terraform init and plan"
+            displayName: "Terraform Init and Plan with OIDC"
             inputs:
               azureSubscription: $(serviceConnectionName)
               scriptType: "bash"
               scriptLocation: "inlineScript"
+              addSpnToEnvironment: true
               inlineScript: |
-                echo "Successfully logged in with Azure CLI"
+                echo "=== Azure Authentication via OIDC ==="
+                echo "Service Principal ID: $servicePrincipalId"
+                echo "Tenant ID: $tenantId"
+                echo "Subscription ID: $(az account show --query id -o tsv)"
+                
+                # Export ARM variables for Terraform OIDC authentication (Azure DevOps)
+                export ARM_CLIENT_ID="$servicePrincipalId"
+                export ARM_TENANT_ID="$tenantId"
+                export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
+                export ARM_USE_OIDC=true
+                export ARM_OIDC_REQUEST_TOKEN="$SYSTEM_ACCESSTOKEN"
+                export ARM_OIDC_REQUEST_URL="$SYSTEM_OIDCREQUESTURI"
+                
+                echo "ARM variables exported for Terraform OIDC:"
+                echo "  ARM_CLIENT_ID: $ARM_CLIENT_ID"
+                echo "  ARM_TENANT_ID: $ARM_TENANT_ID"
+                echo "  ARM_SUBSCRIPTION_ID: $ARM_SUBSCRIPTION_ID"
+                echo "  ARM_USE_OIDC: $ARM_USE_OIDC"
+                echo "========================================="
+
+                cd $(System.DefaultWorkingDirectory)/terraform/dev
+
+                echo "Verifying Terraform installation..."
+                terraform version
+
+                echo "Running Terraform Init with OIDC..."
+                terraform init \
+                  -backend-config="resource_group_name=$(resourceGroupName)" \
+                  -backend-config="storage_account_name=$(storageAccountName)" \
+                  -backend-config="container_name=$(containerName)" \
+                  -backend-config="key=$(stateKey)"
+
+                echo "Running Terraform Plan with OIDC..."
+                terraform plan -var-file=$(DownloadSecureVars.SecureFilePath)
 
           - task: AzureCLI@2
             displayName: "Pre-create PostgreSQL Subnet"
@@ -50,6 +84,7 @@ stages:
               azureSubscription: $(serviceConnectionName)
               scriptType: "bash"
               scriptLocation: "inlineScript"
+              addSpnToEnvironment: true
               inlineScript: |
                 SUBNET_NAME="$(postgresqlSubnetName)"
                 VNET_NAME="$(vnetName)"
@@ -92,6 +127,7 @@ stages:
               azureSubscription: $(serviceConnectionName)
               scriptType: "bash"
               scriptLocation: "inlineScript"
+              addSpnToEnvironment: true
               inlineScript: |
                 VNET_NAME="$(vnetName)"
                 VNET_RG="$(vnetResourceGroupName)"
@@ -133,6 +169,7 @@ stages:
               azureSubscription: $(serviceConnectionName)
               scriptType: "bash"
               scriptLocation: "inlineScript"
+              addSpnToEnvironment: true
               inlineScript: |
                 VNET_NAME="$(vnetName)"
                 VNET_RG="$(vnetResourceGroupName)"
@@ -169,27 +206,6 @@ stages:
                   fi
                 fi
 
-          - task: TerraformTask@5
-            displayName: "Terraform Init"
-            inputs:
-              provider: "azurerm"
-              command: "init"
-              workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
-              backendServiceArm: "$(serviceConnectionName)"
-              backendAzureRmResourceGroupName: "$(resourceGroupName)"
-              backendAzureRmStorageAccountName: "$(storageAccountName)"
-              backendAzureRmContainerName: "$(containerName)"
-              backendAzureRmKey: "$(stateKey)"
-
-          - task: TerraformTask@5
-            displayName: "Terraform Plan"
-            inputs:
-              provider: "azurerm"
-              command: "plan"
-              commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath)"
-              workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
-              environmentServiceNameAzureRM: "$(serviceConnectionName)"
-
   - stage: Apply
     displayName: "Apply Terraform Plan"
     dependsOn: InitAndPlan
@@ -198,7 +214,7 @@ stages:
       - deployment: TerraformApply
         displayName: "Terraform Apply"
         pool:
-          vmImage: 'ubuntu-latest'
+          name: linux-internal-vmss-agent
         environment: "TFApproval"
         strategy:
           runOnce:
@@ -212,23 +228,45 @@ stages:
                   inputs:
                     secureFile: "nachet-dev.tfvars"
 
-                - task: TerraformTask@5
-                  displayName: "Terraform Init"
+                - task: AzureCLI@2
+                  displayName: "Terraform Apply with OIDC"
                   inputs:
-                    provider: "azurerm"
-                    command: "init"
-                    workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
-                    backendServiceArm: "$(serviceConnectionName)"
-                    backendAzureRmResourceGroupName: "$(resourceGroupName)"
-                    backendAzureRmStorageAccountName: "$(storageAccountName)"
-                    backendAzureRmContainerName: "$(containerName)"
-                    backendAzureRmKey: "$(stateKey)"
+                    azureSubscription: $(serviceConnectionName)
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
+                    addSpnToEnvironment: true  # Critical for OIDC
+                    inlineScript: |
+                      echo "=== Azure Authentication via OIDC ==="
+                      echo "Service Principal ID: $servicePrincipalId"
+                      echo "Tenant ID: $tenantId"
+                      echo "Subscription ID: $(az account show --query id -o tsv)"
+                      
+                      # Export ARM variables for Terraform OIDC authentication (Azure DevOps)
+                      export ARM_CLIENT_ID="$servicePrincipalId"
+                      export ARM_TENANT_ID="$tenantId"
+                      export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
+                      export ARM_USE_OIDC=true
+                      export ARM_OIDC_REQUEST_TOKEN="$SYSTEM_ACCESSTOKEN"
+                      export ARM_OIDC_REQUEST_URL="$SYSTEM_OIDCREQUESTURI"
+                      
+                      echo "ARM variables exported for Terraform OIDC:"
+                      echo "  ARM_CLIENT_ID: $ARM_CLIENT_ID"
+                      echo "  ARM_TENANT_ID: $ARM_TENANT_ID"
+                      echo "  ARM_SUBSCRIPTION_ID: $ARM_SUBSCRIPTION_ID"
+                      echo "  ARM_USE_OIDC: $ARM_USE_OIDC"
+                      echo "========================================="
 
-                - task: TerraformTask@5
-                  displayName: "Terraform Apply"
-                  inputs:
-                    provider: "azurerm"
-                    command: "apply"
-                    commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath)"
-                    workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
-                    environmentServiceNameAzureRM: "$(serviceConnectionName)"
+                      cd $(System.DefaultWorkingDirectory)/terraform/dev
+
+                      echo "Verifying Terraform installation..."
+                      terraform version
+
+                      echo "Running Terraform Init with OIDC..."
+                      terraform init \
+                        -backend-config="resource_group_name=$(resourceGroupName)" \
+                        -backend-config="storage_account_name=$(storageAccountName)" \
+                        -backend-config="container_name=$(containerName)" \
+                        -backend-config="key=$(stateKey)"
+
+                      echo "Running Terraform Apply with OIDC..."
+                      terraform apply -auto-approve -var-file=$(DownloadSecureVars.SecureFilePath)
