@@ -433,13 +433,13 @@ export const batchUploadInit = async ({
   accessToken,
   folderName,
   containerUuid,
-  nbPictures,
+  fileCount,
 }: {
   backendUrl: string;
   accessToken: string;
   folderName: string;
   containerUuid: string;
-  nbPictures: number;
+  fileCount: number;
 }): Promise<{
   session_id: string;
 }> => {
@@ -452,7 +452,7 @@ export const batchUploadInit = async ({
   if (containerUuid === "" || containerUuid == null) {
     throw new ValueError("Container UUID is null or empty");
   }
-  if (nbPictures === 0 || nbPictures == null) {
+  if (fileCount === 0 || fileCount == null) {
     throw new ValueError("Number of pictures is null or empty");
   }
   const request = {
@@ -466,7 +466,7 @@ export const batchUploadInit = async ({
     data: {
       folder_name: folderName,
       container_name: containerUuid,
-      nb_pictures: nbPictures,
+      file_count: fileCount,
     },
   };
   const response = await handleAxios<unknown>(request);

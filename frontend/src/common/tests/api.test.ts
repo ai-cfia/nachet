@@ -702,7 +702,7 @@ describe("batchUploadInit", () => {
       accessToken: "valid-token",
       folderName,
       containerUuid,
-      nbPictures,
+      fileCount: nbPictures,
     });
 
     expect(result).toEqual(mockResponse);
@@ -717,7 +717,7 @@ describe("batchUploadInit", () => {
       data: {
         folder_name: folderName,
         container_name: containerUuid,
-        nb_pictures: nbPictures,
+        file_count: nbPictures,
       },
     });
   });
@@ -729,7 +729,7 @@ describe("batchUploadInit", () => {
         accessToken: "valid-token",
         folderName: "folder",
         containerUuid: "container",
-        nbPictures: 0,
+        fileCount: 0,
       }),
     ).rejects.toThrow(new ValueError("Number of pictures is null or empty"));
   });
@@ -741,7 +741,7 @@ describe("batchUploadInit", () => {
         accessToken: "valid-token",
         folderName: "folder",
         containerUuid: "",
-        nbPictures: 5,
+        fileCount: 5,
       }),
     ).rejects.toThrow(new ValueError("Container UUID is null or empty"));
   });
