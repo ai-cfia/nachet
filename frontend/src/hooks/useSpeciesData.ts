@@ -1,8 +1,9 @@
 import { useEffect } from "react";
-import { useSpeciesStore } from "../stores/useSpeciesStore";
+import { useSpeciesStore } from "@stores/useSpeciesStore";
 import { requestClassList } from "@common/api";
+import { useAuth } from "./useAuth";
 
-export const useSpeciesData = (backendUrl: string) => {
+export const useSpeciesData = (backendUrl: string, apiScopeClaim: string) => {
   const {
     speciesData,
     isLoading,
@@ -11,6 +12,7 @@ export const useSpeciesData = (backendUrl: string) => {
     setLoading,
     setError,
   } = useSpeciesStore();
+  const { fetchAccessToken } = useAuth(apiScopeClaim);
 
   useEffect(() => {
     const fetchSpeciesData = async () => {
@@ -26,7 +28,8 @@ export const useSpeciesData = (backendUrl: string) => {
       setError(null);
 
       try {
-        const response = await requestClassList(backendUrl);
+        const accessToken = await fetchAccessToken();
+        const response = await requestClassList({ backendUrl, accessToken });
         setSpeciesData(response);
       } catch (err) {
         const errorMessage =
@@ -39,7 +42,14 @@ export const useSpeciesData = (backendUrl: string) => {
     };
 
     fetchSpeciesData();
-  }, [backendUrl, speciesData, setSpeciesData, setLoading, setError]);
+  }, [
+    backendUrl,
+    speciesData,
+    setSpeciesData,
+    setLoading,
+    setError,
+    fetchAccessToken,
+  ]);
 
   return {
     speciesData,
