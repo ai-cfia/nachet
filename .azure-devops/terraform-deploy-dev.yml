@@ -210,11 +210,6 @@ stages:
                   inputs:
                     secureFile: "nachet-dev.tfvars"
 
-                - task: TerraformInstaller@0
-                  displayName: "Install Terraform"
-                  inputs:
-                    terraformVersion: 'latest'
-
                 - task: TerraformTaskV4@4
                   displayName: "Terraform Init"
                   inputs:
