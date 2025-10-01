@@ -63,7 +63,7 @@ if [[ "$(basename "$PROJECT_DIR")" == "frontend" ]]; then
       npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo '' >> sbom.json"
     
     # chown node_modules to avoid permission issues
-    sudo chown -R 1000:1000 "$PROJECT_DIR/node_modules"
+    sudo chown -R 1000:1000 "$PROJECT_DIR/"
 else
     echo "Detected Python/uv project"
     # Generate SBOM for Python/uv project
@@ -76,5 +76,5 @@ else
       /root/.local/bin/uv run cyclonedx-py environment --output-reproducible -v --sv 1.6 --pyproject pyproject.toml -o sbom.json && \
       echo "" >> sbom.json"
     
-    sudo chown -R 1000:1000 "$PROJECT_DIR/.venv"
+    sudo chown -R 1000:1000 "$PROJECT_DIR/"
 fi
