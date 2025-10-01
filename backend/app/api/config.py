@@ -197,11 +197,6 @@ async def lifespan(app: FastAPI):
     app.state.blob_storage_manager = blob_storage_manager
     print("✅ App state configured successfully")
 
-    limiter = get_limiter()
-    app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-    print("✅ Rate limiter configured successfully")
-
     # Open connection pool
     # app.pool.open()
 
@@ -252,6 +247,11 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
         lifespan=lifespan, docs_url=settings.swagger_path, root_path=settings.base_path
     )
     app.settings = settings
+
+    # Initialize rate limiter and add to app state before middleware
+    limiter = get_limiter()
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     app.add_middleware(
         CORSMiddleware,
