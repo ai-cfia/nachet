@@ -1,5 +1,6 @@
 from fastapi import APIRouter, status, Depends, Request
-from app.service import PipelineService, SeedService, DirectoryService
+from fastapi.responses import Response
+from app.service import PipelineService, SeedService, DirectoryService, FrontendService
 from app.middleware.auth.jwt_auth import get_current_user
 from app.middleware.auth.user import User
 
@@ -111,3 +112,46 @@ async def get_directories(current_user: User = Depends(get_current_user)):
     print("/get-directories")
     directories = await DirectoryService.get_user_directories(current_user.oid)
     return directories
+
+
+# Frontend static file serving routes
+@router.get(
+    "/",
+    status_code=status.HTTP_200_OK,
+    name="Serve Frontend Root [NO AUTH REQUIRED]",
+    include_in_schema=False,
+)
+async def serve_frontend_root():
+    """Serve the main index.html file."""
+    content, content_type = await FrontendService.get_file("index.html")
+    return Response(content=content, media_type=content_type)
+
+
+@router.get(
+    "/{path:path}",
+    status_code=status.HTTP_200_OK,
+    name="Serve Frontend Static Files [NO AUTH REQUIRED]",
+    include_in_schema=False,
+)
+async def serve_frontend_static(path: str):
+    """
+    Serve static frontend files (assets, favicon, etc.).
+    Falls back to index.html for SPA client-side routing.
+    """
+    try:
+        # Try to serve the requested file
+        content, content_type = await FrontendService.get_file(path)
+        return Response(content=content, media_type=content_type)
+    except Exception:
+        # Fallback to index.html for client-side routing (SPA)
+        # This allows React Router to handle the route
+        try:
+            content, content_type = await FrontendService.get_file("index.html")
+            return Response(content=content, media_type=content_type)
+        except Exception as e:
+            # If even index.html fails, return 500
+            return Response(
+                content=f"Failed to load frontend: {str(e)}",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                media_type="text/plain"
+            )

@@ -69,6 +69,10 @@ class Settings(BaseSettings):
 
     nachet_frontend_url: str | None = None
 
+    # frontend static files settings
+    frontend_blob_container: str | None = None
+    frontend_version_file: str | None = None
+
     # api settings
     base_path: str = ""
     project_name: str = "Nachet API"
@@ -151,6 +155,17 @@ async def lifespan(app: FastAPI):
     print("🔄 Initializing blob storage...")
     await initialize_blob_storage(settings)
     print("✅ Blob storage initialized successfully")
+
+    # Initialize frontend service
+    if settings.frontend_blob_container and settings.frontend_version_file:
+        print("🔄 Initializing frontend service...")
+        from app.service import FrontendService
+        FrontendService.configure(
+            settings.frontend_blob_container,
+            settings.frontend_version_file
+        )
+        await FrontendService.check_and_update_version()
+        print("✅ Frontend service initialized successfully")
 
     # Store managers in app state for access throughout the app
     app.state.sessionmanager = sessionmanager
