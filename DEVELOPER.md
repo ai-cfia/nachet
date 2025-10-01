@@ -90,6 +90,9 @@ nachet/backend$ deactivate
 
 # lint
 nachet/backend$  uv run ruff check .
+
+# push frontend build to blob storage
+nachet/backend$ uv run app/scripts/push_frontend_to_blob.py
 ```
 
 ### Frontend setup
