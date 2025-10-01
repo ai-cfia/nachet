@@ -20,15 +20,6 @@ stages:
         steps:
           - checkout: self
 
-          - task: Bash@3
-            displayName: "Check Agent Public IP"
-            inputs:
-              targetType: 'inline'
-              script: |
-                echo "Agent public IP address:"
-                curl -s ifconfig.me
-                echo ""
-        
           - task: DownloadSecureFile@1
             name: DownloadSecureVars
             displayName: "Download nachet-dev.tfvars"
@@ -151,7 +142,7 @@ stages:
               azureSubscription: $(serviceConnectionName)
               scriptType: "bash"
               scriptLocation: "inlineScript"
-              addSpnToEnvironment: true  # Enable OIDC token access
+              addSpnToEnvironment: true
               inlineScript: |
                 VNET_NAME="$(vnetName)"
                 VNET_RG="$(vnetResourceGroupName)"
@@ -222,7 +213,7 @@ stages:
                     backendAzureRmContainerName: '$(containerName)'
                     backendAzureRmKey: '$(stateKey)'
                   env:
-                    ARM_USE_AZUREAD: true  # Use AzureAD auth for backend instead of access keys
+                    ARM_USE_AZUREAD: true
 
                 - task: TerraformTaskV4@4
                   displayName: "Terraform Apply"
@@ -233,4 +224,4 @@ stages:
                     commandOptions: '-auto-approve -var-file=$(DownloadSecureVars.SecureFilePath)'
                     environmentServiceNameAzureRM: '$(serviceConnectionName)'
                   env:
-                    ARM_USE_AZUREAD: true  # Use AzureAD auth for provider
+                    ARM_USE_AZUREAD: true
