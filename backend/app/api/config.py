@@ -9,6 +9,7 @@ from fastapi import APIRouter, FastAPI, Request
 
 # from fastapi.logger import logger
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -67,7 +68,8 @@ class Settings(BaseSettings):
     blob_storage_endpoint_suffix: str | None = None
     blob_storage_endpoint_base: str | None = None
 
-    nachet_frontend_url: str | None = None
+    cors_allow_origins: str | None = None
+    trusted_hosts: str | None = None
 
     # frontend static files settings
     frontend_blob_container: str | None = None
@@ -84,11 +86,19 @@ class Settings(BaseSettings):
 
     @computed_field
     @property
-    def allowed_origins(self) -> list[str]:
+    def allowed_origin_list(self) -> list[str]:
         origins = []
-        if self.nachet_frontend_url:
-            origins.append(self.nachet_frontend_url)
+        if self.cors_allow_origins:
+            origins.extend(self.cors_allow_origins.split(","))
         return origins or ["http://localhost:5173"]  # fallback default
+
+    @computed_field
+    @property
+    def trusted_host_list(self) -> list[str]:
+        hosts = []
+        if self.trusted_hosts:
+            hosts.extend(self.trusted_hosts.split(","))
+        return hosts or ["localhost"]
 
     @computed_field
     @property
@@ -126,6 +136,9 @@ class Settings(BaseSettings):
 # Global settings instance
 _settings: Settings | None = None
 
+# Global limiter instance
+_limiter: Limiter | None = None
+
 
 def get_settings() -> Settings:
     """Get or create the global settings instance."""
@@ -133,6 +146,18 @@ def get_settings() -> Settings:
     if _settings is None:
         _settings = Settings()
     return _settings
+
+
+def get_limiter() -> Limiter:
+    """Get or create the global limiter instance."""
+    global _limiter
+    if _limiter is None:
+        _limiter = Limiter(
+            key_func=get_remote_address,
+            default_limits=["600/minute"],
+            strategy="sliding-window-counter",
+        )
+    return _limiter
 
 
 @asynccontextmanager
@@ -160,9 +185,9 @@ async def lifespan(app: FastAPI):
     if settings.frontend_blob_container and settings.frontend_version_file:
         print("🔄 Initializing frontend service...")
         from app.service import FrontendService
+
         FrontendService.configure(
-            settings.frontend_blob_container,
-            settings.frontend_version_file
+            settings.frontend_blob_container, settings.frontend_version_file
         )
         await FrontendService.check_and_update_version()
         print("✅ Frontend service initialized successfully")
@@ -172,7 +197,7 @@ async def lifespan(app: FastAPI):
     app.state.blob_storage_manager = blob_storage_manager
     print("✅ App state configured successfully")
 
-    limiter = Limiter(key_func=get_remote_address, default_limits=["600/minute"])
+    limiter = get_limiter()
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     print("✅ Rate limiter configured successfully")
@@ -230,13 +255,14 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.allowed_origins,
+        allow_origins=settings.allowed_origin_list,
         allow_origin_regex=r"/^https?:\/\/localhost(:[0-9]{1,5})?$/",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
     app.add_middleware(HeadersMiddleware, preset=settings.security_headers_preset)
     app.add_middleware(SlowAPIMiddleware)
 

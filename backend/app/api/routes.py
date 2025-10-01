@@ -3,8 +3,10 @@ from fastapi.responses import Response
 from app.service import PipelineService, SeedService, DirectoryService, FrontendService
 from app.middleware.auth.jwt_auth import get_current_user
 from app.middleware.auth.user import User
+from app.api.config import get_limiter
 
 router = APIRouter()
+limiter = get_limiter()
 
 
 def get_client_ip(request: Request) -> str:
@@ -30,6 +32,17 @@ async def validate_ip_address(
         print(f"Warning: IP address mismatch (client: {client_ip}, token: {token_ip})")
 
     return current_user
+
+
+# Rate limiter test route
+@router.get(
+    "/rate-limit-test",
+    status_code=status.HTTP_200_OK,
+    name="Rate Limit Test [NO AUTH REQUIRED]",
+)
+@limiter.limit("2/minute")
+async def rate_limit_test(request: Request):
+    return {"message": "This is a rate-limited endpoint."}
 
 
 # no authentication needed
@@ -75,6 +88,7 @@ async def get_user_id(current_user: User = Depends(get_current_user)):
     status_code=status.HTTP_200_OK,
     name="Get Pipelines [AUTH REQUIRED]",
 )
+@limiter.limit("10/minute")
 async def get_pipelines(current_user: User = Depends(get_current_user)):
     pipelines = await PipelineService.get_pipelines()
     return {"pipelines": pipelines}
@@ -85,6 +99,7 @@ async def get_pipelines(current_user: User = Depends(get_current_user)):
     status_code=status.HTTP_200_OK,
     name="Get Model Endpoints Metadata [AUTH REQUIRED]",
 )
+@limiter.limit("10/minute")
 async def get_model_endpoints_metadata(current_user: User = Depends(get_current_user)):
     print("/model-endpoints-metadata")
     metadata = await PipelineService.get_model_endpoints_metadata()
@@ -96,6 +111,7 @@ async def get_model_endpoints_metadata(current_user: User = Depends(get_current_
     status_code=status.HTTP_200_OK,
     name="Get Seed Data [AUTH REQUIRED]",
 )
+@limiter.limit("10/minute")
 async def get_seed_data(current_user: User = Depends(get_current_user)):
     # print(f"/seeds - authenticated user: {current_user.oid}")
     # print(f"/seeds - user: {current_user.__dict__}")
@@ -108,6 +124,7 @@ async def get_seed_data(current_user: User = Depends(get_current_user)):
     status_code=status.HTTP_200_OK,
     name="Get Directories [AUTH REQUIRED]",
 )
+@limiter.limit("10/minute")
 async def get_directories(current_user: User = Depends(get_current_user)):
     print("/get-directories")
     directories = await DirectoryService.get_user_directories(current_user.oid)
@@ -121,18 +138,21 @@ async def get_directories(current_user: User = Depends(get_current_user)):
     name="Serve Frontend Root [NO AUTH REQUIRED]",
     include_in_schema=False,
 )
+@limiter.limit("60/minute")
 async def serve_frontend_root():
     """Serve the main index.html file."""
     content, content_type = await FrontendService.get_file("index.html")
     return Response(content=content, media_type=content_type)
 
 
+# This is placed at the end to avoid catching other routes
 @router.get(
     "/{path:path}",
     status_code=status.HTTP_200_OK,
     name="Serve Frontend Static Files [NO AUTH REQUIRED]",
     include_in_schema=False,
 )
+@limiter.limit("60/minute")
 async def serve_frontend_static(path: str):
     """
     Serve static frontend files (assets, favicon, etc.).
@@ -153,5 +173,5 @@ async def serve_frontend_static(path: str):
             return Response(
                 content=f"Failed to load frontend: {str(e)}",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                media_type="text/plain"
+                media_type="text/plain",
             )
