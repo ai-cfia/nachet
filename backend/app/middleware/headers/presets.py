@@ -14,6 +14,7 @@ PRESETS = {
     },
     "strict": {
         "Content-Security-Policy": "default-src 'self';",
+        # "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://login.microsoftonline.com https://*.microsoftonline.com; style-src 'self' 'unsafe-inline' https://login.microsoftonline.com https://*.microsoftonline.com; img-src 'self' https://login.microsoftonline.com https://*.microsoftonline.com data: blob:; font-src 'self' https://login.microsoftonline.com https://*.microsoftonline.com data:; connect-src 'self' https://login.microsoftonline.com https://*.microsoftonline.com https://graph.microsoft.com; frame-src 'self' https://login.microsoftonline.com https://*.microsoftonline.com; child-src 'self' https://login.microsoftonline.com https://*.microsoftonline.com; form-action 'self' https://login.microsoftonline.com;",
         "X-Frame-Options": "DENY",
         "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
         "X-Content-Type-Options": "nosniff",
@@ -23,7 +24,9 @@ PRESETS = {
         "Expect-CT": "max-age=86400, enforce",
         "Origin-Agent-Cluster": "?1",
         "Cross-Origin-Embedder-Policy": "require-corp",
+        # "Cross-Origin-Embedder-Policy": "credentialless",
         "Cross-Origin-Opener-Policy": "same-origin",
+        # "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
         "Cross-Origin-Resource-Policy": "same-origin",
         "X-Permitted-Cross-Domain-Policies": "none",
         "Cache-Control": "private, max-age=3600",
