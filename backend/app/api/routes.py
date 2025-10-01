@@ -51,7 +51,7 @@ async def rate_limit_test(request: Request):
     status_code=status.HTTP_200_OK,
     name="Get Health Status [NO AUTH REQUIRED]",
 )
-async def get_health_status():
+async def get_health_status(request: Request):
     return {"status": "ok"}
 
 
@@ -60,7 +60,7 @@ async def get_health_status():
     status_code=status.HTTP_200_OK,
     name="Get API Version [NO AUTH REQUIRED]",
 )
-async def get_version():
+async def get_version(request: Request):
     return {"version": "0.0.0"}
 
 
@@ -69,7 +69,7 @@ async def get_version():
     status_code=status.HTTP_200_OK,
     name="Get Readiness Status [NO AUTH REQUIRED]",
 )
-async def get_readiness_status():
+async def get_readiness_status(request: Request):
     return {"status": "ready"}
 
 
@@ -78,7 +78,7 @@ async def get_readiness_status():
     status_code=status.HTTP_200_OK,
     name="Get User ID from email [AUTH REQUIRED]",
 )
-async def get_user_id(current_user: User = Depends(get_current_user)):
+async def get_user_id(request: Request, current_user: User = Depends(get_current_user)):
     print("/get-user-id")
     return {"user_id": current_user.oid}
 
@@ -89,7 +89,9 @@ async def get_user_id(current_user: User = Depends(get_current_user)):
     name="Get Pipelines [AUTH REQUIRED]",
 )
 @limiter.limit("10/minute")
-async def get_pipelines(current_user: User = Depends(get_current_user)):
+async def get_pipelines(
+    request: Request, current_user: User = Depends(get_current_user)
+):
     pipelines = await PipelineService.get_pipelines()
     return {"pipelines": pipelines}
 
@@ -100,7 +102,9 @@ async def get_pipelines(current_user: User = Depends(get_current_user)):
     name="Get Model Endpoints Metadata [AUTH REQUIRED]",
 )
 @limiter.limit("10/minute")
-async def get_model_endpoints_metadata(current_user: User = Depends(get_current_user)):
+async def get_model_endpoints_metadata(
+    request: Request, current_user: User = Depends(get_current_user)
+):
     print("/model-endpoints-metadata")
     metadata = await PipelineService.get_model_endpoints_metadata()
     return metadata
@@ -112,7 +116,9 @@ async def get_model_endpoints_metadata(current_user: User = Depends(get_current_
     name="Get Seed Data [AUTH REQUIRED]",
 )
 @limiter.limit("10/minute")
-async def get_seed_data(current_user: User = Depends(get_current_user)):
+async def get_seed_data(
+    request: Request, current_user: User = Depends(get_current_user)
+):
     # print(f"/seeds - authenticated user: {current_user.oid}")
     # print(f"/seeds - user: {current_user.__dict__}")
     seed_data = await SeedService.get_seed_data()
@@ -125,7 +131,9 @@ async def get_seed_data(current_user: User = Depends(get_current_user)):
     name="Get Directories [AUTH REQUIRED]",
 )
 @limiter.limit("10/minute")
-async def get_directories(current_user: User = Depends(get_current_user)):
+async def get_directories(
+    request: Request, current_user: User = Depends(get_current_user)
+):
     print("/get-directories")
     directories = await DirectoryService.get_user_directories(current_user.oid)
     return directories
@@ -139,7 +147,7 @@ async def get_directories(current_user: User = Depends(get_current_user)):
     include_in_schema=False,
 )
 @limiter.limit("60/minute")
-async def serve_frontend_root():
+async def serve_frontend_root(request: Request):
     """Serve the main index.html file."""
     content, content_type = await FrontendService.get_file("index.html")
     return Response(content=content, media_type=content_type)
@@ -153,7 +161,7 @@ async def serve_frontend_root():
     include_in_schema=False,
 )
 @limiter.limit("60/minute")
-async def serve_frontend_static(path: str):
+async def serve_frontend_static(request: Request, path: str):
     """
     Serve static frontend files (assets, favicon, etc.).
     Falls back to index.html for SPA client-side routing.
