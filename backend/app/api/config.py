@@ -10,6 +10,10 @@ from fastapi import APIRouter, FastAPI, Request
 # from fastapi.logger import logger
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 # from psycopg.conninfo import make_conninfo
 # from psycopg_pool import ConnectionPool
@@ -153,6 +157,11 @@ async def lifespan(app: FastAPI):
     app.state.blob_storage_manager = blob_storage_manager
     print("✅ App state configured successfully")
 
+    limiter = Limiter(key_func=get_remote_address, default_limits=["600/minute"])
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    print("✅ Rate limiter configured successfully")
+
     # Open connection pool
     # app.pool.open()
 
@@ -214,6 +223,7 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     )
 
     app.add_middleware(HeadersMiddleware, preset=settings.security_headers_preset)
+    app.add_middleware(SlowAPIMiddleware)
 
     # pool = ConnectionPool(
     #     open=False,
