@@ -18,8 +18,8 @@ class ValidationHelper:
     @staticmethod
     def validate_blob_name(name: str) -> str:
         """
-        Validate blob name is not empty, and contains only lower case
-        letters, numbers, hyphens, periods, and slashes. Must start with letter.
+        Validate blob name is not empty, and contains only letters,
+        numbers, hyphens, underscores, periods, and slashes.
 
         Args:
             name: Blob name to validate
@@ -32,11 +32,9 @@ class ValidationHelper:
         """
         if not name or name.strip() == "":
             raise BlobStorageError("Blob name cannot be empty")
-        if not name[0].isalpha():
-            raise BlobStorageError("Blob name must start with a letter")
-        if not all(c.islower() or c.isdigit() or c in "-/." for c in name):
+        if not all(c.isalnum() or c in "-_/." for c in name):
             raise BlobStorageError(
-                "Blob name can only contain lower case letters, numbers, hyphens, periods, and slashes"
+                "Blob name can only contain letters, numbers, hyphens, underscores, periods, and slashes"
             )
         return name.strip()
 
