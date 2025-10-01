@@ -131,6 +131,8 @@ jobs:
           BLOB_STORAGE_ENDPOINT_PROTOCOL: ${{ secrets.BLOB_STORAGE_ENDPOINT_PROTOCOL }}
           BLOB_STORAGE_ENDPOINT_SUFFIX: ${{ secrets.BLOB_STORAGE_ENDPOINT_SUFFIX }}
           BLOB_STORAGE_ENDPOINT_BASE: ${{ secrets.BLOB_STORAGE_ENDPOINT_BASE }}
+          CORS_ALLOW_ORIGINS: "http://localhost:5174,http://127.0.0.1:5174"
+          TRUSTED_HOSTS: "localhost,127.0.0.1"
 
       - name: Checkout OSHP validator
         uses: actions/checkout@v5
