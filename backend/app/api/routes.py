@@ -170,8 +170,9 @@ async def serve_frontend_static(path: str):
             return Response(content=content, media_type=content_type)
         except Exception as e:
             # If even index.html fails, return 500
+            print(f"Error serving frontend file: {e}")
             return Response(
-                content=f"Failed to load frontend: {str(e)}",
+                content="Failed to load frontend file",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 media_type="text/plain",
             )
