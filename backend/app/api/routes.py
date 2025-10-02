@@ -139,6 +139,35 @@ async def get_directories(
     return directories
 
 
+@router.get(
+    "/logout",
+    status_code=status.HTTP_200_OK,
+    name="Logout User [NO AUTH REQUIRED]",
+)
+@limiter.limit("10/minute")
+async def logout_user(request: Request):
+    # Return html with clear site data header to clear cookies and cache
+    html_content = """
+    <html>
+        <head>
+            <title>Logged Out</title>
+        </head>
+        <body>
+            <h1>You have been logged out.</h1>
+            <p>You can close this window.</p>
+        </body>
+    </html>
+    """
+    return Response(
+        content=html_content,
+        media_type="text/html",
+        headers={
+            "Clear-Site-Data": '"cache","cookies","storage"',
+            "Cache-Control": "no-store, max-age=0",
+        },
+    )
+
+
 # Frontend static file serving routes
 @router.get(
     "/",
@@ -180,7 +209,9 @@ async def serve_frontend_static(request: Request, path: str):
         # Fallback to index.html for client-side routing (SPA)
         # This allows React Router to handle the route
         try:
-            content, content_type = await FrontendService.get_file("index.html", csp_nonce)
+            content, content_type = await FrontendService.get_file(
+                "index.html", csp_nonce
+            )
             return Response(content=content, media_type=content_type)
         except Exception as e:
             # If even index.html fails, return 500
