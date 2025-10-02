@@ -149,7 +149,10 @@ async def get_directories(
 @limiter.limit("60/minute")
 async def serve_frontend_root(request: Request):
     """Serve the main index.html file."""
-    content, content_type = await FrontendService.get_file("index.html")
+    await FrontendService.check_and_update_version()
+    # Get CSP nonce from request state (set by HeadersMiddleware)
+    csp_nonce = getattr(request.state, "csp_nonce", None)
+    content, content_type = await FrontendService.get_file("index.html", csp_nonce)
     return Response(content=content, media_type=content_type)
 
 
@@ -166,15 +169,18 @@ async def serve_frontend_static(request: Request, path: str):
     Serve static frontend files (assets, favicon, etc.).
     Falls back to index.html for SPA client-side routing.
     """
+    await FrontendService.check_and_update_version()
+    # Get CSP nonce from request state (set by HeadersMiddleware)
+    csp_nonce = getattr(request.state, "csp_nonce", None)
     try:
         # Try to serve the requested file
-        content, content_type = await FrontendService.get_file(path)
+        content, content_type = await FrontendService.get_file(path, csp_nonce)
         return Response(content=content, media_type=content_type)
     except Exception:
         # Fallback to index.html for client-side routing (SPA)
         # This allows React Router to handle the route
         try:
-            content, content_type = await FrontendService.get_file("index.html")
+            content, content_type = await FrontendService.get_file("index.html", csp_nonce)
             return Response(content=content, media_type=content_type)
         except Exception as e:
             # If even index.html fails, return 500

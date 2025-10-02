@@ -92,12 +92,13 @@ class FrontendService:
         print("🗑️  Frontend cache invalidated")
 
     @classmethod
-    async def get_file(cls, file_path: str) -> Tuple[bytes, str]:
+    async def get_file(cls, file_path: str, csp_nonce: Optional[str] = None) -> Tuple[bytes, str]:
         """
         Retrieve a file from blob storage with caching.
 
         Args:
             file_path: Path to file in blob storage (e.g., "index.html", "assets/index.js")
+            csp_nonce: Optional CSP nonce to inject into HTML files
 
         Returns:
             Tuple of (file_content_bytes, content_type)
@@ -110,7 +111,13 @@ class FrontendService:
 
         # Check cache
         if normalized_path in cls._cache:
-            return cls._cache[normalized_path]
+            content, content_type = cls._cache[normalized_path]
+
+            # For HTML files, inject nonce if provided (don't cache nonce-injected version)
+            if csp_nonce and content_type == "text/html":
+                content = cls._inject_nonce_into_html(content, csp_nonce)
+
+            return content, content_type
 
         try:
             # Fetch from blob storage
@@ -120,8 +127,12 @@ class FrontendService:
             # Determine content type
             content_type = cls._get_content_type(normalized_path)
 
-            # Cache the result
+            # Cache the result (without nonce)
             cls._cache[normalized_path] = (content, content_type)
+
+            # For HTML files, inject nonce if provided
+            if csp_nonce and content_type == "text/html":
+                content = cls._inject_nonce_into_html(content, csp_nonce)
 
             return content, content_type
 
@@ -162,6 +173,40 @@ class FrontendService:
                 return "application/octet-stream"
 
         return content_type
+
+    @staticmethod
+    def _inject_nonce_into_html(content: bytes, nonce: str) -> bytes:
+        """
+        Inject CSP nonce into HTML content.
+
+        Replaces __CSP_NONCE__ placeholder with actual nonce value and
+        adds a meta tag for client-side nonce access.
+
+        Args:
+            content: HTML content as bytes
+            nonce: CSP nonce value to inject
+
+        Returns:
+            Modified HTML content with nonce injected
+        """
+        html = content.decode("utf-8")
+
+        # Replace Vite's CSP nonce placeholder
+        html = html.replace("__CSP_NONCE__", nonce)
+
+        # Add meta tag for client-side nonce access (for Emotion)
+        # Insert before </head> if it exists, otherwise before </body>
+        meta_tag = f'<meta property="csp-nonce" content="{nonce}">'
+
+        if "</head>" in html:
+            html = html.replace("</head>", f"{meta_tag}</head>")
+        elif "</body>" in html:
+            html = html.replace("</body>", f"{meta_tag}</body>")
+        else:
+            # Fallback: append to end
+            html = html + meta_tag
+
+        return html.encode("utf-8")
 
     @classmethod
     def get_cache_stats(cls) -> Dict[str, any]:
