@@ -16,11 +16,11 @@ resource "azurerm_container_group" "main" {
   location            = var.location
   resource_group_name = var.resource_group_name
   os_type             = var.os_type
-  
+
   # Network configuration
   ip_address_type = "Private"
-  subnet_ids = [data.azurerm_subnet.container_instances.id]
-  
+  subnet_ids      = [data.azurerm_subnet.container_instances.id]
+
   # Container Registry credentials
   image_registry_credential {
     server   = var.registry_login_server

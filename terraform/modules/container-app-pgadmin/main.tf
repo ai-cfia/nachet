@@ -5,8 +5,8 @@ resource "azurerm_container_app" "pgadmin" {
   revision_mode                = "Single"
 
   registry {
-    server   = var.acr_login_server
-    username = var.acr_admin_username
+    server               = var.acr_login_server
+    username             = var.acr_admin_username
     password_secret_name = "acr-password"
   }
 

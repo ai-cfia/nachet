@@ -26,7 +26,7 @@ variable "vnet_resource_group_name" {
 
 variable "public_network_access_enabled" {
   description = "Enable the db for public access"
-  type = bool
+  type        = bool
 }
 
 variable "tags" {
