@@ -29,7 +29,9 @@ import {
   sendPositiveFeedback,
   loadResultsToCache,
 } from "@common";
-import { useSpeciesData, useAuth } from "@hooks";
+import { useSpeciesData } from "@hooks";
+import { useMsal } from "@azure/msal-react";
+import { acquireAccessToken } from "@common/auth";
 import { getUnscaledCoordinates } from "@common/imageutils";
 import { FreeformBox, NegativeFeedbackForm } from "../feedback_form";
 import ApiAction from "../api_action";
@@ -157,7 +159,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
   const [apiError, setApiError] = useState<string | null>(null);
   const [apiResultDismissed, setApiResultDismissed] = useState<boolean>(true);
 
-  const { fetchAccessToken } = useAuth(apiScopeClaim);
+  const { instance: msalInstance } = useMsal();
   const { speciesData, isLoading: classListLoading } = useSpeciesData(
     backendUrl,
     apiScopeClaim,
@@ -183,7 +185,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     paddingLeft: 0,
   };
 
-  const submitPositiveFeedback = (index: number) => {
+  const submitPositiveFeedback = async (index: number) => {
     if (imageData == null) {
       return;
     }
@@ -197,33 +199,28 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
 
     setApiLoading(true);
     setApiResultDismissed(false);
-    fetchAccessToken().then((accessToken) => {
-      if (!accessToken) {
-        console.error("Failed to obtain access token");
-        return;
-      }
-      sendPositiveFeedback({
+
+    try {
+      const accessToken = await acquireAccessToken(msalInstance, [
+        apiScopeClaim,
+      ]);
+      const response = await sendPositiveFeedback({
         feedbackData: feedbackDataPositive,
         backendUrl,
         accessToken,
-      })
-        .then((response) => {
-          console.log("Positive Feedback submitted successfully");
-          setImageCache(loadResultsToCache(response, imageCache, imageIndex));
-          setApiSuccess(true);
-        })
-        .catch((error) => {
-          console.error("Error submitting feedback: ", error);
-          setApiError(error.message);
-        })
-        .finally(() => {
-          setApiLoading(false);
-          // exitFeedbackMode();
-        });
-    });
+      });
+      console.log("Positive Feedback submitted successfully");
+      setImageCache(loadResultsToCache(response, imageCache, imageIndex));
+      setApiSuccess(true);
+    } catch (error) {
+      console.error("Error submitting feedback: ", error);
+      setApiError(error instanceof Error ? error.message : "Unknown error");
+    } finally {
+      setApiLoading(false);
+    }
   };
 
-  const submitNegativeFeedback = (
+  const submitNegativeFeedback = async (
     feedbackDataNegative: FeedbackDataNegative,
   ) => {
     if (imageData === null) {
@@ -232,30 +229,25 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     console.log("Submitting negative feedback");
     setApiLoading(true);
     setApiResultDismissed(false);
-    fetchAccessToken().then((accessToken) => {
-      if (!accessToken) {
-        console.error("Failed to obtain access token");
-        return;
-      }
-      sendNegativeFeedback({
+
+    try {
+      const accessToken = await acquireAccessToken(msalInstance, [
+        apiScopeClaim,
+      ]);
+      const response = await sendNegativeFeedback({
         feedbackData: feedbackDataNegative,
         backendUrl,
         accessToken,
-      })
-        .then((response) => {
-          console.log("Negative Feedback submitted successfully");
-          setImageCache(loadResultsToCache(response, imageCache, imageIndex));
-          setApiSuccess(true);
-        })
-        .catch((error) => {
-          console.error("Error submitting feedback: ", error);
-          setApiError(error.message);
-        })
-        .finally(() => {
-          setApiLoading(false);
-          // exitFeedbackMode();
-        });
-    });
+      });
+      console.log("Negative Feedback submitted successfully");
+      setImageCache(loadResultsToCache(response, imageCache, imageIndex));
+      setApiSuccess(true);
+    } catch (error) {
+      console.error("Error submitting feedback: ", error);
+      setApiError(error instanceof Error ? error.message : "Unknown error");
+    } finally {
+      setApiLoading(false);
+    }
   };
 
   const handleFreeformSubmit = (box: BoxCSS) => {

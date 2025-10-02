@@ -1,7 +1,8 @@
 import { useEffect } from "react";
+import { useMsal } from "@azure/msal-react";
 import { useSpeciesStore } from "@stores/useSpeciesStore";
 import { requestClassList } from "@common/api";
-import { useAuth } from "./useAuth";
+import { acquireAccessToken } from "@common/auth";
 
 export const useSpeciesData = (backendUrl: string, apiScopeClaim: string) => {
   const {
@@ -12,7 +13,7 @@ export const useSpeciesData = (backendUrl: string, apiScopeClaim: string) => {
     setLoading,
     setError,
   } = useSpeciesStore();
-  const { fetchAccessToken } = useAuth(apiScopeClaim);
+  const { instance } = useMsal();
 
   useEffect(() => {
     const fetchSpeciesData = async () => {
@@ -28,7 +29,7 @@ export const useSpeciesData = (backendUrl: string, apiScopeClaim: string) => {
       setError(null);
 
       try {
-        const accessToken = await fetchAccessToken();
+        const accessToken = await acquireAccessToken(instance, [apiScopeClaim]);
         const response = await requestClassList({ backendUrl, accessToken });
         setSpeciesData(response);
       } catch (err) {
@@ -43,8 +44,9 @@ export const useSpeciesData = (backendUrl: string, apiScopeClaim: string) => {
 
     fetchSpeciesData();
   }, [
+    apiScopeClaim,
     backendUrl,
-    fetchAccessToken,
+    instance,
     setError,
     setLoading,
     setSpeciesData,

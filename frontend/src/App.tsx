@@ -94,6 +94,7 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
             windowSize={windowSize}
             setUuid={setUuid}
             setUserAccount={setUserAccount}
+            apiScopeClaim={apiScopeClaim}
           />
           <Appbar
             windowSize={windowSize}
@@ -105,7 +106,7 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
               path="/"
               element={
                 <MsalAuthenticationTemplate
-                  interactionType={InteractionType.Popup}
+                  interactionType={InteractionType.Redirect}
                   authenticationRequest={{
                     scopes: [apiScopeClaim ?? ""],
                     // scopes: [

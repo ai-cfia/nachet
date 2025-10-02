@@ -3,7 +3,9 @@ import { Overlay, InfoContainer, ButtonWrap, Text } from "./indexElements";
 import { Box, CardHeader, IconButton, Button } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "@styles/colours";
-import { useAuth, useBackendUrl } from "@hooks";
+import { useBackendUrl } from "@hooks";
+import { useMsal } from "@azure/msal-react";
+import { acquireAccessToken } from "@common/auth";
 import { deleteAzureStorageDir } from "@common/api";
 
 interface params {
@@ -23,29 +25,26 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
     setReadAzureStorage,
   } = props;
   const backendURL = useBackendUrl();
-  const { fetchAccessToken } = useAuth(apiScopeClaim);
+  const { instance: msalInstance } = useMsal();
 
   const handleDelFromDirectory = (): void => {
-    fetchAccessToken().then((accessToken) => {
-      if (!accessToken) {
-        console.error("Failed to obtain access token");
-        return;
-      }
-      // makes a post request to the backend to delete a directory in azure storage
-      deleteAzureStorageDir({
-        backendUrl: backendURL,
-        folderName: curDir,
-        accessToken,
-      })
-        .then(() => {
-          setCurDir("General");
-          setReadAzureStorage((prev) => !prev);
-        })
-        .catch((error) => {
-          alert("Error deleting directory, see console for more details");
-          console.error(error);
+    acquireAccessToken(msalInstance, [apiScopeClaim])
+      .then((accessToken) => {
+        // makes a post request to the backend to delete a directory in azure storage
+        return deleteAzureStorageDir({
+          backendUrl: backendURL,
+          folderName: curDir,
+          accessToken,
         });
-    });
+      })
+      .then(() => {
+        setCurDir("General");
+        setReadAzureStorage((prev) => !prev);
+      })
+      .catch((error) => {
+        alert("Error deleting directory, see console for more details");
+        console.error(error);
+      });
   };
 
   const handleClose = (): void => {

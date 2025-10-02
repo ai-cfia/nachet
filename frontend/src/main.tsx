@@ -2,7 +2,11 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { Configuration, PublicClientApplication } from "@azure/msal-browser";
+import {
+  Configuration,
+  PublicClientApplication,
+  LogLevel,
+} from "@azure/msal-browser";
 // import { MsalProvider } from "@azure/msal-react";
 // import { msalConfig } from "./common/auth/authConfig";
 // import { AuthProvider } from "./common/auth/AuthContext";
@@ -13,16 +17,47 @@ const msalConfig: Configuration = {
     authority:
       import.meta.env.VITE_AZURE_AUTHORITY ||
       "https://login.microsoftonline.com/common", // Tenant/Authority URL
-    redirectUri:
-      import.meta.env.VITE_AZURE_REDIRECT_URI || window.location.origin, // Redirect URI
+    redirectUri: window.location.origin, // Always use current origin for redirect
     // mainWindowRedirectUri: window.location.origin,
     postLogoutRedirectUri:
       import.meta.env.VITE_AZURE_POST_LOGOUT_REDIRECT_URI ||
       window.location.origin, // Post logout redirect URI
   },
   cache: {
-    cacheLocation: "memoryStorage", // Store tokens in memoryStorage for security and persistence during session
-    storeAuthStateInCookie: true, // Store auth state in cookies for improved SSO experience
+    cacheLocation: "sessionStorage",
+  },
+  system: {
+    loggerOptions: {
+      logLevel: LogLevel.Error,
+      loggerCallback: (
+        level: LogLevel,
+        message: string,
+        containsPii: boolean,
+      ): void => {
+        if (containsPii) {
+          return;
+        }
+        switch (level) {
+          case LogLevel.Error:
+            console.error(message);
+            return;
+          case LogLevel.Info:
+            console.info(message);
+            return;
+          case LogLevel.Verbose:
+            console.debug(message);
+            return;
+          case LogLevel.Warning:
+            console.warn(message);
+            return;
+        }
+      },
+      piiLoggingEnabled: false,
+    },
+    // windowHashTimeout: 60000,
+    // iframeHashTimeout: 6000,
+    // loadFrameTimeout: 0,
+    // asyncPopups: false,
   },
 };
 

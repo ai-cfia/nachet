@@ -13,10 +13,10 @@ import {
   DeleteDirectoryPopup,
 } from "@components/body";
 import CreativeCommonsPopup from "../../components/body/creative_commons_popup";
-import { useBackendUrl, useDecoderTiff, useAuth } from "@hooks";
+import { useBackendUrl, useDecoderTiff } from "@hooks";
 import { AccountInfo } from "@azure/msal-browser";
-// import { useMsal } from "@azure/msal-react";
-// import { getAccessToken } from "@common/auth";
+import { useMsal } from "@azure/msal-react";
+import { acquireAccessToken } from "@common/auth";
 import {
   getLabelOccurrence,
   loadCaptureToCache,
@@ -93,8 +93,7 @@ const Body: React.FC<params> = (props) => {
   const decodedTiff = useDecoderTiff(imageTiff);
   const backendUrl = useBackendUrl();
   const apiScopeClaim = props.apiScopeClaim;
-  // const { instance: msalInstance } = useMsal();
-  const { fetchAccessToken } = useAuth(apiScopeClaim);
+  const { instance: msalInstance } = useMsal();
 
   const captureFeed = (): void => {
     // takes screenshot of webcam feed and loads it to cache when capture button is pressed
@@ -140,32 +139,29 @@ const Body: React.FC<params> = (props) => {
         return;
       }
       setIsLoading(true);
-      fetchAccessToken().then((accessToken) => {
-        if (!accessToken) {
-          console.error("Failed to obtain access token");
-          return;
-        }
-        inferenceRequest({
-          backendUrl,
-          selectedModel,
-          imageObject,
-          curDir,
-          accessToken,
-          container_uuid: props.uuid,
-        })
-          .then((response) => {
-            setReadAzureStorage(!readAzureStorage);
-            setImageCache(loadResultsToCache(response, imageCache, imageIndex));
-            setModelDisplayName(selectedModel);
-          })
-          .catch((error) => {
-            alert("Error fetching inference data, see console for details");
-            console.error(error);
-          })
-          .finally(() => {
-            setIsLoading(false);
+      acquireAccessToken(msalInstance, [apiScopeClaim])
+        .then((accessToken) => {
+          return inferenceRequest({
+            backendUrl,
+            selectedModel,
+            imageObject,
+            curDir,
+            accessToken,
+            container_uuid: props.uuid,
           });
-      });
+        })
+        .then((response) => {
+          setReadAzureStorage(!readAzureStorage);
+          setImageCache(loadResultsToCache(response, imageCache, imageIndex));
+          setModelDisplayName(selectedModel);
+        })
+        .catch((error) => {
+          alert("Error fetching inference data, see console for details");
+          console.error(error);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     } else {
       alert("Please select a directory");
     }
@@ -267,11 +263,9 @@ const Body: React.FC<params> = (props) => {
 
     const loadAzureStorageDir = async () => {
       try {
-        const accessToken = await fetchAccessToken();
-        if (!accessToken) {
-          console.error("Failed to obtain access token");
-          return;
-        }
+        const accessToken = await acquireAccessToken(msalInstance, [
+          apiScopeClaim,
+        ]);
         const response = await readAzureStorageDir({ backendUrl, accessToken });
         const directories: AzureStorageDirectoryItem[] = [];
         const folders = response.directories;
@@ -292,7 +286,7 @@ const Body: React.FC<params> = (props) => {
     };
 
     loadAzureStorageDir();
-  }, [props.uuid, backendUrl, fetchAccessToken]);
+  }, [props.uuid, backendUrl, msalInstance, apiScopeClaim]);
 
   const handleImageUpload = (): void => {
     // Set the logic for handling image upload and then:
@@ -306,11 +300,9 @@ const Body: React.FC<params> = (props) => {
 
     const loadModelMetadata = async () => {
       try {
-        const accessToken = await fetchAccessToken();
-        if (!accessToken) {
-          console.error("Failed to obtain access token");
-          return;
-        }
+        const accessToken = await acquireAccessToken(msalInstance, [
+          apiScopeClaim,
+        ]);
 
         const metadata = await fetchModelMetadata({ backendUrl, accessToken });
         setMetadata(metadata);
@@ -327,7 +319,7 @@ const Body: React.FC<params> = (props) => {
     };
 
     loadModelMetadata();
-  }, [backendUrl, fetchAccessToken]);
+  }, [backendUrl, msalInstance, apiScopeClaim]);
 
   return (
     <BodyContainer width={props.windowSize.width} data-testid="body-component">

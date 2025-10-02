@@ -3,7 +3,9 @@ import { Overlay, InfoContainer, ButtonWrap } from "./indexElements";
 import { Box, CardHeader, IconButton, TextField, Button } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "@styles/colours";
-import { useAuth, useBackendUrl } from "@hooks";
+import { useBackendUrl } from "@hooks";
+import { useMsal } from "@azure/msal-react";
+import { acquireAccessToken } from "@common/auth";
 import { createAzureStorageDir } from "@common/api";
 import { directoryNameSchema } from "@common/validation";
 
@@ -27,7 +29,7 @@ const CreateFolder: React.FC<params> = (props) => {
   } = props;
   const backendURL = useBackendUrl();
   const [validationError, setValidationError] = useState<string>("");
-  const { fetchAccessToken } = useAuth(apiScopeClaim);
+  const { instance: msalInstance } = useMsal();
 
   const handleCreateDirectory = (): void => {
     // Validate directory name
@@ -40,27 +42,24 @@ const CreateFolder: React.FC<params> = (props) => {
     // Clear any previous validation errors
     setValidationError("");
 
-    fetchAccessToken().then((accessToken) => {
-      if (!accessToken) {
-        console.error("Failed to obtain access token");
-        return;
-      }
-      // makes a post request to the backend to create a new directory in azure storage
-      createAzureStorageDir({
-        backendUrl: backendURL,
-        folderName: curDir,
-        accessToken,
-      })
-        .then(() => {
-          setCreateDirectoryOpen(false);
-          setCurDir("General");
-          setReadAzureStorage((prev) => !prev);
-        })
-        .catch((error) => {
-          alert("Error creating directory, see console for more details");
-          console.error(error);
+    acquireAccessToken(msalInstance, [apiScopeClaim])
+      .then((accessToken) => {
+        // makes a post request to the backend to create a new directory in azure storage
+        return createAzureStorageDir({
+          backendUrl: backendURL,
+          folderName: curDir,
+          accessToken,
         });
-    });
+      })
+      .then(() => {
+        setCreateDirectoryOpen(false);
+        setCurDir("General");
+        setReadAzureStorage((prev) => !prev);
+      })
+      .catch((error) => {
+        alert("Error creating directory, see console for more details");
+        console.error(error);
+      });
   };
 
   const handleClose = (): void => {
