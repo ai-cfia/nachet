@@ -7,6 +7,8 @@ import {
   PublicClientApplication,
   LogLevel,
 } from "@azure/msal-browser";
+import { CacheProvider } from "@emotion/react";
+import { createEmotionCache } from "./common/emotionCache";
 // import { MsalProvider } from "@azure/msal-react";
 // import { msalConfig } from "./common/auth/authConfig";
 // import { AuthProvider } from "./common/auth/AuthContext";
@@ -69,12 +71,17 @@ const apiScopeClaim =
 
 console.log("Azure API Scope Claim: ", apiScopeClaim);
 
+// Create Emotion cache with CSP nonce support
+const emotionCache = createEmotionCache();
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App
-      msalInstance={msalInstance}
-      basename={basename}
-      apiScopeClaim={apiScopeClaim}
-    />
+    <CacheProvider value={emotionCache}>
+      <App
+        msalInstance={msalInstance}
+        basename={basename}
+        apiScopeClaim={apiScopeClaim}
+      />
+    </CacheProvider>
   </React.StrictMode>,
 );

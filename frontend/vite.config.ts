@@ -12,6 +12,9 @@ export default defineConfig({
   define: {
     "process.env": {},
   },
+  html: {
+    cspNonce: "__CSP_NONCE__", // Placeholder for CSP nonce (replaced by backend at runtime)
+  },
   resolve: {
     alias: {
       "@common": path.resolve(__dirname, "./src/common"),
