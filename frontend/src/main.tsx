@@ -9,9 +9,6 @@ import {
 } from "@azure/msal-browser";
 import { CacheProvider } from "@emotion/react";
 import { createEmotionCache } from "./common/emotionCache";
-// import { MsalProvider } from "@azure/msal-react";
-// import { msalConfig } from "./common/auth/authConfig";
-// import { AuthProvider } from "./common/auth/AuthContext";
 
 const msalConfig: Configuration = {
   auth: {

@@ -16,7 +16,7 @@ import createCache from "@emotion/cache";
  *
  * @returns CSP nonce string or undefined if not found
  */
-function getCSPNonce(): string | undefined {
+export function getCSPNonce(): string | undefined {
   const metaTag = document.querySelector<HTMLMetaElement>(
     'meta[property="csp-nonce"]',
   );

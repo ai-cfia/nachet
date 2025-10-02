@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { useMsal } from "@azure/msal-react";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
 import { useSpeciesStore } from "@stores/useSpeciesStore";
 import { requestClassList } from "@common/api";
 import { acquireAccessToken } from "@common/auth";
@@ -13,7 +14,8 @@ export const useSpeciesData = (backendUrl: string, apiScopeClaim: string) => {
     setLoading,
     setError,
   } = useSpeciesStore();
-  const { instance } = useMsal();
+  const { instance, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
 
   useEffect(() => {
     const fetchSpeciesData = async () => {
@@ -21,8 +23,16 @@ export const useSpeciesData = (backendUrl: string, apiScopeClaim: string) => {
         return;
       }
 
+      if (!isAuthenticated) {
+        return; // Must be authenticated first
+      }
+
       if (speciesData) {
         return; // Already have data, don't fetch again
+      }
+
+      if (inProgress !== InteractionStatus.None) {
+        return; // Wait for interaction to complete
       }
 
       setLoading(true);
@@ -47,6 +57,8 @@ export const useSpeciesData = (backendUrl: string, apiScopeClaim: string) => {
     apiScopeClaim,
     backendUrl,
     instance,
+    inProgress,
+    isAuthenticated,
     setError,
     setLoading,
     setSpeciesData,

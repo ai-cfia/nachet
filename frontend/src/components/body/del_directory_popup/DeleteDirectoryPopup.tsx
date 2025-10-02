@@ -4,7 +4,8 @@ import { Box, CardHeader, IconButton, Button } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "@styles/colours";
 import { useBackendUrl } from "@hooks";
-import { useMsal } from "@azure/msal-react";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
 import { deleteAzureStorageDir } from "@common/api";
 
@@ -25,9 +26,20 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
     setReadAzureStorage,
   } = props;
   const backendURL = useBackendUrl();
-  const { instance: msalInstance } = useMsal();
+  const { instance: msalInstance, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
 
   const handleDelFromDirectory = (): void => {
+    if (!isAuthenticated) {
+      alert("You must be signed in to delete a directory");
+      return;
+    }
+
+    if (inProgress !== InteractionStatus.None) {
+      alert("Authentication in progress, please wait");
+      return;
+    }
+
     acquireAccessToken(msalInstance, [apiScopeClaim])
       .then((accessToken) => {
         // makes a post request to the backend to delete a directory in azure storage

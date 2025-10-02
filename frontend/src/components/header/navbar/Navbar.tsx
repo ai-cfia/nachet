@@ -5,6 +5,7 @@ import { Button, IconButton } from "@mui/material";
 import { colours } from "../../../styles/colours";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
 
 interface params {
   windowSize: {
@@ -32,6 +33,10 @@ const Navbar: React.FC<params> = (props) => {
   };
   const login = async (): Promise<void> => {
     try {
+      if (inProgress !== InteractionStatus.None) {
+        console.warn("Interaction already in progress, please wait");
+        return;
+      }
       await instance.loginRedirect({
         // scopes: ["openid", "profile", "email"],
         scopes: [apiScopeClaim ?? ""],

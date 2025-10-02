@@ -34,7 +34,8 @@ import { batchUploadImage, batchUploadInit } from "@common/api";
 import { validateImageFile } from "@common";
 import { BatchUploadMetadata, SpeciesData } from "@common/types";
 import { useSpeciesData } from "@hooks";
-import { useMsal } from "@azure/msal-react";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
 import {
   folderNameSchema,
@@ -103,7 +104,8 @@ const BatchUploadPopup = (props: params) => {
   const [classError, setClassError] = useState<string>("");
 
   const { speciesData } = useSpeciesData(backendUrl, apiScopeClaim);
-  const { instance: msalInstance } = useMsal();
+  const { instance: msalInstance, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
 
   const classList = useMemo(() => {
     if (!speciesData?.seeds) return [];
@@ -226,6 +228,11 @@ const BatchUploadPopup = (props: params) => {
   };
 
   const handleUpload = (): void => {
+    if (!isAuthenticated) {
+      setUploadError("You must be signed in to upload files");
+      return;
+    }
+
     // Clear previous errors
     setUploadError(null);
     setFolderNameError("");
@@ -279,6 +286,11 @@ const BatchUploadPopup = (props: params) => {
         setClassError(classValidation.error.issues[0].message);
         return;
       }
+    }
+
+    if (inProgress !== InteractionStatus.None) {
+      alert("Authentication in progress, please wait");
+      return;
     }
 
     resetUpload();

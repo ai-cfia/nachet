@@ -4,7 +4,8 @@ import { Box, CardHeader, IconButton, TextField, Button } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "@styles/colours";
 import { useBackendUrl } from "@hooks";
-import { useMsal } from "@azure/msal-react";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
 import { createAzureStorageDir } from "@common/api";
 import { directoryNameSchema } from "@common/validation";
@@ -29,9 +30,20 @@ const CreateFolder: React.FC<params> = (props) => {
   } = props;
   const backendURL = useBackendUrl();
   const [validationError, setValidationError] = useState<string>("");
-  const { instance: msalInstance } = useMsal();
+  const { instance: msalInstance, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
 
   const handleCreateDirectory = (): void => {
+    if (!isAuthenticated) {
+      alert("You must be signed in to create a directory");
+      return;
+    }
+
+    if (inProgress !== InteractionStatus.None) {
+      alert("Authentication in progress, please wait");
+      return;
+    }
+
     // Validate directory name
     const validationResult = directoryNameSchema.safeParse(curDir);
     if (!validationResult.success) {
