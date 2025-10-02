@@ -57,15 +57,18 @@ class CSPNonceManager:
         """
         # Base CSP directives
         csp_parts = [
-            f"default-src 'self'",
-            f"script-src 'self' 'nonce-{nonce}'",
+            "default-src 'self'",
+            f"script-src 'self' 'nonce-{nonce}' https://login.microsoftonline.com https://*.msauth.net https://*.msftauth.net https://*.msftauthimages.net https://*.msauthimages.net https://*.msidentity.com",
             f"style-src 'self' 'nonce-{nonce}'",
-            f"img-src 'self' data: blob:",
-            f"font-src 'self' data:",
-            f"connect-src 'self'",
-            f"object-src 'none'",
-            f"base-uri 'self'",
-            f"form-action 'self'",
+            "img-src 'self' data: blob:",
+            "font-src 'self' data:",
+            "connect-src 'self' https://login.microsoftonline.com https://*.msauth.net https://*.msftauth.net https://*.msftauthimages.net https://*.msauthimages.net https://*.msidentity.com",
+            "frame-src 'self' https://*.microsoftonline.com https://*.msauth.net https://*.msftauth.net https://*.msftauthimages.net https://*.msauthimages.net https://*.msidentity.com",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            # "frame-ancestors 'self' https://*.microsoft.com https://*.microsoftonline.com",
+            # "frame-ancestors 'none'",
         ]
 
         # Optional CSP reporting
