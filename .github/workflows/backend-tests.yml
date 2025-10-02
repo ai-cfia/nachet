@@ -161,7 +161,12 @@ jobs:
           ls -la ${{ github.workspace }}/test-results/
 
           # Define expected failures (tests we know will fail)
-          export EXPECTED_FAILURES="Clear-Site-Data Cache-Control Permissions-Policy"
+          export EXPECTED_FAILURES="Clear-Site-Data Permissions-Policy X-Frame-Options Cross-Origin-Embedder-Policy"
+
+          # Clear-Site-Data is not set because we store non-sensitive cached data such as user preferences
+          # Permissions-Policy we need camera access, and copy paste for users
+          # X-Frame-Options is not set since CSP frame-ancestors is used instead
+          # Cross-Origin-Embedder-Policy is set to credentialless because we do not control microsoft login and they do not have CORP cross-origin set
 
           # Parse results and check for unexpected failures
           python3 - <<EOF

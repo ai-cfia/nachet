@@ -67,7 +67,7 @@ class CSPNonceManager:
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",
-            # "frame-ancestors 'self' https://*.microsoft.com https://*.microsoftonline.com",
+            "frame-ancestors 'self' https://login.microsoft.com https://login.microsoftonline.com",
             # "frame-ancestors 'none'",
         ]
 

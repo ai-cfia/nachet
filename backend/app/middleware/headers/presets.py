@@ -13,8 +13,7 @@ PRESETS = {
         "Cache-Control": "private, max-age=3600",
     },
     "strict": {
-        # "Content-Security-Policy": "default-src 'self'; script-src 'self' https://login.microsoftonline.com; connect-src 'self' https://login.microsoftonline.com; frame-src 'self' https://login.microsoftonline.com;",
-        "Content-Security-Policy": "default-src 'self';",
+        "Content-Security-Policy": "default-src 'self';",  # This is overridden in CSPNonceManager to allow ms login and apply nonces
         # "X-Frame-Options": "DENY",
         "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
         "X-Content-Type-Options": "nosniff",
@@ -23,13 +22,11 @@ PRESETS = {
         "X-DNS-Prefetch-Control": "off",
         "Expect-CT": "max-age=86400, enforce",
         "Origin-Agent-Cluster": "?1",
-        # "Cross-Origin-Embedder-Policy": "require-corp",
-        # "Cross-Origin-Embedder-Policy": "credentialless",
+        "Cross-Origin-Embedder-Policy": "credentialless",
         "Cross-Origin-Opener-Policy": "same-origin",
-        # "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
         "Cross-Origin-Resource-Policy": "same-origin",
         "X-Permitted-Cross-Domain-Policies": "none",
-        "Cache-Control": "private, max-age=3600",
+        "Cache-Control": "no-store, max-age=0",
     },
     "relaxed": {
         "Content-Security-Policy": "default-src *;",
