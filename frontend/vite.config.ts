@@ -15,6 +15,15 @@ export default defineConfig({
   resolve: {
     alias: {
       "@common": path.resolve(__dirname, "./src/common"),
+      "@common/*": path.resolve(__dirname, "./src/common/*"),
+      "@hooks": path.resolve(__dirname, "./src/hooks"),
+      "@hooks/*": path.resolve(__dirname, "./src/hooks/*"),
+      "@components": path.resolve(__dirname, "./src/components"),
+      "@components/*": path.resolve(__dirname, "./src/components/*"),
+      "@styles": path.resolve(__dirname, "./src/styles"),
+      "@styles/*": path.resolve(__dirname, "./src/styles/*"),
+      "@stores": path.resolve(__dirname, "./src/stores"),
+      "@stores/*": path.resolve(__dirname, "./src/stores/*"),
     },
   },
 });

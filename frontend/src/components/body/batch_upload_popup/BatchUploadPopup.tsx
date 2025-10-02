@@ -20,7 +20,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
-import { colours } from "../../../styles/colours";
+import { colours } from "@styles/colours";
 import {
   ChangeEvent,
   Dispatch,
@@ -30,12 +30,10 @@ import {
   useMemo,
   useState,
 } from "react";
-import {
-  batchUploadImage,
-  batchUploadInit,
-  requestClassList,
-} from "../../../common/api";
-import { BatchUploadMetadata, ClassData } from "../../../common/types";
+import { batchUploadImage, batchUploadInit } from "@common/api";
+import { validateImageFile } from "@common";
+import { BatchUploadMetadata, SpeciesData } from "@common/types";
+import { useSpeciesData, useAuth } from "@hooks";
 import {
   folderNameSchema,
   seedCountSchema,
@@ -74,10 +72,12 @@ interface params {
   backendUrl: string;
   containerName: string;
   uuid: string;
+  apiScopeClaim: string;
 }
 
 const BatchUploadPopup = (props: params) => {
-  const { setBatchUploadOpen, containerName, uuid, backendUrl } = props;
+  const { setBatchUploadOpen, containerName, uuid, backendUrl, apiScopeClaim } =
+    props;
 
   const [files, setFiles] = useState<FileList | null>(null);
   const [fileCount, setFileCount] = useState<number>(0);
@@ -100,22 +100,35 @@ const BatchUploadPopup = (props: params) => {
   const [filesError, setFilesError] = useState<string>("");
   const [classError, setClassError] = useState<string>("");
 
-  const [classList, setClassList] = useState<ClassData[]>([]);
+  const { speciesData } = useSpeciesData(backendUrl, apiScopeClaim);
+  const { fetchAccessToken } = useAuth(apiScopeClaim);
+
+  const classList = useMemo(() => {
+    if (!speciesData?.seeds) return [];
+    return speciesData.seeds.map((seed, index) => ({
+      ...seed,
+      id: index,
+    }));
+  }, [speciesData]);
 
   const defaultClass = useMemo(() => {
     return {
       id: -1,
-      classId: "",
+      seed_id: "",
+      name_code: "",
+      family: "",
+      genus: "",
+      species: "",
       label: "",
     };
   }, []);
-  const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
-  const filter = createFilterOptions<ClassData>();
+  const [selectedClass, setSelectedClass] = useState<SpeciesData | null>(null);
+  const filter = createFilterOptions<SpeciesData>();
 
   const filteredClassList = (
-    options: ClassData[],
-    params: FilterOptionsState<ClassData>,
-  ): ClassData[] => {
+    options: SpeciesData[],
+    params: FilterOptionsState<SpeciesData>,
+  ): SpeciesData[] => {
     const { inputValue } = params;
     if (inputValue === "") {
       return options;
@@ -134,13 +147,13 @@ const BatchUploadPopup = (props: params) => {
     return filtered;
   };
 
-  const getClassLabel = (option: string | ClassData): string => {
-    return typeof option === "string" ? option : option.label;
+  const getClassLabel = (option: string | SpeciesData): string => {
+    return typeof option === "string" ? option : option.label || "";
   };
 
   const handleClassChange = (
     event: SyntheticEvent<Element, Event>,
-    newValue: string | ClassData | null,
+    newValue: string | SpeciesData | null,
   ) => {
     event.preventDefault();
     if (newValue == null) {
@@ -152,17 +165,35 @@ const BatchUploadPopup = (props: params) => {
       });
     } else {
       setSelectedClass(newValue);
-      setSeedId(newValue.classId);
+      setSeedId(newValue.seed_id);
     }
   };
 
-  const handleFilesSelected = (event: ChangeEvent<HTMLInputElement>): void => {
+  const handleFilesSelected = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> => {
     const selectedFiles = event.target.files;
     if (selectedFiles !== null) {
-      // Validate files
+      // Basic validation first (count, etc.)
       const validationResult = fileListSchema.safeParse(selectedFiles);
       if (!validationResult.success) {
         setFilesError(validationResult.error.issues[0].message);
+        return;
+      }
+
+      // Comprehensive validation for each file including dimensions
+      const errors: string[] = [];
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const fileValidation = await validateImageFile(selectedFiles[i]);
+        if (!fileValidation.isValid) {
+          errors.push(
+            `${selectedFiles[i].name}: ${fileValidation.errors.join(", ")}`,
+          );
+        }
+      }
+
+      if (errors.length > 0) {
+        setFilesError(`File validation failed:\n${errors.join("\n")}`);
         return;
       }
 
@@ -251,13 +282,25 @@ const BatchUploadPopup = (props: params) => {
     resetUpload();
     setUploading(true);
 
-    batchUploadInit(backendUrl, uuid, folderName, containerName, fileCount)
-      .then((response) => {
-        setSessionId(response.session_id);
+    fetchAccessToken().then((accessToken) => {
+      if (!accessToken) {
+        console.error("Failed to obtain access token");
+        return;
+      }
+      batchUploadInit({
+        backendUrl,
+        accessToken,
+        folderName,
+        containerUuid: containerName,
+        fileCount,
       })
-      .catch((error) => {
-        setUploadError(error.toString());
-      });
+        .then((response) => {
+          setSessionId(response.session_id);
+        })
+        .catch((error) => {
+          setUploadError(error.toString());
+        });
+    });
   };
 
   const handleClose = (): void => {
@@ -276,27 +319,6 @@ const BatchUploadPopup = (props: params) => {
     }
     setUploadSuccess(true);
   }, [fileStatus]);
-
-  useEffect(() => {
-    if (backendUrl == null || backendUrl === "") {
-      return;
-    }
-    requestClassList(backendUrl)
-      .then((response) => {
-        const list: ClassData[] = [];
-        response.seeds.forEach((element, index) => {
-          list.push({
-            id: index,
-            classId: element.seed_id,
-            label: element.seed_name,
-          });
-        });
-        setClassList(list);
-      })
-      .catch((error) => {
-        console.error("Error fetching class list: ", error);
-      });
-  }, [backendUrl]);
 
   useEffect(() => {
     if (sessionId === "" || files == null) {
@@ -331,17 +353,28 @@ const BatchUploadPopup = (props: params) => {
             imageDataUrl: imageDataUrl,
             sessionId: sessionId,
           };
-          batchUploadImage(backendUrl, data)
-            .then((response) => {
-              if (response) {
-                console.log("Successfully uploaded image: ", file.name);
-              }
-              resolve(true);
+
+          fetchAccessToken().then((accessToken) => {
+            if (!accessToken) {
+              console.error("Failed to obtain access token");
+              return;
+            }
+            batchUploadImage({
+              backendUrl: backendUrl,
+              data: data,
+              accessToken: accessToken,
             })
-            .catch((error) => {
-              console.error("Error uploading image: ", file.name);
-              reject(error);
-            });
+              .then((response) => {
+                if (response) {
+                  console.log("Successfully uploaded image: ", file.name);
+                }
+                resolve(true);
+              })
+              .catch((error) => {
+                console.error("Error uploading image: ", file.name);
+                reject(error);
+              });
+          });
         };
         reader.readAsDataURL(file);
       });
@@ -380,18 +413,18 @@ const BatchUploadPopup = (props: params) => {
 
     batchUpload();
   }, [
-    sessionId,
-    files,
-    fileStatus,
-    uploading,
     backendUrl,
-    folderName,
-    seedId,
-    seedCount,
-    selectedClass,
-    zoom,
     containerName,
+    fetchAccessToken,
+    fileStatus,
+    files,
+    seedCount,
+    seedId,
+    selectedClass?.label,
+    sessionId,
+    uploading,
     uuid,
+    zoom,
   ]);
 
   return (
@@ -563,6 +596,7 @@ const BatchUploadPopup = (props: params) => {
               <input
                 type="file"
                 multiple
+                accept="image/png"
                 onChange={handleFilesSelected}
                 hidden
               />

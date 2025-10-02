@@ -12,16 +12,16 @@ on:
       - closed
       - synchronize
     paths:
-      - 'backend/**'
-      - 'backend/pyproject.toml'
-      - '.github/workflows/backend-*'
+      - "backend/**"
+      - "backend/pyproject.toml"
+      - ".github/workflows/backend-*"
   push:
     branches:
       - main
     paths:
-      - 'backend/**'
-      - 'backend/pyproject.toml'
-      - '.github/workflows/backend-*'
+      - "backend/**"
+      - "backend/pyproject.toml"
+      - ".github/workflows/backend-*"
 
 defaults:
   run:
@@ -34,8 +34,8 @@ jobs:
     uses: ai-cfia/github-workflows/.github/workflows/workflow-version-bump-python-mono.yml@main
     secrets: inherit
     with:
-      pyproject-path: 'pyproject.toml'
-      package-name: 'nachet-backend'
+      pyproject-path: "pyproject.toml"
+      package-name: "nachet-backend"
       working-directory: backend
   backend-lint:
     name: backend-lint-test-python
@@ -52,7 +52,7 @@ jobs:
     secrets: inherit
     with:
       working-directory: backend
-      md-link-config-file-path: '.mlc_config.json'
+      md-link-config-file-path: ".mlc_config.json"
   yaml-check:
     name: workflow-yaml-check
     uses: ai-cfia/github-workflows/.github/workflows/workflow-yaml-check-mono.yml@main
@@ -64,18 +64,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-      
+        uses: actions/checkout@v5
+
       - name: Install uv
-        uses: astral-sh/setup-uv@142240426d0e82f3e584603c3aa194c582f5aed3
+        uses: astral-sh/setup-uv@82f21a54fe71a0377652b4bb24af4961fb952daa
         with:
           version: "latest"
-      
+
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
-      
+          python-version: "3.13"
+
       - name: Check if uv.lock is up to date
         run: |
           # Generate a new lock file and compare with existing
@@ -96,7 +96,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Ensure SBOM exists (skip scan if missing)
         run: |
           if [ ! -f backend/sbom.json ]; then
@@ -104,7 +104,7 @@ jobs:
             echo "No SBOM file found" > sbom-scan-skip.log
             exit 0
           fi
-      - uses: anchore/scan-action@1638637db639e0ade3258b51db49a9a137574c3e
+      - uses: anchore/scan-action@56e320f818c551f3f035fde89894504f269ad30b
         name: SBOM Security Scan
         id: scan
         with:

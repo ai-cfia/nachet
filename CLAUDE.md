@@ -8,7 +8,7 @@ Nachet is a Canadian government (CFIA) AI-powered seed identification system:
 
 - **Nachet**: Weed seed identification using machine learning models
 
-The project consists of a React TypeScript frontend and Python Quart backend, with PostgreSQL database and Azure Blob Storage for images.
+The project consists of a React TypeScript frontend and Python FastAPI backend, with PostgreSQL database and Azure Blob Storage for images.
 
 ## Common Development Commands
 
@@ -26,17 +26,17 @@ npm run format                 # Format code with Prettier
 npm run format:check           # Check formatting
 ```
 
-### Backend (Python + Quart)
+### Backend (Python + FastApi + SQLAlchemy + Alembic + Azure SDK)
 
 ```bash
 cd backend/
 uv sync                           # Install dependencies (recommended)
-uv run hypercorn -b :8080 app:app # Start development server
+uv run hypercorn -b :8080 app/main:app # Start development server
 uv run pytest                    # Run tests
 
 # Alternative (legacy pip method)
 pip install -r requirements.txt    # Install dependencies
-hypercorn -b :8080 app:app         # Start development server
+hypercorn -b :8080 app/main:app         # Start development server
 pytest                            # Run tests
 ```
 
@@ -60,11 +60,11 @@ docker-compose up --build          # Run frontend + backend together
 ### Technology Stack
 
 - **Frontend**: React 18 + TypeScript + Vite + Material-UI + Axios
-- **Backend**: Python + Quart (async Flask) + SQLAlchemy + Azure SDK
-- **Database**: PostgreSQL with dual schemas (Nachet + FertiScan)
+- **Backend**: Python + FastApi + SQLAlchemy + Alembic + Azure SDK
+- **Database**: PostgreSQL
 - **Storage**: Azure Blob Storage for images
 - **ML**: Remote HTTP endpoints (no local model processing)
-- **Database Management**: Bytebase for schema versioning
+- **Database Management**: Alembic for migrations and version control
 
 ### Key Directories Structure
 
@@ -76,8 +76,9 @@ nachet/
 │   │   ├── pages/         # Page-level components
 │   │   ├── common/        # Utilities, API client, types
 │   │   └── hooks/         # Custom React hooks
-├── backend/           # Python Quart API server
-│   ├── app.py             # Main application entry point
+├── backend/           # Python FastAPI server
+│   ├── app/
+│   │   ├── main.py        # Main application entry point
 │   ├── model/             # ML inference request functions
 │   ├── storage/           # Data storage integration
 │   └── tests/             # Backend test suite
@@ -86,12 +87,11 @@ nachet/
 
 ### Database Architecture
 
-- **PostgreSQL** with two schemas:
-  - `nachet_0.0.11`: Seed detection system (users, pictures, inferences, models)
-  - `fertiscan_0.0.17`: Fertilizer analysis (inspections, labels, ingredients)
+- **PostgreSQL** with schema:
+  - `nachet`: Seed detection system (users, pictures, inferences, models)
 - **Hybrid storage**: Metadata in PostgreSQL, images in Azure Blob Storage
 - **UUID-based**: All entities use UUIDs for secure multi-tenant isolation
-- **Schema versioning**: Managed with Bytebase migration system
+- **Schema versioning**: Managed with Alembic migration system
 
 ### ML Pipeline Architecture
 
@@ -106,14 +106,16 @@ nachet/
 ### Running the Application Locally
 
 1. **Backend**: Set up environment variables in `.env` (copy from `.env.template`)
-2. **Start backend**: `cd backend && uv run hypercorn -b :8080 app:app`
+2. **Start backend**: `cd backend && uv run hypercorn -b :8080 app/main:app`
 3. **Start frontend**: `cd frontend && npm run dev`
 4. **Access**: Frontend at <http://localhost:5173>, Backend at <http://localhost:8080>
 
 ### Testing
 
 - **Frontend tests**: Use `npm run test` (Vitest + React Testing Library)
-- **Backend tests**: Use `uv run pytest`
+- **Backend tests**: Use `uv run pytest tests/ -v` in directory `backend/`
+- **Blob storage tests**: Use `uv run pytest tests/ -v` in `backend/app/blob`
+- **Database tests**: Use `uv run pytest tests/ -v` in `backend/app/db`
 - **Manual testing**: See comprehensive test documentation in `frontend/TESTING.md` and `backend/TESTING.md`
 
 ### Environment Configuration
@@ -171,5 +173,8 @@ curl http://localhost:8080/health
 cd frontend && npm run build
 
 # Test database connection
-cd backend && uv run python -c "from storage.datastore_storage_api import *"
+cd backend/app/db && uv run validate_orm_online.py
 ```
+
+- run blob tests nachet/backend/app/blob $  uv run pytest tests/ -v
+- run db tests nachet/backend/app/db $ uv run pytest tests/ -v

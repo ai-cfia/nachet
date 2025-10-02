@@ -1,6 +1,6 @@
 import React from "react";
 import UTIF from "utif";
-import { BlobError, DecodeError, FetchError, ValueError } from "../common";
+import { BlobError, DecodeError, FetchError, ValueError } from "@common";
 import { DecodedTiff } from "../hooks/useDecoderTiff";
 import { ApiInferenceData, Images, LabelOccurrences } from "./types";
 

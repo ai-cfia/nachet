@@ -29,10 +29,6 @@ nachet/db$ nano .env.config.local
 # create database and pgadmin containers
 nachet/db$ cd ..
 nachet$ docker compose -f docker-compose.yaml up -d nachet-db nachet-pgadmin nachet-blob
-nachet$ chmod +x db/dev_setup.sh
-
-# load the dev schema
-nachet$ db/./dev_setup.sh <your_schema_version> <your_db_name> <your_db_user> <your_db_password>
 ```  
 
 - access pgadmin at <http://localhost:12433>  
@@ -40,7 +36,7 @@ nachet$ db/./dev_setup.sh <your_schema_version> <your_db_name> <your_db_user> <y
 - create a new server with the database connection details from the .env.config.local file  
 - browse your database and schema using pgadmin
 
-### Datastore setup
+<!-- ### Datastore setup deprecated
 
 ```bash
 nachet$ cd datastore
@@ -58,7 +54,7 @@ nachet/datastore$ uv sync
 nachet/datastore$ source .venv/bin/activate
 nachet/datastore$ ./run_tests.sh
 nachet/datastore$ deactivate
-```
+``` -->
 
 ### Backend setup
 
@@ -76,8 +72,27 @@ nachet/backend$ nano .env.test.local
 # initialize venv
 nachet/backend$ uv sync
 nachet/backend$ source .venv/bin/activate
+
+# initialize the database (creates tables, runs migrations, creates initial user)
+nachet/backend$ cd app/db
+nachet/backend/app/db$ uv run setup_db_local.py
+
+# run all db tests with coverage
+nachet/backend/app/db$ uv run pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
+
+# run integration tests or unit tests only
+nachet/backend/app/db$ uv run pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing -m "integration"
+nachet/backend/app/db$ uv run pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing -m "not integration"
+
+# run tests
 nachet/backend$ ./run_tests.sh
 nachet/backend$ deactivate
+
+# lint
+nachet/backend$  uv run ruff check .
+
+# push frontend build to blob storage
+nachet/backend$ uv run app/scripts/push_frontend_to_blob.py
 ```
 
 ### Frontend setup
@@ -90,6 +105,14 @@ nachet/frontend$ cp .env.template .env.config.local
 nachet/frontend$ nano .env.config.local
 nachet/frontend$ npm run update
 nachet/frontend$ npm run test
+
+# run dev with env vars from .env.config.local
+# nachet/frontend$ source .env.config.local # requires export keyword in the file
+nachet/frontend$ export $(grep -v '^#' .env.config.local | xargs)
+nachet/frontend$ npm run dev -- --port 12438
+
+# unset env vars
+nachet/frontend$ unset $(grep -v '^#' .env.config.local | grep -v '^$' | cut -d= -f1)
 ```
 
 ### Update the compose file as needed
@@ -132,8 +155,43 @@ nachet$ docker compose -f docker-compose.yaml start
 nachet$ docker compose -f docker-compose.yaml restart
 nachet$ docker compose -f docker-compose.yaml rm
 nachet$ docker compose -f docker-compose.yaml pull
+# create a first migration file
+nachet/backend/app/db $ uv run alembic revision --autogenerate -m "First migration 0.2.0"
+
+# create a new migration file
+nachet/backend/app/db $ uv run alembic revision --autogenerate -m "Add new_field to MyTable"
+
+# apply migrations
+nachet/backend/app/db $ uv run alembic upgrade head
+
+# downgrade to a previous migration
+nachet/backend/app/db $ uv run alembic downgrade <revision_id>
+
+# check current migration version
+nachet/backend/app/db $ uv run alembic current
+
+# show the history of migrations
+nachet/backend/app/db $ uv run alembic history
+
+# check if your orm models are valid
+nachet/backend/app/db $ uv run validate_orm_offline.py
+nachet/backend/app/db $ uv run validate_orm_online.py
+
+# check if you need to generate a new migration
+nachet/backend/app/db $ uv run validate_orm_alembic.py
+
+# check if your database is synchronized with the alembic head
+nachet/backend/app/db $ uv run validate_db_synchronized.py
 ```
 
 ## Development
 
 At this point you will have the full stack, you will be able to test integration with all components.
+
+## Backend changes
+
+- When making changes to the backend, ensure that you update the database schema if necessary. Use Alembic for managing database migrations.
+- the first step should be to bump the version in the `backend/pyproject.toml` file.
+- build your changes locally `nachet $ docker compose -f docker-compose.yaml build nachet-backend --no-cache`
+- deploy your changes locally `nachet $ docker compose -f docker-compose.yaml up -d nachet-backend --force-recreate`
+- quick check module imports are good `nachet/backend $  python -c "import app.main"`

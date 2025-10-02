@@ -97,6 +97,12 @@ export const imageFileSchema = z
     "File must be a valid image format (PNG)",
   );
 
+/**
+ * Enhanced image file schema with dimension validation
+ * Note: This only does basic file validation. Use validateImageFile() utility for dimension checking
+ */
+export const imageFileWithDimensionsSchema = imageFileSchema;
+
 export const fileListSchema = z
   .instanceof(FileList)
   .refine((files) => files.length > 0, "At least one file must be selected")
@@ -539,3 +545,149 @@ export type SafeClassLabel = z.infer<typeof safeClassLabelSchema>;
 // Utility types for XSS protection
 export type EscapedString = string & { readonly __escaped: unique symbol };
 export type SanitizedUrl = string & { readonly __sanitized: unique symbol };
+
+// ==========================================
+// API Response Validation Schemas
+// ==========================================
+
+// Base coordinate schema for API responses
+export const BoxCoordinatesSchema = z.object({
+  topX: z.number(),
+  topY: z.number(),
+  bottomX: z.number(),
+  bottomY: z.number(),
+});
+
+// Inference box schema from API response
+export const InferenceBoxApiSchema = z.object({
+  topN: z.array(
+    z.object({
+      score: z.number(),
+      label: z.string(),
+    }),
+  ),
+  score: z.number(),
+  label: z.string(),
+  classId: z.string(),
+  object_type_id: z.string(),
+  box_id: z.string(),
+  box: BoxCoordinatesSchema,
+  overlapping: z.boolean(),
+  overlappingIndices: z.number(),
+  is_verified: z.boolean().optional(),
+});
+
+// API Inference Data schema
+export const ApiInferenceDataSchema = z.object({
+  filename: z.string(),
+  imageId: z.string(),
+  inference_id: z.string(),
+  boxes: z.array(InferenceBoxApiSchema),
+  labelOccurrence: z.record(z.string(), z.number()),
+  totalBoxes: z.number(),
+  models: z.array(
+    z.object({
+      name: z.string(),
+      version: z.number(),
+    }),
+  ),
+});
+
+// Model Metadata schema
+export const ModelMetadataSchema = z.object({
+  created_by: z.string(),
+  creation_date: z.string(),
+  dataset: z.string(),
+  description: z.string(),
+  identifiable: z.array(z.string()),
+  job_name: z.string(),
+  metrics: z.array(z.string()),
+  model_name: z.string(),
+  models: z.array(z.string()),
+  pipeline_name: z.string(),
+  default: z.boolean().optional(),
+});
+
+// Species Data schema
+export const ApiSpeciesDataSchema = z.object({
+  seeds: z.array(
+    z.object({
+      seed_id: z.string(),
+      name_code: z.string(),
+      family: z.string(),
+      genus: z.string(),
+      species: z.string(),
+      seed_name: z.string().nullable().optional(),
+      id: z.number().optional(),
+      label: z.string().optional(),
+    }),
+  ),
+});
+
+// Azure Storage Directory schemas
+export const DirectoryPictureApiSchema = z.object({
+  inference_exists: z.boolean(),
+  is_validation: z.boolean(),
+  picture_id: z.string(),
+});
+
+export const AzureStorageDirectoryItemApiSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  folder_prefix: z.string(),
+  description: z.string().nullable(),
+  picture_count: z.number(),
+  // pictures: z.array(DirectoryPictureApiSchema),
+});
+
+export const ReadAzureStorageDirApiSchema = z.object({
+  directories: z.array(AzureStorageDirectoryItemApiSchema),
+});
+
+// Simple response schemas
+export const UserIdResponseSchema = z.object({
+  user_id: z.string(),
+});
+
+export const SessionIdResponseSchema = z.object({
+  session_id: z.string(),
+});
+
+export const BooleanResponseSchema = z.boolean();
+
+// Void response for operations that don't return data (but still succeed)
+export const VoidResponseSchema = z
+  .any()
+  .refine(() => true, "Operation completed successfully");
+
+// Generic validation function for API responses
+export function validateApiResponse<T>(
+  schema: z.ZodSchema<T>,
+  data: unknown,
+  apiName: string,
+): T {
+  try {
+    return schema.parse(data);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.error(
+        `API Response validation failed for ${apiName}:`,
+        error.issues,
+      );
+      throw new Error(
+        `Invalid API response from ${apiName}: ${error.issues.map((e) => e.message).join(", ")}`,
+      );
+    }
+    throw error;
+  }
+}
+
+// API Response validation result types
+export type ApiInferenceData = z.infer<typeof ApiInferenceDataSchema>;
+export type ModelMetadata = z.infer<typeof ModelMetadataSchema>;
+export type ApiSpeciesData = z.infer<typeof ApiSpeciesDataSchema>;
+export type ReadAzureStorageDirApi = z.infer<
+  typeof ReadAzureStorageDirApiSchema
+>;
+export type UserIdResponse = z.infer<typeof UserIdResponseSchema>;
+export type SessionIdResponse = z.infer<typeof SessionIdResponseSchema>;

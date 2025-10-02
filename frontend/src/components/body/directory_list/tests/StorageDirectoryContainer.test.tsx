@@ -7,55 +7,25 @@ describe("StorageDirectoryContainer", () => {
   const mockProps = {
     azureStorageDir: [
       {
+        folderId: "testDir1ID",
         folderName: "testDir1",
-        nbPictures: 1,
-        pictureSetId: "testDir1ID",
-        pictures: [
-          {
-            inferenceExists: false,
-            isValidation: false,
-            pictureId: "testDir1Pic1",
-          },
-        ],
+        folderPrefix: "prefix1",
+        description: "Test directory 1",
+        pictureCount: 1,
       },
       {
+        folderId: "testDir2ID",
         folderName: "testDir2",
-        nbPictures: 2,
-        pictureSetId: "testDir2ID",
-        pictures: [
-          {
-            inferenceExists: false,
-            isValidation: false,
-            pictureId: "testDir2Pic1",
-          },
-          {
-            inferenceExists: false,
-            isValidation: false,
-            pictureId: "testDir2Pic2",
-          },
-        ],
+        folderPrefix: "prefix2",
+        description: "Test directory 2",
+        pictureCount: 2,
       },
       {
+        folderId: "testDir3ID",
         folderName: "testDir3",
-        nbPictures: 3,
-        pictureSetId: "testDir3ID",
-        pictures: [
-          {
-            inferenceExists: false,
-            isValidation: false,
-            pictureId: "testDir3Pic1",
-          },
-          {
-            inferenceExists: false,
-            isValidation: false,
-            pictureId: "testDir3Pic2",
-          },
-          {
-            inferenceExists: false,
-            isValidation: false,
-            pictureId: "testDir3Pic3",
-          },
-        ],
+        folderPrefix: "prefix3",
+        description: "Test directory 3",
+        pictureCount: 3,
       },
     ],
     curDir: "testDir",

@@ -1,6 +1,44 @@
 {
   "components": [
     {
+      "bom-ref": "Deprecated==1.2.18",
+      "description": "Python @deprecated decorator to deprecate old python classes, functions or methods.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://deprecated.readthedocs.io/en/latest/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Bug Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/laurent-laporte-pro/deprecated/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/laurent-laporte-pro/deprecated"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/laurent-laporte-pro/deprecated"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "Deprecated",
+      "purl": "pkg:pypi/deprecated@1.2.18",
+      "type": "library",
+      "version": "1.2.18"
+    },
+    {
       "bom-ref": "Hypercorn==0.17.3",
       "description": "A ASGI Server based on Hyper libraries and inspired by Gunicorn",
       "externalReferences": [
@@ -77,6 +115,39 @@
       "version": "3.1.6"
     },
     {
+      "bom-ref": "Mako==1.3.10",
+      "description": "A super-fast templating language that borrows the best ideas from the existing templating languages.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://docs.makotemplates.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issue Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/sqlalchemy/mako"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://www.makotemplates.org/"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "Mako",
+      "purl": "pkg:pypi/mako@1.3.10",
+      "type": "library",
+      "version": "1.3.10"
+    },
+    {
       "bom-ref": "MarkupSafe==3.0.2",
       "description": "Safely add untrusted strings to HTML/XML markup.",
       "externalReferences": [
@@ -149,7 +220,7 @@
       "version": "2.10.1"
     },
     {
-      "bom-ref": "PyYAML==6.0.2",
+      "bom-ref": "PyYAML==6.0.3",
       "description": "YAML parser and emitter for Python",
       "externalReferences": [
         {
@@ -197,9 +268,9 @@
         }
       ],
       "name": "PyYAML",
-      "purl": "pkg:pypi/pyyaml@6.0.2",
+      "purl": "pkg:pypi/pyyaml@6.0.3",
       "type": "library",
-      "version": "6.0.2"
+      "version": "6.0.3"
     },
     {
       "bom-ref": "Pygments==2.19.2",
@@ -249,6 +320,264 @@
       "purl": "pkg:pypi/pygments@2.19.2",
       "type": "library",
       "version": "2.19.2"
+    },
+    {
+      "bom-ref": "SQLAlchemy==2.0.43",
+      "description": "Database Abstraction Library",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://docs.sqlalchemy.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issue Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/sqlalchemy/sqlalchemy/"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://www.sqlalchemy.org"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "SQLAlchemy",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "asyncio"
+        }
+      ],
+      "purl": "pkg:pypi/sqlalchemy@2.0.43",
+      "type": "library",
+      "version": "2.0.43"
+    },
+    {
+      "bom-ref": "aiohappyeyeballs==2.6.1",
+      "description": "Happy Eyeballs for asyncio",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://aiohappyeyeballs.readthedocs.io"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Bug Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/aio-libs/aiohappyeyeballs/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://github.com/aio-libs/aiohappyeyeballs/blob/main/CHANGELOG.md"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/aio-libs/aiohappyeyeballs"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "PSF-2.0"
+          }
+        },
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Python-2.0"
+          }
+        }
+      ],
+      "name": "aiohappyeyeballs",
+      "purl": "pkg:pypi/aiohappyeyeballs@2.6.1",
+      "type": "library",
+      "version": "2.6.1"
+    },
+    {
+      "bom-ref": "aiohttp==3.12.15",
+      "description": "Async http client/server framework (asyncio)",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Coverage: codecov",
+          "type": "other",
+          "url": "https://codecov.io/github/aio-libs/aiohttp"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: RTD",
+          "type": "other",
+          "url": "https://docs.aiohttp.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: Changelog",
+          "type": "other",
+          "url": "https://docs.aiohttp.org/en/stable/changes.html"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: repo",
+          "type": "other",
+          "url": "https://github.com/aio-libs/aiohttp"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: CI: GitHub Actions",
+          "type": "other",
+          "url": "https://github.com/aio-libs/aiohttp/actions?query=workflow%3ACI"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: issues",
+          "type": "other",
+          "url": "https://github.com/aio-libs/aiohttp/issues"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/aio-libs/aiohttp"
+        }
+      ],
+      "licenses": [
+        {
+          "acknowledgement": "declared",
+          "expression": "Apache-2.0 AND MIT"
+        }
+      ],
+      "name": "aiohttp",
+      "purl": "pkg:pypi/aiohttp@3.12.15",
+      "type": "library",
+      "version": "3.12.15"
+    },
+    {
+      "bom-ref": "aiosignal==1.4.0",
+      "description": "aiosignal: a list of registered asynchronous callbacks",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Coverage: codecov",
+          "type": "other",
+          "url": "https://codecov.io/github/aio-libs/aiosignal"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: RTD",
+          "type": "other",
+          "url": "https://docs.aiosignal.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: repo",
+          "type": "other",
+          "url": "https://github.com/aio-libs/aiosignal"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: CI: GitHub Actions",
+          "type": "other",
+          "url": "https://github.com/aio-libs/aiosignal/actions"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: issues",
+          "type": "other",
+          "url": "https://github.com/aio-libs/aiosignal/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Chat: Gitter",
+          "type": "other",
+          "url": "https://gitter.im/aio-libs/Lobby"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/aio-libs/aiosignal"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: Apache Software License"
+          }
+        }
+      ],
+      "name": "aiosignal",
+      "purl": "pkg:pypi/aiosignal@1.4.0",
+      "type": "library",
+      "version": "1.4.0"
+    },
+    {
+      "bom-ref": "aiosqlite==0.21.0",
+      "description": "asyncio bridge to the standard sqlite3 module",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://aiosqlite.omnilib.dev"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Github",
+          "type": "vcs",
+          "url": "https://github.com/omnilib/aiosqlite"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "aiosqlite",
+      "purl": "pkg:pypi/aiosqlite@0.21.0",
+      "type": "library",
+      "version": "0.21.0"
+    },
+    {
+      "bom-ref": "alembic==1.16.5",
+      "description": "A database migration tool for SQLAlchemy.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://alembic.sqlalchemy.org/en/latest/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issue Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/sqlalchemy/alembic/issues/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/sqlalchemy/alembic/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://alembic.sqlalchemy.org/en/latest/changelog.html"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://alembic.sqlalchemy.org"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "alembic",
+      "purl": "pkg:pypi/alembic@1.16.5",
+      "type": "library",
+      "version": "1.16.5"
     },
     {
       "bom-ref": "annotated-types==0.7.0",
@@ -427,13 +756,13 @@
       "version": "1.35.0"
     },
     {
-      "bom-ref": "azure-identity==1.24.0",
+      "bom-ref": "azure-identity==1.25.0",
       "description": "Microsoft Azure Identity Library for Python",
       "externalReferences": [
         {
-          "comment": "from packaging metadata: Home-page",
-          "type": "website",
-          "url": "https://github.com/Azure/azure-sdk-for-python/tree/main/sdk/identity/azure-identity"
+          "comment": "from packaging metadata Project-URL: repository",
+          "type": "vcs",
+          "url": "https://github.com/Azure/azure-sdk-for-python"
         }
       ],
       "licenses": [
@@ -445,9 +774,9 @@
         }
       ],
       "name": "azure-identity",
-      "purl": "pkg:pypi/azure-identity@1.24.0",
+      "purl": "pkg:pypi/azure-identity@1.25.0",
       "type": "library",
-      "version": "1.24.0"
+      "version": "1.25.0"
     },
     {
       "bom-ref": "azure-storage-blob==12.26.0",
@@ -468,6 +797,12 @@
         }
       ],
       "name": "azure-storage-blob",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "aio"
+        }
+      ],
       "purl": "pkg:pypi/azure-storage-blob@12.26.0",
       "type": "library",
       "version": "12.26.0"
@@ -573,13 +908,13 @@
       "version": "2025.7.14"
     },
     {
-      "bom-ref": "cffi==1.17.1",
+      "bom-ref": "cffi==2.0.0",
       "description": "Foreign Function Interface for Python calling C code.",
       "externalReferences": [
         {
           "comment": "from packaging metadata Project-URL: Documentation",
           "type": "documentation",
-          "url": "http://cffi.readthedocs.org/"
+          "url": "https://cffi.readthedocs.io/"
         },
         {
           "comment": "from packaging metadata Project-URL: Issue Tracker",
@@ -605,11 +940,6 @@
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
           "url": "https://cffi.readthedocs.io/en/latest/whatsnew.html"
-        },
-        {
-          "comment": "from packaging metadata: Home-page",
-          "type": "website",
-          "url": "http://cffi.readthedocs.org"
         }
       ],
       "licenses": [
@@ -621,9 +951,9 @@
         }
       ],
       "name": "cffi",
-      "purl": "pkg:pypi/cffi@1.17.1",
+      "purl": "pkg:pypi/cffi@2.0.0",
       "type": "library",
-      "version": "1.17.1"
+      "version": "2.0.0"
     },
     {
       "bom-ref": "chardet==5.2.0",
@@ -799,7 +1129,7 @@
       "version": "7.10.6"
     },
     {
-      "bom-ref": "cryptography==45.0.7",
+      "bom-ref": "cryptography==46.0.1",
       "description": "cryptography is a package which provides cryptographic recipes and primitives to Python developers.",
       "externalReferences": [
         {
@@ -835,9 +1165,9 @@
         }
       ],
       "name": "cryptography",
-      "purl": "pkg:pypi/cryptography@45.0.7",
+      "purl": "pkg:pypi/cryptography@46.0.1",
       "type": "library",
-      "version": "45.0.7"
+      "version": "46.0.1"
     },
     {
       "bom-ref": "cyclonedx-bom==7.0.0",
@@ -1158,6 +1488,105 @@
       "version": "1.5.1"
     },
     {
+      "bom-ref": "frozenlist==1.7.0",
+      "description": "A list-like structure which implements collections.abc.MutableSequence",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Coverage: codecov",
+          "type": "other",
+          "url": "https://codecov.io/github/aio-libs/frozenlist"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: RTD",
+          "type": "other",
+          "url": "https://frozenlist.aio-libs.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Code of Conduct",
+          "type": "other",
+          "url": "https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: repo",
+          "type": "other",
+          "url": "https://github.com/aio-libs/frozenlist"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: CI: Github Actions",
+          "type": "other",
+          "url": "https://github.com/aio-libs/frozenlist/actions"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: Changelog",
+          "type": "other",
+          "url": "https://github.com/aio-libs/frozenlist/blob/master/CHANGES.rst#changelog"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: issues",
+          "type": "other",
+          "url": "https://github.com/aio-libs/frozenlist/issues"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/aio-libs/frozenlist"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "frozenlist",
+      "purl": "pkg:pypi/frozenlist@1.7.0",
+      "type": "library",
+      "version": "1.7.0"
+    },
+    {
+      "bom-ref": "greenlet==3.2.4",
+      "description": "Lightweight in-process concurrent programming",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://greenlet.readthedocs.io/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Bug Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/python-greenlet/greenlet/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source Code",
+          "type": "other",
+          "url": "https://github.com/python-greenlet/greenlet/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changes",
+          "type": "release-notes",
+          "url": "https://greenlet.readthedocs.io/en/latest/changes.html"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://greenlet.readthedocs.io/"
+        }
+      ],
+      "licenses": [
+        {
+          "acknowledgement": "declared",
+          "expression": "MIT AND Python-2.0"
+        }
+      ],
+      "name": "greenlet",
+      "purl": "pkg:pypi/greenlet@3.2.4",
+      "type": "library",
+      "version": "3.2.4"
+    },
+    {
       "bom-ref": "h11==0.16.0",
       "description": "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1",
       "externalReferences": [
@@ -1181,7 +1610,7 @@
       "version": "0.16.0"
     },
     {
-      "bom-ref": "h2==4.2.0",
+      "bom-ref": "h2==4.3.0",
       "description": "Pure-Python HTTP/2 protocol implementation",
       "externalReferences": [
         {
@@ -1214,9 +1643,9 @@
         }
       ],
       "name": "h2",
-      "purl": "pkg:pypi/h2@4.2.0",
+      "purl": "pkg:pypi/h2@4.3.0",
       "type": "library",
-      "version": "4.2.0"
+      "version": "4.3.0"
     },
     {
       "bom-ref": "hpack==4.1.0",
@@ -1693,6 +2122,39 @@
       "version": "30.4.4"
     },
     {
+      "bom-ref": "limits==5.6.0",
+      "description": "Rate limiting utilities",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://limits.readthedocs.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/alisaifee/limits"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://limits.readthedocs.org"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "limits",
+      "purl": "pkg:pypi/limits@5.6.0",
+      "type": "library",
+      "version": "5.6.0"
+    },
+    {
       "bom-ref": "lxml==6.0.0",
       "description": "Powerful and Pythonic XML processing library combining libxml2/libxslt with the ElementTree API.",
       "externalReferences": [
@@ -1849,41 +2311,86 @@
       "version": "1.3.1"
     },
     {
-      "bom-ref": "numpy==1.26.4",
+      "bom-ref": "multidict==6.6.4",
+      "description": "multidict implementation",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Coverage: codecov",
+          "type": "other",
+          "url": "https://codecov.io/github/aio-libs/multidict"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Code of Conduct",
+          "type": "other",
+          "url": "https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: repo",
+          "type": "other",
+          "url": "https://github.com/aio-libs/multidict"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: CI: GitHub",
+          "type": "other",
+          "url": "https://github.com/aio-libs/multidict/actions"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: issues",
+          "type": "other",
+          "url": "https://github.com/aio-libs/multidict/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: RTD",
+          "type": "other",
+          "url": "https://multidict.aio-libs.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: Changelog",
+          "type": "other",
+          "url": "https://multidict.aio-libs.org/en/latest/changes/"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/aio-libs/multidict"
+        }
+      ],
+      "name": "multidict",
+      "purl": "pkg:pypi/multidict@6.6.4",
+      "type": "library",
+      "version": "6.6.4"
+    },
+    {
+      "bom-ref": "numpy==2.3.3",
       "description": "Fundamental package for array computing in Python",
       "externalReferences": [
         {
-          "comment": "from packaging metadata Project-URL: Download",
+          "comment": "from packaging metadata Project-URL: download",
           "type": "distribution",
           "url": "https://pypi.org/project/numpy/#files"
         },
         {
-          "comment": "from packaging metadata Project-URL: Documentation",
+          "comment": "from packaging metadata Project-URL: documentation",
           "type": "documentation",
           "url": "https://numpy.org/doc/"
         },
         {
-          "comment": "from packaging metadata Project-URL: Tracker",
+          "comment": "from packaging metadata Project-URL: tracker",
           "type": "issue-tracker",
           "url": "https://github.com/numpy/numpy/issues"
         },
         {
-          "comment": "from packaging metadata Project-URL: Source",
+          "comment": "from packaging metadata Project-URL: source",
           "type": "other",
           "url": "https://github.com/numpy/numpy"
         },
         {
-          "comment": "from packaging metadata Project-URL: Release notes",
+          "comment": "from packaging metadata Project-URL: release notes",
           "type": "other",
           "url": "https://numpy.org/doc/stable/release"
         },
         {
-          "comment": "from packaging metadata Project-URL: Homepage",
-          "type": "website",
-          "url": "https://numpy.org"
-        },
-        {
-          "comment": "from packaging metadata: Home-page",
+          "comment": "from packaging metadata Project-URL: homepage",
           "type": "website",
           "url": "https://numpy.org"
         }
@@ -1897,9 +2404,9 @@
         }
       ],
       "name": "numpy",
-      "purl": "pkg:pypi/numpy@1.26.4",
+      "purl": "pkg:pypi/numpy@2.3.3",
       "type": "library",
-      "version": "1.26.4"
+      "version": "2.3.3"
     },
     {
       "bom-ref": "packageurl-python==0.17.5",
@@ -1959,7 +2466,7 @@
       "version": "25.0"
     },
     {
-      "bom-ref": "pillow==10.3.0",
+      "bom-ref": "pillow==11.3.0",
       "description": "Python Imaging Library (Fork)",
       "externalReferences": [
         {
@@ -1990,26 +2497,26 @@
         {
           "comment": "from packaging metadata Project-URL: Changelog",
           "type": "release-notes",
-          "url": "https://github.com/python-pillow/Pillow/blob/main/CHANGES.rst"
+          "url": "https://github.com/python-pillow/Pillow/releases"
         },
         {
           "comment": "from packaging metadata Project-URL: Homepage",
           "type": "website",
-          "url": "https://python-pillow.org"
+          "url": "https://python-pillow.github.io"
         }
       ],
       "licenses": [
         {
           "license": {
             "acknowledgement": "declared",
-            "id": "HPND"
+            "id": "MIT-CMU"
           }
         }
       ],
       "name": "pillow",
-      "purl": "pkg:pypi/pillow@10.3.0",
+      "purl": "pkg:pypi/pillow@11.3.0",
       "type": "library",
-      "version": "10.3.0"
+      "version": "11.3.0"
     },
     {
       "bom-ref": "pip-requirements-parser==32.0.1",
@@ -2094,6 +2601,70 @@
       "version": "2.0.0"
     },
     {
+      "bom-ref": "propcache==0.3.2",
+      "description": "Accelerated property cache",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Coverage: codecov",
+          "type": "other",
+          "url": "https://codecov.io/github/aio-libs/propcache"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Code of Conduct",
+          "type": "other",
+          "url": "https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: repo",
+          "type": "other",
+          "url": "https://github.com/aio-libs/propcache"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: CI: GitHub Workflows",
+          "type": "other",
+          "url": "https://github.com/aio-libs/propcache/actions?query=branch:master"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: issues",
+          "type": "other",
+          "url": "https://github.com/aio-libs/propcache/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: RTD",
+          "type": "other",
+          "url": "https://propcache.readthedocs.io"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: Changelog",
+          "type": "other",
+          "url": "https://propcache.readthedocs.io/en/latest/changes/"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/aio-libs/propcache"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        },
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: Apache Software License"
+          }
+        }
+      ],
+      "name": "propcache",
+      "purl": "pkg:pypi/propcache@0.3.2",
+      "type": "library",
+      "version": "0.3.2"
+    },
+    {
       "bom-ref": "psycopg==3.2.10",
       "description": "PostgreSQL database adapter for Python",
       "externalReferences": [
@@ -2147,6 +2718,12 @@
         }
       ],
       "name": "psycopg",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "binary"
+        }
+      ],
       "purl": "pkg:pypi/psycopg@3.2.10",
       "type": "library",
       "version": "3.2.10"
@@ -2278,7 +2855,7 @@
       "version": "2.22"
     },
     {
-      "bom-ref": "pydantic==2.11.7",
+      "bom-ref": "pydantic==2.11.9",
       "description": "Data validation using Python type hints",
       "externalReferences": [
         {
@@ -2316,9 +2893,9 @@
         }
       ],
       "name": "pydantic",
-      "purl": "pkg:pypi/pydantic@2.11.7",
+      "purl": "pkg:pypi/pydantic@2.11.9",
       "type": "library",
-      "version": "2.11.7"
+      "version": "2.11.9"
     },
     {
       "bom-ref": "pydantic-settings==2.10.1",
@@ -2956,6 +3533,44 @@
       "version": "0.27.0"
     },
     {
+      "bom-ref": "ruff==0.13.2",
+      "description": "An extremely fast Python linter and code formatter, written in Rust.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://docs.astral.sh/ruff/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://github.com/astral-sh/ruff/blob/main/CHANGELOG.md"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/astral-sh/ruff"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://docs.astral.sh/ruff"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "ruff",
+      "purl": "pkg:pypi/ruff@0.13.2",
+      "type": "library",
+      "version": "0.13.2"
+    },
+    {
       "bom-ref": "shellingham==1.5.4",
       "description": "Tool to Detect Surrounding Shell",
       "externalReferences": [
@@ -3000,6 +3615,39 @@
       "purl": "pkg:pypi/six@1.17.0",
       "type": "library",
       "version": "1.17.0"
+    },
+    {
+      "bom-ref": "slowapi==0.1.9",
+      "description": "A rate limiting extension for Starlette and Fastapi",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://slowapi.readthedocs.io/en/latest/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/laurents/slowapi"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/laurents/slowapi"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "slowapi",
+      "purl": "pkg:pypi/slowapi@0.1.9",
+      "type": "library",
+      "version": "0.1.9"
     },
     {
       "bom-ref": "sniffio==1.3.1",
@@ -3136,6 +3784,58 @@
       "purl": "pkg:pypi/toml@0.10.2",
       "type": "library",
       "version": "0.10.2"
+    },
+    {
+      "bom-ref": "tqdm==4.67.1",
+      "description": "Fast, Extensible Progress Meter",
+      "evidence": {
+        "licenses": [
+          {
+            "license": {
+              "acknowledgement": "declared",
+              "id": "MIT"
+            }
+          },
+          {
+            "license": {
+              "acknowledgement": "declared",
+              "name": "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"
+            }
+          }
+        ]
+      },
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: wiki",
+          "type": "other",
+          "url": "https://github.com/tqdm/tqdm/wiki"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: changelog",
+          "type": "release-notes",
+          "url": "https://tqdm.github.io/releases"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: repository",
+          "type": "vcs",
+          "url": "https://github.com/tqdm/tqdm"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: homepage",
+          "type": "website",
+          "url": "https://tqdm.github.io"
+        }
+      ],
+      "licenses": [
+        {
+          "acknowledgement": "declared",
+          "expression": "MPL-2.0 AND MIT"
+        }
+      ],
+      "name": "tqdm",
+      "purl": "pkg:pypi/tqdm@4.67.1",
+      "type": "library",
+      "version": "4.67.1"
     },
     {
       "bom-ref": "typer==0.17.3",
@@ -3575,6 +4275,44 @@
       "version": "15.0.1"
     },
     {
+      "bom-ref": "wrapt==1.17.3",
+      "description": "Module for decorators, wrappers and monkey patching.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://wrapt.readthedocs.io/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Bug Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/GrahamDumpleton/wrapt/issues/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://wrapt.readthedocs.io/en/latest/changes.html"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/GrahamDumpleton/wrapt"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: BSD License"
+          }
+        }
+      ],
+      "name": "wrapt",
+      "purl": "pkg:pypi/wrapt@1.17.3",
+      "type": "library",
+      "version": "1.17.3"
+    },
+    {
       "bom-ref": "wsproto==1.2.0",
       "description": "WebSockets state-machine based protocol implementation",
       "externalReferences": [
@@ -3596,13 +4334,85 @@
       "purl": "pkg:pypi/wsproto@1.2.0",
       "type": "library",
       "version": "1.2.0"
+    },
+    {
+      "bom-ref": "yarl==1.20.1",
+      "description": "Yet another URL library",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Coverage: codecov",
+          "type": "other",
+          "url": "https://codecov.io/github/aio-libs/yarl"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Code of Conduct",
+          "type": "other",
+          "url": "https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: repo",
+          "type": "other",
+          "url": "https://github.com/aio-libs/yarl"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: CI: GitHub Workflows",
+          "type": "other",
+          "url": "https://github.com/aio-libs/yarl/actions?query=branch:master"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: GitHub: issues",
+          "type": "other",
+          "url": "https://github.com/aio-libs/yarl/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: RTD",
+          "type": "other",
+          "url": "https://yarl.aio-libs.org"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: Changelog",
+          "type": "other",
+          "url": "https://yarl.aio-libs.org/en/latest/changes/"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/aio-libs/yarl"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        },
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: Apache Software License"
+          }
+        }
+      ],
+      "name": "yarl",
+      "purl": "pkg:pypi/yarl@1.20.1",
+      "type": "library",
+      "version": "1.20.1"
     }
   ],
   "dependencies": [
     {
       "dependsOn": [
+        "pytest-cov==6.2.1",
+        "pytest==8.4.1",
+        "wrapt==1.17.3"
+      ],
+      "ref": "Deprecated==1.2.18"
+    },
+    {
+      "dependsOn": [
         "h11==0.16.0",
-        "h2==4.2.0",
+        "h2==4.3.0",
         "priority==2.0.0",
         "typing_extensions==4.14.1",
         "uvloop==0.21.0",
@@ -3617,21 +4427,74 @@
       "ref": "Jinja2==3.1.6"
     },
     {
+      "dependsOn": [
+        "MarkupSafe==3.0.2",
+        "pytest==8.4.1"
+      ],
+      "ref": "Mako==1.3.10"
+    },
+    {
       "ref": "MarkupSafe==3.0.2"
     },
     {
       "dependsOn": [
         "coverage==7.10.6",
-        "cryptography==45.0.7",
+        "cryptography==46.0.1",
         "pytest==8.4.1"
       ],
       "ref": "PyJWT==2.10.1"
     },
     {
-      "ref": "PyYAML==6.0.2"
+      "ref": "PyYAML==6.0.3"
     },
     {
       "ref": "Pygments==2.19.2"
+    },
+    {
+      "dependsOn": [
+        "aiosqlite==0.21.0",
+        "greenlet==3.2.4",
+        "psycopg==3.2.10",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "SQLAlchemy==2.0.43"
+    },
+    {
+      "ref": "aiohappyeyeballs==2.6.1"
+    },
+    {
+      "dependsOn": [
+        "aiohappyeyeballs==2.6.1",
+        "aiosignal==1.4.0",
+        "attrs==25.3.0",
+        "frozenlist==1.7.0",
+        "multidict==6.6.4",
+        "propcache==0.3.2",
+        "yarl==1.20.1"
+      ],
+      "ref": "aiohttp==3.12.15"
+    },
+    {
+      "dependsOn": [
+        "frozenlist==1.7.0",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "aiosignal==1.4.0"
+    },
+    {
+      "dependsOn": [
+        "coverage==7.10.6",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "aiosqlite==0.21.0"
+    },
+    {
+      "dependsOn": [
+        "Mako==1.3.10",
+        "SQLAlchemy==2.0.43",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "alembic==1.16.5"
     },
     {
       "dependsOn": [
@@ -3665,6 +4528,7 @@
     },
     {
       "dependsOn": [
+        "aiohttp==3.12.15",
         "requests==2.32.4",
         "six==1.17.0",
         "typing_extensions==4.14.1"
@@ -3674,17 +4538,17 @@
     {
       "dependsOn": [
         "azure-core==1.35.0",
-        "cryptography==45.0.7",
+        "cryptography==46.0.1",
         "msal-extensions==1.3.1",
         "msal==1.32.3",
         "typing_extensions==4.14.1"
       ],
-      "ref": "azure-identity==1.24.0"
+      "ref": "azure-identity==1.25.0"
     },
     {
       "dependsOn": [
         "azure-core==1.35.0",
-        "cryptography==45.0.7",
+        "cryptography==46.0.1",
         "isodate==0.7.2",
         "typing_extensions==4.14.1"
       ],
@@ -3693,9 +4557,10 @@
     {
       "dependsOn": [
         "Pygments==2.19.2",
+        "SQLAlchemy==2.0.43",
         "click==8.2.1",
         "coverage==7.10.6",
-        "numpy==1.26.4",
+        "numpy==2.3.3",
         "pytest==8.4.1",
         "typing_extensions==4.14.1"
       ],
@@ -3714,7 +4579,7 @@
       "dependsOn": [
         "pycparser==2.22"
       ],
-      "ref": "cffi==1.17.1"
+      "ref": "cffi==2.0.0"
     },
     {
       "ref": "chardet==5.2.0"
@@ -3731,12 +4596,14 @@
     {
       "dependsOn": [
         "certifi==2025.7.14",
-        "cffi==1.17.1",
+        "cffi==2.0.0",
         "click==8.2.1",
         "pytest-cov==6.2.1",
-        "pytest==8.4.1"
+        "pytest==8.4.1",
+        "ruff==0.13.2",
+        "typing_extensions==4.14.1"
       ],
-      "ref": "cryptography==45.0.7"
+      "ref": "cryptography==46.0.1"
     },
     {
       "dependsOn": [
@@ -3768,8 +4635,8 @@
       "dependsOn": [
         "Hypercorn==0.17.3",
         "coverage==7.10.6",
-        "cryptography==45.0.7",
-        "h2==4.2.0",
+        "cryptography==46.0.1",
+        "h2==4.3.0",
         "httpcore==1.0.9",
         "httpx==0.28.1",
         "idna==3.10",
@@ -3796,12 +4663,12 @@
     {
       "dependsOn": [
         "Jinja2==3.1.6",
-        "PyYAML==6.0.2",
+        "PyYAML==6.0.3",
         "email-validator==2.3.0",
         "fastapi-cli==0.0.10",
         "httpx==0.28.1",
         "pydantic-settings==2.10.1",
-        "pydantic==2.11.7",
+        "pydantic==2.11.9",
         "python-multipart==0.0.20",
         "starlette==0.47.3",
         "typing_extensions==4.14.1",
@@ -3813,6 +4680,12 @@
       "ref": "fqdn==1.5.1"
     },
     {
+      "ref": "frozenlist==1.7.0"
+    },
+    {
+      "ref": "greenlet==3.2.4"
+    },
+    {
       "ref": "h11==0.16.0"
     },
     {
@@ -3820,7 +4693,7 @@
         "hpack==4.1.0",
         "hyperframe==6.1.0"
       ],
-      "ref": "h2==4.2.0"
+      "ref": "h2==4.3.0"
     },
     {
       "ref": "hpack==4.1.0"
@@ -3830,7 +4703,7 @@
         "anyio==4.10.0",
         "certifi==2025.7.14",
         "h11==0.16.0",
-        "h2==4.2.0"
+        "h2==4.3.0"
       ],
       "ref": "httpcore==1.0.9"
     },
@@ -3843,7 +4716,7 @@
         "anyio==4.10.0",
         "certifi==2025.7.14",
         "click==8.2.1",
-        "h2==4.2.0",
+        "h2==4.3.0",
         "httpcore==1.0.9",
         "idna==3.10",
         "rich==14.1.0"
@@ -3855,7 +4728,8 @@
     },
     {
       "dependsOn": [
-        "pytest==8.4.1"
+        "pytest==8.4.1",
+        "ruff==0.13.2"
       ],
       "ref": "idna==3.10"
     },
@@ -3904,16 +4778,25 @@
     {
       "dependsOn": [
         "boolean.py==5.0",
-        "pytest==8.4.1"
+        "pytest==8.4.1",
+        "ruff==0.13.2"
       ],
       "ref": "license-expression==30.4.4"
+    },
+    {
+      "dependsOn": [
+        "Deprecated==1.2.18",
+        "packaging==25.0",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "limits==5.6.0"
     },
     {
       "ref": "lxml==6.0.0"
     },
     {
       "dependsOn": [
-        "PyYAML==6.0.2",
+        "PyYAML==6.0.3",
         "coverage==7.10.6",
         "mdurl==0.1.2",
         "pytest-cov==6.2.1",
@@ -3934,16 +4817,23 @@
     {
       "dependsOn": [
         "PyJWT==2.10.1",
-        "cryptography==45.0.7",
+        "cryptography==46.0.1",
         "requests==2.32.4"
       ],
       "ref": "msal==1.32.3"
     },
     {
-      "ref": "numpy==1.26.4"
+      "dependsOn": [
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "multidict==6.6.4"
+    },
+    {
+      "ref": "numpy==2.3.3"
     },
     {
       "dependsOn": [
+        "SQLAlchemy==2.0.43",
         "pytest==8.4.1"
       ],
       "ref": "packageurl-python==0.17.5"
@@ -3960,7 +4850,7 @@
         "pytest==8.4.1",
         "typing_extensions==4.14.1"
       ],
-      "ref": "pillow==10.3.0"
+      "ref": "pillow==11.3.0"
     },
     {
       "dependsOn": [
@@ -3979,6 +4869,9 @@
     },
     {
       "ref": "priority==2.0.0"
+    },
+    {
+      "ref": "propcache==0.3.2"
     },
     {
       "dependsOn": [
@@ -4008,9 +4901,9 @@
     },
     {
       "dependsOn": [
-        "PyYAML==6.0.2",
-        "azure-identity==1.24.0",
-        "pydantic==2.11.7",
+        "PyYAML==6.0.3",
+        "azure-identity==1.25.0",
+        "pydantic==2.11.9",
         "python-dotenv==1.1.1",
         "typing-inspection==0.4.1"
       ],
@@ -4024,7 +4917,7 @@
         "typing-inspection==0.4.1",
         "typing_extensions==4.14.1"
       ],
-      "ref": "pydantic==2.11.7"
+      "ref": "pydantic==2.11.9"
     },
     {
       "dependsOn": [
@@ -4136,22 +5029,27 @@
       "dependsOn": [
         "Hypercorn==0.17.3",
         "PyJWT==2.10.1",
-        "PyYAML==6.0.2",
-        "azure-identity==1.24.0",
+        "PyYAML==6.0.3",
+        "SQLAlchemy==2.0.43",
+        "aiosqlite==0.21.0",
+        "alembic==1.16.5",
+        "azure-identity==1.25.0",
         "azure-storage-blob==12.26.0",
         "beartype==0.21.0",
-        "cryptography==45.0.7",
+        "cryptography==46.0.1",
         "fastapi==0.116.1",
+        "h2==4.3.0",
         "httpx==0.28.1",
-        "numpy==1.26.4",
-        "pillow==10.3.0",
+        "numpy==2.3.3",
+        "pillow==11.3.0",
         "psycopg-pool==3.2.6",
         "psycopg==3.2.10",
         "pydantic-settings==2.10.1",
-        "pydantic==2.11.7",
+        "pydantic==2.11.9",
         "pydantic_core==2.33.2",
         "python-dotenv==1.1.1",
-        "python-magic==0.4.27"
+        "python-magic==0.4.27",
+        "slowapi==0.1.9"
       ],
       "ref": "root-component"
     },
@@ -4159,10 +5057,19 @@
       "ref": "rpds-py==0.27.0"
     },
     {
+      "ref": "ruff==0.13.2"
+    },
+    {
       "ref": "shellingham==1.5.4"
     },
     {
       "ref": "six==1.17.0"
+    },
+    {
+      "dependsOn": [
+        "limits==5.6.0"
+      ],
+      "ref": "slowapi==0.1.9"
     },
     {
       "ref": "sniffio==1.3.1"
@@ -4173,7 +5080,7 @@
     {
       "dependsOn": [
         "Jinja2==3.1.6",
-        "PyYAML==6.0.2",
+        "PyYAML==6.0.3",
         "anyio==4.10.0",
         "httpx==0.28.1",
         "python-multipart==0.0.20",
@@ -4183,6 +5090,15 @@
     },
     {
       "ref": "toml==0.10.2"
+    },
+    {
+      "dependsOn": [
+        "pytest-asyncio==1.0.0",
+        "pytest-cov==6.2.1",
+        "pytest==8.4.1",
+        "requests==2.32.4"
+      ],
+      "ref": "tqdm==4.67.1"
     },
     {
       "dependsOn": [
@@ -4210,13 +5126,13 @@
     },
     {
       "dependsOn": [
-        "h2==4.2.0"
+        "h2==4.3.0"
       ],
       "ref": "urllib3==2.5.0"
     },
     {
       "dependsOn": [
-        "PyYAML==6.0.2",
+        "PyYAML==6.0.3",
         "click==8.2.1",
         "h11==0.16.0",
         "httptools==0.6.4",
@@ -4229,6 +5145,9 @@
       "ref": "uvicorn==0.35.0"
     },
     {
+      "dependsOn": [
+        "aiohttp==3.12.15"
+      ],
       "ref": "uvloop==0.21.0"
     },
     {
@@ -4244,10 +5163,21 @@
       "ref": "websockets==15.0.1"
     },
     {
+      "ref": "wrapt==1.17.3"
+    },
+    {
       "dependsOn": [
         "h11==0.16.0"
       ],
       "ref": "wsproto==1.2.0"
+    },
+    {
+      "dependsOn": [
+        "idna==3.10",
+        "multidict==6.6.4",
+        "propcache==0.3.2"
+      ],
+      "ref": "yarl==1.20.1"
     }
   ],
   "metadata": {
@@ -4286,7 +5216,7 @@
       ],
       "name": "nachet-backend",
       "type": "application",
-      "version": "1.10.1"
+      "version": "1.15.0"
     },
     "properties": [
       {

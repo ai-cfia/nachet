@@ -3,7 +3,7 @@ name: Build, Push and Sign Container Images
 on:
   push:
     tags:
-      - 'v*.*.*'  # Trigger on version tags like v1.0.0
+      - "v*.*.*" # Trigger on version tags like v1.0.0
 
 env:
   REGISTRY: ghcr.io
@@ -15,14 +15,14 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write  # Important for keyless signing
+      id-token: write # Important for keyless signing
 
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@ff7abcd0c3c05ccf6adc123a8cd1fd4fb30fb493
 
       - name: Login to Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -30,7 +30,7 @@ jobs:
 
       - name: Extract metadata for backend
         id: meta-backend
-        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81
+        uses: docker/metadata-action@032a4b3bda1b716928481836ac5bfe36e1feaad6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/nachet-backend
           tags: |
@@ -41,7 +41,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push backend
-        uses: docker/build-push-action@4f58ea79222946e1b7c4dc10b045f720ab50c414
+        uses: docker/build-push-action@9e436ba9f2d7bcd1d038c8e55d039d37896ddc5d
         with:
           context: ./backend
           file: ./backend/Dockerfile.prod
@@ -50,13 +50,13 @@ jobs:
           labels: ${{ steps.meta-backend.outputs.labels }}
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da
+        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62
         with:
-          cosign-release: 'v2.2.3'
+          cosign-release: "v2.2.3"
 
       - name: Sign backend container image
         env:
-          COSIGN_EXPERIMENTAL: 1  # Enable keyless signing
+          COSIGN_EXPERIMENTAL: 1 # Enable keyless signing
         run: |
           # Sign all the backend tags
           echo "${{ steps.meta-backend.outputs.tags }}" | while read -r tag; do
@@ -82,14 +82,14 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write  # Important for keyless signing
+      id-token: write # Important for keyless signing
 
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@ff7abcd0c3c05ccf6adc123a8cd1fd4fb30fb493
 
       - name: Login to Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -97,7 +97,7 @@ jobs:
 
       - name: Extract metadata for frontend
         id: meta-frontend
-        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81
+        uses: docker/metadata-action@032a4b3bda1b716928481836ac5bfe36e1feaad6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/nachet-frontend
           tags: |
@@ -108,7 +108,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push frontend
-        uses: docker/build-push-action@4f58ea79222946e1b7c4dc10b045f720ab50c414
+        uses: docker/build-push-action@9e436ba9f2d7bcd1d038c8e55d039d37896ddc5d
         with:
           context: ./frontend
           file: ./frontend/Dockerfile.prod
@@ -117,13 +117,13 @@ jobs:
           labels: ${{ steps.meta-frontend.outputs.labels }}
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da
+        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62
         with:
-          cosign-release: 'v2.2.3'
+          cosign-release: "v2.2.3"
 
       - name: Sign frontend container image
         env:
-          COSIGN_EXPERIMENTAL: 1  # Enable keyless signing
+          COSIGN_EXPERIMENTAL: 1 # Enable keyless signing
         run: |
           # Sign all the frontend tags
           echo "${{ steps.meta-frontend.outputs.tags }}" | while read -r tag; do
@@ -149,34 +149,34 @@ jobs:
     runs-on: on-prem-gh-runners
     permissions:
       contents: write
-      
+
     steps:
       - name: Create Release
-        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191
+        uses: softprops/action-gh-release@97d42c1b50f585f357413698aa1b779307aa0d52
         with:
           body: |
             ## Release ${{ github.ref_name }}
-            
+
             ### Container Images
             - Frontend: `${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/nachet-frontend:${{ github.ref_name }}`
             - Backend: `${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/nachet-backend:${{ github.ref_name }}`
-            
+
             ### Security
             - ✅ Images signed with Cosign (keyless)
             - ✅ Multi-stage builds (no dev dependencies)
             - ✅ Signatures verified with Sigstore
-            
+
             ### Verification
             ```bash
             # Set experimental mode for keyless verification
             export COSIGN_EXPERIMENTAL=1
-            
+
             # Verify frontend signature
             cosign verify \
               --certificate-identity=https://github.com/${{ github.repository }}/.github/workflows/build-sign-deploy.yml@refs/tags/${{ github.ref_name }} \
               --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
               ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/nachet-frontend:${{ github.ref_name }}
-            
+
             # Verify backend signature
             cosign verify \
               --certificate-identity=https://github.com/${{ github.repository }}/.github/workflows/build-sign-deploy.yml@refs/tags/${{ github.ref_name }} \

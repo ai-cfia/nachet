@@ -1,9 +1,9 @@
 {
   "name": "nachet-frontend",
   "private": true,
-  "version": "0.10.1",
+  "version": "0.12.1",
   "acia-cfia": {
-    "backend-version": "1.10.1"
+    "backend-version": "1.12.0"
   },
   "type": "module",
   "scripts": {
@@ -22,6 +22,8 @@
     "playwright:install-deps": "npx playwright install-deps"
   },
   "dependencies": {
+    "@azure/msal-browser": "^4.22.1",
+    "@azure/msal-react": "^3.0.19",
     "@babel/plugin-transform-private-property-in-object": "^7.27.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
@@ -29,9 +31,9 @@
     "@mui/material": "^7.3.1",
     "@saithodev/ts-appversion": "^2.2.0",
     "@testing-library/jest-dom": "^6.6.4",
-    "@types/react": "^19.1.9",
-    "@types/react-dom": "^19.1.7",
-    "axios": "^1.11.0",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "axios": "^1.12.0",
     "browser-image-compression": "^2.0.2",
     "dompurify": "^3.2.6",
     "express": "^5.1.0",
@@ -54,9 +56,10 @@
     "styled-components": "^6.1.19",
     "typescript": "^5.9.2",
     "utif": "^3.1.0",
-    "uuid": "^11.1.0",
+    "uuid": "^13.0.0",
     "web-vitals": "^5.1.0",
-    "zod": "^4.1.5"
+    "zod": "^4.1.5",
+    "zustand": "^5.0.8"
   },
   "browserslist": {
     "production": [
@@ -71,7 +74,7 @@
     ]
   },
   "devDependencies": {
-    "@babel/preset-env": "^7.28.0",
+    "@babel/preset-env": "^7.28.3",
     "@babel/preset-react": "^7.27.1",
     "@babel/preset-typescript": "^7.27.1",
     "@cyclonedx/cyclonedx-npm": "^4.0.0",
@@ -82,13 +85,12 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/file-saver": "^2.0.7",
     "@types/js-cookie": "^3.0.6",
-    "@types/node": "^20.19.10",
+    "@types/node": "^22.18.5",
     "@types/pako": "^2.0.3",
-    "@types/react": "^19.1.9",
-    "@types/react-dom": "^19.1.7",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
     "@types/sanitize-html": "^2.16.0",
     "@types/utif": "^3.0.5",
-    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.39.1",
     "@typescript-eslint/parser": "^8.39.1",
     "@vitejs/plugin-react-swc": "^4.0.0",

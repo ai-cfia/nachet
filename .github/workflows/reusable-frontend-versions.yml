@@ -1,0 +1,160 @@
+name: Reusable Frontend Versions
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: "Working directory for the workflow"
+        required: false
+        default: "frontend"
+        type: string
+      package-name:
+        description: "Package name for version checking"
+        required: false
+        default: "nachet-frontend"
+        type: string
+      skip-version-check:
+        description: "Skip version comparison (for build workflows)"
+        required: false
+        default: false
+        type: boolean
+    outputs:
+      app-version:
+        description: "Application version from package.json"
+        value: ${{ jobs.versions.outputs.app-version }}
+      node-version:
+        description: "Node.js version from package.json engines"
+        value: ${{ jobs.versions.outputs.node-version }}
+      npm-version:
+        description: "npm version from package.json engines"
+        value: ${{ jobs.versions.outputs.npm-version }}
+
+jobs:
+  versions:
+    runs-on: ubuntu-latest
+    outputs:
+      app-version: ${{ steps.versions.outputs.app-version }}
+      node-version: ${{ steps.versions.outputs.node-version }}
+      npm-version: ${{ steps.versions.outputs.npm-version }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Get PR branch version
+        id: pr-version
+        run: |
+          PR_VERSION=$(jq -r '.version' package.json)
+          echo "PR version: $PR_VERSION"
+          echo "version=$PR_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Get latest version
+        if: ${{ !inputs.skip-version-check }}
+        id: get_latest_version
+        run: |
+          package_name="${{ inputs.package-name }}"
+          if [ -z "$package_name" ]; then
+            tags=$(git tag --list "v*" --sort=-creatordate | head -n 10)
+          else
+            tags=$(git tag --list "${package_name}-v*" --sort=-creatordate | head -n 10)
+          fi
+
+          latest_version=""
+          for tag in $tags; do
+            version=$(echo "$tag" | grep -oP '(?<=-v)[0-9]+\.[0-9]+\.[0-9]+')
+            if [ -n "$version" ]; then
+              latest_version="$version"
+              break
+            fi
+          done
+
+          if [ -z "$latest_version" ]; then
+            latest_version="0.0.0"
+          fi
+          echo "latest_version=$latest_version" >> $GITHUB_OUTPUT
+          echo "Target branch version: $latest_version"
+
+      - name: Compare versions
+        if: ${{ !inputs.skip-version-check && github.event_name == 'pull_request' && github.event.action != 'closed' && !github.event.pull_request.merged }}
+        run: |
+          PR_VERSION="${{ steps.pr-version.outputs.version }}"
+          TARGET_VERSION="${{ steps.get_latest_version.outputs.latest_version }}"
+
+          echo "Comparing versions:"
+          echo "  Target branch (${{ github.base_ref }}): $TARGET_VERSION"
+          echo "  PR branch: $PR_VERSION"
+
+          # Function to compare semantic versions
+          compare_versions() {
+            local version1=$1
+            local version2=$2
+
+            # Split versions into arrays
+            IFS='.' read -ra V1 <<< "$version1"
+            IFS='.' read -ra V2 <<< "$version2"
+
+            # Compare each component
+            for i in {0..2}; do
+              v1_part=${V1[i]:-0}
+              v2_part=${V2[i]:-0}
+
+              if [ "$v1_part" -gt "$v2_part" ]; then
+                return 0  # version1 > version2
+              elif [ "$v1_part" -lt "$v2_part" ]; then
+                return 1  # version1 < version2
+              fi
+            done
+
+            return 1  # versions are equal
+          }
+
+          if [ "$PR_VERSION" = "$TARGET_VERSION" ]; then
+            echo "❌ Version has not been incremented!"
+            echo "The version in ${{ inputs.working-directory }}/package.json ($PR_VERSION) is the same as in the target branch."
+            echo "Please increment the version before merging this PR."
+            exit 1
+          elif compare_versions "$PR_VERSION" "$TARGET_VERSION"; then
+            echo "✅ Version has been incremented correctly!"
+            echo "  $TARGET_VERSION → $PR_VERSION"
+          else
+            echo "❌ Version appears to have been decremented!"
+            echo "The PR version ($PR_VERSION) is lower than the target branch version ($TARGET_VERSION)."
+            echo "Please ensure the version is incremented properly."
+            exit 1
+          fi
+
+      - name: Extract versions from package.json
+        id: versions
+        run: |
+          APP_VERSION=$(jq -r '.version' package.json)
+          NODE_VERSION=$(jq -r '.engines.node' package.json | sed 's/\^//')
+          NPM_VERSION=$(jq -r '.engines.npm' package.json | sed 's/\^//')
+
+          if [ -z "$APP_VERSION" ] || [ "$APP_VERSION" = "null" ]; then
+            echo "Error: Could not extract app version from package.json"
+            exit 1
+          fi
+
+          if [ -z "$NODE_VERSION" ] || [ "$NODE_VERSION" = "null" ]; then
+            echo "Warning: Could not extract Node.js version from package.json engines"
+            NODE_VERSION="20"  # Default fallback
+          fi
+
+          if [ -z "$NPM_VERSION" ] || [ "$NPM_VERSION" = "null" ]; then
+            echo "Warning: Could not extract npm version from package.json engines"
+            NPM_VERSION="10"  # Default fallback
+          fi
+
+          echo "Detected application version: $APP_VERSION"
+          echo "Detected Node.js version: $NODE_VERSION"
+          echo "Detected npm version: $NPM_VERSION"
+
+          echo "app-version=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "node-version=$NODE_VERSION" >> $GITHUB_OUTPUT
+          echo "npm-version=$NPM_VERSION" >> $GITHUB_OUTPUT

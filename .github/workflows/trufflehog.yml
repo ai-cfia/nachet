@@ -19,10 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Run Trufflehog
-        uses: trufflesecurity/trufflehog@0f58ae7c5036094a1e3e750d18772af92821b503
+        uses: trufflesecurity/trufflehog@7746b2ca4468f79446aea5e038aba57f89fc3499
         with:
           base: ""
           head: ${{ github.ref_name }}

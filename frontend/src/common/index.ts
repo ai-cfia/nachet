@@ -14,7 +14,7 @@ import {
   requestClassList,
   sendNegativeFeedback,
   sendPositiveFeedback,
-  requestUUID,
+  // requestUUID,
 } from "./api";
 import {
   loadToCanvas,
@@ -25,7 +25,12 @@ import {
   loadResultsToCache,
   getLabelOccurrence,
 } from "./cacheutils";
-import { getScaledBounds } from "./imageutils";
+import {
+  getScaledBounds,
+  validateImageFile,
+  getImageDimensions,
+} from "./imageutils";
+import { getAccessToken, getIdToken } from "./auth";
 
 export {
   AzureAPIError,
@@ -46,8 +51,12 @@ export {
   loadResultsToCache,
   getLabelOccurrence,
   getScaledBounds,
+  validateImageFile,
+  getImageDimensions,
   requestClassList,
   sendNegativeFeedback,
   sendPositiveFeedback,
-  requestUUID,
+  // requestUUID,
+  getAccessToken,
+  getIdToken,
 };

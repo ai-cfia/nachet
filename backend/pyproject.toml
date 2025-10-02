@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nachet-backend"
-version = "1.10.1"
+version = "1.15.0"
 description = "Canadian government (CFIA) AI-powered seed identification system backend"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -28,15 +28,15 @@ classifiers = [
 ]
 
 dependencies = [
-    "numpy==1.26.4",
-    "azure-storage-blob==12.26.0",
-    "azure-identity==1.24.0",
+    "numpy==2.3.3",
+    "azure-storage-blob[aio]==12.26.0",
+    "azure-identity==1.25.0",
     "python-dotenv==1.1.1",
     "hypercorn==0.17.3",
-    "Pillow==10.3.0",
-    "cryptography==45.0.7",
-    "pyyaml==6.0.2",
-    "pydantic==2.11.7",
+    "Pillow==11.3.0",
+    "cryptography==46.0.1",
+    "pyyaml==6.0.3",
+    "pydantic==2.11.9",
     "pydantic-core==2.33.2",
     "python-magic==0.4.27",
     "PyJWT==2.10.1",
@@ -46,11 +46,16 @@ dependencies = [
     "psycopg-pool>=3.2.6",
     "pydantic-settings>=2.10.1",
     "httpx>=0.28.1",
+    "sqlalchemy[asyncio]>=2.0.43",
+    "alembic>=1.16.5",
+    "aiosqlite>=0.21.0",
+    "h2>=4.3.0",
+    "slowapi>=0.1.9",
 ]
 
 [tool.nachet-db]
-db-schema-version = "0.0.12"
-previous-db-schema-version = "0.0.11"
+db-schema-version = "e47e20232a02"
+previous-db-schema-version = "e63d0798d58d"
 
 [dependency-groups]
 dev = [
@@ -59,6 +64,8 @@ dev = [
     "pytest>=8.4.1",
     "toml>=0.10.2",
     "pytest-cov>=6.2.1",
+    "tqdm>=4.67.1",
+    "ruff>=0.13.2",
 ]
 
 [project.urls]
@@ -73,8 +80,31 @@ allow-direct-references = true
 [tool.hatch.build.targets.wheel]
 packages = [
     "auth",
-    "model", 
+    "model",
     "pipelines",
     "storage",
     "tests"
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')"
+]
+
+[tool.coverage.run]
+omit = [
+    "*/tests/*",
+    "tests/*",
+    "app/*/tests/*",
+    "app/blob/tests/*",
+    "app/db/tests/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
 ]

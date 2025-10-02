@@ -15,7 +15,7 @@ export interface ApiInferenceData {
     is_verified?: boolean;
   }>;
   labelOccurrence: {
-    seed_name: number;
+    [key: string]: number;
   };
   totalBoxes: number;
   models: Array<{ name: string; version: number }>;
@@ -83,17 +83,18 @@ export interface LabelOccurrences {
   [label: string]: number;
 }
 
-interface ClassData {
-  id: number;
-  classId: string;
-  label: string;
+export interface SpeciesData {
+  id?: number;
+  label?: string;
+  seed_id: string;
+  name_code: string;
+  family: string;
+  genus: string;
+  species: string;
 }
 
-interface ApiSpeciesData {
-  seeds: Array<{
-    seed_id: string;
-    seed_name: string;
-  }>;
+export interface ApiSpeciesData {
+  seeds: SpeciesData[];
 }
 
 export interface ModelMetadata {
@@ -128,23 +129,31 @@ interface DirectoryPicture {
 }
 
 interface AzureStorageDirectoryItem {
+  folderId: string;
   folderName: string;
-  nbPictures: number;
-  pictureSetId: string;
-  pictures: DirectoryPicture[];
+  folderPrefix: string;
+  description: string | null;
+  pictureCount: number;
 }
 
 interface AzureStorageDirectoryItemApi {
-  folder_name: string;
-  nb_pictures: number;
-  picture_set_id: string;
-  pictures: {
-    inference_exists: boolean;
-    is_validation: boolean;
-    picture_id: string;
-  }[];
+  id: string;
+  name: string;
+  folder_prefix: string;
+  description: string | null;
+  picture_count: number;
+  // pictures: DirectoryPictureApi[];
 }
+//   folder_name: string;
+//   nb_pictures: number;
+//   picture_set_id: string;
+//   pictures: {
+//     inference_exists: boolean;
+//     is_validation: boolean;
+//     picture_id: string;
+//   }[];
+// }
 
 interface ReadAzureStorageDirApi {
-  folders: AzureStorageDirectoryItemApi[];
+  directories: AzureStorageDirectoryItemApi[];
 }

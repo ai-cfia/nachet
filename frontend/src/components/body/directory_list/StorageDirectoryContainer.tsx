@@ -1,4 +1,4 @@
-import { AzureStorageDirectoryItem } from "../../../common/types";
+import { AzureStorageDirectoryItem } from "@common/types";
 import StorageDirectoryView from "./StorageDirectoryView";
 
 export interface params {

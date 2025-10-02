@@ -13,28 +13,28 @@ import CropFreeIcon from "@mui/icons-material/CropFree";
 import ToggleButton from "../buttons/ToggleButton";
 import DonutSmallIcon from "@mui/icons-material/DonutSmall";
 import FormatShapesOutlinedIcon from "@mui/icons-material/FormatShapesOutlined";
+import { colours } from "@styles/colours";
 
 // Import a loading icon component (ensure you have this)
 import CircularProgress from "@mui/material/CircularProgress";
 import {
   BoxCSS,
-  ClassData,
+  SpeciesData,
   FeedbackDataNegative,
   FeedbackDataPositive,
   Images,
-} from "../../../common/types";
-
-import ScaledInferenceBox from "../scaled_inference_box";
+} from "@common/types";
 import {
-  requestClassList,
   sendNegativeFeedback,
   sendPositiveFeedback,
   loadResultsToCache,
-} from "../../../common";
+} from "@common";
+import { useSpeciesData, useAuth } from "@hooks";
+import { getUnscaledCoordinates } from "@common/imageutils";
 import { FreeformBox, NegativeFeedbackForm } from "../feedback_form";
-import { getUnscaledCoordinates } from "../../../common/imageutils";
 import ApiAction from "../api_action";
-import { colours } from "../../../styles/colours";
+import ScaledInferenceBox from "../scaled_inference_box";
+
 interface MicroscopeFeedProps {
   webcamRef: React.RefObject<Webcam | null>;
   capture: () => void;
@@ -59,6 +59,7 @@ interface MicroscopeFeedProps {
   toggleShowInference: (state: boolean) => void;
   backendUrl: string;
   uuid: string;
+  apiScopeClaim: string;
 }
 
 const ButtonMicroscopeFeed = (props: {
@@ -128,6 +129,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     toggleShowInference,
     backendUrl,
     uuid,
+    apiScopeClaim,
   } = props;
 
   const width = windowSize.width * 0.575;
@@ -150,32 +152,24 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
   );
   const [inferenceForRevision, setInferenceForRevision] =
     useState<FeedbackDataNegative | null>(null);
-  const [classListLoading, setClassListLoading] = useState<boolean>(true);
   const [apiLoading, setApiLoading] = useState<boolean>(false);
   const [apiSuccess, setApiSuccess] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [apiResultDismissed, setApiResultDismissed] = useState<boolean>(true);
 
-  const classList: ClassData[] = useMemo(() => {
-    const classes: ClassData[] = [];
-    const getClasses = async () => {
-      setClassListLoading(true);
-      const response = await requestClassList(backendUrl);
-      return response.seeds;
-    };
-    getClasses().then((data) => {
-      for (let i = 0; i < data.length; i++) {
-        classes.push({
-          id: i,
-          classId: data[i].seed_id,
-          label: data[i].seed_name,
-        });
-      }
-      setClassListLoading(false);
-    });
+  const { fetchAccessToken } = useAuth(apiScopeClaim);
+  const { speciesData, isLoading: classListLoading } = useSpeciesData(
+    backendUrl,
+    apiScopeClaim,
+  );
 
-    return classes;
-  }, [backendUrl]);
+  const classList: SpeciesData[] = useMemo(() => {
+    if (!speciesData?.seeds) return [];
+    return speciesData.seeds.map((seed, index) => ({
+      ...seed,
+      id: index,
+    }));
+  }, [speciesData]);
 
   const iconStyle = {
     fontSize: "1.7vh",
@@ -203,20 +197,30 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
 
     setApiLoading(true);
     setApiResultDismissed(false);
-    sendPositiveFeedback(feedbackDataPositive, backendUrl)
-      .then((response) => {
-        console.log("Positive Feedback submitted successfully");
-        setImageCache(loadResultsToCache(response, imageCache, imageIndex));
-        setApiSuccess(true);
+    fetchAccessToken().then((accessToken) => {
+      if (!accessToken) {
+        console.error("Failed to obtain access token");
+        return;
+      }
+      sendPositiveFeedback({
+        feedbackData: feedbackDataPositive,
+        backendUrl,
+        accessToken,
       })
-      .catch((error) => {
-        console.error("Error submitting feedback: ", error);
-        setApiError(error.message);
-      })
-      .finally(() => {
-        setApiLoading(false);
-        // exitFeedbackMode();
-      });
+        .then((response) => {
+          console.log("Positive Feedback submitted successfully");
+          setImageCache(loadResultsToCache(response, imageCache, imageIndex));
+          setApiSuccess(true);
+        })
+        .catch((error) => {
+          console.error("Error submitting feedback: ", error);
+          setApiError(error.message);
+        })
+        .finally(() => {
+          setApiLoading(false);
+          // exitFeedbackMode();
+        });
+    });
   };
 
   const submitNegativeFeedback = (
@@ -228,20 +232,30 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     console.log("Submitting negative feedback");
     setApiLoading(true);
     setApiResultDismissed(false);
-    sendNegativeFeedback(feedbackDataNegative, backendUrl)
-      .then((response) => {
-        console.log("Negative Feedback submitted successfully");
-        setImageCache(loadResultsToCache(response, imageCache, imageIndex));
-        setApiSuccess(true);
+    fetchAccessToken().then((accessToken) => {
+      if (!accessToken) {
+        console.error("Failed to obtain access token");
+        return;
+      }
+      sendNegativeFeedback({
+        feedbackData: feedbackDataNegative,
+        backendUrl,
+        accessToken,
       })
-      .catch((error) => {
-        console.error("Error submitting feedback: ", error);
-        setApiError(error.message);
-      })
-      .finally(() => {
-        setApiLoading(false);
-        // exitFeedbackMode();
-      });
+        .then((response) => {
+          console.log("Negative Feedback submitted successfully");
+          setImageCache(loadResultsToCache(response, imageCache, imageIndex));
+          setApiSuccess(true);
+        })
+        .catch((error) => {
+          console.error("Error submitting feedback: ", error);
+          setApiError(error.message);
+        })
+        .finally(() => {
+          setApiLoading(false);
+          // exitFeedbackMode();
+        });
+    });
   };
 
   const handleFreeformSubmit = (box: BoxCSS) => {
