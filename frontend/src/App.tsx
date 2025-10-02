@@ -5,34 +5,13 @@ import { Navbar } from "./components/header";
 import Body from "./root/body";
 import Footer from "./components/footer";
 import Appbar from "./components/header/appbar";
-import LoadingIndicator from "./components/body/loading_indicator";
-import {
-  MsalProvider,
-  // useMsal,
-  // useAccount,
-  MsalAuthenticationTemplate,
-  MsalAuthenticationResult,
-} from "@azure/msal-react";
-import {
-  InteractionType,
-  AccountInfo,
-  PublicClientApplication,
-} from "@azure/msal-browser";
+import { MsalProvider } from "@azure/msal-react";
+import { AccountInfo, PublicClientApplication } from "@azure/msal-browser";
 
 interface AppProps {
   basename: string;
   msalInstance: PublicClientApplication;
   apiScopeClaim: string;
-}
-
-// Add scopes here for ID token to be used at UserInfo endpoint
-// const loginRequest: PopupRequest = {
-//   // scopes: ["openid", "profile", "email"],
-//   scopes: ["scopes.nachet.user"],
-// };
-
-function ErrorComponent({ error }: MsalAuthenticationResult) {
-  return <p>An Error Occurred: {error?.errorMessage}</p>;
 }
 
 function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
@@ -94,6 +73,7 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
             windowSize={windowSize}
             setUuid={setUuid}
             setUserAccount={setUserAccount}
+            apiScopeClaim={apiScopeClaim}
           />
           <Appbar
             windowSize={windowSize}
@@ -104,32 +84,17 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
             <Route
               path="/"
               element={
-                <MsalAuthenticationTemplate
-                  interactionType={InteractionType.Popup}
-                  authenticationRequest={{
-                    scopes: [apiScopeClaim ?? ""],
-                    // scopes: [
-                    //   "User.Read",
-                    //   "openid",
-                    //   "profile",
-                    //   "offline_access",
-                    // ],
-                  }}
-                  errorComponent={ErrorComponent}
-                  loadingComponent={LoadingIndicator}
-                >
-                  <Body
-                    windowSize={windowSize}
-                    uuid={uuid}
-                    creativeCommonsPopupOpen={creativeCommonsPopupOpen}
-                    setCreativeCommonsPopupOpen={setCreativeCommonsPopupOpen}
-                    handleCreativeCommonsAgreement={
-                      handleCreativeCommonsAgreement
-                    }
-                    user={userAccount}
-                    apiScopeClaim={apiScopeClaim}
-                  />
-                </MsalAuthenticationTemplate>
+                <Body
+                  windowSize={windowSize}
+                  uuid={uuid}
+                  creativeCommonsPopupOpen={creativeCommonsPopupOpen}
+                  setCreativeCommonsPopupOpen={setCreativeCommonsPopupOpen}
+                  handleCreativeCommonsAgreement={
+                    handleCreativeCommonsAgreement
+                  }
+                  user={userAccount}
+                  apiScopeClaim={apiScopeClaim}
+                />
               }
             />
           </Routes>

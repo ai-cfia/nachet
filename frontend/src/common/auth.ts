@@ -1,37 +1,80 @@
-import { IPublicClientApplication } from "@azure/msal-browser";
-import { InteractionRequiredAuthError } from "@azure/msal-browser";
+import {
+  IPublicClientApplication,
+  InteractionRequiredAuthError,
+} from "@azure/msal-browser";
 
-export interface TokenRequest {
-  scopes: string[];
-}
-
-export async function getAccessToken(
+/**
+ * Acquires an access token outside of React component context
+ * This function can be safely used in useEffect dependencies without causing infinite loops
+ *
+ * @param msalInstance - The PublicClientApplication instance
+ * @param scopes - Array of scopes to request
+ * @returns Access token string
+ * @throws Error if user is not signed in or token acquisition fails
+ */
+export async function acquireAccessToken(
   msalInstance: IPublicClientApplication,
-  request: TokenRequest,
+  scopes: string[],
 ): Promise<string> {
+  const activeAccount = msalInstance.getActiveAccount();
+  const accounts = msalInstance.getAllAccounts();
+
+  if (!activeAccount && accounts.length === 0) {
+    throw new Error(
+      "User is not signed in. Cannot acquire token outside of MsalProvider context.",
+    );
+  }
+
+  const request = {
+    scopes,
+    account: activeAccount || accounts[0],
+  };
+
   try {
-    const tokenResponse = await msalInstance.acquireTokenSilent(request);
-    return tokenResponse.accessToken;
+    const authResult = await msalInstance.acquireTokenSilent(request);
+    return authResult.accessToken;
   } catch (error) {
     if (error instanceof InteractionRequiredAuthError) {
-      const tokenResponse = await msalInstance.acquireTokenPopup(request);
-      return tokenResponse.accessToken;
+      // Redirect to login - user will be redirected away and app will reload
+      await msalInstance.acquireTokenRedirect(request);
+      // This line will never be reached as user has been redirected
+      throw error;
     }
     throw error;
   }
 }
 
-export async function getIdToken(
+/**
+ * Acquires an ID token
+ * @param msalInstance - The PublicClientApplication instance
+ * @param scopes - Array of scopes to request
+ * @returns ID token string
+ */
+export async function acquireIdToken(
   msalInstance: IPublicClientApplication,
-  request: TokenRequest,
+  scopes: string[],
 ): Promise<string> {
+  const activeAccount = msalInstance.getActiveAccount();
+  const accounts = msalInstance.getAllAccounts();
+
+  if (!activeAccount && accounts.length === 0) {
+    throw new Error(
+      "User is not signed in. Cannot acquire token outside of MsalProvider context.",
+    );
+  }
+
+  const request = {
+    scopes,
+    account: activeAccount || accounts[0],
+  };
+
   try {
-    const tokenResponse = await msalInstance.acquireTokenSilent(request);
-    return tokenResponse.idToken;
+    const authResult = await msalInstance.acquireTokenSilent(request);
+    return authResult.idToken;
   } catch (error) {
     if (error instanceof InteractionRequiredAuthError) {
-      const tokenResponse = await msalInstance.acquireTokenPopup(request);
-      return tokenResponse.idToken;
+      await msalInstance.acquireTokenRedirect(request);
+      throw error;
     }
     throw error;
   }

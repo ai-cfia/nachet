@@ -5,6 +5,7 @@ import { Button, IconButton } from "@mui/material";
 import { colours } from "../../../styles/colours";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
 
 interface params {
   windowSize: {
@@ -15,15 +16,16 @@ interface params {
   setUserAccount: React.Dispatch<
     React.SetStateAction<import("@azure/msal-browser").AccountInfo | null>
   >;
+  apiScopeClaim: string;
 }
 
 const Navbar: React.FC<params> = (props) => {
   const { instance, accounts, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
-  const { setUuid, setUserAccount } = props;
+  const { setUuid, setUserAccount, apiScopeClaim } = props;
   const logout = async (): Promise<void> => {
     try {
-      await instance.logoutPopup();
+      await instance.logoutRedirect();
     } catch (error) {
       console.error("Logout failed:", error);
       throw error;
@@ -31,9 +33,13 @@ const Navbar: React.FC<params> = (props) => {
   };
   const login = async (): Promise<void> => {
     try {
-      await instance.loginPopup({
+      if (inProgress !== InteractionStatus.None) {
+        console.warn("Interaction already in progress, please wait");
+        return;
+      }
+      await instance.loginRedirect({
         // scopes: ["openid", "profile", "email"],
-        scopes: ["User.Read"],
+        scopes: [apiScopeClaim ?? ""],
       });
     } catch (error) {
       console.error("Login failed:", error);

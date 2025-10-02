@@ -1,5 +1,5 @@
 // root\body\index.tsx
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import type Webcam from "react-webcam";
 import { BodyContainer } from "./indexElements";
 import Classifier from "../../pages/classifier";
@@ -13,10 +13,19 @@ import {
   DeleteDirectoryPopup,
 } from "@components/body";
 import CreativeCommonsPopup from "../../components/body/creative_commons_popup";
-import { useBackendUrl, useDecoderTiff, useAuth } from "@hooks";
-import { AccountInfo } from "@azure/msal-browser";
-// import { useMsal } from "@azure/msal-react";
-// import { getAccessToken } from "@common/auth";
+import { useBackendUrl, useDecoderTiff } from "@hooks";
+import {
+  AccountInfo,
+  InteractionRequiredAuthError,
+  InteractionStatus,
+  InteractionType,
+} from "@azure/msal-browser";
+import {
+  useMsal,
+  useIsAuthenticated,
+  useMsalAuthentication,
+} from "@azure/msal-react";
+import { acquireAccessToken } from "@common/auth";
 import {
   getLabelOccurrence,
   loadCaptureToCache,
@@ -55,7 +64,6 @@ const Body: React.FC<params> = (props) => {
     "https://ai-cfia.github.io/nachet-frontend/placeholder-image.jpg";
   const [imageSrc, setImageSrc] = useState<string>(defaultImageSrc);
   const [imageTiff, setImageTiff] = useState<string>("");
-  // const [resultsRendered, setResultsRendered] = useState<boolean>(false);
   const [imageIndex, setImageIndex] = useState<number>(0);
   const [imageFormat, setImageFormat] = useState<string>("image/png");
   const [imageLabel, setImageLabel] = useState<string>("");
@@ -93,8 +101,25 @@ const Body: React.FC<params> = (props) => {
   const decodedTiff = useDecoderTiff(imageTiff);
   const backendUrl = useBackendUrl();
   const apiScopeClaim = props.apiScopeClaim;
-  // const { instance: msalInstance } = useMsal();
-  const { fetchAccessToken } = useAuth(apiScopeClaim);
+  const { instance: msalInstance, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
+
+  const authRequest = useMemo(() => {
+    return {
+      scopes: [apiScopeClaim ?? ""],
+    };
+  }, [apiScopeClaim]);
+
+  const { login, error } = useMsalAuthentication(
+    InteractionType.Silent,
+    authRequest,
+  );
+
+  useEffect(() => {
+    if (error instanceof InteractionRequiredAuthError) {
+      login(InteractionType.Redirect, authRequest);
+    }
+  }, [authRequest, error, login]);
 
   const captureFeed = (): void => {
     // takes screenshot of webcam feed and loads it to cache when capture button is pressed
@@ -134,38 +159,43 @@ const Body: React.FC<params> = (props) => {
 
   const handleInferenceRequest = (): void => {
     // makes a post request to the backend to get inference data for the current image
+    if (!isAuthenticated) {
+      alert("You must be signed in to perform inference");
+      return;
+    }
+    if (inProgress !== InteractionStatus.None) {
+      alert("Authentication in progress, please wait");
+      return;
+    }
     if (curDir !== "") {
       const imageObject = imageCache.find((item) => item.index === imageIndex);
       if (imageObject === undefined) {
         return;
       }
       setIsLoading(true);
-      fetchAccessToken().then((accessToken) => {
-        if (!accessToken) {
-          console.error("Failed to obtain access token");
-          return;
-        }
-        inferenceRequest({
-          backendUrl,
-          selectedModel,
-          imageObject,
-          curDir,
-          accessToken,
-          container_uuid: props.uuid,
-        })
-          .then((response) => {
-            setReadAzureStorage(!readAzureStorage);
-            setImageCache(loadResultsToCache(response, imageCache, imageIndex));
-            setModelDisplayName(selectedModel);
-          })
-          .catch((error) => {
-            alert("Error fetching inference data, see console for details");
-            console.error(error);
-          })
-          .finally(() => {
-            setIsLoading(false);
+      acquireAccessToken(msalInstance, [apiScopeClaim])
+        .then((accessToken) => {
+          return inferenceRequest({
+            backendUrl,
+            selectedModel,
+            imageObject,
+            curDir,
+            accessToken,
+            container_uuid: props.uuid,
           });
-      });
+        })
+        .then((response) => {
+          setReadAzureStorage(!readAzureStorage);
+          setImageCache(loadResultsToCache(response, imageCache, imageIndex));
+          setModelDisplayName(selectedModel);
+        })
+        .catch((error) => {
+          alert("Error fetching inference data, see console for details");
+          console.error(error);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     } else {
       alert("Please select a directory");
     }
@@ -257,6 +287,12 @@ const Body: React.FC<params> = (props) => {
   }, [activeDeviceId]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    if (inProgress !== InteractionStatus.None) {
+      return;
+    }
     if (backendUrl == null || backendUrl === "") {
       console.error("Backend URL is undefined, null or empty.");
       return;
@@ -267,11 +303,9 @@ const Body: React.FC<params> = (props) => {
 
     const loadAzureStorageDir = async () => {
       try {
-        const accessToken = await fetchAccessToken();
-        if (!accessToken) {
-          console.error("Failed to obtain access token");
-          return;
-        }
+        const accessToken = await acquireAccessToken(msalInstance, [
+          apiScopeClaim,
+        ]);
         const response = await readAzureStorageDir({ backendUrl, accessToken });
         const directories: AzureStorageDirectoryItem[] = [];
         const folders = response.directories;
@@ -292,7 +326,14 @@ const Body: React.FC<params> = (props) => {
     };
 
     loadAzureStorageDir();
-  }, [props.uuid, backendUrl, fetchAccessToken]);
+  }, [
+    props.uuid,
+    backendUrl,
+    msalInstance,
+    apiScopeClaim,
+    isAuthenticated,
+    inProgress,
+  ]);
 
   const handleImageUpload = (): void => {
     // Set the logic for handling image upload and then:
@@ -300,17 +341,21 @@ const Body: React.FC<params> = (props) => {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    if (inProgress !== InteractionStatus.None) {
+      return;
+    }
     if (!backendUrl || process.env.REACT_APP_MODE === "test") {
       return;
     }
 
     const loadModelMetadata = async () => {
       try {
-        const accessToken = await fetchAccessToken();
-        if (!accessToken) {
-          console.error("Failed to obtain access token");
-          return;
-        }
+        const accessToken = await acquireAccessToken(msalInstance, [
+          apiScopeClaim,
+        ]);
 
         const metadata = await fetchModelMetadata({ backendUrl, accessToken });
         setMetadata(metadata);
@@ -327,7 +372,7 @@ const Body: React.FC<params> = (props) => {
     };
 
     loadModelMetadata();
-  }, [backendUrl, fetchAccessToken]);
+  }, [backendUrl, msalInstance, apiScopeClaim, isAuthenticated, inProgress]);
 
   return (
     <BodyContainer width={props.windowSize.width} data-testid="body-component">

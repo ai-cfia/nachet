@@ -93,6 +93,8 @@ nachet/backend$  uv run ruff check .
 
 # push frontend build to blob storage
 nachet/backend$ uv run app/scripts/push_frontend_to_blob.py
+
+nachet$ docker compose -f docker-compose.yaml.local build nachet-backend --no-cache && docker compose -f docker-compose.yaml.local up -d nachet-backend --force-recreate
 ```
 
 ### Frontend setup

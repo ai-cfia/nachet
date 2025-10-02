@@ -33,7 +33,10 @@ import {
 import { batchUploadImage, batchUploadInit } from "@common/api";
 import { validateImageFile } from "@common";
 import { BatchUploadMetadata, SpeciesData } from "@common/types";
-import { useSpeciesData, useAuth } from "@hooks";
+import { useSpeciesData } from "@hooks";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
+import { acquireAccessToken } from "@common/auth";
 import {
   folderNameSchema,
   seedCountSchema,
@@ -101,7 +104,8 @@ const BatchUploadPopup = (props: params) => {
   const [classError, setClassError] = useState<string>("");
 
   const { speciesData } = useSpeciesData(backendUrl, apiScopeClaim);
-  const { fetchAccessToken } = useAuth(apiScopeClaim);
+  const { instance: msalInstance, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
 
   const classList = useMemo(() => {
     if (!speciesData?.seeds) return [];
@@ -224,6 +228,11 @@ const BatchUploadPopup = (props: params) => {
   };
 
   const handleUpload = (): void => {
+    if (!isAuthenticated) {
+      setUploadError("You must be signed in to upload files");
+      return;
+    }
+
     // Clear previous errors
     setUploadError(null);
     setFolderNameError("");
@@ -279,28 +288,30 @@ const BatchUploadPopup = (props: params) => {
       }
     }
 
+    if (inProgress !== InteractionStatus.None) {
+      alert("Authentication in progress, please wait");
+      return;
+    }
+
     resetUpload();
     setUploading(true);
 
-    fetchAccessToken().then((accessToken) => {
-      if (!accessToken) {
-        console.error("Failed to obtain access token");
-        return;
-      }
-      batchUploadInit({
-        backendUrl,
-        accessToken,
-        folderName,
-        containerUuid: containerName,
-        fileCount,
-      })
-        .then((response) => {
-          setSessionId(response.session_id);
-        })
-        .catch((error) => {
-          setUploadError(error.toString());
+    acquireAccessToken(msalInstance, [apiScopeClaim])
+      .then((accessToken) => {
+        return batchUploadInit({
+          backendUrl,
+          accessToken,
+          folderName,
+          containerUuid: containerName,
+          fileCount,
         });
-    });
+      })
+      .then((response) => {
+        setSessionId(response.session_id);
+      })
+      .catch((error) => {
+        setUploadError(error.toString());
+      });
   };
 
   const handleClose = (): void => {
@@ -354,27 +365,24 @@ const BatchUploadPopup = (props: params) => {
             sessionId: sessionId,
           };
 
-          fetchAccessToken().then((accessToken) => {
-            if (!accessToken) {
-              console.error("Failed to obtain access token");
-              return;
-            }
-            batchUploadImage({
-              backendUrl: backendUrl,
-              data: data,
-              accessToken: accessToken,
-            })
-              .then((response) => {
-                if (response) {
-                  console.log("Successfully uploaded image: ", file.name);
-                }
-                resolve(true);
-              })
-              .catch((error) => {
-                console.error("Error uploading image: ", file.name);
-                reject(error);
+          acquireAccessToken(msalInstance, [apiScopeClaim])
+            .then((accessToken) => {
+              return batchUploadImage({
+                backendUrl: backendUrl,
+                data: data,
+                accessToken: accessToken,
               });
-          });
+            })
+            .then((response) => {
+              if (response) {
+                console.log("Successfully uploaded image: ", file.name);
+              }
+              resolve(true);
+            })
+            .catch((error) => {
+              console.error("Error uploading image: ", file.name);
+              reject(error);
+            });
         };
         reader.readAsDataURL(file);
       });
@@ -413,11 +421,12 @@ const BatchUploadPopup = (props: params) => {
 
     batchUpload();
   }, [
+    apiScopeClaim,
     backendUrl,
     containerName,
-    fetchAccessToken,
     fileStatus,
     files,
+    msalInstance,
     seedCount,
     seedId,
     selectedClass?.label,

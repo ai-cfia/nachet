@@ -139,6 +139,35 @@ async def get_directories(
     return directories
 
 
+@router.get(
+    "/logout",
+    status_code=status.HTTP_200_OK,
+    name="Logout User [NO AUTH REQUIRED]",
+)
+@limiter.limit("10/minute")
+async def logout_user(request: Request):
+    # Return html with clear site data header to clear cookies and cache
+    html_content = """
+    <html>
+        <head>
+            <title>Logged Out</title>
+        </head>
+        <body>
+            <h1>You have been logged out.</h1>
+            <p>You can close this window.</p>
+        </body>
+    </html>
+    """
+    return Response(
+        content=html_content,
+        media_type="text/html",
+        headers={
+            "Clear-Site-Data": '"cache","cookies","storage"',
+            "Cache-Control": "no-store, max-age=0",
+        },
+    )
+
+
 # Frontend static file serving routes
 @router.get(
     "/",
@@ -149,7 +178,10 @@ async def get_directories(
 @limiter.limit("60/minute")
 async def serve_frontend_root(request: Request):
     """Serve the main index.html file."""
-    content, content_type = await FrontendService.get_file("index.html")
+    await FrontendService.check_and_update_version()
+    # Get CSP nonce from request state (set by HeadersMiddleware)
+    csp_nonce = getattr(request.state, "csp_nonce", None)
+    content, content_type = await FrontendService.get_file("index.html", csp_nonce)
     return Response(content=content, media_type=content_type)
 
 
@@ -166,15 +198,20 @@ async def serve_frontend_static(request: Request, path: str):
     Serve static frontend files (assets, favicon, etc.).
     Falls back to index.html for SPA client-side routing.
     """
+    await FrontendService.check_and_update_version()
+    # Get CSP nonce from request state (set by HeadersMiddleware)
+    csp_nonce = getattr(request.state, "csp_nonce", None)
     try:
         # Try to serve the requested file
-        content, content_type = await FrontendService.get_file(path)
+        content, content_type = await FrontendService.get_file(path, csp_nonce)
         return Response(content=content, media_type=content_type)
     except Exception:
         # Fallback to index.html for client-side routing (SPA)
         # This allows React Router to handle the route
         try:
-            content, content_type = await FrontendService.get_file("index.html")
+            content, content_type = await FrontendService.get_file(
+                "index.html", csp_nonce
+            )
             return Response(content=content, media_type=content_type)
         except Exception as e:
             # If even index.html fails, return 500
