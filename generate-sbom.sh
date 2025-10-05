@@ -59,7 +59,7 @@ if [[ "$(basename "$PROJECT_DIR")" == "frontend" ]]; then
       nvm install $NODE_VERSION && \
       nvm use $NODE_VERSION && \
       npm install -g npm@$NPM_VERSION && \
-      npm install && \
+      npm install && npm update &&\
       npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo '' >> sbom.json"
     
     # chown node_modules to avoid permission issues
