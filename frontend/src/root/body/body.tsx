@@ -11,6 +11,7 @@ import {
   CreateDirectoryPopup,
   BatchUploadPopup,
   DeleteDirectoryPopup,
+  AuthPopup,
 } from "@components/body";
 import CreativeCommonsPopup from "../../components/body/creative_commons_popup";
 import { useBackendUrl, useDecoderTiff } from "@hooks";
@@ -96,6 +97,7 @@ const Body: React.FC<params> = (props) => {
   const [isLoading, setIsLoading] = useState(false);
   const [metadata, setMetadata] = useState<ModelMetadata[]>([]);
   const [showInference, setShowInference] = useState<boolean>(true);
+  const [authPopupOpen, setAuthPopupOpen] = useState<boolean>(false);
   const decodedTiff = useDecoderTiff(imageTiff);
   const backendUrl = useBackendUrl();
   const apiScopeClaim = props.apiScopeClaim;
@@ -375,8 +377,27 @@ const Body: React.FC<params> = (props) => {
     loadModelMetadata();
   }, [backendUrl, msalInstance, apiScopeClaim, isAuthenticated, inProgress]);
 
+  // Auto-open auth popup when user is not authenticated
+  useEffect(() => {
+    if (!isAuthenticated && inProgress === InteractionStatus.None) {
+      setAuthPopupOpen(true);
+    }
+  }, [isAuthenticated, inProgress]);
+
+  // Auto-close auth popup when user becomes authenticated
+  useEffect(() => {
+    if (isAuthenticated && authPopupOpen) {
+      setAuthPopupOpen(false);
+    }
+  }, [isAuthenticated, authPopupOpen]);
+
   return (
     <BodyContainer width={props.windowSize.width} data-testid="body-component">
+      <AuthPopup
+        open={authPopupOpen}
+        onClose={() => setAuthPopupOpen(false)}
+        apiScopeClaim={apiScopeClaim}
+      />
       {saveOpen && (
         <SavePopup
           imageCache={imageCache}
