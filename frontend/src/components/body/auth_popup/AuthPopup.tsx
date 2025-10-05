@@ -53,10 +53,12 @@ const AuthPopup: React.FC<AuthPopupProps> = ({
       disableEscapeKeyDown={isLoading}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: 1,
-          padding: "2vh",
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: 1,
+            padding: "2vh",
+          },
         },
       }}
     >
