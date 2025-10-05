@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import CFIALogo from "../../../assets/CFIA_blackfont.png";
 import { Nav, NavbarContainer, NavLogo, NavMenu } from "./indexElements";
 import { Button, IconButton } from "@mui/material";
@@ -12,17 +12,13 @@ interface params {
     width: number;
     height: number;
   };
-  setUuid: React.Dispatch<React.SetStateAction<string>>;
-  setUserAccount: React.Dispatch<
-    React.SetStateAction<import("@azure/msal-browser").AccountInfo | null>
-  >;
   apiScopeClaim: string;
 }
 
 const Navbar: React.FC<params> = (props) => {
-  const { instance, accounts, inProgress } = useMsal();
+  const { instance, inProgress, accounts } = useMsal();
   const isAuthenticated = useIsAuthenticated();
-  const { setUuid, setUserAccount, apiScopeClaim } = props;
+  const { apiScopeClaim } = props;
   const logout = async (): Promise<void> => {
     try {
       await instance.logoutRedirect();
@@ -65,19 +61,6 @@ const Navbar: React.FC<params> = (props) => {
     },
   };
 
-  useEffect(() => {
-    if (inProgress === "none" && accounts.length > 0) {
-      // https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-common/docs/Accounts.md
-      setUuid(accounts[0].idTokenClaims?.oid ?? "");
-      // console.log("User Account: ", accounts[0]);
-      setUserAccount(accounts[0]);
-      instance.setActiveAccount(accounts[0]);
-    } else {
-      setUuid("");
-      setUserAccount(null);
-    }
-  }, [accounts, inProgress, instance, setUserAccount, setUuid]);
-
   return (
     <Nav width={props.windowSize.width} height={props.windowSize.height}>
       <NavbarContainer
@@ -118,6 +101,17 @@ const Navbar: React.FC<params> = (props) => {
                   }
                 }}
               >
+                {accounts[0] && (
+                  <span
+                    style={{
+                      color: colours.CFIA_Font_Black,
+                      fontSize: "1rem",
+                      marginRight: "1rem",
+                    }}
+                  >
+                    {accounts[0].username}
+                  </span>
+                )}
                 <AccountCircleIcon
                   style={{
                     color: colours.CFIA_Background_Blue,

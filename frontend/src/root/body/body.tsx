@@ -15,7 +15,6 @@ import {
 import CreativeCommonsPopup from "../../components/body/creative_commons_popup";
 import { useBackendUrl, useDecoderTiff } from "@hooks";
 import {
-  AccountInfo,
   InteractionRequiredAuthError,
   InteractionStatus,
   InteractionType,
@@ -24,6 +23,7 @@ import {
   useMsal,
   useIsAuthenticated,
   useMsalAuthentication,
+  useAccount,
 } from "@azure/msal-react";
 import { acquireAccessToken } from "@common/auth";
 import {
@@ -51,11 +51,9 @@ interface params {
     width: number;
     height: number;
   };
-  uuid: string;
   creativeCommonsPopupOpen: boolean;
   setCreativeCommonsPopupOpen: React.Dispatch<React.SetStateAction<boolean>>;
   handleCreativeCommonsAgreement: (agree: boolean) => void;
-  user: AccountInfo | null;
   apiScopeClaim: string;
 }
 
@@ -101,8 +99,10 @@ const Body: React.FC<params> = (props) => {
   const decodedTiff = useDecoderTiff(imageTiff);
   const backendUrl = useBackendUrl();
   const apiScopeClaim = props.apiScopeClaim;
-  const { instance: msalInstance, inProgress } = useMsal();
+  const { instance: msalInstance, inProgress, accounts } = useMsal();
   const isAuthenticated = useIsAuthenticated();
+  const accountInfo = useAccount();
+  const uuid = accountInfo?.idTokenClaims?.oid ?? "";
 
   const authRequest = useMemo(() => {
     return {
@@ -119,7 +119,8 @@ const Body: React.FC<params> = (props) => {
     if (error instanceof InteractionRequiredAuthError) {
       login(InteractionType.Redirect, authRequest);
     }
-  }, [authRequest, error, login]);
+    msalInstance.setActiveAccount(accounts[0]);
+  }, [accounts, authRequest, error, login, msalInstance]);
 
   const captureFeed = (): void => {
     // takes screenshot of webcam feed and loads it to cache when capture button is pressed
@@ -181,7 +182,7 @@ const Body: React.FC<params> = (props) => {
             imageObject,
             curDir,
             accessToken,
-            container_uuid: props.uuid,
+            container_uuid: uuid,
           });
         })
         .then((response) => {
@@ -297,7 +298,7 @@ const Body: React.FC<params> = (props) => {
       console.error("Backend URL is undefined, null or empty.");
       return;
     }
-    if (props.uuid == null || props.uuid === "") {
+    if (uuid == null || uuid === "") {
       return;
     }
 
@@ -327,7 +328,7 @@ const Body: React.FC<params> = (props) => {
 
     loadAzureStorageDir();
   }, [
-    props.uuid,
+    uuid,
     backendUrl,
     msalInstance,
     apiScopeClaim,
@@ -393,8 +394,8 @@ const Body: React.FC<params> = (props) => {
         <BatchUploadPopup
           setBatchUploadOpen={setBatchUploadOpen}
           backendUrl={backendUrl}
-          uuid={props.uuid}
-          containerName={props.uuid}
+          uuid={uuid}
+          containerName={uuid}
           apiScopeClaim={apiScopeClaim}
         />
       )}
@@ -487,7 +488,7 @@ const Body: React.FC<params> = (props) => {
         isLoading={isLoading}
         toggleShowInference={(state: boolean) => setShowInference(state)}
         backendUrl={backendUrl}
-        uuid={props.uuid}
+        uuid={uuid}
         apiScopeClaim={apiScopeClaim}
       />
     </BodyContainer>

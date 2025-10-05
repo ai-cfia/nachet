@@ -6,7 +6,7 @@ import Body from "./root/body";
 import Footer from "./components/footer";
 import Appbar from "./components/header/appbar";
 import { MsalProvider } from "@azure/msal-react";
-import { AccountInfo, PublicClientApplication } from "@azure/msal-browser";
+import { PublicClientApplication } from "@azure/msal-browser";
 
 interface AppProps {
   basename: string;
@@ -19,11 +19,9 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
     width: window.innerWidth,
     height: window.innerHeight,
   });
-  const [uuid, setUuid] = useState<string>("");
   const [creativeCommonsPopupOpen, setCreativeCommonsPopupOpen] =
     useState<boolean>(false);
   const [switchLanguage, setSwitchLanguage] = useState<boolean>(false);
-  const [userAccount, setUserAccount] = useState<AccountInfo | null>(null);
 
   const handleCreativeCommonsAgreement = (agree: boolean): void => {
     // set a cookie to remember the users choice for 10 years (user choice should be stored in authentication database in the future)
@@ -69,12 +67,7 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
     <Router basename={basename}>
       <MsalProvider instance={msalInstance}>
         <Fragment>
-          <Navbar
-            windowSize={windowSize}
-            setUuid={setUuid}
-            setUserAccount={setUserAccount}
-            apiScopeClaim={apiScopeClaim}
-          />
+          <Navbar windowSize={windowSize} apiScopeClaim={apiScopeClaim} />
           <Appbar
             windowSize={windowSize}
             setSwitchLanguage={setSwitchLanguage}
@@ -86,19 +79,17 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
               element={
                 <Body
                   windowSize={windowSize}
-                  uuid={uuid}
                   creativeCommonsPopupOpen={creativeCommonsPopupOpen}
                   setCreativeCommonsPopupOpen={setCreativeCommonsPopupOpen}
                   handleCreativeCommonsAgreement={
                     handleCreativeCommonsAgreement
                   }
-                  user={userAccount}
                   apiScopeClaim={apiScopeClaim}
                 />
               }
             />
           </Routes>
-          <Footer uuid={uuid} windowSize={windowSize} />
+          <Footer windowSize={windowSize} />
         </Fragment>
       </MsalProvider>
     </Router>
