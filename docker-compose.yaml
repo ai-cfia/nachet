@@ -1,7 +1,7 @@
 services:
   nachet-db:
     container_name: nachet-db
-    image: postgres:15-bookworm
+    image: postgres:18-bookworm
     env_file:
       - ./db/.env.config.local
     ports:
