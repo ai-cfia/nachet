@@ -7,6 +7,10 @@ import ModelPopup from "./model_popup/ModelPopup";
 import SaveCapturePopup from "./save_capture_popup/SaveCapturePopup";
 import SwitchDevicePopup from "./switch_device_popup/SwitchDevicePopup";
 import CreativeCommonsPopup from "./creative_commons_popup/CreativeCommonsPopup";
+import ClassificationResults from "./classification_results";
+import ImageCache from "./image_cache/ImageCache";
+import StorageDirectory from "./directory_list";
+import MicroscopeFeed from "./microscope_feed";
 
 export {
   BatchUploadPopup,
@@ -18,4 +22,8 @@ export {
   SaveCapturePopup,
   SwitchDevicePopup,
   CreativeCommonsPopup,
+  ClassificationResults,
+  ImageCache,
+  StorageDirectory,
+  MicroscopeFeed,
 };

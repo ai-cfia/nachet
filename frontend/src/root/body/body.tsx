@@ -1,8 +1,8 @@
 // root\body\index.tsx
 import { useState, useRef, useEffect, useMemo } from "react";
 import type Webcam from "react-webcam";
-import { BodyContainer } from "./indexElements";
-import Classifier from "../../pages/classifier";
+import { Box } from "@mui/material";
+import { colours } from "../../styles/colours";
 import {
   CreateDirectoryPopup,
   BatchUploadPopup,
@@ -13,6 +13,10 @@ import {
   SaveCapturePopup,
   ModelPopup,
   SwitchDevicePopup,
+  ClassificationResults,
+  ImageCache,
+  StorageDirectory,
+  MicroscopeFeed,
 } from "@components/body";
 import { useBackendUrl, useDecoderTiff } from "@hooks";
 import {
@@ -338,11 +342,6 @@ const Body: React.FC<params> = (props) => {
     inProgress,
   ]);
 
-  const handleImageUpload = (): void => {
-    // Set the logic for handling image upload and then:
-    setIsWebcamActive(false); // Hide the webcam after the image is loaded
-  };
-
   useEffect(() => {
     if (!isAuthenticated) {
       return;
@@ -392,7 +391,23 @@ const Body: React.FC<params> = (props) => {
   }, [isAuthenticated, authPopupOpen]);
 
   return (
-    <BodyContainer width={props.windowSize.width} data-testid="body-component">
+    <Box
+      data-testid="body-component"
+      sx={{
+        background: colours.CFIA_Background_White,
+        color: colours.CFIA_Font_Black,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 0,
+        maxWidth: "100%",
+        padding: "0px 1.5vw",
+        position: "relative",
+        marginTop: "6.5vh",
+        marginBottom: "10vh",
+      }}
+    >
       {authPopupOpen && (
         <AuthPopup
           open={authPopupOpen}
@@ -471,50 +486,120 @@ const Body: React.FC<params> = (props) => {
         />
       )}
 
-      <Classifier
-        handleInference={handleInferenceRequest}
-        imageIndex={imageIndex}
-        setBatchUploadOpen={setBatchUploadOpen}
-        setUploadOpen={setUploadOpen}
-        imageSrc={imageSrc}
-        webcamRef={webcamRef}
-        imageFormat={imageFormat}
-        setSaveOpen={setSaveOpen}
-        capture={captureFeed}
-        savedImages={imageCache}
-        setImageCache={setImageCache}
-        clearImageCache={clearCache}
-        canvasRef={canvasRef}
-        removeImage={removeFromCache}
-        setSwitchModelOpen={setModelInfoPopupOpen}
-        setSwitchDeviceOpen={setSwitchDeviceOpen}
-        windowSize={props.windowSize}
-        activeDeviceId={activeDeviceId}
-        azureStorageDir={azureStorageDir}
-        curDir={curDir}
-        setImageIndex={setImageIndex}
-        handleDirChange={handleDirChange}
-        setCreateDirectoryOpen={setCreateDirectoryOpen}
-        setDelDirectoryOpen={setDelDirectoryOpen}
-        selectedLabel={selectedLabel}
-        setSelectedLabel={setSelectedLabel}
-        labelOccurrences={labelOccurrences}
-        switchTable={switchTable}
-        setSwitchTable={setSwitchTable}
-        setCurDir={setCurDir}
-        isWebcamActive={isWebcamActive}
-        onCaptureClick={() => {
-          setIsWebcamActive(!isWebcamActive);
+      <Box
+        sx={{
+          background: colours.CFIA_Background_White,
+          color: colours.CFIA_Font_Black,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          width: "100%",
+          maxWidth: "100%",
+          height: "fit-content",
         }}
-        onImageUpload={handleImageUpload}
-        modelDisplayName={modelDisplayName}
-        isLoading={isLoading}
-        toggleShowInference={(state: boolean) => setShowInference(state)}
-        backendUrl={backendUrl}
-        uuid={uuid}
-        apiScopeClaim={apiScopeClaim}
-      />
-    </BodyContainer>
+      >
+        <Box
+          sx={{
+            background: colours.CFIA_Background_White,
+            color: colours.CFIA_Font_Black,
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "center",
+            alignItems: "center",
+            minWidth: "100%",
+            maxWidth: "100%",
+            height: "fit-content",
+            position: "relative",
+            zIndex: 0,
+            padding: "0px 0px 0px 0px",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "60%",
+              maxWidth: "60%",
+              height: "fit-content",
+              zIndex: 0,
+              position: "relative",
+            }}
+          >
+            <MicroscopeFeed
+              capture={captureFeed}
+              webcamRef={webcamRef}
+              windowSize={props.windowSize}
+              activeDeviceId={activeDeviceId}
+              setSwitchDeviceOpen={setSwitchDeviceOpen}
+              isLoading={isLoading}
+              canvasRef={canvasRef}
+              setSaveOpen={setSaveOpen}
+              handleInference={handleInferenceRequest}
+              setSwitchModelOpen={setModelInfoPopupOpen}
+              imageCache={imageCache}
+              setImageCache={setImageCache}
+              imageIndex={imageIndex}
+              setBatchUploadOpen={setBatchUploadOpen}
+              setUploadOpen={setUploadOpen}
+              isWebcamActive={isWebcamActive}
+              onCaptureClick={() => {
+                setIsWebcamActive(!isWebcamActive);
+              }}
+              toggleShowInference={(state: boolean) => setShowInference(state)}
+              backendUrl={backendUrl}
+              uuid={uuid}
+              apiScopeClaim={apiScopeClaim}
+            />
+          </Box>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "start",
+              justifyContent: "start",
+              width: "19%",
+              maxWidth: "19%",
+              height: "100%",
+              maxHeight: "100%",
+              zIndex: 0,
+              position: "relative",
+            }}
+          >
+            <StorageDirectory
+              azureStorageDir={azureStorageDir}
+              curDir={curDir}
+              handleDirChange={handleDirChange}
+              setCreateDirectoryOpen={setCreateDirectoryOpen}
+              setDelDirectoryOpen={setDelDirectoryOpen}
+              setCurDir={setCurDir}
+            />
+            <ImageCache
+              removeImage={removeFromCache}
+              savedImages={imageCache}
+              setImageIndex={setImageIndex}
+              windowSize={props.windowSize}
+              clearImageCache={clearCache}
+              imageIndex={imageIndex}
+            />
+            <ClassificationResults
+              savedImages={imageCache}
+              imageSrc={imageSrc}
+              windowSize={props.windowSize}
+              imageIndex={imageIndex}
+              selectedLabel={selectedLabel}
+              setSelectedLabel={setSelectedLabel}
+              labelOccurrences={labelOccurrences}
+              switchTable={switchTable}
+              setSwitchTable={setSwitchTable}
+              modelDisplayName={modelDisplayName}
+            />
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

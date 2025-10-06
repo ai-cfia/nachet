@@ -3,7 +3,6 @@
 import Webcam from "react-webcam";
 import { useEffect, useMemo, useState } from "react";
 import { Box, Button } from "@mui/material";
-import { Canvas } from "./indexElements";
 // Import icons
 import SwitchCameraIcon from "@mui/icons-material/SwitchCamera";
 import AddAPhotoIcon from "@mui/icons-material/AddAPhoto";
@@ -532,7 +531,16 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
           />
         ) : (
           <>
-            <Canvas ref={canvasRef} />
+            <Box
+              component="canvas"
+              ref={canvasRef}
+              sx={{
+                height: "100%",
+                width: "100%",
+                objectFit: "fit",
+                objectPosition: "cover",
+              }}
+            />
             {!isLoading && (
               <Box
                 sx={{
