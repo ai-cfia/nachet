@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import HTTPException, status
 from fastapi.security import SecurityScopes
 from starlette.requests import HTTPConnection
-from app.middleware.auth import SingleTenantAzureAuthorizationCodeBearer
+from app.service.auth.auth import SingleTenantAzureAuthorizationCodeBearer
 from app.api.config import get_settings
 
 
