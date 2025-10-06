@@ -88,7 +88,7 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
               }
             />
           </Routes>
-          <Footer windowSize={windowSize} />
+          <Footer />
         </Fragment>
       </MsalProvider>
     </Router>

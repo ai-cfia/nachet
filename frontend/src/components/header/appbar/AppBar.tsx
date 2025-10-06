@@ -68,7 +68,7 @@ const Appbar: React.FC<params> = (props) => {
             zIndex: 3,
           }}
         >
-          Seed Classification Interface
+          Nachet Weed Seed Species Classifier
         </Typography>
         <Button
           variant="outlined"
