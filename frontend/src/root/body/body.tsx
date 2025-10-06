@@ -496,7 +496,7 @@ const Body: React.FC<params> = (props) => {
           alignItems: "center",
           width: "100%",
           maxWidth: "100%",
-          height: "fit-content",
+          minHeight: "100%",
         }}
       >
         <Box
@@ -509,7 +509,7 @@ const Body: React.FC<params> = (props) => {
             alignItems: "center",
             minWidth: "100%",
             maxWidth: "100%",
-            height: "fit-content",
+            minHeight: "100%",
             position: "relative",
             zIndex: 0,
             padding: "0px 0px 0px 0px",
@@ -523,7 +523,7 @@ const Body: React.FC<params> = (props) => {
               justifyContent: "center",
               width: "60%",
               maxWidth: "60%",
-              height: "fit-content",
+              minHeight: "100%",
               zIndex: 0,
               position: "relative",
             }}
@@ -533,12 +533,14 @@ const Body: React.FC<params> = (props) => {
               webcamRef={webcamRef}
               windowSize={props.windowSize}
               activeDeviceId={activeDeviceId}
+              devices={devices}
               setSwitchDeviceOpen={setSwitchDeviceOpen}
               isLoading={isLoading}
               canvasRef={canvasRef}
               setSaveOpen={setSaveOpen}
               handleInference={handleInferenceRequest}
               setSwitchModelOpen={setModelInfoPopupOpen}
+              selectedModel={selectedModel}
               imageCache={imageCache}
               setImageCache={setImageCache}
               imageIndex={imageIndex}
