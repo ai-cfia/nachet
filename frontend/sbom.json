@@ -10613,41 +10613,6 @@
     },
     {
       "type": "library",
-      "name": "stylis",
-      "group": "@types",
-      "version": "4.2.5",
-      "bom-ref": "nachet-frontend@0.13.1|@types/stylis@4.2.5",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/%40types/stylis@4.2.5",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/@types/stylis/-/stylis-4.2.5.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "d57bdef8d30dec55a3635e2f2e8639b4bdc154443f9f8d982f06aa2483d8868b59f6e047b7ced571e330590a7399d12dd93357228ac8146f987825145bb4489f"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/@types/stylis"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "name": "tough-cookie",
       "group": "@types",
       "version": "4.0.5",
@@ -14009,40 +13974,6 @@
     },
     {
       "type": "library",
-      "name": "camelize",
-      "version": "1.0.1",
-      "bom-ref": "nachet-frontend@0.13.1|camelize@1.0.1",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/camelize@1.0.1",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/camelize/-/camelize-1.0.1.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "754f93c767ecca9c5382d2e8137ea7a62dd4a9c8d248c3587e4aa09a8121b59aeb68fe555aad0aec591655361af1e30fb6753f1b6b7156c7dd0894e7f6ece9b9"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/camelize"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "name": "caniuse-lite",
       "version": "1.0.30001748",
       "bom-ref": "nachet-frontend@0.13.1|caniuse-lite@1.0.30001748",
@@ -15397,74 +15328,6 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/cross-spawn"
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "name": "css-color-keywords",
-      "version": "1.0.0",
-      "bom-ref": "nachet-frontend@0.13.1|css-color-keywords@1.0.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "ISC",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/css-color-keywords@1.0.0",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/css-color-keywords/-/css-color-keywords-1.0.0.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "172cab0c764a1235c3a4d258bd5b15f7ad058aa4325dcfcb9589acc65d8171d31bd963f1d0e1915604e0e79acf4b22d234ca8fe7647dafc81e4a9edaa4ddce7e"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/css-color-keywords"
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "name": "css-to-react-native",
-      "version": "3.2.0",
-      "bom-ref": "nachet-frontend@0.13.1|css-to-react-native@3.2.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/css-to-react-native@3.2.0",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/css-to-react-native/-/css-to-react-native-3.2.0.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "7bc44a68b5cc3858a2fb4da63a5ab08db0f4d0a4842aa6e59e93bd7befb56974b57cf40ea52d58a2a7551c1a8f8c7368c5e1769a29b356a6b09b62826c476d1d"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/css-to-react-native"
         }
       ]
     },
@@ -26601,8 +26464,8 @@
     {
       "type": "library",
       "name": "node-abi",
-      "version": "3.77.0",
-      "bom-ref": "nachet-frontend@0.13.1|node-abi@3.77.0",
+      "version": "3.78.0",
+      "bom-ref": "nachet-frontend@0.13.1|node-abi@3.78.0",
       "scope": "optional",
       "licenses": [
         {
@@ -26612,15 +26475,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/node-abi@3.77.0",
+      "purl": "pkg:npm/node-abi@3.78.0",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/node-abi/-/node-abi-3.77.0.tgz",
+          "url": "https://registry.npmjs.org/node-abi/-/node-abi-3.78.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "0d29add0e11c2e82b88b736eb1c49b1a339fddbaa20c4bad7a3a84352a65312140fe0981f269040fd1b8a4a5a73e5ecc0d4e2b48779b28f1de8ada437f21f471"
+              "content": "136c04cab817fc2aaf89c690614dd97b53c51a37384183c6b2352b95892a004d168c7119c203ac18c3ccce432c7b82e325b0e6684b835f708cd37ea3e4ad8349"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -26641,7 +26504,7 @@
           "type": "library",
           "name": "semver",
           "version": "7.7.2",
-          "bom-ref": "nachet-frontend@0.13.1|node-abi@3.77.0|semver@7.7.2",
+          "bom-ref": "nachet-frontend@0.13.1|node-abi@3.78.0|semver@7.7.2",
           "scope": "optional",
           "licenses": [
             {
@@ -28691,40 +28554,6 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/possible-typed-array-names"
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "name": "postcss-value-parser",
-      "version": "4.2.0",
-      "bom-ref": "nachet-frontend@0.13.1|postcss-value-parser@4.2.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/postcss-value-parser@4.2.0",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/postcss-value-parser/-/postcss-value-parser-4.2.0.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "d4d342b3abaeadf9156de5c6e12f09153f6dd7d9b8e480a789ff3358b779a0f499e74427c0c7caf87de3bf8d3c7788f0ffb06db6fe5ac52e48887a0b69534779"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/postcss-value-parser"
         }
       ]
     },
@@ -31990,40 +31819,6 @@
     },
     {
       "type": "library",
-      "name": "shallowequal",
-      "version": "1.1.0",
-      "bom-ref": "nachet-frontend@0.13.1|shallowequal@1.1.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/shallowequal@1.1.0",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/shallowequal/-/shallowequal-1.1.0.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "cb49b52685194a53c08d756d3cf5bbd1a6567c82ff7523fb0059119e788b0ab2bff0c0caa20dd3c924c199c903f9139b5711f4bf84e8c7aefe175e0f7440f6a1"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/shallowequal"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "name": "shebang-command",
       "version": "2.0.0",
       "bom-ref": "nachet-frontend@0.13.1|shebang-command@2.0.0",
@@ -33909,215 +33704,6 @@
     },
     {
       "type": "library",
-      "name": "styled-components",
-      "version": "6.1.19",
-      "bom-ref": "nachet-frontend@0.13.1|styled-components@6.1.19",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/styled-components@6.1.19",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/styled-components/-/styled-components-6.1.19.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "d6ffdedc39750649c2dfb717321c06a2684ef0091898de350aac97f718540f1af2d67b37045432da52c34505c945d555581f4e1de9afff9df1692b629af5b2b8"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/styled-components"
-        }
-      ],
-      "components": [
-        {
-          "type": "library",
-          "name": "is-prop-valid",
-          "group": "@emotion",
-          "version": "1.2.2",
-          "bom-ref": "nachet-frontend@0.13.1|styled-components@6.1.19|@emotion/is-prop-valid@1.2.2",
-          "licenses": [
-            {
-              "license": {
-                "id": "MIT",
-                "acknowledgement": "declared"
-              }
-            }
-          ],
-          "purl": "pkg:npm/%40emotion/is-prop-valid@1.2.2",
-          "externalReferences": [
-            {
-              "url": "https://registry.npmjs.org/@emotion/is-prop-valid/-/is-prop-valid-1.2.2.tgz",
-              "type": "distribution",
-              "hashes": [
-                {
-                  "alg": "SHA-512",
-                  "content": "b8db2861ddfb00599a09d5e583a1180f529a3ce6915910723026336ca517e3e86131faf175549e952872c0be0955a01e33f78750e4a9ad805096cfbf9de5f7a7"
-                }
-              ],
-              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-            }
-          ],
-          "properties": [
-            {
-              "name": "cdx:npm:package:path",
-              "value": "node_modules/styled-components/node_modules/@emotion/is-prop-valid"
-            }
-          ]
-        },
-        {
-          "type": "library",
-          "name": "memoize",
-          "group": "@emotion",
-          "version": "0.8.1",
-          "bom-ref": "nachet-frontend@0.13.1|styled-components@6.1.19|@emotion/memoize@0.8.1",
-          "licenses": [
-            {
-              "license": {
-                "id": "MIT",
-                "acknowledgement": "declared"
-              }
-            }
-          ],
-          "purl": "pkg:npm/%40emotion/memoize@0.8.1",
-          "externalReferences": [
-            {
-              "url": "https://registry.npmjs.org/@emotion/memoize/-/memoize-0.8.1.tgz",
-              "type": "distribution",
-              "hashes": [
-                {
-                  "alg": "SHA-512",
-                  "content": "5b63f673f5515b5ff5b4ba31d265546a5be7597c5abe6bff3ae9b668fb117280c9ba86fbe450b763c15ba5f2f051e81173120db4650c3ead2d142bd835305734"
-                }
-              ],
-              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-            }
-          ],
-          "properties": [
-            {
-              "name": "cdx:npm:package:path",
-              "value": "node_modules/styled-components/node_modules/@emotion/memoize"
-            }
-          ]
-        },
-        {
-          "type": "library",
-          "name": "unitless",
-          "group": "@emotion",
-          "version": "0.8.1",
-          "bom-ref": "nachet-frontend@0.13.1|styled-components@6.1.19|@emotion/unitless@0.8.1",
-          "licenses": [
-            {
-              "license": {
-                "id": "MIT",
-                "acknowledgement": "declared"
-              }
-            }
-          ],
-          "purl": "pkg:npm/%40emotion/unitless@0.8.1",
-          "externalReferences": [
-            {
-              "url": "https://registry.npmjs.org/@emotion/unitless/-/unitless-0.8.1.tgz",
-              "type": "distribution",
-              "hashes": [
-                {
-                  "alg": "SHA-512",
-                  "content": "28e10632ee9d98966da5a75be3be88b1905c94abc82e3a298d48a2dd5fbb3275c8402621f16dcd80d720c28db59fd2d7657e840c82afa9f8d8c5779b0f0c4a99"
-                }
-              ],
-              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-            }
-          ],
-          "properties": [
-            {
-              "name": "cdx:npm:package:path",
-              "value": "node_modules/styled-components/node_modules/@emotion/unitless"
-            }
-          ]
-        },
-        {
-          "type": "library",
-          "name": "postcss",
-          "version": "8.4.49",
-          "bom-ref": "nachet-frontend@0.13.1|styled-components@6.1.19|postcss@8.4.49",
-          "licenses": [
-            {
-              "license": {
-                "id": "MIT",
-                "acknowledgement": "declared"
-              }
-            }
-          ],
-          "purl": "pkg:npm/postcss@8.4.49",
-          "externalReferences": [
-            {
-              "url": "https://registry.npmjs.org/postcss/-/postcss-8.4.49.tgz",
-              "type": "distribution",
-              "hashes": [
-                {
-                  "alg": "SHA-512",
-                  "content": "38254f9c839bb38376f64c538f32df52bc8e92f644abea5ff234c5d2583c13bb844ee58703ebfb8f773fc499a2aa95f8e74d7dd4b96665f50a917c644ebcbb9c"
-                }
-              ],
-              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-            }
-          ],
-          "properties": [
-            {
-              "name": "cdx:npm:package:path",
-              "value": "node_modules/styled-components/node_modules/postcss"
-            }
-          ]
-        },
-        {
-          "type": "library",
-          "name": "stylis",
-          "version": "4.3.2",
-          "bom-ref": "nachet-frontend@0.13.1|styled-components@6.1.19|stylis@4.3.2",
-          "licenses": [
-            {
-              "license": {
-                "id": "MIT",
-                "acknowledgement": "declared"
-              }
-            }
-          ],
-          "purl": "pkg:npm/stylis@4.3.2",
-          "externalReferences": [
-            {
-              "url": "https://registry.npmjs.org/stylis/-/stylis-4.3.2.tgz",
-              "type": "distribution",
-              "hashes": [
-                {
-                  "alg": "SHA-512",
-                  "content": "6e1b548d677fcfa96d2624308347547f1109f96fa376a41df136d62d6c9e2091e59ecaa618b44515df1ee660340198bfcf1f74b265d194deba60c4dc6921627e"
-                }
-              ],
-              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-            }
-          ],
-          "properties": [
-            {
-              "name": "cdx:npm:package:path",
-              "value": "node_modules/styled-components/node_modules/stylis"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "library",
       "name": "stylis",
       "version": "4.2.0",
       "bom-ref": "nachet-frontend@0.13.1|stylis@4.2.0",
@@ -35215,40 +34801,6 @@
               "value": "node_modules/tsconfig-paths/node_modules/json5"
             }
           ]
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "name": "tslib",
-      "version": "2.6.2",
-      "bom-ref": "nachet-frontend@0.13.1|tslib@2.6.2",
-      "licenses": [
-        {
-          "license": {
-            "id": "0BSD",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/tslib@2.6.2",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "0046311fdde31853e7fdada2540c16f3b56e508911d45554281efb370305ee70530e40ebad3fc7a6dfc8ac2274417856dbb8d304371fe5963bc3a462a93330d9"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/tslib"
         }
       ]
     },
@@ -38075,7 +37627,6 @@
         "nachet-frontend@0.13.1|react@19.2.0",
         "nachet-frontend@0.13.1|sanitize-html@2.17.0",
         "nachet-frontend@0.13.1|serve@14.2.5",
-        "nachet-frontend@0.13.1|styled-components@6.1.19",
         "nachet-frontend@0.13.1|typescript@5.9.3",
         "nachet-frontend@0.13.1|utif@3.1.0",
         "nachet-frontend@0.13.1|uuid@13.0.0",
@@ -39855,9 +39406,6 @@
       "ref": "nachet-frontend@0.13.1|@types/stack-utils@2.0.3"
     },
     {
-      "ref": "nachet-frontend@0.13.1|@types/stylis@4.2.5"
-    },
-    {
       "ref": "nachet-frontend@0.13.1|@types/tough-cookie@4.0.5"
     },
     {
@@ -40480,9 +40028,6 @@
       "ref": "nachet-frontend@0.13.1|camelcase@7.0.1"
     },
     {
-      "ref": "nachet-frontend@0.13.1|camelize@1.0.1"
-    },
-    {
       "ref": "nachet-frontend@0.13.1|caniuse-lite@1.0.30001748"
     },
     {
@@ -40684,17 +40229,6 @@
         "nachet-frontend@0.13.1|path-key@3.1.1",
         "nachet-frontend@0.13.1|shebang-command@2.0.0",
         "nachet-frontend@0.13.1|which@2.0.2"
-      ]
-    },
-    {
-      "ref": "nachet-frontend@0.13.1|css-color-keywords@1.0.0"
-    },
-    {
-      "ref": "nachet-frontend@0.13.1|css-to-react-native@3.2.0",
-      "dependsOn": [
-        "nachet-frontend@0.13.1|camelize@1.0.1",
-        "nachet-frontend@0.13.1|css-color-keywords@1.0.0",
-        "nachet-frontend@0.13.1|postcss-value-parser@4.2.0"
       ]
     },
     {
@@ -42462,13 +41996,13 @@
       "ref": "nachet-frontend@0.13.1|negotiator@1.0.0"
     },
     {
-      "ref": "nachet-frontend@0.13.1|node-abi@3.77.0",
+      "ref": "nachet-frontend@0.13.1|node-abi@3.78.0",
       "dependsOn": [
-        "nachet-frontend@0.13.1|node-abi@3.77.0|semver@7.7.2"
+        "nachet-frontend@0.13.1|node-abi@3.78.0|semver@7.7.2"
       ]
     },
     {
-      "ref": "nachet-frontend@0.13.1|node-abi@3.77.0|semver@7.7.2"
+      "ref": "nachet-frontend@0.13.1|node-abi@3.78.0|semver@7.7.2"
     },
     {
       "ref": "nachet-frontend@0.13.1|node-domexception@1.0.0"
@@ -42746,9 +42280,6 @@
       "ref": "nachet-frontend@0.13.1|possible-typed-array-names@1.1.0"
     },
     {
-      "ref": "nachet-frontend@0.13.1|postcss-value-parser@4.2.0"
-    },
-    {
       "ref": "nachet-frontend@0.13.1|postcss@8.5.6",
       "dependsOn": [
         "nachet-frontend@0.13.1|nanoid@3.3.11",
@@ -42765,7 +42296,7 @@
         "nachet-frontend@0.13.1|minimist@1.2.8",
         "nachet-frontend@0.13.1|mkdirp-classic@0.5.3",
         "nachet-frontend@0.13.1|napi-build-utils@2.0.0",
-        "nachet-frontend@0.13.1|node-abi@3.77.0",
+        "nachet-frontend@0.13.1|node-abi@3.78.0",
         "nachet-frontend@0.13.1|pump@3.0.3",
         "nachet-frontend@0.13.1|rc@1.2.8",
         "nachet-frontend@0.13.1|simple-get@4.0.1",
@@ -43324,9 +42855,6 @@
       "ref": "nachet-frontend@0.13.1|setprototypeof@1.2.0"
     },
     {
-      "ref": "nachet-frontend@0.13.1|shallowequal@1.1.0"
-    },
-    {
       "ref": "nachet-frontend@0.13.1|shebang-command@2.0.0",
       "dependsOn": [
         "nachet-frontend@0.13.1|shebang-regex@3.0.0"
@@ -43613,45 +43141,6 @@
       "ref": "nachet-frontend@0.13.1|strip-literal@3.1.0|js-tokens@9.0.1"
     },
     {
-      "ref": "nachet-frontend@0.13.1|styled-components@6.1.19",
-      "dependsOn": [
-        "nachet-frontend@0.13.1|@types/stylis@4.2.5",
-        "nachet-frontend@0.13.1|css-to-react-native@3.2.0",
-        "nachet-frontend@0.13.1|csstype@3.1.3",
-        "nachet-frontend@0.13.1|react-dom@19.2.0",
-        "nachet-frontend@0.13.1|react@19.2.0",
-        "nachet-frontend@0.13.1|shallowequal@1.1.0",
-        "nachet-frontend@0.13.1|styled-components@6.1.19|@emotion/is-prop-valid@1.2.2",
-        "nachet-frontend@0.13.1|styled-components@6.1.19|@emotion/unitless@0.8.1",
-        "nachet-frontend@0.13.1|styled-components@6.1.19|postcss@8.4.49",
-        "nachet-frontend@0.13.1|styled-components@6.1.19|stylis@4.3.2",
-        "nachet-frontend@0.13.1|tslib@2.6.2"
-      ]
-    },
-    {
-      "ref": "nachet-frontend@0.13.1|styled-components@6.1.19|@emotion/is-prop-valid@1.2.2",
-      "dependsOn": [
-        "nachet-frontend@0.13.1|styled-components@6.1.19|@emotion/memoize@0.8.1"
-      ]
-    },
-    {
-      "ref": "nachet-frontend@0.13.1|styled-components@6.1.19|@emotion/memoize@0.8.1"
-    },
-    {
-      "ref": "nachet-frontend@0.13.1|styled-components@6.1.19|@emotion/unitless@0.8.1"
-    },
-    {
-      "ref": "nachet-frontend@0.13.1|styled-components@6.1.19|postcss@8.4.49",
-      "dependsOn": [
-        "nachet-frontend@0.13.1|nanoid@3.3.11",
-        "nachet-frontend@0.13.1|picocolors@1.1.1",
-        "nachet-frontend@0.13.1|source-map-js@1.2.1"
-      ]
-    },
-    {
-      "ref": "nachet-frontend@0.13.1|styled-components@6.1.19|stylis@4.3.2"
-    },
-    {
       "ref": "nachet-frontend@0.13.1|stylis@4.2.0"
     },
     {
@@ -43807,9 +43296,6 @@
       "dependsOn": [
         "nachet-frontend@0.13.1|minimist@1.2.8"
       ]
-    },
-    {
-      "ref": "nachet-frontend@0.13.1|tslib@2.6.2"
     },
     {
       "ref": "nachet-frontend@0.13.1|tunnel-agent@0.6.0",
