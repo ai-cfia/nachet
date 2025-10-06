@@ -3,17 +3,17 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import type Webcam from "react-webcam";
 import { BodyContainer } from "./indexElements";
 import Classifier from "../../pages/classifier";
-import SavePopup from "../../components/body/save_capture_popup";
-import UploadPopup from "../../components/body/load_image_popup";
-import ModelInfoPopup from "../../components/body/model_popup";
-import SwitchDevice from "../../components/body/switch_device_popup";
 import {
   CreateDirectoryPopup,
   BatchUploadPopup,
   DeleteDirectoryPopup,
   AuthPopup,
+  UploadPopup,
+  CreativeCommonsPopup,
+  SaveCapturePopup,
+  ModelPopup,
+  SwitchDevicePopup,
 } from "@components/body";
-import CreativeCommonsPopup from "../../components/body/creative_commons_popup";
 import { useBackendUrl, useDecoderTiff } from "@hooks";
 import {
   InteractionRequiredAuthError,
@@ -393,22 +393,11 @@ const Body: React.FC<params> = (props) => {
 
   return (
     <BodyContainer width={props.windowSize.width} data-testid="body-component">
-      <AuthPopup
-        open={authPopupOpen}
-        onClose={() => setAuthPopupOpen(false)}
-        apiScopeClaim={apiScopeClaim}
-      />
-      {saveOpen && (
-        <SavePopup
-          imageCache={imageCache}
-          imageSrc={imageSrc}
-          setSaveOpen={setSaveOpen}
-          imageFormat={imageFormat}
-          imageLabel={imageLabel}
-          setImageFormat={setImageFormat}
-          setImageLabel={setImageLabel}
-          setSaveIndividualImage={setSaveIndividualImage}
-          saveIndividualImage={saveIndividualImage}
+      {authPopupOpen && (
+        <AuthPopup
+          open={authPopupOpen}
+          onClose={() => setAuthPopupOpen(false)}
+          apiScopeClaim={apiScopeClaim}
         />
       )}
       {batchUploadOpen && (
@@ -418,29 +407,6 @@ const Body: React.FC<params> = (props) => {
           uuid={uuid}
           containerName={uuid}
           apiScopeClaim={apiScopeClaim}
-        />
-      )}
-      {uploadOpen && (
-        <UploadPopup
-          setUploadOpen={setUploadOpen}
-          pushImageToCache={pushImageToCache}
-        />
-      )}
-      {modelInfoPopupOpen && (
-        <ModelInfoPopup
-          setSwitchModelOpen={setModelInfoPopupOpen}
-          switchModelOpen={modelInfoPopupOpen}
-          selectedModel={selectedModel}
-          setSelectedModel={setSelectedModel}
-          realData={metadata}
-        />
-      )}
-      {switchDeviceOpen && (
-        <SwitchDevice
-          setSwitchDeviceOpen={setSwitchDeviceOpen}
-          devices={devices}
-          setDeviceId={setActiveDeviceId}
-          activeDeviceId={activeDeviceId}
         />
       )}
       {delDirectoryOpen && (
@@ -460,6 +426,42 @@ const Body: React.FC<params> = (props) => {
           setCurDir={setCurDir}
           setReadAzureStorage={setReadAzureStorage}
           apiScopeClaim={apiScopeClaim}
+        />
+      )}
+      {saveOpen && (
+        <SaveCapturePopup
+          imageCache={imageCache}
+          imageSrc={imageSrc}
+          setSaveOpen={setSaveOpen}
+          imageFormat={imageFormat}
+          imageLabel={imageLabel}
+          setImageFormat={setImageFormat}
+          setImageLabel={setImageLabel}
+          setSaveIndividualImage={setSaveIndividualImage}
+          saveIndividualImage={saveIndividualImage}
+        />
+      )}
+      {uploadOpen && (
+        <UploadPopup
+          setUploadOpen={setUploadOpen}
+          pushImageToCache={pushImageToCache}
+        />
+      )}
+      {modelInfoPopupOpen && (
+        <ModelPopup
+          setSwitchModelOpen={setModelInfoPopupOpen}
+          switchModelOpen={modelInfoPopupOpen}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
+          realData={metadata}
+        />
+      )}
+      {switchDeviceOpen && (
+        <SwitchDevicePopup
+          setSwitchDeviceOpen={setSwitchDeviceOpen}
+          devices={devices}
+          setDeviceId={setActiveDeviceId}
+          activeDeviceId={activeDeviceId}
         />
       )}
       {props.creativeCommonsPopupOpen && (
