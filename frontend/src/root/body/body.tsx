@@ -1,21 +1,25 @@
 // root\body\index.tsx
 import { useState, useRef, useEffect, useMemo } from "react";
 import type Webcam from "react-webcam";
-import { BodyContainer } from "./indexElements";
-import Classifier from "../../pages/classifier";
-import SavePopup from "../../components/body/save_capture_popup";
-import UploadPopup from "../../components/body/load_image_popup";
-import ModelInfoPopup from "../../components/body/model_popup";
-import SwitchDevice from "../../components/body/switch_device_popup";
+import { Box } from "@mui/material";
+import { colours } from "../../styles/colours";
 import {
   CreateDirectoryPopup,
   BatchUploadPopup,
   DeleteDirectoryPopup,
+  AuthPopup,
+  UploadPopup,
+  CreativeCommonsPopup,
+  SaveCapturePopup,
+  ModelPopup,
+  SwitchDevicePopup,
+  ClassificationResults,
+  ImageCache,
+  StorageDirectory,
+  MicroscopeFeed,
 } from "@components/body";
-import CreativeCommonsPopup from "../../components/body/creative_commons_popup";
 import { useBackendUrl, useDecoderTiff } from "@hooks";
 import {
-  AccountInfo,
   InteractionRequiredAuthError,
   InteractionStatus,
   InteractionType,
@@ -24,6 +28,7 @@ import {
   useMsal,
   useIsAuthenticated,
   useMsalAuthentication,
+  useAccount,
 } from "@azure/msal-react";
 import { acquireAccessToken } from "@common/auth";
 import {
@@ -51,11 +56,9 @@ interface params {
     width: number;
     height: number;
   };
-  uuid: string;
   creativeCommonsPopupOpen: boolean;
   setCreativeCommonsPopupOpen: React.Dispatch<React.SetStateAction<boolean>>;
   handleCreativeCommonsAgreement: (agree: boolean) => void;
-  user: AccountInfo | null;
   apiScopeClaim: string;
 }
 
@@ -98,11 +101,14 @@ const Body: React.FC<params> = (props) => {
   const [isLoading, setIsLoading] = useState(false);
   const [metadata, setMetadata] = useState<ModelMetadata[]>([]);
   const [showInference, setShowInference] = useState<boolean>(true);
+  const [authPopupOpen, setAuthPopupOpen] = useState<boolean>(false);
   const decodedTiff = useDecoderTiff(imageTiff);
   const backendUrl = useBackendUrl();
   const apiScopeClaim = props.apiScopeClaim;
-  const { instance: msalInstance, inProgress } = useMsal();
+  const { instance: msalInstance, inProgress, accounts } = useMsal();
   const isAuthenticated = useIsAuthenticated();
+  const accountInfo = useAccount();
+  const uuid = accountInfo?.idTokenClaims?.oid ?? "";
 
   const authRequest = useMemo(() => {
     return {
@@ -119,7 +125,8 @@ const Body: React.FC<params> = (props) => {
     if (error instanceof InteractionRequiredAuthError) {
       login(InteractionType.Redirect, authRequest);
     }
-  }, [authRequest, error, login]);
+    msalInstance.setActiveAccount(accounts[0]);
+  }, [accounts, authRequest, error, login, msalInstance]);
 
   const captureFeed = (): void => {
     // takes screenshot of webcam feed and loads it to cache when capture button is pressed
@@ -181,7 +188,7 @@ const Body: React.FC<params> = (props) => {
             imageObject,
             curDir,
             accessToken,
-            container_uuid: props.uuid,
+            container_uuid: uuid,
           });
         })
         .then((response) => {
@@ -297,7 +304,7 @@ const Body: React.FC<params> = (props) => {
       console.error("Backend URL is undefined, null or empty.");
       return;
     }
-    if (props.uuid == null || props.uuid === "") {
+    if (uuid == null || uuid === "") {
       return;
     }
 
@@ -327,18 +334,13 @@ const Body: React.FC<params> = (props) => {
 
     loadAzureStorageDir();
   }, [
-    props.uuid,
+    uuid,
     backendUrl,
     msalInstance,
     apiScopeClaim,
     isAuthenticated,
     inProgress,
   ]);
-
-  const handleImageUpload = (): void => {
-    // Set the logic for handling image upload and then:
-    setIsWebcamActive(false); // Hide the webcam after the image is loaded
-  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -374,51 +376,52 @@ const Body: React.FC<params> = (props) => {
     loadModelMetadata();
   }, [backendUrl, msalInstance, apiScopeClaim, isAuthenticated, inProgress]);
 
+  // Auto-open auth popup when user is not authenticated
+  useEffect(() => {
+    if (!isAuthenticated && inProgress === InteractionStatus.None) {
+      setAuthPopupOpen(true);
+    }
+  }, [isAuthenticated, inProgress]);
+
+  // Auto-close auth popup when user becomes authenticated
+  useEffect(() => {
+    if (isAuthenticated && authPopupOpen) {
+      setAuthPopupOpen(false);
+    }
+  }, [isAuthenticated, authPopupOpen]);
+
   return (
-    <BodyContainer width={props.windowSize.width} data-testid="body-component">
-      {saveOpen && (
-        <SavePopup
-          imageCache={imageCache}
-          imageSrc={imageSrc}
-          setSaveOpen={setSaveOpen}
-          imageFormat={imageFormat}
-          imageLabel={imageLabel}
-          setImageFormat={setImageFormat}
-          setImageLabel={setImageLabel}
-          setSaveIndividualImage={setSaveIndividualImage}
-          saveIndividualImage={saveIndividualImage}
+    <Box
+      data-testid="body-component"
+      sx={{
+        background: colours.CFIA_Background_White,
+        color: colours.CFIA_Font_Black,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 0,
+        maxWidth: "100%",
+        padding: "0px 1.5vw",
+        position: "relative",
+        marginTop: "6.5vh",
+        marginBottom: "10vh",
+      }}
+    >
+      {authPopupOpen && (
+        <AuthPopup
+          open={authPopupOpen}
+          onClose={() => setAuthPopupOpen(false)}
+          apiScopeClaim={apiScopeClaim}
         />
       )}
       {batchUploadOpen && (
         <BatchUploadPopup
           setBatchUploadOpen={setBatchUploadOpen}
           backendUrl={backendUrl}
-          uuid={props.uuid}
-          containerName={props.uuid}
+          uuid={uuid}
+          containerName={uuid}
           apiScopeClaim={apiScopeClaim}
-        />
-      )}
-      {uploadOpen && (
-        <UploadPopup
-          setUploadOpen={setUploadOpen}
-          pushImageToCache={pushImageToCache}
-        />
-      )}
-      {modelInfoPopupOpen && (
-        <ModelInfoPopup
-          setSwitchModelOpen={setModelInfoPopupOpen}
-          switchModelOpen={modelInfoPopupOpen}
-          selectedModel={selectedModel}
-          setSelectedModel={setSelectedModel}
-          realData={metadata}
-        />
-      )}
-      {switchDeviceOpen && (
-        <SwitchDevice
-          setSwitchDeviceOpen={setSwitchDeviceOpen}
-          devices={devices}
-          setDeviceId={setActiveDeviceId}
-          activeDeviceId={activeDeviceId}
         />
       )}
       {delDirectoryOpen && (
@@ -440,6 +443,42 @@ const Body: React.FC<params> = (props) => {
           apiScopeClaim={apiScopeClaim}
         />
       )}
+      {saveOpen && (
+        <SaveCapturePopup
+          imageCache={imageCache}
+          imageSrc={imageSrc}
+          setSaveOpen={setSaveOpen}
+          imageFormat={imageFormat}
+          imageLabel={imageLabel}
+          setImageFormat={setImageFormat}
+          setImageLabel={setImageLabel}
+          setSaveIndividualImage={setSaveIndividualImage}
+          saveIndividualImage={saveIndividualImage}
+        />
+      )}
+      {uploadOpen && (
+        <UploadPopup
+          setUploadOpen={setUploadOpen}
+          pushImageToCache={pushImageToCache}
+        />
+      )}
+      {modelInfoPopupOpen && (
+        <ModelPopup
+          setSwitchModelOpen={setModelInfoPopupOpen}
+          switchModelOpen={modelInfoPopupOpen}
+          selectedModel={selectedModel}
+          setSelectedModel={setSelectedModel}
+          realData={metadata}
+        />
+      )}
+      {switchDeviceOpen && (
+        <SwitchDevicePopup
+          setSwitchDeviceOpen={setSwitchDeviceOpen}
+          devices={devices}
+          setDeviceId={setActiveDeviceId}
+          activeDeviceId={activeDeviceId}
+        />
+      )}
       {props.creativeCommonsPopupOpen && (
         <CreativeCommonsPopup
           setCreativeCommonsPopupOpen={props.setCreativeCommonsPopupOpen}
@@ -447,50 +486,122 @@ const Body: React.FC<params> = (props) => {
         />
       )}
 
-      <Classifier
-        handleInference={handleInferenceRequest}
-        imageIndex={imageIndex}
-        setBatchUploadOpen={setBatchUploadOpen}
-        setUploadOpen={setUploadOpen}
-        imageSrc={imageSrc}
-        webcamRef={webcamRef}
-        imageFormat={imageFormat}
-        setSaveOpen={setSaveOpen}
-        capture={captureFeed}
-        savedImages={imageCache}
-        setImageCache={setImageCache}
-        clearImageCache={clearCache}
-        canvasRef={canvasRef}
-        removeImage={removeFromCache}
-        setSwitchModelOpen={setModelInfoPopupOpen}
-        setSwitchDeviceOpen={setSwitchDeviceOpen}
-        windowSize={props.windowSize}
-        activeDeviceId={activeDeviceId}
-        azureStorageDir={azureStorageDir}
-        curDir={curDir}
-        setImageIndex={setImageIndex}
-        handleDirChange={handleDirChange}
-        setCreateDirectoryOpen={setCreateDirectoryOpen}
-        setDelDirectoryOpen={setDelDirectoryOpen}
-        selectedLabel={selectedLabel}
-        setSelectedLabel={setSelectedLabel}
-        labelOccurrences={labelOccurrences}
-        switchTable={switchTable}
-        setSwitchTable={setSwitchTable}
-        setCurDir={setCurDir}
-        isWebcamActive={isWebcamActive}
-        onCaptureClick={() => {
-          setIsWebcamActive(!isWebcamActive);
+      <Box
+        sx={{
+          background: colours.CFIA_Background_White,
+          color: colours.CFIA_Font_Black,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          width: "100%",
+          maxWidth: "100%",
+          minHeight: "100%",
         }}
-        onImageUpload={handleImageUpload}
-        modelDisplayName={modelDisplayName}
-        isLoading={isLoading}
-        toggleShowInference={(state: boolean) => setShowInference(state)}
-        backendUrl={backendUrl}
-        uuid={props.uuid}
-        apiScopeClaim={apiScopeClaim}
-      />
-    </BodyContainer>
+      >
+        <Box
+          sx={{
+            background: colours.CFIA_Background_White,
+            color: colours.CFIA_Font_Black,
+            display: "flex",
+            flexDirection: "row",
+            justifyContent: "center",
+            alignItems: "center",
+            minWidth: "100%",
+            maxWidth: "100%",
+            minHeight: "100%",
+            position: "relative",
+            zIndex: 0,
+            padding: "0px 0px 0px 0px",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "60%",
+              maxWidth: "60%",
+              minHeight: "100%",
+              zIndex: 0,
+              position: "relative",
+            }}
+          >
+            <MicroscopeFeed
+              capture={captureFeed}
+              webcamRef={webcamRef}
+              windowSize={props.windowSize}
+              activeDeviceId={activeDeviceId}
+              devices={devices}
+              setSwitchDeviceOpen={setSwitchDeviceOpen}
+              isLoading={isLoading}
+              canvasRef={canvasRef}
+              setSaveOpen={setSaveOpen}
+              handleInference={handleInferenceRequest}
+              setSwitchModelOpen={setModelInfoPopupOpen}
+              selectedModel={selectedModel}
+              imageCache={imageCache}
+              setImageCache={setImageCache}
+              imageIndex={imageIndex}
+              setBatchUploadOpen={setBatchUploadOpen}
+              setUploadOpen={setUploadOpen}
+              isWebcamActive={isWebcamActive}
+              onCaptureClick={() => {
+                setIsWebcamActive(!isWebcamActive);
+              }}
+              toggleShowInference={(state: boolean) => setShowInference(state)}
+              backendUrl={backendUrl}
+              uuid={uuid}
+              apiScopeClaim={apiScopeClaim}
+            />
+          </Box>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "start",
+              justifyContent: "start",
+              width: "19%",
+              maxWidth: "19%",
+              height: "100%",
+              maxHeight: "100%",
+              zIndex: 0,
+              position: "relative",
+            }}
+          >
+            <StorageDirectory
+              azureStorageDir={azureStorageDir}
+              curDir={curDir}
+              handleDirChange={handleDirChange}
+              setCreateDirectoryOpen={setCreateDirectoryOpen}
+              setDelDirectoryOpen={setDelDirectoryOpen}
+              setCurDir={setCurDir}
+            />
+            <ImageCache
+              removeImage={removeFromCache}
+              savedImages={imageCache}
+              setImageIndex={setImageIndex}
+              windowSize={props.windowSize}
+              clearImageCache={clearCache}
+              imageIndex={imageIndex}
+            />
+            <ClassificationResults
+              savedImages={imageCache}
+              imageSrc={imageSrc}
+              windowSize={props.windowSize}
+              imageIndex={imageIndex}
+              selectedLabel={selectedLabel}
+              setSelectedLabel={setSelectedLabel}
+              labelOccurrences={labelOccurrences}
+              switchTable={switchTable}
+              setSwitchTable={setSwitchTable}
+              modelDisplayName={modelDisplayName}
+            />
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

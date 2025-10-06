@@ -2,17 +2,16 @@
 // MicroscopeFeed
 import Webcam from "react-webcam";
 import { useEffect, useMemo, useState } from "react";
-import { Box, Button } from "@mui/material";
-import { Canvas } from "./indexElements";
+import { Box, Button, Switch } from "@mui/material";
 // Import icons
 import SwitchCameraIcon from "@mui/icons-material/SwitchCamera";
 import AddAPhotoIcon from "@mui/icons-material/AddAPhoto";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import DownloadIcon from "@mui/icons-material/Download";
 import CropFreeIcon from "@mui/icons-material/CropFree";
-import ToggleButton from "../buttons/ToggleButton";
 import DonutSmallIcon from "@mui/icons-material/DonutSmall";
 import FormatShapesOutlinedIcon from "@mui/icons-material/FormatShapesOutlined";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { colours } from "@styles/colours";
 
 // Import a loading icon component (ensure you have this)
@@ -42,12 +41,14 @@ interface MicroscopeFeedProps {
   webcamRef: React.RefObject<Webcam | null>;
   capture: () => void;
   activeDeviceId: string | undefined;
+  devices: MediaDeviceInfo[];
   setSwitchDeviceOpen: React.Dispatch<React.SetStateAction<boolean>>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   setSaveOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setBatchUploadOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setUploadOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setSwitchModelOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedModel: string;
   imageCache: Images[];
   setImageCache: React.Dispatch<React.SetStateAction<Images[]>>;
   handleInference: () => void;
@@ -70,8 +71,10 @@ const ButtonMicroscopeFeed = (props: {
   icon: React.ReactNode;
   disabled: boolean;
   onClick: () => void;
+  endIcon?: React.ReactNode;
+  sx?: object;
 }) => {
-  const { label, icon, onClick, disabled } = props;
+  const { label, icon, onClick, disabled, endIcon, sx } = props;
   const buttonStyle = {
     marginRight: "0.2vh",
     marginLeft: "0.2vh",
@@ -87,6 +90,7 @@ const ButtonMicroscopeFeed = (props: {
       backgroundColor: "#F5F5F5",
       transition: "0.1s ease-in-out all",
     },
+    ...sx,
   };
   return (
     <Button
@@ -105,6 +109,7 @@ const ButtonMicroscopeFeed = (props: {
       >
         {icon}
         <span>{label}</span>
+        {endIcon}
       </div>
     </Button>
   );
@@ -115,12 +120,14 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     webcamRef,
     capture,
     activeDeviceId,
+    devices,
     setSwitchDeviceOpen,
     canvasRef,
     setSaveOpen,
     setBatchUploadOpen,
     setUploadOpen,
     setSwitchModelOpen,
+    selectedModel,
     imageCache,
     setImageCache,
     handleInference,
@@ -186,6 +193,17 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     paddingBottom: 0,
     paddingLeft: 0,
   };
+
+  const endIconStyle = {
+    fontSize: "1.7vh",
+    margin: 0,
+    padding: 0,
+  };
+
+  const activeDevice = devices.find(
+    (device) => device.deviceId === activeDeviceId,
+  );
+  const deviceLabel = activeDevice?.label || "SWITCH";
 
   const submitPositiveFeedback = async (index: number) => {
     if (!isAuthenticated) {
@@ -389,7 +407,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     <Box
       sx={{
         width: width,
-        height: "fit-content",
+        minHeight: "100%",
         border: `0.01vh solid LightGrey`,
         borderRadius: "0.4vh",
       }}
@@ -407,6 +425,16 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
         }}
       >
         <ButtonMicroscopeFeed
+          label={deviceLabel.slice(0, 8)} // Limit label length to 8 characters
+          icon={<SwitchCameraIcon color="inherit" style={iconStyle} />}
+          endIcon={<ArrowDropDownIcon color="inherit" />}
+          disabled={!isWebcamActive} // Disable when the webcam is active
+          onClick={() => {
+            setSwitchDeviceOpen(true);
+          }}
+          sx={{ paddingRight: "0.2vh" }}
+        />
+        <ButtonMicroscopeFeed
           label="CAPTURE"
           icon={<AddAPhotoIcon color="inherit" style={iconStyle} />}
           disabled={!isWebcamActive} // Disable when the webcam is active
@@ -414,20 +442,17 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
             capture();
           }}
         />
-        <ButtonMicroscopeFeed
-          label="SWITCH"
-          icon={<SwitchCameraIcon color="inherit" style={iconStyle} />}
-          disabled={!isWebcamActive} // Disable when the webcam is active
-          onClick={() => {
-            setSwitchDeviceOpen(true);
-          }}
-        />
-        <ButtonMicroscopeFeed
-          label="BATCH"
-          icon={<UploadFileIcon color="inherit" style={iconStyle} />}
-          disabled={isWebcamActive} // Disable when the webcam is active
-          onClick={() => {
-            setBatchUploadOpen(true);
+        <Switch
+          checked={!isWebcamActive}
+          onChange={onCaptureClick}
+          size="small"
+          sx={{
+            "& .MuiSwitch-switchBase": {
+              color: colours.CFIA_Background_Blue,
+            },
+            "& .MuiSwitch-track": {
+              backgroundColor: colours.CFIA_Background_Blue,
+            },
           }}
         />
         <ButtonMicroscopeFeed
@@ -445,14 +470,26 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
           onClick={() => {
             setSaveOpen(true);
           }}
+          sx={{ marginRight: "0.6vh" }}
         />
         <ButtonMicroscopeFeed
-          label="MODEL SELECTION"
+          label="BATCH"
+          icon={<UploadFileIcon color="inherit" style={iconStyle} />}
+          disabled={isWebcamActive} // Disable when the webcam is active
+          onClick={() => {
+            setBatchUploadOpen(true);
+          }}
+          sx={{ marginRight: "0.6vh" }}
+        />
+        <ButtonMicroscopeFeed
+          label={selectedModel.slice(0, 10)}
           icon={<DonutSmallIcon color="inherit" style={iconStyle} />}
           disabled={isWebcamActive} // Disable when the webcam is active
           onClick={() => {
             setSwitchModelOpen(true);
           }}
+          endIcon={<ArrowDropDownIcon color="inherit" style={endIconStyle} />}
+          sx={{ paddingRight: "0.2vh" }}
         />
         <ButtonMicroscopeFeed
           label="CLASSIFY"
@@ -471,7 +508,14 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
           }}
         />
       </Box>
-      <div style={{ position: "relative", width: width, height }}>
+      <div
+        style={{
+          position: "relative",
+          width: width,
+          height,
+          borderTop: `0.01vh solid LightGrey`,
+        }}
+      >
         {!apiResultDismissed ? (
           // <Overlay>
           <Box
@@ -532,7 +576,16 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
           />
         ) : (
           <>
-            <Canvas ref={canvasRef} />
+            <Box
+              component="canvas"
+              ref={canvasRef}
+              sx={{
+                height: "100%",
+                width: "100%",
+                objectFit: "fit",
+                objectPosition: "cover",
+              }}
+            />
             {!isLoading && (
               <Box
                 sx={{
@@ -586,27 +639,6 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
             )}
           </>
         )}
-      </div>
-
-      <div style={{ display: "flex" }}>
-        <ToggleButton
-          isActive={!isWebcamActive}
-          onClick={() => {
-            if (!isWebcamActive) {
-              onCaptureClick();
-            }
-          }}
-          text="Video Feed"
-        />
-        <ToggleButton
-          isActive={isWebcamActive}
-          onClick={() => {
-            if (isWebcamActive) {
-              onCaptureClick();
-            }
-          }}
-          text="Capture"
-        />
       </div>
     </Box>
   );

@@ -1,7 +1,6 @@
-import React, { useEffect } from "react";
+import React from "react";
 import CFIALogo from "../../../assets/CFIA_blackfont.png";
-import { Nav, NavbarContainer, NavLogo, NavMenu } from "./indexElements";
-import { Button, IconButton } from "@mui/material";
+import { Button, IconButton, Box } from "@mui/material";
 import { colours } from "../../../styles/colours";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
@@ -12,17 +11,13 @@ interface params {
     width: number;
     height: number;
   };
-  setUuid: React.Dispatch<React.SetStateAction<string>>;
-  setUserAccount: React.Dispatch<
-    React.SetStateAction<import("@azure/msal-browser").AccountInfo | null>
-  >;
   apiScopeClaim: string;
 }
 
 const Navbar: React.FC<params> = (props) => {
-  const { instance, accounts, inProgress } = useMsal();
+  const { instance, inProgress, accounts } = useMsal();
   const isAuthenticated = useIsAuthenticated();
-  const { setUuid, setUserAccount, apiScopeClaim } = props;
+  const { apiScopeClaim } = props;
   const logout = async (): Promise<void> => {
     try {
       await instance.logoutRedirect();
@@ -65,32 +60,54 @@ const Navbar: React.FC<params> = (props) => {
     },
   };
 
-  useEffect(() => {
-    if (inProgress === "none" && accounts.length > 0) {
-      // https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-common/docs/Accounts.md
-      setUuid(accounts[0].idTokenClaims?.oid ?? "");
-      // console.log("User Account: ", accounts[0]);
-      setUserAccount(accounts[0]);
-      instance.setActiveAccount(accounts[0]);
-    } else {
-      setUuid("");
-      setUserAccount(null);
-    }
-  }, [accounts, inProgress, instance, setUserAccount, setUuid]);
-
   return (
-    <Nav width={props.windowSize.width} height={props.windowSize.height}>
-      <NavbarContainer
-        width={props.windowSize.width}
-        height={props.windowSize.height}
+    <Box
+      component="nav"
+      sx={{
+        backgroundColor: colours.CFIA_Background_White,
+        color: colours.CFIA_Background_White,
+        height: "4vh",
+        display: "flex",
+        width: "100%",
+        justifyContent: "center",
+        alignItems: "center",
+        position: "sticky",
+        top: 0,
+        zIndex: 0,
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          height: "4vh",
+          zIndex: 0,
+          width: "100%",
+          padding: "0 1.5vw",
+        }}
       >
-        <NavLogo
+        <Box
+          component="img"
           src={CFIALogo}
           alt="CFIA Logo"
-          width={props.windowSize.width}
+          sx={{
+            width: "27vh",
+            height: "fit-content",
+            objectFit: "contain",
+            margin: "auto",
+            marginLeft: 0,
+            marginRight: 0,
+          }}
         />
 
-        <NavMenu>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            listStyle: "none",
+            textAlign: "center",
+          }}
+        >
           {!isAuthenticated && (
             <Button
               variant="outlined"
@@ -107,7 +124,7 @@ const Navbar: React.FC<params> = (props) => {
             </Button>
           )}
           {isAuthenticated && (
-            <div style={{ marginRight: "1.6vh" }}>
+            <Box sx={{ marginRight: "1.6vh" }}>
               <IconButton
                 sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
                 onClick={async () => {
@@ -118,8 +135,20 @@ const Navbar: React.FC<params> = (props) => {
                   }
                 }}
               >
+                {accounts[0] && (
+                  <Box
+                    component="span"
+                    sx={{
+                      color: colours.CFIA_Font_Black,
+                      fontSize: "1rem",
+                      marginRight: "1rem",
+                    }}
+                  >
+                    {accounts[0].username}
+                  </Box>
+                )}
                 <AccountCircleIcon
-                  style={{
+                  sx={{
                     color: colours.CFIA_Background_Blue,
                     fontSize: "3vh",
                     marginTop: 0,
@@ -131,11 +160,11 @@ const Navbar: React.FC<params> = (props) => {
                   }}
                 />
               </IconButton>
-            </div>
+            </Box>
           )}
-        </NavMenu>
-      </NavbarContainer>
-    </Nav>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

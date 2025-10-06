@@ -1,9 +1,9 @@
-import styled from "styled-components";
 import {
   Autocomplete,
   Box,
   Button,
-  CardHeader,
+  Dialog,
+  DialogContent,
   FilterOptionsState,
   FormControl,
   IconButton,
@@ -44,31 +44,6 @@ import {
   fileListSchema,
   classLabelSchema,
 } from "@common/validation";
-
-export const Overlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 20;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition:
-    visibility 0.5s,
-    opacity 0.5s;
-`;
-
-export const InfoContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  min-width: 100%;
-  width: 100%;
-`;
 
 interface params {
   setBatchUploadOpen: Dispatch<SetStateAction<boolean>>;
@@ -437,34 +412,49 @@ const BatchUploadPopup = (props: params) => {
   ]);
 
   return (
-    <Overlay>
-      <Box
-        sx={{
-          width: "20%",
-          height: "fit-content",
-          zIndex: 30,
-          border: `0.01vh solid LightGrey`,
-          borderRadius: 1,
-          background: colours.CFIA_Background_White,
-          display: "flex",
-          flexDirection: "column",
-          padding: "10px",
-        }}
-        boxShadow={1}
-      >
-        <CardHeader
-          title="Batch Upload Images"
-          action={
-            <IconButton onClick={handleClose}>
-              <CloseIcon />
-            </IconButton>
-          }
+    <Dialog
+      open={true}
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: 1,
+            padding: "1vh",
+          },
+        },
+      }}
+    >
+      <DialogContent>
+        <Box
           sx={{
             display: "flex",
-            width: "auto",
+            flexDirection: "column",
           }}
-        />
-        <InfoContainer>
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "2vh",
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
+                fontSize: "2vh",
+                color: colours.CFIA_Font_Black,
+              }}
+            >
+              Batch Upload Images
+            </Typography>
+            <IconButton onClick={handleClose} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
           <FormControl
             sx={{
               display: "flex",
@@ -714,9 +704,9 @@ const BatchUploadPopup = (props: params) => {
               </Button>
             </Box>
           </FormControl>
-        </InfoContainer>
-      </Box>
-    </Overlay>
+        </Box>
+      </DialogContent>
+    </Dialog>
   );
 };
 
