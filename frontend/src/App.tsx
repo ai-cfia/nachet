@@ -1,10 +1,9 @@
 import { HashRouter as Router, Route, Routes } from "react-router-dom";
 import { useCallback, Fragment, useState, useEffect } from "react";
 import Cookies from "js-cookie";
-import { Navbar } from "./components/header";
+import { Navbar, Appbar } from "./components/header";
 import Body from "./root/body";
 import Footer from "./components/footer";
-import Appbar from "./components/header/appbar";
 import { MsalProvider } from "@azure/msal-react";
 import { PublicClientApplication } from "@azure/msal-browser";
 

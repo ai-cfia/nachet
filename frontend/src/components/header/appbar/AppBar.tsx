@@ -1,6 +1,5 @@
-import { AppbarWrap, AppbarContainer, AppbarHeader } from "./indexElements";
 import { colours } from "../../../styles/colours";
-import { Button } from "@mui/material";
+import { Button, Box, Typography } from "@mui/material";
 import React from "react";
 
 interface params {
@@ -30,13 +29,47 @@ const Appbar: React.FC<params> = (props) => {
       border: `0.01vh solid ${colours.CFIA_Background_White}`,
     },
   };
+
   return (
-    <AppbarWrap width={props.windowSize.width} height={props.windowSize.height}>
-      <AppbarContainer
-        width={props.windowSize.width}
-        height={props.windowSize.height}
+    <Box
+      sx={{
+        backgroundColor: colours.CFIA_Background_Blue,
+        color: colours.CFIA_Font_White,
+        height: "3.5vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        position: "sticky",
+        top: 0,
+        zIndex: 3,
+        boxShadow: "0 0 5px 0 rgba(0, 0, 0, 0.5)",
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          zIndex: 3,
+          width: "100%",
+          padding: "0 1.5vw",
+          height: "2.8vh",
+        }}
       >
-        <AppbarHeader>Seed Classification Interface</AppbarHeader>
+        <Typography
+          variant="h2"
+          sx={{
+            color: colours.CFIA_Font_White,
+            fontSize: "1.4vh",
+            fontWeight: "bold",
+            textDecoration: "none",
+            display: "flex",
+            alignItems: "center",
+            justifySelf: "flex-start",
+            zIndex: 3,
+          }}
+        >
+          Seed Classification Interface
+        </Typography>
         <Button
           variant="outlined"
           onClick={() => {
@@ -46,8 +79,8 @@ const Appbar: React.FC<params> = (props) => {
         >
           {props.switchLanguage ? "EN" : "FR"}
         </Button>
-      </AppbarContainer>
-    </AppbarWrap>
+      </Box>
+    </Box>
   );
 };
 
