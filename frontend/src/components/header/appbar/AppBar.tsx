@@ -1,5 +1,5 @@
 import { colours } from "../../../styles/colours";
-import { Button, Box, Typography } from "@mui/material";
+import { Box, Typography, Switch, Stack } from "@mui/material";
 import React from "react";
 
 interface params {
@@ -12,24 +12,6 @@ interface params {
 }
 
 const Appbar: React.FC<params> = (props) => {
-  const buttonStyle = {
-    marginRight: 0,
-    marginLeft: 0,
-    borderRadius: "0.4vh",
-    paddingTop: "0.2vh",
-    paddingBottom: "0.2vh",
-    paddingLeft: "0.5vh",
-    paddingRight: "0.5vh",
-    fontSize: "1.17vh",
-    width: "7vh",
-    backgroundColor: colours.CFIA_Background_Blue,
-    border: `0.01vh solid ${colours.CFIA_Background_Blue}`,
-    color: colours.CFIA_Font_White,
-    "&:hover": {
-      border: `0.01vh solid ${colours.CFIA_Background_White}`,
-    },
-  };
-
   return (
     <Box
       sx={{
@@ -70,15 +52,47 @@ const Appbar: React.FC<params> = (props) => {
         >
           Nachet Weed Seed Species Classifier
         </Typography>
-        <Button
-          variant="outlined"
-          onClick={() => {
-            props.setSwitchLanguage(!props.switchLanguage);
-          }}
-          sx={buttonStyle}
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          sx={{ height: "100%" }}
         >
-          {props.switchLanguage ? "EN" : "FR"}
-        </Button>
+          <Typography
+            sx={{
+              fontSize: "1.2vh",
+              color: colours.CFIA_Font_White,
+              fontWeight: props.switchLanguage ? "normal" : "bold",
+            }}
+          >
+            EN
+          </Typography>
+          <Switch
+            checked={props.switchLanguage}
+            onChange={() => props.setSwitchLanguage(!props.switchLanguage)}
+            size="small"
+            sx={{
+              "& .MuiSwitch-switchBase.Mui-checked": {
+                color: colours.CFIA_Font_White,
+              },
+              "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                backgroundColor: colours.CFIA_Font_White,
+              },
+              "& .MuiSwitch-track": {
+                backgroundColor: colours.CFIA_Font_White,
+              },
+            }}
+          />
+          <Typography
+            sx={{
+              fontSize: "1.2vh",
+              color: colours.CFIA_Font_White,
+              fontWeight: props.switchLanguage ? "bold" : "normal",
+            }}
+          >
+            FR
+          </Typography>
+        </Stack>
       </Box>
     </Box>
   );
