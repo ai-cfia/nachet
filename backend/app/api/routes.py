@@ -1,8 +1,7 @@
 from fastapi import APIRouter, status, Depends, Request
 from fastapi.responses import Response
 from app.service import PipelineService, SeedService, DirectoryService, FrontendService
-from app.middleware.auth.jwt_auth import get_current_user
-from app.middleware.auth.user import User
+from app.service.auth import User, get_current_user
 from app.api.config import get_limiter
 
 router = APIRouter()
