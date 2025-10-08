@@ -9,10 +9,8 @@ export interface TsAppVersion {
     gitTag?: string;
 };
 export const versions: TsAppVersion = {
-    version: '0.9.4',
+    version: '0.13.1',
     name: 'nachet-frontend',
-    versionDate: '2024-10-25T00:10:51.072Z',
-    gitCommitHash: '6fb11aa',
-    versionLong: '0.9.4-6fb11aa',
+    versionDate: '2025-10-05T21:22:04.211Z',
 };
 export default versions;

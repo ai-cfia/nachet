@@ -1,116 +1,95 @@
-const {
-    defineConfig,
-    globalIgnores,
-} = require("eslint/config");
-
 const globals = require("globals");
-
-const {
-    fixupConfigRules,
-    fixupPluginRules,
-} = require("@eslint/compat");
-
-const react = require("eslint-plugin-react");
-const typescriptEslint = require("@typescript-eslint/eslint-plugin");
-const reactHooks = require("eslint-plugin-react-hooks");
-const prettier = require("eslint-plugin-prettier");
-const reactRefresh = require("eslint-plugin-react-refresh");
 const js = require("@eslint/js");
+const typescriptParser = require("@typescript-eslint/parser");
+const typescriptPlugin = require("@typescript-eslint/eslint-plugin");
+const reactPlugin = require("eslint-plugin-react");
+const reactHooksPlugin = require("eslint-plugin-react-hooks");
+const reactRefreshPlugin = require("eslint-plugin-react-refresh");
+const prettierPlugin = require("eslint-plugin-prettier");
+const prettierConfig = require("eslint-config-prettier");
 
-const {
-    FlatCompat,
-} = require("@eslint/eslintrc");
-
-const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all
-});
-
-module.exports = defineConfig([{
-    files: ["**/*.{ts,tsx}"],
-    languageOptions: {
-        globals: {
-            ...globals.browser,
-            ...globals.jest,
-        },
-
-        ecmaVersion: 12,
-        sourceType: "module",
-
-        parserOptions: {
-            ecmaFeatures: {
-                jsx: true,
+module.exports = [
+    {
+        ignores: [
+            "**/dist",
+            "**/node_modules",
+            "**/jest.config.cjs",
+            "**/.eslintrc.cjs",
+            "**/__mocks__",
+            "**/vitest.config.ts",
+        ]
+    },
+    js.configs.recommended,
+    {
+        files: ["**/*.{ts,tsx}"],
+        languageOptions: {
+            globals: {
+                ...globals.browser,
+                ...globals.node,
+                ...globals.jest,
+                React: "readonly",
+                global: "readonly",
             },
+            ecmaVersion: 2022,
+            sourceType: "module",
+            parser: typescriptParser,
+            parserOptions: {
+                ecmaFeatures: {
+                    jsx: true,
+                },
+                project: "./tsconfig.json",
+            },
+        },
+        plugins: {
+            "@typescript-eslint": typescriptPlugin,
+            "react": reactPlugin,
+            "react-hooks": reactHooksPlugin,
+            "react-refresh": reactRefreshPlugin,
+            "prettier": prettierPlugin,
+        },
+        rules: {
+            ...typescriptPlugin.configs.recommended.rules,
+            ...reactPlugin.configs.recommended.rules,
+            ...reactHooksPlugin.configs.recommended.rules,
+            ...prettierConfig.rules,
 
-            project: "./tsconfig.json",
+            "react/prop-types": "off",
+            "react/react-in-jsx-scope": "off",
+            "@typescript-eslint/no-explicit-any": "off",
+
+            "prettier/prettier": ["error", {
+                endOfLine: "auto",
+            }],
+
+            "react-refresh/only-export-components": ["warn", {
+                allowConstantExport: true,
+            }],
+        },
+        settings: {
+            react: {
+                version: "detect",
+            },
         },
     },
-
-    extends: fixupConfigRules(compat.extends(
-        "eslint:recommended",
-        "plugin:@typescript-eslint/recommended",
-        "plugin:react-hooks/recommended",
-        "plugin:react/recommended",
-        "plugin:import/typescript",
-        "plugin:prettier/recommended",
-    )),
-
-    plugins: {
-        react: fixupPluginRules(react),
-        "@typescript-eslint": fixupPluginRules(typescriptEslint),
-        "react-hooks": fixupPluginRules(reactHooks),
-        prettier: fixupPluginRules(prettier),
-        "react-refresh": reactRefresh,
-    },
-
-    rules: {
-        "react/prop-types": "off",
-        "react/react-in-jsx-scope": "off",
-
-        "prettier/prettier": ["error", {
-            endOfLine: "auto",
-        }],
-
-        "react-refresh/only-export-components": ["warn", {
-            allowConstantExport: true,
-        }],
-
-        "@typescript-eslint/no-explicit-any": "off",
-    },
-
-    settings: {
-        react: {
-            version: "detect",
+    {
+        files: ["**/*.{js,cjs}"],
+        languageOptions: {
+            globals: {
+                ...globals.node,
+            },
+            ecmaVersion: 2022,
+            sourceType: "commonjs",
         },
     },
-}, {
-    files: ["**/*.{js,cjs}"],
-    languageOptions: {
-        globals: {
-            ...globals.node,
+    {
+        files: ["__mocks__/**/*.js"],
+        rules: {
+            "no-undef": "off",
         },
-        ecmaVersion: 12,
-        sourceType: "commonjs",
-    },
-    ...js.configs.recommended,
-}, {
-    files: ["__mocks__/**/*.js"],
-
-    rules: {
-        "no-undef": "off",
-    },
-
-    languageOptions: {
-        globals: {
-            ...globals.commonjs,
+        languageOptions: {
+            globals: {
+                ...globals.commonjs,
+            },
         },
     },
-}, globalIgnores([
-    "**/dist",
-    "**/node_modules",
-    "**/jest.config.cjs",
-    "**/.eslintrc.cjs",
-    "**/__mocks__",
-    "**/vitest.config.ts",
-])]);
+];

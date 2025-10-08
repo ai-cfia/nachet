@@ -17,7 +17,7 @@ import { colours } from "../../../styles/colours";
 interface params {
   savedImages: any[];
   setImageIndex: React.Dispatch<React.SetStateAction<number>>;
-  removeImage: (src: string) => void;
+  removeImage: (index: number) => void;
   clearImageCache: () => void;
   imageIndex: number;
   windowSize: {

@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import SwitchModel from "./index";
+import SwitchModel from "./ModelPopup";
 import testData from "../../../static_data/static_model_data.json";
 
 describe("SwitchModel Component", () => {

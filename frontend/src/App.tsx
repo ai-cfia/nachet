@@ -1,23 +1,11 @@
 import { HashRouter as Router, Route, Routes } from "react-router-dom";
 import { useCallback, Fragment, useState, useEffect } from "react";
 import Cookies from "js-cookie";
-import { Navbar } from "./components/header";
+import { Navbar, Appbar } from "./components/header";
 import Body from "./root/body";
 import Footer from "./components/footer";
-import Appbar from "./components/header/appbar";
-import LoadingIndicator from "./components/body/loading_indicator";
-import {
-  MsalProvider,
-  // useMsal,
-  // useAccount,
-  MsalAuthenticationTemplate,
-  MsalAuthenticationResult,
-} from "@azure/msal-react";
-import {
-  InteractionType,
-  AccountInfo,
-  PublicClientApplication,
-} from "@azure/msal-browser";
+import { MsalProvider } from "@azure/msal-react";
+import { PublicClientApplication } from "@azure/msal-browser";
 
 interface AppProps {
   basename: string;
@@ -25,26 +13,14 @@ interface AppProps {
   apiScopeClaim: string;
 }
 
-// Add scopes here for ID token to be used at UserInfo endpoint
-// const loginRequest: PopupRequest = {
-//   // scopes: ["openid", "profile", "email"],
-//   scopes: ["scopes.nachet.user"],
-// };
-
-function ErrorComponent({ error }: MsalAuthenticationResult) {
-  return <p>An Error Occurred: {error?.errorMessage}</p>;
-}
-
 function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
   const [windowSize, setWindowSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
   });
-  const [uuid, setUuid] = useState<string>("");
   const [creativeCommonsPopupOpen, setCreativeCommonsPopupOpen] =
     useState<boolean>(false);
   const [switchLanguage, setSwitchLanguage] = useState<boolean>(false);
-  const [userAccount, setUserAccount] = useState<AccountInfo | null>(null);
 
   const handleCreativeCommonsAgreement = (agree: boolean): void => {
     // set a cookie to remember the users choice for 10 years (user choice should be stored in authentication database in the future)
@@ -90,11 +66,7 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
     <Router basename={basename}>
       <MsalProvider instance={msalInstance}>
         <Fragment>
-          <Navbar
-            windowSize={windowSize}
-            setUuid={setUuid}
-            setUserAccount={setUserAccount}
-          />
+          <Navbar windowSize={windowSize} apiScopeClaim={apiScopeClaim} />
           <Appbar
             windowSize={windowSize}
             setSwitchLanguage={setSwitchLanguage}
@@ -104,36 +76,19 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
             <Route
               path="/"
               element={
-                <MsalAuthenticationTemplate
-                  interactionType={InteractionType.Popup}
-                  authenticationRequest={{
-                    scopes: [apiScopeClaim ?? ""],
-                    // scopes: [
-                    //   "User.Read",
-                    //   "openid",
-                    //   "profile",
-                    //   "offline_access",
-                    // ],
-                  }}
-                  errorComponent={ErrorComponent}
-                  loadingComponent={LoadingIndicator}
-                >
-                  <Body
-                    windowSize={windowSize}
-                    uuid={uuid}
-                    creativeCommonsPopupOpen={creativeCommonsPopupOpen}
-                    setCreativeCommonsPopupOpen={setCreativeCommonsPopupOpen}
-                    handleCreativeCommonsAgreement={
-                      handleCreativeCommonsAgreement
-                    }
-                    user={userAccount}
-                    apiScopeClaim={apiScopeClaim}
-                  />
-                </MsalAuthenticationTemplate>
+                <Body
+                  windowSize={windowSize}
+                  creativeCommonsPopupOpen={creativeCommonsPopupOpen}
+                  setCreativeCommonsPopupOpen={setCreativeCommonsPopupOpen}
+                  handleCreativeCommonsAgreement={
+                    handleCreativeCommonsAgreement
+                  }
+                  apiScopeClaim={apiScopeClaim}
+                />
               }
             />
           </Routes>
-          <Footer uuid={uuid} windowSize={windowSize} />
+          <Footer />
         </Fragment>
       </MsalProvider>
     </Router>

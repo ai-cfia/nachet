@@ -186,3 +186,4 @@ db/postgres-data/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+.vscode/settings.json

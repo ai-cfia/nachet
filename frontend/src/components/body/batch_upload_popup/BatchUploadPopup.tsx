@@ -1,9 +1,9 @@
-import styled from "styled-components";
 import {
   Autocomplete,
   Box,
   Button,
-  CardHeader,
+  Dialog,
+  DialogContent,
   FilterOptionsState,
   FormControl,
   IconButton,
@@ -33,7 +33,10 @@ import {
 import { batchUploadImage, batchUploadInit } from "@common/api";
 import { validateImageFile } from "@common";
 import { BatchUploadMetadata, SpeciesData } from "@common/types";
-import { useSpeciesData, useAuth } from "@hooks";
+import { useSpeciesData } from "@hooks";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
+import { acquireAccessToken } from "@common/auth";
 import {
   folderNameSchema,
   seedCountSchema,
@@ -41,31 +44,6 @@ import {
   fileListSchema,
   classLabelSchema,
 } from "@common/validation";
-
-export const Overlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 20;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition:
-    visibility 0.5s,
-    opacity 0.5s;
-`;
-
-export const InfoContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  min-width: 100%;
-  width: 100%;
-`;
 
 interface params {
   setBatchUploadOpen: Dispatch<SetStateAction<boolean>>;
@@ -101,7 +79,8 @@ const BatchUploadPopup = (props: params) => {
   const [classError, setClassError] = useState<string>("");
 
   const { speciesData } = useSpeciesData(backendUrl, apiScopeClaim);
-  const { fetchAccessToken } = useAuth(apiScopeClaim);
+  const { instance: msalInstance, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
 
   const classList = useMemo(() => {
     if (!speciesData?.seeds) return [];
@@ -224,6 +203,11 @@ const BatchUploadPopup = (props: params) => {
   };
 
   const handleUpload = (): void => {
+    if (!isAuthenticated) {
+      setUploadError("You must be signed in to upload files");
+      return;
+    }
+
     // Clear previous errors
     setUploadError(null);
     setFolderNameError("");
@@ -279,28 +263,30 @@ const BatchUploadPopup = (props: params) => {
       }
     }
 
+    if (inProgress !== InteractionStatus.None) {
+      alert("Authentication in progress, please wait");
+      return;
+    }
+
     resetUpload();
     setUploading(true);
 
-    fetchAccessToken().then((accessToken) => {
-      if (!accessToken) {
-        console.error("Failed to obtain access token");
-        return;
-      }
-      batchUploadInit({
-        backendUrl,
-        accessToken,
-        folderName,
-        containerUuid: containerName,
-        fileCount,
-      })
-        .then((response) => {
-          setSessionId(response.session_id);
-        })
-        .catch((error) => {
-          setUploadError(error.toString());
+    acquireAccessToken(msalInstance, [apiScopeClaim])
+      .then((accessToken) => {
+        return batchUploadInit({
+          backendUrl,
+          accessToken,
+          folderName,
+          containerUuid: containerName,
+          fileCount,
         });
-    });
+      })
+      .then((response) => {
+        setSessionId(response.session_id);
+      })
+      .catch((error) => {
+        setUploadError(error.toString());
+      });
   };
 
   const handleClose = (): void => {
@@ -354,27 +340,24 @@ const BatchUploadPopup = (props: params) => {
             sessionId: sessionId,
           };
 
-          fetchAccessToken().then((accessToken) => {
-            if (!accessToken) {
-              console.error("Failed to obtain access token");
-              return;
-            }
-            batchUploadImage({
-              backendUrl: backendUrl,
-              data: data,
-              accessToken: accessToken,
-            })
-              .then((response) => {
-                if (response) {
-                  console.log("Successfully uploaded image: ", file.name);
-                }
-                resolve(true);
-              })
-              .catch((error) => {
-                console.error("Error uploading image: ", file.name);
-                reject(error);
+          acquireAccessToken(msalInstance, [apiScopeClaim])
+            .then((accessToken) => {
+              return batchUploadImage({
+                backendUrl: backendUrl,
+                data: data,
+                accessToken: accessToken,
               });
-          });
+            })
+            .then((response) => {
+              if (response) {
+                console.log("Successfully uploaded image: ", file.name);
+              }
+              resolve(true);
+            })
+            .catch((error) => {
+              console.error("Error uploading image: ", file.name);
+              reject(error);
+            });
         };
         reader.readAsDataURL(file);
       });
@@ -413,11 +396,12 @@ const BatchUploadPopup = (props: params) => {
 
     batchUpload();
   }, [
+    apiScopeClaim,
     backendUrl,
     containerName,
-    fetchAccessToken,
     fileStatus,
     files,
+    msalInstance,
     seedCount,
     seedId,
     selectedClass?.label,
@@ -428,34 +412,49 @@ const BatchUploadPopup = (props: params) => {
   ]);
 
   return (
-    <Overlay>
-      <Box
-        sx={{
-          width: "20%",
-          height: "fit-content",
-          zIndex: 30,
-          border: `0.01vh solid LightGrey`,
-          borderRadius: 1,
-          background: colours.CFIA_Background_White,
-          display: "flex",
-          flexDirection: "column",
-          padding: "10px",
-        }}
-        boxShadow={1}
-      >
-        <CardHeader
-          title="Batch Upload Images"
-          action={
-            <IconButton onClick={handleClose}>
-              <CloseIcon />
-            </IconButton>
-          }
+    <Dialog
+      open={true}
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: 1,
+            padding: "1vh",
+          },
+        },
+      }}
+    >
+      <DialogContent>
+        <Box
           sx={{
             display: "flex",
-            width: "auto",
+            flexDirection: "column",
           }}
-        />
-        <InfoContainer>
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "2vh",
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
+                fontSize: "2vh",
+                color: colours.CFIA_Font_Black,
+              }}
+            >
+              Batch Upload Images
+            </Typography>
+            <IconButton onClick={handleClose} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
           <FormControl
             sx={{
               display: "flex",
@@ -705,9 +704,9 @@ const BatchUploadPopup = (props: params) => {
               </Button>
             </Box>
           </FormControl>
-        </InfoContainer>
-      </Box>
-    </Overlay>
+        </Box>
+      </DialogContent>
+    </Dialog>
   );
 };
 

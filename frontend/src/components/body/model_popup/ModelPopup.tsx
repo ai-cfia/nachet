@@ -1,10 +1,15 @@
 import React from "react";
-import { Overlay, InfoContainer } from "./indexElements";
-import { Box, CardHeader, IconButton, Button } from "@mui/material";
+import {
+  Box,
+  Dialog,
+  DialogContent,
+  IconButton,
+  Button,
+  Radio,
+  Typography,
+} from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
-import Radio from "@mui/material/Radio";
-import Typography from "@mui/material/Typography";
 import testData from "../../../static_data/static_model_data.json";
 
 interface params {
@@ -33,40 +38,54 @@ const SwitchModel: React.FC<params> = (props) => {
     process.env.VITE_APP_MODE === "test" ? testData : props.realData;
 
   return (
-    <Overlay>
-      <Box
-        sx={{
-          position: "relative",
-          width: "50vw",
-          height: "65vh",
-          zIndex: 30,
-          border: `0.01vh solid LightGrey`,
-          borderRadius: 1,
-          background: colours.CFIA_Background_White,
-        }}
-        boxShadow={1}
-      >
-        <CardHeader
-          title="Classification Model Selection"
-          titleTypographyProps={{
-            variant: "h6",
-            align: "left",
-            fontWeight: 600,
-            fontSize: "1.3vh",
-            color: colours.CFIA_Font_Black,
-            zIndex: 30,
+    <Dialog
+      open={true}
+      onClose={handleClose}
+      maxWidth="md"
+      fullWidth
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: 1,
+            padding: "1vh",
+            minHeight: "65vh",
+          },
+        },
+      }}
+    >
+      <DialogContent>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
           }}
-          action={
-            <IconButton onClick={handleClose}>
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "2vh",
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
+                fontSize: "1.8vh",
+                color: colours.CFIA_Font_Black,
+              }}
+            >
+              Classification Model Selection
+            </Typography>
+            <IconButton onClick={handleClose} size="small">
               <CloseIcon />
             </IconButton>
-          }
-          sx={{ padding: "0.8vh 0.8vh 0.8vh 0.8vh" }}
-        />
-        <InfoContainer>
+          </Box>
           <Typography
             variant="subtitle1"
-            sx={{ marginTop: 1, marginBottom: 2 }}
+            sx={{ marginTop: 1, marginBottom: 2, fontSize: "1.5vh" }}
           >
             Model Selection:
           </Typography>
@@ -145,32 +164,41 @@ const SwitchModel: React.FC<params> = (props) => {
               </Box>
             ))}
           </Box>
-        </InfoContainer>
-        <Button
-          color="inherit"
-          variant="outlined"
-          onClick={() => {
-            close();
-          }}
-          style={{
-            marginTop: "30px",
-            display: "block",
-            marginLeft: "auto",
-            marginRight: "auto",
-          }}
-        >
-          <div
-            style={{
+          <Box
+            sx={{
               display: "flex",
-              alignItems: "center",
-              flexWrap: "wrap",
+              justifyContent: "center",
+              marginTop: "3vh",
             }}
           >
-            <span>Done</span>
-          </div>
-        </Button>
-      </Box>
-    </Overlay>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                close();
+              }}
+              sx={{
+                borderRadius: "0.4vh",
+                paddingTop: "0.6vh",
+                paddingBottom: "0.6vh",
+                paddingLeft: "2vh",
+                paddingRight: "2vh",
+                fontSize: "1.17vh",
+                border: `0.15vh solid ${colours.CFIA_Background_Blue}`,
+                color: colours.CFIA_Background_Blue,
+                "&:hover": {
+                  backgroundColor: colours.CFIA_Background_Blue,
+                  color: colours.CFIA_Background_White,
+                  border: `0.15vh solid ${colours.CFIA_Background_Blue}`,
+                  transition: "0.2s ease-in-out all",
+                },
+              }}
+            >
+              Done
+            </Button>
+          </Box>
+        </Box>
+      </DialogContent>
+    </Dialog>
   );
 };
 

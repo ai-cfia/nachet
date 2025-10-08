@@ -1,9 +1,18 @@
 import React from "react";
-import { Overlay, InfoContainer, ButtonWrap, Text } from "./indexElements";
-import { Box, CardHeader, IconButton, Button } from "@mui/material";
+import {
+  Box,
+  Dialog,
+  DialogContent,
+  IconButton,
+  Button,
+  Typography,
+} from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "@styles/colours";
-import { useAuth, useBackendUrl } from "@hooks";
+import { useBackendUrl } from "@hooks";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
+import { acquireAccessToken } from "@common/auth";
 import { deleteAzureStorageDir } from "@common/api";
 
 interface params {
@@ -23,29 +32,37 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
     setReadAzureStorage,
   } = props;
   const backendURL = useBackendUrl();
-  const { fetchAccessToken } = useAuth(apiScopeClaim);
+  const { instance: msalInstance, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
 
   const handleDelFromDirectory = (): void => {
-    fetchAccessToken().then((accessToken) => {
-      if (!accessToken) {
-        console.error("Failed to obtain access token");
-        return;
-      }
-      // makes a post request to the backend to delete a directory in azure storage
-      deleteAzureStorageDir({
-        backendUrl: backendURL,
-        folderName: curDir,
-        accessToken,
-      })
-        .then(() => {
-          setCurDir("General");
-          setReadAzureStorage((prev) => !prev);
-        })
-        .catch((error) => {
-          alert("Error deleting directory, see console for more details");
-          console.error(error);
+    if (!isAuthenticated) {
+      alert("You must be signed in to delete a directory");
+      return;
+    }
+
+    if (inProgress !== InteractionStatus.None) {
+      alert("Authentication in progress, please wait");
+      return;
+    }
+
+    acquireAccessToken(msalInstance, [apiScopeClaim])
+      .then((accessToken) => {
+        // makes a post request to the backend to delete a directory in azure storage
+        return deleteAzureStorageDir({
+          backendUrl: backendURL,
+          folderName: curDir,
+          accessToken,
         });
-    });
+      })
+      .then(() => {
+        setCurDir("General");
+        setReadAzureStorage((prev) => !prev);
+      })
+      .catch((error) => {
+        alert("Error deleting directory, see console for more details");
+        console.error(error);
+      });
   };
 
   const handleClose = (): void => {
@@ -57,58 +74,92 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
   };
 
   return (
-    <Overlay>
-      <Box
-        sx={{
-          width: "15vw",
-          height: "20vh",
-          zIndex: 30,
-          border: `0.01vh solid LightGrey`,
-          borderRadius: 1,
-          background: colours.CFIA_Background_White,
-        }}
-        boxShadow={1}
-      >
-        <CardHeader
-          title="Delete Directory"
-          titleTypographyProps={{
-            variant: "h6",
-            align: "left",
-            fontWeight: 600,
-            fontSize: "1.3vh",
-            color: colours.CFIA_Font_Black,
-            zIndex: 30,
+    <Dialog
+      open={true}
+      onClose={handleClose}
+      maxWidth="xs"
+      fullWidth
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: 1,
+            padding: "1vh",
+          },
+        },
+      }}
+    >
+      <DialogContent>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
           }}
-          action={
-            <IconButton onClick={handleClose}>
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "2vh",
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
+                fontSize: "1.8vh",
+                color: colours.CFIA_Font_Black,
+              }}
+            >
+              Delete Directory
+            </Typography>
+            <IconButton onClick={handleClose} size="small">
               <CloseIcon />
             </IconButton>
-          }
-          sx={{ padding: "0.8vh 0.8vh 0.8vh 0.8vh" }}
-        />
-        <InfoContainer>
-          <Text>Are you sure you want to delete {curDir}?</Text>
-          <ButtonWrap>
+          </Box>
+          <Typography
+            variant="body1"
+            sx={{
+              fontSize: "1.5vh",
+              fontWeight: 500,
+              color: colours.CFIA_Font_Black,
+              textAlign: "center",
+              marginTop: "2vh",
+              marginBottom: "2vh",
+            }}
+          >
+            Are you sure you want to delete {curDir}?
+          </Typography>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              marginTop: "2vh",
+              marginBottom: "1vh",
+              gap: "2vh",
+            }}
+          >
             <Button
               variant="outlined"
               size="medium"
               sx={{
-                marginLeft: 0,
                 borderRadius: "0.4vh",
-                paddingTop: "0.3vh",
-                paddingBottom: "0.3vh",
-                paddingLeft: "0.7vh",
-                paddingRight: "0.7vh",
+                paddingTop: "0.6vh",
+                paddingBottom: "0.6vh",
+                paddingLeft: "1.5vh",
+                paddingRight: "1.5vh",
                 fontSize: "1.17vh",
                 width: "fit-content",
-                border: `0.01vh solid LightGrey`,
-                color: colours.CFIA_Font_Black,
+                border: `0.15vh solid #d32f2f`,
+                color: "#d32f2f",
                 "&:hover": {
-                  backgroundColor: "#F5F5F5",
-                  transition: "0.1s ease-in-out all",
-                  border: `0.01vh solid LightGrey`,
+                  backgroundColor: "#d32f2f",
+                  color: colours.CFIA_Background_White,
+                  border: `0.15vh solid #d32f2f`,
+                  transition: "0.2s ease-in-out all",
                 },
-                marginRight: "2vw",
               }}
               onClick={handleYes}
             >
@@ -118,30 +169,29 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
               variant="outlined"
               size="medium"
               sx={{
-                marginLeft: 0,
                 borderRadius: "0.4vh",
-                paddingTop: "0.3vh",
-                paddingBottom: "0.3vh",
-                paddingLeft: "0.7vh",
-                paddingRight: "0.7vh",
+                paddingTop: "0.6vh",
+                paddingBottom: "0.6vh",
+                paddingLeft: "1.5vh",
+                paddingRight: "1.5vh",
                 fontSize: "1.17vh",
                 width: "fit-content",
-                border: `0.01vh solid LightGrey`,
+                border: `0.15vh solid LightGrey`,
                 color: colours.CFIA_Font_Black,
                 "&:hover": {
                   backgroundColor: "#F5F5F5",
-                  transition: "0.1s ease-in-out all",
-                  border: `0.01vh solid LightGrey`,
+                  transition: "0.2s ease-in-out all",
+                  border: `0.15vh solid LightGrey`,
                 },
               }}
               onClick={handleClose}
             >
               Cancel
             </Button>
-          </ButtonWrap>
-        </InfoContainer>
-      </Box>
-    </Overlay>
+          </Box>
+        </Box>
+      </DialogContent>
+    </Dialog>
   );
 };
 

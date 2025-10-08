@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { Overlay, ButtonWrap, InfoContainer } from "./indexElements";
 import {
   Box,
-  CardHeader,
+  Dialog,
+  DialogContent,
   IconButton,
   Button,
   TextField,
@@ -10,6 +10,7 @@ import {
   Select,
   ToggleButton,
   ToggleButtonGroup,
+  Typography,
 } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material/Select";
 import CloseIcon from "@mui/icons-material/Close";
@@ -152,36 +153,49 @@ const SavePopup: React.FC<params> = (props) => {
   };
 
   return (
-    <Overlay>
-      <Box
-        sx={{
-          width: "20vw",
-          height: "fit-content",
-          zIndex: 30,
-          border: `0.01vh solid LightGrey`,
-          borderRadius: 1,
-          background: colours.CFIA_Background_White,
-        }}
-        boxShadow={1}
-      >
-        <CardHeader
-          title="Save Capture"
-          titleTypographyProps={{
-            variant: "h6",
-            align: "left",
-            fontWeight: 600,
-            fontSize: "1.3vh",
-            color: colours.CFIA_Font_Black,
-            zIndex: 30,
+    <Dialog
+      open={true}
+      onClose={handleClose}
+      maxWidth="xs"
+      fullWidth
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: 1,
+            padding: "1vh",
+          },
+        },
+      }}
+    >
+      <DialogContent>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
           }}
-          action={
-            <IconButton onClick={handleClose}>
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "2vh",
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 600,
+                fontSize: "1.8vh",
+                color: colours.CFIA_Font_Black,
+              }}
+            >
+              Save Capture
+            </Typography>
+            <IconButton onClick={handleClose} size="small">
               <CloseIcon />
             </IconButton>
-          }
-          sx={{ padding: "0.8vh 0.8vh 0.8vh 0.8vh" }}
-        />
-        <InfoContainer>
+          </Box>
           <div style={{ marginBottom: "2vh", marginTop: "1vh" }}>
             <ToggleButtonGroup
               sx={{
@@ -256,26 +270,32 @@ const SavePopup: React.FC<params> = (props) => {
               </Select>
             </>
           )}
-          <ButtonWrap>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: "2vh",
+              marginBottom: "1vh",
+            }}
+          >
             <Button
               variant="outlined"
               size="medium"
               sx={{
-                marginRight: 0,
-                marginLeft: 0,
                 borderRadius: "0.4vh",
-                paddingTop: "0.3vh",
-                paddingBottom: "0.3vh",
-                paddingLeft: "0.7vh",
-                paddingRight: "0.7vh",
+                paddingTop: "0.6vh",
+                paddingBottom: "0.6vh",
+                paddingLeft: "2vh",
+                paddingRight: "2vh",
                 fontSize: "1.17vh",
                 width: "fit-content",
-                border: `0.01vh solid LightGrey`,
-                color: colours.CFIA_Font_Black,
+                border: `0.15vh solid ${colours.CFIA_Background_Blue}`,
+                color: colours.CFIA_Background_Blue,
                 "&:hover": {
-                  backgroundColor: "#F5F5F5",
-                  transition: "0.1s ease-in-out all",
-                  border: `0.01vh solid LightGrey`,
+                  backgroundColor: colours.CFIA_Background_Blue,
+                  color: colours.CFIA_Background_White,
+                  border: `0.15vh solid ${colours.CFIA_Background_Blue}`,
+                  transition: "0.2s ease-in-out all",
                 },
               }}
               onClick={() => {
@@ -286,10 +306,10 @@ const SavePopup: React.FC<params> = (props) => {
             >
               SAVE
             </Button>
-          </ButtonWrap>
-        </InfoContainer>
-      </Box>
-    </Overlay>
+          </Box>
+        </Box>
+      </DialogContent>
+    </Dialog>
   );
 };
 
