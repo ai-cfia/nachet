@@ -231,6 +231,7 @@ class RbacRole(Base):
 
 class RbacPermission(Base):
     __tablename__ = "rbac_permission"
+    __table_args__ = (UniqueConstraint("name", name="uq_rbac_permission_name"),)
 
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -240,7 +241,7 @@ class RbacPermission(Base):
     date_updated: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=func.current_timestamp()
     )
-    name: Mapped[Optional[str]] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Relationships
@@ -251,6 +252,7 @@ class RbacPermission(Base):
 
 class RbacResource(Base):
     __tablename__ = "rbac_resource"
+    __table_args__ = (UniqueConstraint("name", name="uq_rbac_resource_name"),)
 
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -260,7 +262,7 @@ class RbacResource(Base):
     date_updated: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=func.current_timestamp()
     )
-    name: Mapped[Optional[str]] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Relationships
