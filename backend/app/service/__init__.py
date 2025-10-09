@@ -3,6 +3,7 @@ from .seed import SeedService
 from .directory import DirectoryService
 from .frontend import FrontendService
 from .rbac import RbacService
+from .logs import LogService
 
 __all__ = [
     "PipelineService",
@@ -10,4 +11,5 @@ __all__ = [
     "DirectoryService",
     "FrontendService",
     "RbacService",
+    "LogService",
 ]

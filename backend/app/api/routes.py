@@ -1,6 +1,12 @@
 from fastapi import APIRouter, status, Depends, Request
 from fastapi.responses import Response
-from app.service import PipelineService, SeedService, DirectoryService, FrontendService
+from app.service import (
+    PipelineService,
+    SeedService,
+    DirectoryService,
+    FrontendService,
+    LogService,
+)
 from app.service.auth import User, get_current_user
 from app.api.config import get_limiter
 
@@ -165,6 +171,22 @@ async def logout_user(request: Request):
             "Cache-Control": "no-store, max-age=0",
         },
     )
+
+
+# Frontend Log endpoint
+@router.post(
+    "/logs",
+    status_code=status.HTTP_200_OK,
+    name="Frontend Log Endpoint [AUTH REQUIRED]",
+)
+async def frontend_log_endpoint(
+    request: Request, current_user: User = Depends(get_current_user)
+):
+    log_data = await request.json()
+    log_data["user_id"] = current_user.oid
+    log_data["user_agent"] = request.headers.get("user-agent", "")
+    response = await LogService.process_frontend_log(log_data)
+    return response
 
 
 # Frontend static file serving routes

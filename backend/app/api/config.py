@@ -1,13 +1,7 @@
-# from starlette.config import Config
-
-
 from contextlib import asynccontextmanager
 from http import HTTPStatus
 
-# from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI, Request
-
-# from fastapi.logger import logger
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
@@ -16,23 +10,18 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-# from psycopg.conninfo import make_conninfo
-# from psycopg_pool import ConnectionPool
-from pydantic import computed_field  # , Field
+from pydantic import computed_field
 from pydantic_settings import BaseSettings
-
-# from sqlmodel import StaticPool, create_engine
 
 from app.exceptions import log_error
 from app.middleware.headers.headers import HeadersMiddleware
+from app.middleware.logging_middleware import LoggingMiddleware
 from app.db.utils import initialize_database, close_database_engine, sessionmanager
 from app.blob.manager import (
     initialize_blob_storage,
     close_blob_storage,
     blob_storage_manager,
 )
-# from app.models.bucket_name import MinioBucketName
-# from app.services.file_storage import FertiscanStorage, MinIOStorageManager
 
 
 class Settings(BaseSettings):
@@ -75,6 +64,11 @@ class Settings(BaseSettings):
     frontend_blob_container: str | None = None
     frontend_version_file: str | None = None
 
+    # logging/observability settings
+    otel_exporter_protocol: str = "grpc"  # "grpc" or "http"
+    otel_exporter_endpoint: str = "http://alloy.monitoring.svc.cluster.local:4317"
+    log_level: str = "INFO"
+
     # api settings
     base_path: str = ""
     project_name: str = "Nachet API"
@@ -111,6 +105,16 @@ class Settings(BaseSettings):
             "blob_storage_endpoint_protocol": self.blob_storage_endpoint_protocol,
             "blob_storage_endpoint_suffix": self.blob_storage_endpoint_suffix,
             "blob_storage_endpoint_base": self.blob_storage_endpoint_base,
+        }
+
+    @computed_field
+    @property
+    def logging_config(self) -> dict:
+        """Configuration for logging initialization."""
+        return {
+            "otel_exporter_protocol": self.otel_exporter_protocol.lower(),
+            "otel_exporter_endpoint": self.otel_exporter_endpoint,
+            "log_level": self.log_level.upper(),
         }
 
     @computed_field
@@ -171,6 +175,12 @@ async def lifespan(app: FastAPI):
         raise ValueError("Settings instance could not be created")
     print("✅ Settings loaded successfully")
 
+    # Initialize logging infrastructure
+    print("🔄 Initializing logging...")
+    from app.service import LogService
+    LogService.setup_logging(settings.logging_config)
+    print("✅ Logging initialized successfully")
+
     # Initialize database (validates schema version and sets up SessionManager)
     print("🔄 Initializing database...")
     await initialize_database(settings)
@@ -197,49 +207,16 @@ async def lifespan(app: FastAPI):
     app.state.blob_storage_manager = blob_storage_manager
     print("✅ App state configured successfully")
 
-    # Open connection pool
-    # app.pool.open()
-
-    # resource = Resource.create(
-    #     {
-    #         "service.name": "nachet-backend",
-    #     }
-    # )
-
-    # # Tracing setup
-    # tracer_provider = TracerProvider(resource=resource)
-    # trace.set_tracer_provider(tracer_provider)
-    # tracer_provider.add_span_processor(
-    #     BatchSpanProcessor(
-    #         OTLPSpanExporter(
-    #             endpoint=settings.otel_exporter_otlp_endpoint, insecure=True
-    #         )
-    #     )
-    # )
-    # # Logging setup
-    # logger_provider = LoggerProvider(resource=resource)
-    # set_logger_provider(logger_provider)
-    # logger_provider.add_log_record_processor(
-    #     BatchLogRecordProcessor(
-    #         OTLPLogExporter(
-    #             endpoint=settings.otel_exporter_otlp_endpoint, insecure=True
-    #         )
-    #     )
-    # )
-    # handler = LoggingHandler(logger_provider=logger_provider)
-    # logger.addHandler(handler)
+    # Note: OTEL logging and tracing is now handled by LogService (see app/service/logs.py)
 
     print("🎉 FastAPI app startup complete!")
     yield
 
     # Shutdown
     print("🛑 Starting app shutdown...")
-    # app.pool.close()
     await close_database_engine()
     await close_blob_storage()
     print("✅ App shutdown complete")
-    # logger_provider.shutdown()
-    # tracer_provider.shutdown()
 
 
 def create_app(settings: Settings, router: APIRouter, lifespan=None):
@@ -265,27 +242,26 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
     app.add_middleware(HeadersMiddleware, preset=settings.security_headers_preset)
     app.add_middleware(SlowAPIMiddleware)
-
-    # pool = ConnectionPool(
-    #     open=False,
-    #     conninfo=settings.pg_conn_info,
-    #     kwargs={"options": f"-c search_path={settings.nachet_schema},public"},
-    # )
-    # app.pool = pool
+    app.add_middleware(LoggingMiddleware)  # Request/response logging with correlation IDs
 
     # Database SessionManager will be available via app.state.sessionmanager after lifespan startup
 
     app.include_router(router)
 
-    # storage = FertiscanStorage(sm, settings.minio_app_bucket)
-
-    # app.storage = storage
-
     @app.exception_handler(Exception)
-    async def global_exception_handler(_: Request, e: Exception):
+    async def global_exception_handler(request: Request, e: Exception):
+        # Get correlation_id from request state if available
+        correlation_id = getattr(request.state, 'correlation_id', None)
+
         log_error(e)
+
+        response_content = {"detail": str(e)}
+        if correlation_id:
+            response_content["correlation_id"] = correlation_id
+
         return JSONResponse(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR, content={"detail": str(e)}
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+            content=response_content
         )
 
     return app
