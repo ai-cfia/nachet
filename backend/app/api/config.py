@@ -24,15 +24,7 @@ from app.blob.manager import (
 
 
 class Settings(BaseSettings):
-    # api_endpoint: str = Field(alias="azure_api_endpoint")
-    # api_key: str = Field(alias="azure_api_key")
     # base_path: str = Field("", alias="api_base_path")
-    # openai_api_deployment: str = Field(alias="azure_openai_deployment")
-    # openai_api_endpoint: str = Field(alias="azure_openai_endpoint")
-    # openai_api_key: str = Field(alias="azure_openai_key")
-    # phoenix_endpoint: str | None = None
-    # upload_folder: str = "uploads"
-    # otel_exporter_otlp_endpoint: str = Field(alias="otel_exporter_otlp_endpoint")
 
     # auth settings
     azure_auth_enabled: bool = True
