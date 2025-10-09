@@ -467,7 +467,7 @@ npm run test ErrorBoundary.test.tsx
 
 ### Priority: Low
 
-4. **Add Error Reporting Button**
+1. **Add Error Reporting Button**
 
    ```typescript
    <Button onClick={() => window.open(`mailto:support@cfia.ca?subject=Error Report ${correlationId}`)}>
@@ -475,11 +475,11 @@ npm run test ErrorBoundary.test.tsx
    </Button>
    ```
 
-5. **Add Retry Counter**
+2. **Add Retry Counter**
    - Track number of reset attempts
    - Auto-navigate to home after 3 failed resets
 
-6. **Enhanced Error Context**
+3. **Enhanced Error Context**
    - Capture user ID if authenticated
    - Capture current route/page
    - Capture recent user actions
