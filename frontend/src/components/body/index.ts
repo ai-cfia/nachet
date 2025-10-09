@@ -11,6 +11,7 @@ import ClassificationResults from "./classification_results";
 import ImageCache from "./image_cache/ImageCache";
 import StorageDirectory from "./directory_list";
 import MicroscopeFeed from "./microscope_feed";
+import ErrorBoundary from "./error_boundary/ErrorBoundary";
 
 export {
   BatchUploadPopup,
@@ -26,4 +27,5 @@ export {
   ImageCache,
   StorageDirectory,
   MicroscopeFeed,
+  ErrorBoundary,
 };
