@@ -196,13 +196,31 @@ async def serve_frontend_static(request: Request, path: str):
     """
     Serve static frontend files (assets, favicon, etc.).
     Falls back to index.html for SPA client-side routing.
+
+    Security: Only serves files from the frontend/dist/ directory.
+    Validates paths to prevent directory traversal attacks.
     """
     await FrontendService.check_and_update_version()
+
+    # Validate path to prevent directory traversal attacks
+    # Normalize and check for dangerous patterns
+    normalized_path = path.lstrip("/")
+
+    # Block directory traversal attempts
+    if ".." in normalized_path or normalized_path.startswith("/"):
+        return Response(
+            content="Invalid file path",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            media_type="text/plain",
+        )
+
     # Get CSP nonce from request state (set by HeadersMiddleware)
     csp_nonce = getattr(request.state, "csp_nonce", None)
     try:
         # Try to serve the requested file
-        content, content_type = await FrontendService.get_file(path, csp_nonce)
+        content, content_type = await FrontendService.get_file(
+            normalized_path, csp_nonce
+        )
         return Response(content=content, media_type=content_type)
     except Exception:
         # Fallback to index.html for client-side routing (SPA)

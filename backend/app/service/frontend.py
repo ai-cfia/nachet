@@ -110,10 +110,18 @@ class FrontendService:
             Tuple of (file_content_bytes, content_type)
 
         Raises:
-            HTTPException: If file cannot be retrieved
+            HTTPException: If file cannot be retrieved or path is invalid
         """
         # Normalize path (remove leading slash if present)
         normalized_path = file_path.lstrip("/")
+
+        # Security: Validate path to prevent directory traversal
+        # Only allow files from the frontend/dist/ directory (blob container)
+        if ".." in normalized_path or normalized_path.startswith("/"):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file path: directory traversal not allowed",
+            )
 
         # Check cache
         if normalized_path in cls._cache:
