@@ -45,7 +45,7 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
     Args:
         async_engine: SQLAlchemy async engine (for backward compatibility)
     """
-    print("Dev data compatible semver: 0.2.0")
+    # print("Dev data compatible semver: 0.2.0")
     # Use SessionManager's factory for consistent session management
     async_session = sessionmanager.get_session_factory()
 
