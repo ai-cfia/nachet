@@ -86,135 +86,51 @@ module "container_registry" {
   allowed_ip_2 = var.acr_allowed_ip_2
 }
 
-# PgAdmin Container App
-# module "pgadmin" {
-#   source = "../modules/container-app-pgadmin"
+# Nachet Application (Combined Frontend + Backend)
+module "nachet" {
+  source = "../modules/container-app-nachet"
 
-#   # Default
-#   project_name        = var.project_name
-#   environment         = var.environment
-#   resource_group_name = var.resource_group_name
-#   tags                = var.tags
+  # Default
+  project_name        = var.project_name
+  environment         = var.environment
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  tags                = var.tags
 
-#   # Container App Environment
-#   container_app_environment_id = module.container_app_environment.container_app_environment_id
+  # Container App Environment
+  container_app_environment_id = module.container_app_environment.container_app_environment_id
 
-#   # PgAdmin Configuration
-#   pgadmin_password = var.pgadmin_password
-#   pgadmin_image    = var.pgadmin_image
+  # Container Registry
+  acr_login_server    = module.container_registry.login_server
+  acr_admin_username  = module.container_registry.admin_username
+  acr_admin_password  = module.container_registry.admin_password
 
-#   # ACR Integration
-#   acr_login_server    = module.container_registry.login_server
-#   acr_admin_username  = module.container_registry.admin_username
-#   acr_admin_password  = module.container_registry.admin_password
-# }
+  # Container Image
+  nachet_image = var.nachet_image
 
-# Module 3: Nachet Application (Storage and Backend) - Commented out for now
-# module "nachet" {
-#   source = "../modules/nachet"
-
-#   project_name                 = var.project_name
-#   environment                  = var.environment
-#   location                     = var.location
-#   resource_group_name          = var.rg_nachet
-#   container_app_environment_id = module.container_app_environment.container_app_environment_id
-#   tags                         = var.tags
-
-#   # Container configuration
-#   backend_image        = var.backend_image
-#   container_app_cpu    = var.container_app_cpu
-#   container_app_memory = var.container_app_memory
-#   backend_port         = var.backend_port
-
-#   # Access control
-#   enable_public_access = var.enable_public_access
-#   allowed_ip_addresses = var.allowed_ip_addresses
-
-#   # Database connections from DB module
-#   database_url = module.db.nachet_connection_string
-
-#   # ML Model Endpoints - use external endpoints only (no cross-module references)
-#   ml_model_endpoint_rcnn        = var.ml_model_endpoint_rcnn
-#   ml_model_endpoint_swin        = var.ml_model_endpoint_swin
-#   ml_model_endpoint_swin_22_spp = var.ml_model_endpoint_swin_22_spp
-#   ml_model_endpoint_swin_27_spp = var.ml_model_endpoint_swin_27_spp
-#   ml_api_key                    = var.ml_api_key
-
-#   # Application Security
-#   jwt_secret     = var.jwt_secret
-#   session_secret = var.session_secret
-#   encryption_key = var.encryption_key
-
-#   # Application Configuration
-#   cors_allowed_origins = var.cors_allowed_origins
-#   log_level            = var.log_level
-# }
-
-# # Module 3: Inference Servers (Triton containers with their own storage)
-# module "nachet_inference" {
-#   source = "../modules/nachet-inference"
-#   count  = var.deploy_inference_servers ? 1 : 0
-
-#   project_name        = var.project_name
-#   environment         = var.environment
-#   location            = var.location
-#   resource_group_name = var.rg_nachet
-#   tags                = var.tags
-
-#   # Container App Environment from nachet module
-#   container_app_environment_id = module.nachet.container_app_environment_id
-
-#   # Triton configuration
-#   triton_image  = var.triton_image
-#   triton_cpu    = var.triton_cpu
-#   triton_memory = var.triton_memory
-
-#   # Storage key (optional)
-#   azure_storage_account_key = var.azure_storage_account_key
-# }
-
-# Module 4: Monitoring Stack (Grafana, Loki, Tempo, Mimir, Alloy)
-# module "monitoring" {
-#   source = "../modules/monitoring"
-#   count  = var.enable_observability_stack ? 1 : 0
-
-#   project_name        = var.project_name
-#   environment         = var.environment
-#   resource_group_name = var.rg_nachet
-#   tags                = var.tags
-
-#   # Container App Environment from nachet module
-#   container_app_environment_id = module.nachet.container_app_environment_id
-
-#   # Database connection from db module
-#   postgresql_server_fqdn    = module.db.postgresql_server_fqdn
-#   postgresql_admin_username = var.postgresql_admin_username
-#   postgresql_admin_password = var.postgresql_admin_password
-
-#   # Access control
-#   enable_public_access = var.enable_public_access
-#   allowed_ip_addresses = var.allowed_ip_addresses
-
-#   # Observability Stack Images
-#   loki_image    = var.loki_image
-#   grafana_image = var.grafana_image
-#   tempo_image   = var.tempo_image
-#   mimir_image   = var.mimir_image
-#   alloy_image   = var.alloy_image
-
-#   # Observability Stack Resources
-#   loki_cpu       = var.loki_cpu
-#   loki_memory    = var.loki_memory
-#   grafana_cpu    = var.grafana_cpu
-#   grafana_memory = var.grafana_memory
-#   tempo_cpu      = var.tempo_cpu
-#   tempo_memory   = var.tempo_memory
-#   mimir_cpu      = var.mimir_cpu
-#   mimir_memory   = var.mimir_memory
-#   alloy_cpu      = var.alloy_cpu
-#   alloy_memory   = var.alloy_memory
-
-#   # Configuration
-#   grafana_admin_password = var.grafana_admin_password
-#   loki_auth_enabled      = var.loki_auth_enabled
-# }
+  # Environment variables
+  env_azure_api_scope_claim           = var.env_azure_api_scope_claim
+  env_azure_auth_enabled              = var.env_azure_auth_enabled
+  env_azure_client_id                 = var.env_azure_client_id
+  env_azure_tenant_id                 = var.env_azure_tenant_id
+  env_blob_storage_endpoint_base      = var.env_blob_storage_endpoint_base
+  env_blob_storage_endpoint_protocol  = var.env_blob_storage_endpoint_protocol
+  env_blob_storage_endpoint_suffix    = var.env_blob_storage_endpoint_suffix
+  env_blob_storage_key                = var.env_blob_storage_key
+  env_blob_storage_name               = var.env_blob_storage_name
+  env_blob_storage_provider           = var.env_blob_storage_provider
+  env_cors_allow_origins              = var.env_cors_allow_origins
+  env_db_host                         = var.env_db_host
+  env_db_name                         = var.env_db_name
+  env_db_password                     = var.env_db_password
+  env_db_port                         = var.env_db_port
+  env_db_user                         = var.env_db_user
+  env_frontend_blob_container         = var.env_frontend_blob_container
+  env_frontend_version_file           = var.env_frontend_version_file
+  env_minio_access_key                = var.env_minio_access_key
+  env_minio_secret_key                = var.env_minio_secret_key
+  env_nachet_schema                   = var.env_nachet_schema
+  env_security_headers_preset         = var.env_security_headers_preset
+  env_testing                         = var.env_testing
+  env_trusted_hosts                   = var.env_trusted_hosts
+}
