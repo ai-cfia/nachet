@@ -14,8 +14,7 @@ from pydantic import computed_field
 from pydantic_settings import BaseSettings
 
 from app.exceptions import log_error
-from app.middleware.headers.headers import HeadersMiddleware
-from app.middleware.logging_middleware import LoggingMiddleware
+from app.middleware import HeadersMiddleware, LoggingMiddleware
 from app.db.utils import initialize_database, close_database_engine, sessionmanager
 from app.blob.manager import (
     initialize_blob_storage,
