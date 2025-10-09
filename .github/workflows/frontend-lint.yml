@@ -154,7 +154,7 @@ jobs:
       - name: Check SBOM scan results
         run: cat ${{ steps.scan.outputs.sarif }}
       - name: Upload SBOM scan results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         # there is a bug https://github.com/microsoft/sarif-sdk/issues/2770
         # grype probably needa to point to the vuln location for this to work properly
         continue-on-error: true
