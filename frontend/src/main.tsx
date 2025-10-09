@@ -9,6 +9,7 @@ import {
 } from "@azure/msal-browser";
 import { CacheProvider } from "@emotion/react";
 import { createEmotionCache } from "./common/emotionCache";
+import { ErrorBoundary } from "@components/body/index.ts";
 
 const msalConfig: Configuration = {
   auth: {
@@ -74,11 +75,13 @@ const emotionCache = createEmotionCache();
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <CacheProvider value={emotionCache}>
-      <App
-        msalInstance={msalInstance}
-        basename={basename}
-        apiScopeClaim={apiScopeClaim}
-      />
+      <ErrorBoundary>
+        <App
+          msalInstance={msalInstance}
+          basename={basename}
+          apiScopeClaim={apiScopeClaim}
+        />
+      </ErrorBoundary>
     </CacheProvider>
   </React.StrictMode>,
 );

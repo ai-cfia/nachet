@@ -22,6 +22,7 @@ import {
   ModelMetadataSchema,
   ApiSpeciesDataSchema,
 } from "./validation";
+import { errorLogger } from "../logging";
 
 const handleAxios = async <T>(request: {
   method: string;
@@ -29,8 +30,27 @@ const handleAxios = async <T>(request: {
   headers: { [label: string]: string };
   data?: any;
 }): Promise<T> => {
-  const data = await axios(request)
+  // Generate correlation ID for this request
+  const correlationId = errorLogger.getCorrelationId();
+
+  // Add correlation and session IDs to headers
+  const enhancedRequest = {
+    ...request,
+    headers: {
+      ...request.headers,
+      "X-Correlation-ID": correlationId,
+      "X-Session-ID": errorLogger.getSessionId(),
+    },
+    withCredentials: true,
+  };
+
+  const data = await axios(enhancedRequest)
     .then((response) => {
+      // Extract correlation ID from response if available
+      const responseCorrelationId = response.headers?.["x-correlation-id"];
+      if (responseCorrelationId) {
+        errorLogger.setCorrelationId(responseCorrelationId);
+      }
       if (response.status === 200) {
         return response.data;
       } else {
@@ -41,16 +61,38 @@ const handleAxios = async <T>(request: {
       if (error.response) {
         console.error(error.response.data);
         console.error(error.response.status);
-        console.error(error.response.headers);
-        throw new AzureAPIError(error.response.data);
+        console.error(error.response.headers); // Log API error with details
+        errorLogger.logApiError(
+          request.url,
+          error.response?.status || 0,
+          error.response?.statusText || "Unknown",
+          error.response?.data || "No response data",
+          error.response?.headers?.["x-correlation-id"] || correlationId,
+        );
+        throw new AzureAPIError(error.response?.data || "API Error");
       } else if (error.request) {
-        console.error(error.request);
+        console.error(error.request); // Log network error
+        errorLogger.logError(
+          `Network error: No response received from ${request.url}`,
+          new Error("Network request failed"),
+          { request: error.request, correlationId },
+        );
         throw new AzureAPIError(error.request);
       } else {
-        console.error("Error", error.message);
+        console.error("Error", error.message); // Log other errors
+        errorLogger.logError(
+          `Request setup error: ${error.message || "Unknown error"}`,
+          error,
+          {
+            config: error.config,
+            correlationId,
+          },
+        );
       }
+
       console.error(error.config);
-      throw new AzureAPIError(error.config);
+
+      throw new AzureAPIError(error.config || error.message);
     });
   return data;
 };
