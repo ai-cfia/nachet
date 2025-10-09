@@ -617,9 +617,6 @@ class ChangeLog(Base):
     date_created: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=func.current_timestamp(), nullable=False
     )
-    semver_id: Mapped[UUID] = mapped_column(
-        UUID, ForeignKey("semver.id"), nullable=False
-    )
     user_id: Mapped[UUID] = mapped_column(UUID, ForeignKey("users.id"), nullable=False)
     table: Mapped[Optional[str]] = mapped_column("table", Text)
     entry_id: Mapped[Optional[UUID]] = mapped_column(UUID)
@@ -630,14 +627,4 @@ class ChangeLog(Base):
     # Relationships
     user: Mapped[Optional["Users"]] = relationship(
         "Users", back_populates="change_logs"
-    )
-
-
-class SemVer(Base):
-    __tablename__ = "semver"
-
-    id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
-    semver: Mapped[str] = mapped_column(Text, nullable=False)
-    date_created: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), default=func.current_timestamp()
     )
