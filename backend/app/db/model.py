@@ -10,6 +10,7 @@ from sqlalchemy import (
     ForeignKey,
     Double,
     UUID,
+    UniqueConstraint,
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.sql import func
@@ -186,6 +187,9 @@ class PipelineModel(Base):
 
 class RbacRole(Base):
     __tablename__ = "rbac_role"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "name", name="uq_rbac_role_org_name"),
+    )
 
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
     organization_id: Mapped[UUID] = mapped_column(
