@@ -1,6 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { Box, Typography, Button, Paper } from "@mui/material";
-import errorLogger from "../../logging/ErrorLogger";
+import { errorLogger } from "../../../logging";
 
 interface Props {
   children: ReactNode;

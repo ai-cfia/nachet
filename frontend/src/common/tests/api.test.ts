@@ -19,6 +19,19 @@ import { AzureAPIError, ValueError } from "../error";
 vi.mock("axios");
 const mockedAxios = vi.mocked(axios);
 
+// mock errorLogger
+vi.mock("../../logging", () => ({
+  errorLogger: {
+    getCorrelationId: vi.fn(() => "test-correlation-id"),
+    getSessionId: vi.fn(() => "test-session-id"),
+    setCorrelationId: vi.fn(),
+    logError: vi.fn(),
+    logWarning: vi.fn(),
+    logInfo: vi.fn(),
+    logApiError: vi.fn(),
+  },
+}));
+
 beforeEach(() => {
   mockedAxios.mockClear();
 });
@@ -53,7 +66,10 @@ describe("readAzureStorageDir", () => {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         Authorization: `Bearer ${accessToken}`,
+        "X-Correlation-ID": "test-correlation-id",
+        "X-Session-ID": "test-session-id",
       },
+      withCredentials: true,
     });
   });
 
@@ -191,10 +207,13 @@ describe("createAzureStorageDir", () => {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         Authorization: `Bearer ${accessToken}`,
+        "X-Correlation-ID": "test-correlation-id",
+        "X-Session-ID": "test-session-id",
       },
       data: {
         folder_name: folderName,
       },
+      withCredentials: true,
     });
   });
 
@@ -268,10 +287,13 @@ describe("deleteAzureStorageDir", () => {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         Authorization: `Bearer ${accessToken}`,
+        "X-Correlation-ID": "test-correlation-id",
+        "X-Session-ID": "test-session-id",
       },
       data: {
         folder_name: folderName,
       },
+      withCredentials: true,
     });
   });
 
@@ -378,6 +400,8 @@ describe("inferenceRequest", () => {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         Authorization: `Bearer valid-token`,
+        "X-Correlation-ID": "test-correlation-id",
+        "X-Session-ID": "test-session-id",
       },
       data: {
         model_name: selectedModel,
@@ -386,6 +410,7 @@ describe("inferenceRequest", () => {
         folder_name: curDir,
         container_name: containerUuid,
       },
+      withCredentials: true,
     });
   });
 
@@ -575,8 +600,11 @@ describe("fetchModelMetadata", () => {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         Authorization: `Bearer valid-token`,
+        "X-Correlation-ID": "test-correlation-id",
+        "X-Session-ID": "test-session-id",
       },
       data: {},
+      withCredentials: true,
     });
   });
 
@@ -671,8 +699,11 @@ describe("requestClassList", () => {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         Authorization: `Bearer valid-token`,
+        "X-Correlation-ID": "test-correlation-id",
+        "X-Session-ID": "test-session-id",
       },
       data: {},
+      withCredentials: true,
     });
   });
 
@@ -713,12 +744,15 @@ describe("batchUploadInit", () => {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         Authorization: `Bearer valid-token`,
+        "X-Correlation-ID": "test-correlation-id",
+        "X-Session-ID": "test-session-id",
       },
       data: {
         folder_name: folderName,
         container_name: containerUuid,
         file_count: nbPictures,
       },
+      withCredentials: true,
     });
   });
 
@@ -781,6 +815,8 @@ describe("batchUploadImage", () => {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         Authorization: `Bearer valid-token`,
+        "X-Correlation-ID": "test-correlation-id",
+        "X-Session-ID": "test-session-id",
       },
       data: {
         container_name: mockBatchUploadData.containerName,
@@ -792,6 +828,7 @@ describe("batchUploadImage", () => {
         session_id: mockBatchUploadData.sessionId,
         image: mockBatchUploadData.imageDataUrl,
       },
+      withCredentials: true,
     });
   });
 
@@ -941,8 +978,11 @@ describe("sendPositiveFeedback", () => {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         Authorization: `Bearer valid-token`,
+        "X-Correlation-ID": "test-correlation-id",
+        "X-Session-ID": "test-session-id",
       },
       data: mockPositiveFeedbackData,
+      withCredentials: true,
     });
   });
 
@@ -1023,8 +1063,11 @@ describe("sendNegativeFeedback", () => {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         Authorization: `Bearer valid-token`,
+        "X-Correlation-ID": "test-correlation-id",
+        "X-Session-ID": "test-session-id",
       },
       data: mockNegativeFeedbackData,
+      withCredentials: true,
     });
   });
 
@@ -1098,8 +1141,11 @@ describe("sendFeedbackNewBox", () => {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
         Authorization: `Bearer valid-token`,
+        "X-Correlation-ID": "test-correlation-id",
+        "X-Session-ID": "test-session-id",
       },
       data: mockNewBoxFeedbackData,
+      withCredentials: true,
     });
   });
 
