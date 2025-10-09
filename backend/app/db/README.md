@@ -100,6 +100,7 @@ uv run python db_setup_test.py
 ```bash
 # Generate new migration
 cd backend/app/db
+export $(grep -v '^#' ../../.env.local | xargs)
 alembic revision --autogenerate -m "description"
 
 # Apply migrations
