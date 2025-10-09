@@ -17,12 +17,12 @@ This document describes the Role-Based Access Control (RBAC) implementation for 
 
 ### Components
 
-1. **RbacDataService** ([backend/app/datastore/rbac.py](backend/app/datastore/rbac.py))
+1. **RbacDataService** (backend/app/datastore/rbac.py)
    - Data access layer for RBAC operations
    - Single-query role checks using SQLAlchemy
    - Validates all `active` flags for security
 
-2. **RbacService** ([backend/app/service/rbac.py](backend/app/service/rbac.py))
+2. **RbacService** (backend/app/service/rbac.py)
    - Business logic layer with centralized route authorization
    - `Role` enum for type-safe role constants
    - `ROUTE_POLICIES` dictionary for centralized route-to-role mapping
@@ -65,7 +65,7 @@ This ensures deactivated users, roles, or role assignments are immediately inval
 
 ## Available Roles
 
-Defined in `Role` enum ([backend/app/service/rbac.py:9-20](backend/app/service/rbac.py#L9-L20)):
+Defined in `Role` enum (backend/app/service/rbac.py:9-20):
 
 ```python
 class Role(str, Enum):
@@ -98,7 +98,7 @@ The RBAC system uses **centralized authorization** for all routes:
 - No duplicate authorization logic across routes
 - Direct database access without unnecessary wrapper layers
 
-**Location**: `RbacService.ROUTE_POLICIES` in [backend/app/service/rbac.py](backend/app/service/rbac.py)
+**Location**: `RbacService.ROUTE_POLICIES` in backend/app/service/rbac.py
 
 ## Usage Examples
 
@@ -377,7 +377,7 @@ This would enable fine-grained access control like:
 
 ### Adding New Routes with RBAC
 
-1. **Add route policy to `ROUTE_POLICIES`** in [backend/app/service/rbac.py](backend/app/service/rbac.py):
+1. **Add route policy to `ROUTE_POLICIES`** in backend/app/service/rbac.py:
 
    ```python
    ROUTE_POLICIES: Dict[Tuple[str, str], Optional[List[Role]]] = {
@@ -414,7 +414,7 @@ This would enable fine-grained access control like:
 ### Adding New Roles
 
 1. **Add to database**: Insert into `rbac_role` table
-2. **Add to enum**: Update `Role` enum in [backend/app/service/rbac.py](backend/app/service/rbac.py)
+2. **Add to enum**: Update `Role` enum in backend/app/service/rbac.py
 3. **Assign to users**: Insert into `rbac_user_role` table
 
 ## Troubleshooting
