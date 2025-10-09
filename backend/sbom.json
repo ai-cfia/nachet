@@ -1546,6 +1546,29 @@
       "version": "1.7.0"
     },
     {
+      "bom-ref": "googleapis-common-protos==1.70.0",
+      "description": "Common protobufs used in Google APIs",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/googleapis/google-cloud-python/tree/main/packages/googleapis-common-protos"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: Apache Software License"
+          }
+        }
+      ],
+      "name": "googleapis-common-protos",
+      "purl": "pkg:pypi/googleapis-common-protos@1.70.0",
+      "type": "library",
+      "version": "1.70.0"
+    },
+    {
       "bom-ref": "greenlet==3.2.4",
       "description": "Lightweight in-process concurrent programming",
       "externalReferences": [
@@ -1585,6 +1608,44 @@
       "purl": "pkg:pypi/greenlet@3.2.4",
       "type": "library",
       "version": "3.2.4"
+    },
+    {
+      "bom-ref": "grpcio==1.75.1",
+      "description": "HTTP/2-based RPC framework",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://grpc.github.io/grpc/python"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Bug Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/grpc/grpc/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source Code",
+          "type": "other",
+          "url": "https://github.com/grpc/grpc"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://grpc.io"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: Apache Software License"
+          }
+        }
+      ],
+      "name": "grpcio",
+      "purl": "pkg:pypi/grpcio@1.75.1",
+      "type": "library",
+      "version": "1.75.1"
     },
     {
       "bom-ref": "h11==0.16.0",
@@ -1855,6 +1916,29 @@
       "purl": "pkg:pypi/idna@3.10",
       "type": "library",
       "version": "3.10"
+    },
+    {
+      "bom-ref": "importlib_metadata==8.7.0",
+      "description": "Read metadata from Python packages",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/python/importlib_metadata"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: Apache Software License"
+          }
+        }
+      ],
+      "name": "importlib_metadata",
+      "purl": "pkg:pypi/importlib-metadata@8.7.0",
+      "type": "library",
+      "version": "8.7.0"
     },
     {
       "bom-ref": "iniconfig==2.1.0",
@@ -2155,6 +2239,39 @@
       "version": "5.6.0"
     },
     {
+      "bom-ref": "loguru==0.7.3",
+      "description": "Python logging made (stupidly) simple",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://loguru.readthedocs.io/en/stable/index.html"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://github.com/Delgan/loguru/blob/master/CHANGELOG.rst"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/Delgan/loguru"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "loguru",
+      "purl": "pkg:pypi/loguru@0.7.3",
+      "type": "library",
+      "version": "0.7.3"
+    },
+    {
       "bom-ref": "lxml==6.0.0",
       "description": "Powerful and Pythonic XML processing library combining libxml2/libxslt with the ElementTree API.",
       "externalReferences": [
@@ -2407,6 +2524,202 @@
       "purl": "pkg:pypi/numpy@2.3.3",
       "type": "library",
       "version": "2.3.3"
+    },
+    {
+      "bom-ref": "opentelemetry-api==1.37.0",
+      "description": "OpenTelemetry Python API",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/open-telemetry/opentelemetry-python"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-api"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-api",
+      "purl": "pkg:pypi/opentelemetry-api@1.37.0",
+      "type": "library",
+      "version": "1.37.0"
+    },
+    {
+      "bom-ref": "opentelemetry-exporter-otlp-proto-common==1.37.0",
+      "description": "OpenTelemetry Protobuf encoding",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/open-telemetry/opentelemetry-python"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp-proto-common"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-exporter-otlp-proto-common",
+      "purl": "pkg:pypi/opentelemetry-exporter-otlp-proto-common@1.37.0",
+      "type": "library",
+      "version": "1.37.0"
+    },
+    {
+      "bom-ref": "opentelemetry-exporter-otlp-proto-grpc==1.37.0",
+      "description": "OpenTelemetry Collector Protobuf over gRPC Exporter",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/open-telemetry/opentelemetry-python"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp-proto-grpc"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-exporter-otlp-proto-grpc",
+      "purl": "pkg:pypi/opentelemetry-exporter-otlp-proto-grpc@1.37.0",
+      "type": "library",
+      "version": "1.37.0"
+    },
+    {
+      "bom-ref": "opentelemetry-exporter-otlp-proto-http==1.37.0",
+      "description": "OpenTelemetry Collector Protobuf over HTTP Exporter",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/open-telemetry/opentelemetry-python"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/open-telemetry/opentelemetry-python/tree/main/exporter/opentelemetry-exporter-otlp-proto-http"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-exporter-otlp-proto-http",
+      "purl": "pkg:pypi/opentelemetry-exporter-otlp-proto-http@1.37.0",
+      "type": "library",
+      "version": "1.37.0"
+    },
+    {
+      "bom-ref": "opentelemetry-proto==1.37.0",
+      "description": "OpenTelemetry Python Proto",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/open-telemetry/opentelemetry-python"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-proto"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-proto",
+      "purl": "pkg:pypi/opentelemetry-proto@1.37.0",
+      "type": "library",
+      "version": "1.37.0"
+    },
+    {
+      "bom-ref": "opentelemetry-sdk==1.37.0",
+      "description": "OpenTelemetry Python SDK",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/open-telemetry/opentelemetry-python"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-sdk"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-sdk",
+      "purl": "pkg:pypi/opentelemetry-sdk@1.37.0",
+      "type": "library",
+      "version": "1.37.0"
+    },
+    {
+      "bom-ref": "opentelemetry-semantic-conventions==0.58b0",
+      "description": "OpenTelemetry Semantic Conventions",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/open-telemetry/opentelemetry-python"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/open-telemetry/opentelemetry-python/tree/main/opentelemetry-semantic-conventions"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "opentelemetry-semantic-conventions",
+      "purl": "pkg:pypi/opentelemetry-semantic-conventions@0.58b0",
+      "type": "library",
+      "version": "0.58b0"
     },
     {
       "bom-ref": "packageurl-python==0.17.5",
@@ -2663,6 +2976,20 @@
       "purl": "pkg:pypi/propcache@0.3.2",
       "type": "library",
       "version": "0.3.2"
+    },
+    {
+      "bom-ref": "protobuf==6.32.1",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://developers.google.com/protocol-buffers/"
+        }
+      ],
+      "name": "protobuf",
+      "purl": "pkg:pypi/protobuf@6.32.1",
+      "type": "library",
+      "version": "6.32.1"
     },
     {
       "bom-ref": "psycopg==3.2.10",
@@ -4398,6 +4725,29 @@
       "purl": "pkg:pypi/yarl@1.20.1",
       "type": "library",
       "version": "1.20.1"
+    },
+    {
+      "bom-ref": "zipp==3.23.0",
+      "description": "Backport of pathlib-compatible object wrapper for zip files",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/jaraco/zipp"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "zipp",
+      "purl": "pkg:pypi/zipp@3.23.0",
+      "type": "library",
+      "version": "3.23.0"
     }
   ],
   "dependencies": [
@@ -4454,6 +4804,7 @@
       "dependsOn": [
         "aiosqlite==0.21.0",
         "greenlet==3.2.4",
+        "importlib_metadata==8.7.0",
         "psycopg==3.2.10",
         "typing_extensions==4.14.1"
       ],
@@ -4529,6 +4880,7 @@
     {
       "dependsOn": [
         "aiohttp==3.12.15",
+        "opentelemetry-api==1.37.0",
         "requests==2.32.4",
         "six==1.17.0",
         "typing_extensions==4.14.1"
@@ -4683,7 +5035,20 @@
       "ref": "frozenlist==1.7.0"
     },
     {
+      "dependsOn": [
+        "grpcio==1.75.1",
+        "protobuf==6.32.1"
+      ],
+      "ref": "googleapis-common-protos==1.70.0"
+    },
+    {
       "ref": "greenlet==3.2.4"
+    },
+    {
+      "dependsOn": [
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "grpcio==1.75.1"
     },
     {
       "ref": "h11==0.16.0"
@@ -4732,6 +5097,16 @@
         "ruff==0.13.2"
       ],
       "ref": "idna==3.10"
+    },
+    {
+      "dependsOn": [
+        "packaging==25.0",
+        "pytest-cov==6.2.1",
+        "pytest==8.4.1",
+        "typing_extensions==4.14.1",
+        "zipp==3.23.0"
+      ],
+      "ref": "importlib_metadata==8.7.0"
     },
     {
       "ref": "iniconfig==2.1.0"
@@ -4792,6 +5167,13 @@
       "ref": "limits==5.6.0"
     },
     {
+      "dependsOn": [
+        "pytest-cov==6.2.1",
+        "pytest==8.4.1"
+      ],
+      "ref": "loguru==0.7.3"
+    },
+    {
       "ref": "lxml==6.0.0"
     },
     {
@@ -4830,6 +5212,64 @@
     },
     {
       "ref": "numpy==2.3.3"
+    },
+    {
+      "dependsOn": [
+        "importlib_metadata==8.7.0",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "opentelemetry-api==1.37.0"
+    },
+    {
+      "dependsOn": [
+        "opentelemetry-proto==1.37.0"
+      ],
+      "ref": "opentelemetry-exporter-otlp-proto-common==1.37.0"
+    },
+    {
+      "dependsOn": [
+        "googleapis-common-protos==1.70.0",
+        "grpcio==1.75.1",
+        "opentelemetry-api==1.37.0",
+        "opentelemetry-exporter-otlp-proto-common==1.37.0",
+        "opentelemetry-proto==1.37.0",
+        "opentelemetry-sdk==1.37.0",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "opentelemetry-exporter-otlp-proto-grpc==1.37.0"
+    },
+    {
+      "dependsOn": [
+        "googleapis-common-protos==1.70.0",
+        "opentelemetry-api==1.37.0",
+        "opentelemetry-exporter-otlp-proto-common==1.37.0",
+        "opentelemetry-proto==1.37.0",
+        "opentelemetry-sdk==1.37.0",
+        "requests==2.32.4",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "opentelemetry-exporter-otlp-proto-http==1.37.0"
+    },
+    {
+      "dependsOn": [
+        "protobuf==6.32.1"
+      ],
+      "ref": "opentelemetry-proto==1.37.0"
+    },
+    {
+      "dependsOn": [
+        "opentelemetry-api==1.37.0",
+        "opentelemetry-semantic-conventions==0.58b0",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "opentelemetry-sdk==1.37.0"
+    },
+    {
+      "dependsOn": [
+        "opentelemetry-api==1.37.0",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "opentelemetry-semantic-conventions==0.58b0"
     },
     {
       "dependsOn": [
@@ -4872,6 +5312,9 @@
     },
     {
       "ref": "propcache==0.3.2"
+    },
+    {
+      "ref": "protobuf==6.32.1"
     },
     {
       "dependsOn": [
@@ -5040,7 +5483,12 @@
         "fastapi==0.116.1",
         "h2==4.3.0",
         "httpx==0.28.1",
+        "loguru==0.7.3",
         "numpy==2.3.3",
+        "opentelemetry-api==1.37.0",
+        "opentelemetry-exporter-otlp-proto-grpc==1.37.0",
+        "opentelemetry-exporter-otlp-proto-http==1.37.0",
+        "opentelemetry-sdk==1.37.0",
         "pillow==11.3.0",
         "psycopg-pool==3.2.6",
         "psycopg==3.2.10",
@@ -5178,6 +5626,13 @@
         "propcache==0.3.2"
       ],
       "ref": "yarl==1.20.1"
+    },
+    {
+      "dependsOn": [
+        "pytest-cov==6.2.1",
+        "pytest==8.4.1"
+      ],
+      "ref": "zipp==3.23.0"
     }
   ],
   "metadata": {
@@ -5216,7 +5671,7 @@
       ],
       "name": "nachet-backend",
       "type": "application",
-      "version": "1.17.0"
+      "version": "1.18.0"
     },
     "properties": [
       {
