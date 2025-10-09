@@ -36,6 +36,8 @@ from app.db.model import (
     # Object,        # lets keep it empty at seed time
 )
 
+from app.db.data.data_constants import seed_rbac_constants
+
 
 async def seed_test_data(sessionmanager: SessionManager) -> None:
     """
@@ -296,7 +298,14 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
             active=True,
         )
         session.add_all([admin_pictures, admin_models, admin_users])
-    print("✅ Organization, rbac roles, rbac permissions, and rbac resources added")
+
+        # Seed RBAC constants (route-based permissions)
+        await seed_rbac_constants(
+            session, uuid.UUID("12345678-1234-1234-1234-123456789012")
+        )
+    print(
+        "✅ Organization, rbac roles, rbac permissions, rbac resources, and route policies added"
+    )
 
     async with async_session.begin() as session:
         # Organization already created above
