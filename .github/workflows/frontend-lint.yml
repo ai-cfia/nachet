@@ -160,3 +160,5 @@ jobs:
         continue-on-error: true
         with:
           sarif_file: ${{ steps.scan.outputs.sarif }}
+          category: sbom-security-scan
+          checkout_path: ${{ github.workspace }}

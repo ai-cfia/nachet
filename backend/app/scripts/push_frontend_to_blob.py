@@ -50,6 +50,7 @@ from dotenv import load_dotenv
 
 from app.blob import create_blob_storage_client, BlobStorageInterface
 from app.api.config import Settings
+from app.service.logs import LogService
 
 
 def extract_vite_hash_from_assets(source_dir: Path) -> Optional[str]:
@@ -110,6 +111,7 @@ async def upload_file(
     file_path: Path,
     blob_name: str,
     dry_run: bool = False,
+    logger=None,
 ) -> bool:
     """
     Upload a single file to blob storage.
@@ -120,14 +122,18 @@ async def upload_file(
         file_path: Local file path
         blob_name: Blob name in storage (relative path)
         dry_run: If True, only simulate the upload
+        logger: Logger instance
 
     Returns:
         True if successful, False otherwise
     """
     if dry_run:
-        print(
-            f"  [DRY RUN] Would upload: {blob_name} ({file_path.stat().st_size} bytes)"
-        )
+        if logger:
+            logger.info(
+                "Would upload file (dry run)",
+                blob_name=blob_name,
+                file_size=file_path.stat().st_size,
+            )
         return True
 
     try:
@@ -135,10 +141,19 @@ async def upload_file(
             await storage_client.upload_blob(
                 container=container_name, name=blob_name, data=file_data, overwrite=True
             )
-        print(f"  [OK] Uploaded: {blob_name} ({file_path.stat().st_size} bytes)")
+        if logger:
+            logger.info(
+                "Uploaded file", blob_name=blob_name, file_size=file_path.stat().st_size
+            )
         return True
     except Exception as e:
-        print(f"  [FAIL] Failed to upload {blob_name}: {e}")
+        if logger:
+            logger.error(
+                "Failed to upload file",
+                blob_name=blob_name,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
         return False
 
 
@@ -147,6 +162,7 @@ async def upload_directory(
     source_dir: Path,
     container_name: str,
     dry_run: bool = False,
+    logger=None,
 ) -> tuple[int, int]:
     """
     Recursively upload all files from a directory to blob storage.
@@ -156,16 +172,19 @@ async def upload_directory(
         source_dir: Source directory path
         container_name: Target container name
         dry_run: If True, only simulate the upload
+        logger: Logger instance
 
     Returns:
         Tuple of (successful_uploads, failed_uploads)
     """
     if not source_dir.exists():
-        print(f"ERROR: Source directory does not exist: {source_dir}")
+        if logger:
+            logger.error("Source directory does not exist", source_dir=str(source_dir))
         return 0, 0
 
     if not source_dir.is_dir():
-        print(f"ERROR: Source path is not a directory: {source_dir}")
+        if logger:
+            logger.error("Source path is not a directory", source_path=str(source_dir))
         return 0, 0
 
     # Get all files recursively
@@ -173,11 +192,17 @@ async def upload_directory(
     files = [f for f in files if f.is_file()]
 
     if not files:
-        print(f"WARNING: No files found in {source_dir}")
+        if logger:
+            logger.warning("No files found in source directory", source_dir=str(source_dir))
         return 0, 0
 
-    print(f"\nFound {len(files)} files to upload from {source_dir}")
-    print(f"Target container: {container_name}\n")
+    if logger:
+        logger.info(
+            "Starting directory upload",
+            file_count=len(files),
+            source_dir=str(source_dir),
+            container_name=container_name,
+        )
 
     successful = 0
     failed = 0
@@ -189,7 +214,7 @@ async def upload_directory(
         blob_name = str(relative_path).replace("\\", "/")
 
         success = await upload_file(
-            storage_client, container_name, file_path, blob_name, dry_run
+            storage_client, container_name, file_path, blob_name, dry_run, logger
         )
 
         if success:
@@ -206,6 +231,7 @@ async def upload_version_file(
     version: str,
     version_filename: str = "version.txt",
     dry_run: bool = False,
+    logger=None,
 ) -> bool:
     """
     Upload a version file to blob storage.
@@ -216,14 +242,18 @@ async def upload_version_file(
         version: Version string
         version_filename: Name of the version file
         dry_run: If True, only simulate the upload
+        logger: Logger instance
 
     Returns:
         True if successful, False otherwise
     """
     if dry_run:
-        print(
-            f"\n  [DRY RUN] Would create version file: {version_filename} with content: {version}"
-        )
+        if logger:
+            logger.info(
+                "Would create version file (dry run)",
+                version_filename=version_filename,
+                version=version,
+            )
         return True
 
     try:
@@ -233,15 +263,23 @@ async def upload_version_file(
             data=version.encode("utf-8"),
             overwrite=True,
         )
-        print(f"\n  [OK] Created version file: {version_filename} -> {version}")
+        if logger:
+            logger.info(
+                "Created version file", version_filename=version_filename, version=version
+            )
         return True
     except Exception as e:
-        print(f"\n  [FAIL] Failed to create version file: {e}")
+        if logger:
+            logger.error(
+                "Failed to create version file",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
         return False
 
 
 async def ensure_container_exists(
-    storage_client: BlobStorageInterface, container_name: str, dry_run: bool = False
+    storage_client: BlobStorageInterface, container_name: str, dry_run: bool = False, logger=None
 ) -> bool:
     """
     Ensure the target container exists, create if it doesn't.
@@ -250,6 +288,7 @@ async def ensure_container_exists(
         storage_client: Blob storage client
         container_name: Container name
         dry_run: If True, only check existence
+        logger: Logger instance
 
     Returns:
         True if container exists or was created, False otherwise
@@ -257,19 +296,32 @@ async def ensure_container_exists(
     try:
         exists = await storage_client.container_exists(container_name)
         if exists:
-            print(f"[OK] Container '{container_name}' exists")
+            if logger:
+                logger.info("Container exists", container_name=container_name)
             return True
 
         if dry_run:
-            print(f"WARNING: Container '{container_name}' does not exist (would be created)")
+            if logger:
+                logger.warning(
+                    "Container does not exist (would be created)",
+                    container_name=container_name,
+                )
             return True
 
-        print(f"Creating container '{container_name}'...")
+        if logger:
+            logger.info("Creating container", container_name=container_name)
         await storage_client.create_container(container_name)
-        print(f"[OK] Container '{container_name}' created")
+        if logger:
+            logger.info("Container created", container_name=container_name)
         return True
     except Exception as e:
-        print(f"ERROR: Failed to ensure container exists: {e}")
+        if logger:
+            logger.error(
+                "Failed to ensure container exists",
+                container_name=container_name,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
         return False
 
 
@@ -301,7 +353,8 @@ async def get_current_version(
 async def clean_container(
     storage_client: BlobStorageInterface,
     container_name: str,
-    dry_run: bool = False
+    dry_run: bool = False,
+    logger=None,
 ) -> tuple[int, int]:
     """
     Delete all blobs in a container.
@@ -310,20 +363,26 @@ async def clean_container(
         storage_client: Blob storage client
         container_name: Container name
         dry_run: If True, only simulate the deletion
+        logger: Logger instance
 
     Returns:
         Tuple of (successful_deletions, failed_deletions)
     """
     try:
-        print("\nCleaning container...")
+        if logger:
+            logger.info("Cleaning container", container_name=container_name)
         result = await storage_client.list_blobs(container_name)
         blobs = result.get("blobs", [])
 
         if not blobs:
-            print("  INFO: Container is already empty")
+            if logger:
+                logger.info("Container is already empty", container_name=container_name)
             return 0, 0
 
-        print(f"  Found {len(blobs)} files to delete")
+        if logger:
+            logger.info(
+                "Found files to delete", blob_count=len(blobs), container_name=container_name
+            )
 
         successful = 0
         failed = 0
@@ -334,26 +393,43 @@ async def clean_container(
                 continue
 
             if dry_run:
-                print(f"  [DRY RUN] Would delete: {blob_name}")
+                if logger:
+                    logger.info("Would delete blob (dry run)", blob_name=blob_name)
                 successful += 1
             else:
                 try:
                     await storage_client.delete_blob(container_name, blob_name)
-                    print(f"  [OK] Deleted: {blob_name}")
+                    if logger:
+                        logger.info("Deleted blob", blob_name=blob_name)
                     successful += 1
                 except Exception as e:
-                    print(f"  [FAIL] Failed to delete {blob_name}: {e}")
+                    if logger:
+                        logger.error(
+                            "Failed to delete blob",
+                            blob_name=blob_name,
+                            error=str(e),
+                            error_type=type(e).__name__,
+                        )
                     failed += 1
 
         return successful, failed
 
     except Exception as e:
-        print(f"  ERROR: Failed to clean container: {e}")
+        if logger:
+            logger.error(
+                "Failed to clean container",
+                container_name=container_name,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
         return 0, 0
 
 
 async def verify_upload(
-    storage_client: BlobStorageInterface, container_name: str, expected_count: int
+    storage_client: BlobStorageInterface,
+    container_name: str,
+    expected_count: int,
+    logger=None,
 ) -> bool:
     """
     Verify that files were uploaded successfully.
@@ -362,27 +438,38 @@ async def verify_upload(
         storage_client: Blob storage client
         container_name: Container name
         expected_count: Expected number of files
+        logger: Logger instance
 
     Returns:
         True if verification passed, False otherwise
     """
     try:
-        print("\nVerifying upload...")
+        if logger:
+            logger.info("Verifying upload", container_name=container_name)
         result = await storage_client.list_blobs(container_name)
         blobs = result.get("blobs", [])
         actual_count = len(blobs)
 
-        print(f"  Expected files: {expected_count}")
-        print(f"  Actual files: {actual_count}")
+        if logger:
+            logger.info(
+                "Upload verification counts",
+                expected_count=expected_count,
+                actual_count=actual_count,
+            )
 
         if actual_count >= expected_count:
-            print("  [OK] Verification passed")
+            if logger:
+                logger.info("Verification passed")
             return True
         else:
-            print("  WARNING: File count mismatch")
+            if logger:
+                logger.warning("File count mismatch during verification")
             return False
     except Exception as e:
-        print(f"  [FAIL] Verification failed: {e}")
+        if logger:
+            logger.error(
+                "Verification failed", error=str(e), error_type=type(e).__name__
+            )
         return False
 
 
@@ -428,25 +515,32 @@ async def main():
 
     args = parser.parse_args()
 
-    print("=" * 60)
-    print("Frontend to Blob Storage Upload Script")
-    print("=" * 60)
+    # Setup console-only logging
+    LogService.setup_console_only_logging("INFO")
+    logger = LogService.get_logger()
+
+    logger.info("Frontend to Blob Storage Upload Script started")
 
     # Load settings
-    print("\nLoading configuration...")
+    logger.info("Loading configuration")
     try:
         load_dotenv(".env.local")
         settings = Settings()
     except Exception as e:
-        print(f"ERROR: Failed to load settings: {e}")
-        print("HINT: Make sure environment variables are set (see .env.template)")
+        logger.error(
+            "Failed to load settings",
+            error=str(e),
+            error_type=type(e).__name__,
+            hint="Make sure environment variables are set (see .env.template)",
+        )
         return 1
 
     # Determine container name
     container_name = args.container or settings.frontend_blob_container
     if not container_name:
-        print(
-            "ERROR: Container name not specified. Use --container or set FRONTEND_BLOB_CONTAINER"
+        logger.error(
+            "Container name not specified",
+            hint="Use --container or set FRONTEND_BLOB_CONTAINER",
         )
         return 1
 
@@ -456,31 +550,38 @@ async def main():
     )
 
     # Create blob storage client
-    print("Connecting to blob storage...")
+    logger.info("Connecting to blob storage")
     try:
         blob_config = settings.blob_storage_config
         provider = blob_config.get("blob_storage_provider") or "azure"
         storage_client = create_blob_storage_client(provider, blob_config)
-        print(f"[OK] Connected to {provider} blob storage")
+        logger.info("Connected to blob storage", provider=provider)
     except Exception as e:
-        print(f"ERROR: Failed to create storage client: {e}")
+        logger.error(
+            "Failed to create storage client",
+            error=str(e),
+            error_type=type(e).__name__,
+        )
         return 1
 
     # Ensure container exists
-    if not await ensure_container_exists(storage_client, container_name, args.dry_run):
+    if not await ensure_container_exists(storage_client, container_name, args.dry_run, logger):
         return 1
 
     # Generate version from Vite build hash
     version = generate_version(args.source)
-    print(f"Local build version: {version}")
+    logger.info("Local build version generated", version=version)
 
     # Clean container if requested
     if args.clean:
         deleted_success, deleted_failed = await clean_container(
-            storage_client, container_name, args.dry_run
+            storage_client, container_name, args.dry_run, logger
         )
         if deleted_failed > 0:
-            print(f"WARNING: {deleted_failed} files failed to delete")
+            logger.warning(
+                "Some files failed to delete",
+                failed_count=deleted_failed,
+            )
 
     # Check current version in blob storage (unless forced or cleaning)
     if not args.force and not args.clean:
@@ -488,52 +589,54 @@ async def main():
             storage_client, container_name, version_filename
         )
         if current_version:
-            print(f"Remote version: {current_version}")
+            logger.info("Remote version found", remote_version=current_version)
 
             if current_version == version:
-                print(
-                    f"\n[OK] Version {version} already deployed - skipping upload to save costs"
+                logger.info(
+                    "Version already deployed - skipping upload",
+                    version=version,
+                    hint="No changes detected. Use --force to upload anyway.",
                 )
-                print("HINT: No changes detected. Use --force to upload anyway.")
                 return 0
             else:
-                print(f"\nVersion changed: {current_version} -> {version}")
-                print("Uploading new version...")
+                logger.info(
+                    "Version changed - uploading new version",
+                    old_version=current_version,
+                    new_version=version,
+                )
         else:
-            print("No remote version found - performing initial upload")
+            logger.info("No remote version found - performing initial upload")
     elif args.force:
-        print("WARNING: Force mode enabled - skipping version check")
+        logger.warning("Force mode enabled - skipping version check")
     elif args.clean:
-        print("Clean mode enabled - uploading fresh files")
+        logger.info("Clean mode enabled - uploading fresh files")
 
     # Upload directory
     successful, failed = await upload_directory(
-        storage_client, args.source, container_name, args.dry_run
+        storage_client, args.source, container_name, args.dry_run, logger
     )
 
     # Upload version file
     if not args.skip_version:
         version_uploaded = await upload_version_file(
-            storage_client, container_name, version, version_filename, args.dry_run
+            storage_client, container_name, version, version_filename, args.dry_run, logger
         )
         if version_uploaded:
             successful += 1
 
     # Print summary
-    print("\n" + "=" * 60)
-    print("Upload Summary")
-    print("=" * 60)
-    print(f"  Successful: {successful}")
-    print(f"  Failed: {failed}")
+    logger.info(
+        "Upload summary",
+        successful_uploads=successful,
+        failed_uploads=failed,
+    )
 
     if not args.dry_run and failed == 0:
         # Verify upload
-        await verify_upload(storage_client, container_name, successful)
-
-    print("=" * 60)
+        await verify_upload(storage_client, container_name, successful, logger)
 
     if args.dry_run:
-        print("\nHINT: This was a dry run. Use without --dry-run to actually upload.")
+        logger.info("Dry run completed", hint="Use without --dry-run to actually upload")
         return 0
 
     return 0 if failed == 0 else 1
