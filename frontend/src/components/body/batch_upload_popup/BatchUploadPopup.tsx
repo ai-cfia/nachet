@@ -63,7 +63,9 @@ const BatchUploadPopup = (props: params) => {
   const [uploading, setUploading] = useState<boolean>(false);
   const [uploadTotalProgress, setUploadTotalProgress] = useState<number>(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadSuccess, setUploadSuccess] = useState<boolean>(false);
+  const uploadSuccess = useMemo(() => {
+    return fileStatus.length > 0 && fileStatus.every((status) => status);
+  }, [fileStatus]);
 
   const [folderName, setFolderName] = useState<string>("");
   const [seedId, setSeedId] = useState<string>("");
@@ -188,7 +190,6 @@ const BatchUploadPopup = (props: params) => {
     setUploading(false);
     setUploadTotalProgress(0);
     setUploadError(null);
-    setUploadSuccess(false);
   };
 
   const resetForm = (): void => {
@@ -295,16 +296,6 @@ const BatchUploadPopup = (props: params) => {
     resetForm();
     setBatchUploadOpen(false);
   };
-
-  useEffect(() => {
-    if (fileStatus.length === 0) {
-      return;
-    }
-    if (fileStatus.some((status) => status === false)) {
-      return;
-    }
-    setUploadSuccess(true);
-  }, [fileStatus]);
 
   useEffect(() => {
     if (sessionId === "" || files == null) {
