@@ -205,7 +205,7 @@ class LogService:
         if config is None:
             config = {}
 
-        enable_otel = config.get("enable_otel", True)
+        enable_otel = config.get("enable_otel", False)  # Disabled by default
         otel_protocol = config.get("otel_exporter_protocol", "grpc").lower()
         endpoint = config.get("otel_exporter_endpoint", "http://alloy.monitoring.svc.cluster.local:4317")
         log_level = config.get("log_level", "INFO").upper()
