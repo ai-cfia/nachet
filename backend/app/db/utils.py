@@ -18,6 +18,20 @@ if TYPE_CHECKING:
     from app.api.config import Settings
 
 
+# Module-level logger
+_logger = None
+
+
+def _get_logger():
+    """Lazy load logger to avoid circular imports"""
+    global _logger
+    if _logger is None:
+        # Import here to avoid circular dependency
+        from app.service import LogService
+        _logger = LogService.get_logger()
+    return _logger
+
+
 class SessionManager:
     """Manages asynchronous DB sessions with connection pooling."""
 
@@ -29,7 +43,7 @@ class SessionManager:
         """Initialize the SessionManager with database URL and engine options."""
         self.engine = create_async_engine(url, **engine_kwargs)
         self._sessionmaker = async_sessionmaker(self.engine, expire_on_commit=False)
-        print("🔌 Database SessionManager initialized")
+        _get_logger().info("Database SessionManager initialized", database_url=url.split("@")[-1])  # Hide credentials
 
     def get_session_factory(self) -> async_sessionmaker:
         """Get the async sessionmaker factory."""
@@ -55,7 +69,7 @@ class SessionManager:
             await self.engine.dispose()
             self.engine = None
             self._sessionmaker = None
-            print("🔌 Database SessionManager closed")
+            _get_logger().info("Database SessionManager closed")
 
 
 # Global SessionManager singleton
@@ -109,7 +123,7 @@ async def initialize_database(settings: "Settings" = None):
     Args:
         settings: Settings instance containing database connection info.
     """
-    print("🔧 Initializing database...")
+    _get_logger().info("Initializing database...")
 
     if settings is None:
         raise ValueError("Settings instance must be provided")
@@ -123,16 +137,14 @@ async def initialize_database(settings: "Settings" = None):
     # Validate database schema version
     await validate_database_startup(engine)
 
-    print("✅ Database initialization completed successfully")
-    print("\n" + "=" * 60)
-    print("\n\n\n")
+    _get_logger().info("Database initialization completed successfully")
 
 
 def cleanup_temp_db(db_url: str):
     """Cleanup temporary database file if using SQLite."""
     if db_url.startswith("sqlite"):
         temp_db_name = db_url.split("///")[-1]
-        print(f"Cleanup temporary database at: {temp_db_name}")
+        _get_logger().info("Cleanup temporary database", database_file=temp_db_name)
         # Ensure clean slate by removing file if it exists (for idempotent tests)
         try:
             os.unlink(temp_db_name)
@@ -145,13 +157,12 @@ async def reset_database_schema(async_engine):
     Reset the database by dropping and recreating the schema.
     This ensures a clean state for development.
     """
-    print("🗑️  Resetting database schema...")
+    db_schema = os.getenv("NACHET_SCHEMA")
+    db_user = os.getenv("DB_USER")
+
+    _get_logger().info("Resetting database schema", schema=db_schema)
 
     async with async_engine.begin() as conn:
-        # Get schema and user names
-        db_schema = os.getenv("NACHET_SCHEMA")
-        db_user = os.getenv("DB_USER")
-
         # Use SQLAlchemy's quote_identifier for safe identifier quoting
         dialect = conn.dialect
         quoted_schema = dialect.identifier_preparer.quote_identifier(db_schema)
@@ -166,12 +177,12 @@ async def reset_database_schema(async_engine):
         )
         await conn.execute(text(f"GRANT ALL ON SCHEMA {quoted_schema} TO public"))
 
-    print("✅ Database schema reset complete")
+    _get_logger().info("Database schema reset complete", schema=db_schema)
 
 
 async def execute_sql_file(async_engine, sql_file_path):
     """Execute a SQL file using the provided async engine."""
-    print(f"📄 Executing SQL file: {sql_file_path}")
+    _get_logger().info("Executing SQL file", file_path=sql_file_path)
 
     with open(sql_file_path, "r", encoding="utf-8") as file:
         sql_content = file.read()
@@ -193,11 +204,19 @@ async def execute_sql_file(async_engine, sql_file_path):
                         await conn.execute(text(statement))
                         pbar.update(1)
                     except Exception as e:
-                        print(f"\n❌ Error executing statement {i + 1}: {e}")
-                        print(f"   Statement: {statement[:100]}...")
+                        _get_logger().error(
+                            f"Error executing statement {i + 1}",
+                            error=str(e),
+                            statement_preview=statement[:100],
+                            statement_number=i + 1,
+                        )
                         raise
 
-    print(f"✅ Successfully executed {len(statements)} SQL statements")
+    _get_logger().info(
+        "Successfully executed SQL statements",
+        file_path=sql_file_path,
+        statement_count=len(statements),
+    )
 
 
 ##########################################################################################
@@ -240,18 +259,22 @@ async def validate_database_startup(async_engine: AsyncEngine):
                 _check_migration_version_sync, script_dir
             )
             if current_heads == expected_heads:
-                print(f"""
-                ✅ Target DB is up to date
-                Current DB version(s) : {current_heads}
-                Expected DB version(s): {expected_heads}
-                Database startup validation passed
-                """)
+                _get_logger().info(
+                    "Target DB is up to date - Database startup validation passed",
+                    current_versions=list(current_heads),
+                    expected_versions=list(expected_heads),
+                )
             else:
+                _get_logger().error(
+                    "Target DB is NOT up to date - Database startup validation failed",
+                    current_versions=list(current_heads),
+                    expected_versions=list(expected_heads),
+                )
                 raise RuntimeError(f"""
-                ❌ Target DB is NOT up to date 
+                ❌ Target DB is NOT up to date
                 Current DB version(s) : {current_heads}
                 Expected DB version(s): {expected_heads}
-                ❌ Database startup validation failed 
+                ❌ Database startup validation failed
                 ❌ Application cannot start with invalid database state
                 """)
 
@@ -260,21 +283,21 @@ def _alembic_upgrade(connection, cfg, target="head"):
     """Run alembic upgrade within a synchronous connection context."""
     cfg.attributes["connection"] = connection
     command.upgrade(cfg, target)
-    print("✅ Migrations completed successfully")
+    _get_logger().info("Migrations completed successfully", target=target)
 
 
 def _alembic_check(connection, cfg):
     """Check if revision command with autogenerate has pending upgrade ops."""
     cfg.attributes["connection"] = connection
     command.check(cfg)
-    print("✅ Alembic check successful - no new migration file needed")
+    _get_logger().info("Alembic check successful - no new migration file needed")
 
 
 def _alembic_generate(connection, cfg, message: str):
     """Run alembic revision with autogenerate within a synchronous connection context."""
     cfg.attributes["connection"] = connection
     command.revision(cfg, autogenerate=False, message=message)
-    print(f"✅ New migration file created with message: {message}")
+    _get_logger().info("New migration file created", message=message)
 
 
 async def run_alembic_func(async_engine: AsyncEngine, alembic_func, *args, **kwargs):
@@ -291,7 +314,7 @@ async def run_migrations(async_engine: AsyncEngine, target_version: str = "head"
     try:
         await run_alembic_func(async_engine, _alembic_upgrade, target=target_version)
     except Exception as e:
-        print(f"❌ Migration failed: {e}")
+        _get_logger().error("Migration failed", error=str(e), target_version=target_version)
         raise
 
 
@@ -300,7 +323,7 @@ async def check_if_new_migration_file_needed(async_engine: AsyncEngine):
     try:
         await run_alembic_func(async_engine, _alembic_check)
     except Exception as e:
-        print(f"❌ New migration file is needed: {e}")
+        _get_logger().warning("New migration file is needed", error=str(e))
         raise
 
 
@@ -316,5 +339,5 @@ async def create_migration_file(async_engine: AsyncEngine, message: str):
     try:
         await run_alembic_func(async_engine, _alembic_generate, message=message)
     except Exception as e:
-        print(f"❌ Failed to create new migration file: {e}")
+        _get_logger().error("Failed to create new migration file", error=str(e), message=message)
         raise
