@@ -13,7 +13,13 @@ const Footer: React.FC = () => {
   const [backendConnected, setBackendConnected] = useState<boolean | null>(
     null,
   );
-  const [isGuest, setIsGuest] = useState<boolean>(true);
+
+  // Derive isGuest from accountInfo
+  const isGuest = (() => {
+    const idTokenClaims = accountInfo?.idTokenClaims;
+    const acctClaim = idTokenClaims?.acct as number | undefined;
+    return acctClaim !== 0;
+  })();
 
   // Check backend connectivity for guest users
   useEffect(() => {
@@ -39,17 +45,6 @@ const Footer: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [isGuest, backendUrl]);
-
-  useEffect(() => {
-    const idTokenClaims = accountInfo?.idTokenClaims;
-    const acctClaim = idTokenClaims?.acct as number | undefined;
-
-    if (acctClaim === 0) {
-      setIsGuest(false);
-    } else {
-      setIsGuest(true);
-    }
-  }, [accountInfo]);
 
   return (
     <Box
