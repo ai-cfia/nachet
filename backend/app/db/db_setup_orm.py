@@ -14,9 +14,10 @@ from app.db.utils import (
 )
 from app.api.config import get_settings
 from app.db.model import Base
+from app.service.logs import LogService
 
 
-async def load_database():
+async def load_database(logger=None):
     """
     Set up the ORM defined database by resetting and recreating the schema using the ORM models.
     This function is idempotent - it can be run multiple times safely.
@@ -29,11 +30,13 @@ async def load_database():
 
     db_name = settings.db_name if db_url.startswith("postgresql") else "SQLite"
 
-    print("\n" + "=" * 60)
-    print(f"🚀 Starting testing database setup for db {db_name}")
+    if logger:
+        logger.info("\n" + "=" * 60)
+        logger.info("Starting testing database setup", database=db_name)
 
     # Initialize SessionManager
-    print("\n🔌 Initializing database SessionManager...")
+    if logger:
+        logger.info("Initializing database SessionManager...")
     sessionmanager.init(**settings.db_conn_info)
     async_engine = sessionmanager.get_engine()
 
@@ -41,18 +44,23 @@ async def load_database():
     await reset_database_schema(async_engine)
 
     # Create the database schema
-    print("\n🔄 Creating database schema...")
+    if logger:
+        logger.info("Creating database schema...")
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    print("\n✅ ORM defined database setup complete.")
-    print("\n" + "=" * 60)
-    print()
+    if logger:
+        logger.info("ORM defined database setup complete")
+        logger.info("=" * 60 + "\n")
 
 
 if __name__ == "__main__":
+    # Initialize console-only logging for this script
+    LogService.setup_console_only_logging("INFO")
+    logger = LogService.get_logger()
+
     if not os.getenv("NACHET_SCHEMA"):
         load_dotenv("../../.env.local")
     os.environ["NACHET_SCHEMA"] = "nachet_orm"
 
-    asyncio.run(load_database())
+    asyncio.run(load_database(logger=logger))
