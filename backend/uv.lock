@@ -1410,13 +1410,15 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "cyclonedx-bom" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "ruff" },
     { name = "toml" },
     { name = "tqdm" },
+]
+sbom = [
+    { name = "cyclonedx-bom" },
 ]
 
 [package.metadata]
@@ -1454,7 +1456,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "cyclonedx-bom", specifier = ">=7.0.0" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov", specifier = ">=6.2.1" },
@@ -1462,6 +1463,7 @@ dev = [
     { name = "toml", specifier = ">=0.10.2" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
+sbom = [{ name = "cyclonedx-bom", specifier = ">=7.0.0" }]
 
 [[package]]
 name = "numpy"

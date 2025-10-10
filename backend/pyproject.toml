@@ -65,7 +65,6 @@ previous-db-schema-version = "e63d0798d58d"
 
 [dependency-groups]
 dev = [
-    "cyclonedx-bom>=7.0.0",
     "pytest-asyncio",
     "pytest>=8.4.1",
     "toml>=0.10.2",
@@ -73,6 +72,8 @@ dev = [
     "tqdm>=4.67.1",
     "ruff>=0.13.2",
 ]
+
+sbom = ["cyclonedx-bom>=7.0.0"]
 
 [project.urls]
 Homepage = "https://github.com/ai-cfia/nachet"
