@@ -4,6 +4,7 @@ from app.db.utils import cleanup_temp_db
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.ext.asyncio import create_async_engine
 import asyncio
+from app.service.logs import LogService
 
 
 def get_table_names_sync(engine):
@@ -11,7 +12,7 @@ def get_table_names_sync(engine):
     return inspector.get_table_names()
 
 
-def validate_orm_classes_sync(db_url: str, debug: bool = False):
+def validate_orm_classes_sync(db_url: str, debug: bool = False, logger=None):
     """Validate all registered ORM classes."""
     try:
         # Ensure sync URL format (remove async drivers if present)
@@ -24,20 +25,24 @@ def validate_orm_classes_sync(db_url: str, debug: bool = False):
             elif db_url.startswith("sqlite"):
                 db_url = "sqlite+pysqlite" + rest_of_url
 
-        print(f"Using DB URL: {db_url}" if debug else "Using DB URL: [HIDDEN]")
+        if logger:
+            logger.info("Using DB URL", hidden=not debug, url=db_url if debug else "[HIDDEN]")
         engine = create_engine(db_url, echo=debug)
         # This will raise exceptions if there are mapping issues
         Base.metadata.create_all(
             engine
         )  # Accessing this attribute triggers mapper configuration
-        print("✅ All ORM classes are valid")
+        if logger:
+            logger.info("All ORM classes are valid")
 
-        # print table list to confirm connection
+        # Get table list to confirm connection
         tables = get_table_names_sync(engine)
-        print(f"Tables in the database: {tables}")
+        if logger:
+            logger.info("Tables found in database", tables=tables)
         return True
     except Exception as e:
-        print(f"❌ ORM validation failed: {e}")
+        if logger:
+            logger.error("ORM validation failed", error=str(e), error_type=type(e).__name__)
         return False
 
 
@@ -49,7 +54,7 @@ async def get_table_names_async(engine):
         return result
 
 
-async def validate_orm_classes_async(db_url: str, debug: bool = False):
+async def validate_orm_classes_async(db_url: str, debug: bool = False, logger=None):
     """Validate all registered ORM classes using async engine."""
     try:
         # Convert sync URL to async URL if needed
@@ -62,49 +67,55 @@ async def validate_orm_classes_async(db_url: str, debug: bool = False):
             elif db_url.startswith("sqlite"):
                 db_url = "sqlite+aiosqlite" + rest_of_url
 
-        print(
-            f"Using async DB URL: {db_url}" if debug else "Using async DB URL: [HIDDEN]"
-        )
+        if logger:
+            logger.info("Using async DB URL", hidden=not debug, url=db_url if debug else "[HIDDEN]")
         engine = create_async_engine(db_url, echo=debug)
 
         # Create all tables - this will validate ORM mappings
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-        print("✅ All ORM classes are valid (async)")
+        if logger:
+            logger.info("All ORM classes are valid (async)")
 
         # Get table list to confirm connection
         tables = await get_table_names_async(engine)
-        print(f"Tables in the database: {tables}")
+        if logger:
+            logger.info("Tables found in database (async)", tables=tables)
 
         # Clean up
         await engine.dispose()
         return True
     except Exception as e:
-        print(f"❌ Async ORM validation failed: {e}")
+        if logger:
+            logger.error("Async ORM validation failed", error=str(e), error_type=type(e).__name__)
         return False
 
 
 if __name__ == "__main__":
-    print("=" * 50)
-    print("🔍 Running runtime ORM validation with database connection...")
-    print("=" * 50)
+    # Initialize console-only logging for this script
+    LogService.setup_console_only_logging("INFO")
+    logger = LogService.get_logger()
+
+    logger.info("=" * 50)
+    logger.info("Running runtime ORM validation with database connection")
+    logger.info("=" * 50)
 
     db_url = Settings().db_conn_info["url"]
     cleanup_temp_db(db_url)
 
     DEBUG = False
-    sync_valid = validate_orm_classes_sync(db_url=db_url, debug=DEBUG)
-    print()
-    async_valid = asyncio.run(validate_orm_classes_async(db_url=db_url, debug=DEBUG))
+    sync_valid = validate_orm_classes_sync(db_url=db_url, debug=DEBUG, logger=logger)
+    logger.info("")
+    async_valid = asyncio.run(validate_orm_classes_async(db_url=db_url, debug=DEBUG, logger=logger))
 
     cleanup_temp_db(db_url)
-    print("\n" + "=" * 50)
-    print("VALIDATION SUMMARY")
-    print("=" * 50)
-    print(f"Synchronous validation: {'✅ PASSED' if sync_valid else '❌ FAILED'}")
-    print(f"Asynchronous validation: {'✅ PASSED' if async_valid else '❌ FAILED'}")
-    print(
+    logger.info("\n" + "=" * 50)
+    logger.info("VALIDATION SUMMARY")
+    logger.info("=" * 50)
+    logger.info(f"Synchronous validation: {'✅ PASSED' if sync_valid else '❌ FAILED'}")
+    logger.info(f"Asynchronous validation: {'✅ PASSED' if async_valid else '❌ FAILED'}")
+    logger.info(
         f"Overall result: {'✅ ALL TESTS PASSED' if sync_valid and async_valid else '❌ SOME TESTS FAILED'}"
     )
-    print("=" * 50)
+    logger.info("=" * 50)
