@@ -1,4 +1,5 @@
 import axios from "axios";
+import { v7 as uuidv7 } from "uuid";
 
 interface LogEntry {
   level: "ERROR" | "WARNING" | "INFO" | "DEBUG";
@@ -22,23 +23,13 @@ class ErrorLogger {
   }
 
   private generateSessionId(): string {
-    const arr = new Uint8Array(9);
-    window.crypto.getRandomValues(arr);
-    const randomStr = Array.from(arr)
-      .map((b) => b.toString(36))
-      .join("")
-      .substring(0, 9);
-    return `session_${Date.now()}_${randomStr}`;
+    // Use UUIDv7 for time-ordered session IDs
+    return uuidv7();
   }
 
   private generateCorrelationId(): string {
-    const arr = new Uint8Array(9);
-    window.crypto.getRandomValues(arr);
-    const randomStr = Array.from(arr)
-      .map((b) => b.toString(36))
-      .join("")
-      .substring(0, 9);
-    return `${Date.now()}_${randomStr}`;
+    // Use UUIDv7 for time-ordered correlation IDs
+    return uuidv7();
   }
 
   public setCorrelationId(id: string): void {
