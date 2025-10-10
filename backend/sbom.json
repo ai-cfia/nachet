@@ -4398,6 +4398,34 @@
       "version": "2.5.0"
     },
     {
+      "bom-ref": "uuid6==2025.0.1",
+      "description": "New time-based UUID formats which are suited for use as a database key",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Bug Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/oittaa/uuid6-python/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/oittaa/uuid6-python"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "uuid6",
+      "purl": "pkg:pypi/uuid6@2025.0.1",
+      "type": "library",
+      "version": "2025.0.1"
+    },
+    {
       "bom-ref": "uvicorn==0.35.0",
       "description": "The lightning-fast ASGI server.",
       "externalReferences": [
@@ -5497,7 +5525,8 @@
         "pydantic_core==2.33.2",
         "python-dotenv==1.1.1",
         "python-magic==0.4.27",
-        "slowapi==0.1.9"
+        "slowapi==0.1.9",
+        "uuid6==2025.0.1"
       ],
       "ref": "root-component"
     },
@@ -5577,6 +5606,9 @@
         "h2==4.3.0"
       ],
       "ref": "urllib3==2.5.0"
+    },
+    {
+      "ref": "uuid6==2025.0.1"
     },
     {
       "dependsOn": [
