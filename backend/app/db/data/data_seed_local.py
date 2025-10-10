@@ -10,6 +10,7 @@ from datetime import datetime
 
 # from sqlalchemy.orm import sessionmaker
 from app.db.utils import SessionManager
+from app.service import LogService
 
 from app.db.model import (
     # Base,
@@ -36,6 +37,17 @@ from app.db.model import (
 )
 
 from app.db.data.data_constants import seed_rbac_constants
+
+# Module-level logger
+_logger = None
+
+
+def _get_logger():
+    """Lazy load logger to avoid circular imports"""
+    global _logger
+    if _logger is None:
+        _logger = LogService.get_logger()
+    return _logger
 
 
 async def seed_dev_data(sessionmanager: SessionManager) -> None:
@@ -76,7 +88,7 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
             active=True,
         )
         session.add(device_lens)
-    print("✅ Device brand and models added")
+    _get_logger().info("Device brand and models added")
 
     async with async_session.begin() as session:
         # Create model tasks first
@@ -96,7 +108,7 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
             active=True,
         )
         session.add_all([detection_task, classification_task, segmentation_task])
-    print("✅ Model tasks added")
+    _get_logger().info("Model tasks added")
 
     async with async_session.begin() as session:
         # Create models
@@ -143,7 +155,7 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         )
 
         session.add_all([swin_15_model, swin_27_model, seed_detector_model])
-    print("✅ Models added")
+    _get_logger().info("Models added")
 
     async with async_session.begin() as session:
         # Create pipeline
@@ -175,7 +187,7 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
             },
         )
         session.add(pipeline)
-    print("✅ Pipeline added")
+    _get_logger().info("Pipeline added")
 
     # Add pipeline default
     async with async_session.begin() as session:
@@ -185,7 +197,7 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
             active=True,
         )
         session.add(pipeline_default)
-    print("✅ Pipeline default added")
+    _get_logger().info("Pipeline default added")
 
     async with async_session.begin() as session:
         # Create pipeline-model relationships
@@ -211,7 +223,7 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         )
 
         session.add_all([pipeline_model_1, pipeline_model_2, pipeline_model_3])
-    print("✅ Pipeline models added")
+    _get_logger().info("Pipeline models added")
 
     async with async_session.begin() as session:
         # Create organization first (required for foreign key references)
@@ -302,8 +314,8 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         await seed_rbac_constants(
             session, uuid.UUID("12345678-1234-1234-1234-123456789012")
         )
-    print(
-        "✅ Organization, rbac roles, rbac permissions, rbac resources, and route policies added"
+    _get_logger().info(
+        "Organization, rbac roles, rbac permissions, rbac resources, and route policies added"
     )
 
     async with async_session.begin() as session:
@@ -334,7 +346,7 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
 
         # Update user's default folder (after folder is created)
         test_user.default_folder_id = uuid.UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479")
-    print("✅ Test user and default folder added")
+    _get_logger().info("Test user and default folder added")
 
     # Add user-role mapping
     async with async_session.begin() as session:
@@ -344,7 +356,7 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
             active=True,
         )
         session.add(user_role_mapping)
-    print("✅ User-role mapping added")
+    _get_logger().info("User-role mapping added")
 
     # # Add schema version
     # async with async_session() as session:
@@ -418,4 +430,4 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
     #         )
     #         session.add(sample_object)
 
-    print("✅ Development database seeded successfully!")
+    _get_logger().info("Development database seeded successfully")
