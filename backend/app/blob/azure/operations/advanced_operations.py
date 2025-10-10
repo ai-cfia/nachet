@@ -18,6 +18,18 @@ from ...exceptions import (
     # ConnectionError,
 )
 
+# Module-level logger
+_logger = None
+
+
+def _get_logger():
+    """Lazy load logger to avoid circular imports"""
+    global _logger
+    if _logger is None:
+        from app.service.logs import LogService
+        _logger = LogService.get_logger()
+    return _logger
+
 
 class AdvancedOperations:
     """Handles advanced operations for Azure Blob Storage."""
@@ -220,10 +232,12 @@ class AdvancedOperations:
             if not delete_successful:
                 # Copy succeeded but delete failed - this is not ideal but not catastrophic
                 # The destination blob exists, we just have a duplicate
-                print(
-                    f"Warning: Failed to delete source blob after successful copy. "
-                    f"Source: {source_container}/{source_name}, "
-                    f"Destination: {dest_container}/{dest_name}"
+                _get_logger().warning(
+                    "Failed to delete source blob after successful copy",
+                    source_container=source_container,
+                    source_name=source_name,
+                    dest_container=dest_container,
+                    dest_name=dest_name
                 )
 
             return {
@@ -305,12 +319,16 @@ class AdvancedOperations:
                 container=dest_container, blob=dest_name
             )
             blob_client.delete_blob()
-            print(
-                f"Rollback: Successfully deleted destination blob after failed move: "
-                f"{dest_container}/{dest_name}"
+            _get_logger().info(
+                "Rollback: Successfully deleted destination blob after failed move",
+                dest_container=dest_container,
+                dest_name=dest_name
             )
         except Exception as cleanup_error:
-            print(
-                f"Rollback failed: Could not delete destination blob after failed move: "
-                f"{dest_container}/{dest_name}. Error: {str(cleanup_error)}"
+            _get_logger().error(
+                "Rollback failed: Could not delete destination blob after failed move",
+                dest_container=dest_container,
+                dest_name=dest_name,
+                error=str(cleanup_error),
+                error_type=type(cleanup_error).__name__
             )
