@@ -1,5 +1,5 @@
 import { HashRouter as Router, Route, Routes } from "react-router-dom";
-import { useCallback, Fragment, useState, useEffect } from "react";
+import { Fragment, useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import { Navbar, Appbar } from "./components/header";
 import Body from "./root/body";
@@ -19,7 +19,10 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
     height: window.innerHeight,
   });
   const [creativeCommonsPopupOpen, setCreativeCommonsPopupOpen] =
-    useState<boolean>(false);
+    useState<boolean>(() => {
+      const existingAgreement = Cookies.get("creative-commons-agreement");
+      return existingAgreement === undefined || existingAgreement === "false";
+    });
   const [switchLanguage, setSwitchLanguage] = useState<boolean>(false);
 
   const handleCreativeCommonsAgreement = (agree: boolean): void => {
@@ -35,18 +38,6 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
     }
     setCreativeCommonsPopupOpen(false);
   };
-
-  const getCreativeCommonsAgreement = useCallback((): void => {
-    // check if the user has already agreed to the creative commons agreement (cookie)
-    const existingAgreement = Cookies.get("creative-commons-agreement");
-    if (existingAgreement === undefined || existingAgreement === "false") {
-      setCreativeCommonsPopupOpen(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    getCreativeCommonsAgreement();
-  }, [getCreativeCommonsAgreement]);
 
   useEffect(() => {
     // update window size on resize
