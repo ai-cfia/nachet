@@ -57,17 +57,6 @@ variable "private_endpoint_subnet_id" {
   type        = string
 }
 
-variable "enable_public_access" {
-  description = "Enable public access for Container Apps (set to false for full private deployment)"
-  type        = bool
-  default     = false
-}
-
-variable "allowed_ip_addresses" {
-  description = "List of IP addresses allowed to access Container Apps (CIDR format)"
-  type        = list(string)
-  default     = ["0.0.0.0/0"] # Allow all for dev - restrict in prod
-}
 
 # variable "enable_observability_stack" {
 #   description = "Enable Grafana LGTM + Alloy observability stack"
@@ -200,17 +189,6 @@ variable "nachet_image" {
 # }
 
 # # Container Apps Resources
-variable "container_app_cpu" {
-  description = "CPU for container apps"
-  type        = number
-  default     = 0.25 # Minimum CPU allocation
-}
-
-variable "container_app_memory" {
-  description = "Memory for container apps"
-  type        = string
-  default     = "0.5Gi" # Minimum memory allocation
-}
 
 variable "cae_infrastructure_resource_group_name" {
   description = "Infra resource group name"
@@ -231,66 +209,6 @@ variable "cae_infrastructure_resource_group_name" {
 
 # # Backend Environment Variables
 
-variable "backend_port" {
-  description = "Backend application port"
-  type        = string
-  default     = "8080"
-}
-
-# # ML Model Endpoints (if using external services instead of Triton)
-variable "ml_model_endpoint_rcnn" {
-  description = "RCNN model endpoint URL"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "ml_model_endpoint_swin" {
-  description = "Swin model endpoint URL"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "ml_model_endpoint_swin_22_spp" {
-  description = "Swin 22 SPP model endpoint URL"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "ml_model_endpoint_swin_27_spp" {
-  description = "Swin 27 SPP model endpoint URL"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-# ML Model API Keys
-variable "ml_api_key" {
-  description = "API key for ML model endpoints"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-# # Application Configuration
-variable "jwt_secret" {
-  description = "JWT secret for authentication"
-  type        = string
-  sensitive   = true
-}
-
-variable "cors_allowed_origins" {
-  description = "CORS allowed origins"
-  type        = string
-}
-
-variable "log_level" {
-  description = "Application log level"
-  type        = string
-  default     = "DEBUG"
-}
 
 # # Azure Storage for Triton Models
 # variable "azure_storage_account_key" {
@@ -301,31 +219,6 @@ variable "log_level" {
 # }
 
 
-variable "encryption_key" {
-  description = "Encryption key for sensitive data"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "session_secret" {
-  description = "Session secret for cookies"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "pgadmin_password" {
-  description = "PgAdmin admin password"
-  type        = string
-  sensitive   = true
-}
-
-variable "pgadmin_image" {
-  description = "PgAdmin container image from ACR"
-  type        = string
-  default     = "your-acr-name.azurecr.io/pgadmin:latest"
-}
 
 # PostgreSQL Configuration
 variable "postgresql_public_network_access_enabled" {
@@ -372,12 +265,6 @@ variable "postgresql_version" {
   default     = "16"
 }
 
-# Database connection string (used by application modules)
-variable "database_url" {
-  description = "Database connection URL"
-  type        = string
-  sensitive   = true
-}
 
 # Container Registry Configuration
 variable "acr_allowed_ip_1" {
