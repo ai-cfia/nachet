@@ -35,7 +35,7 @@ jobs:
 
       - name: Install dependencies and cyclone-x
         run: |
-          uv sync --dev --sbom
+          uv sync --group dev --group sbom
 
       - name: Generate new SBOM
         run: |
