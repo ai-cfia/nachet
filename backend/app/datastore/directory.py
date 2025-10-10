@@ -1,6 +1,6 @@
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.dialects import postgresql
+# from sqlalchemy.dialects import postgresql
 from sqlalchemy import select, func
 from app.db.model import Folder, Picture
 
