@@ -46,7 +46,6 @@ import {
   AzureStorageDirectoryItem,
   AzureStorageDirectoryItemApi,
   Images,
-  LabelOccurrences,
   ModelMetadata,
 } from "@common/types";
 // import Cookies from "js-cookie";
@@ -65,8 +64,6 @@ interface params {
 const Body: React.FC<params> = (props) => {
   const defaultImageSrc =
     "https://ai-cfia.github.io/nachet-frontend/placeholder-image.jpg";
-  const [imageSrc, setImageSrc] = useState<string>(defaultImageSrc);
-  const [imageTiff, setImageTiff] = useState<string>("");
   const [imageIndex, setImageIndex] = useState<number>(0);
   const [imageFormat, setImageFormat] = useState<string>("image/png");
   const [imageLabel, setImageLabel] = useState<string>("");
@@ -90,9 +87,6 @@ const Body: React.FC<params> = (props) => {
   const [selectedModel, setSelectedModel] = useState("Swin transformer");
   const [modelDisplayName, setModelDisplayName] = useState("");
   const [selectedLabel, setSelectedLabel] = useState<string>("all");
-  const [labelOccurrences, setLabelOccurrences] = useState<LabelOccurrences>(
-    {},
-  );
   const [saveIndividualImage, setSaveIndividualImage] = useState<string>("0");
   const [switchTable, setSwitchTable] = useState<boolean>(true);
   const webcamRef = useRef<Webcam>(null);
@@ -101,7 +95,26 @@ const Body: React.FC<params> = (props) => {
   const [isLoading, setIsLoading] = useState(false);
   const [metadata, setMetadata] = useState<ModelMetadata[]>([]);
   const [showInference, setShowInference] = useState<boolean>(true);
-  const [authPopupOpen, setAuthPopupOpen] = useState<boolean>(false);
+
+  // Derive imageSrc, imageTiff, and labelOccurrences from imageCache and imageIndex
+  const currentImageData = useMemo(() => {
+    return imageCache.find((img) => img.index === imageIndex);
+  }, [imageCache, imageIndex]);
+
+  const imageSrc = useMemo(() => {
+    return currentImageData?.src ?? defaultImageSrc;
+  }, [currentImageData, defaultImageSrc]);
+
+  const imageTiff = useMemo(() => {
+    return currentImageData?.src.includes("image/tiff")
+      ? currentImageData.src
+      : "";
+  }, [currentImageData]);
+
+  const labelOccurrences = useMemo(() => {
+    return currentImageData ? getLabelOccurrence(currentImageData) : {};
+  }, [currentImageData]);
+
   const decodedTiff = useDecoderTiff(imageTiff);
   const backendUrl = useBackendUrl();
   const apiScopeClaim = props.apiScopeClaim;
@@ -109,6 +122,11 @@ const Body: React.FC<params> = (props) => {
   const isAuthenticated = useIsAuthenticated();
   const accountInfo = useAccount();
   const uuid = accountInfo?.idTokenClaims?.oid ?? "";
+
+  // Derive authPopupOpen from authentication state
+  const authPopupOpen = useMemo(() => {
+    return !isAuthenticated && inProgress === InteractionStatus.None;
+  }, [isAuthenticated, inProgress]);
 
   const authRequest = useMemo(() => {
     return {
@@ -207,20 +225,6 @@ const Body: React.FC<params> = (props) => {
       alert("Please select a directory");
     }
   };
-
-  useEffect(() => {
-    const imageData = imageCache.find((img) => img.index === imageIndex);
-    if (imageData === undefined) {
-      setImageSrc(defaultImageSrc);
-      return;
-    }
-    const labelOccurrences = getLabelOccurrence(imageData);
-    setLabelOccurrences(labelOccurrences);
-    setImageSrc(imageData.src);
-    if (imageData.src.includes("image/tiff")) {
-      setImageTiff(imageData.src);
-    }
-  }, [imageIndex, imageCache]);
 
   useEffect(() => {
     const imageData = imageCache.find((img) => img.index === imageIndex);
@@ -376,20 +380,6 @@ const Body: React.FC<params> = (props) => {
     loadModelMetadata();
   }, [backendUrl, msalInstance, apiScopeClaim, isAuthenticated, inProgress]);
 
-  // Auto-open auth popup when user is not authenticated
-  useEffect(() => {
-    if (!isAuthenticated && inProgress === InteractionStatus.None) {
-      setAuthPopupOpen(true);
-    }
-  }, [isAuthenticated, inProgress]);
-
-  // Auto-close auth popup when user becomes authenticated
-  useEffect(() => {
-    if (isAuthenticated && authPopupOpen) {
-      setAuthPopupOpen(false);
-    }
-  }, [isAuthenticated, authPopupOpen]);
-
   return (
     <Box
       data-testid="body-component"
@@ -411,7 +401,9 @@ const Body: React.FC<params> = (props) => {
       {authPopupOpen && (
         <AuthPopup
           open={authPopupOpen}
-          onClose={() => setAuthPopupOpen(false)}
+          onClose={() => {
+            /* Auth popup closes automatically when user is authenticated */
+          }}
           apiScopeClaim={apiScopeClaim}
         />
       )}
