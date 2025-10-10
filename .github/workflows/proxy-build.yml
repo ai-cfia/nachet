@@ -1,0 +1,22 @@
+---
+name: Nachet proxy build
+
+on:
+  pull_request:
+    paths:
+      - "proxy/**"
+      - ".github/workflows/proxy-build.yml"
+    types:
+      - opened
+      - closed
+      - synchronize
+
+jobs:
+  deploy-to-ghcr:
+    uses: ai-cfia/github-workflows/.github/workflows/workflow-build-push-container-github-registry.yml@main
+    with:
+      container-name: ${{ github.event.repository.name }}-proxy
+      tag: ${{ github.sha }}
+      registry: ghcr.io/ai-cfia
+      dockerfile-folder-path: ./proxy/Dockerfile
+    secrets: inherit
