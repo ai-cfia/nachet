@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     frontend_version_file: str | None = None
 
     # logging/observability settings
+    otel_enabled: bool = False  # Set to False for scripts/standalone use without OTEL
     otel_exporter_protocol: str = "grpc"  # "grpc" or "http"
     otel_exporter_endpoint: str = "http://alloy.monitoring.svc.cluster.local:4317"
     log_level: str = "INFO"
@@ -103,6 +104,7 @@ class Settings(BaseSettings):
     def logging_config(self) -> dict:
         """Configuration for logging initialization."""
         return {
+            "enable_otel": self.otel_enabled,
             "otel_exporter_protocol": self.otel_exporter_protocol.lower(),
             "otel_exporter_endpoint": self.otel_exporter_endpoint,
             "log_level": self.log_level.upper(),
@@ -159,55 +161,55 @@ def get_limiter() -> Limiter:
 async def lifespan(app: FastAPI):
     # Startup
     # settings: Settings = app.settings
-    print("🚀 Starting lifespan startup...")
+    print("Starting lifespan startup...")
 
     settings = get_settings()
     if settings is None:
         raise ValueError("Settings instance could not be created")
-    print("✅ Settings loaded successfully")
+    print("Lifespan Settings loaded successfully")
 
     # Initialize logging infrastructure
-    print("🔄 Initializing logging...")
+    print("Lifespan Initializing logging...")
     from app.service import LogService
     LogService.setup_logging(settings.logging_config)
-    print("✅ Logging initialized successfully")
+    print("Lifespan Logging initialized successfully")
 
     # Initialize database (validates schema version and sets up SessionManager)
-    print("🔄 Initializing database...")
+    print("Lifespan Initializing database...")
     await initialize_database(settings)
-    print("✅ Database initialized successfully")
+    print("Lifespan Database initialized successfully")
 
     # Initialize blob storage
-    print("🔄 Initializing blob storage...")
+    print("Lifespan Initializing blob storage...")
     await initialize_blob_storage(settings)
-    print("✅ Blob storage initialized successfully")
+    print("Lifespan Blob storage initialized successfully")
 
     # Initialize frontend service
     if settings.frontend_blob_container and settings.frontend_version_file:
-        print("🔄 Initializing frontend service...")
+        print("Lifespan Initializing frontend service...")
         from app.service import FrontendService
 
         FrontendService.configure(
             settings.frontend_blob_container, settings.frontend_version_file
         )
         await FrontendService.check_and_update_version()
-        print("✅ Frontend service initialized successfully")
+        print("Lifespan Frontend service initialized successfully")
 
     # Store managers in app state for access throughout the app
     app.state.sessionmanager = sessionmanager
     app.state.blob_storage_manager = blob_storage_manager
-    print("✅ App state configured successfully")
+    print("Lifespan App state configured successfully")
 
     # Note: OTEL logging and tracing is now handled by LogService (see app/service/logs.py)
 
-    print("🎉 FastAPI app startup complete!")
+    print("Lifespan FastAPI app startup complete!")
     yield
 
     # Shutdown
-    print("🛑 Starting app shutdown...")
+    print("Lifespan Starting app shutdown...")
     await close_database_engine()
     await close_blob_storage()
-    print("✅ App shutdown complete")
+    print("Lifespan App shutdown complete!")
 
 
 def create_app(settings: Settings, router: APIRouter, lifespan=None):
