@@ -95,6 +95,30 @@ class StorageFileNotFound(StorageError):
     pass
 
 
+class OrganizationError(Exception):
+    pass
+
+
+class OrganizationNotFoundError(OrganizationError):
+    pass
+
+
+class OrganizationCreationError(OrganizationError):
+    pass
+
+
+class OrganizationUpdateError(OrganizationError):
+    pass
+
+
+class OrganizationDeletionError(OrganizationError):
+    pass
+
+
+class OrganizationUnauthorizedError(OrganizationError):
+    pass
+
+
 def log_error(error: Exception):
     """Logs the error message and traceback."""
     logger.error(f"Error occurred: {error}")

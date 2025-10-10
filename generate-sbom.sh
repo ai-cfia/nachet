@@ -71,7 +71,7 @@ else
       apt update && \
       apt install -y curl git build-essential python3-dev libjpeg-dev zlib1g-dev libtiff-dev libfreetype6-dev liblcms2-dev libwebp-dev libharfbuzz-dev libfribidi-dev libxcb1-dev && \
       curl -LsSf https://astral.sh/uv/install.sh | sh && \
-      /root/.local/bin/uv sync && \
+      /root/.local/bin/uv sync --group dev --group sbom && \
       /root/.local/bin/uv lock && \
       /root/.local/bin/uv run cyclonedx-py environment --output-reproducible -v --sv 1.6 --pyproject pyproject.toml -o sbom.json && \
       echo "" >> sbom.json"
