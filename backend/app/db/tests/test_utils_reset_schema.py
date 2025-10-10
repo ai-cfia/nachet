@@ -1,6 +1,6 @@
 import os
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch, AsyncMock, MagicMock, Mock
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.sql import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -328,25 +328,25 @@ class TestResetDatabaseSchema:
         # provides some protection for normal identifier characters
 
     @pytest.mark.asyncio
-    @patch("builtins.print")
+    @patch("app.db.utils._get_logger")
     @patch.dict(os.environ, {"NACHET_SCHEMA": "test_schema", "DB_USER": "test_user"})
-    async def test_reset_database_schema_output_messages(self, mock_print):
-        """Test that the function prints appropriate status messages."""
+    async def test_reset_database_schema_output_messages(self, mock_get_logger):
+        """Test that the function logs appropriate status messages."""
         mock_engine, executed_statements = self._setup_mock_engine_with_dialect()
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
 
         await reset_database_schema(mock_engine)
 
-        # Verify print statements were called
-        print_calls = [call.args[0] for call in mock_print.call_args_list]
-
+        # Verify logger was called
+        assert mock_logger.info.call_count == 2
+        
         # Check for start message
-        start_messages = [
-            msg for msg in print_calls if "Resetting database schema" in msg
-        ]
-        assert len(start_messages) == 1
+        first_call = mock_logger.info.call_args_list[0]
+        assert first_call[0][0] == "Resetting database schema"
+        assert first_call[1]["schema"] == "test_schema"
 
         # Check for completion message
-        completion_messages = [
-            msg for msg in print_calls if "Database schema reset complete" in msg
-        ]
-        assert len(completion_messages) == 1
+        second_call = mock_logger.info.call_args_list[1]
+        assert second_call[0][0] == "Database schema reset complete"
+        assert second_call[1]["schema"] == "test_schema"

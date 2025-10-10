@@ -114,27 +114,30 @@ class TestInitializeDatabase:
 
     @pytest.mark.asyncio
     @patch("app.db.utils.validate_database_startup")
-    @patch("builtins.print")
+    @patch("app.db.utils._get_logger")
     async def test_initialize_database_success(
-        self, mock_print, mock_validate, mock_settings
+        self, mock_get_logger, mock_validate, mock_settings
     ):
         """Test successful database initialization."""
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
+
         await initialize_database(mock_settings)
 
-        # Verify print statements were called
-        print_calls = [call.args[0] for call in mock_print.call_args_list if call.args]
-
+        # Verify logger was called (3 times: init start, SessionManager init, init complete)
+        assert mock_logger.info.call_count == 3
+        
         # Check for start message
-        start_messages = [msg for msg in print_calls if "Initializing database" in msg]
-        assert len(start_messages) == 1
+        first_call = mock_logger.info.call_args_list[0]
+        assert first_call[0][0] == "Initializing database..."
 
-        # Check for completion messages
-        completion_messages = [
-            msg
-            for msg in print_calls
-            if "Database initialization completed successfully" in msg
-        ]
-        assert len(completion_messages) == 1
+        # Second call is from SessionManager
+        second_call = mock_logger.info.call_args_list[1]
+        assert second_call[0][0] == "Database SessionManager initialized"
+
+        # Check for completion message
+        third_call = mock_logger.info.call_args_list[2]
+        assert third_call[0][0] == "Database initialization completed successfully"
 
         # Verify sessionmanager was initialized
         assert sessionmanager.engine is not None
@@ -279,25 +282,27 @@ class TestInitializeDatabase:
 
     @pytest.mark.asyncio
     @patch("app.db.utils.validate_database_startup")
-    @patch("builtins.print")
+    @patch("app.db.utils._get_logger")
     async def test_initialize_database_print_messages_format(
-        self, mock_print, mock_validate, mock_settings
+        self, mock_get_logger, mock_validate, mock_settings
     ):
-        """Test that initialize_database prints correctly formatted messages."""
+        """Test that initialize_database logs correctly formatted messages."""
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
+
         await initialize_database(mock_settings)
 
-        # Verify all expected print calls
-        print_calls = [call.args[0] for call in mock_print.call_args_list if call.args]
-
-        # Should have start message, completion message, separator, and newlines
-        assert "🔧 Initializing database..." in print_calls
-        assert "✅ Database initialization completed successfully" in print_calls
-        # Check for separator line (with or without newline prefix)
-        separator_found = any("=" * 60 in call for call in print_calls)
-        assert separator_found, (
-            f"Expected separator line with 60 '=' characters not found in: {print_calls}"
-        )
-        assert "\n\n\n" in print_calls
+        # Verify logger was called with expected messages (3 times total)
+        assert mock_logger.info.call_count == 3
+        
+        # Check messages
+        first_call = mock_logger.info.call_args_list[0]
+        second_call = mock_logger.info.call_args_list[1]
+        third_call = mock_logger.info.call_args_list[2]
+        
+        assert first_call[0][0] == "Initializing database..."
+        assert second_call[0][0] == "Database SessionManager initialized"
+        assert third_call[0][0] == "Database initialization completed successfully"
 
     @pytest.mark.asyncio
     async def test_initialize_database_real_settings_instance(self):
@@ -543,16 +548,18 @@ class TestInitializeDatabaseErrorScenarios:
         assert sessionmanager._sessionmaker is not None
 
     @pytest.mark.asyncio
-    @patch("builtins.print")
+    @patch("app.db.utils._get_logger")
     async def test_initialize_database_print_exception_handling(
-        self, mock_print, mock_settings
+        self, mock_get_logger, mock_settings
     ):
-        """Test that print failures don't break initialization."""
-        # Make print fail on the first call
-        mock_print.side_effect = [Exception("Print failed"), None, None, None]
+        """Test that logger failures during initialization are handled properly."""
+        # Make logger fail on info calls
+        mock_logger = Mock()
+        mock_logger.info.side_effect = Exception("Logger failed")
+        mock_get_logger.return_value = mock_logger
 
-        # Should still raise the print exception
-        with pytest.raises(Exception, match="Print failed"):
+        # Should raise the logger exception
+        with pytest.raises(Exception, match="Logger failed"):
             await initialize_database(mock_settings)
 
     @pytest.mark.asyncio

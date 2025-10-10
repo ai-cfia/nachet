@@ -67,12 +67,14 @@ class TestAlembicUpgrade:
     """Test cases for the _alembic_upgrade function."""
 
     @patch("app.db.utils.command.upgrade")
-    @patch("builtins.print")
-    def test_alembic_upgrade_default_target(self, mock_print, mock_upgrade):
+    @patch("app.db.utils._get_logger")
+    def test_alembic_upgrade_default_target(self, mock_get_logger, mock_upgrade):
         """Test _alembic_upgrade with default 'head' target."""
         mock_conn = Mock()
         mock_cfg = Mock()
         mock_cfg.attributes = {}
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
 
         _alembic_upgrade(mock_conn, mock_cfg)
 
@@ -82,17 +84,19 @@ class TestAlembicUpgrade:
         # Verify upgrade command was called with correct parameters
         mock_upgrade.assert_called_once_with(mock_cfg, "head")
 
-        # Verify success message was printed
-        mock_print.assert_called_once_with("✅ Migrations completed successfully")
+        # Verify success message was logged
+        mock_logger.info.assert_called_once_with("Migrations completed successfully", target="head")
 
     @patch("app.db.utils.command.upgrade")
-    @patch("builtins.print")
-    def test_alembic_upgrade_specific_target(self, mock_print, mock_upgrade):
+    @patch("app.db.utils._get_logger")
+    def test_alembic_upgrade_specific_target(self, mock_get_logger, mock_upgrade):
         """Test _alembic_upgrade with specific target version."""
         mock_conn = Mock()
         mock_cfg = Mock()
         mock_cfg.attributes = {}
         target_version = "abc123def456"
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
 
         _alembic_upgrade(mock_conn, mock_cfg, target=target_version)
 
@@ -102,8 +106,8 @@ class TestAlembicUpgrade:
         # Verify upgrade command was called with specific target
         mock_upgrade.assert_called_once_with(mock_cfg, target_version)
 
-        # Verify success message was printed
-        mock_print.assert_called_once_with("✅ Migrations completed successfully")
+        # Verify success message was logged
+        mock_logger.info.assert_called_once_with("Migrations completed successfully", target=target_version)
 
     @patch("app.db.utils.command.upgrade")
     def test_alembic_upgrade_command_error(self, mock_upgrade):
@@ -137,12 +141,14 @@ class TestAlembicCheck:
     """Test cases for the _alembic_check function."""
 
     @patch("app.db.utils.command.check")
-    @patch("builtins.print")
-    def test_alembic_check_success(self, mock_print, mock_check):
+    @patch("app.db.utils._get_logger")
+    def test_alembic_check_success(self, mock_get_logger, mock_check):
         """Test _alembic_check when no migration is needed."""
         mock_conn = Mock()
         mock_cfg = Mock()
         mock_cfg.attributes = {}
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
 
         _alembic_check(mock_conn, mock_cfg)
 
@@ -152,9 +158,9 @@ class TestAlembicCheck:
         # Verify check command was called
         mock_check.assert_called_once_with(mock_cfg)
 
-        # Verify success message was printed
-        mock_print.assert_called_once_with(
-            "✅ Alembic check successful - no new migration file needed"
+        # Verify success message was logged
+        mock_logger.info.assert_called_once_with(
+            "Alembic check successful - no new migration file needed"
         )
 
     @patch("app.db.utils.command.check")
@@ -189,13 +195,15 @@ class TestAlembicGenerate:
     """Test cases for the _alembic_generate function."""
 
     @patch("app.db.utils.command.revision")
-    @patch("builtins.print")
-    def test_alembic_generate_success(self, mock_print, mock_revision):
+    @patch("app.db.utils._get_logger")
+    def test_alembic_generate_success(self, mock_get_logger, mock_revision):
         """Test _alembic_generate with successful migration creation."""
         mock_conn = Mock()
         mock_cfg = Mock()
         mock_cfg.attributes = {}
         message = "Add new table for feature X"
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
 
         _alembic_generate(mock_conn, mock_cfg, message)
 
@@ -207,18 +215,20 @@ class TestAlembicGenerate:
             mock_cfg, autogenerate=False, message=message
         )
 
-        # Verify success message was printed with correct message
-        mock_print.assert_called_once_with(
-            f"✅ New migration file created with message: {message}"
+        # Verify success message was logged with correct message
+        mock_logger.info.assert_called_once_with(
+            "New migration file created", message=message
         )
 
     @patch("app.db.utils.command.revision")
-    @patch("builtins.print")
-    def test_alembic_generate_different_messages(self, mock_print, mock_revision):
+    @patch("app.db.utils._get_logger")
+    def test_alembic_generate_different_messages(self, mock_get_logger, mock_revision):
         """Test _alembic_generate with various message formats."""
         mock_conn = Mock()
         mock_cfg = Mock()
         mock_cfg.attributes = {}
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
 
         test_messages = [
             "Simple message",
@@ -228,7 +238,7 @@ class TestAlembicGenerate:
         ]
 
         for message in test_messages:
-            mock_print.reset_mock()
+            mock_logger.reset_mock()
             mock_revision.reset_mock()
             mock_cfg.attributes = {}
 
@@ -238,8 +248,8 @@ class TestAlembicGenerate:
             mock_revision.assert_called_once_with(
                 mock_cfg, autogenerate=False, message=message
             )
-            mock_print.assert_called_once_with(
-                f"✅ New migration file created with message: {message}"
+            mock_logger.info.assert_called_once_with(
+                "New migration file created", message=message
             )
 
     @patch("app.db.utils.command.revision")
@@ -436,37 +446,45 @@ class TestRunMigrations:
 
     @pytest.mark.asyncio
     @patch("app.db.utils.run_alembic_func")
-    @patch("builtins.print")
+    @patch("app.db.utils._get_logger")
     async def test_run_migrations_error_handling(
-        self, mock_print, mock_run_alembic_func
+        self, mock_get_logger, mock_run_alembic_func
     ):
         """Test run_migrations error handling and logging."""
         mock_engine = Mock(spec=AsyncEngine)
         error_message = "Migration execution failed"
         mock_run_alembic_func.side_effect = Exception(error_message)
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
 
         with pytest.raises(Exception, match=error_message):
             await run_migrations(mock_engine)
 
-        # Verify error message was printed
-        mock_print.assert_called_once_with(f"❌ Migration failed: {error_message}")
+        # Verify error message was logged
+        mock_logger.error.assert_called_once_with(
+            "Migration failed", error=error_message, target_version="head"
+        )
 
     @pytest.mark.asyncio
     @patch("app.db.utils.run_alembic_func")
-    @patch("builtins.print")
+    @patch("app.db.utils._get_logger")
     async def test_run_migrations_sqlalchemy_error(
-        self, mock_print, mock_run_alembic_func
+        self, mock_get_logger, mock_run_alembic_func
     ):
         """Test run_migrations with SQLAlchemy-specific errors."""
         mock_engine = Mock(spec=AsyncEngine)
         error_message = "Database connection failed"
         mock_run_alembic_func.side_effect = SQLAlchemyError(error_message)
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
 
         with pytest.raises(SQLAlchemyError, match=error_message):
             await run_migrations(mock_engine)
 
-        # Verify error message was printed
-        mock_print.assert_called_once_with(f"❌ Migration failed: {error_message}")
+        # Verify error message was logged
+        mock_logger.error.assert_called_once_with(
+            "Migration failed", error=error_message, target_version="head"
+        )
 
 
 class TestCheckIfNewMigrationFileNeeded:
@@ -488,36 +506,40 @@ class TestCheckIfNewMigrationFileNeeded:
 
     @pytest.mark.asyncio
     @patch("app.db.utils.run_alembic_func")
-    @patch("builtins.print")
-    async def test_check_migration_needed(self, mock_print, mock_run_alembic_func):
+    @patch("app.db.utils._get_logger")
+    async def test_check_migration_needed(self, mock_get_logger, mock_run_alembic_func):
         """Test check when migration file is needed (exception raised)."""
         mock_engine = Mock(spec=AsyncEngine)
         error_message = "New migration needed"
         mock_run_alembic_func.side_effect = Exception(error_message)
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
 
         with pytest.raises(Exception, match=error_message):
             await check_if_new_migration_file_needed(mock_engine)
 
-        # Verify error message was printed
-        mock_print.assert_called_once_with(
-            f"❌ New migration file is needed: {error_message}"
+        # Verify warning message was logged
+        mock_logger.warning.assert_called_once_with(
+            "New migration file is needed", error=error_message
         )
 
     @pytest.mark.asyncio
     @patch("app.db.utils.run_alembic_func")
-    @patch("builtins.print")
-    async def test_check_sqlalchemy_error(self, mock_print, mock_run_alembic_func):
+    @patch("app.db.utils._get_logger")
+    async def test_check_sqlalchemy_error(self, mock_get_logger, mock_run_alembic_func):
         """Test check with SQLAlchemy-specific errors."""
         mock_engine = Mock(spec=AsyncEngine)
         error_message = "Database schema mismatch"
         mock_run_alembic_func.side_effect = SQLAlchemyError(error_message)
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
 
         with pytest.raises(SQLAlchemyError, match=error_message):
             await check_if_new_migration_file_needed(mock_engine)
 
-        # Verify error message was printed
-        mock_print.assert_called_once_with(
-            f"❌ New migration file is needed: {error_message}"
+        # Verify warning message was logged
+        mock_logger.warning.assert_called_once_with(
+            "New migration file is needed", error=error_message
         )
 
 
@@ -565,14 +587,16 @@ class TestCreateMigrationFile:
     @pytest.mark.asyncio
     @patch("app.db.utils.run_alembic_func")
     @patch("app.db.utils.check_if_new_migration_file_needed")
-    @patch("builtins.print")
+    @patch("app.db.utils._get_logger")
     async def test_create_migration_file_creation_error(
-        self, mock_print, mock_check, mock_run_alembic_func
+        self, mock_get_logger, mock_check, mock_run_alembic_func
     ):
         """Test create_migration_file when file creation fails."""
         mock_engine = Mock(spec=AsyncEngine)
         message = "Add new feature"
         error_message = "File creation failed"
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
 
         # Mock check to raise exception (migration needed)
         mock_check.side_effect = Exception("Migration needed")
@@ -582,9 +606,9 @@ class TestCreateMigrationFile:
         with pytest.raises(Exception, match=error_message):
             await create_migration_file(mock_engine, message)
 
-        # Verify error message was printed
-        mock_print.assert_called_once_with(
-            f"❌ Failed to create new migration file: {error_message}"
+        # Verify error message was logged
+        mock_logger.error.assert_called_once_with(
+            "Failed to create new migration file", error=error_message, message=message
         )
 
     @pytest.mark.asyncio
@@ -623,14 +647,16 @@ class TestCreateMigrationFile:
     @pytest.mark.asyncio
     @patch("app.db.utils.run_alembic_func")
     @patch("app.db.utils.check_if_new_migration_file_needed")
-    @patch("builtins.print")
+    @patch("app.db.utils._get_logger")
     async def test_create_migration_file_sqlalchemy_error(
-        self, mock_print, mock_check, mock_run_alembic_func
+        self, mock_get_logger, mock_check, mock_run_alembic_func
     ):
         """Test create_migration_file with SQLAlchemy-specific errors."""
         mock_engine = Mock(spec=AsyncEngine)
         message = "Add new feature"
         error_message = "Database connection failed"
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
 
         # Mock check to raise exception (migration needed)
         mock_check.side_effect = Exception("Migration needed")
@@ -640,9 +666,9 @@ class TestCreateMigrationFile:
         with pytest.raises(SQLAlchemyError, match=error_message):
             await create_migration_file(mock_engine, message)
 
-        # Verify error message was printed
-        mock_print.assert_called_once_with(
-            f"❌ Failed to create new migration file: {error_message}"
+        # Verify error message was logged
+        mock_logger.error.assert_called_once_with(
+            "Failed to create new migration file", error=error_message, message=message
         )
 
 

@@ -1,7 +1,7 @@
 import os
 import pytest
 import tempfile
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 from app.db.utils import cleanup_temp_db
 
@@ -116,17 +116,19 @@ class TestCleanupTempDb:
         assert not os.path.exists(temp_file_path)
 
     @patch("os.unlink")
-    @patch("builtins.print")
-    def test_cleanup_temp_db_prints_message(self, mock_print, mock_unlink):
-        """Test that cleanup function prints appropriate messages."""
+    @patch("app.db.utils._get_logger")
+    def test_cleanup_temp_db_prints_message(self, mock_get_logger, mock_unlink):
+        """Test that cleanup function logs appropriate messages."""
         temp_path = "/tmp/test.db"
         sqlite_url = f"sqlite:///{temp_path}"
+        mock_logger = Mock()
+        mock_get_logger.return_value = mock_logger
 
         cleanup_temp_db(sqlite_url)
 
-        # Verify print was called with expected message
-        mock_print.assert_called_once_with(
-            f"Cleanup temporary database at: {temp_path}"
+        # Verify logger was called with expected message
+        mock_logger.info.assert_called_once_with(
+            "Cleanup temporary database", database_file=temp_path
         )
 
         # Verify unlink was attempted
