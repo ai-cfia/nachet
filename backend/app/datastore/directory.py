@@ -31,7 +31,7 @@ class DirectoryDataService:
             .where(Folder.active.is_(True))
             .group_by(Folder.id, Folder.name, Folder.folder_prefix, Folder.description)
         )
-        print(stmt.compile(dialect=postgresql.dialect()))
+        # print(stmt.compile(dialect=postgresql.dialect()))
         result = await self.session.execute(stmt)
         return result.all()
 
