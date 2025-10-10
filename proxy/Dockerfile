@@ -1,14 +1,5 @@
+# https://github.com/docker-library/haproxy/blob/master/2.8/alpine/Dockerfile
 FROM haproxy:lts-alpine3.22
-
-RUN apk add --no-cache \
-    curl \
-    bind-tools \
-    iputils \
-    tcpdump \
-    netcat-openbsd \
-    wget \
-    net-tools \
-    busybox-extras
 
 # Copy HAProxy configuration
 COPY haproxy.cfg /usr/local/etc/haproxy/haproxy.cfg
