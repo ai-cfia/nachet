@@ -145,9 +145,9 @@ docker-compose -f docker-compose.yaml.local up -d loki alloy grafana
 
 Logs include structured metadata:
 
-- `service`: Always "nachet-backend"
-- `correlation_id`: Request tracking ID
-- `session_id`: User session ID
+- `service_name`: Always "nachet-backend" (indexed label in Loki)
+- `correlation_id`: Request tracking ID (UUIDv7 - time-ordered, sortable)
+- `session_id`: User session ID (UUIDv7 - time-ordered, sortable)
 - `user_id`: Authenticated user ID
 - `source`: "frontend" for frontend logs, null for backend
 - `level`: Log level (INFO, ERROR, WARNING)
@@ -155,6 +155,9 @@ Logs include structured metadata:
 - `path`: Request path
 - `status_code`: HTTP status
 - `duration_ms`: Request duration
+- `remote_addr`: Client IP address
+
+**Note:** Both `correlation_id` and `session_id` use UUIDv7 format for time-ordered tracing and better database performance.
 
 ## Example Grafana Dashboards
 
