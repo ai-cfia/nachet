@@ -11,6 +11,19 @@ class ConnectionStringError(Exception):
     pass
 
 
+# Module-level logger
+_logger = None
+
+
+def _get_logger():
+    """Lazy load logger to avoid circular imports"""
+    global _logger
+    if _logger is None:
+        from app.service.logs import LogService
+        _logger = LogService.get_logger()
+    return _logger
+
+
 def create_blob_service_client(storage_url):
     """
     This function creates a BlobServiceClient object
@@ -27,12 +40,12 @@ def create_blob_service_client(storage_url):
         )
         return blob_service_client
     except ValueError as e:
-        print(e.__str__)
+        _get_logger().error("Invalid connection string", error=str(e), error_type="ValueError")
         raise ConnectionStringError(
             "The connection string is invalid. Please check the connection string."
         )
     except Exception as e:
-        print(e.__str__)
+        _get_logger().error("Unhandled exception in blob client creation", error=str(e), error_type=type(e).__name__)
         raise Exception("Datastore.blob Unhandled Exception")
 
 
@@ -53,7 +66,7 @@ def create_container_client(blob_service_client, container_name):
             container_client.create_container()
         return container_client
     except Exception as e:
-        print(e.__str__)
+        _get_logger().error("Failed to create container client", container=container_name, error=str(e), error_type=type(e).__name__)
         raise Exception("Datastore.blob Unhandled Exception")
 
 
@@ -72,7 +85,7 @@ def create_blob_client(container_client, blob_name):
         blob_client = container_client.get_blob_client(blob_name)
         return blob_client
     except Exception as e:
-        print(e.__str__)
+        _get_logger().error("Failed to create blob client", blob_name=blob_name, error=str(e), error_type=type(e).__name__)
         raise Exception("Datastore.blob Unhandled Exception")
 
 

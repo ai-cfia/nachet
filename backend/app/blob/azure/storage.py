@@ -24,6 +24,18 @@ from .operations import (
     TierOperations,
 )
 
+# Module-level logger
+_logger = None
+
+
+def _get_logger():
+    """Lazy load logger to avoid circular imports"""
+    global _logger
+    if _logger is None:
+        from app.service.logs import LogService
+        _logger = LogService.get_logger()
+    return _logger
+
 
 class AzureBlobStorage(BlobStorageInterface):
     """
@@ -56,7 +68,7 @@ class AzureBlobStorage(BlobStorageInterface):
                 )
 
             self._blob_service_client = create_blob_service_client(connection_string)
-            print("🔵 Azure Blob Storage client initialized")
+            _get_logger().info("Azure Blob Storage client initialized")
 
         except Exception as e:
             raise InvalidConfigurationError(

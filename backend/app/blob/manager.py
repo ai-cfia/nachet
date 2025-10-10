@@ -31,6 +31,18 @@ if TYPE_CHECKING:
 from app.blob.exceptions import InvalidConfigurationError, ConnectionError
 from app.blob.interface import BlobStorageInterface
 
+# Module-level logger
+_logger = None
+
+
+def _get_logger():
+    """Lazy load logger to avoid circular imports"""
+    global _logger
+    if _logger is None:
+        from app.service.logs import LogService
+        _logger = LogService.get_logger()
+    return _logger
+
 
 class BlobStorageManager:
     """
@@ -70,8 +82,9 @@ class BlobStorageManager:
                 self._provider = provider
                 self._config = config.copy()
                 self._initialized = True
-                print(
-                    f"🗄️  BlobStorageManager initialized with singleton client for provider: {provider}"
+                _get_logger().info(
+                    "BlobStorageManager initialized with singleton client",
+                    provider=provider
                 )
             except Exception as e:
                 raise InvalidConfigurationError(
@@ -116,7 +129,7 @@ class BlobStorageManager:
             await self._client.list_containers()
             return True
         except Exception as e:
-            print(f"⚠️  Blob storage health check failed: {e}")
+            _get_logger().warning("Blob storage health check failed", error=str(e), error_type=type(e).__name__)
             return False
 
     async def refresh_connection(self):
@@ -135,15 +148,7 @@ class BlobStorageManager:
 
                 # Test the new client
                 await self._client.list_containers()
-                print("🔄 Blob storage client refreshed successfully")
-            except Exception as e:
-                raise ConnectionError(
-                    f"Failed to refresh blob storage client: {str(e)}"
-                )
-
-                # Test the new client
-                await self._client.list_containers()
-                print("🔄 Blob storage client refreshed successfully")
+                _get_logger().info("Blob storage client refreshed successfully")
             except Exception as e:
                 raise ConnectionError(
                     f"Failed to refresh blob storage client: {str(e)}"
@@ -157,7 +162,7 @@ class BlobStorageManager:
             self._config = None
             self._client = None
             self._initialized = False
-            print("🗄️  BlobStorageManager singleton client closed")
+            _get_logger().info("BlobStorageManager singleton client closed")
 
     def is_initialized(self) -> bool:
         """Check if the manager is initialized."""
@@ -203,7 +208,7 @@ async def blob_storage_context() -> AsyncGenerator[BlobStorageInterface, None]:
         yield storage
     except Exception as e:
         # Log error, could add retry logic here
-        print(f"❌ Blob storage operation failed: {e}")
+        _get_logger().error("Blob storage operation failed", error=str(e), error_type=type(e).__name__)
         raise
 
 
@@ -235,7 +240,7 @@ async def initialize_blob_storage(settings: "Settings" = None):
     Args:
         settings: Settings instance containing blob storage connection info.
     """
-    print("🗄️  Initializing blob storage...")
+    _get_logger().info("Initializing blob storage...")
 
     if settings is None:
         raise ValueError("Settings instance must be provided")
@@ -249,11 +254,11 @@ async def initialize_blob_storage(settings: "Settings" = None):
 
     # Validate connection
     if await blob_storage_manager.health_check():
-        print("✅ Blob storage initialization completed successfully")
+        _get_logger().info("Blob storage initialization completed successfully")
     else:
         raise ConnectionError("Blob storage health check failed during initialization")
 
-    print("=" * 60)
+    _get_logger().info("=" * 60)
 
 
 class BlobStorageHealthCheck:
@@ -325,8 +330,11 @@ class BlobStorageHealthCheck:
             last_error = result.get("error", "Unknown error")
 
             if attempt < max_retries:
-                print(
-                    f"🔄 Blob storage health check failed (attempt {attempt + 1}/{max_retries + 1}), retrying in {delay}s..."
+                _get_logger().warning(
+                    "Blob storage health check failed, retrying",
+                    attempt=attempt + 1,
+                    max_attempts=max_retries + 1,
+                    delay_seconds=delay
                 )
                 await asyncio.sleep(delay)
 
