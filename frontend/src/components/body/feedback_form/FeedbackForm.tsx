@@ -22,7 +22,7 @@ import {
 } from "@mui/material";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
-import { SyntheticEvent, useEffect, useMemo, useState } from "react";
+import { SyntheticEvent, useMemo, useState } from "react";
 import { BoxCSS, SpeciesData, FeedbackDataNegative } from "@common/types";
 import Draggable from "react-draggable";
 import LoadingIndicator from "../loading_indicator";
@@ -148,8 +148,24 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
     isNewAnnotation,
     classListLoading,
   } = props;
-  const [selectedClass, setSelectedClass] = useState<SpeciesData>(defaultClass);
-  const [comment, setComment] = useState<string>(reasons[1]);
+
+  // Derive initial selected class from inference
+  const initialSelectedClass = useMemo(() => {
+    if (inference != null) {
+      return (
+        classList.find((item) => {
+          return item.seed_id === inference.boxes[0].classId;
+        }) ?? defaultClass
+      );
+    }
+    return defaultClass;
+  }, [classList, defaultClass, inference]);
+
+  const [selectedClass, setSelectedClass] =
+    useState<SpeciesData>(initialSelectedClass);
+  const [comment, setComment] = useState<string>(
+    isNewAnnotation ? reasons[0] : reasons[1],
+  );
   const [classError, setClassError] = useState<string>("");
 
   const filter = createFilterOptions<SpeciesData>();
@@ -209,7 +225,21 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
   };
 
   const handleCommentChange = (event: SelectChangeEvent<string>) => {
-    setComment(event.target.value);
+    const newComment = event.target.value;
+    setComment(newComment);
+
+    // Clear selected class when "No Seed" is selected
+    if (newComment === "No Seed") {
+      setSelectedClass({
+        id: -1,
+        seed_id: "",
+        name_code: "",
+        family: "",
+        genus: "",
+        species: "",
+        label: "",
+      });
+    }
   };
 
   const handleSubmit = () => {
@@ -229,36 +259,6 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
   const handleCancel = () => {
     onCancel();
   };
-
-  useEffect(() => {
-    if (inference != null) {
-      setSelectedClass(
-        classList.find((item) => {
-          return item.seed_id === inference.boxes[0].classId;
-        }) ?? defaultClass,
-      );
-    }
-  }, [classList, defaultClass, inference]);
-
-  useEffect(() => {
-    if (comment === "No Seed") {
-      setSelectedClass({
-        id: -1,
-        seed_id: "",
-        name_code: "",
-        family: "",
-        genus: "",
-        species: "",
-        label: "",
-      });
-    }
-  }, [comment]);
-
-  useEffect(() => {
-    if (isNewAnnotation) {
-      setComment(reasons[0]);
-    }
-  }, [isNewAnnotation, reasons]);
 
   return (
     <Draggable
