@@ -30,18 +30,18 @@ resource "azurerm_container_registry" "main" {
   tags = var.tags
 }
 
-resource "azurerm_private_endpoint" "container_registry" {
-  name                = "${var.name}-pe"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  subnet_id           = var.private_endpoint_subnet_id
+# resource "azurerm_private_endpoint" "container_registry" {
+#   name                = "${var.name}-pe"
+#   location            = var.location
+#   resource_group_name = var.resource_group_name
+#   subnet_id           = var.private_endpoint_subnet_id
 
-  private_service_connection {
-    name                           = "${var.name}-connection"
-    is_manual_connection           = false
-    private_connection_resource_id = azurerm_container_registry.main.id
-    subresource_names              = ["registry"]
-  }
+#   private_service_connection {
+#     name                           = "${var.name}-connection"
+#     is_manual_connection           = false
+#     private_connection_resource_id = azurerm_container_registry.main.id
+#     subresource_names              = ["registry"]
+#   }
 
-  tags = var.tags
-}
+#   tags = var.tags
+# }

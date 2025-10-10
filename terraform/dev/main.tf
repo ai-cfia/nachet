@@ -87,50 +87,50 @@ module "container_registry" {
 }
 
 # Nachet Application (Combined Frontend + Backend)
-module "nachet" {
-  source = "../modules/container-app-nachet"
+# module "nachet" {
+#   source = "../modules/container-app-nachet"
 
-  # Default
-  project_name        = var.project_name
-  environment         = var.environment
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
+#   # Default
+#   project_name        = var.project_name
+#   environment         = var.environment
+#   location            = var.location
+#   resource_group_name = var.resource_group_name
+#   tags                = var.tags
 
-  # Container App Environment
-  container_app_environment_id = module.container_app_environment.container_app_environment_id
+#   # Container App Environment
+#   container_app_environment_id = module.container_app_environment.container_app_environment_id
 
-  # Container Registry
-  acr_login_server    = module.container_registry.login_server
-  acr_admin_username  = module.container_registry.admin_username
-  acr_admin_password  = module.container_registry.admin_password
+#   # Container Registry
+#   acr_login_server    = module.container_registry.login_server
+#   acr_admin_username  = module.container_registry.admin_username
+#   acr_admin_password  = module.container_registry.admin_password
 
-  # Container Image
-  nachet_image = var.nachet_image
+#   # Container Image
+#   nachet_image = var.nachet_image
 
-  # Environment variables
-  env_azure_api_scope_claim           = var.env_azure_api_scope_claim
-  env_azure_auth_enabled              = var.env_azure_auth_enabled
-  env_azure_client_id                 = var.env_azure_client_id
-  env_azure_tenant_id                 = var.env_azure_tenant_id
-  env_blob_storage_endpoint_base      = var.env_blob_storage_endpoint_base
-  env_blob_storage_endpoint_protocol  = var.env_blob_storage_endpoint_protocol
-  env_blob_storage_endpoint_suffix    = var.env_blob_storage_endpoint_suffix
-  env_blob_storage_key                = var.env_blob_storage_key
-  env_blob_storage_name               = var.env_blob_storage_name
-  env_blob_storage_provider           = var.env_blob_storage_provider
-  env_cors_allow_origins              = var.env_cors_allow_origins
-  env_db_host                         = var.env_db_host
-  env_db_name                         = var.env_db_name
-  env_db_password                     = var.env_db_password
-  env_db_port                         = var.env_db_port
-  env_db_user                         = var.env_db_user
-  env_frontend_blob_container         = var.env_frontend_blob_container
-  env_frontend_version_file           = var.env_frontend_version_file
-  env_minio_access_key                = var.env_minio_access_key
-  env_minio_secret_key                = var.env_minio_secret_key
-  env_nachet_schema                   = var.env_nachet_schema
-  env_security_headers_preset         = var.env_security_headers_preset
-  env_testing                         = var.env_testing
-  env_trusted_hosts                   = var.env_trusted_hosts
-}
+#   # Environment variables
+#   env_azure_api_scope_claim           = var.env_azure_api_scope_claim
+#   env_azure_auth_enabled              = var.env_azure_auth_enabled
+#   env_azure_client_id                 = var.env_azure_client_id
+#   env_azure_tenant_id                 = var.env_azure_tenant_id
+#   env_blob_storage_endpoint_base      = var.env_blob_storage_endpoint_base
+#   env_blob_storage_endpoint_protocol  = var.env_blob_storage_endpoint_protocol
+#   env_blob_storage_endpoint_suffix    = var.env_blob_storage_endpoint_suffix
+#   env_blob_storage_key                = var.env_blob_storage_key
+#   env_blob_storage_name               = var.env_blob_storage_name
+#   env_blob_storage_provider           = var.env_blob_storage_provider
+#   env_cors_allow_origins              = var.env_cors_allow_origins
+#   env_db_host                         = var.env_db_host
+#   env_db_name                         = var.env_db_name
+#   env_db_password                     = var.env_db_password
+#   env_db_port                         = var.env_db_port
+#   env_db_user                         = var.env_db_user
+#   env_frontend_blob_container         = var.env_frontend_blob_container
+#   env_frontend_version_file           = var.env_frontend_version_file
+#   env_minio_access_key                = var.env_minio_access_key
+#   env_minio_secret_key                = var.env_minio_secret_key
+#   env_nachet_schema                   = var.env_nachet_schema
+#   env_security_headers_preset         = var.env_security_headers_preset
+#   env_testing                         = var.env_testing
+#   env_trusted_hosts                   = var.env_trusted_hosts
+# }
