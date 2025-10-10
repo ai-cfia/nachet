@@ -2,8 +2,8 @@
 Logging middleware for FastAPI to log all API requests and responses.
 """
 
-import uuid
 import time
+from uuid6 import uuid7
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -16,7 +16,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     Middleware to log all incoming requests and outgoing responses.
 
     Features:
-    - Generates or extracts correlation_id from X-Correlation-ID header
+    - Generates or extracts correlation_id from X-Correlation-ID header (UUIDv7 for time-ordered tracing)
     - Extracts session_id from X-Session-ID header
     - Sets context variables for structured logging
     - Logs request start with method, path, and metadata
@@ -26,11 +26,18 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app: ASGIApp):
         super().__init__(app)
-        self.logger = LogService.get_logger()
+        self._logger = None
+
+    @property
+    def logger(self):
+        """Lazy load logger to ensure Settings are loaded first"""
+        if self._logger is None:
+            self._logger = LogService.get_logger()
+        return self._logger
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        # Get or generate correlation ID
-        correlation_id = request.headers.get('X-Correlation-ID') or request.headers.get('x-correlation-id') or str(uuid.uuid4())
+        # Get or generate correlation ID (using UUIDv7 for time-ordered IDs)
+        correlation_id = request.headers.get('X-Correlation-ID') or request.headers.get('x-correlation-id') or str(uuid7())
         session_id = request.headers.get('X-Session-ID') or request.headers.get('x-session-id')
 
         # Store in request state for access in endpoints
@@ -72,9 +79,11 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 "Request completed",
                 method=request.method,
                 path=request.url.path,
+                remote_addr=request.client.host if request.client else None,
                 status_code=response.status_code,
                 duration_ms=round(duration * 1000, 2),
-                correlation_id=correlation_id
+                correlation_id=correlation_id,
+                session_id=session_id
             )
 
             # Add correlation ID to response headers
@@ -93,6 +102,8 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 correlation_id=correlation_id,
                 path=request.url.path,
                 method=request.method,
+                remote_addr=request.client.host if request.client else None,
+                session_id=session_id,
                 duration_ms=round(duration * 1000, 2)
             )
 

@@ -142,7 +142,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate({service=\"nachet-backend\"} |= \"Request completed\" | json | __error__=\"\" [$__rate_interval])) by (method)",
+          "expr": "sum(rate({service_name=\"nachet-backend\"} |= \"Request completed\" | json | __error__=\"\" [$__rate_interval])) by (method)",
           "legendFormat": "{{method}}",
           "refId": "A"
         },
@@ -151,7 +151,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate({service=\"nachet-backend\"} |~ \"ERROR|Error\" | json | __error__=\"\" [$__rate_interval]))",
+          "expr": "sum(rate({service_name=\"nachet-backend\"} |~ \"ERROR|Error\" | json | __error__=\"\" [$__rate_interval]))",
           "legendFormat": "Errors",
           "refId": "B"
         }
@@ -219,7 +219,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "{service=\"nachet-backend\"} |= \"Request completed\" | json | duration_ms != \"\" | unwrap duration_ms | __error__=\"\"",
+          "expr": "{service_name=\"nachet-backend\"} |= \"Request completed\" | json | duration_ms != \"\" | unwrap duration_ms | __error__=\"\"",
           "format": "table",
           "instant": false,
           "refId": "A"
@@ -333,7 +333,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "count(count by (session_id) (rate({service=\"nachet-backend\"} | json | session_id != \"\" [$__range])))",
+          "expr": "count(count by (session_id) (rate({service_name=\"nachet-backend\"} | json | session_id != \"\" [$__range])))",
           "legendFormat": "Active Sessions",
           "refId": "A"
         }
@@ -398,7 +398,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "sum(count_over_time({service=\"nachet-backend\"} |~ \"ERROR|Error\" [$__range]))",
+          "expr": "sum(count_over_time({service_name=\"nachet-backend\"} |~ \"ERROR|Error\" [$__range]))",
           "legendFormat": "Total Errors",
           "refId": "A"
         }
@@ -455,7 +455,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "sum(count_over_time({service=\"nachet-backend\"} |= \"Inference request completed\" [$__range]))",
+          "expr": "sum(count_over_time({service_name=\"nachet-backend\"} |= \"Inference request completed\" [$__range]))",
           "legendFormat": "Inferences",
           "refId": "A"
         }
@@ -520,7 +520,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "(sum(rate({service=\"nachet-backend\"} |= \"Request completed\" | json | status_code >= 200 | status_code < 400 [$__range])) / sum(rate({service=\"nachet-backend\"} |= \"Request completed\" [$__range]))) * 100",
+          "expr": "(sum(rate({service_name=\"nachet-backend\"} |= \"Request completed\" | json | status_code >= 200 | status_code < 400 [$__range])) / sum(rate({service_name=\"nachet-backend\"} |= \"Request completed\" [$__range]))) * 100",
           "legendFormat": "Success Rate",
           "refId": "A"
         }
@@ -599,7 +599,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "sum by (path) (rate({service=\"nachet-backend\"} |= \"Request completed\" | json | __error__=\"\" [$__rate_interval]))",
+          "expr": "sum by (path) (rate({service_name=\"nachet-backend\"} |= \"Request completed\" | json | __error__=\"\" [$__rate_interval]))",
           "refId": "A"
         }
       ],
@@ -659,7 +659,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "sum by (error_type) (count_over_time({service=\"nachet-backend\"} |~ \"ERROR|Error\" | json | error_type != \"\" [$__range]))",
+          "expr": "sum by (error_type) (count_over_time({service_name=\"nachet-backend\"} |~ \"ERROR|Error\" | json | error_type != \"\" [$__range]))",
           "legendFormat": "{{error_type}}",
           "refId": "A"
         }
@@ -695,7 +695,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "{service=\"nachet-backend\"} |~ \"ERROR|Error\" | json",
+          "expr": "{service_name=\"nachet-backend\"} |~ \"ERROR|Error\" | json",
           "refId": "A"
         }
       ],
@@ -781,7 +781,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "avg_over_time({service=\"nachet-backend\"} |= \"Inference request completed\" | json | duration_seconds != \"\" | unwrap duration_seconds [$__rate_interval])",
+          "expr": "avg_over_time({service_name=\"nachet-backend\"} |= \"Inference request completed\" | json | duration_seconds != \"\" | unwrap duration_seconds [$__rate_interval])",
           "legendFormat": "Avg Inference Time",
           "refId": "A"
         },
@@ -790,7 +790,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "max_over_time({service=\"nachet-backend\"} |= \"Inference request completed\" | json | duration_seconds != \"\" | unwrap duration_seconds [$__rate_interval])",
+          "expr": "max_over_time({service_name=\"nachet-backend\"} |= \"Inference request completed\" | json | duration_seconds != \"\" | unwrap duration_seconds [$__rate_interval])",
           "legendFormat": "Max Inference Time",
           "refId": "B"
         }
@@ -877,7 +877,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "sum by (source) (rate({service=\"nachet-backend\"} | json | source != \"\" [$__rate_interval]))",
+          "expr": "sum by (source) (rate({service_name=\"nachet-backend\"} | json | source != \"\" [$__rate_interval]))",
           "legendFormat": "{{source}}",
           "refId": "A"
         }
@@ -913,7 +913,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "{service=\"nachet-backend\"} | json | correlation_id = \"$correlation_id\"",
+          "expr": "{service_name=\"nachet-backend\"} | json | correlation_id = \"$correlation_id\"",
           "refId": "A"
         }
       ],
@@ -948,7 +948,7 @@
             "type": "loki",
             "uid": "${datasource}"
           },
-          "expr": "{service=\"nachet-backend\"} | json | session_id = \"$session_id\"",
+          "expr": "{service_name=\"nachet-backend\"} | json | session_id = \"$session_id\"",
           "refId": "A"
         }
       ],
