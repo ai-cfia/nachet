@@ -573,3 +573,47 @@ variable "env_trusted_hosts" {
   type        = string
   default     = "*"
 }
+
+# Proxy Configuration
+variable "container_instances_subnet_name" {
+  description = "Name of the subnet for container instances"
+  type        = string
+  default     = "nachet-containerinstances-subnet-dev"
+}
+
+variable "proxy_image" {
+  description = "Docker image for proxy container"
+  type        = string
+  default     = "ghcr.io/ai-cfia/nachet-proxy:latest"
+}
+
+variable "proxy_cpu" {
+  description = "CPU allocation for proxy container"
+  type        = number
+  default     = 1
+}
+
+variable "proxy_memory" {
+  description = "Memory allocation for proxy container (in GB)"
+  type        = number
+  default     = 2
+}
+
+variable "proxy_ssl_certificate_content" {
+  description = "SSL certificate content in PEM format (certificate + private key)"
+  type        = string
+  sensitive   = true
+}
+
+variable "proxy_environment_variables" {
+  description = "Environment variables for proxy container"
+  type        = map(string)
+  default     = {}
+}
+
+variable "proxy_secure_environment_variables" {
+  description = "Secure environment variables for proxy container"
+  type        = map(string)
+  default     = {}
+  sensitive   = true
+}

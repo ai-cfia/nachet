@@ -134,3 +134,37 @@ module "container_registry" {
 #   env_testing                         = var.env_testing
 #   env_trusted_hosts                   = var.env_trusted_hosts
 # }
+
+# Proxy Container Instance
+# module "proxy" {
+#   source = "../modules/container-instance-proxy"
+
+#   # Default
+#   name                = "${var.project_name}-${var.environment}-proxy"
+#   location            = var.location
+#   resource_group_name = var.resource_group_name
+#   tags                = var.tags
+
+#   # Network
+#   vnet_name                 = var.vnet_name
+#   vnet_resource_group_name  = var.vnet_resource_group_name
+#   subnet_name              = var.container_instances_subnet_name
+
+#   # Container Registry
+#   registry_login_server = module.container_registry.login_server
+#   registry_username     = module.container_registry.admin_username
+#   registry_password     = module.container_registry.admin_password
+
+#   # Container Configuration
+#   container_name = "nachet-proxy"
+#   image         = var.proxy_image
+#   cpu           = var.proxy_cpu
+#   memory        = var.proxy_memory
+
+#   # SSL Certificate
+#   ssl_certificate_content = var.proxy_ssl_certificate_content
+
+#   # Environment variables
+#   environment_variables = var.proxy_environment_variables
+#   secure_environment_variables = var.proxy_secure_environment_variables
+# }

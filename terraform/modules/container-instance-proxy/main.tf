@@ -35,15 +35,33 @@ resource "azurerm_container_group" "main" {
     memory = var.memory
 
     ports {
-      port     = var.port
-      protocol = var.protocol
+      port     = 443
+      protocol = "TCP"
     }
 
-    # Environment variables (non-sensitive)
-    environment_variables = var.environment_variables
+    ports {
+      port     = 80
+      protocol = "TCP"
+    }
 
-    # Secure environment variables (sensitive)
+    ports {
+      port     = 8404
+      protocol = "TCP"
+    }
+
+    environment_variables = var.environment_variables
     secure_environment_variables = var.secure_environment_variables
+
+    # SSL volume mount
+    volume {
+      name       = "ssl-certs"
+      mount_path = "/etc/ssl/certs"
+      read_only  = true
+      
+      secret = {
+        "server.pem" = base64encode(var.ssl_certificate_content)
+      }
+    }
   }
 
   tags = var.tags

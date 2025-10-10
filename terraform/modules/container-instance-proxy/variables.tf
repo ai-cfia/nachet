@@ -76,18 +76,6 @@ variable "memory" {
   default     = 1.5
 }
 
-variable "port" {
-  description = "The port to expose"
-  type        = number
-  default     = 80
-}
-
-variable "protocol" {
-  description = "The protocol for the port (TCP or UDP)"
-  type        = string
-  default     = "TCP"
-}
-
 # Environment variables
 variable "environment_variables" {
   description = "A map of environment variables to set in the container"
@@ -106,4 +94,11 @@ variable "tags" {
   description = "A mapping of tags to assign to the resource"
   type        = map(string)
   default     = {}
+}
+
+# SSL Certificate configuration
+variable "ssl_certificate_content" {
+  description = "The SSL certificate content in PEM format (certificate + private key)"
+  type        = string
+  sensitive   = true
 }
