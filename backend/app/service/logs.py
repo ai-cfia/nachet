@@ -9,6 +9,8 @@ from typing import Dict, Any, Optional
 from loguru import logger
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter as HTTPLogExporter
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter as GRPCLogExporter
 
@@ -112,7 +114,29 @@ class LogService:
         record["extra"]["session_id"] = LogService.get_session_id()
         record["extra"]["user_id"] = LogService.get_user_id()
         record["extra"]["service"] = "nachet-backend"
-        return "{time:YYYY-MM-DD HH:mm:ss} | {level} | {extra[service]} | {extra[correlation_id]} | {message}\n"
+
+        # Build base format
+        base = "{time:YYYY-MM-DD HH:mm:ss} | {level} | {extra[service]} | {extra[correlation_id]}"
+
+        # Add request details if available
+        extra_info = []
+        if "method" in record["extra"] and "path" in record["extra"]:
+            extra_info.append(f"{record['extra']['method']} {record['extra']['path']}")
+
+        if "remote_addr" in record["extra"] and record["extra"]["remote_addr"]:
+            extra_info.append(f"from {record['extra']['remote_addr']}")
+
+        if "status_code" in record["extra"]:
+            extra_info.append(f"status={record['extra']['status_code']}")
+
+        if "duration_ms" in record["extra"]:
+            extra_info.append(f"{record['extra']['duration_ms']}ms")
+
+        # Combine everything with message at the end
+        if extra_info:
+            return base + " | " + " ".join(extra_info) + " | {message}\n"
+        else:
+            return base + " | {message}\n"
 
     @classmethod
     def setup_logging(cls, config: Optional[Dict[str, Any]] = None):
@@ -154,8 +178,11 @@ class LogService:
             if not endpoint.endswith("/v1/logs"):
                 endpoint = endpoint.rstrip("/") + "/v1/logs"
 
-        # Setup OTEL logger provider
-        logger_provider = LoggerProvider()
+        # Setup OTEL logger provider with service name
+        resource = Resource(attributes={
+            ResourceAttributes.SERVICE_NAME: "nachet-backend"
+        })
+        logger_provider = LoggerProvider(resource=resource)
 
         # Create exporter based on protocol
         if otel_protocol == "http":

@@ -163,67 +163,114 @@ services:
     networks:
       - nachet-local-network
 
-#######################################################################################
-# Use these to test with actual model containers either prebuilt or as part of monorepo
-#######################################################################################
-# nachet-detector:
-#   # build:
-#   #   context: ./nachet-model/AzureMLSeedDet
-#   #   dockerfile: Dockerfile
-#   container_name: nachet-detector
-#   image: ghcr.io/ai-cfia/nachet-backend:29-azureml-seed-detector
-#   command: "./startup.sh && bash -c 'azmlinfsrv --entry_script /app/scoring_file_v_1_0_0.py'"
-#   ports:
-#     - "12380:5001"
-#     - "12381:8883"
-#     - "12382:8888"
-#   # network_mode: bridge
-#   networks:
-#     - nachet-local-network
+  #######################################################################################
+  # Use these to test with actual model containers either prebuilt or as part of monorepo
+  #######################################################################################
+  # nachet-detector:
+  #   # build:
+  #   #   context: ./nachet-model/AzureMLSeedDet
+  #   #   dockerfile: Dockerfile
+  #   container_name: nachet-detector
+  #   image: ghcr.io/ai-cfia/nachet-backend:29-azureml-seed-detector
+  #   command: "./startup.sh && bash -c 'azmlinfsrv --entry_script /app/scoring_file_v_1_0_0.py'"
+  #   ports:
+  #     - "12380:5001"
+  #     - "12381:8883"
+  #     - "12382:8888"
+  #   # network_mode: bridge
+  #   networks:
+  #     - nachet-local-network
 
-# nachet-15spp-classifier:
-#   # build:
-#   #   context: ./nachet-model/AzureMLSeedCls
-#   #   dockerfile: Dockerfile
-#   container_name: nachet-15spp-classifier
-#   image: ghcr.io/ai-cfia/nachet-backend:29-azureml-swin-classifier
-#   command: bash -c 'azmlinfsrv --entry_script /app/score.py'
-#   ports:
-#     - "12390:5001"
-#     - "12391:8883"
-#     - "12392:8888"
-#   # network_mode: bridge
-#   networks:
-#     - nachet-local-network
+  # nachet-15spp-classifier:
+  #   # build:
+  #   #   context: ./nachet-model/AzureMLSeedCls
+  #   #   dockerfile: Dockerfile
+  #   container_name: nachet-15spp-classifier
+  #   image: ghcr.io/ai-cfia/nachet-backend:29-azureml-swin-classifier
+  #   command: bash -c 'azmlinfsrv --entry_script /app/score.py'
+  #   ports:
+  #     - "12390:5001"
+  #     - "12391:8883"
+  #     - "12392:8888"
+  #   # network_mode: bridge
+  #   networks:
+  #     - nachet-local-network
 
-# # nachet-22spp-swin:
-# #   # build:
-# #   #   context: ./nachet-model/AzureMLSeedCls_22_spp
-# #   #   dockerfile: Dockerfile
-# #   container_name: nachet-22spp-swin
-# #   image: ghcr.io/ai-cfia/nachet-backend:29-azureml-swin-classifier-22-spp
-# #   command: bash -c 'azmlinfsrv --entry_script /app/score.py'
-# #   ports:
-# #     - "12370:5001"
-# #     - "12371:8883"
-# #     - "12372:8888"
-# #   # network_mode: bridge
-# #   networks:
-# #     - nachet-local-network
+  # # nachet-22spp-swin:
+  # #   # build:
+  # #   #   context: ./nachet-model/AzureMLSeedCls_22_spp
+  # #   #   dockerfile: Dockerfile
+  # #   container_name: nachet-22spp-swin
+  # #   image: ghcr.io/ai-cfia/nachet-backend:29-azureml-swin-classifier-22-spp
+  # #   command: bash -c 'azmlinfsrv --entry_script /app/score.py'
+  # #   ports:
+  # #     - "12370:5001"
+  # #     - "12371:8883"
+  # #     - "12372:8888"
+  # #   # network_mode: bridge
+  # #   networks:
+  # #     - nachet-local-network
 
-# nachet-27spp-classifier:
-#   # build:
-#   #   context: ./nachet-model/AzureMLSeedCls_27_spp
-#   #   dockerfile: Dockerfile
-#   container_name: nachet-27spp-classifier
-#   image: ghcr.io/ai-cfia/nachet-model-ccds/gpu-classifier-27spp-model-1:2025030321
-#   ports:
-#     - "12360:8080"
-#     # - "12361:8081"
-#     # - "12362:8082"
-#   # network_mode: bridge
-#   networks:
-#     - nachet-local-network
+  # nachet-27spp-classifier:
+  #   # build:
+  #   #   context: ./nachet-model/AzureMLSeedCls_27_spp
+  #   #   dockerfile: Dockerfile
+  #   container_name: nachet-27spp-classifier
+  #   image: ghcr.io/ai-cfia/nachet-model-ccds/gpu-classifier-27spp-model-1:2025030321
+  #   ports:
+  #     - "12360:8080"
+  #     # - "12361:8081"
+  #     # - "12362:8082"
+  #   # network_mode: bridge
+  #   networks:
+  #     - nachet-local-network
+
+  #######################################################################################
+  # Observability Stack - Grafana Alloy, Loki, Grafana
+  #######################################################################################
+
+  loki:
+    container_name: nachet-loki
+    image: grafana/loki:3.5.5
+    ports:
+      - "12310:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./observability/loki-data:/loki
+    networks:
+      - nachet-local-network
+
+  alloy:
+    container_name: nachet-alloy
+    image: grafana/alloy:v1.11.0
+    ports:
+      - "12317:4317" # OTLP gRPC receiver
+      - "12318:4318" # OTLP HTTP receiver
+      - "12345:12345" # Alloy UI
+    volumes:
+      - ./observability/alloy-config.yaml:/etc/alloy/config.alloy
+    command: run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
+    depends_on:
+      - loki
+    networks:
+      - nachet-local-network
+
+  grafana:
+    container_name: nachet-grafana
+    image: grafana/grafana:12.2.0
+    ports:
+      - "12300:3000"
+    env_file:
+      - ./observability/.env.local
+    volumes:
+      - ./observability/grafana-data:/var/lib/grafana
+      - ./observability/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./observability/grafana-dashboards-provisioning.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./observability/grafana-dashboard-nachet.json:/etc/grafana/provisioning/dashboards/grafana-dashboard-nachet.json
+    depends_on:
+      - loki
+    networks:
+      - nachet-local-network
 
 networks:
   nachet-local-network: {}
