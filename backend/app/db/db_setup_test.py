@@ -1,4 +1,4 @@
-# Tesst database setup script to initialize the database with necessary tables and data.
+# Test database setup script to initialize the database with necessary tables and data.
 # This is intended for ci test use only and should not be run in production.
 # This script is idempotent - it can be run multiple times safely.
 import os
@@ -13,9 +13,10 @@ from app.db.utils import (
 )
 from app.api.config import get_settings
 from app.db.data.data_seed_test import seed_test_data
+from app.service.logs import LogService
 
 
-async def load_database():
+async def load_database(logger=None):
     """
     Set up the testing database by resetting, running migrations and seeding data.
     This function is idempotent - it can be run multiple times safely.
@@ -28,18 +29,21 @@ async def load_database():
 
     db_name = settings.db_name if db_url.startswith("postgresql") else "SQLite"
 
-    print("\n" + "=" * 60)
-    print(f"🚀 Starting testing database setup for db {db_name}")
+    if logger:
+        logger.info("\n" + "=" * 60)
+        logger.info("Starting testing database setup", database=db_name)
 
     # Initialize SessionManager
-    print("\n🔌 Initializing database SessionManager...")
+    if logger:
+        logger.info("Initializing database SessionManager...")
     sessionmanager.init(**settings.db_conn_info)
     async_engine = sessionmanager.get_engine()
 
     # Reset database to ensure clean state
     await reset_database_schema(async_engine)
 
-    print("\n🔄 Running migrations...")
+    if logger:
+        logger.info("Running migrations...")
     # Set environment variable to control SQLAlchemy logging during migrations
 
     # os.environ["SQLALCHEMY_MIGRATION_LOG_LEVEL"] = "WARNING"
@@ -48,18 +52,24 @@ async def load_database():
 
     # logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
-    print("\n📊 Loading ISTA seed data...")
+    if logger:
+        logger.info("Loading ISTA seed data...")
     sql_file_path = os.path.join(
         os.path.dirname(__file__), "data", "seed_data_ista_test.sql"
     )
     await execute_sql_file(async_engine, sql_file_path)
 
-    print("\n🌱 Seeding test data...")
+    if logger:
+        logger.info("Seeding test data...")
     await seed_test_data(sessionmanager)
-    print("\n✅ Testing database setup complete.")
-    print("\n" + "=" * 60)
-    print()
+    if logger:
+        logger.info("Testing database setup complete")
+        logger.info("=" * 60 + "\n")
 
 
 if __name__ == "__main__":
-    asyncio.run(load_database())
+    # Initialize console-only logging for this script
+    LogService.setup_console_only_logging("INFO")
+    logger = LogService.get_logger()
+
+    asyncio.run(load_database(logger=logger))
