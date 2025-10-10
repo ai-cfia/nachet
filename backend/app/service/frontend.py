@@ -8,6 +8,7 @@ from typing import Dict, Optional, Tuple
 from fastapi import HTTPException
 from app.blob.manager import blob_storage_manager
 from app.blob.exceptions import BlobNotFoundError
+from app.service.logs import LogService
 
 
 class FrontendService:
@@ -22,6 +23,14 @@ class FrontendService:
     _current_version: Optional[str] = None
     _container_name: str = "frontend"
     _version_file: str = "version.txt"
+    _logger = None
+
+    @classmethod
+    def _get_logger(cls):
+        """Lazy load logger to avoid circular imports"""
+        if cls._logger is None:
+            cls._logger = LogService.get_logger()
+        return cls._logger
 
     @classmethod
     def configure(cls, container_name: str, version_file: str):
@@ -77,8 +86,10 @@ class FrontendService:
                 return False
 
             if new_version != cls._current_version:
-                print(
-                    f"🔄 Frontend version changed: {cls._current_version} → {new_version}"
+                cls._get_logger().info(
+                    f"Frontend version changed: {cls._current_version} → {new_version}",
+                    old_version=cls._current_version,
+                    new_version=new_version,
                 )
                 cls.invalidate_cache()
                 cls._current_version = new_version
@@ -86,14 +97,22 @@ class FrontendService:
 
             return False
         except Exception as e:
-            print(f"⚠️  Failed to check frontend version: {e}")
+            cls._get_logger().warning(
+                f"Failed to check frontend version: {e}",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
             return False
 
     @classmethod
     def invalidate_cache(cls):
         """Clear the entire cache."""
+        cached_files = len(cls._cache)
         cls._cache.clear()
-        print("🗑️  Frontend cache invalidated")
+        cls._get_logger().info(
+            "Frontend cache invalidated",
+            cached_files=cached_files,
+        )
 
     @classmethod
     async def get_file(
