@@ -13,6 +13,18 @@ from app.api.config import get_limiter
 router = APIRouter()
 limiter = get_limiter()
 
+# Module-level logger
+_logger = None
+
+
+def _get_logger():
+    """Lazy load logger to avoid circular imports"""
+    global _logger
+    if _logger is None:
+        from app.service.logs import LogService
+        _logger = LogService.get_logger()
+    return _logger
+
 
 def get_client_ip(request: Request) -> str:
     """Extract client IP address, handling reverse proxy headers."""
@@ -34,7 +46,7 @@ async def validate_ip_address(
         #     status_code=status.HTTP_403_FORBIDDEN,
         #     detail="IP address mismatch"
         # )
-        print(f"Warning: IP address mismatch (client: {client_ip}, token: {token_ip})")
+        _get_logger().warning("IP address mismatch", client_ip=client_ip, token_ip=token_ip)
 
     return current_user
 
@@ -84,7 +96,7 @@ async def get_readiness_status(request: Request):
     name="Get User ID from email [AUTH REQUIRED]",
 )
 async def get_user_id(request: Request, current_user: User = Depends(get_current_user)):
-    print("/get-user-id")
+    _get_logger().debug("get_user_id endpoint called", user_id=current_user.oid)
     return {"user_id": current_user.oid}
 
 
@@ -110,7 +122,7 @@ async def get_pipelines(
 async def get_model_endpoints_metadata(
     request: Request, current_user: User = Depends(get_current_user)
 ):
-    print("/model-endpoints-metadata")
+    _get_logger().debug("model_endpoints_metadata endpoint called", user_id=current_user.oid)
     metadata = await PipelineService.get_model_endpoints_metadata()
     return metadata
 
@@ -139,7 +151,7 @@ async def get_seed_data(
 async def get_directories(
     request: Request, current_user: User = Depends(get_current_user)
 ):
-    print("/get-directories")
+    _get_logger().debug("get_directories endpoint called", user_id=current_user.oid)
     directories = await DirectoryService.get_user_directories(current_user.oid)
     return directories
 
@@ -254,7 +266,7 @@ async def serve_frontend_static(request: Request, path: str):
             return Response(content=content, media_type=content_type)
         except Exception as e:
             # If even index.html fails, return 500
-            print(f"Error serving frontend file: {e}")
+            _get_logger().error("Error serving frontend file", error=str(e), error_type=type(e).__name__)
             return Response(
                 content="Failed to load frontend file",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
