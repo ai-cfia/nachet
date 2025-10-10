@@ -75,7 +75,7 @@ nachet/backend$ source .venv/bin/activate
 
 # initialize the database (creates tables, runs migrations, creates initial user)
 nachet/backend$ cd app/db
-nachet/backend/app/db$ uv run setup_db_local.py
+nachet/backend/app/db$ uv run db_setup_local.py
 
 # run all db tests with coverage
 nachet/backend/app/db$ uv run pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing

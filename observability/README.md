@@ -8,6 +8,37 @@ Simple Grafana observability stack for testing OTEL logging locally.
 - **Loki** - Stores logs
 - **Grafana** - Visualizes logs
 
+## Logging Modes
+
+The Nachet backend supports two logging modes:
+
+### 1. Full Observability Mode (Default)
+
+Used by the FastAPI application with OTEL integration for structured logging to Grafana/Loki.
+
+### 2. Console-Only Mode (Scripts)
+
+For standalone scripts, CLI tools, or utilities that don't need OTEL overhead. This mode provides structured logging to console without requiring the full observability stack.
+
+**Example usage in scripts:**
+
+```python
+from app.service import LogService
+
+# Initialize console-only logging (no OTEL required)
+LogService.setup_console_only_logging("INFO")
+logger = LogService.get_logger()
+
+# Use structured logging
+logger.info("Processing data", record_count=100)
+logger.error("Failed to process", error=str(e))
+```
+
+**Configuration:**
+
+- Set `OTEL_ENABLED=false` in environment to disable OTEL for the main application
+- The system gracefully degrades to console-only logging if OTEL setup fails
+
 ## Quick Start
 
 ### 1. Start the stack
@@ -22,11 +53,11 @@ docker-compose -f docker-compose.yaml.local up -d loki alloy grafana
 docker-compose -f docker-compose.yaml.local up -d nachet-backend
 ```
 
-The backend is configured to send logs to Alloy via OTLP gRPC at `http://alloy:4317`
+The backend is configured to send logs to Alloy via OTLP gRPC at `http://alloy:4317` <!-- markdownlint-disable-line MD034 -->
 
 ### 3. Access Grafana
 
-Open http://localhost:12300 in your browser
+Open <http://localhost:12300> in your browser
 
 - **Username**: admin
 - **Password**: admin
@@ -71,20 +102,26 @@ You can also explore logs directly:
 3. Use LogQL queries to filter logs:
 
 ```logql
-# All logs
-{service="nachet-backend"}
+# All backend logs
+{service_name="nachet-backend"}
+
+# All frontend logs
+{service_name="nachet-frontend"}
+
+# All logs (both frontend and backend)
+{service_name=~"nachet-.*"}
 
 # Only errors
-{service="nachet-backend"} |= "ERROR"
+{service_name="nachet-backend"} |= "ERROR"
 
 # Frontend errors
-{service="nachet-backend", source="frontend"}
+{service_name="nachet-frontend"} |= "ERROR"
 
 # Filter by correlation_id
-{service="nachet-backend"} | json | correlation_id="abc-123"
+{service_name=~"nachet-.*"} | json | correlation_id="abc-123"
 
-# Filter by user
-{service="nachet-backend"} | json | user_id="user@example.com"
+# Filter by user (across both services)
+{service_name=~"nachet-.*"} | json | user_id="user@example.com"
 ```
 
 ## Service Ports
@@ -105,7 +142,7 @@ Edit `backend/.env.container.local`:
 
 ```bash
 OTEL_EXPORTER_PROTOCOL="grpc"    # or "http"
-OTEL_EXPORTER_ENDPOINT="http://alloy:4317"
+OTEL_EXPORTER_ENDPOINT="http://alloy:4317" <!-- markdownlint-disable-line MD034 -->
 LOG_LEVEL="INFO"                  # DEBUG, INFO, WARNING, ERROR
 ```
 
@@ -118,13 +155,13 @@ Edit `observability/alloy-config.yaml` to customize log processing.
 ### Logs not appearing in Grafana
 
 1. Check Alloy is receiving logs:
-   - Visit <http://localhost:12345> (Alloy UI)
+   - Visit <http://localhost:12345> (Alloy UI) <!-- markdownlint-disable-line MD034 -->
    - Check for incoming OTLP traffic
 
 2. Check Loki is receiving logs:
 
    ```bash
-   curl http://localhost:12310/ready
+   curl http://localhost:12310/ready <!-- markdownlint-disable-line MD034 -->
    ```
 
 3. Check backend logs:
@@ -145,36 +182,57 @@ docker-compose -f docker-compose.yaml.local up -d loki alloy grafana
 
 Logs include structured metadata:
 
-- `service_name`: Always "nachet-backend" (indexed label in Loki)
+- `service_name`: Service identifier (indexed label in Loki)
+  - `"nachet-backend"` - Backend API logs
+  - `"nachet-frontend"` - Frontend application logs
 - `correlation_id`: Request tracking ID (UUIDv7 - time-ordered, sortable)
 - `session_id`: User session ID (UUIDv7 - time-ordered, sortable)
 - `user_id`: Authenticated user ID
-- `source`: "frontend" for frontend logs, null for backend
+- `source`: "frontend" for frontend logs, null for backend (legacy field)
 - `level`: Log level (INFO, ERROR, WARNING)
-- `method`: HTTP method
-- `path`: Request path
-- `status_code`: HTTP status
-- `duration_ms`: Request duration
-- `remote_addr`: Client IP address
+- `method`: HTTP method (backend logs only)
+- `path`: Request path (backend logs only)
+- `status_code`: HTTP status (backend logs only)
+- `duration_ms`: Request duration (backend logs only)
+- `remote_addr`: Client IP address (backend logs only)
+
+**Frontend-specific fields:**
+
+- `url`: Browser URL where log originated
+- `user_agent`: Browser user agent
+- `error_type`: JavaScript error type
+- `stack_trace`: JavaScript stack trace
 
 **Note:** Both `correlation_id` and `session_id` use UUIDv7 format for time-ordered tracing and better database performance.
 
 ## Example Grafana Dashboards
 
-### Request Duration
+### Backend Request Duration
 
 ```logql
-avg(rate({service="nachet-backend"} | json | duration_ms > 0 [5m]))
+avg(rate({service_name="nachet-backend"} | json | duration_ms > 0 [5m]))
 ```
 
-### Error Rate
+### Backend Error Rate
 
 ```logql
-sum(rate({service="nachet-backend"} |= "ERROR" [5m]))
+sum(rate({service_name="nachet-backend"} |= "ERROR" [5m]))
 ```
 
-### Requests by Path
+### Frontend Error Rate
 
 ```logql
-sum by (path) (rate({service="nachet-backend"} | json [5m]))
+sum(rate({service_name="nachet-frontend"} |= "ERROR" [5m]))
+```
+
+### Backend Requests by Path
+
+```logql
+sum by (path) (rate({service_name="nachet-backend"} | json [5m]))
+```
+
+### Frontend Errors by Type
+
+```logql
+sum by (error_type) (count_over_time({service_name="nachet-frontend"} |= "ERROR" | json [1h]))
 ```
