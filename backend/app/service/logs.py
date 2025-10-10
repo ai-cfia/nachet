@@ -56,6 +56,10 @@ class LoguruToOTELBridge:
                 **record.get("extra", {})
             }
 
+            # Use service_name from record if present (e.g., frontend logs)
+            if "service_name" not in extra:
+                extra["service_name"] = "nachet-backend"
+
             self.python_logger.log(
                 self.level_map.get(level, logging.INFO),
                 msg,
@@ -113,7 +117,10 @@ class LogService:
         record["extra"]["correlation_id"] = LogService.get_correlation_id()
         record["extra"]["session_id"] = LogService.get_session_id()
         record["extra"]["user_id"] = LogService.get_user_id()
-        record["extra"]["service"] = "nachet-backend"
+
+        # Use service_name from extra if present (e.g., "nachet-frontend"), otherwise default to "nachet-backend"
+        service = record["extra"].get("service_name", "nachet-backend")
+        record["extra"]["service"] = service
 
         # Build base format
         base = "{time:YYYY-MM-DD HH:mm:ss} | {level} | {extra[service]} | {extra[correlation_id]}"
@@ -139,14 +146,53 @@ class LogService:
             return base + " | {message}\n"
 
     @classmethod
+    def setup_console_only_logging(cls, log_level: str = "INFO"):
+        """
+        Setup simple console-only logging without OTEL.
+
+        Use this for scripts, CLI tools, or standalone utilities that don't need
+        full observability infrastructure.
+
+        Args:
+            log_level: Log level (INFO, DEBUG, WARNING, ERROR)
+
+        Example:
+            from app.service import LogService
+            LogService.setup_console_only_logging("INFO")
+            logger = LogService.get_logger()
+        """
+        if cls._initialized:
+            logger.warning("Logging already initialized, skipping setup")
+            return cls._logger
+
+        log_level = log_level.upper()
+
+        # Remove default loguru handler
+        logger.remove()
+
+        # Console logging only - no OTEL overhead
+        logger.add(
+            sys.stdout,
+            format=cls.custom_formatter,
+            level=log_level
+        )
+
+        logger.info("Console-only logging initialized (OTEL disabled)", log_level=log_level)
+
+        cls._initialized = True
+        cls._logger = logger
+        return logger
+
+    @classmethod
     def setup_logging(cls, config: Optional[Dict[str, Any]] = None):
         """
-        Setup logging configuration with OTEL and console output.
+        Setup logging configuration with optional OTEL support.
 
         Call this during application startup (in lifespan function).
 
         Args:
             config: Optional logging configuration dictionary with keys:
+                - enable_otel: Enable/disable OTEL (default: True)
                 - otel_exporter_protocol: "grpc" or "http"
                 - otel_exporter_endpoint: OTEL endpoint URL
                 - log_level: Log level (INFO, DEBUG, WARNING, ERROR)
@@ -159,6 +205,7 @@ class LogService:
         if config is None:
             config = {}
 
+        enable_otel = config.get("enable_otel", True)
         otel_protocol = config.get("otel_exporter_protocol", "grpc").lower()
         endpoint = config.get("otel_exporter_endpoint", "http://alloy.monitoring.svc.cluster.local:4317")
         log_level = config.get("log_level", "INFO").upper()
@@ -166,50 +213,68 @@ class LogService:
         # Remove default loguru handler
         logger.remove()
 
-        # Console logging for development
+        # Console logging (always enabled)
         logger.add(
             sys.stdout,
             format=cls.custom_formatter,
             level=log_level
         )
 
-        # OTEL logging setup
-        if otel_protocol == "http":
-            if not endpoint.endswith("/v1/logs"):
-                endpoint = endpoint.rstrip("/") + "/v1/logs"
+        # OTEL logging setup (optional)
+        if not enable_otel:
+            logger.info("OTEL disabled - using console-only logging", log_level=log_level)
+            cls._initialized = True
+            cls._logger = logger
+            return logger
 
-        # Setup OTEL logger provider with service name
-        resource = Resource(attributes={
-            ResourceAttributes.SERVICE_NAME: "nachet-backend"
-        })
-        logger_provider = LoggerProvider(resource=resource)
+        # Try to set up OTEL, but gracefully degrade if it fails
+        try:
+            # OTEL logging setup
+            if otel_protocol == "http":
+                if not endpoint.endswith("/v1/logs"):
+                    endpoint = endpoint.rstrip("/") + "/v1/logs"
 
-        # Create exporter based on protocol
-        if otel_protocol == "http":
-            otlp_exporter = HTTPLogExporter(
-                endpoint=endpoint,
-                insecure=True
+            # Setup OTEL logger provider with service name
+            resource = Resource(attributes={
+                ResourceAttributes.SERVICE_NAME: "nachet-backend"
+            })
+            logger_provider = LoggerProvider(resource=resource)
+
+            # Create exporter based on protocol
+            if otel_protocol == "http":
+                otlp_exporter = HTTPLogExporter(
+                    endpoint=endpoint,
+                    insecure=True
+                )
+            else:
+                otlp_exporter = GRPCLogExporter(
+                    endpoint=endpoint,
+                    insecure=True
+                )
+
+            # Add processor
+            logger_provider.add_log_record_processor(
+                BatchLogRecordProcessor(otlp_exporter)
             )
-        else:
-            otlp_exporter = GRPCLogExporter(
+
+            # Setup standard Python logging to forward to OTEL
+            otel_handler = LoggingHandler(logger_provider=logger_provider)
+            otel_handler.setLevel(getattr(logging, log_level, logging.INFO))
+
+            # Add the bridge as a sink
+            bridge = LoguruToOTELBridge(otel_handler)
+            logger.add(bridge, level=log_level)
+
+            logger.info("OTEL logging initialized", protocol=otel_protocol, endpoint=endpoint, log_level=log_level)
+
+        except Exception as e:
+            # OTEL setup failed - log warning and continue with console-only
+            logger.warning(
+                "OTEL setup failed - falling back to console-only logging",
+                error=str(e),
+                error_type=type(e).__name__,
                 endpoint=endpoint,
-                insecure=True
             )
-
-        # Add processor
-        logger_provider.add_log_record_processor(
-            BatchLogRecordProcessor(otlp_exporter)
-        )
-
-        # Setup standard Python logging to forward to OTEL
-        otel_handler = LoggingHandler(logger_provider=logger_provider)
-        otel_handler.setLevel(getattr(logging, log_level, logging.INFO))
-
-        # Add the bridge as a sink
-        bridge = LoguruToOTELBridge(otel_handler)
-        logger.add(bridge, level=log_level)
-
-        logger.info("OTEL logging initialized", protocol=otel_protocol, endpoint=endpoint, log_level=log_level)
 
         cls._initialized = True
         cls._logger = logger
@@ -259,6 +324,7 @@ class LogService:
             # Build extra context for structured logging
             extra_context = {
                 "source": "frontend",
+                "service_name": "nachet-frontend",  # Differentiate frontend logs in OTEL
                 "error_type": error_type,
                 "url": url,
                 "user_agent": user_agent,
