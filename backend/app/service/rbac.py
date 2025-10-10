@@ -1,7 +1,8 @@
 from uuid import UUID
+from typing import Optional
 from fastapi import HTTPException, status, Request
 from app.db.utils import sessionmanager
-from app.datastore.rbac import RbacDataService
+from app.datastore import RbacDataService, OrganizationDataService
 
 
 class RbacService:
@@ -19,6 +20,74 @@ class RbacService:
     - Permission: "allow" permission for access
     - Mappings: rbac_role_permission_resource linking roles to routes
     """
+
+    @staticmethod
+    async def get_user_organization_id(user_id: UUID) -> Optional[UUID]:
+        """
+        Get the organization ID for a user.
+
+        Args:
+            user_id: The user's UUID
+
+        Returns:
+            Organization UUID if found, None otherwise
+
+        Raises:
+            HTTPException: 403 if user not associated with an organization
+        """
+        async with sessionmanager.get_session() as session:
+            org_id = await OrganizationDataService(session).get_user_organization_id(
+                user_id
+            )
+
+            if not org_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="User not associated with an organization",
+                )
+
+            return org_id
+
+    @staticmethod
+    async def verify_user_has_role(
+        user_id: UUID, role_name: str, organization_id: Optional[UUID] = None
+    ) -> None:
+        """
+        Verify that a user has a specific role in an organization.
+
+        If organization_id is not provided, it will be looked up from the user's record.
+
+        Args:
+            user_id: The user's UUID
+            role_name: The role name to verify (e.g., "cfia_admin")
+            organization_id: Optional organization UUID (will be looked up if not provided)
+
+        Raises:
+            HTTPException: 403 if user doesn't have the role or not associated with org
+        """
+        async with sessionmanager.get_session() as session:
+            # Get organization ID if not provided
+            if organization_id is None:
+                organization_id = await OrganizationDataService(
+                    session
+                ).get_user_organization_id(user_id)
+
+                if not organization_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="User not associated with an organization",
+                    )
+
+            # Check if user has the role
+            has_role = await OrganizationDataService(session).user_has_role(
+                user_id, organization_id, role_name
+            )
+
+            if not has_role:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"User does not have required role: {role_name}",
+                )
 
     @staticmethod
     async def authorize_request(request: Request, user) -> None:
