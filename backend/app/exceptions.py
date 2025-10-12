@@ -119,6 +119,34 @@ class OrganizationUnauthorizedError(OrganizationError):
     pass
 
 
+class DeviceError(Exception):
+    pass
+
+
+class DeviceBrandNotFoundError(DeviceError):
+    pass
+
+
+class DeviceModelNotFoundError(DeviceError):
+    pass
+
+
+class DeviceLensNotFoundError(DeviceError):
+    pass
+
+
+class DeviceCreationError(DeviceError):
+    pass
+
+
+class DeviceUpdateError(DeviceError):
+    pass
+
+
+class DeviceDeletionError(DeviceError):
+    pass
+
+
 def log_error(error: Exception):
     """Logs the error message and traceback."""
     logger.error(f"Error occurred: {error}")

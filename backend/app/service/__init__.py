@@ -4,6 +4,12 @@ from .directory import DirectoryService
 from .frontend import FrontendService
 from .rbac import RbacService
 from .logs import LogService
+from .device import (
+    DeviceBrandService,
+    DeviceModelService,
+    DeviceLensService,
+    DeviceService,
+)
 
 __all__ = [
     "PipelineService",
@@ -12,4 +18,8 @@ __all__ = [
     "FrontendService",
     "RbacService",
     "LogService",
+    "DeviceBrandService",
+    "DeviceModelService",
+    "DeviceLensService",
+    "DeviceService",
 ]

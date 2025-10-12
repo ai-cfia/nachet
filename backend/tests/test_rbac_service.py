@@ -168,6 +168,194 @@ class TestRbacServiceAuthorizeRequest:
         await RbacService.authorize_request(request, user)
 
 
+class TestRbacServiceGetUserOrganizationId:
+    """Test RbacService.get_user_organization_id method."""
+
+    @pytest.mark.asyncio
+    async def test_get_user_organization_id_success(self, monkeypatch):
+        """User successfully retrieves their organization ID."""
+        from app.db.utils import sessionmanager
+
+        user_id = uuid4()
+        org_id = uuid4()
+
+        # Mock session
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
+
+        # Mock OrganizationDataService
+        mock_data_service = AsyncMock()
+        mock_data_service.get_user_organization_id = AsyncMock(return_value=org_id)
+        monkeypatch.setattr(
+            "app.service.rbac.OrganizationDataService",
+            lambda session: mock_data_service,
+        )
+
+        # Call service
+        result = await RbacService.get_user_organization_id(user_id)
+
+        # Verify
+        assert result == org_id
+        mock_data_service.get_user_organization_id.assert_called_once_with(user_id)
+
+    @pytest.mark.asyncio
+    async def test_get_user_organization_id_not_associated(self, monkeypatch):
+        """User not associated with organization should raise 403."""
+        from app.db.utils import sessionmanager
+
+        user_id = uuid4()
+
+        # Mock session
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
+
+        # Mock OrganizationDataService - returns None (no org)
+        mock_data_service = AsyncMock()
+        mock_data_service.get_user_organization_id = AsyncMock(return_value=None)
+        monkeypatch.setattr(
+            "app.service.rbac.OrganizationDataService",
+            lambda session: mock_data_service,
+        )
+
+        # Should raise 403
+        with pytest.raises(HTTPException) as exc_info:
+            await RbacService.get_user_organization_id(user_id)
+
+        assert exc_info.value.status_code == 403
+        assert "not associated with an organization" in exc_info.value.detail
+
+
+class TestRbacServiceVerifyUserHasRole:
+    """Test RbacService.verify_user_has_role method."""
+
+    @pytest.mark.asyncio
+    async def test_verify_user_has_role_with_org_id_success(self, monkeypatch):
+        """User has role when organization_id is provided."""
+        from app.db.utils import sessionmanager
+
+        user_id = uuid4()
+        org_id = uuid4()
+        role_name = "cfia_admin"
+
+        # Mock session
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
+
+        # Mock OrganizationDataService
+        mock_data_service = AsyncMock()
+        mock_data_service.user_has_role = AsyncMock(return_value=True)
+        monkeypatch.setattr(
+            "app.service.rbac.OrganizationDataService",
+            lambda session: mock_data_service,
+        )
+
+        # Call service - should not raise exception
+        await RbacService.verify_user_has_role(user_id, role_name, org_id)
+
+        # Verify role check was called
+        mock_data_service.user_has_role.assert_called_once_with(
+            user_id, org_id, role_name
+        )
+
+    @pytest.mark.asyncio
+    async def test_verify_user_has_role_without_org_id_success(self, monkeypatch):
+        """User has role when organization_id is looked up."""
+        from app.db.utils import sessionmanager
+
+        user_id = uuid4()
+        org_id = uuid4()
+        role_name = "cfia_admin"
+
+        # Mock session
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
+
+        # Mock OrganizationDataService
+        mock_data_service = AsyncMock()
+        mock_data_service.get_user_organization_id = AsyncMock(return_value=org_id)
+        mock_data_service.user_has_role = AsyncMock(return_value=True)
+        monkeypatch.setattr(
+            "app.service.rbac.OrganizationDataService",
+            lambda session: mock_data_service,
+        )
+
+        # Call service without org_id - should not raise exception
+        await RbacService.verify_user_has_role(user_id, role_name)
+
+        # Verify both lookup and role check were called
+        mock_data_service.get_user_organization_id.assert_called_once_with(user_id)
+        mock_data_service.user_has_role.assert_called_once_with(
+            user_id, org_id, role_name
+        )
+
+    @pytest.mark.asyncio
+    async def test_verify_user_has_role_user_lacks_role(self, monkeypatch):
+        """User without required role should raise 403."""
+        from app.db.utils import sessionmanager
+
+        user_id = uuid4()
+        org_id = uuid4()
+        role_name = "cfia_admin"
+
+        # Mock session
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
+
+        # Mock OrganizationDataService - user does NOT have role
+        mock_data_service = AsyncMock()
+        mock_data_service.user_has_role = AsyncMock(return_value=False)
+        monkeypatch.setattr(
+            "app.service.rbac.OrganizationDataService",
+            lambda session: mock_data_service,
+        )
+
+        # Should raise 403
+        with pytest.raises(HTTPException) as exc_info:
+            await RbacService.verify_user_has_role(user_id, role_name, org_id)
+
+        assert exc_info.value.status_code == 403
+        assert f"does not have required role: {role_name}" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_verify_user_has_role_no_org_association(self, monkeypatch):
+        """User not associated with org when org_id is None should raise 403."""
+        from app.db.utils import sessionmanager
+
+        user_id = uuid4()
+        role_name = "cfia_admin"
+
+        # Mock session
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
+
+        # Mock OrganizationDataService - returns None (no org)
+        mock_data_service = AsyncMock()
+        mock_data_service.get_user_organization_id = AsyncMock(return_value=None)
+        monkeypatch.setattr(
+            "app.service.rbac.OrganizationDataService",
+            lambda session: mock_data_service,
+        )
+
+        # Should raise 403
+        with pytest.raises(HTTPException) as exc_info:
+            await RbacService.verify_user_has_role(user_id, role_name)
+
+        assert exc_info.value.status_code == 403
+        assert "not associated with an organization" in exc_info.value.detail
+
+
 class TestRbacServiceDatabaseDriven:
     """Test database-driven RBAC service."""
 

@@ -6,6 +6,7 @@ from app.service import (
     DirectoryService,
     FrontendService,
     LogService,
+    DeviceService,
 )
 from app.service.auth import User, get_current_user
 from app.api.config import get_limiter
@@ -22,6 +23,7 @@ def _get_logger():
     global _logger
     if _logger is None:
         from app.service.logs import LogService
+
         _logger = LogService.get_logger()
     return _logger
 
@@ -46,7 +48,9 @@ async def validate_ip_address(
         #     status_code=status.HTTP_403_FORBIDDEN,
         #     detail="IP address mismatch"
         # )
-        _get_logger().warning("IP address mismatch", client_ip=client_ip, token_ip=token_ip)
+        _get_logger().warning(
+            "IP address mismatch", client_ip=client_ip, token_ip=token_ip
+        )
 
     return current_user
 
@@ -122,7 +126,9 @@ async def get_pipelines(
 async def get_model_endpoints_metadata(
     request: Request, current_user: User = Depends(get_current_user)
 ):
-    _get_logger().debug("model_endpoints_metadata endpoint called", user_id=current_user.oid)
+    _get_logger().debug(
+        "model_endpoints_metadata endpoint called", user_id=current_user.oid
+    )
     metadata = await PipelineService.get_model_endpoints_metadata()
     return metadata
 
@@ -140,6 +146,47 @@ async def get_seed_data(
     # print(f"/seeds - user: {current_user.__dict__}")
     seed_data = await SeedService.get_seed_data()
     return seed_data
+
+
+@router.get(
+    "/devices",
+    status_code=status.HTTP_200_OK,
+    name="Get All Devices [AUTH REQUIRED]",
+)
+@limiter.limit("10/minute")
+async def get_devices(request: Request, current_user: User = Depends(get_current_user)):
+    """
+    Get all device information organized by brand.
+
+    Returns:
+        Dictionary with "devices" key containing array of brand objects:
+        {
+            "devices": [
+                {
+                    "id": "uuid",
+                    "name": "brand_name",
+                    "description": "Brand description",
+                    "models": [
+                        {
+                            "id": "uuid",
+                            "name": "model1",
+                            "description": "Model description"
+                        }
+                    ],
+                    "lenses": [
+                        {
+                            "id": "uuid",
+                            "name": "lens1",
+                            "description": "Lens description"
+                        }
+                    ]
+                }
+            ]
+        }
+    """
+    _get_logger().debug("get_devices endpoint called", user_id=current_user.oid)
+    devices = await DeviceService.get_all_devices(current_user.oid)
+    return devices
 
 
 @router.get(
@@ -266,7 +313,9 @@ async def serve_frontend_static(request: Request, path: str):
             return Response(content=content, media_type=content_type)
         except Exception as e:
             # If even index.html fails, return 500
-            _get_logger().error("Error serving frontend file", error=str(e), error_type=type(e).__name__)
+            _get_logger().error(
+                "Error serving frontend file", error=str(e), error_type=type(e).__name__
+            )
             return Response(
                 content="Failed to load frontend file",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
