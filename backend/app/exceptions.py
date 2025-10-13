@@ -147,6 +147,46 @@ class DeviceDeletionError(DeviceError):
     pass
 
 
+class ModelError(Exception):
+    pass
+
+
+class ModelNotFoundError(ModelError):
+    pass
+
+
+class ModelCreationError(ModelError):
+    pass
+
+
+class ModelUpdateError(ModelError):
+    pass
+
+
+class ModelDeletionError(ModelError):
+    pass
+
+
+class PipelineError(Exception):
+    pass
+
+
+class PipelineNotFoundError(PipelineError):
+    pass
+
+
+class PipelineCreationError(PipelineError):
+    pass
+
+
+class PipelineUpdateError(PipelineError):
+    pass
+
+
+class PipelineDeletionError(PipelineError):
+    pass
+
+
 def log_error(error: Exception):
     """Logs the error message and traceback."""
     logger.error(f"Error occurred: {error}")
