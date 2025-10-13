@@ -7,9 +7,7 @@ This demonstrates the code reduction achieved by using the generic base class:
 """
 
 from typing import List, Optional, Type
-from uuid import UUID
 from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 

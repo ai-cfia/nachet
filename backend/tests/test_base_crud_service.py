@@ -8,12 +8,10 @@ classes to verify all CRUD functionality works correctly.
 import pytest
 from uuid import uuid4, UUID
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
-from typing import Type, Dict, Any, List
+from typing import Type, Dict, Any
 
 from app.service.base_crud import BaseCRUDService, BaseCRUDDataService
 from app.exceptions import (
-    ModelError,
     ModelNotFoundError,
     ModelCreationError,
     ModelUpdateError,
@@ -35,7 +33,7 @@ class MockEntity:
 
 
 # Concrete implementations for testing
-class TestEntityDataService(BaseCRUDDataService[MockEntity]):
+class MockEntityDataService(BaseCRUDDataService[MockEntity]):
     """Concrete data service for testing."""
 
     @classmethod
@@ -43,7 +41,7 @@ class TestEntityDataService(BaseCRUDDataService[MockEntity]):
         return MockEntity
 
 
-class TestEntityService(BaseCRUDService[MockEntity]):
+class MockEntityService(BaseCRUDService[MockEntity]):
     """Concrete service for testing."""
 
     @classmethod
@@ -52,7 +50,7 @@ class TestEntityService(BaseCRUDService[MockEntity]):
 
     @classmethod
     def get_data_service_class(cls) -> Type[BaseCRUDDataService[MockEntity]]:
-        return TestEntityDataService
+        return MockEntityDataService
 
     @classmethod
     def serialize_entity(cls, entity: MockEntity) -> Dict[str, Any]:
@@ -123,13 +121,13 @@ async def test_get_all_success(
     mock_data_service.get_all.return_value = ([mock_entity], 1)
 
     with patch.object(
-        TestEntityDataService, "__init__", return_value=None
-    ) as mock_init:
+        MockEntityDataService, "__init__", return_value=None
+    ):
         with patch.object(
-            TestEntityDataService, "get_all", return_value=([mock_entity], 1)
-        ) as mock_get_all:
+            MockEntityDataService, "get_all", return_value=([mock_entity], 1)
+        ):
             # Act
-            result = await TestEntityService.get_all(mock_user_id)
+            result = await MockEntityService.get_all(mock_user_id)
 
             # Assert
             assert "items" in result
@@ -157,7 +155,7 @@ async def test_get_all_rbac_failure(mock_get_org_id, mock_user_id):
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc_info:
-        await TestEntityService.get_all(mock_user_id)
+        await MockEntityService.get_all(mock_user_id)
 
     assert exc_info.value.status_code == 401
     mock_get_org_id.assert_called_once_with(mock_user_id)
@@ -179,13 +177,13 @@ async def test_get_all_with_pagination(
     entities = [mock_entity, mock_entity]
 
     with patch.object(
-        TestEntityDataService, "__init__", return_value=None
+        MockEntityDataService, "__init__", return_value=None
     ):
         with patch.object(
-            TestEntityDataService, "get_all", return_value=(entities, 150)
+            MockEntityDataService, "get_all", return_value=(entities, 150)
         ) as mock_get_all:
             # Act
-            result = await TestEntityService.get_all(
+            result = await MockEntityService.get_all(
                 mock_user_id, offset=50, limit=50
             )
 
@@ -214,14 +212,14 @@ async def test_get_all_with_filters(
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
     with patch.object(
-        TestEntityDataService, "__init__", return_value=None
+        MockEntityDataService, "__init__", return_value=None
     ):
         with patch.object(
-            TestEntityDataService, "get_all", return_value=([mock_entity], 1)
+            MockEntityDataService, "get_all", return_value=([mock_entity], 1)
         ) as mock_get_all:
             # Act
             filters = {"name": "Test Entity", "active": True}
-            result = await TestEntityService.get_all(
+            result = await MockEntityService.get_all(
                 mock_user_id, filters=filters
             )
 
@@ -246,13 +244,13 @@ async def test_get_all_with_sorting(
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
     with patch.object(
-        TestEntityDataService, "__init__", return_value=None
+        MockEntityDataService, "__init__", return_value=None
     ):
         with patch.object(
-            TestEntityDataService, "get_all", return_value=([mock_entity], 1)
+            MockEntityDataService, "get_all", return_value=([mock_entity], 1)
         ) as mock_get_all:
             # Act
-            result = await TestEntityService.get_all(
+            result = await MockEntityService.get_all(
                 mock_user_id, order_by="name", order_direction="desc"
             )
 
@@ -277,12 +275,12 @@ async def test_get_by_id_success(
     mock_session = AsyncMock()
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
-    with patch.object(TestEntityDataService, "__init__", return_value=None):
+    with patch.object(MockEntityDataService, "__init__", return_value=None):
         with patch.object(
-            TestEntityDataService, "get_by_id", return_value=mock_entity
-        ) as mock_get_by_id:
+            MockEntityDataService, "get_by_id", return_value=mock_entity
+        ):
             # Act
-            result = await TestEntityService.get_by_id(mock_user_id, mock_entity_id)
+            result = await MockEntityService.get_by_id(mock_user_id, mock_entity_id)
 
             # Assert
             assert result["id"] == str(mock_entity.id)
@@ -303,11 +301,11 @@ async def test_get_by_id_not_found(
     mock_session = AsyncMock()
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
-    with patch.object(TestEntityDataService, "__init__", return_value=None):
-        with patch.object(TestEntityDataService, "get_by_id", return_value=None):
+    with patch.object(MockEntityDataService, "__init__", return_value=None):
+        with patch.object(MockEntityDataService, "get_by_id", return_value=None):
             # Act & Assert
             with pytest.raises(HTTPException) as exc_info:
-                await TestEntityService.get_by_id(mock_user_id, mock_entity_id)
+                await MockEntityService.get_by_id(mock_user_id, mock_entity_id)
 
             assert exc_info.value.status_code == 404
             assert "not found" in str(exc_info.value.detail).lower()
@@ -328,12 +326,12 @@ async def test_create_success(
     mock_session = AsyncMock()
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
-    with patch.object(TestEntityDataService, "__init__", return_value=None):
+    with patch.object(MockEntityDataService, "__init__", return_value=None):
         with patch.object(
-            TestEntityDataService, "create", return_value=mock_entity
-        ) as mock_create:
+            MockEntityDataService, "create", return_value=mock_entity
+        ):
             # Act
-            result = await TestEntityService.create(
+            result = await MockEntityService.create(
                 mock_user_id, name="Test Entity", active=True
             )
 
@@ -356,7 +354,7 @@ async def test_create_rbac_failure(mock_verify_role, mock_get_org_id, mock_user_
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc_info:
-        await TestEntityService.create(mock_user_id, name="Test Entity")
+        await MockEntityService.create(mock_user_id, name="Test Entity")
 
     assert exc_info.value.status_code == 403
     mock_get_org_id.assert_called_once_with(mock_user_id)
@@ -381,12 +379,12 @@ async def test_update_success(
         id=mock_entity_id, name="Updated Entity", active=True
     )
 
-    with patch.object(TestEntityDataService, "__init__", return_value=None):
+    with patch.object(MockEntityDataService, "__init__", return_value=None):
         with patch.object(
-            TestEntityDataService, "update", return_value=updated_entity
-        ) as mock_update:
+            MockEntityDataService, "update", return_value=updated_entity
+        ):
             # Act
-            result = await TestEntityService.update(
+            result = await MockEntityService.update(
                 mock_user_id, mock_entity_id, name="Updated Entity"
             )
 
@@ -412,11 +410,11 @@ async def test_update_not_found(
     mock_session = AsyncMock()
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
-    with patch.object(TestEntityDataService, "__init__", return_value=None):
-        with patch.object(TestEntityDataService, "update", return_value=None):
+    with patch.object(MockEntityDataService, "__init__", return_value=None):
+        with patch.object(MockEntityDataService, "update", return_value=None):
             # Act & Assert
             with pytest.raises(HTTPException) as exc_info:
-                await TestEntityService.update(
+                await MockEntityService.update(
                     mock_user_id, mock_entity_id, name="Updated"
                 )
 
@@ -435,7 +433,7 @@ async def test_update_rbac_failure(mock_verify_role, mock_get_org_id, mock_user_
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc_info:
-        await TestEntityService.update(mock_user_id, mock_entity_id, name="Updated")
+        await MockEntityService.update(mock_user_id, mock_entity_id, name="Updated")
 
     assert exc_info.value.status_code == 403
     mock_get_org_id.assert_called_once_with(mock_user_id)
@@ -458,12 +456,12 @@ async def test_delete_success(
 
     deleted_entity = MockEntity(id=mock_entity_id, name="Deleted", active=False)
 
-    with patch.object(TestEntityDataService, "__init__", return_value=None):
+    with patch.object(MockEntityDataService, "__init__", return_value=None):
         with patch.object(
-            TestEntityDataService, "soft_delete", return_value=deleted_entity
-        ) as mock_delete:
+            MockEntityDataService, "soft_delete", return_value=deleted_entity
+        ):
             # Act
-            result = await TestEntityService.delete(mock_user_id, mock_entity_id)
+            result = await MockEntityService.delete(mock_user_id, mock_entity_id)
 
             # Assert
             assert "message" in result
@@ -488,11 +486,11 @@ async def test_delete_not_found(
     mock_session = AsyncMock()
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
-    with patch.object(TestEntityDataService, "__init__", return_value=None):
-        with patch.object(TestEntityDataService, "soft_delete", return_value=None):
+    with patch.object(MockEntityDataService, "__init__", return_value=None):
+        with patch.object(MockEntityDataService, "soft_delete", return_value=None):
             # Act & Assert
             with pytest.raises(HTTPException) as exc_info:
-                await TestEntityService.delete(mock_user_id, mock_entity_id)
+                await MockEntityService.delete(mock_user_id, mock_entity_id)
 
             assert exc_info.value.status_code == 404
             assert "not found" in str(exc_info.value.detail).lower()
@@ -509,7 +507,7 @@ async def test_delete_rbac_failure(mock_verify_role, mock_get_org_id, mock_user_
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc_info:
-        await TestEntityService.delete(mock_user_id, mock_entity_id)
+        await MockEntityService.delete(mock_user_id, mock_entity_id)
 
     assert exc_info.value.status_code == 403
     mock_get_org_id.assert_called_once_with(mock_user_id)
@@ -519,7 +517,7 @@ async def test_delete_rbac_failure(mock_verify_role, mock_get_org_id, mock_user_
 @pytest.mark.asyncio
 async def test_data_service_get_model_class():
     """Test that get_model_class returns correct type."""
-    assert TestEntityDataService.get_model_class() == MockEntity
+    assert MockEntityDataService.get_model_class() == MockEntity
 
 
 @pytest.mark.asyncio
