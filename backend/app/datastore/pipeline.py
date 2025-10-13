@@ -148,3 +148,164 @@ class PipelineDataService:
             mapping[pipeline.name] = models_info
 
         return mapping
+
+    async def get_by_id(self, pipeline_id: str) -> Optional[Pipeline]:
+        """
+        Retrieve a pipeline by ID.
+
+        Args:
+            pipeline_id: The pipeline UUID
+
+        Returns:
+            Pipeline object if found and active, None otherwise
+        """
+        stmt = (
+            select(Pipeline)
+            .where(Pipeline.id == pipeline_id)
+            .where(Pipeline.active.is_(True))
+            .options(
+                selectinload(Pipeline.pipeline_models).selectinload(PipelineModel.model)
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def create(
+        self,
+        name: str,
+        data: Dict[str, Any],
+        created_by: Optional[str] = None,
+        creation_date: Optional[Any] = None,
+        description: Optional[str] = None,
+        job_name: Optional[str] = None,
+        version: Optional[str] = None,
+        dataset: Optional[str] = None,
+        identifiable: Optional[Dict] = None,
+        metrics: Optional[Dict] = None,
+        default: Optional[bool] = False,
+    ) -> Pipeline:
+        """
+        Create a new pipeline.
+
+        Args:
+            name: Pipeline name
+            data: Pipeline JSON data
+            created_by: User who created the pipeline (optional)
+            creation_date: Creation date (optional)
+            description: Pipeline description (optional)
+            job_name: Job name (optional)
+            version: Pipeline version (optional)
+            dataset: Dataset information (optional)
+            identifiable: Identifiable seeds (optional)
+            metrics: Pipeline metrics (optional)
+            default: Whether this is the default pipeline (optional)
+
+        Returns:
+            The created Pipeline object
+        """
+        pipeline = Pipeline(
+            name=name,
+            data=data,
+            created_by=created_by,
+            creation_date=creation_date,
+            description=description,
+            job_name=job_name,
+            version=version,
+            dataset=dataset,
+            identifiable=identifiable,
+            metrics=metrics,
+            default=default,
+            active=True,
+        )
+        self.session.add(pipeline)
+        await self.session.flush()
+        await self.session.refresh(pipeline)
+        return pipeline
+
+    async def update(
+        self,
+        pipeline_id: str,
+        name: Optional[str] = None,
+        data: Optional[Dict[str, Any]] = None,
+        created_by: Optional[str] = None,
+        creation_date: Optional[Any] = None,
+        description: Optional[str] = None,
+        job_name: Optional[str] = None,
+        version: Optional[str] = None,
+        dataset: Optional[str] = None,
+        identifiable: Optional[Dict] = None,
+        metrics: Optional[Dict] = None,
+        default: Optional[bool] = None,
+    ) -> Optional[Pipeline]:
+        """
+        Update a pipeline.
+
+        Args:
+            pipeline_id: The pipeline UUID
+            name: New name (if provided)
+            data: New data (if provided)
+            created_by: New creator (if provided)
+            creation_date: New creation date (if provided)
+            description: New description (if provided)
+            job_name: New job name (if provided)
+            version: New version (if provided)
+            dataset: New dataset (if provided)
+            identifiable: New identifiable seeds (if provided)
+            metrics: New metrics (if provided)
+            default: New default status (if provided)
+
+        Returns:
+            Updated Pipeline object if found, None otherwise
+        """
+        pipeline = await self.get_by_id(pipeline_id)
+        if not pipeline:
+            return None
+
+        if name is not None:
+            pipeline.name = name
+        if data is not None:
+            pipeline.data = data
+        if created_by is not None:
+            pipeline.created_by = created_by
+        if creation_date is not None:
+            pipeline.creation_date = creation_date
+        if description is not None:
+            pipeline.description = description
+        if job_name is not None:
+            pipeline.job_name = job_name
+        if version is not None:
+            pipeline.version = version
+        if dataset is not None:
+            pipeline.dataset = dataset
+        if identifiable is not None:
+            pipeline.identifiable = identifiable
+        if metrics is not None:
+            pipeline.metrics = metrics
+        if default is not None:
+            pipeline.default = default
+
+        await self.session.flush()
+        await self.session.refresh(pipeline)
+        return pipeline
+
+    async def soft_delete(self, pipeline_id: str) -> Optional[Pipeline]:
+        """
+        Soft delete a pipeline by setting active to False.
+
+        Args:
+            pipeline_id: The pipeline UUID
+
+        Returns:
+            The soft-deleted Pipeline object if found, None otherwise
+        """
+        stmt = select(Pipeline).where(Pipeline.id == pipeline_id)
+        result = await self.session.execute(stmt)
+        pipeline = result.scalar_one_or_none()
+
+        if not pipeline:
+            return None
+
+        pipeline.active = False
+        await self.session.flush()
+        await self.session.refresh(pipeline)
+        return pipeline

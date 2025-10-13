@@ -8,6 +8,7 @@ from .device import (
     DeviceModelDataService,
     DeviceLensDataService,
 )
+from .model import ModelDataService
 
 __all__ = [
     "PipelineDataService",
@@ -18,4 +19,5 @@ __all__ = [
     "DeviceBrandDataService",
     "DeviceModelDataService",
     "DeviceLensDataService",
+    "ModelDataService",
 ]

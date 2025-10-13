@@ -10,6 +10,7 @@ from .device import (
     DeviceLensService,
     DeviceService,
 )
+from .model import ModelService
 
 __all__ = [
     "PipelineService",
@@ -22,4 +23,5 @@ __all__ = [
     "DeviceModelService",
     "DeviceLensService",
     "DeviceService",
+    "ModelService",
 ]
