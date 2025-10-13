@@ -6,9 +6,8 @@ This demonstrates the dramatic code reduction achieved by using the generic base
 - Refactored: ~150 lines (76% reduction)
 """
 
-from typing import Dict, Any, List, Type, Optional
+from typing import Dict, Any, List, Type
 from uuid import UUID
-from datetime import datetime
 import traceback
 from fastapi import HTTPException, status
 
