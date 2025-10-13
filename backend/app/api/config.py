@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     debug: bool = False
     security_headers_preset: str = "strict"
 
+    # rbac settings
+    cfia_organization_id: str | None = None
+
     @computed_field
     @property
     def allowed_origin_list(self) -> list[str]:
