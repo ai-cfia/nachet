@@ -2,20 +2,31 @@
 Pipeline service module.
 """
 
-from typing import List, Dict, Any, Optional
-from uuid import UUID
-import traceback
-from fastapi import HTTPException, status
+from typing import List, Dict, Any, Optional, Type
+from fastapi import HTTPException
 from app.db.utils import sessionmanager
 from app.datastore import PipelineDataService
+from app.service.base_crud import BaseCRUDService
 from app.service.logs import LogService
-from app.service.rbac import RbacService
-from app.exceptions import PipelineNotFoundError
+from app.db.model import Pipeline
+from app.exceptions import (
+    PipelineNotFoundError,
+    PipelineCreationError,
+    PipelineUpdateError,
+    PipelineDeletionError,
+)
 
 
-class PipelineService:
+class PipelineService(BaseCRUDService[Pipeline]):
     """
     Service class to handle pipeline-related operations.
+    
+    Extends BaseCRUDService to provide standard CRUD operations with RBAC.
+    Also includes legacy methods for specialized pipeline queries.
+    
+    Access Control:
+    - GET operations (get_all, get_by_id): Any authenticated user
+    - CUD operations (create, update, delete): CFIA admin only
     """
 
     # Singleton logger for the service
@@ -27,6 +38,74 @@ class PipelineService:
         if cls._logger is None:
             cls._logger = LogService.get_logger()
         return cls._logger
+
+    # ========================================
+    # BaseCRUDService Required Methods
+    # ========================================
+
+    @classmethod
+    def get_entity_name(cls) -> str:
+        """Return the entity name for error messages."""
+        return "Pipeline"
+
+    @classmethod
+    def get_data_service_class(cls) -> Type[PipelineDataService]:
+        """Return the data service class for Pipeline."""
+        return PipelineDataService
+
+    @classmethod
+    def serialize_entity(cls, entity: Pipeline) -> Dict[str, Any]:
+        """
+        Convert Pipeline entity to dictionary for API response.
+        
+        Args:
+            entity: The Pipeline object to serialize
+            
+        Returns:
+            Dictionary representation of the pipeline
+        """
+        return {
+            "id": str(entity.id),
+            "name": entity.name,
+            "created_by": entity.created_by,
+            "creation_date": entity.creation_date.isoformat()
+            if entity.creation_date
+            else None,
+            "description": entity.description,
+            "job_name": entity.job_name,
+            "version": entity.version,
+            "dataset": entity.dataset,
+            "identifiable": entity.identifiable,
+            "metrics": entity.metrics,
+            "default": entity.default,
+            "active": entity.active,
+            "date_created": entity.date_created.isoformat(),
+        }
+
+    @classmethod
+    def get_not_found_exception(cls) -> Type[Exception]:
+        """Return Pipeline-specific NotFoundError exception class."""
+        return PipelineNotFoundError
+
+    @classmethod
+    def get_creation_exception(cls) -> Type[Exception]:
+        """Return Pipeline-specific CreationError exception class."""
+        return PipelineCreationError
+
+    @classmethod
+    def get_update_exception(cls) -> Type[Exception]:
+        """Return Pipeline-specific UpdateError exception class."""
+        return PipelineUpdateError
+
+    @classmethod
+    def get_deletion_exception(cls) -> Type[Exception]:
+        """Return Pipeline-specific DeletionError exception class."""
+        return PipelineDeletionError
+
+    # ========================================
+    # Legacy Pipeline-Specific Methods
+    # These provide custom functionality not covered by standard CRUD
+    # ========================================
 
     @staticmethod
     async def get_pipelines() -> List[Dict[str, Any]]:
@@ -203,462 +282,4 @@ class PipelineService:
             raise HTTPException(
                 status_code=500,
                 detail=f"Failed to retrieve pipeline '{name}': {str(e)}",
-            )
-
-    @staticmethod
-    async def get_all(user_id: UUID) -> Dict[str, List[Dict[str, Any]]]:
-        """
-        Retrieve all active pipelines.
-
-        Access: Any authenticated user
-
-        Args:
-            user_id: The requesting user's UUID
-
-        Returns:
-            Dictionary with "pipelines" key containing list of pipeline data
-
-        Raises:
-            HTTPException: 500 on database error
-        """
-        try:
-            # Just verify user exists and has valid organization
-            await RbacService.get_user_organization_id(user_id)
-
-            async with sessionmanager.get_session() as session:
-                data_service = PipelineDataService(session)
-
-                # Retrieve all pipelines
-                pipelines = await data_service.get_all_pipelines()
-
-                return {
-                    "pipelines": [
-                        {
-                            "id": str(pipeline.id),
-                            "name": pipeline.name,
-                            "created_by": pipeline.created_by,
-                            "creation_date": pipeline.creation_date.isoformat()
-                            if pipeline.creation_date
-                            else None,
-                            "description": pipeline.description,
-                            "job_name": pipeline.job_name,
-                            "version": pipeline.version,
-                            "dataset": pipeline.dataset,
-                            "identifiable": pipeline.identifiable,
-                            "metrics": pipeline.metrics,
-                            "default": pipeline.default,
-                            "active": pipeline.active,
-                            "date_created": pipeline.date_created.isoformat(),
-                        }
-                        for pipeline in pipelines
-                    ]
-                }
-
-        except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
-            raise
-        except Exception as e:
-            logger = PipelineService._get_logger()
-            logger.error(
-                f"Failed to retrieve pipelines: {str(e)}",
-                error=str(e),
-                error_type=type(e).__name__,
-                user_id=str(user_id),
-            )
-            logger.debug(
-                "Traceback for failed retrieve pipelines",
-                traceback=traceback.format_exc(),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to retrieve pipelines: {str(e)}",
-            )
-
-    @staticmethod
-    async def get_by_id(user_id: UUID, pipeline_id: UUID) -> Dict[str, Any]:
-        """
-        Retrieve a pipeline by ID.
-
-        Access: Any authenticated user
-
-        Args:
-            user_id: The requesting user's UUID
-            pipeline_id: The pipeline UUID to retrieve
-
-        Returns:
-            Dictionary containing pipeline data
-
-        Raises:
-            HTTPException: 404 if not found, 500 on error
-        """
-        try:
-            # Just verify user exists and has valid organization
-            await RbacService.get_user_organization_id(user_id)
-
-            async with sessionmanager.get_session() as session:
-                data_service = PipelineDataService(session)
-
-                # Retrieve pipeline
-                pipeline = await data_service.get_by_id(str(pipeline_id))
-                if not pipeline:
-                    raise PipelineNotFoundError(f"Pipeline {pipeline_id} not found")
-
-                return {
-                    "id": str(pipeline.id),
-                    "name": pipeline.name,
-                    "created_by": pipeline.created_by,
-                    "creation_date": pipeline.creation_date.isoformat()
-                    if pipeline.creation_date
-                    else None,
-                    "description": pipeline.description,
-                    "job_name": pipeline.job_name,
-                    "version": pipeline.version,
-                    "dataset": pipeline.dataset,
-                    "identifiable": pipeline.identifiable,
-                    "metrics": pipeline.metrics,
-                    "default": pipeline.default,
-                    "active": pipeline.active,
-                    "date_created": pipeline.date_created.isoformat(),
-                }
-
-        except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
-            raise
-        except PipelineNotFoundError as e:
-            logger = PipelineService._get_logger()
-            logger.warning(
-                f"Pipeline not found: {str(e)}",
-                error=str(e),
-                user_id=str(user_id),
-                pipeline_id=str(pipeline_id),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            )
-        except Exception as e:
-            logger = PipelineService._get_logger()
-            logger.error(
-                f"Failed to retrieve pipeline: {str(e)}",
-                error=str(e),
-                error_type=type(e).__name__,
-                user_id=str(user_id),
-                pipeline_id=str(pipeline_id),
-            )
-            logger.debug(
-                "Traceback for failed retrieve pipeline",
-                traceback=traceback.format_exc(),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to retrieve pipeline: {str(e)}",
-            )
-
-    @staticmethod
-    async def create(
-        user_id: UUID,
-        name: str,
-        data: Dict[str, Any],
-        created_by: Optional[str] = None,
-        creation_date: Optional[Any] = None,
-        description: Optional[str] = None,
-        job_name: Optional[str] = None,
-        version: Optional[str] = None,
-        dataset: Optional[str] = None,
-        identifiable: Optional[Dict] = None,
-        metrics: Optional[Dict] = None,
-        default: Optional[bool] = False,
-    ) -> Dict[str, Any]:
-        """
-        Create a new pipeline.
-
-        Access: CFIA admin only
-
-        Args:
-            user_id: The requesting user's UUID (must be cfia_admin)
-            name: Pipeline name
-            data: Pipeline JSON data
-            created_by: User who created the pipeline (optional)
-            creation_date: Creation date (optional)
-            description: Pipeline description (optional)
-            job_name: Job name (optional)
-            version: Pipeline version (optional)
-            dataset: Dataset information (optional)
-            identifiable: Identifiable seeds (optional)
-            metrics: Pipeline metrics (optional)
-            default: Whether this is the default pipeline (optional)
-
-        Returns:
-            Dictionary containing the created pipeline data
-
-        Raises:
-            HTTPException: 403 if unauthorized, 500 on error
-        """
-        try:
-            # Verify user is CFIA admin (cross-org authority)
-            await RbacService.verify_user_is_cfia_admin(user_id)
-
-            async with sessionmanager.get_session() as session:
-                data_service = PipelineDataService(session)
-
-                # Create the pipeline
-                pipeline = await data_service.create(
-                    name=name,
-                    data=data,
-                    created_by=created_by,
-                    creation_date=creation_date,
-                    description=description,
-                    job_name=job_name,
-                    version=version,
-                    dataset=dataset,
-                    identifiable=identifiable,
-                    metrics=metrics,
-                    default=default,
-                )
-                await session.commit()
-
-                logger = PipelineService._get_logger()
-                logger.info(
-                    f"Created pipeline: {pipeline.name}",
-                    pipeline_id=str(pipeline.id),
-                    user_id=str(user_id),
-                )
-
-                return {
-                    "id": str(pipeline.id),
-                    "name": pipeline.name,
-                    "created_by": pipeline.created_by,
-                    "creation_date": pipeline.creation_date.isoformat()
-                    if pipeline.creation_date
-                    else None,
-                    "description": pipeline.description,
-                    "job_name": pipeline.job_name,
-                    "version": pipeline.version,
-                    "dataset": pipeline.dataset,
-                    "identifiable": pipeline.identifiable,
-                    "metrics": pipeline.metrics,
-                    "default": pipeline.default,
-                    "active": pipeline.active,
-                    "date_created": pipeline.date_created.isoformat(),
-                }
-
-        except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
-            raise
-        except Exception as e:
-            logger = PipelineService._get_logger()
-            logger.error(
-                f"Failed to create pipeline: {str(e)}",
-                error=str(e),
-                error_type=type(e).__name__,
-                user_id=str(user_id),
-                pipeline_name=name,
-            )
-            logger.debug(
-                "Traceback for failed create pipeline",
-                traceback=traceback.format_exc(),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create pipeline: {str(e)}",
-            )
-
-    @staticmethod
-    async def update(
-        user_id: UUID,
-        pipeline_id: UUID,
-        name: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
-        created_by: Optional[str] = None,
-        creation_date: Optional[Any] = None,
-        description: Optional[str] = None,
-        job_name: Optional[str] = None,
-        version: Optional[str] = None,
-        dataset: Optional[str] = None,
-        identifiable: Optional[Dict] = None,
-        metrics: Optional[Dict] = None,
-        default: Optional[bool] = None,
-    ) -> Dict[str, Any]:
-        """
-        Update an existing pipeline.
-
-        Access: CFIA admin only
-
-        Args:
-            user_id: The requesting user's UUID (must be cfia_admin)
-            pipeline_id: The pipeline UUID to update
-            name: New name (if provided)
-            data: New data (if provided)
-            created_by: New creator (if provided)
-            creation_date: New creation date (if provided)
-            description: New description (if provided)
-            job_name: New job name (if provided)
-            version: New version (if provided)
-            dataset: New dataset (if provided)
-            identifiable: New identifiable seeds (if provided)
-            metrics: New metrics (if provided)
-            default: New default status (if provided)
-
-        Returns:
-            Dictionary containing the updated pipeline data
-
-        Raises:
-            HTTPException: 403 if unauthorized, 404 if not found, 500 on error
-        """
-        try:
-            # Verify user is CFIA admin (cross-org authority)
-            await RbacService.verify_user_is_cfia_admin(user_id)
-
-            async with sessionmanager.get_session() as session:
-                data_service = PipelineDataService(session)
-
-                # Update the pipeline
-                pipeline = await data_service.update(
-                    pipeline_id=str(pipeline_id),
-                    name=name,
-                    data=data,
-                    created_by=created_by,
-                    creation_date=creation_date,
-                    description=description,
-                    job_name=job_name,
-                    version=version,
-                    dataset=dataset,
-                    identifiable=identifiable,
-                    metrics=metrics,
-                    default=default,
-                )
-                if not pipeline:
-                    raise PipelineNotFoundError(f"Pipeline {pipeline_id} not found")
-
-                await session.commit()
-
-                logger = PipelineService._get_logger()
-                logger.info(
-                    f"Updated pipeline: {pipeline.name}",
-                    pipeline_id=str(pipeline.id),
-                    user_id=str(user_id),
-                )
-
-                return {
-                    "id": str(pipeline.id),
-                    "name": pipeline.name,
-                    "created_by": pipeline.created_by,
-                    "creation_date": pipeline.creation_date.isoformat()
-                    if pipeline.creation_date
-                    else None,
-                    "description": pipeline.description,
-                    "job_name": pipeline.job_name,
-                    "version": pipeline.version,
-                    "dataset": pipeline.dataset,
-                    "identifiable": pipeline.identifiable,
-                    "metrics": pipeline.metrics,
-                    "default": pipeline.default,
-                    "active": pipeline.active,
-                    "date_created": pipeline.date_created.isoformat(),
-                }
-
-        except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
-            raise
-        except PipelineNotFoundError as e:
-            logger = PipelineService._get_logger()
-            logger.warning(
-                f"Pipeline not found for update: {str(e)}",
-                error=str(e),
-                user_id=str(user_id),
-                pipeline_id=str(pipeline_id),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            )
-        except Exception as e:
-            logger = PipelineService._get_logger()
-            logger.error(
-                f"Failed to update pipeline: {str(e)}",
-                error=str(e),
-                error_type=type(e).__name__,
-                user_id=str(user_id),
-                pipeline_id=str(pipeline_id),
-            )
-            logger.debug(
-                "Traceback for failed update pipeline",
-                traceback=traceback.format_exc(),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to update pipeline: {str(e)}",
-            )
-
-    @staticmethod
-    async def delete(user_id: UUID, pipeline_id: UUID) -> Dict[str, str]:
-        """
-        Soft delete a pipeline (sets active=False).
-
-        Access: CFIA admin only
-
-        Args:
-            user_id: The requesting user's UUID (must be cfia_admin)
-            pipeline_id: The pipeline UUID to delete
-
-        Returns:
-            Success message dictionary
-
-        Raises:
-            HTTPException: 403 if unauthorized, 404 if not found, 500 on error
-        """
-        try:
-            # Verify user is CFIA admin (cross-org authority)
-            await RbacService.verify_user_is_cfia_admin(user_id)
-
-            async with sessionmanager.get_session() as session:
-                data_service = PipelineDataService(session)
-
-                # Soft delete the pipeline
-                pipeline = await data_service.soft_delete(str(pipeline_id))
-                if not pipeline:
-                    raise PipelineNotFoundError(f"Pipeline {pipeline_id} not found")
-
-                await session.commit()
-
-                logger = PipelineService._get_logger()
-                logger.info(
-                    f"Deleted pipeline: {pipeline_id}",
-                    pipeline_id=str(pipeline_id),
-                    user_id=str(user_id),
-                )
-
-                return {"message": f"Pipeline {pipeline_id} deleted successfully"}
-
-        except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
-            raise
-        except PipelineNotFoundError as e:
-            logger = PipelineService._get_logger()
-            logger.warning(
-                f"Pipeline not found for deletion: {str(e)}",
-                error=str(e),
-                user_id=str(user_id),
-                pipeline_id=str(pipeline_id),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            )
-        except Exception as e:
-            logger = PipelineService._get_logger()
-            logger.error(
-                f"Failed to delete pipeline: {str(e)}",
-                error=str(e),
-                error_type=type(e).__name__,
-                user_id=str(user_id),
-                pipeline_id=str(pipeline_id),
-            )
-            logger.debug(
-                "Traceback for failed delete pipeline",
-                traceback=traceback.format_exc(),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to delete pipeline: {str(e)}",
             )

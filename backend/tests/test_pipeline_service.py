@@ -76,7 +76,7 @@ class TestPipelineServiceGetAll:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.get_user_organization_id",
+            "app.service.base_crud.RbacService.get_user_organization_id",
             mock_get_org_id,
         )
 
@@ -88,7 +88,7 @@ class TestPipelineServiceGetAll:
 
         # Mock data service
         mock_data_service = AsyncMock()
-        mock_data_service.get_all_pipelines = AsyncMock(return_value=[pipeline1, pipeline2])
+        mock_data_service.get_all = AsyncMock(return_value=([pipeline1, pipeline2], 2))
         monkeypatch.setattr(
             "app.service.pipeline.PipelineDataService",
             lambda session: mock_data_service,
@@ -97,13 +97,17 @@ class TestPipelineServiceGetAll:
         # Call service
         result = await PipelineService.get_all(user_id)
 
-        # Verify
-        assert "pipelines" in result
-        assert len(result["pipelines"]) == 2
-        assert result["pipelines"][0]["name"] == "Pipeline 1"
-        assert result["pipelines"][1]["name"] == "Pipeline 2"
-        assert result["pipelines"][0]["active"] is True
-        assert result["pipelines"][1]["default"] is True
+        # Verify - BaseCRUDService returns paginated response with "items" key
+        assert "items" in result
+        assert len(result["items"]) == 2
+        assert result["items"][0]["name"] == "Pipeline 1"
+        assert result["items"][1]["name"] == "Pipeline 2"
+        assert result["total"] == 2
+        assert result["offset"] == 0
+        assert result["limit"] == 100
+        assert result["has_more"] is False
+        assert result["items"][0]["active"] is True
+        assert result["items"][1]["default"] is True
 
 
 class TestPipelineServiceGetById:
@@ -139,7 +143,7 @@ class TestPipelineServiceGetById:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.get_user_organization_id",
+            "app.service.base_crud.RbacService.get_user_organization_id",
             mock_get_org_id,
         )
 
@@ -179,7 +183,7 @@ class TestPipelineServiceGetById:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.get_user_organization_id",
+            "app.service.base_crud.RbacService.get_user_organization_id",
             mock_get_org_id,
         )
 
@@ -238,7 +242,7 @@ class TestPipelineServiceCreate:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.verify_user_is_cfia_admin",
+            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
         )
 
@@ -284,7 +288,7 @@ class TestPipelineServiceCreate:
             )
 
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.verify_user_is_cfia_admin",
+            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
         )
 
@@ -332,7 +336,7 @@ class TestPipelineServiceUpdate:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.verify_user_is_cfia_admin",
+            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
         )
 
@@ -353,8 +357,8 @@ class TestPipelineServiceUpdate:
 
         # Call service
         result = await PipelineService.update(
-            user_id=user_id,
-            pipeline_id=pipeline_id,
+            user_id,
+            pipeline_id,
             name="Pipeline 1 Updated",
             version="2.0.0",
             description="Updated test pipeline",
@@ -381,7 +385,7 @@ class TestPipelineServiceUpdate:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.verify_user_is_cfia_admin",
+            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
         )
 
@@ -428,7 +432,7 @@ class TestPipelineServiceDelete:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.verify_user_is_cfia_admin",
+            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
         )
 
@@ -469,7 +473,7 @@ class TestPipelineServiceDelete:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.verify_user_is_cfia_admin",
+            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
         )
 
@@ -507,7 +511,7 @@ class TestPipelineServiceDelete:
             )
 
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.verify_user_is_cfia_admin",
+            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
         )
 
