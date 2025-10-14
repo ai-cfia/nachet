@@ -106,7 +106,8 @@ class TestModelServiceGetAll:
 
         # Mock data service
         mock_data_service = AsyncMock()
-        mock_data_service.get_all = AsyncMock(return_value=[model1, model2])
+        # Base class get_all returns tuple: (entities, total_count)
+        mock_data_service.get_all = AsyncMock(return_value=([model1, model2], 2))
         monkeypatch.setattr(
             "app.service.model.ModelDataService",
             lambda session: mock_data_service,
@@ -517,7 +518,7 @@ class TestModelServiceUpdate:
         # Call service
         result = await ModelService.update(
             user_id=user_id,
-            model_id=model_id,
+            entity_id=model_id,
             name="Model v2",
             version="2.0.0",
             description="Updated test model",
@@ -564,7 +565,7 @@ class TestModelServiceUpdate:
 
         # Should raise 404
         with pytest.raises(HTTPException) as exc_info:
-            await ModelService.update(user_id, model_id, name="Model v2")
+            await ModelService.update(user_id, entity_id=model_id, name="Model v2")
 
         assert exc_info.value.status_code == 404
 

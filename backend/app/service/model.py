@@ -1,19 +1,33 @@
-from typing import List, Dict, Any, Optional
+"""
+Model service using generic BaseCRUDService.
+
+Provides service layer for Model operations with RBAC, logging, and error handling.
+"""
+
+from typing import Dict, Any, List, Type, Optional
 from uuid import UUID
-from datetime import datetime
 import traceback
 from fastapi import HTTPException, status
 
 from app.db.utils import sessionmanager
-from app.datastore import ModelDataService
-from app.service.logs import LogService
+from app.service.base_crud import BaseCRUDService, BaseCRUDDataService
 from app.service.rbac import RbacService
-from app.exceptions import ModelNotFoundError
+from app.datastore.model import ModelDataService
+from app.db.model import Model
+from app.exceptions import (
+    ModelNotFoundError,
+    ModelCreationError,
+    ModelUpdateError,
+    ModelDeletionError,
+)
 
 
-class ModelService:
+class ModelService(BaseCRUDService[Model]):
     """
     Service layer for Model operations.
+
+    Uses the generic BaseCRUDService for standard CRUD operations.
+    Adds custom get_by_task_id method for Model-specific queries.
 
     Access Control:
     - GET operations (get_all, get_by_id, get_by_task_id): Any authenticated user
@@ -25,177 +39,121 @@ class ModelService:
     - Each model must be associated with a task
     """
 
-    # Singleton logger for the service
-    _logger = None
+    @classmethod
+    def get_entity_name(cls) -> str:
+        """Return the entity name for error messages."""
+        return "Model"
 
     @classmethod
-    def _get_logger(cls):
-        """Get or create singleton logger for ModelService."""
-        if cls._logger is None:
-            cls._logger = LogService.get_logger()
-        return cls._logger
+    def get_data_service_class(cls) -> Type[BaseCRUDDataService[Model]]:
+        """Return the data service class."""
+        return ModelDataService
 
-    @staticmethod
-    async def get_all(user_id: UUID) -> Dict[str, List[Dict[str, Any]]]:
+    @classmethod
+    def serialize_entity(cls, entity: Model) -> Dict[str, Any]:
+        """
+        Convert Model entity to dictionary for API response.
+
+        This handles all the complex field serialization for Model.
+        """
+        return {
+            "id": str(entity.id),
+            "task_id": entity.task_id,
+            "task_name": entity.model_task.name if entity.model_task else None,
+            "name": entity.name,
+            "endpoint_name": entity.endpoint_name,
+            "api_url": entity.api_url,
+            "created_by": entity.created_by,
+            "date_model_training": entity.date_model_training.isoformat(),
+            "content_type": entity.content_type,
+            "deployment_platform": entity.deployment_platform,
+            "version": entity.version,
+            "description": entity.description,
+            "job_name": entity.job_name,
+            "dataset": entity.dataset,
+            "artifacts_url": entity.artifacts_url,
+            "sha256": entity.sha256,
+            "active": entity.active,
+            "date_created": entity.date_created.isoformat(),
+            "date_updated": entity.date_updated.isoformat(),
+        }
+
+    @classmethod
+    def get_not_found_exception(cls) -> Type[Exception]:
+        return ModelNotFoundError
+
+    @classmethod
+    def get_creation_exception(cls) -> Type[Exception]:
+        return ModelCreationError
+
+    @classmethod
+    def get_update_exception(cls) -> Type[Exception]:
+        return ModelUpdateError
+
+    @classmethod
+    def get_deletion_exception(cls) -> Type[Exception]:
+        return ModelDeletionError
+
+    # ==========================================
+    # Override get_all to customize response key
+    # ==========================================
+
+    @classmethod
+    async def get_all(
+        cls,
+        user_id: UUID,
+        offset: int = 0,
+        limit: int = 100,
+        filters: Optional[Dict[str, Any]] = None,
+        order_by: Optional[str] = None,
+        order_direction: str = "asc",
+    ) -> Dict[str, Any]:
         """
         Retrieve all active models.
+
+        Override base class to customize response key from "items" to "models"
+        for backward compatibility.
 
         Access: Any authenticated user
 
         Args:
             user_id: The requesting user's UUID
+            offset: Number of records to skip (default: 0)
+            limit: Maximum records to return (default: 100, max: 1000)
+            filters: Dictionary of field_name: value pairs for filtering (optional)
+            order_by: Field name to sort by (optional)
+            order_direction: Sort direction 'asc' or 'desc' (default: 'asc')
 
         Returns:
             Dictionary with "models" key containing list of model data
 
         Raises:
-            HTTPException: 500 on database error
+            HTTPException: 401 if user not authenticated, 500 on other errors
         """
-        try:
-            # Just verify user exists and has valid organization
-            await RbacService.get_user_organization_id(user_id)
+        # Call base class implementation
+        result = await super().get_all(
+            user_id=user_id,
+            offset=offset,
+            limit=limit,
+            filters=filters,
+            order_by=order_by,
+            order_direction=order_direction,
+        )
 
-            async with sessionmanager.get_session() as session:
-                data_service = ModelDataService(session)
+        # Rename "items" key to "models" for API consistency
+        result["models"] = result.pop("items")
+        return result
 
-                # Retrieve all models
-                models = await data_service.get_all()
-
-                return {
-                    "models": [
-                        {
-                            "id": str(model.id),
-                            "task_id": model.task_id,
-                            "task_name": model.model_task.name if model.model_task else None,
-                            "name": model.name,
-                            "endpoint_name": model.endpoint_name,
-                            "api_url": model.api_url,
-                            "created_by": model.created_by,
-                            "date_model_training": model.date_model_training.isoformat(),
-                            "content_type": model.content_type,
-                            "deployment_platform": model.deployment_platform,
-                            "version": model.version,
-                            "description": model.description,
-                            "job_name": model.job_name,
-                            "dataset": model.dataset,
-                            "artifacts_url": model.artifacts_url,
-                            "sha256": model.sha256,
-                            "active": model.active,
-                            "date_created": model.date_created.isoformat(),
-                            "date_updated": model.date_updated.isoformat(),
-                        }
-                        for model in models
-                    ]
-                }
-
-        except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
-            raise
-        except Exception as e:
-            logger = ModelService._get_logger()
-            logger.error(
-                f"Failed to retrieve models: {str(e)}",
-                error=str(e),
-                error_type=type(e).__name__,
-                user_id=str(user_id),
-            )
-            logger.debug(
-                "Traceback for failed retrieve models",
-                traceback=traceback.format_exc(),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to retrieve models: {str(e)}",
-            )
-
-    @staticmethod
-    async def get_by_id(user_id: UUID, model_id: UUID) -> Dict[str, Any]:
-        """
-        Retrieve a model by ID.
-
-        Access: Any authenticated user
-
-        Args:
-            user_id: The requesting user's UUID
-            model_id: The model UUID to retrieve
-
-        Returns:
-            Dictionary containing model data
-
-        Raises:
-            HTTPException: 404 if not found, 500 on error
-        """
-        try:
-            # Just verify user exists and has valid organization
-            await RbacService.get_user_organization_id(user_id)
-
-            async with sessionmanager.get_session() as session:
-                data_service = ModelDataService(session)
-
-                # Retrieve model
-                model = await data_service.get_by_id(model_id)
-                if not model:
-                    raise ModelNotFoundError(f"Model {model_id} not found")
-
-                return {
-                    "id": str(model.id),
-                    "task_id": model.task_id,
-                    "task_name": model.model_task.name if model.model_task else None,
-                    "name": model.name,
-                    "endpoint_name": model.endpoint_name,
-                    "api_url": model.api_url,
-                    "created_by": model.created_by,
-                    "date_model_training": model.date_model_training.isoformat(),
-                    "content_type": model.content_type,
-                    "deployment_platform": model.deployment_platform,
-                    "version": model.version,
-                    "description": model.description,
-                    "job_name": model.job_name,
-                    "dataset": model.dataset,
-                    "artifacts_url": model.artifacts_url,
-                    "sha256": model.sha256,
-                    "active": model.active,
-                    "date_created": model.date_created.isoformat(),
-                    "date_updated": model.date_updated.isoformat(),
-                }
-
-        except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
-            raise
-        except ModelNotFoundError as e:
-            logger = ModelService._get_logger()
-            logger.warning(
-                f"Model not found: {str(e)}",
-                error=str(e),
-                user_id=str(user_id),
-                model_id=str(model_id),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            )
-        except Exception as e:
-            logger = ModelService._get_logger()
-            logger.error(
-                f"Failed to retrieve model: {str(e)}",
-                error=str(e),
-                error_type=type(e).__name__,
-                user_id=str(user_id),
-                model_id=str(model_id),
-            )
-            logger.debug(
-                "Traceback for failed retrieve model",
-                traceback=traceback.format_exc(),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to retrieve model: {str(e)}",
-            )
+    # ==========================================
+    # Custom methods specific to Model entity
+    # ==========================================
 
     @staticmethod
     async def get_by_task_id(user_id: UUID, task_id: int) -> Dict[str, List[Dict[str, Any]]]:
         """
         Retrieve all active models for a specific task.
+
+        This is a custom method specific to Model - not part of standard CRUD.
 
         Access: Any authenticated user
 
@@ -221,28 +179,7 @@ class ModelService:
 
                 return {
                     "models": [
-                        {
-                            "id": str(model.id),
-                            "task_id": model.task_id,
-                            "task_name": model.model_task.name if model.model_task else None,
-                            "name": model.name,
-                            "endpoint_name": model.endpoint_name,
-                            "api_url": model.api_url,
-                            "created_by": model.created_by,
-                            "date_model_training": model.date_model_training.isoformat(),
-                            "content_type": model.content_type,
-                            "deployment_platform": model.deployment_platform,
-                            "version": model.version,
-                            "description": model.description,
-                            "job_name": model.job_name,
-                            "dataset": model.dataset,
-                            "artifacts_url": model.artifacts_url,
-                            "sha256": model.sha256,
-                            "active": model.active,
-                            "date_created": model.date_created.isoformat(),
-                            "date_updated": model.date_updated.isoformat(),
-                        }
-                        for model in models
+                        ModelService.serialize_entity(model) for model in models
                     ]
                 }
 
@@ -265,347 +202,4 @@ class ModelService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to retrieve models by task: {str(e)}",
-            )
-
-    @staticmethod
-    async def create(
-        user_id: UUID,
-        task_id: int,
-        name: str,
-        endpoint_name: str,
-        api_url: str,
-        api_key: str,
-        created_by: str,
-        date_model_training: datetime,
-        content_type: str = "application/json",
-        deployment_platform: str = "on-prem",
-        version: Optional[str] = None,
-        description: Optional[str] = None,
-        job_name: Optional[str] = None,
-        dataset: Optional[str] = None,
-        artifacts_url: Optional[str] = None,
-        sha256: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """
-        Create a new model.
-
-        Access: CFIA admin only
-
-        Args:
-            user_id: The requesting user's UUID (must be cfia_admin)
-            task_id: Model task ID
-            name: Model name
-            endpoint_name: Endpoint name for the model
-            api_url: API URL for the model
-            api_key: API key for authentication
-            created_by: User who created the model
-            date_model_training: Date when the model was trained
-            content_type: Content type (default: "application/json")
-            deployment_platform: Deployment platform (default: "on-prem")
-            version: Model version (optional)
-            description: Model description (optional)
-            job_name: Training job name (optional)
-            dataset: Training dataset ID (optional)
-            artifacts_url: URL to model artifacts (optional)
-            sha256: SHA256 hash of model (optional)
-
-        Returns:
-            Dictionary containing the created model data
-
-        Raises:
-            HTTPException: 403 if unauthorized, 500 on error
-        """
-        try:
-            # Verify user is CFIA admin (cross-org authority)
-            await RbacService.verify_user_is_cfia_admin(user_id)
-
-            async with sessionmanager.get_session() as session:
-                data_service = ModelDataService(session)
-
-                # Create the model
-                model = await data_service.create(
-                    task_id=task_id,
-                    name=name,
-                    endpoint_name=endpoint_name,
-                    api_url=api_url,
-                    api_key=api_key,
-                    created_by=created_by,
-                    date_model_training=date_model_training,
-                    content_type=content_type,
-                    deployment_platform=deployment_platform,
-                    version=version,
-                    description=description,
-                    job_name=job_name,
-                    dataset=dataset,
-                    artifacts_url=artifacts_url,
-                    sha256=sha256,
-                )
-                await session.commit()
-
-                logger = ModelService._get_logger()
-                logger.info(
-                    f"Created model: {model.name}",
-                    model_id=str(model.id),
-                    task_id=task_id,
-                    user_id=str(user_id),
-                )
-
-                return {
-                    "id": str(model.id),
-                    "task_id": model.task_id,
-                    "task_name": model.model_task.name if model.model_task else None,
-                    "name": model.name,
-                    "endpoint_name": model.endpoint_name,
-                    "api_url": model.api_url,
-                    "created_by": model.created_by,
-                    "date_model_training": model.date_model_training.isoformat(),
-                    "content_type": model.content_type,
-                    "deployment_platform": model.deployment_platform,
-                    "version": model.version,
-                    "description": model.description,
-                    "job_name": model.job_name,
-                    "dataset": model.dataset,
-                    "artifacts_url": model.artifacts_url,
-                    "sha256": model.sha256,
-                    "active": model.active,
-                    "date_created": model.date_created.isoformat(),
-                    "date_updated": model.date_updated.isoformat(),
-                }
-
-        except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
-            raise
-        except Exception as e:
-            logger = ModelService._get_logger()
-            logger.error(
-                f"Failed to create model: {str(e)}",
-                error=str(e),
-                error_type=type(e).__name__,
-                user_id=str(user_id),
-                model_name=name,
-                task_id=task_id,
-            )
-            logger.debug(
-                "Traceback for failed create model",
-                traceback=traceback.format_exc(),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create model: {str(e)}",
-            )
-
-    @staticmethod
-    async def update(
-        user_id: UUID,
-        model_id: UUID,
-        task_id: Optional[int] = None,
-        name: Optional[str] = None,
-        endpoint_name: Optional[str] = None,
-        api_url: Optional[str] = None,
-        api_key: Optional[str] = None,
-        created_by: Optional[str] = None,
-        date_model_training: Optional[datetime] = None,
-        content_type: Optional[str] = None,
-        deployment_platform: Optional[str] = None,
-        version: Optional[str] = None,
-        description: Optional[str] = None,
-        job_name: Optional[str] = None,
-        dataset: Optional[str] = None,
-        artifacts_url: Optional[str] = None,
-        sha256: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """
-        Update an existing model.
-
-        Access: CFIA admin only
-
-        Args:
-            user_id: The requesting user's UUID (must be cfia_admin)
-            model_id: The model UUID to update
-            task_id: New task ID (if provided)
-            name: New name (if provided)
-            endpoint_name: New endpoint name (if provided)
-            api_url: New API URL (if provided)
-            api_key: New API key (if provided)
-            created_by: New creator (if provided)
-            date_model_training: New training date (if provided)
-            content_type: New content type (if provided)
-            deployment_platform: New deployment platform (if provided)
-            version: New version (if provided)
-            description: New description (if provided)
-            job_name: New job name (if provided)
-            dataset: New dataset (if provided)
-            artifacts_url: New artifacts URL (if provided)
-            sha256: New SHA256 hash (if provided)
-
-        Returns:
-            Dictionary containing the updated model data
-
-        Raises:
-            HTTPException: 403 if unauthorized, 404 if not found, 500 on error
-        """
-        try:
-            # Verify user is CFIA admin (cross-org authority)
-            await RbacService.verify_user_is_cfia_admin(user_id)
-
-            async with sessionmanager.get_session() as session:
-                data_service = ModelDataService(session)
-
-                # Update the model
-                model = await data_service.update(
-                    model_id=model_id,
-                    task_id=task_id,
-                    name=name,
-                    endpoint_name=endpoint_name,
-                    api_url=api_url,
-                    api_key=api_key,
-                    created_by=created_by,
-                    date_model_training=date_model_training,
-                    content_type=content_type,
-                    deployment_platform=deployment_platform,
-                    version=version,
-                    description=description,
-                    job_name=job_name,
-                    dataset=dataset,
-                    artifacts_url=artifacts_url,
-                    sha256=sha256,
-                )
-                if not model:
-                    raise ModelNotFoundError(f"Model {model_id} not found")
-
-                await session.commit()
-
-                logger = ModelService._get_logger()
-                logger.info(
-                    f"Updated model: {model.name}",
-                    model_id=str(model.id),
-                    user_id=str(user_id),
-                )
-
-                return {
-                    "id": str(model.id),
-                    "task_id": model.task_id,
-                    "task_name": model.model_task.name if model.model_task else None,
-                    "name": model.name,
-                    "endpoint_name": model.endpoint_name,
-                    "api_url": model.api_url,
-                    "created_by": model.created_by,
-                    "date_model_training": model.date_model_training.isoformat(),
-                    "content_type": model.content_type,
-                    "deployment_platform": model.deployment_platform,
-                    "version": model.version,
-                    "description": model.description,
-                    "job_name": model.job_name,
-                    "dataset": model.dataset,
-                    "artifacts_url": model.artifacts_url,
-                    "sha256": model.sha256,
-                    "active": model.active,
-                    "date_created": model.date_created.isoformat(),
-                    "date_updated": model.date_updated.isoformat(),
-                }
-
-        except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
-            raise
-        except ModelNotFoundError as e:
-            logger = ModelService._get_logger()
-            logger.warning(
-                f"Model not found for update: {str(e)}",
-                error=str(e),
-                user_id=str(user_id),
-                model_id=str(model_id),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            )
-        except Exception as e:
-            logger = ModelService._get_logger()
-            logger.error(
-                f"Failed to update model: {str(e)}",
-                error=str(e),
-                error_type=type(e).__name__,
-                user_id=str(user_id),
-                model_id=str(model_id),
-            )
-            logger.debug(
-                "Traceback for failed update model",
-                traceback=traceback.format_exc(),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to update model: {str(e)}",
-            )
-
-    @staticmethod
-    async def delete(user_id: UUID, model_id: UUID) -> Dict[str, str]:
-        """
-        Soft delete a model (sets active=False).
-
-        Access: CFIA admin only
-
-        Args:
-            user_id: The requesting user's UUID (must be cfia_admin)
-            model_id: The model UUID to delete
-
-        Returns:
-            Success message dictionary
-
-        Raises:
-            HTTPException: 403 if unauthorized, 404 if not found, 500 on error
-        """
-        try:
-            # Verify user is CFIA admin (cross-org authority)
-            await RbacService.verify_user_is_cfia_admin(user_id)
-
-            async with sessionmanager.get_session() as session:
-                data_service = ModelDataService(session)
-
-                # Soft delete the model
-                model = await data_service.soft_delete(model_id)
-                if not model:
-                    raise ModelNotFoundError(f"Model {model_id} not found")
-
-                await session.commit()
-
-                logger = ModelService._get_logger()
-                logger.info(
-                    f"Deleted model: {model_id}",
-                    model_id=str(model_id),
-                    user_id=str(user_id),
-                )
-
-                return {"message": f"Model {model_id} deleted successfully"}
-
-        except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
-            raise
-        except ModelNotFoundError as e:
-            logger = ModelService._get_logger()
-            logger.warning(
-                f"Model not found for deletion: {str(e)}",
-                error=str(e),
-                user_id=str(user_id),
-                model_id=str(model_id),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            )
-        except Exception as e:
-            logger = ModelService._get_logger()
-            logger.error(
-                f"Failed to delete model: {str(e)}",
-                error=str(e),
-                error_type=type(e).__name__,
-                user_id=str(user_id),
-                model_id=str(model_id),
-            )
-            logger.debug(
-                "Traceback for failed delete model",
-                traceback=traceback.format_exc(),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to delete model: {str(e)}",
             )
