@@ -499,4 +499,3 @@ def log_error(error: Exception):
     """Logs the error message and traceback."""
     logger.error(f"Error occurred: {error}")
     logger.error("Traceback: " + traceback.format_exc())
-
