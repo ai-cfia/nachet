@@ -1,4 +1,8 @@
-from .pipeline import PipelineService
+from .pipeline import (
+    PipelineService,
+    PipelineDefaultService,
+    PipelineModelService,
+)
 from .seed import SeedService
 from .directory import DirectoryService
 from .frontend import FrontendService
@@ -17,10 +21,12 @@ from .device import (
     DeviceLensService,
     DeviceService,
 )
-from .model import ModelService
+from .model import ModelService, ModelTaskService
 
 __all__ = [
     "PipelineService",
+    "PipelineDefaultService",
+    "PipelineModelService",
     "SeedService",
     "DirectoryService",
     "FrontendService",
@@ -36,4 +42,5 @@ __all__ = [
     "DeviceLensService",
     "DeviceService",
     "ModelService",
+    "ModelTaskService",
 ]
