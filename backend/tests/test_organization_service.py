@@ -77,7 +77,7 @@ class TestOrganizationServiceGetAll:
             mock_verify_cfia_admin,
         )
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.get_user_organization_id",
+            "app.service.rbac.RbacService.get_user_organization_id",
             mock_get_user_org_id,
         )
 
@@ -175,7 +175,7 @@ class TestOrganizationServiceGetById:
             mock_verify_cfia_admin,
         )
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.get_user_organization_id",
+            "app.service.rbac.RbacService.get_user_organization_id",
             mock_get_user_org_id,
         )
 
@@ -223,7 +223,7 @@ class TestOrganizationServiceGetById:
             mock_verify_cfia_admin,
         )
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.get_user_organization_id",
+            "app.service.rbac.RbacService.get_user_organization_id",
             mock_get_user_org_id,
         )
 

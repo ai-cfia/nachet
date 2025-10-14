@@ -106,7 +106,7 @@ def mock_session():
 
 # Tests for BaseCRUDService.get_all
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
+@patch("app.service.rbac.RbacService.get_user_organization_id")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_get_all_success(
     mock_get_session, mock_get_org_id, mock_user_id, mock_entity
@@ -147,7 +147,7 @@ async def test_get_all_success(
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
+@patch("app.service.rbac.RbacService.get_user_organization_id")
 async def test_get_all_rbac_failure(mock_get_org_id, mock_user_id):
     """Test get_all fails when RBAC check fails."""
     # Arrange
@@ -162,7 +162,7 @@ async def test_get_all_rbac_failure(mock_get_org_id, mock_user_id):
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
+@patch("app.service.rbac.RbacService.get_user_organization_id")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_get_all_with_pagination(
     mock_get_session, mock_get_org_id, mock_user_id, mock_entity
@@ -200,7 +200,7 @@ async def test_get_all_with_pagination(
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
+@patch("app.service.rbac.RbacService.get_user_organization_id")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_get_all_with_filters(
     mock_get_session, mock_get_org_id, mock_user_id, mock_entity
@@ -232,7 +232,7 @@ async def test_get_all_with_filters(
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
+@patch("app.service.rbac.RbacService.get_user_organization_id")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_get_all_with_sorting(
     mock_get_session, mock_get_org_id, mock_user_id, mock_entity
@@ -264,7 +264,7 @@ async def test_get_all_with_sorting(
 
 # Tests for BaseCRUDService.get_by_id
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
+@patch("app.service.rbac.RbacService.get_user_organization_id")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_get_by_id_success(
     mock_get_session, mock_get_org_id, mock_user_id, mock_entity_id, mock_entity
@@ -290,7 +290,7 @@ async def test_get_by_id_success(
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
+@patch("app.service.rbac.RbacService.get_user_organization_id")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_get_by_id_not_found(
     mock_get_session, mock_get_org_id, mock_user_id, mock_entity_id
@@ -313,7 +313,7 @@ async def test_get_by_id_not_found(
 
 # Tests for BaseCRUDService.create
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
+@patch("app.service.rbac.RbacService.verify_user_is_cfia_admin")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_create_success(
     mock_get_session, mock_verify_cfia_admin, mock_user_id, mock_entity
@@ -342,7 +342,7 @@ async def test_create_success(
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
+@patch("app.service.rbac.RbacService.verify_user_is_cfia_admin")
 async def test_create_rbac_failure(mock_verify_cfia_admin, mock_user_id):
     """Test create fails when user is not admin."""
     # Arrange
@@ -358,7 +358,7 @@ async def test_create_rbac_failure(mock_verify_cfia_admin, mock_user_id):
 
 # Tests for BaseCRUDService.update
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
+@patch("app.service.rbac.RbacService.verify_user_is_cfia_admin")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_update_success(
     mock_get_session, mock_verify_cfia_admin, mock_user_id, mock_entity_id, mock_entity
@@ -391,7 +391,7 @@ async def test_update_success(
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
+@patch("app.service.rbac.RbacService.verify_user_is_cfia_admin")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_update_not_found(
     mock_get_session, mock_verify_cfia_admin, mock_user_id, mock_entity_id
@@ -416,7 +416,7 @@ async def test_update_not_found(
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
+@patch("app.service.rbac.RbacService.verify_user_is_cfia_admin")
 async def test_update_rbac_failure(mock_verify_cfia_admin, mock_user_id, mock_entity_id):
     """Test update fails when user is not admin."""
     # Arrange
@@ -432,7 +432,7 @@ async def test_update_rbac_failure(mock_verify_cfia_admin, mock_user_id, mock_en
 
 # Tests for BaseCRUDService.delete
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
+@patch("app.service.rbac.RbacService.verify_user_is_cfia_admin")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_delete_success(
     mock_get_session, mock_verify_cfia_admin, mock_user_id, mock_entity_id, mock_entity
@@ -462,7 +462,7 @@ async def test_delete_success(
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
+@patch("app.service.rbac.RbacService.verify_user_is_cfia_admin")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_delete_not_found(
     mock_get_session, mock_verify_cfia_admin, mock_user_id, mock_entity_id
@@ -485,7 +485,7 @@ async def test_delete_not_found(
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
+@patch("app.service.rbac.RbacService.verify_user_is_cfia_admin")
 async def test_delete_rbac_failure(mock_verify_cfia_admin, mock_user_id, mock_entity_id):
     """Test delete fails when user is not admin."""
     # Arrange

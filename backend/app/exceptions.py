@@ -263,7 +263,108 @@ class PipelineDeletionError(PipelineError):
     pass
 
 
+class RbacRoleError(Exception):
+    pass
+
+
+class RbacRoleNotFoundError(RbacRoleError):
+    pass
+
+
+class RbacRoleCreationError(RbacRoleError):
+    pass
+
+
+class RbacRoleUpdateError(RbacRoleError):
+    pass
+
+
+class RbacRoleDeletionError(RbacRoleError):
+    pass
+
+
+class RbacPermissionError(Exception):
+    pass
+
+
+class RbacPermissionNotFoundError(RbacPermissionError):
+    pass
+
+
+class RbacPermissionCreationError(RbacPermissionError):
+    pass
+
+
+class RbacPermissionUpdateError(RbacPermissionError):
+    pass
+
+
+class RbacPermissionDeletionError(RbacPermissionError):
+    pass
+
+
+class RbacResourceError(Exception):
+    pass
+
+
+class RbacResourceNotFoundError(RbacResourceError):
+    pass
+
+
+class RbacResourceCreationError(RbacResourceError):
+    pass
+
+
+class RbacResourceUpdateError(RbacResourceError):
+    pass
+
+
+class RbacResourceDeletionError(RbacResourceError):
+    pass
+
+
+class RbacRolePermissionResourceError(Exception):
+    pass
+
+
+class RbacRolePermissionResourceNotFoundError(RbacRolePermissionResourceError):
+    pass
+
+
+class RbacRolePermissionResourceCreationError(RbacRolePermissionResourceError):
+    pass
+
+
+class RbacRolePermissionResourceUpdateError(RbacRolePermissionResourceError):
+    pass
+
+
+class RbacRolePermissionResourceDeletionError(RbacRolePermissionResourceError):
+    pass
+
+
+class RbacUserRoleError(Exception):
+    pass
+
+
+class RbacUserRoleNotFoundError(RbacUserRoleError):
+    pass
+
+
+class RbacUserRoleCreationError(RbacUserRoleError):
+    pass
+
+
+class RbacUserRoleUpdateError(RbacUserRoleError):
+    pass
+
+
+class RbacUserRoleDeletionError(RbacUserRoleError):
+    pass
+
+
 def log_error(error: Exception):
     """Logs the error message and traceback."""
     logger.error(f"Error occurred: {error}")
     logger.error("Traceback: " + traceback.format_exc())
+
