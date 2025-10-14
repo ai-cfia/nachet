@@ -75,6 +75,26 @@ class FolderDeletionError(FolderError):
     pass
 
 
+class DirectoryError(Exception):
+    pass
+
+
+class DirectoryNotFoundError(DirectoryError):
+    pass
+
+
+class DirectoryCreationError(DirectoryError):
+    pass
+
+
+class DirectoryUpdateError(DirectoryError):
+    pass
+
+
+class DirectoryDeletionError(DirectoryError):
+    pass
+
+
 class FileError(Exception):
     pass
 
