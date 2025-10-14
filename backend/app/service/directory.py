@@ -98,7 +98,9 @@ class DirectoryService(BaseCRUDService[Folder]):
 
             async with sessionmanager.get_session() as session:
                 data_service = DirectoryDataService(session)
-                directories = await data_service.get_user_directories_count(str(user_id))
+                directories = await data_service.get_user_directories_count(
+                    str(user_id)
+                )
 
                 logger.info(
                     f"Retrieved {len(directories)} directories for user {user_id}"
@@ -112,9 +114,7 @@ class DirectoryService(BaseCRUDService[Folder]):
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(
-                f"Failed to retrieve directories for user {user_id}: {str(e)}"
-            )
+            logger.error(f"Failed to retrieve directories for user {user_id}: {str(e)}")
             raise DirectoryNotFoundError(
                 f"Failed to retrieve directories for user {user_id}"
             )
@@ -161,7 +161,10 @@ class DirectoryService(BaseCRUDService[Folder]):
                     f"Created directory '{name}' (ID: {new_directory_id}) for user {user_id}"
                 )
 
-                return {"id": new_directory_id, "message": "Directory created successfully"}
+                return {
+                    "id": new_directory_id,
+                    "message": "Directory created successfully",
+                }
         except HTTPException:
             raise
         except Exception as e:
@@ -171,7 +174,9 @@ class DirectoryService(BaseCRUDService[Folder]):
             raise DirectoryCreationError(f"Failed to create directory '{name}'")
 
     @staticmethod
-    async def rename_directory(user_id: UUID, directory_id: UUID, new_name: str) -> Dict[str, Any]:
+    async def rename_directory(
+        user_id: UUID, directory_id: UUID, new_name: str
+    ) -> Dict[str, Any]:
         """
         Rename an existing directory.
 
@@ -220,4 +225,3 @@ class DirectoryService(BaseCRUDService[Folder]):
             raise DirectoryUpdateError(
                 f"Failed to rename directory {directory_id} to '{new_name}'"
             )
-
