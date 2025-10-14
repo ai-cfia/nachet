@@ -87,6 +87,26 @@ class FolderDeletionError(FolderError):
     pass
 
 
+class ImageError(Exception):
+    pass
+
+
+class ImageNotFoundError(ImageError):
+    pass
+
+
+class ImageCreationError(ImageError):
+    pass
+
+
+class ImageUpdateError(ImageError):
+    pass
+
+
+class ImageDeletionError(ImageError):
+    pass
+
+
 class DirectoryError(Exception):
     pass
 
