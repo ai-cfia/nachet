@@ -8,19 +8,16 @@ in all deployment environments: roles, permissions, resources (routes), and thei
 import uuid
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.model import RbacRole, RbacPermission, RbacResource, RbacRolePermissionResource
+from app.db.model import (
+    RbacRole,
+    RbacPermission,
+    RbacResource,
+    RbacRolePermissionResource,
+)
 
 
 # Fixed UUIDs for RBAC constants (consistent across all environments)
 PERMISSION_ALLOW_ID = uuid.UUID("10000000-0000-0000-0000-000000000001")
-
-# Role name constants - DEPRECATED: Use constants from app/service/constants.py instead
-# These are kept temporarily for backwards compatibility during transition
-ROLE_CFIA_ADMIN = "cfia_admin"  # DEPRECATED: Will be removed after refactor
-ROLE_CFIA_USER = "cfia_user"    # DEPRECATED: Will be removed after refactor
-ROLE_CFIA_VERIFIER = "cfia_verifier"  # DEPRECATED: Will be removed after refactor
-ROLE_EXTERNAL_USER = "external_user"  # DEPRECATED: Test stub, not actively used
-ROLE_EXTERNAL_ADMIN = "external_admin"  # DEPRECATED: Test stub, not actively used
 
 # Resource IDs (routes)
 RESOURCE_GET_HEALTH_ID = uuid.UUID("20000000-0000-0000-0000-000000000001")
@@ -127,10 +124,11 @@ async def seed_rbac_roles(session: AsyncSession, organization_id: UUID) -> dict:
     """
     # Determine if this is CFIA organization
     from app.api.config import get_settings
+
     settings = get_settings()
     is_cfia = (
-        settings.cfia_organization_id and
-        str(organization_id) == settings.cfia_organization_id
+        settings.cfia_organization_id
+        and str(organization_id) == settings.cfia_organization_id
     )
 
     roles = [

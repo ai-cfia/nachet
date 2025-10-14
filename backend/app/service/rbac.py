@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.db.utils import sessionmanager
 from app.db.model import RbacUserRole
 from app.datastore import RbacDataService, OrganizationDataService
-from app.service.constants import ROLE_ADMIN, get_cfia_org_id, get_cfia_admin_role_id
+from app.service.constants import ROLE_ADMIN, get_cfia_admin_role_id
 
 
 class RbacService:
@@ -172,45 +172,24 @@ class RbacService:
             return False
 
     @staticmethod
-    async def verify_user_is_cfia_admin(user_id: UUID) -> UUID:
+    async def verify_user_is_cfia_admin(user_id: UUID) -> None:
         """
         Verify user is CFIA admin (has cross-organization authority).
 
         CFIA admins have authority to create/update/delete resources across
         all organizations in the system.
 
-        Uses direct database lookup in rbac_user_role table with CFIA admin role ID
-        for efficient single-query verification.
-
         Args:
             user_id: The user's UUID
-
-        Returns:
-            UUID of CFIA organization
 
         Raises:
             HTTPException: 403 if user is not CFIA admin
         """
-        cfia_org_id = get_cfia_org_id()
-        cfia_admin_role_id = get_cfia_admin_role_id()
-
-        # Single query: check if user has CFIA admin role
-        async with sessionmanager.get_session() as session:
-            stmt = select(RbacUserRole).where(
-                RbacUserRole.user_id == user_id,
-                RbacUserRole.role_id == cfia_admin_role_id,
-                RbacUserRole.active == True,  # noqa: E712
-            )
-            result = await session.execute(stmt)
-            user_role = result.scalar_one_or_none()
-
-        if user_role is None:
+        if not await RbacService.is_user_cfia_admin(user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="This operation requires CFIA administrator authority",
             )
-
-        return cfia_org_id
 
     @staticmethod
     async def verify_user_is_org_admin(user_id: UUID) -> UUID:
