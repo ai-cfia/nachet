@@ -1,135 +1,27 @@
-from typing import List, Optional
+from typing import Optional, Type
 from uuid import UUID
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+
+from app.service.base_crud import BaseCRUDDataService
+from app.db.model import Organization, RbacRole, Users, RbacUserRole
 from sqlalchemy.orm import selectinload
 
-from app.db.model import Organization, RbacRole, Users, RbacUserRole
 
-
-class OrganizationDataService:
+class OrganizationDataService(BaseCRUDDataService[Organization]):
     """Data access layer for Organization database operations."""
 
-    def __init__(self, session: AsyncSession):
-        self.session = session
+    @classmethod
+    def get_model_class(cls) -> Type[Organization]:
+        """Return the Organization model class."""
+        return Organization
 
-    async def get_all(self) -> List[Organization]:
-        """
-        Retrieve all active organizations.
+    def get_query_options(self) -> list:
+        """Load RBAC roles relationship for organizations."""
+        return [selectinload(Organization.rbac_roles)]
 
-        Returns:
-            List of Organization objects
-        """
-        query = (
-            select(Organization)
-            .where(Organization.active.is_(True))
-            .options(selectinload(Organization.rbac_roles))
-        )
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
-
-    async def get_by_id(self, organization_id: UUID) -> Optional[Organization]:
-        """
-        Retrieve an organization by ID.
-
-        Args:
-            organization_id: The organization UUID
-
-        Returns:
-            Organization object if found and active, None otherwise
-        """
-        query = (
-            select(Organization)
-            .where(Organization.id == organization_id)
-            .where(Organization.active.is_(True))
-            .options(selectinload(Organization.rbac_roles))
-        )
-        result = await self.session.execute(query)
-        return result.scalar_one_or_none()
-
-    async def create(
-        self,
-        name: str,
-        description: str,
-        folder_prefix: Optional[str] = None,
-    ) -> Organization:
-        """
-        Create a new organization.
-
-        Args:
-            name: Organization name
-            description: Organization description
-            folder_prefix: Optional folder prefix for the organization
-
-        Returns:
-            The created Organization object
-        """
-        organization = Organization(
-            name=name,
-            description=description,
-            folder_prefix=folder_prefix,
-            active=True,
-        )
-        self.session.add(organization)
-        await self.session.flush()
-        await self.session.refresh(organization)
-        return organization
-
-    async def update(
-        self,
-        organization_id: UUID,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        folder_prefix: Optional[str] = None,
-    ) -> Optional[Organization]:
-        """
-        Update an organization.
-
-        Args:
-            organization_id: The organization UUID
-            name: New name (if provided)
-            description: New description (if provided)
-            folder_prefix: New folder prefix (if provided)
-
-        Returns:
-            Updated Organization object if found, None otherwise
-        """
-        organization = await self.get_by_id(organization_id)
-        if not organization:
-            return None
-
-        if name is not None:
-            organization.name = name
-        if description is not None:
-            organization.description = description
-        if folder_prefix is not None:
-            organization.folder_prefix = folder_prefix
-
-        await self.session.flush()
-        await self.session.refresh(organization)
-        return organization
-
-    async def soft_delete(self, organization_id: UUID) -> Optional[Organization]:
-        """
-        Soft delete an organization by setting active to False.
-
-        Args:
-            organization_id: The organization UUID
-
-        Returns:
-            The soft-deleted Organization object if found, None otherwise
-        """
-        query = select(Organization).where(Organization.id == organization_id)
-        result = await self.session.execute(query)
-        organization = result.scalar_one_or_none()
-
-        if not organization:
-            return None
-
-        organization.active = False
-        await self.session.flush()
-        await self.session.refresh(organization)
-        return organization
+    # ==========================================
+    # Custom methods specific to Organization
+    # ==========================================
 
     async def user_has_role(
         self, user_id: UUID, organization_id: UUID, role_name: str

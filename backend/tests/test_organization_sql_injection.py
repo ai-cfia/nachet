@@ -44,8 +44,6 @@ class TestOrganizationServiceSQLInjection:
 
         for malicious_name in malicious_names:
             created_org_id = uuid4()
-            admin_role_id = uuid4()
-            user_role_id = uuid4()
 
             # Mock session and dataservice
             class MockSession:
@@ -53,6 +51,14 @@ class TestOrganizationServiceSQLInjection:
                     return self
 
                 async def __aexit__(self, *args):
+                    pass
+
+                def add(self, obj):
+                    """Mock add() for role creation."""
+                    pass
+
+                async def flush(self):
+                    """Mock flush() for role creation."""
                     pass
 
                 async def commit(self):
@@ -80,9 +86,6 @@ class TestOrganizationServiceSQLInjection:
                     )
                     return org
 
-            async def mock_create_roles(session, org_id, org_name):
-                return {"admin": admin_role_id, "user": user_role_id}
-
             def mock_get_session():
                 return MockSession()
 
@@ -94,10 +97,7 @@ class TestOrganizationServiceSQLInjection:
                 "app.service.organization.OrganizationDataService",
                 MockDataService,
             )
-            monkeypatch.setattr(
-                "app.service.organization.OrganizationService._create_organization_roles",
-                mock_create_roles,
-            )
+            # Note: Role creation is now inline in create() method
 
             # Should not raise exception - SQLAlchemy handles escaping
             result = await OrganizationService.create(
@@ -117,8 +117,6 @@ class TestOrganizationServiceSQLInjection:
         user_id = uuid4()
         user_org_id = uuid4()
         created_org_id = uuid4()
-        admin_role_id = uuid4()
-        user_role_id = uuid4()
 
         malicious_description = "'; DROP TABLE organization; --"
 
@@ -137,6 +135,14 @@ class TestOrganizationServiceSQLInjection:
                 return self
 
             async def __aexit__(self, *args):
+                pass
+
+            def add(self, obj):
+                """Mock add() for role creation."""
+                pass
+
+            async def flush(self):
+                """Mock flush() for role creation."""
                 pass
 
             async def commit(self):
@@ -163,9 +169,6 @@ class TestOrganizationServiceSQLInjection:
                 )
                 return org
 
-        async def mock_create_roles(session, org_id, org_name):
-            return {"admin": admin_role_id, "user": user_role_id}
-
         def mock_get_session():
             return MockSession()
 
@@ -177,10 +180,7 @@ class TestOrganizationServiceSQLInjection:
             "app.service.organization.OrganizationDataService",
             MockDataService,
         )
-        monkeypatch.setattr(
-            "app.service.organization.OrganizationService._create_organization_roles",
-            mock_create_roles,
-        )
+        # Note: Role creation is now inline in create() method
 
         result = await OrganizationService.create(
             user_id=user_id,
@@ -197,8 +197,6 @@ class TestOrganizationServiceSQLInjection:
         user_id = uuid4()
         user_org_id = uuid4()
         created_org_id = uuid4()
-        admin_role_id = uuid4()
-        user_role_id = uuid4()
 
         malicious_prefix = "' OR '1'='1"
 
@@ -217,6 +215,14 @@ class TestOrganizationServiceSQLInjection:
                 return self
 
             async def __aexit__(self, *args):
+                pass
+
+            def add(self, obj):
+                """Mock add() for role creation."""
+                pass
+
+            async def flush(self):
+                """Mock flush() for role creation."""
                 pass
 
             async def commit(self):
@@ -242,9 +248,6 @@ class TestOrganizationServiceSQLInjection:
                 )
                 return org
 
-        async def mock_create_roles(session, org_id, org_name):
-            return {"admin": admin_role_id, "user": user_role_id}
-
         def mock_get_session():
             return MockSession()
 
@@ -256,10 +259,7 @@ class TestOrganizationServiceSQLInjection:
             "app.service.organization.OrganizationDataService",
             MockDataService,
         )
-        monkeypatch.setattr(
-            "app.service.organization.OrganizationService._create_organization_roles",
-            mock_create_roles,
-        )
+        # Note: Role creation is now inline in create() method
 
         result = await OrganizationService.create(
             user_id=user_id,
@@ -303,17 +303,21 @@ class TestOrganizationServiceSQLInjection:
             def __init__(self, session):
                 self.session = session
 
-            async def update(self, organization_id, name, description, folder_prefix):
-                assert name == malicious_name
+            async def update(self, entity_id, **kwargs):
+                # Extract name from kwargs
+                name = kwargs.get('name')
+                if name:
+                    assert name == malicious_name
 
                 org = Organization(
-                    id=organization_id,
-                    name=malicious_name,
-                    description="Test",
-                    folder_prefix="test",
+                    id=entity_id,
+                    name=name or malicious_name,
+                    description=kwargs.get('description', "Test"),
+                    folder_prefix=kwargs.get('folder_prefix', "test"),
                     date_created=datetime.now(timezone.utc),
                     active=True,
                 )
+                org.rbac_roles = []  # For serialization
                 return org
 
         def mock_get_session():
@@ -330,7 +334,7 @@ class TestOrganizationServiceSQLInjection:
 
         result = await OrganizationService.update(
             user_id=user_id,
-            organization_id=organization_id,
+            entity_id=organization_id,
             name=malicious_name,
         )
 
@@ -365,7 +369,7 @@ class TestOrganizationServiceSQLInjection:
                 # Should fail at UUID conversion or database query
                 await OrganizationService.get_by_id(
                     user_id=user_id,
-                    organization_id=malicious_input,  # type: ignore
+                    entity_id=malicious_input,  # type: ignore
                 )
             # Verify that the service returns an error response
             assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -376,8 +380,6 @@ class TestOrganizationServiceSQLInjection:
         user_id = uuid4()
         user_org_id = uuid4()
         created_org_id = uuid4()
-        admin_role_id = uuid4()
-        user_role_id = uuid4()
 
         # These are legitimate special characters that should be preserved
         special_name = "O'Reilly & Sons, Inc."
@@ -398,6 +400,14 @@ class TestOrganizationServiceSQLInjection:
                 return self
 
             async def __aexit__(self, *args):
+                pass
+
+            def add(self, obj):
+                """Mock add() for role creation."""
+                pass
+
+            async def flush(self):
+                """Mock flush() for role creation."""
                 pass
 
             async def commit(self):
@@ -421,9 +431,6 @@ class TestOrganizationServiceSQLInjection:
                 )
                 return org
 
-        async def mock_create_roles(session, org_id, org_name):
-            return {"admin": admin_role_id, "user": user_role_id}
-
         def mock_get_session():
             return MockSession()
 
@@ -435,10 +442,7 @@ class TestOrganizationServiceSQLInjection:
             "app.service.organization.OrganizationDataService",
             MockDataService,
         )
-        monkeypatch.setattr(
-            "app.service.organization.OrganizationService._create_organization_roles",
-            mock_create_roles,
-        )
+        # Note: Role creation is now inline in create() method
 
         result = await OrganizationService.create(
             user_id=user_id,

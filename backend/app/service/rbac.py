@@ -4,7 +4,7 @@ from fastapi import HTTPException, status, Request
 from sqlalchemy import select
 from app.db.utils import sessionmanager
 from app.db.model import RbacUserRole
-from app.datastore import RbacDataService, OrganizationDataService
+from app.datastore import RbacDataService
 from app.service.constants import ROLE_ADMIN, get_cfia_admin_role_id
 
 
@@ -38,6 +38,9 @@ class RbacService:
         Raises:
             HTTPException: 403 if user not associated with an organization
         """
+        # Lazy import to avoid circular dependency
+        from app.datastore import OrganizationDataService
+        
         async with sessionmanager.get_session() as session:
             org_id = await OrganizationDataService(session).get_user_organization_id(
                 user_id
@@ -68,6 +71,9 @@ class RbacService:
         Raises:
             HTTPException: 403 if user doesn't have the role or not associated with org
         """
+        # Lazy import to avoid circular dependency
+        from app.datastore import OrganizationDataService
+        
         async with sessionmanager.get_session() as session:
             # Get organization ID if not provided
             if organization_id is None:

@@ -1,19 +1,31 @@
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Type, Optional
 from uuid import UUID
 import traceback
 from fastapi import HTTPException, status
 
 from app.db.utils import sessionmanager
+from app.service.base_crud import BaseCRUDService, BaseCRUDDataService
 from app.datastore import OrganizationDataService
-from app.db.model import RbacRole
-from app.service.logs import LogService
+from app.db.model import Organization, RbacRole
 from app.service.rbac import RbacService
-from app.exceptions import OrganizationNotFoundError
+from app.exceptions import (
+    OrganizationNotFoundError,
+    OrganizationCreationError,
+    OrganizationUpdateError,
+    OrganizationDeletionError,
+)
 
 
-class OrganizationService:
+class OrganizationService(BaseCRUDService[Organization]):
     """
     Service layer for Organization CRUD operations.
+
+    Uses BaseCRUDService for standard CRUD operations.
+    Overrides create() to add automatic RBAC role creation.
+
+    Access Control:
+    - GET operations (get_all, get_by_id): CFIA admin only
+    - CUD operations (create, update, delete): CFIA admin only
 
     System Invariants:
     - Each organization has 2 RBAC roles created automatically:
@@ -25,71 +37,84 @@ class OrganizationService:
     - Deletion is soft delete (sets active=False) to maintain referential integrity
     """
 
-    # Singleton logger for the service
-    _logger = None
+    @classmethod
+    def get_entity_name(cls) -> str:
+        """Return the entity name for error messages."""
+        return "Organization"
 
     @classmethod
-    def _get_logger(cls):
-        """Get or create singleton logger for OrganizationService."""
-        if cls._logger is None:
-            cls._logger = LogService.get_logger()
-        return cls._logger
+    def get_data_service_class(cls) -> Type[BaseCRUDDataService[Organization]]:
+        """Return the data service class."""
+        return OrganizationDataService
 
-    @staticmethod
-    async def _create_organization_roles(
-        session, organization_id: UUID, org_name: str
-    ) -> Dict[str, UUID]:
+    @classmethod
+    def serialize_entity(cls, entity: Organization) -> Dict[str, Any]:
         """
-        Create the 2 standard roles for a new organization.
-
-        All organizations get:
-        - "admin" role: Administrator for the organization
-        - "user" role: Standard user for the organization
-
-        Note: CFIA organization also gets "verifier" role created separately.
-
-        Args:
-            session: Database session
-            organization_id: UUID of the organization
-            org_name: Name of the organization (for description only)
-
-        Returns:
-            Dictionary mapping role types to their UUIDs
+        Convert Organization entity to dictionary for API response.
+        
+        Includes RBAC roles for the organization.
         """
-        # Create admin role
-        admin_role = RbacRole(
-            organization_id=organization_id,
-            name="admin",  # Generic name, scoped by organization_id
-            description=f"Administrator role for {org_name}",
-            active=True,
-        )
-
-        # Create user role
-        user_role = RbacRole(
-            organization_id=organization_id,
-            name="user",  # Generic name, scoped by organization_id
-            description=f"User role for {org_name}",
-            active=True,
-        )
-
-        session.add(admin_role)
-        session.add(user_role)
-        await session.flush()
-
         return {
-            "admin": admin_role.id,
-            "user": user_role.id,
+            "id": str(entity.id),
+            "name": entity.name,
+            "description": entity.description,
+            "folder_prefix": entity.folder_prefix,
+            "date_created": entity.date_created.isoformat(),
+            "active": entity.active,
+            "rbac_roles": [
+                {
+                    "id": str(role.id),
+                    "name": role.name,
+                    "description": role.description,
+                }
+                for role in entity.rbac_roles
+                if role.active
+            ],
         }
 
-    @staticmethod
-    async def get_all(user_id: UUID) -> Dict[str, List[Dict[str, Any]]]:
-        """
-        Retrieve all active organizations.
+    @classmethod
+    def get_not_found_exception(cls) -> Type[Exception]:
+        return OrganizationNotFoundError
 
-        Note: User must have cfia_admin role in their organization to list all organizations.
+    @classmethod
+    def get_creation_exception(cls) -> Type[Exception]:
+        return OrganizationCreationError
+
+    @classmethod
+    def get_update_exception(cls) -> Type[Exception]:
+        return OrganizationUpdateError
+
+    @classmethod
+    def get_deletion_exception(cls) -> Type[Exception]:
+        return OrganizationDeletionError
+
+    # ==========================================
+    # Override get_all() to maintain backward-compatible response format
+    # ==========================================
+
+    @classmethod
+    async def get_all(
+        cls,
+        user_id: UUID,
+        offset: int = 0,
+        limit: int = 100,
+        filters: Optional[Dict[str, Any]] = None,
+        order_by: Optional[str] = None,
+        order_direction: str = "asc",
+    ) -> Dict[str, Any]:
+        """
+        Retrieve all active organizations with their RBAC roles.
+
+        Note: User must have cfia_admin role in their organization.
+        Override to maintain backward-compatible response format.
 
         Args:
             user_id: The requesting user's UUID
+            offset: Number of records to skip (default: 0)
+            limit: Maximum records to return (default: 100, max: 1000)
+            filters: Dictionary of field_name: value pairs for filtering (optional)
+            order_by: Field name to sort by (default: name)
+            order_direction: Sort direction 'asc' or 'desc' (default: 'asc')
 
         Returns:
             Dictionary with "organizations" key containing list of organization data
@@ -97,145 +122,44 @@ class OrganizationService:
         Raises:
             HTTPException: 403 if user is not cfia_admin, 500 on database error
         """
-        try:
-            # Verify user is CFIA admin (cross-org authority)
-            await RbacService.verify_user_is_cfia_admin(user_id)
+        # RBAC: Only CFIA admin can view all organizations
+        await RbacService.verify_user_is_cfia_admin(user_id)
 
-            async with sessionmanager.get_session() as session:
-                data_service = OrganizationDataService(session)
+        # Call base class implementation with explicit order_by
+        if not order_by:
+            order_by = "name"  # Default ordering by name
 
-                # Retrieve all organizations
-                organizations = await data_service.get_all()
+        result = await super().get_all(
+            user_id=user_id,
+            offset=offset,
+            limit=limit,
+            filters=filters,
+            order_by=order_by,
+            order_direction=order_direction,
+        )
 
-                return {
-                    "organizations": [
-                        {
-                            "id": str(org.id),
-                            "name": org.name,
-                            "description": org.description,
-                            "folder_prefix": org.folder_prefix,
-                            "date_created": org.date_created.isoformat(),
-                            "active": org.active,
-                        }
-                        for org in organizations
-                    ]
-                }
+        # Rename "items" key to "organizations" for backward compatibility
+        result["organizations"] = result.pop("items")
+        return result
 
-        except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
-            raise
-        except Exception as e:
-            logger = OrganizationService._get_logger()
-            logger.error(
-                f"Failed to retrieve organizations: {str(e)}",
-                error=str(e),
-                error_type=type(e).__name__,
-                user_id=str(user_id),
-            )
-            logger.debug(
-                "Traceback for failed retrieve organizations",
-                traceback=traceback.format_exc(),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to retrieve organizations: {str(e)}",
-            )
+    # ==========================================
+    # Override create() to add RBAC role creation
+    # ==========================================
 
-    @staticmethod
-    async def get_by_id(user_id: UUID, organization_id: UUID) -> Dict[str, Any]:
-        """
-        Retrieve an organization by ID.
-
-        Note: User must have cfia_admin role in their organization.
-
-        Args:
-            user_id: The requesting user's UUID
-            organization_id: The organization UUID to retrieve
-
-        Returns:
-            Dictionary containing organization data
-
-        Raises:
-            HTTPException: 403 if unauthorized, 404 if not found, 500 on error
-        """
-        try:
-            # Verify user is CFIA admin (cross-org authority)
-            await RbacService.verify_user_is_cfia_admin(user_id)
-
-            async with sessionmanager.get_session() as session:
-                data_service = OrganizationDataService(session)
-
-                # Retrieve organization
-                organization = await data_service.get_by_id(organization_id)
-                if not organization:
-                    raise OrganizationNotFoundError(
-                        f"Organization {organization_id} not found"
-                    )
-
-                return {
-                    "id": str(organization.id),
-                    "name": organization.name,
-                    "description": organization.description,
-                    "folder_prefix": organization.folder_prefix,
-                    "date_created": organization.date_created.isoformat(),
-                    "active": organization.active,
-                    "rbac_roles": [
-                        {
-                            "id": str(role.id),
-                            "name": role.name,
-                            "description": role.description,
-                        }
-                        for role in organization.rbac_roles
-                        if role.active
-                    ],
-                }
-
-        except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
-            raise
-        except OrganizationNotFoundError as e:
-            logger = OrganizationService._get_logger()
-            logger.warning(
-                f"Organization not found: {str(e)}",
-                error=str(e),
-                user_id=str(user_id),
-                organization_id=str(organization_id),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            )
-        except Exception as e:
-            logger = OrganizationService._get_logger()
-            logger.error(
-                f"Failed to retrieve organization: {str(e)}",
-                error=str(e),
-                error_type=type(e).__name__,
-                user_id=str(user_id),
-                organization_id=str(organization_id),
-            )
-            logger.debug(
-                "Traceback for failed retrieve organization",
-                traceback=traceback.format_exc(),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to retrieve organization: {str(e)}",
-            )
-
-    @staticmethod
+    @classmethod
     async def create(
+        cls,
         user_id: UUID,
         name: str,
         description: str,
         folder_prefix: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Create a new organization with RBAC roles.
+        Create a new organization with automatic RBAC role creation.
 
         System Invariant: Automatically creates 2 organization-specific RBAC roles:
-        - admin_{org_prefix}_{random}: Administrator role for the organization
-        - user_{org_prefix}_{random}: User role for the organization
+        - "admin": Administrator role for the organization
+        - "user": User role for the organization
 
         Note: Only cfia_admin users can create organizations.
 
@@ -252,48 +176,58 @@ class OrganizationService:
             HTTPException: 403 if unauthorized, 500 on error
         """
         try:
-            # Verify user is CFIA admin (cross-org authority)
+            # RBAC: Only CFIA admin can create organizations
             await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
-                data_service = OrganizationDataService(session)
+                data_service_class = cls.get_data_service_class()
+                data_service = data_service_class(session)
 
-                # Create the organization
+                # Standard: Create organization
                 organization = await data_service.create(
                     name=name,
                     description=description,
                     folder_prefix=folder_prefix,
                 )
 
-                # Create 2 organization-specific RBAC roles
-                role_ids = await OrganizationService._create_organization_roles(
-                    session, organization.id, name
+                # CUSTOM LOGIC: Create 2 RBAC roles for organization
+                admin_role = RbacRole(
+                    organization_id=organization.id,
+                    name="admin",
+                    description=f"Administrator role for {name}",
+                    active=True,
                 )
+                user_role = RbacRole(
+                    organization_id=organization.id,
+                    name="user",
+                    description=f"User role for {name}",
+                    active=True,
+                )
+                session.add(admin_role)
+                session.add(user_role)
+                await session.flush()
 
-                # Commit the transaction
+                # Commit transaction
                 await session.commit()
 
                 # Refresh to get relationships
                 await session.refresh(organization)
 
-                return {
-                    "id": str(organization.id),
-                    "name": organization.name,
-                    "description": organization.description,
-                    "folder_prefix": organization.folder_prefix,
-                    "date_created": organization.date_created.isoformat(),
-                    "active": organization.active,
-                    "roles": {
-                        "admin_role_id": str(role_ids["admin"]),
-                        "user_role_id": str(role_ids["user"]),
-                    },
-                }
+                logger = cls._get_logger()
+                logger.info(
+                    "Organization created with roles",
+                    user_id=str(user_id),
+                    organization_id=str(organization.id),
+                    admin_role_id=str(admin_role.id),
+                    user_role_id=str(user_role.id),
+                )
+
+                return cls.serialize_entity(organization)
 
         except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
             raise
         except Exception as e:
-            logger = OrganizationService._get_logger()
+            logger = cls._get_logger()
             logger.error(
                 f"Failed to create organization: {str(e)}",
                 error=str(e),
@@ -310,168 +244,3 @@ class OrganizationService:
                 detail=f"Failed to create organization: {str(e)}",
             )
 
-    @staticmethod
-    async def update(
-        user_id: UUID,
-        organization_id: UUID,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        folder_prefix: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """
-        Update an organization.
-
-        Note: Only cfia_admin users can update organizations.
-
-        Args:
-            user_id: The requesting user's UUID (must be cfia_admin)
-            organization_id: The organization UUID to update
-            name: New name (optional)
-            description: New description (optional)
-            folder_prefix: New folder prefix (optional)
-
-        Returns:
-            Dictionary containing the updated organization data
-
-        Raises:
-            HTTPException: 403 if unauthorized, 404 if not found, 500 on error
-        """
-        try:
-            # Verify user is CFIA admin (cross-org authority)
-            await RbacService.verify_user_is_cfia_admin(user_id)
-
-            async with sessionmanager.get_session() as session:
-                data_service = OrganizationDataService(session)
-
-                # Update organization
-                organization = await data_service.update(
-                    organization_id=organization_id,
-                    name=name,
-                    description=description,
-                    folder_prefix=folder_prefix,
-                )
-
-                if not organization:
-                    raise OrganizationNotFoundError(
-                        f"Organization {organization_id} not found"
-                    )
-
-                # Commit the transaction
-                await session.commit()
-
-                return {
-                    "id": str(organization.id),
-                    "name": organization.name,
-                    "description": organization.description,
-                    "folder_prefix": organization.folder_prefix,
-                    "date_created": organization.date_created.isoformat(),
-                    "active": organization.active,
-                }
-
-        except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
-            raise
-        except OrganizationNotFoundError as e:
-            logger = OrganizationService._get_logger()
-            logger.warning(
-                f"Organization not found for update: {str(e)}",
-                error=str(e),
-                user_id=str(user_id),
-                organization_id=str(organization_id),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            )
-        except Exception as e:
-            logger = OrganizationService._get_logger()
-            logger.error(
-                f"Failed to update organization: {str(e)}",
-                error=str(e),
-                error_type=type(e).__name__,
-                user_id=str(user_id),
-                organization_id=str(organization_id),
-            )
-            logger.debug(
-                "Traceback for failed update organization",
-                traceback=traceback.format_exc(),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to update organization: {str(e)}",
-            )
-
-    @staticmethod
-    async def delete(user_id: UUID, organization_id: UUID) -> Dict[str, str]:
-        """
-        Soft delete an organization (sets active=False).
-
-        System Invariant: Deletion is soft delete to maintain referential integrity.
-        The organization and its relationships remain in the database but are marked inactive.
-
-        Note: Only cfia_admin users can delete organizations.
-
-        Args:
-            user_id: The requesting user's UUID (must be cfia_admin)
-            organization_id: The organization UUID to delete
-
-        Returns:
-            Dictionary with success message
-
-        Raises:
-            HTTPException: 403 if unauthorized, 404 if not found, 500 on error
-        """
-        try:
-            # Verify user is CFIA admin (cross-org authority)
-            await RbacService.verify_user_is_cfia_admin(user_id)
-
-            async with sessionmanager.get_session() as session:
-                data_service = OrganizationDataService(session)
-
-                # Soft delete organization
-                organization = await data_service.soft_delete(organization_id)
-
-                if not organization:
-                    raise OrganizationNotFoundError(
-                        f"Organization {organization_id} not found"
-                    )
-
-                # Commit the transaction
-                await session.commit()
-
-                return {
-                    "message": f"Organization {organization_id} successfully deleted (soft delete)"
-                }
-
-        except HTTPException:
-            # Re-raise HTTPExceptions (including RBAC errors) as-is
-            raise
-        except OrganizationNotFoundError as e:
-            logger = OrganizationService._get_logger()
-            logger.warning(
-                f"Organization not found for deletion: {str(e)}",
-                error=str(e),
-                user_id=str(user_id),
-                organization_id=str(organization_id),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e),
-            )
-        except Exception as e:
-            logger = OrganizationService._get_logger()
-            logger.error(
-                f"Failed to delete organization: {str(e)}",
-                error=str(e),
-                error_type=type(e).__name__,
-                user_id=str(user_id),
-                organization_id=str(organization_id),
-            )
-            logger.debug(
-                "Traceback for failed delete organization",
-                traceback=traceback.format_exc(),
-            )
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to delete organization: {str(e)}",
-            )

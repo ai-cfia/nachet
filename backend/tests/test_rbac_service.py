@@ -189,7 +189,7 @@ class TestRbacServiceGetUserOrganizationId:
         mock_data_service = AsyncMock()
         mock_data_service.get_user_organization_id = AsyncMock(return_value=org_id)
         monkeypatch.setattr(
-            "app.service.rbac.OrganizationDataService",
+            "app.datastore.OrganizationDataService",
             lambda session: mock_data_service,
         )
 
@@ -217,7 +217,7 @@ class TestRbacServiceGetUserOrganizationId:
         mock_data_service = AsyncMock()
         mock_data_service.get_user_organization_id = AsyncMock(return_value=None)
         monkeypatch.setattr(
-            "app.service.rbac.OrganizationDataService",
+            "app.datastore.OrganizationDataService",
             lambda session: mock_data_service,
         )
 
@@ -251,7 +251,7 @@ class TestRbacServiceVerifyUserHasRole:
         mock_data_service = AsyncMock()
         mock_data_service.user_has_role = AsyncMock(return_value=True)
         monkeypatch.setattr(
-            "app.service.rbac.OrganizationDataService",
+            "app.datastore.OrganizationDataService",
             lambda session: mock_data_service,
         )
 
@@ -283,7 +283,7 @@ class TestRbacServiceVerifyUserHasRole:
         mock_data_service.get_user_organization_id = AsyncMock(return_value=org_id)
         mock_data_service.user_has_role = AsyncMock(return_value=True)
         monkeypatch.setattr(
-            "app.service.rbac.OrganizationDataService",
+            "app.datastore.OrganizationDataService",
             lambda session: mock_data_service,
         )
 
@@ -315,7 +315,7 @@ class TestRbacServiceVerifyUserHasRole:
         mock_data_service = AsyncMock()
         mock_data_service.user_has_role = AsyncMock(return_value=False)
         monkeypatch.setattr(
-            "app.service.rbac.OrganizationDataService",
+            "app.datastore.OrganizationDataService",
             lambda session: mock_data_service,
         )
 
@@ -344,7 +344,7 @@ class TestRbacServiceVerifyUserHasRole:
         mock_data_service = AsyncMock()
         mock_data_service.get_user_organization_id = AsyncMock(return_value=None)
         monkeypatch.setattr(
-            "app.service.rbac.OrganizationDataService",
+            "app.datastore.OrganizationDataService",
             lambda session: mock_data_service,
         )
 
