@@ -48,11 +48,13 @@ class TestDeviceBrandServiceGetAll:
         brand1 = Mock(spec=DeviceBrand)
         brand1.id = brand1_id
         brand1.name = "Apple"
+        brand1.description = "Apple Inc."
         brand1.active = True
 
         brand2 = Mock(spec=DeviceBrand)
         brand2.id = brand2_id
         brand2.name = "Samsung"
+        brand2.description = "Samsung Electronics"
         brand2.active = True
 
         # Mock RbacService - just verify user exists
@@ -68,11 +70,12 @@ class TestDeviceBrandServiceGetAll:
         mock_session = AsyncMock()
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session.commit = AsyncMock()
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock data service
+        # Mock data service - returns (list, count) tuple
         mock_data_service = AsyncMock()
-        mock_data_service.get_all = AsyncMock(return_value=[brand1, brand2])
+        mock_data_service.get_all = AsyncMock(return_value=([brand1, brand2], 2))
         monkeypatch.setattr(
             "app.service.device.DeviceBrandDataService",
             lambda session: mock_data_service,
@@ -81,12 +84,14 @@ class TestDeviceBrandServiceGetAll:
         # Call service
         result = await DeviceBrandService.get_all(user_id)
 
-        # Verify
-        assert "device_brands" in result
-        assert len(result["device_brands"]) == 2
-        assert result["device_brands"][0]["name"] == "Apple"
-        assert result["device_brands"][1]["name"] == "Samsung"
-        assert result["device_brands"][0]["active"] is True
+        # Verify - new response format with pagination
+        assert "items" in result
+        assert "total" in result
+        assert result["total"] == 2
+        assert len(result["items"]) == 2
+        assert result["items"][0]["name"] == "Apple"
+        assert result["items"][1]["name"] == "Samsung"
+        assert result["items"][0]["active"] is True
 
 
 class TestDeviceBrandServiceGetById:
@@ -105,6 +110,7 @@ class TestDeviceBrandServiceGetById:
         brand = Mock(spec=DeviceBrand)
         brand.id = brand_id
         brand.name = "Apple"
+        brand.description = "Apple Inc."
         brand.active = True
 
         # Mock RbacService
@@ -120,6 +126,7 @@ class TestDeviceBrandServiceGetById:
         mock_session = AsyncMock()
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session.commit = AsyncMock()
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
         # Mock data service
@@ -137,6 +144,7 @@ class TestDeviceBrandServiceGetById:
         assert result["name"] == "Apple"
         assert result["id"] == str(brand_id)
         assert result["active"] is True
+        assert result["description"] == "Apple Inc."
 
     @pytest.mark.asyncio
     async def test_get_by_id_not_found(self, monkeypatch):
@@ -194,6 +202,7 @@ class TestDeviceBrandServiceCreate:
         brand = Mock(spec=DeviceBrand)
         brand.id = brand_id
         brand.name = "Apple"
+        brand.description = None
         brand.active = True
 
         # Mock RbacService - user is CFIA admin
@@ -220,8 +229,8 @@ class TestDeviceBrandServiceCreate:
             lambda session: mock_data_service,
         )
 
-        # Call service
-        result = await DeviceBrandService.create(user_id, "Apple")
+        # Call service with kwargs
+        result = await DeviceBrandService.create(user_id, name="Apple")
 
         # Verify
         assert result["name"] == "Apple"
@@ -248,7 +257,7 @@ class TestDeviceBrandServiceCreate:
 
         # Should raise 403
         with pytest.raises(HTTPException) as exc_info:
-            await DeviceBrandService.create(user_id, "Apple")
+            await DeviceBrandService.create(user_id, name="Apple")
 
         assert exc_info.value.status_code == 403
 
@@ -269,6 +278,7 @@ class TestDeviceBrandServiceUpdate:
         brand = Mock(spec=DeviceBrand)
         brand.id = brand_id
         brand.name = "Apple Inc."
+        brand.description = None
         brand.active = True
 
         # Mock RbacService - user is CFIA admin
@@ -295,8 +305,8 @@ class TestDeviceBrandServiceUpdate:
             lambda session: mock_data_service,
         )
 
-        # Call service
-        result = await DeviceBrandService.update(user_id, brand_id, "Apple Inc.")
+        # Call service with kwargs
+        result = await DeviceBrandService.update(user_id, brand_id, name="Apple Inc.")
 
         # Verify
         assert result["name"] == "Apple Inc."
@@ -337,7 +347,7 @@ class TestDeviceBrandServiceUpdate:
 
         # Should raise 404
         with pytest.raises(HTTPException) as exc_info:
-            await DeviceBrandService.update(user_id, brand_id, "Apple Inc.")
+            await DeviceBrandService.update(user_id, brand_id, name="Apple Inc.")
 
         assert exc_info.value.status_code == 404
 
@@ -453,14 +463,16 @@ class TestDeviceModelServiceGetAll:
         model1 = Mock(spec=DeviceModel)
         model1.id = model1_id
         model1.name = "iPhone 15"
-        model1.brand_id = brand_id
+        model1.description = None
+        model1.device_brand_id = brand_id
         model1.brand = brand
         model1.active = True
 
         model2 = Mock(spec=DeviceModel)
         model2.id = model2_id
         model2.name = "iPhone 15 Pro"
-        model2.brand_id = brand_id
+        model2.description = None
+        model2.device_brand_id = brand_id
         model2.brand = brand
         model2.active = True
 
@@ -477,11 +489,12 @@ class TestDeviceModelServiceGetAll:
         mock_session = AsyncMock()
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session.commit = AsyncMock()
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock data service
+        # Mock data service - returns (list, count) tuple
         mock_data_service = AsyncMock()
-        mock_data_service.get_all = AsyncMock(return_value=[model1, model2])
+        mock_data_service.get_all = AsyncMock(return_value=([model1, model2], 2))
         monkeypatch.setattr(
             "app.service.device.DeviceModelDataService",
             lambda session: mock_data_service,
@@ -490,12 +503,14 @@ class TestDeviceModelServiceGetAll:
         # Call service
         result = await DeviceModelService.get_all(user_id)
 
-        # Verify
-        assert "device_models" in result
-        assert len(result["device_models"]) == 2
-        assert result["device_models"][0]["name"] == "iPhone 15"
-        assert result["device_models"][0]["brand_name"] == "Apple"
-        assert result["device_models"][1]["name"] == "iPhone 15 Pro"
+        # Verify - new response format with pagination
+        assert "items" in result
+        assert "total" in result
+        assert result["total"] == 2
+        assert len(result["items"]) == 2
+        assert result["items"][0]["name"] == "iPhone 15"
+        assert result["items"][0]["device_brand_id"] == str(brand_id)
+        assert result["items"][1]["name"] == "iPhone 15 Pro"
 
 
 class TestDeviceModelServiceGetById:
@@ -520,7 +535,8 @@ class TestDeviceModelServiceGetById:
         model = Mock(spec=DeviceModel)
         model.id = model_id
         model.name = "iPhone 15"
-        model.brand_id = brand_id
+        model.description = None
+        model.device_brand_id = brand_id
         model.brand = brand
         model.active = True
 
@@ -537,6 +553,7 @@ class TestDeviceModelServiceGetById:
         mock_session = AsyncMock()
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session.commit = AsyncMock()
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
         # Mock data service
@@ -552,8 +569,8 @@ class TestDeviceModelServiceGetById:
 
         # Verify
         assert result["name"] == "iPhone 15"
-        assert result["brand_name"] == "Apple"
-        assert result["brand_id"] == str(brand_id)
+        assert result["device_brand_id"] == str(brand_id)
+        assert result["id"] == str(model_id)
 
 
 class TestDeviceModelServiceCreate:
@@ -578,7 +595,8 @@ class TestDeviceModelServiceCreate:
         model = Mock(spec=DeviceModel)
         model.id = model_id
         model.name = "iPhone 15"
-        model.brand_id = brand_id
+        model.description = None
+        model.device_brand_id = brand_id
         model.brand = brand
         model.active = True
 
@@ -606,12 +624,12 @@ class TestDeviceModelServiceCreate:
             lambda session: mock_data_service,
         )
 
-        # Call service
-        result = await DeviceModelService.create(user_id, "iPhone 15", brand_id)
+        # Call service with kwargs
+        result = await DeviceModelService.create(user_id, name="iPhone 15", device_brand_id=brand_id)
 
         # Verify
         assert result["name"] == "iPhone 15"
-        assert result["brand_name"] == "Apple"
+        assert result["device_brand_id"] == str(brand_id)
         mock_session.commit.assert_called_once()
 
 
@@ -632,16 +650,21 @@ class TestDeviceLensServiceGetAll:
         user_org_id = uuid4()
         lens1_id = uuid4()
         lens2_id = uuid4()
+        brand_id = uuid4()
 
         # Mock lenses
         lens1 = Mock(spec=DeviceLens)
         lens1.id = lens1_id
         lens1.name = "Wide Angle"
+        lens1.description = None
+        lens1.device_brand_id = brand_id
         lens1.active = True
 
         lens2 = Mock(spec=DeviceLens)
         lens2.id = lens2_id
         lens2.name = "Macro"
+        lens2.description = None
+        lens2.device_brand_id = brand_id
         lens2.active = True
 
         # Mock RbacService
@@ -657,11 +680,12 @@ class TestDeviceLensServiceGetAll:
         mock_session = AsyncMock()
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session.commit = AsyncMock()
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock data service
+        # Mock data service - returns (list, count) tuple
         mock_data_service = AsyncMock()
-        mock_data_service.get_all = AsyncMock(return_value=[lens1, lens2])
+        mock_data_service.get_all = AsyncMock(return_value=([lens1, lens2], 2))
         monkeypatch.setattr(
             "app.service.device.DeviceLensDataService",
             lambda session: mock_data_service,
@@ -670,11 +694,13 @@ class TestDeviceLensServiceGetAll:
         # Call service
         result = await DeviceLensService.get_all(user_id)
 
-        # Verify
-        assert "device_lenses" in result
-        assert len(result["device_lenses"]) == 2
-        assert result["device_lenses"][0]["name"] == "Wide Angle"
-        assert result["device_lenses"][1]["name"] == "Macro"
+        # Verify - new response format with pagination
+        assert "items" in result
+        assert "total" in result
+        assert result["total"] == 2
+        assert len(result["items"]) == 2
+        assert result["items"][0]["name"] == "Wide Angle"
+        assert result["items"][1]["name"] == "Macro"
 
 
 class TestDeviceLensServiceCreate:
@@ -688,11 +714,14 @@ class TestDeviceLensServiceCreate:
         user_id = uuid4()
         user_org_id = uuid4()
         lens_id = uuid4()
+        brand_id = uuid4()
 
         # Mock lens
         lens = Mock(spec=DeviceLens)
         lens.id = lens_id
         lens.name = "Wide Angle"
+        lens.description = None
+        lens.device_brand_id = brand_id
         lens.active = True
 
         # Mock RbacService - user is CFIA admin
@@ -719,8 +748,8 @@ class TestDeviceLensServiceCreate:
             lambda session: mock_data_service,
         )
 
-        # Call service
-        result = await DeviceLensService.create(user_id, "Wide Angle")
+        # Call service with kwargs
+        result = await DeviceLensService.create(user_id, name="Wide Angle", device_brand_id=brand_id)
 
         # Verify
         assert result["name"] == "Wide Angle"
@@ -746,7 +775,7 @@ class TestDeviceLensServiceCreate:
 
         # Should raise 403
         with pytest.raises(HTTPException) as exc_info:
-            await DeviceLensService.create(user_id, "Wide Angle")
+            await DeviceLensService.create(user_id, name="Wide Angle", device_brand_id=uuid4())
 
         assert exc_info.value.status_code == 403
 
@@ -832,14 +861,14 @@ class TestDeviceServiceGetAllDevices:
         model1.id = uuid4()
         model1.name = "iPhone 15"
         model1.description = "Latest iPhone model"
-        model1.brand_id = brand1_id
+        model1.device_brand_id = brand1_id
         model1.active = True
 
         model2 = Mock(spec=DeviceModel)
         model2.id = uuid4()
         model2.name = "Galaxy S24"
         model2.description = "Latest Galaxy model"
-        model2.brand_id = brand2_id
+        model2.device_brand_id = brand2_id
         model2.active = True
 
         # Mock lenses
@@ -847,15 +876,21 @@ class TestDeviceServiceGetAllDevices:
         lens1.id = uuid4()
         lens1.name = "Wide Angle"
         lens1.description = "Wide angle lens"
-        lens1.brand_id = brand1_id
+        lens1.device_brand_id = brand1_id
         lens1.active = True
 
         lens2 = Mock(spec=DeviceLens)
         lens2.id = uuid4()
         lens2.name = "Macro"
         lens2.description = "Macro lens"
-        lens2.brand_id = brand2_id
+        lens2.device_brand_id = brand2_id
         lens2.active = True
+
+        # Set up brand relationships
+        brand1.device_models = [model1]
+        brand1.device_lenses = [lens1]
+        brand2.device_models = [model2]
+        brand2.device_lenses = [lens2]
 
         # Mock RbacService
         async def mock_get_org_id(uid):
@@ -870,29 +905,16 @@ class TestDeviceServiceGetAllDevices:
         mock_session = AsyncMock()
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session.commit = AsyncMock()
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock data services
+        # Mock data service - returns (list, count) tuple
         mock_brand_service = AsyncMock()
-        mock_brand_service.get_all = AsyncMock(return_value=[brand1, brand2])
-
-        mock_model_service = AsyncMock()
-        mock_model_service.get_all = AsyncMock(return_value=[model1, model2])
-
-        mock_lens_service = AsyncMock()
-        mock_lens_service.get_all = AsyncMock(return_value=[lens1, lens2])
+        mock_brand_service.get_all = AsyncMock(return_value=([brand1, brand2], 2))
 
         monkeypatch.setattr(
             "app.service.device.DeviceBrandDataService",
             lambda session: mock_brand_service,
-        )
-        monkeypatch.setattr(
-            "app.service.device.DeviceModelDataService",
-            lambda session: mock_model_service,
-        )
-        monkeypatch.setattr(
-            "app.service.device.DeviceLensDataService",
-            lambda session: mock_lens_service,
         )
 
         # Call service
@@ -989,29 +1011,16 @@ class TestDeviceServiceGetAllDevices:
         mock_session = AsyncMock()
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_session.commit = AsyncMock()
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock data services - empty results
+        # Mock data service - empty results, returns (list, count) tuple
         mock_brand_service = AsyncMock()
-        mock_brand_service.get_all = AsyncMock(return_value=[])
-
-        mock_model_service = AsyncMock()
-        mock_model_service.get_all = AsyncMock(return_value=[])
-
-        mock_lens_service = AsyncMock()
-        mock_lens_service.get_all = AsyncMock(return_value=[])
+        mock_brand_service.get_all = AsyncMock(return_value=([], 0))
 
         monkeypatch.setattr(
             "app.service.device.DeviceBrandDataService",
             lambda session: mock_brand_service,
-        )
-        monkeypatch.setattr(
-            "app.service.device.DeviceModelDataService",
-            lambda session: mock_model_service,
-        )
-        monkeypatch.setattr(
-            "app.service.device.DeviceLensDataService",
-            lambda session: mock_lens_service,
         )
 
         # Call service
