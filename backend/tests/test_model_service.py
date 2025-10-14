@@ -372,20 +372,13 @@ class TestModelServiceCreate:
         model.date_created = datetime(2024, 1, 1, tzinfo=timezone.utc)
         model.date_updated = datetime(2024, 1, 1, tzinfo=timezone.utc)
 
-        # Mock RbacService - user is cfia_admin
-        async def mock_get_org_id(uid):
-            return user_org_id
-
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
+            return user_org_id  # Returns CFIA org ID
 
         monkeypatch.setattr(
-            "app.service.model.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.model.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.model.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -426,26 +419,18 @@ class TestModelServiceCreate:
     async def test_create_unauthorized_non_admin(self, monkeypatch):
         """Non-admin users should get 403."""
         user_id = uuid4()
-        user_org_id = uuid4()
         task_id = 1
 
-        # Mock RbacService - user is NOT cfia_admin
-        async def mock_get_org_id(uid):
-            return user_org_id
-
-        async def mock_verify_role(uid, role, org_id):
+        # Mock RbacService - user is NOT CFIA admin
+        async def mock_verify_cfia_admin(uid):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"User does not have required role: {role}",
+                detail="This operation requires CFIA administrator authority",
             )
 
         monkeypatch.setattr(
-            "app.service.model.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.model.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.model.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Should raise 403
@@ -462,7 +447,7 @@ class TestModelServiceCreate:
             )
 
         assert exc_info.value.status_code == 403
-        assert "role" in exc_info.value.detail
+        assert "CFIA administrator" in exc_info.value.detail or "admin" in exc_info.value.detail.lower()
 
 
 class TestModelServiceUpdate:
@@ -505,20 +490,13 @@ class TestModelServiceUpdate:
         model.date_created = datetime(2024, 1, 1, tzinfo=timezone.utc)
         model.date_updated = datetime(2024, 1, 15, tzinfo=timezone.utc)
 
-        # Mock RbacService
-        async def mock_get_org_id(uid):
-            return user_org_id
-
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
+            return user_org_id  # Returns CFIA org ID
 
         monkeypatch.setattr(
-            "app.service.model.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.model.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.model.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -561,20 +539,13 @@ class TestModelServiceUpdate:
         user_org_id = uuid4()
         model_id = uuid4()
 
-        # Mock RbacService
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.model.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.model.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.model.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -622,20 +593,13 @@ class TestModelServiceDelete:
         model.task_id = task_id
         model.model_task = task
 
-        # Mock RbacService
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.model.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.model.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.model.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -670,20 +634,13 @@ class TestModelServiceDelete:
         user_org_id = uuid4()
         model_id = uuid4()
 
-        # Mock RbacService
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.model.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.model.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.model.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session

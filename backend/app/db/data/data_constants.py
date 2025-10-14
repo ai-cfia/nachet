@@ -14,12 +14,13 @@ from app.db.model import RbacRole, RbacPermission, RbacResource, RbacRolePermiss
 # Fixed UUIDs for RBAC constants (consistent across all environments)
 PERMISSION_ALLOW_ID = uuid.UUID("10000000-0000-0000-0000-000000000001")
 
-# Role IDs - these will be per organization
-ROLE_CFIA_ADMIN = "cfia_admin"
-ROLE_CFIA_USER = "cfia_user"
-ROLE_CFIA_VERIFIER = "cfia_verifier"
-ROLE_EXTERNAL_USER = "external_user"
-ROLE_EXTERNAL_ADMIN = "external_admin"
+# Role name constants - DEPRECATED: Use constants from app/service/constants.py instead
+# These are kept temporarily for backwards compatibility during transition
+ROLE_CFIA_ADMIN = "cfia_admin"  # DEPRECATED: Will be removed after refactor
+ROLE_CFIA_USER = "cfia_user"    # DEPRECATED: Will be removed after refactor
+ROLE_CFIA_VERIFIER = "cfia_verifier"  # DEPRECATED: Will be removed after refactor
+ROLE_EXTERNAL_USER = "external_user"  # DEPRECATED: Test stub, not actively used
+ROLE_EXTERNAL_ADMIN = "external_admin"  # DEPRECATED: Test stub, not actively used
 
 # Resource IDs (routes)
 RESOURCE_GET_HEALTH_ID = uuid.UUID("20000000-0000-0000-0000-000000000001")
@@ -108,7 +109,14 @@ async def seed_rbac_resources(session: AsyncSession) -> None:
 
 async def seed_rbac_roles(session: AsyncSession, organization_id: UUID) -> dict:
     """
-    Seed the 5 standard RBAC roles for an organization.
+    Seed the standard RBAC roles for an organization.
+
+    Standard roles (all organizations):
+    - "admin": Administrator role
+    - "user": Standard user role
+
+    CFIA-specific roles:
+    - "verifier": Data verification role (only for CFIA)
 
     Args:
         session: Database session
@@ -117,53 +125,48 @@ async def seed_rbac_roles(session: AsyncSession, organization_id: UUID) -> dict:
     Returns:
         Dictionary mapping role names to their UUIDs
     """
-    # Generate deterministic UUIDs based on organization_id and role name
-    # This ensures consistent IDs across environments for the same organization
-    role_ids = {
-        ROLE_CFIA_ADMIN: uuid.uuid5(organization_id, ROLE_CFIA_ADMIN),
-        ROLE_CFIA_USER: uuid.uuid5(organization_id, ROLE_CFIA_USER),
-        ROLE_CFIA_VERIFIER: uuid.uuid5(organization_id, ROLE_CFIA_VERIFIER),
-        ROLE_EXTERNAL_USER: uuid.uuid5(organization_id, ROLE_EXTERNAL_USER),
-        ROLE_EXTERNAL_ADMIN: uuid.uuid5(organization_id, ROLE_EXTERNAL_ADMIN),
-    }
+    # Determine if this is CFIA organization
+    from app.api.config import get_settings
+    settings = get_settings()
+    is_cfia = (
+        settings.cfia_organization_id and
+        str(organization_id) == settings.cfia_organization_id
+    )
 
     roles = [
         RbacRole(
-            id=role_ids[ROLE_CFIA_ADMIN],
+            id=uuid.uuid5(organization_id, "admin"),
             organization_id=organization_id,
-            name=ROLE_CFIA_ADMIN,
-            description="CFIA Administrator with full system access",
+            name="admin",  # Generic name for all orgs
+            description="Administrator with full organization access",
             active=True,
         ),
         RbacRole(
-            id=role_ids[ROLE_CFIA_USER],
+            id=uuid.uuid5(organization_id, "user"),
             organization_id=organization_id,
-            name=ROLE_CFIA_USER,
-            description="CFIA User with standard access",
-            active=True,
-        ),
-        RbacRole(
-            id=role_ids[ROLE_CFIA_VERIFIER],
-            organization_id=organization_id,
-            name=ROLE_CFIA_VERIFIER,
-            description="CFIA Verifier for data verification tasks",
-            active=True,
-        ),
-        RbacRole(
-            id=role_ids[ROLE_EXTERNAL_USER],
-            organization_id=organization_id,
-            name=ROLE_EXTERNAL_USER,
-            description="External User with limited access",
-            active=True,
-        ),
-        RbacRole(
-            id=role_ids[ROLE_EXTERNAL_ADMIN],
-            organization_id=organization_id,
-            name=ROLE_EXTERNAL_ADMIN,
-            description="External Administrator for external organization",
+            name="user",  # Generic name for all orgs
+            description="Standard user access",
             active=True,
         ),
     ]
+
+    role_ids = {
+        "admin": roles[0].id,
+        "user": roles[1].id,
+    }
+
+    # Add CFIA-specific roles
+    if is_cfia:
+        verifier_role = RbacRole(
+            id=uuid.uuid5(organization_id, "verifier"),
+            organization_id=organization_id,
+            name="verifier",
+            description="CFIA data verification role",
+            active=True,
+        )
+        roles.append(verifier_role)
+        role_ids["verifier"] = verifier_role.id
+
     session.add_all(roles)
     return role_ids
 
@@ -186,7 +189,7 @@ async def seed_rbac_route_policies(
     """
     # Define which resources require which roles
     # Public routes (None in ROUTE_POLICIES) don't get mappings - they're open to authenticated users
-    # Protected routes get mappings for all 5 roles
+    # Protected routes get mappings for roles that exist in the role_ids dict
 
     protected_resources = [
         RESOURCE_GET_PIPELINES_ID,
@@ -195,13 +198,9 @@ async def seed_rbac_route_policies(
         RESOURCE_GET_DIRECTORIES_ID,
     ]
 
-    all_roles = [
-        ROLE_CFIA_ADMIN,
-        ROLE_CFIA_USER,
-        ROLE_CFIA_VERIFIER,
-        ROLE_EXTERNAL_USER,
-        ROLE_EXTERNAL_ADMIN,
-    ]
+    # Use the roles that were actually created (from role_ids dict)
+    # This will be "admin", "user", and optionally "verifier" for CFIA
+    all_roles = list(role_ids.keys())
 
     mappings = []
     for resource_id in protected_resources:

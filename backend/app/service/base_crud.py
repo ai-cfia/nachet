@@ -17,7 +17,6 @@ from fastapi import HTTPException, status
 from app.db.utils import sessionmanager
 from app.service.rbac import RbacService
 from app.service.logs import LogService
-from app.db.data.data_constants import ROLE_CFIA_ADMIN
 
 # Generic type variable for database models
 T = TypeVar("T", bound=DeclarativeBase)
@@ -449,8 +448,7 @@ class BaseCRUDService(Generic[T]):
 
         try:
             # RBAC: Only CFIA admin can create
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(user_id, ROLE_CFIA_ADMIN, user_org_id)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -524,8 +522,7 @@ class BaseCRUDService(Generic[T]):
 
         try:
             # RBAC: Only CFIA admin can update
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(user_id, ROLE_CFIA_ADMIN, user_org_id)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -613,8 +610,7 @@ class BaseCRUDService(Generic[T]):
 
         try:
             # RBAC: Only CFIA admin can delete
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(user_id, ROLE_CFIA_ADMIN, user_org_id)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()

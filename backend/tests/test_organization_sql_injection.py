@@ -22,20 +22,13 @@ class TestOrganizationServiceSQLInjection:
         user_id = uuid4()
         user_org_id = uuid4()
 
-        # Mock RBAC
-        async def mock_get_org_id(uid):
+        # Mock RBAC - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass
-
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # SQL injection attempts
@@ -129,20 +122,13 @@ class TestOrganizationServiceSQLInjection:
 
         malicious_description = "'; DROP TABLE organization; --"
 
-        # Mock RBAC
-        async def mock_get_org_id(uid):
+        # Mock RBAC - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass
-
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session and dataservice
@@ -216,20 +202,13 @@ class TestOrganizationServiceSQLInjection:
 
         malicious_prefix = "' OR '1'='1"
 
-        # Mock RBAC
-        async def mock_get_org_id(uid):
+        # Mock RBAC - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass
-
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session and dataservice
@@ -300,20 +279,13 @@ class TestOrganizationServiceSQLInjection:
 
         malicious_name = "'; UPDATE organization SET active=false; --"
 
-        # Mock RBAC
-        async def mock_get_org_id(uid):
+        # Mock RBAC - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass
-
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session and dataservice
@@ -370,20 +342,13 @@ class TestOrganizationServiceSQLInjection:
         user_id = uuid4()
         user_org_id = uuid4()
 
-        # Mock RBAC
-        async def mock_get_org_id(uid):
+        # Mock RBAC - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass
-
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Attempting to pass SQL injection as UUID should fail
@@ -418,20 +383,13 @@ class TestOrganizationServiceSQLInjection:
         special_name = "O'Reilly & Sons, Inc."
         special_description = "Testing \"quotes\" and 'apostrophes' with; semicolons"
 
-        # Mock RBAC
-        async def mock_get_org_id(uid):
+        # Mock RBAC - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass
-
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session and dataservice

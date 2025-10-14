@@ -9,7 +9,6 @@ from app.datastore import (
     DeviceModelDataService,
     DeviceLensDataService,
 )
-from app.db.data.data_constants import ROLE_CFIA_ADMIN
 from app.service.logs import LogService
 from app.service.rbac import RbacService
 from app.exceptions import (
@@ -185,11 +184,8 @@ class DeviceBrandService:
             HTTPException: 403 if unauthorized, 500 on error
         """
         try:
-            # Verify user is cfia_admin
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(
-                user_id, ROLE_CFIA_ADMIN, user_org_id
-            )
+            # Verify user is CFIA admin (cross-org authority)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = DeviceBrandDataService(session)
@@ -251,11 +247,8 @@ class DeviceBrandService:
             HTTPException: 403 if unauthorized, 404 if not found, 500 on error
         """
         try:
-            # Verify user is cfia_admin
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(
-                user_id, ROLE_CFIA_ADMIN, user_org_id
-            )
+            # Verify user is CFIA admin (cross-org authority)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = DeviceBrandDataService(session)
@@ -331,11 +324,8 @@ class DeviceBrandService:
             HTTPException: 403 if unauthorized, 404 if not found, 500 on error
         """
         try:
-            # Verify user is cfia_admin
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(
-                user_id, ROLE_CFIA_ADMIN, user_org_id
-            )
+            # Verify user is CFIA admin (cross-org authority)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = DeviceBrandDataService(session)
@@ -562,11 +552,8 @@ class DeviceModelService:
             HTTPException: 403 if unauthorized, 500 on error
         """
         try:
-            # Verify user is cfia_admin
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(
-                user_id, ROLE_CFIA_ADMIN, user_org_id
-            )
+            # Verify user is CFIA admin (cross-org authority)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = DeviceModelDataService(session)
@@ -635,11 +622,8 @@ class DeviceModelService:
             HTTPException: 403 if unauthorized, 404 if not found, 500 on error
         """
         try:
-            # Verify user is cfia_admin
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(
-                user_id, ROLE_CFIA_ADMIN, user_org_id
-            )
+            # Verify user is CFIA admin (cross-org authority)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = DeviceModelDataService(session)
@@ -719,11 +703,8 @@ class DeviceModelService:
             HTTPException: 403 if unauthorized, 404 if not found, 500 on error
         """
         try:
-            # Verify user is cfia_admin
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(
-                user_id, ROLE_CFIA_ADMIN, user_org_id
-            )
+            # Verify user is CFIA admin (cross-org authority)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = DeviceModelDataService(session)
@@ -944,11 +925,8 @@ class DeviceLensService:
             HTTPException: 403 if unauthorized, 500 on error
         """
         try:
-            # Verify user is cfia_admin
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(
-                user_id, ROLE_CFIA_ADMIN, user_org_id
-            )
+            # Verify user is CFIA admin (cross-org authority)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = DeviceLensDataService(session)
@@ -1010,11 +988,8 @@ class DeviceLensService:
             HTTPException: 403 if unauthorized, 404 if not found, 500 on error
         """
         try:
-            # Verify user is cfia_admin
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(
-                user_id, ROLE_CFIA_ADMIN, user_org_id
-            )
+            # Verify user is CFIA admin (cross-org authority)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = DeviceLensDataService(session)
@@ -1090,11 +1065,8 @@ class DeviceLensService:
             HTTPException: 403 if unauthorized, 404 if not found, 500 on error
         """
         try:
-            # Verify user is cfia_admin
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(
-                user_id, ROLE_CFIA_ADMIN, user_org_id
-            )
+            # Verify user is CFIA admin (cross-org authority)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = DeviceLensDataService(session)

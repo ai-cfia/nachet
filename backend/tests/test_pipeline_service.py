@@ -233,20 +233,13 @@ class TestPipelineServiceCreate:
         pipeline.active = True
         pipeline.date_created = datetime(2024, 1, 1, tzinfo=timezone.utc)
 
-        # Mock RbacService - user is cfia_admin
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.pipeline.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.pipeline.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -282,25 +275,17 @@ class TestPipelineServiceCreate:
     async def test_create_unauthorized_non_admin(self, monkeypatch):
         """Non-admin users should get 403."""
         user_id = uuid4()
-        user_org_id = uuid4()
 
-        # Mock RbacService - user is NOT cfia_admin
-        async def mock_get_org_id(uid):
-            return user_org_id
-
-        async def mock_verify_role(uid, role, org_id):
+        # Mock RbacService - user is NOT CFIA admin
+        async def mock_verify_cfia_admin(uid):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"User does not have required role: {role}",
+                detail="This operation requires CFIA administrator authority",
             )
 
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.pipeline.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.pipeline.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Should raise 403
@@ -312,7 +297,6 @@ class TestPipelineServiceCreate:
             )
 
         assert exc_info.value.status_code == 403
-        assert "role" in exc_info.value.detail
 
 
 class TestPipelineServiceUpdate:
@@ -343,20 +327,13 @@ class TestPipelineServiceUpdate:
         pipeline.active = True
         pipeline.date_created = datetime(2024, 1, 1, tzinfo=timezone.utc)
 
-        # Mock RbacService
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.pipeline.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.pipeline.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -399,20 +376,13 @@ class TestPipelineServiceUpdate:
         user_org_id = uuid4()
         pipeline_id = uuid4()
 
-        # Mock RbacService
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.pipeline.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.pipeline.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -453,20 +423,13 @@ class TestPipelineServiceDelete:
         pipeline.id = pipeline_id
         pipeline.name = "Pipeline 1"
 
-        # Mock RbacService
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.pipeline.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.pipeline.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -501,20 +464,13 @@ class TestPipelineServiceDelete:
         user_org_id = uuid4()
         pipeline_id = uuid4()
 
-        # Mock RbacService
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.pipeline.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.pipeline.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
