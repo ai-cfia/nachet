@@ -127,6 +127,26 @@ class ImageDeletionError(ImageError):
     pass
 
 
+class ImageObjectsError(Exception):
+    pass
+
+
+class ImageObjectsNotFoundError(ImageObjectsError):
+    pass
+
+
+class ImageObjectsCreationError(ImageObjectsError):
+    pass
+
+
+class ImageObjectsUpdateError(ImageObjectsError):
+    pass
+
+
+class ImageObjectsDeletionError(ImageObjectsError):
+    pass
+
+
 class DirectoryError(Exception):
     pass
 
