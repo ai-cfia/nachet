@@ -127,11 +127,47 @@ class DeviceBrandNotFoundError(DeviceError):
     pass
 
 
+class DeviceBrandCreationError(DeviceError):
+    pass
+
+
+class DeviceBrandUpdateError(DeviceError):
+    pass
+
+
+class DeviceBrandDeletionError(DeviceError):
+    pass
+
+
 class DeviceModelNotFoundError(DeviceError):
     pass
 
 
+class DeviceModelCreationError(DeviceError):
+    pass
+
+
+class DeviceModelUpdateError(DeviceError):
+    pass
+
+
+class DeviceModelDeletionError(DeviceError):
+    pass
+
+
 class DeviceLensNotFoundError(DeviceError):
+    pass
+
+
+class DeviceLensCreationError(DeviceError):
+    pass
+
+
+class DeviceLensUpdateError(DeviceError):
+    pass
+
+
+class DeviceLensDeletionError(DeviceError):
     pass
 
 
@@ -164,6 +200,26 @@ class ModelUpdateError(ModelError):
 
 
 class ModelDeletionError(ModelError):
+    pass
+
+
+class SeedError(Exception):
+    pass
+
+
+class SeedNotFoundError(SeedError):
+    pass
+
+
+class SeedCreationError(SeedError):
+    pass
+
+
+class SeedUpdateError(SeedError):
+    pass
+
+
+class SeedDeletionError(SeedError):
     pass
 
 

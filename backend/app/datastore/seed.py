@@ -1,17 +1,26 @@
-from typing import List, Dict, Any
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Type, List, Dict, Any
 from sqlalchemy import select
-
+from app.service.base_crud import BaseCRUDDataService
 from app.db.model import Seed
 
 
-class SeedDataService:
-    """Repository class for seed data database operations."""
+class SeedDataService(BaseCRUDDataService[Seed]):
+    """Data access layer for seed database operations."""
 
-    def __init__(self, session: AsyncSession):
-        self.session = session
+    @classmethod
+    def get_model_class(cls) -> Type[Seed]:
+        return Seed
 
     async def get_seed_data(self) -> List[Dict[str, Any]]:
+        """
+        Get active seed data with subset of columns.
+        
+        Returns only specific columns (seed_id, name_code, family, genus, species, seed_metadata)
+        for active seeds only.
+        
+        Returns:
+            List[Dict[str, Any]]: List of seed records with subset of columns as SQLAlchemy Row objects
+        """
         query = select(
             Seed.id.label("seed_id"),
             Seed.name_code,
