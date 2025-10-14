@@ -9,7 +9,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.db.model import Model
+from app.db.model import Model, ModelTask
 from app.service.base_crud import BaseCRUDDataService
 
 
@@ -107,3 +107,21 @@ class ModelDataService(BaseCRUDDataService[Model]):
             artifacts_url=artifacts_url,
             sha256=sha256,
         )
+
+
+class ModelTaskDataService(BaseCRUDDataService[ModelTask]):
+    """Data access layer for ModelTask database operations."""
+
+    @classmethod
+    def get_model_class(cls) -> Type[ModelTask]:
+        """Return the ModelTask ORM class."""
+        return ModelTask
+
+    def get_query_options(self) -> list:
+        """
+        Return query options for eager loading ModelTask relationships.
+        
+        Returns:
+            List of SQLAlchemy query options for loading the models relationship
+        """
+        return [selectinload(ModelTask.models)]

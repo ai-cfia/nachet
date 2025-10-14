@@ -13,12 +13,16 @@ from app.db.utils import sessionmanager
 from app.service.base_crud import BaseCRUDService, BaseCRUDDataService
 from app.service.rbac import RbacService
 from app.datastore.model import ModelDataService
-from app.db.model import Model
+from app.db.model import Model, ModelTask
 from app.exceptions import (
     ModelNotFoundError,
     ModelCreationError,
     ModelUpdateError,
     ModelDeletionError,
+    ModelTaskNotFoundError,
+    ModelTaskCreationError,
+    ModelTaskUpdateError,
+    ModelTaskDeletionError,
 )
 
 
@@ -203,3 +207,66 @@ class ModelService(BaseCRUDService[Model]):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to retrieve models by task: {str(e)}",
             )
+
+
+class ModelTaskService(BaseCRUDService[ModelTask]):
+    """
+    Service class to handle model_task-related operations.
+    
+    Extends BaseCRUDService to provide standard CRUD operations with RBAC.
+    
+    Access Control:
+    - GET operations (get_all, get_by_id): Any authenticated user
+    - CUD operations (create, update, delete): CFIA admin only
+    """
+
+    @classmethod
+    def get_entity_name(cls) -> str:
+        """Return the entity name for error messages."""
+        return "ModelTask"
+
+    @classmethod
+    def get_data_service_class(cls) -> Type:
+        """Return the data service class for ModelTask."""
+        from app.datastore.model import ModelTaskDataService
+
+        return ModelTaskDataService
+
+    @classmethod
+    def serialize_entity(cls, entity: ModelTask) -> Dict[str, Any]:
+        """
+        Convert ModelTask entity to dictionary for API response.
+        
+        Args:
+            entity: The ModelTask object to serialize
+            
+        Returns:
+            Dictionary representation of the model task
+        """
+        return {
+            "id": entity.id,
+            "name": entity.name,
+            "active": entity.active,
+            "date_created": entity.date_created.isoformat(),
+            "models_count": len(entity.models) if entity.models else 0,
+        }
+
+    @classmethod
+    def get_not_found_exception(cls) -> Type[Exception]:
+        """Return ModelTask-specific NotFoundError exception class."""
+        return ModelTaskNotFoundError
+
+    @classmethod
+    def get_creation_exception(cls) -> Type[Exception]:
+        """Return ModelTask-specific CreationError exception class."""
+        return ModelTaskCreationError
+
+    @classmethod
+    def get_update_exception(cls) -> Type[Exception]:
+        """Return ModelTask-specific UpdateError exception class."""
+        return ModelTaskUpdateError
+
+    @classmethod
+    def get_deletion_exception(cls) -> Type[Exception]:
+        """Return ModelTask-specific DeletionError exception class."""
+        return ModelTaskDeletionError
