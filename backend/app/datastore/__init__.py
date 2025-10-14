@@ -24,6 +24,7 @@ from .user import UserDataService
 from .annotation import AnnotationDataService
 from .image import ImageDataService
 from .change_log import ChangeLogDataService
+from .image_objects import ImageObjectsDataService
 
 __all__ = [
     "RbacDataService",
@@ -47,4 +48,5 @@ __all__ = [
     "AnnotationDataService",
     "ImageDataService",
     "ChangeLogDataService",
+    "ImageObjectsDataService",
 ]
