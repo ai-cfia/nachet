@@ -127,15 +127,131 @@ For complete documentation on the generic approach, see:
 - **Tests**: `tests/test_base_crud_service.py`
 - **Proposal**: `docs/GENERIC_CRUD_SERVICE_PROPOSAL.md`
 
+### MANDATORY: Always Use BaseCRUDService
+
+**🚨 CRITICAL RULE: ALL services MUST extend `BaseCRUDService`**
+
+There is **NO exception** to this rule. BaseCRUDService provides:
+
+- ✅ Standard CRUD operations (get_all, get_by_id, create, update, delete)
+- ✅ RBAC enforcement (authentication + authorization)
+- ✅ Error handling and logging
+- ✅ Consistent response formats
+- ✅ Pagination and filtering
+
+### How to Handle Custom Logic
+
+#### Pattern 1: Override Methods (For CRUD Modifications)
+
+Override base class methods when you need to modify standard CRUD behavior:
+
+**Example: OrganizationService (override `create()` to add RBAC roles)**
+
+```python
+class OrganizationService(BaseCRUDService[Organization]):
+    # get_all(), get_by_id(), update(), delete() inherited ✅
+    
+    @classmethod
+    async def create(cls, user_id: UUID, **kwargs) -> Dict[str, Any]:
+        """Override create() to add custom role creation logic."""
+        # Call RBAC check
+        await RbacService.verify_user_is_cfia_admin(user_id)
+        
+        async with sessionmanager.get_session() as session:
+            data_service = cls.get_data_service_class()(session)
+            
+            # Create organization (standard)
+            organization = await data_service.create(**kwargs)
+            
+            # CUSTOM LOGIC: Create 2 RBAC roles for organization
+            admin_role = RbacRole(
+                organization_id=organization.id,
+                name="admin",
+                description=f"Admin role for {organization.name}"
+            )
+            user_role = RbacRole(
+                organization_id=organization.id,
+                name="user",
+                description=f"User role for {organization.name}"
+            )
+            session.add(admin_role)
+            session.add(user_role)
+            
+            await session.commit()
+            await session.refresh(organization)
+            
+            return cls.serialize_entity(organization)
+```
+
+#### Pattern 2: Add Custom Methods (For Non-CRUD Operations)
+
+Add additional methods alongside inherited CRUD operations:
+
+**Example: ModelService (adds `get_by_task_id()` custom query)**
+
+```python
+class ModelService(BaseCRUDService[Model]):
+    # get_all(), get_by_id(), create(), update(), delete() inherited ✅
+    
+    @classmethod
+    async def get_all(cls, user_id: UUID, **kwargs) -> Dict[str, Any]:
+        """Override to change response key from 'items' to 'models'."""
+        result = await super().get_all(user_id, **kwargs)
+        result["models"] = result.pop("items")  # Rename key
+        return result
+    
+    @staticmethod
+    async def get_by_task_id(user_id: UUID, task_id: int) -> Dict[str, List[Dict[str, Any]]]:
+        """Custom method: Get models filtered by task_id (not standard CRUD)."""
+        await RbacService.get_user_organization_id(user_id)
+        
+        async with sessionmanager.get_session() as session:
+            data_service = ModelDataService(session)
+            models = await data_service.get_by_task_id(task_id)
+            return {"models": [ModelService.serialize_entity(m) for m in models]}
+```
+
+**Key Points:**
+
+- ✅ **Standard CRUD** methods inherited from `BaseCRUDService`
+- ✅ **Override** `get_all()` to customize response format
+- ✅ **Add** `get_by_task_id()` for custom business logic
+- ✅ Both patterns work together seamlessly
+
+#### Pattern 3: Complex Serialization
+
+Override `serialize_entity()` for complex field transformations:
+
+```python
+class YourEntityService(BaseCRUDService[YourEntity]):
+    @classmethod
+    def serialize_entity(cls, entity: YourEntity) -> Dict[str, Any]:
+        """Custom serialization with nested objects."""
+        return {
+            "id": str(entity.id),
+            "name": entity.name,
+            # Include related entity data
+            "parent_id": str(entity.parent_id) if entity.parent_id else None,
+            "parent_name": entity.parent.name if entity.parent else None,
+            # Transform dates
+            "date_created": entity.date_created.isoformat(),
+            # Include nested collections
+            "children": [
+                {"id": str(child.id), "name": child.name}
+                for child in entity.children
+            ] if entity.children else [],
+        }
+```
+
 ### When to Use Templates Below
 
-The templates below are provided for:
+The templates below are provided for **REFERENCE ONLY**:
 
-1. **Reference**: Understanding the pattern in detail
-2. **Custom logic**: Services that need significant customization beyond CRUD
-3. **Legacy code**: Understanding existing services that haven't been migrated
+1. **Understanding the pattern** - See what BaseCRUDService does internally
+2. **Legacy code** - Understand services not yet migrated (tech debt)
+3. **Learning** - Deep dive into CRUD implementation details
 
-**For new services, use the generic base class approach above.**
+#### **⚠️ DO NOT use templates for new implementations - ALWAYS extend BaseCRUDService**
 
 ---
 
@@ -1466,7 +1582,265 @@ Use this checklist when implementing CRUD for a new entity:
 
 ## Examples
 
-### Example 1: Simple Entity (DeviceBrand)
+### Example 1: Service Extending BaseCRUDService (Recommended)
+
+**Use Case:** Standard CRUD operations with custom serialization
+
+**Implementation:** `app/service/device.py` → `DeviceBrandService`
+
+```python
+from typing import Dict, Any, Type
+from app.service.base_crud import BaseCRUDService, BaseCRUDDataService
+from app.datastore.device import DeviceBrandDataService
+from app.db.model import DeviceBrand
+from app.exceptions import (
+    DeviceBrandNotFoundError,
+    DeviceCreationError,
+    DeviceUpdateError,
+    DeviceDeletionError,
+)
+
+class DeviceBrandService(BaseCRUDService[DeviceBrand]):
+    """Simple service - only needs 40 lines!"""
+    
+    @classmethod
+    def get_entity_name(cls) -> str:
+        return "DeviceBrand"
+    
+    @classmethod
+    def get_data_service_class(cls) -> Type[BaseCRUDDataService[DeviceBrand]]:
+        return DeviceBrandDataService
+    
+    @classmethod
+    def serialize_entity(cls, entity: DeviceBrand) -> Dict[str, Any]:
+        return {
+            "id": str(entity.id),
+            "name": entity.name,
+            "description": entity.description,
+            "active": entity.active,
+            "date_created": entity.date_created.isoformat(),
+        }
+    
+    @classmethod
+    def get_not_found_exception(cls) -> Type[Exception]:
+        return DeviceBrandNotFoundError
+    
+    @classmethod
+    def get_creation_exception(cls) -> Type[Exception]:
+        return DeviceCreationError
+    
+    @classmethod
+    def get_update_exception(cls) -> Type[Exception]:
+        return DeviceUpdateError
+    
+    @classmethod
+    def get_deletion_exception(cls) -> Type[Exception]:
+        return DeviceDeletionError
+
+# That's it! You get all 5 CRUD methods automatically:
+# - get_all(user_id, offset, limit, filters, order_by, order_direction)
+# - get_by_id(user_id, entity_id)
+# - create(user_id, **kwargs)
+# - update(user_id, entity_id, **kwargs)
+# - delete(user_id, entity_id)
+```
+
+### Example 2: Service with Method Override
+
+**Use Case:** Custom create() logic (e.g., creating related entities)
+
+**Implementation:** `app/service/organization.py` → `OrganizationService`
+
+```python
+from typing import Dict, Any, Type
+from uuid import UUID
+from app.service.base_crud import BaseCRUDService, BaseCRUDDataService
+from app.datastore.organization import OrganizationDataService
+from app.db.model import Organization, RbacRole
+from app.db.utils import sessionmanager
+from app.service.rbac import RbacService
+from app.exceptions import (
+    OrganizationNotFoundError,
+    OrganizationCreationError,
+    OrganizationUpdateError,
+    OrganizationDeletionError,
+)
+
+class OrganizationService(BaseCRUDService[Organization]):
+    """
+    Service with custom create() to add RBAC roles.
+    
+    Inherits: get_all(), get_by_id(), update(), delete() ✅
+    Overrides: create() to add role creation logic ✅
+    """
+    
+    @classmethod
+    def get_entity_name(cls) -> str:
+        return "Organization"
+    
+    @classmethod
+    def get_data_service_class(cls) -> Type[BaseCRUDDataService[Organization]]:
+        return OrganizationDataService
+    
+    @classmethod
+    def serialize_entity(cls, entity: Organization) -> Dict[str, Any]:
+        return {
+            "id": str(entity.id),
+            "name": entity.name,
+            "description": entity.description,
+            "folder_prefix": entity.folder_prefix,
+            "date_created": entity.date_created.isoformat(),
+            "active": entity.active,
+            "rbac_roles": [
+                {
+                    "id": str(role.id),
+                    "name": role.name,
+                    "description": role.description,
+                }
+                for role in entity.rbac_roles
+                if role.active
+            ],
+        }
+    
+    @classmethod
+    def get_not_found_exception(cls) -> Type[Exception]:
+        return OrganizationNotFoundError
+    
+    @classmethod
+    def get_creation_exception(cls) -> Type[Exception]:
+        return OrganizationCreationError
+    
+    @classmethod
+    def get_update_exception(cls) -> Type[Exception]:
+        return OrganizationUpdateError
+    
+    @classmethod
+    def get_deletion_exception(cls) -> Type[Exception]:
+        return OrganizationDeletionError
+    
+    # ============================================
+    # OVERRIDE: Custom create() with role creation
+    # ============================================
+    
+    @classmethod
+    async def create(
+        cls,
+        user_id: UUID,
+        name: str,
+        description: str,
+        folder_prefix: str = None,
+    ) -> Dict[str, Any]:
+        """
+        Override create() to automatically create 2 RBAC roles:
+        - admin role (organization-scoped)
+        - user role (organization-scoped)
+        """
+        try:
+            # RBAC: Only CFIA admin can create organizations
+            await RbacService.verify_user_is_cfia_admin(user_id)
+            
+            async with sessionmanager.get_session() as session:
+                data_service = cls.get_data_service_class()(session)
+                
+                # Standard: Create organization
+                organization = await data_service.create(
+                    name=name,
+                    description=description,
+                    folder_prefix=folder_prefix,
+                )
+                
+                # CUSTOM LOGIC: Create 2 RBAC roles
+                admin_role = RbacRole(
+                    organization_id=organization.id,
+                    name="admin",
+                    description=f"Administrator role for {name}",
+                    active=True,
+                )
+                user_role = RbacRole(
+                    organization_id=organization.id,
+                    name="user",
+                    description=f"User role for {name}",
+                    active=True,
+                )
+                session.add(admin_role)
+                session.add(user_role)
+                
+                await session.commit()
+                await session.refresh(organization)
+                
+                logger = cls._get_logger()
+                logger.info(
+                    f"Organization created with roles",
+                    user_id=str(user_id),
+                    organization_id=str(organization.id),
+                )
+                
+                return cls.serialize_entity(organization)
+        
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger = cls._get_logger()
+            logger.error(
+                f"Failed to create organization: {str(e)}",
+                user_id=str(user_id),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create organization: {str(e)}",
+            )
+```
+
+### Example 3: Service with Additional Custom Methods
+
+**Use Case:** Standard CRUD + custom queries
+
+**Implementation:** `app/service/model.py` → `ModelService`
+
+```python
+class ModelService(BaseCRUDService[Model]):
+    """
+    Service with standard CRUD + custom get_by_task_id().
+    
+    Inherits: get_all(), get_by_id(), create(), update(), delete() ✅
+    Overrides: get_all() to rename response key ✅
+    Adds: get_by_task_id() custom query ✅
+    """
+    
+    # ... (get_entity_name, serialize_entity, exceptions) ...
+    
+    @classmethod
+    async def get_all(cls, user_id: UUID, **kwargs) -> Dict[str, Any]:
+        """Override to change 'items' → 'models' for API consistency."""
+        result = await super().get_all(user_id, **kwargs)
+        result["models"] = result.pop("items")
+        return result
+    
+    @staticmethod
+    async def get_by_task_id(user_id: UUID, task_id: int) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        CUSTOM METHOD: Get models filtered by task_id.
+        Not part of standard CRUD - adds domain-specific query.
+        """
+        await RbacService.get_user_organization_id(user_id)
+        
+        async with sessionmanager.get_session() as session:
+            data_service = ModelDataService(session)
+            models = await data_service.get_by_task_id(task_id)
+            
+            return {
+                "models": [ModelService.serialize_entity(m) for m in models]
+            }
+```
+
+**Key Patterns:**
+
+- ✅ Always extend `BaseCRUDService`
+- ✅ Override methods when you need to modify behavior
+- ✅ Add custom methods for domain-specific operations
+- ✅ Reuse base class error handling and logging
+
+### Example 4: Simple Entity (DeviceBrand)
 
 **Files:**
 

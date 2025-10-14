@@ -23,15 +23,30 @@ class TestOrganizationServiceGetAll:
 
     @pytest.mark.asyncio
     async def test_get_all_success_as_cfia_admin(self, monkeypatch):
-        """cfia_admin users should be able to list all organizations."""
+        """cfia_admin users should be able to list all organizations with roles."""
         from app.db.utils import sessionmanager
 
         user_id = uuid4()
         user_org_id = uuid4()
         org1_id = uuid4()
         org2_id = uuid4()
+        role1_id = uuid4()
+        role2_id = uuid4()
 
-        # Mock organizations
+        # Mock roles
+        role1 = Mock(spec=RbacRole)
+        role1.id = role1_id
+        role1.name = "admin"
+        role1.description = "Admin role"
+        role1.active = True
+
+        role2 = Mock(spec=RbacRole)
+        role2.id = role2_id
+        role2.name = "user"
+        role2.description = "User role"
+        role2.active = True
+
+        # Mock organizations with roles
         org1 = Mock(spec=Organization)
         org1.id = org1_id
         org1.name = "CFIA"
@@ -39,6 +54,7 @@ class TestOrganizationServiceGetAll:
         org1.folder_prefix = "cfia"
         org1.date_created = datetime.now()
         org1.active = True
+        org1.rbac_roles = [role1, role2]
 
         org2 = Mock(spec=Organization)
         org2.id = org2_id
@@ -47,14 +63,22 @@ class TestOrganizationServiceGetAll:
         org2.folder_prefix = "ext"
         org2.date_created = datetime.now()
         org2.active = True
+        org2.rbac_roles = [role1, role2]
 
         # Mock RbacService - user is CFIA admin
         async def mock_verify_cfia_admin(uid):
             return user_org_id
 
+        async def mock_get_user_org_id(uid):
+            return user_org_id
+
         monkeypatch.setattr(
             "app.service.organization.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
+        )
+        monkeypatch.setattr(
+            "app.service.base_crud.RbacService.get_user_organization_id",
+            mock_get_user_org_id,
         )
 
         # Mock session
@@ -65,7 +89,8 @@ class TestOrganizationServiceGetAll:
 
         # Mock data service
         mock_data_service = AsyncMock()
-        mock_data_service.get_all = AsyncMock(return_value=[org1, org2])
+        # get_all() returns tuple (entities, total_count)
+        mock_data_service.get_all = AsyncMock(return_value=([org1, org2], 2))
         monkeypatch.setattr(
             "app.service.organization.OrganizationDataService",
             lambda session: mock_data_service,
@@ -79,6 +104,11 @@ class TestOrganizationServiceGetAll:
         assert len(result["organizations"]) == 2
         assert result["organizations"][0]["name"] == "CFIA"
         assert result["organizations"][1]["name"] == "External Org"
+        # Verify roles are included
+        assert "rbac_roles" in result["organizations"][0]
+        assert len(result["organizations"][0]["rbac_roles"]) == 2
+        assert result["organizations"][0]["rbac_roles"][0]["name"] == "admin"
+        assert result["organizations"][0]["rbac_roles"][1]["name"] == "user"
 
     @pytest.mark.asyncio
     async def test_get_all_unauthorized_non_admin(self, monkeypatch):
@@ -137,9 +167,16 @@ class TestOrganizationServiceGetById:
         async def mock_verify_cfia_admin(uid):
             return user_org_id
 
+        async def mock_get_user_org_id(uid):
+            return user_org_id
+
         monkeypatch.setattr(
             "app.service.organization.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
+        )
+        monkeypatch.setattr(
+            "app.service.base_crud.RbacService.get_user_organization_id",
+            mock_get_user_org_id,
         )
 
         # Mock session
@@ -178,9 +215,16 @@ class TestOrganizationServiceGetById:
         async def mock_verify_cfia_admin(uid):
             return user_org_id
 
+        async def mock_get_user_org_id(uid):
+            return user_org_id
+
         monkeypatch.setattr(
             "app.service.organization.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
+        )
+        monkeypatch.setattr(
+            "app.service.base_crud.RbacService.get_user_organization_id",
+            mock_get_user_org_id,
         )
 
         # Mock session
@@ -218,6 +262,19 @@ class TestOrganizationServiceCreate:
         admin_role_id = uuid4()
         user_role_id = uuid4()
 
+        # Mock roles
+        admin_role = Mock(spec=RbacRole)
+        admin_role.id = admin_role_id
+        admin_role.name = "admin"
+        admin_role.description = "Administrator role for New Organization"
+        admin_role.active = True
+
+        user_role = Mock(spec=RbacRole)
+        user_role.id = user_role_id
+        user_role.name = "user"
+        user_role.description = "User role for New Organization"
+        user_role.active = True
+
         # Mock new organization
         new_org = Mock(spec=Organization)
         new_org.id = new_org_id
@@ -226,6 +283,7 @@ class TestOrganizationServiceCreate:
         new_org.folder_prefix = "new"
         new_org.date_created = datetime.now()
         new_org.active = True
+        new_org.rbac_roles = [admin_role, user_role]  # Include created roles
 
         # Mock session
         mock_session = AsyncMock()
@@ -233,6 +291,8 @@ class TestOrganizationServiceCreate:
         mock_session.__aexit__ = AsyncMock(return_value=None)
         mock_session.commit = AsyncMock()
         mock_session.refresh = AsyncMock()
+        mock_session.add = Mock()  # Mock add() for role creation
+        mock_session.flush = AsyncMock()  # Mock flush() for role creation
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
         # Mock RbacService - user is CFIA admin
@@ -252,18 +312,6 @@ class TestOrganizationServiceCreate:
             lambda session: mock_data_service,
         )
 
-        # Mock _create_organization_roles
-        async def mock_create_roles(session, org_id, org_name):
-            return {
-                "admin": admin_role_id,
-                "user": user_role_id,
-            }
-
-        monkeypatch.setattr(
-            "app.service.organization.OrganizationService._create_organization_roles",
-            mock_create_roles,
-        )
-
         # Call service
         result = await OrganizationService.create(
             user_id,
@@ -276,11 +324,15 @@ class TestOrganizationServiceCreate:
         assert result["name"] == "New Organization"
         assert result["description"] == "A new organization"
         assert result["folder_prefix"] == "new"
-        assert "roles" in result
-        assert "admin_role_id" in result["roles"]
-        assert "user_role_id" in result["roles"]
-        assert result["roles"]["admin_role_id"] == str(admin_role_id)
-        assert result["roles"]["user_role_id"] == str(user_role_id)
+        # Verify rbac_roles are included in response
+        assert "rbac_roles" in result
+        assert len(result["rbac_roles"]) == 2
+        # Find admin and user roles
+        role_names = {role["name"]: role for role in result["rbac_roles"]}
+        assert "admin" in role_names
+        assert "user" in role_names
+        assert role_names["admin"]["id"] == str(admin_role_id)
+        assert role_names["user"]["id"] == str(user_role_id)
         mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
@@ -331,6 +383,7 @@ class TestOrganizationServiceUpdate:
         updated_org.folder_prefix = "updated"
         updated_org.date_created = datetime.now()
         updated_org.active = True
+        updated_org.rbac_roles = []  # Empty list for serialization
 
         # Mock RbacService - user is CFIA admin
         async def mock_verify_cfia_admin(uid):
