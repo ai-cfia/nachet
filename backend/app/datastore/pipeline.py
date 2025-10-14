@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload, selectinload
 
 # Import BaseCRUDDataService directly to avoid circular import
 from app.service.base_crud import BaseCRUDDataService
-from app.db.model import Pipeline, Model, PipelineModel
+from app.db.model import Pipeline, Model, PipelineModel, PipelineDefault
 
 
 class PipelineDataService(BaseCRUDDataService[Pipeline]):
@@ -165,3 +165,42 @@ class PipelineDataService(BaseCRUDDataService[Pipeline]):
 
     # Legacy methods kept for backward compatibility
     # These provide specific functionality beyond standard CRUD operations
+
+
+class PipelineDefaultDataService(BaseCRUDDataService[PipelineDefault]):
+    """Repository class for pipeline_default database operations."""
+
+    @classmethod
+    def get_model_class(cls) -> Type[PipelineDefault]:
+        """Return the PipelineDefault model class."""
+        return PipelineDefault
+
+    def get_query_options(self) -> list:
+        """
+        Return query options for eager loading PipelineDefault relationships.
+        
+        Returns:
+            List of SQLAlchemy query options for loading the pipeline relationship
+        """
+        return [selectinload(PipelineDefault.pipeline)]
+
+
+class PipelineModelDataService(BaseCRUDDataService[PipelineModel]):
+    """Repository class for pipeline_model database operations."""
+
+    @classmethod
+    def get_model_class(cls) -> Type[PipelineModel]:
+        """Return the PipelineModel model class."""
+        return PipelineModel
+
+    def get_query_options(self) -> list:
+        """
+        Return query options for eager loading PipelineModel relationships.
+        
+        Returns:
+            List of SQLAlchemy query options for loading pipeline and model relationships
+        """
+        return [
+            selectinload(PipelineModel.pipeline),
+            selectinload(PipelineModel.model),
+        ]

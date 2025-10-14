@@ -8,12 +8,20 @@ from app.db.utils import sessionmanager
 from app.datastore import PipelineDataService
 from app.service.base_crud import BaseCRUDService
 from app.service.logs import LogService
-from app.db.model import Pipeline
+from app.db.model import Pipeline, PipelineDefault, PipelineModel
 from app.exceptions import (
     PipelineNotFoundError,
     PipelineCreationError,
     PipelineUpdateError,
     PipelineDeletionError,
+    PipelineDefaultNotFoundError,
+    PipelineDefaultCreationError,
+    PipelineDefaultUpdateError,
+    PipelineDefaultDeletionError,
+    PipelineModelNotFoundError,
+    PipelineModelCreationError,
+    PipelineModelUpdateError,
+    PipelineModelDeletionError,
 )
 
 
@@ -283,3 +291,132 @@ class PipelineService(BaseCRUDService[Pipeline]):
                 status_code=500,
                 detail=f"Failed to retrieve pipeline '{name}': {str(e)}",
             )
+
+
+class PipelineDefaultService(BaseCRUDService[PipelineDefault]):
+    """
+    Service class to handle pipeline_default-related operations.
+    
+    Extends BaseCRUDService to provide standard CRUD operations with RBAC.
+    
+    Access Control:
+    - GET operations (get_all, get_by_id): Any authenticated user
+    - CUD operations (create, update, delete): CFIA admin only
+    """
+
+    @classmethod
+    def get_entity_name(cls) -> str:
+        """Return the entity name for error messages."""
+        return "PipelineDefault"
+
+    @classmethod
+    def get_data_service_class(cls) -> Type:
+        """Return the data service class for PipelineDefault."""
+        from app.datastore.pipeline import PipelineDefaultDataService
+
+        return PipelineDefaultDataService
+
+    @classmethod
+    def serialize_entity(cls, entity: PipelineDefault) -> Dict[str, Any]:
+        """
+        Convert PipelineDefault entity to dictionary for API response.
+        
+        Args:
+            entity: The PipelineDefault object to serialize
+            
+        Returns:
+            Dictionary representation of the pipeline default
+        """
+        return {
+            "id": entity.id,
+            "pipeline_id": str(entity.pipeline_id),
+            "pipeline_name": entity.pipeline.name if entity.pipeline else None,
+            "active": entity.active,
+            "date_created": entity.date_created.isoformat(),
+            "date_updated": entity.date_updated.isoformat(),
+        }
+
+    @classmethod
+    def get_not_found_exception(cls) -> Type[Exception]:
+        """Return PipelineDefault-specific NotFoundError exception class."""
+        return PipelineDefaultNotFoundError
+
+    @classmethod
+    def get_creation_exception(cls) -> Type[Exception]:
+        """Return PipelineDefault-specific CreationError exception class."""
+        return PipelineDefaultCreationError
+
+    @classmethod
+    def get_update_exception(cls) -> Type[Exception]:
+        """Return PipelineDefault-specific UpdateError exception class."""
+        return PipelineDefaultUpdateError
+
+    @classmethod
+    def get_deletion_exception(cls) -> Type[Exception]:
+        """Return PipelineDefault-specific DeletionError exception class."""
+        return PipelineDefaultDeletionError
+
+
+class PipelineModelService(BaseCRUDService[PipelineModel]):
+    """
+    Service class to handle pipeline_model-related operations.
+    
+    Extends BaseCRUDService to provide standard CRUD operations with RBAC.
+    
+    Access Control:
+    - GET operations (get_all, get_by_id): Any authenticated user
+    - CUD operations (create, update, delete): CFIA admin only
+    """
+
+    @classmethod
+    def get_entity_name(cls) -> str:
+        """Return the entity name for error messages."""
+        return "PipelineModel"
+
+    @classmethod
+    def get_data_service_class(cls) -> Type:
+        """Return the data service class for PipelineModel."""
+        from app.datastore.pipeline import PipelineModelDataService
+
+        return PipelineModelDataService
+
+    @classmethod
+    def serialize_entity(cls, entity: PipelineModel) -> Dict[str, Any]:
+        """
+        Convert PipelineModel entity to dictionary for API response.
+        
+        Args:
+            entity: The PipelineModel object to serialize
+            
+        Returns:
+            Dictionary representation of the pipeline model
+        """
+        return {
+            "id": str(entity.id),
+            "pipeline_id": str(entity.pipeline_id),
+            "pipeline_name": entity.pipeline.name if entity.pipeline else None,
+            "model_id": str(entity.model_id),
+            "model_name": entity.model.name if entity.model else None,
+            "active": entity.active,
+            "date_created": entity.date_created.isoformat(),
+        }
+
+    @classmethod
+    def get_not_found_exception(cls) -> Type[Exception]:
+        """Return PipelineModel-specific NotFoundError exception class."""
+        return PipelineModelNotFoundError
+
+    @classmethod
+    def get_creation_exception(cls) -> Type[Exception]:
+        """Return PipelineModel-specific CreationError exception class."""
+        return PipelineModelCreationError
+
+    @classmethod
+    def get_update_exception(cls) -> Type[Exception]:
+        """Return PipelineModel-specific UpdateError exception class."""
+        return PipelineModelUpdateError
+
+    @classmethod
+    def get_deletion_exception(cls) -> Type[Exception]:
+        """Return PipelineModel-specific DeletionError exception class."""
+        return PipelineModelDeletionError

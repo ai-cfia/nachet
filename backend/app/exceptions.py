@@ -223,6 +223,26 @@ class ModelDeletionError(ModelError):
     pass
 
 
+class ModelTaskError(Exception):
+    pass
+
+
+class ModelTaskNotFoundError(ModelTaskError):
+    pass
+
+
+class ModelTaskCreationError(ModelTaskError):
+    pass
+
+
+class ModelTaskUpdateError(ModelTaskError):
+    pass
+
+
+class ModelTaskDeletionError(ModelTaskError):
+    pass
+
+
 class SeedError(Exception):
     pass
 
@@ -260,6 +280,46 @@ class PipelineUpdateError(PipelineError):
 
 
 class PipelineDeletionError(PipelineError):
+    pass
+
+
+class PipelineDefaultError(Exception):
+    pass
+
+
+class PipelineDefaultNotFoundError(PipelineDefaultError):
+    pass
+
+
+class PipelineDefaultCreationError(PipelineDefaultError):
+    pass
+
+
+class PipelineDefaultUpdateError(PipelineDefaultError):
+    pass
+
+
+class PipelineDefaultDeletionError(PipelineDefaultError):
+    pass
+
+
+class PipelineModelError(Exception):
+    pass
+
+
+class PipelineModelNotFoundError(PipelineModelError):
+    pass
+
+
+class PipelineModelCreationError(PipelineModelError):
+    pass
+
+
+class PipelineModelUpdateError(PipelineModelError):
+    pass
+
+
+class PipelineModelDeletionError(PipelineModelError):
     pass
 
 

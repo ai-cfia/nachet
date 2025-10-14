@@ -6,7 +6,11 @@ from .rbac import (
     RbacRolePermissionResourceDataService,
     RbacUserRoleDataService,
 )
-from .pipeline import PipelineDataService
+from .pipeline import (
+    PipelineDataService,
+    PipelineDefaultDataService,
+    PipelineModelDataService,
+)
 from .seed import SeedDataService
 from .directory import DirectoryDataService
 from .organization import OrganizationDataService
@@ -15,7 +19,7 @@ from .device import (
     DeviceModelDataService,
     DeviceLensDataService,
 )
-from .model import ModelDataService
+from .model import ModelDataService, ModelTaskDataService
 
 __all__ = [
     "RbacDataService",
@@ -25,6 +29,8 @@ __all__ = [
     "RbacRolePermissionResourceDataService",
     "RbacUserRoleDataService",
     "PipelineDataService",
+    "PipelineDefaultDataService",
+    "PipelineModelDataService",
     "SeedDataService",
     "DirectoryDataService",
     "OrganizationDataService",
@@ -32,4 +38,5 @@ __all__ = [
     "DeviceModelDataService",
     "DeviceLensDataService",
     "ModelDataService",
+    "ModelTaskDataService",
 ]
