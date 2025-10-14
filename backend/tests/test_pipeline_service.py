@@ -76,7 +76,7 @@ class TestPipelineServiceGetAll:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.get_user_organization_id",
+            "app.service.rbac.RbacService.get_user_organization_id",
             mock_get_org_id,
         )
 
@@ -143,7 +143,7 @@ class TestPipelineServiceGetById:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.get_user_organization_id",
+            "app.service.rbac.RbacService.get_user_organization_id",
             mock_get_org_id,
         )
 
@@ -183,7 +183,7 @@ class TestPipelineServiceGetById:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.get_user_organization_id",
+            "app.service.rbac.RbacService.get_user_organization_id",
             mock_get_org_id,
         )
 
@@ -242,7 +242,7 @@ class TestPipelineServiceCreate:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
+            "app.service.rbac.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
         )
 
@@ -288,7 +288,7 @@ class TestPipelineServiceCreate:
             )
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
+            "app.service.rbac.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
         )
 
@@ -336,7 +336,7 @@ class TestPipelineServiceUpdate:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
+            "app.service.rbac.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
         )
 
@@ -385,7 +385,7 @@ class TestPipelineServiceUpdate:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
+            "app.service.rbac.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
         )
 
@@ -432,7 +432,7 @@ class TestPipelineServiceDelete:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
+            "app.service.rbac.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
         )
 
@@ -473,7 +473,7 @@ class TestPipelineServiceDelete:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
+            "app.service.rbac.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
         )
 
@@ -511,7 +511,7 @@ class TestPipelineServiceDelete:
             )
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
+            "app.service.rbac.RbacService.verify_user_is_cfia_admin",
             mock_verify_cfia_admin,
         )
 

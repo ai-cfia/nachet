@@ -2,7 +2,14 @@ from .pipeline import PipelineService
 from .seed import SeedService
 from .directory import DirectoryService
 from .frontend import FrontendService
-from .rbac import RbacService
+from .rbac import (
+    RbacService,
+    RbacRoleService,
+    RbacPermissionService,
+    RbacResourceService,
+    RbacRolePermissionResourceService,
+    RbacUserRoleService,
+)
 from .logs import LogService
 from .device import (
     DeviceBrandService,
@@ -18,6 +25,11 @@ __all__ = [
     "DirectoryService",
     "FrontendService",
     "RbacService",
+    "RbacRoleService",
+    "RbacPermissionService",
+    "RbacResourceService",
+    "RbacRolePermissionResourceService",
+    "RbacUserRoleService",
     "LogService",
     "DeviceBrandService",
     "DeviceModelService",

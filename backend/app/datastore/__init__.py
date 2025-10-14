@@ -1,4 +1,11 @@
-from .rbac import RbacDataService
+from .rbac import (
+    RbacDataService,
+    RbacRoleDataService,
+    RbacPermissionDataService,
+    RbacResourceDataService,
+    RbacRolePermissionResourceDataService,
+    RbacUserRoleDataService,
+)
 from .pipeline import PipelineDataService
 from .seed import SeedDataService
 from .directory import DirectoryDataService
@@ -12,6 +19,11 @@ from .model import ModelDataService
 
 __all__ = [
     "RbacDataService",
+    "RbacRoleDataService",
+    "RbacPermissionDataService",
+    "RbacResourceDataService",
+    "RbacRolePermissionResourceDataService",
+    "RbacUserRoleDataService",
     "PipelineDataService",
     "SeedDataService",
     "DirectoryDataService",

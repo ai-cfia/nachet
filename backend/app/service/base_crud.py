@@ -15,7 +15,6 @@ from sqlalchemy.orm import DeclarativeBase
 from fastapi import HTTPException, status
 
 from app.db.utils import sessionmanager
-from app.service.rbac import RbacService
 from app.service.logs import LogService
 
 # Generic type variable for database models
@@ -95,6 +94,7 @@ class BaseCRUDDataService(Generic[T]):
 
         # Count total before pagination
         from sqlalchemy import func, select as sa_select
+
         count_query = sa_select(func.count()).select_from(query.alias())
         count_result = await self.session.execute(count_query)
         total_count = count_result.scalar()
@@ -318,6 +318,9 @@ class BaseCRUDService(Generic[T]):
 
         try:
             # RBAC: Any authenticated user can view
+            # Lazy import to avoid circular dependency
+            from app.service.rbac import RbacService
+
             await RbacService.get_user_organization_id(user_id)
 
             async with sessionmanager.get_session() as session:
@@ -333,9 +336,7 @@ class BaseCRUDService(Generic[T]):
                 )
 
                 result = {
-                    "items": [
-                        cls.serialize_entity(entity) for entity in entities
-                    ],
+                    "items": [cls.serialize_entity(entity) for entity in entities],
                     "total": total_count,
                     "offset": offset,
                     "limit": limit,
@@ -385,6 +386,9 @@ class BaseCRUDService(Generic[T]):
 
         try:
             # RBAC: Any authenticated user can view
+            # Lazy import to avoid circular dependency
+            from app.service.rbac import RbacService
+
             await RbacService.get_user_organization_id(user_id)
 
             async with sessionmanager.get_session() as session:
@@ -408,9 +412,7 @@ class BaseCRUDService(Generic[T]):
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except Exception as e:
             logger = cls._get_logger()
             logger.error(
@@ -448,6 +450,9 @@ class BaseCRUDService(Generic[T]):
 
         try:
             # RBAC: Only CFIA admin can create
+            # Lazy import to avoid circular dependency
+            from app.service.rbac import RbacService
+
             await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
@@ -522,6 +527,9 @@ class BaseCRUDService(Generic[T]):
 
         try:
             # RBAC: Only CFIA admin can update
+            # Lazy import to avoid circular dependency
+            from app.service.rbac import RbacService
+
             await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
@@ -553,9 +561,7 @@ class BaseCRUDService(Generic[T]):
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except update_exc as e:
             logger = cls._get_logger()
             logger.error(
@@ -610,6 +616,9 @@ class BaseCRUDService(Generic[T]):
 
         try:
             # RBAC: Only CFIA admin can delete
+            # Lazy import to avoid circular dependency
+            from app.service.rbac import RbacService
+
             await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
@@ -643,9 +652,7 @@ class BaseCRUDService(Generic[T]):
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except deletion_exc as e:
             logger = cls._get_logger()
             logger.error(

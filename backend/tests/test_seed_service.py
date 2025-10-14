@@ -65,7 +65,7 @@ class TestSeedServiceGetAll:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.get_user_organization_id",
+            "app.service.rbac.RbacService.get_user_organization_id",
             mock_get_org_id,
         )
 
@@ -124,7 +124,7 @@ class TestSeedServiceGetById:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.get_user_organization_id",
+            "app.service.rbac.RbacService.get_user_organization_id",
             mock_get_org_id,
         )
 
@@ -165,7 +165,7 @@ class TestSeedServiceGetById:
             return user_org_id
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.get_user_organization_id",
+            "app.service.rbac.RbacService.get_user_organization_id",
             mock_get_org_id,
         )
 
@@ -219,7 +219,7 @@ class TestSeedServiceCreate:
             pass
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
+            "app.service.rbac.RbacService.verify_user_is_cfia_admin",
             mock_verify_admin,
         )
 
@@ -266,7 +266,7 @@ class TestSeedServiceCreate:
             )
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
+            "app.service.rbac.RbacService.verify_user_is_cfia_admin",
             mock_verify_admin,
         )
 
@@ -313,7 +313,7 @@ class TestSeedServiceUpdate:
             pass
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
+            "app.service.rbac.RbacService.verify_user_is_cfia_admin",
             mock_verify_admin,
         )
 
@@ -352,7 +352,7 @@ class TestSeedServiceUpdate:
             pass
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
+            "app.service.rbac.RbacService.verify_user_is_cfia_admin",
             mock_verify_admin,
         )
 
@@ -397,7 +397,7 @@ class TestSeedServiceDelete:
             pass
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
+            "app.service.rbac.RbacService.verify_user_is_cfia_admin",
             mock_verify_admin,
         )
 
@@ -437,7 +437,7 @@ class TestSeedServiceDelete:
             pass
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
+            "app.service.rbac.RbacService.verify_user_is_cfia_admin",
             mock_verify_admin,
         )
 
@@ -475,7 +475,7 @@ class TestSeedServiceDelete:
             )
 
         monkeypatch.setattr(
-            "app.service.base_crud.RbacService.verify_user_is_cfia_admin",
+            "app.service.rbac.RbacService.verify_user_is_cfia_admin",
             mock_verify_admin,
         )
 
