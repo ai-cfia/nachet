@@ -51,6 +51,26 @@ class AnnotationDeletionError(AnnotationError):
     pass
 
 
+class ChangeLogError(Exception):
+    pass
+
+
+class ChangeLogNotFoundError(ChangeLogError):
+    pass
+
+
+class ChangeLogCreationError(ChangeLogError):
+    pass
+
+
+class ChangeLogUpdateError(ChangeLogError):
+    pass
+
+
+class ChangeLogDeletionError(ChangeLogError):
+    pass
+
+
 class InferenceError(Exception):
     pass
 
