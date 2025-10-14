@@ -497,26 +497,18 @@ class TestPipelineServiceDelete:
     async def test_delete_unauthorized_non_admin(self, monkeypatch):
         """Non-admin users should get 403 when deleting pipelines."""
         user_id = uuid4()
-        user_org_id = uuid4()
         pipeline_id = uuid4()
 
-        # Mock RbacService - user is NOT cfia_admin
-        async def mock_get_org_id(uid):
-            return user_org_id
-
-        async def mock_verify_role(uid, role, org_id):
+        # Mock RbacService - user is NOT CFIA admin, raise 403
+        async def mock_verify_cfia_admin(uid):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"User does not have required role: {role}",
+                detail="User is not a CFIA administrator",
             )
 
         monkeypatch.setattr(
-            "app.service.pipeline.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.pipeline.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.pipeline.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Should raise 403

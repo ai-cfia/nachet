@@ -34,3 +34,25 @@ def get_cfia_org_id() -> UUID:
             "This is required to determine cross-organization authority."
         )
     return UUID(settings.cfia_organization_id)
+
+
+def get_cfia_admin_role_id() -> UUID:
+    """
+    Get CFIA admin role ID from config.
+
+    This is the UUID of the "admin" role in the CFIA organization.
+    Used for efficient direct database lookups in rbac_user_role table.
+
+    Returns:
+        UUID of CFIA admin role
+
+    Raises:
+        ValueError: If CFIA_ADMIN_ROLE_ID not configured
+    """
+    settings = get_settings()
+    if not settings.cfia_admin_role_id:
+        raise ValueError(
+            "CFIA_ADMIN_ROLE_ID not configured in environment. "
+            "This is required for CFIA administrator verification."
+        )
+    return UUID(settings.cfia_admin_role_id)
