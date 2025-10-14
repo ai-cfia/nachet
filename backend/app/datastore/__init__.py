@@ -20,6 +20,7 @@ from .device import (
     DeviceLensDataService,
 )
 from .model import ModelDataService, ModelTaskDataService
+from .user import UserDataService
 
 __all__ = [
     "RbacDataService",
@@ -39,4 +40,5 @@ __all__ = [
     "DeviceLensDataService",
     "ModelDataService",
     "ModelTaskDataService",
+    "UserDataService",
 ]
