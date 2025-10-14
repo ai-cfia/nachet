@@ -1,14 +1,24 @@
-from typing import List
-from sqlalchemy.ext.asyncio import AsyncSession
-# from sqlalchemy.dialects import postgresql
+from typing import List, Type
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
+
 from app.db.model import Folder, Picture
+from app.service.base_crud import BaseCRUDDataService
 
 
-class DirectoryDataService:
-    def __init__(self, session: AsyncSession):
-        self.session = session
+class DirectoryDataService(BaseCRUDDataService[Folder]):
+    """Data access layer for Directory (Folder) database operations."""
 
+    @classmethod
+    def get_model_class(cls) -> Type[Folder]:
+        """Return the Folder model class."""
+        return Folder
+
+    def get_query_options(self) -> list:
+        """Load pictures relationship."""
+        return [selectinload(Folder.pictures)]
+
+    # Custom methods for directory-specific operations
     async def get_user_directories_count(self, user_id: str) -> List[Folder]:
         """
         Retrieve all directories for a given user and number of pictures from the database.
