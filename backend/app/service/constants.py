@@ -6,7 +6,6 @@ Role names are generic across all organizations.
 """
 
 from uuid import UUID
-from app.api.config import get_settings
 
 # Generic role name constants (used across all organizations)
 ROLE_ADMIN = "admin"
@@ -27,6 +26,9 @@ def get_cfia_org_id() -> UUID:
     Raises:
         ValueError: If CFIA_ORGANIZATION_ID not configured
     """
+    # Lazy import to avoid circular dependency
+    from app.api.config import get_settings
+
     settings = get_settings()
     if not settings.cfia_organization_id:
         raise ValueError(
@@ -49,6 +51,9 @@ def get_cfia_admin_role_id() -> UUID:
     Raises:
         ValueError: If CFIA_ADMIN_ROLE_ID not configured
     """
+    # Lazy import to avoid circular dependency
+    from app.api.config import get_settings
+
     settings = get_settings()
     if not settings.cfia_admin_role_id:
         raise ValueError(
