@@ -43,6 +43,10 @@ class AnnotationCreationError(AnnotationError):
     pass
 
 
+class AnnotationUpdateError(AnnotationError):
+    pass
+
+
 class AnnotationDeletionError(AnnotationError):
     pass
 

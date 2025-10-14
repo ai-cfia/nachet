@@ -21,6 +21,7 @@ from .device import (
 )
 from .model import ModelDataService, ModelTaskDataService
 from .user import UserDataService
+from .annotation import AnnotationDataService
 
 __all__ = [
     "RbacDataService",
@@ -41,4 +42,5 @@ __all__ = [
     "ModelDataService",
     "ModelTaskDataService",
     "UserDataService",
+    "AnnotationDataService",
 ]

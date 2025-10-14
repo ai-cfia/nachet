@@ -23,6 +23,7 @@ from .device import (
 )
 from .model import ModelService, ModelTaskService
 from .user import UserService
+from .annotation import AnnotationService
 
 __all__ = [
     "PipelineService",
@@ -45,4 +46,5 @@ __all__ = [
     "ModelService",
     "ModelTaskService",
     "UserService",
+    "AnnotationService",
 ]
