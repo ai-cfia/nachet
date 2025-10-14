@@ -15,6 +15,14 @@ class UserConflictError(UserError):
     pass
 
 
+class UserCreationError(UserError):
+    pass
+
+
+class UserUpdateError(UserError):
+    pass
+
+
 class UserDeletionError(UserError):
     pass
 

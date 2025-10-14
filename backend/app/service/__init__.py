@@ -22,6 +22,7 @@ from .device import (
     DeviceService,
 )
 from .model import ModelService, ModelTaskService
+from .user import UserService
 
 __all__ = [
     "PipelineService",
@@ -43,4 +44,5 @@ __all__ = [
     "DeviceService",
     "ModelService",
     "ModelTaskService",
+    "UserService",
 ]
