@@ -23,6 +23,7 @@ from .model import ModelDataService, ModelTaskDataService
 from .user import UserDataService
 from .annotation import AnnotationDataService
 from .image import ImageDataService
+from .change_log import ChangeLogDataService
 
 __all__ = [
     "RbacDataService",
@@ -45,4 +46,5 @@ __all__ = [
     "UserDataService",
     "AnnotationDataService",
     "ImageDataService",
+    "ChangeLogDataService",
 ]

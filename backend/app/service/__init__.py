@@ -25,6 +25,7 @@ from .model import ModelService, ModelTaskService
 from .user import UserService
 from .annotation import AnnotationService
 from .image import ImageService
+from .change_log import ChangeLogService
 
 __all__ = [
     "PipelineService",
@@ -49,4 +50,5 @@ __all__ = [
     "UserService",
     "AnnotationService",
     "ImageService",
+    "ChangeLogService",
 ]
