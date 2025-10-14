@@ -1,13 +1,10 @@
 from typing import List, Dict, Any, Optional
 from uuid import UUID
 import traceback
-import random
-import string
 from fastapi import HTTPException, status
 
 from app.db.utils import sessionmanager
 from app.datastore import OrganizationDataService
-from app.db.data.data_constants import ROLE_CFIA_ADMIN
 from app.db.model import RbacRole
 from app.service.logs import LogService
 from app.service.rbac import RbacService
@@ -19,10 +16,12 @@ class OrganizationService:
     Service layer for Organization CRUD operations.
 
     System Invariants:
-    - Each organization has 2 organization-specific RBAC roles created automatically:
-      * admin_{org_prefix}_{random}: Admin role for the organization
-      * user_{org_prefix}_{random}: User role for the organization
-    - Only users with cfia_admin role can create, update, or delete organizations
+    - Each organization has 2 RBAC roles created automatically:
+      * "admin": Administrator role (org-scoped by organization_id)
+      * "user": User role (org-scoped by organization_id)
+    - CFIA organization also has "verifier" role for data verification
+    - Role authority determined by organization_id, not role name
+    - Only CFIA admins can create, update, or delete organizations
     - Deletion is soft delete (sets active=False) to maintain referential integrity
     """
 
@@ -37,50 +36,30 @@ class OrganizationService:
         return cls._logger
 
     @staticmethod
-    def _generate_role_name(role_type: str, org_name: str) -> str:
-        """
-        Generate a unique role name based on organization.
-
-        Format: {role_type}_{first_8_chars_of_orgname}_{random_8_char_alpha_string}
-
-        Args:
-            role_type: Either "admin" or "user"
-            org_name: The organization name
-
-        Returns:
-            Generated role name following the pattern
-        """
-        # Get first 8 chars of org name, lowercase, alphanumeric only
-        org_prefix = "".join(c for c in org_name.lower() if c.isalnum())[:8]
-
-        # Generate 8 random alphabetic characters
-        random_suffix = "".join(random.choices(string.ascii_lowercase, k=8))
-
-        return f"{role_type}_{org_prefix}_{random_suffix}"
-
-    @staticmethod
     async def _create_organization_roles(
         session, organization_id: UUID, org_name: str
     ) -> Dict[str, UUID]:
         """
         Create the 2 standard roles for a new organization.
 
+        All organizations get:
+        - "admin" role: Administrator for the organization
+        - "user" role: Standard user for the organization
+
+        Note: CFIA organization also gets "verifier" role created separately.
+
         Args:
             session: Database session
             organization_id: UUID of the organization
-            org_name: Name of the organization for role naming
+            org_name: Name of the organization (for description only)
 
         Returns:
             Dictionary mapping role types to their UUIDs
         """
-        # Generate role names
-        admin_role_name = OrganizationService._generate_role_name("admin", org_name)
-        user_role_name = OrganizationService._generate_role_name("user", org_name)
-
         # Create admin role
         admin_role = RbacRole(
             organization_id=organization_id,
-            name=admin_role_name,
+            name="admin",  # Generic name, scoped by organization_id
             description=f"Administrator role for {org_name}",
             active=True,
         )
@@ -88,7 +67,7 @@ class OrganizationService:
         # Create user role
         user_role = RbacRole(
             organization_id=organization_id,
-            name=user_role_name,
+            name="user",  # Generic name, scoped by organization_id
             description=f"User role for {org_name}",
             active=True,
         )
@@ -119,11 +98,8 @@ class OrganizationService:
             HTTPException: 403 if user is not cfia_admin, 500 on database error
         """
         try:
-            # Verify user is cfia_admin (this also checks organization association)
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(
-                user_id, ROLE_CFIA_ADMIN, user_org_id
-            )
+            # Verify user is CFIA admin (cross-org authority)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = OrganizationDataService(session)
@@ -183,11 +159,8 @@ class OrganizationService:
             HTTPException: 403 if unauthorized, 404 if not found, 500 on error
         """
         try:
-            # Verify user is cfia_admin (this also checks organization association)
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(
-                user_id, ROLE_CFIA_ADMIN, user_org_id
-            )
+            # Verify user is CFIA admin (cross-org authority)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = OrganizationDataService(session)
@@ -279,11 +252,8 @@ class OrganizationService:
             HTTPException: 403 if unauthorized, 500 on error
         """
         try:
-            # Verify user is cfia_admin (this also checks organization association)
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(
-                user_id, ROLE_CFIA_ADMIN, user_org_id
-            )
+            # Verify user is CFIA admin (cross-org authority)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = OrganizationDataService(session)
@@ -367,11 +337,8 @@ class OrganizationService:
             HTTPException: 403 if unauthorized, 404 if not found, 500 on error
         """
         try:
-            # Verify user is cfia_admin (this also checks organization association)
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(
-                user_id, ROLE_CFIA_ADMIN, user_org_id
-            )
+            # Verify user is CFIA admin (cross-org authority)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = OrganizationDataService(session)
@@ -455,11 +422,8 @@ class OrganizationService:
             HTTPException: 403 if unauthorized, 404 if not found, 500 on error
         """
         try:
-            # Verify user is cfia_admin (this also checks organization association)
-            user_org_id = await RbacService.get_user_organization_id(user_id)
-            await RbacService.verify_user_has_role(
-                user_id, ROLE_CFIA_ADMIN, user_org_id
-            )
+            # Verify user is CFIA admin (cross-org authority)
+            await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = OrganizationDataService(session)

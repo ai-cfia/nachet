@@ -313,16 +313,15 @@ async def test_get_by_id_not_found(
 
 # Tests for BaseCRUDService.create
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
-@patch("app.service.base_crud.RbacService.verify_user_has_role")
+@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_create_success(
-    mock_get_session, mock_verify_role, mock_get_org_id, mock_user_id, mock_entity
+    mock_get_session, mock_verify_cfia_admin, mock_user_id, mock_entity
 ):
     """Test successful entity creation."""
     # Arrange
-    mock_get_org_id.return_value = uuid4()
-    mock_verify_role.return_value = None
+    cfia_org_id = uuid4()
+    mock_verify_cfia_admin.return_value = cfia_org_id
     mock_session = AsyncMock()
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
@@ -338,40 +337,36 @@ async def test_create_success(
             # Assert
             assert result["id"] == str(mock_entity.id)
             assert result["name"] == mock_entity.name
-            mock_get_org_id.assert_called_once_with(mock_user_id)
-            mock_verify_role.assert_called_once()
+            mock_verify_cfia_admin.assert_called_once_with(mock_user_id)
             mock_session.commit.assert_called_once()
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
-@patch("app.service.base_crud.RbacService.verify_user_has_role")
-async def test_create_rbac_failure(mock_verify_role, mock_get_org_id, mock_user_id):
+@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
+async def test_create_rbac_failure(mock_verify_cfia_admin, mock_user_id):
     """Test create fails when user is not admin."""
     # Arrange
-    mock_get_org_id.return_value = uuid4()
-    mock_verify_role.side_effect = HTTPException(status_code=403, detail="Forbidden")
+    mock_verify_cfia_admin.side_effect = HTTPException(status_code=403, detail="Forbidden")
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc_info:
         await MockEntityService.create(mock_user_id, name="Test Entity")
 
     assert exc_info.value.status_code == 403
-    mock_get_org_id.assert_called_once_with(mock_user_id)
+    mock_verify_cfia_admin.assert_called_once_with(mock_user_id)
 
 
 # Tests for BaseCRUDService.update
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
-@patch("app.service.base_crud.RbacService.verify_user_has_role")
+@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_update_success(
-    mock_get_session, mock_verify_role, mock_get_org_id, mock_user_id, mock_entity_id, mock_entity
+    mock_get_session, mock_verify_cfia_admin, mock_user_id, mock_entity_id, mock_entity
 ):
     """Test successful entity update."""
     # Arrange
-    mock_get_org_id.return_value = uuid4()
-    mock_verify_role.return_value = None
+    cfia_org_id = uuid4()
+    mock_verify_cfia_admin.return_value = cfia_org_id
     mock_session = AsyncMock()
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
@@ -391,22 +386,20 @@ async def test_update_success(
             # Assert
             assert result["id"] == str(mock_entity_id)
             assert result["name"] == "Updated Entity"
-            mock_get_org_id.assert_called_once_with(mock_user_id)
-            mock_verify_role.assert_called_once()
+            mock_verify_cfia_admin.assert_called_once_with(mock_user_id)
             mock_session.commit.assert_called_once()
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
-@patch("app.service.base_crud.RbacService.verify_user_has_role")
+@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_update_not_found(
-    mock_get_session, mock_verify_role, mock_get_org_id, mock_user_id, mock_entity_id
+    mock_get_session, mock_verify_cfia_admin, mock_user_id, mock_entity_id
 ):
     """Test update returns 404 when entity not found."""
     # Arrange
-    mock_get_org_id.return_value = uuid4()
-    mock_verify_role.return_value = None
+    cfia_org_id = uuid4()
+    mock_verify_cfia_admin.return_value = cfia_org_id
     mock_session = AsyncMock()
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
@@ -423,34 +416,31 @@ async def test_update_not_found(
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
-@patch("app.service.base_crud.RbacService.verify_user_has_role")
-async def test_update_rbac_failure(mock_verify_role, mock_get_org_id, mock_user_id, mock_entity_id):
+@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
+async def test_update_rbac_failure(mock_verify_cfia_admin, mock_user_id, mock_entity_id):
     """Test update fails when user is not admin."""
     # Arrange
-    mock_get_org_id.return_value = uuid4()
-    mock_verify_role.side_effect = HTTPException(status_code=403, detail="Forbidden")
+    mock_verify_cfia_admin.side_effect = HTTPException(status_code=403, detail="Forbidden")
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc_info:
         await MockEntityService.update(mock_user_id, mock_entity_id, name="Updated")
 
     assert exc_info.value.status_code == 403
-    mock_get_org_id.assert_called_once_with(mock_user_id)
+    mock_verify_cfia_admin.assert_called_once_with(mock_user_id)
 
 
 # Tests for BaseCRUDService.delete
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
-@patch("app.service.base_crud.RbacService.verify_user_has_role")
+@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_delete_success(
-    mock_get_session, mock_verify_role, mock_get_org_id, mock_user_id, mock_entity_id, mock_entity
+    mock_get_session, mock_verify_cfia_admin, mock_user_id, mock_entity_id, mock_entity
 ):
     """Test successful entity soft deletion."""
     # Arrange
-    mock_get_org_id.return_value = uuid4()
-    mock_verify_role.return_value = None
+    cfia_org_id = uuid4()
+    mock_verify_cfia_admin.return_value = cfia_org_id
     mock_session = AsyncMock()
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
@@ -467,22 +457,20 @@ async def test_delete_success(
             assert "message" in result
             assert "soft deleted successfully" in result["message"]
             assert result["id"] == str(mock_entity_id)
-            mock_get_org_id.assert_called_once_with(mock_user_id)
-            mock_verify_role.assert_called_once()
+            mock_verify_cfia_admin.assert_called_once_with(mock_user_id)
             mock_session.commit.assert_called_once()
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
-@patch("app.service.base_crud.RbacService.verify_user_has_role")
+@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
 @patch("app.service.base_crud.sessionmanager.get_session")
 async def test_delete_not_found(
-    mock_get_session, mock_verify_role, mock_get_org_id, mock_user_id, mock_entity_id
+    mock_get_session, mock_verify_cfia_admin, mock_user_id, mock_entity_id
 ):
     """Test delete returns 404 when entity not found."""
     # Arrange
-    mock_get_org_id.return_value = uuid4()
-    mock_verify_role.return_value = None
+    cfia_org_id = uuid4()
+    mock_verify_cfia_admin.return_value = cfia_org_id
     mock_session = AsyncMock()
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
@@ -497,20 +485,18 @@ async def test_delete_not_found(
 
 
 @pytest.mark.asyncio
-@patch("app.service.base_crud.RbacService.get_user_organization_id")
-@patch("app.service.base_crud.RbacService.verify_user_has_role")
-async def test_delete_rbac_failure(mock_verify_role, mock_get_org_id, mock_user_id, mock_entity_id):
+@patch("app.service.base_crud.RbacService.verify_user_is_cfia_admin")
+async def test_delete_rbac_failure(mock_verify_cfia_admin, mock_user_id, mock_entity_id):
     """Test delete fails when user is not admin."""
     # Arrange
-    mock_get_org_id.return_value = uuid4()
-    mock_verify_role.side_effect = HTTPException(status_code=403, detail="Forbidden")
+    mock_verify_cfia_admin.side_effect = HTTPException(status_code=403, detail="Forbidden")
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc_info:
         await MockEntityService.delete(mock_user_id, mock_entity_id)
 
     assert exc_info.value.status_code == 403
-    mock_get_org_id.assert_called_once_with(mock_user_id)
+    mock_verify_cfia_admin.assert_called_once_with(mock_user_id)
 
 
 # Tests for BaseCRUDDataService

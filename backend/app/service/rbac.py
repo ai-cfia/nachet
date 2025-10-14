@@ -1,8 +1,11 @@
 from uuid import UUID
 from typing import Optional
 from fastapi import HTTPException, status, Request
+from sqlalchemy import select
 from app.db.utils import sessionmanager
+from app.db.model import RbacUserRole
 from app.datastore import RbacDataService, OrganizationDataService
+from app.service.constants import ROLE_ADMIN, get_cfia_admin_role_id
 
 
 class RbacService:
@@ -136,3 +139,78 @@ class RbacService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Access denied to {method} {path_template}",
             )
+
+    @staticmethod
+    async def is_user_cfia_admin(user_id: UUID) -> bool:
+        """
+        Check if user is CFIA admin (has cross-organization authority).
+
+        Uses direct database lookup in rbac_user_role table with CFIA admin role ID
+        for efficient single-query verification.
+
+        Args:
+            user_id: The user's UUID
+
+        Returns:
+            True if user is CFIA admin, False otherwise
+        """
+        try:
+            cfia_admin_role_id = get_cfia_admin_role_id()
+
+            # Single query: check if user has CFIA admin role
+            async with sessionmanager.get_session() as session:
+                stmt = select(RbacUserRole).where(
+                    RbacUserRole.user_id == user_id,
+                    RbacUserRole.role_id == cfia_admin_role_id,
+                    RbacUserRole.active == True,  # noqa: E712
+                )
+                result = await session.execute(stmt)
+                user_role = result.scalar_one_or_none()
+
+            return user_role is not None
+        except Exception:
+            return False
+
+    @staticmethod
+    async def verify_user_is_cfia_admin(user_id: UUID) -> None:
+        """
+        Verify user is CFIA admin (has cross-organization authority).
+
+        CFIA admins have authority to create/update/delete resources across
+        all organizations in the system.
+
+        Args:
+            user_id: The user's UUID
+
+        Raises:
+            HTTPException: 403 if user is not CFIA admin
+        """
+        if not await RbacService.is_user_cfia_admin(user_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This operation requires CFIA administrator authority",
+            )
+
+    @staticmethod
+    async def verify_user_is_org_admin(user_id: UUID) -> UUID:
+        """
+        Verify user is admin in their organization.
+
+        Unlike CFIA admin, org admins only have authority within their own
+        organization's data (org-scoped authority).
+
+        Args:
+            user_id: The user's UUID
+
+        Returns:
+            UUID of user's organization
+
+        Raises:
+            HTTPException: 403 if user is not admin in their org
+        """
+        user_org_id = await RbacService.get_user_organization_id(user_id)
+
+        # Verify user has "admin" role in their org
+        await RbacService.verify_user_has_role(user_id, ROLE_ADMIN, user_org_id)
+
+        return user_org_id

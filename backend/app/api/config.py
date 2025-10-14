@@ -72,6 +72,8 @@ class Settings(BaseSettings):
 
     # rbac settings
     cfia_organization_id: str | None = None
+    cfia_admin_role_id: str | None = None
+    cfia_user_role_id: str | None = None
 
     @computed_field
     @property

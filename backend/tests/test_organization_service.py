@@ -48,20 +48,13 @@ class TestOrganizationServiceGetAll:
         org2.date_created = datetime.now()
         org2.active = True
 
-        # Mock RbacService methods
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -91,26 +84,17 @@ class TestOrganizationServiceGetAll:
     async def test_get_all_unauthorized_non_admin(self, monkeypatch):
         """Non-admin users should get 403."""
         user_id = uuid4()
-        user_org_id = uuid4()
 
-        # Mock RbacService methods
-        async def mock_get_org_id(uid):
-            return user_org_id
-
-        async def mock_verify_role(uid, role, org_id):
-            # User is NOT cfia_admin - raise 403
+        # Mock RbacService - user is NOT CFIA admin
+        async def mock_verify_cfia_admin(uid):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"User does not have required role: {role}",
+                detail="This operation requires CFIA administrator authority",
             )
 
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Should raise 403
@@ -118,7 +102,6 @@ class TestOrganizationServiceGetAll:
             await OrganizationService.get_all(user_id)
 
         assert exc_info.value.status_code == 403
-        assert "role" in exc_info.value.detail
 
 
 class TestOrganizationServiceGetById:
@@ -150,20 +133,13 @@ class TestOrganizationServiceGetById:
         org.active = True
         org.rbac_roles = [role]
 
-        # Mock RbacService methods
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -198,20 +174,13 @@ class TestOrganizationServiceGetById:
         user_org_id = uuid4()
         org_id = uuid4()
 
-        # Mock RbacService methods
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -266,20 +235,13 @@ class TestOrganizationServiceCreate:
         mock_session.refresh = AsyncMock()
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock RbacService
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock data service
@@ -325,26 +287,17 @@ class TestOrganizationServiceCreate:
     async def test_create_unauthorized(self, monkeypatch):
         """Non-admin users should not be able to create organizations."""
         user_id = uuid4()
-        user_org_id = uuid4()
 
-        # Mock RbacService methods
-        async def mock_get_org_id(uid):
-            return user_org_id
-
-        async def mock_verify_role(uid, role, org_id):
-            # User is NOT cfia_admin - raise 403
+        # Mock RbacService - user is NOT CFIA admin, raise 403
+        async def mock_verify_cfia_admin(uid):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"User does not have required role: {role}",
+                detail="User is not a CFIA administrator",
             )
 
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Should raise 403
@@ -379,20 +332,13 @@ class TestOrganizationServiceUpdate:
         updated_org.date_created = datetime.now()
         updated_org.active = True
 
-        # Mock RbacService methods
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -432,20 +378,13 @@ class TestOrganizationServiceUpdate:
         user_org_id = uuid4()
         org_id = uuid4()
 
-        # Mock RbacService methods
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -486,20 +425,13 @@ class TestOrganizationServiceDelete:
         deleted_org.id = org_id
         deleted_org.active = False
 
-        # Mock RbacService methods
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -534,20 +466,13 @@ class TestOrganizationServiceDelete:
         user_org_id = uuid4()
         org_id = uuid4()
 
-        # Mock RbacService methods
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
             return user_org_id
 
-        async def mock_verify_role(uid, role, org_id):
-            pass  # User is cfia_admin
-
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Mock session
@@ -574,27 +499,18 @@ class TestOrganizationServiceDelete:
     async def test_delete_unauthorized(self, monkeypatch):
         """Non-admin users should not be able to delete organizations."""
         user_id = uuid4()
-        user_org_id = uuid4()
         org_id = uuid4()
 
-        # Mock RbacService methods
-        async def mock_get_org_id(uid):
-            return user_org_id
-
-        async def mock_verify_role(uid, role, org_id):
-            # User is NOT cfia_admin - raise 403
+        # Mock RbacService - user is NOT CFIA admin, raise 403
+        async def mock_verify_cfia_admin(uid):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"User does not have required role: {role}",
+                detail="User is not a CFIA administrator",
             )
 
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
-        )
-        monkeypatch.setattr(
-            "app.service.organization.RbacService.verify_user_has_role",
-            mock_verify_role,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Should raise 403
@@ -612,16 +528,16 @@ class TestOrganizationServiceAuthorization:
         """Users not associated with an organization should get 403."""
         user_id = uuid4()
 
-        # Mock RbacService - user has no organization
-        async def mock_get_org_id(uid):
+        # Mock RbacService - user is not CFIA admin
+        async def mock_verify_cfia_admin(uid):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="User not associated with an organization",
+                detail="User is not a CFIA administrator",
             )
 
         monkeypatch.setattr(
-            "app.service.organization.RbacService.get_user_organization_id",
-            mock_get_org_id,
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
         )
 
         # Should raise 403
@@ -629,7 +545,7 @@ class TestOrganizationServiceAuthorization:
             await OrganizationService.get_all(user_id)
 
         assert exc_info.value.status_code == 403
-        assert "not associated with an organization" in exc_info.value.detail
+        assert "not a CFIA administrator" in exc_info.value.detail
 
 
 if __name__ == "__main__":
