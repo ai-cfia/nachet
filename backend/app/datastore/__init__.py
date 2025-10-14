@@ -1,7 +1,7 @@
+from .rbac import RbacDataService
 from .pipeline import PipelineDataService
 from .seed import SeedDataService
 from .directory import DirectoryDataService
-from .rbac import RbacDataService
 from .organization import OrganizationDataService
 from .device import (
     DeviceBrandDataService,
@@ -11,10 +11,10 @@ from .device import (
 from .model import ModelDataService
 
 __all__ = [
+    "RbacDataService",
     "PipelineDataService",
     "SeedDataService",
     "DirectoryDataService",
-    "RbacDataService",
     "OrganizationDataService",
     "DeviceBrandDataService",
     "DeviceModelDataService",
