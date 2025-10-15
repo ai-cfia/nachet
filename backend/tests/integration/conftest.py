@@ -9,7 +9,6 @@ import os
 import pytest
 import pytest_asyncio
 from uuid import UUID
-from datetime import datetime, timezone
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 

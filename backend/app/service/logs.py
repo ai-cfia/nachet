@@ -112,6 +112,13 @@ class LogService:
         user_id_var.set(user_id)
 
     @staticmethod
+    def _sanitize_error_message(error: Exception) -> str:
+        """Sanitize error messages to prevent format string interpretation by the logger."""
+        error_str = str(error)
+        # Escape % characters to prevent logger from interpreting them as format placeholders
+        return error_str.replace('%', '%%')
+
+    @staticmethod
     def custom_formatter(record):
         """Custom formatter for adding context to log records"""
         record["extra"]["correlation_id"] = LogService.get_correlation_id()
@@ -351,7 +358,7 @@ class LogService:
             }
 
         except Exception as e:
-            logger.error(f"Error processing frontend log: {str(e)}")
+            logger.error(f"Error processing frontend log: {cls._sanitize_error_message(e)}")
             return {
                 "status": "error",
                 "error": "Failed to process log"
