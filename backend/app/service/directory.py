@@ -114,7 +114,7 @@ class DirectoryService(BaseCRUDService[Folder]):
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Failed to retrieve directories for user {user_id}: {str(e)}")
+            logger.error(f"Failed to retrieve directories for user {user_id}: {DirectoryService._sanitize_error_message(e)}")
             raise DirectoryNotFoundError(
                 f"Failed to retrieve directories for user {user_id}"
             )
@@ -216,11 +216,11 @@ class DirectoryService(BaseCRUDService[Folder]):
         except HTTPException:
             raise
         except ValueError as e:
-            logger.error(f"Directory {directory_id} not found: {str(e)}")
+            logger.error(f"Directory {directory_id} not found: {DirectoryService._sanitize_error_message(e)}")
             raise DirectoryNotFoundError(f"Directory {directory_id} not found")
         except Exception as e:
             logger.error(
-                f"Failed to rename directory {directory_id} to '{new_name}': {str(e)}"
+                f"Failed to rename directory {directory_id} to '{new_name}': {DirectoryService._sanitize_error_message(e)}"
             )
             raise DirectoryUpdateError(
                 f"Failed to rename directory {directory_id} to '{new_name}'"

@@ -49,6 +49,28 @@ class BaseCRUDService(Generic[T]):
             cls._logger = LogService.get_logger()
         return cls._logger
 
+    @staticmethod
+    def _sanitize_error_message(error: Exception) -> str:
+        """
+        Sanitize exception message for safe logging.
+
+        SQLAlchemy error messages often contain SQL with parameter placeholders
+        like %(param_name)s which can be misinterpreted as format strings by
+        loggers, causing KeyError when the logger tries to format them.
+
+        This method escapes % characters to prevent format string interpretation.
+
+        Args:
+            error: The exception to sanitize
+
+        Returns:
+            Sanitized error message safe for logging
+        """
+        error_str = str(error)
+        # Escape % to prevent format string interpretation
+        # %(param)s becomes %%(param)s which is treated as literal %(param)s
+        return error_str.replace('%', '%%')
+
     @classmethod
     def get_entity_name(cls) -> str:
         """Return the entity name for error messages (e.g., 'Model', 'Pipeline')."""
@@ -166,7 +188,7 @@ class BaseCRUDService(Generic[T]):
         except Exception as e:
             logger = cls._get_logger()
             logger.error(
-                f"Failed to retrieve {entity_name_plural}: {str(e)}",
+                f"Failed to retrieve {entity_name_plural}: {cls._sanitize_error_message(e)}",
                 user_id=str(user_id),
                 offset=offset,
                 limit=limit,
@@ -223,7 +245,7 @@ class BaseCRUDService(Generic[T]):
         except not_found_exc as e:
             logger = cls._get_logger()
             logger.warning(
-                f"{entity_name} not found: {str(e)}",
+                f"{entity_name} not found: {cls._sanitize_error_message(e)}",
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -231,7 +253,7 @@ class BaseCRUDService(Generic[T]):
         except Exception as e:
             logger = cls._get_logger()
             logger.error(
-                f"Failed to retrieve {entity_name_lower}: {str(e)}",
+                f"Failed to retrieve {entity_name_lower}: {cls._sanitize_error_message(e)}",
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -292,7 +314,7 @@ class BaseCRUDService(Generic[T]):
         except creation_exc as e:
             logger = cls._get_logger()
             logger.error(
-                f"Failed to create {entity_name_lower}: {str(e)}",
+                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
                 user_id=str(user_id),
             )
             logger.debug(
@@ -306,7 +328,7 @@ class BaseCRUDService(Generic[T]):
         except Exception as e:
             logger = cls._get_logger()
             logger.error(
-                f"Failed to create {entity_name_lower}: {str(e)}",
+                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
                 user_id=str(user_id),
             )
             logger.debug(
@@ -372,7 +394,7 @@ class BaseCRUDService(Generic[T]):
         except not_found_exc as e:
             logger = cls._get_logger()
             logger.warning(
-                f"{entity_name} not found for update: {str(e)}",
+                f"{entity_name} not found for update: {cls._sanitize_error_message(e)}",
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -380,7 +402,7 @@ class BaseCRUDService(Generic[T]):
         except update_exc as e:
             logger = cls._get_logger()
             logger.error(
-                f"Failed to update {entity_name_lower}: {str(e)}",
+                f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}",
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -395,7 +417,7 @@ class BaseCRUDService(Generic[T]):
         except Exception as e:
             logger = cls._get_logger()
             logger.error(
-                f"Failed to update {entity_name_lower}: {str(e)}",
+                f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}",
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -463,7 +485,7 @@ class BaseCRUDService(Generic[T]):
         except not_found_exc as e:
             logger = cls._get_logger()
             logger.warning(
-                f"{entity_name} not found for deletion: {str(e)}",
+                f"{entity_name} not found for deletion: {cls._sanitize_error_message(e)}",
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -471,7 +493,7 @@ class BaseCRUDService(Generic[T]):
         except deletion_exc as e:
             logger = cls._get_logger()
             logger.error(
-                f"Failed to delete {entity_name_lower}: {str(e)}",
+                f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}",
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -486,7 +508,7 @@ class BaseCRUDService(Generic[T]):
         except Exception as e:
             logger = cls._get_logger()
             logger.error(
-                f"Failed to delete {entity_name_lower}: {str(e)}",
+                f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}",
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
