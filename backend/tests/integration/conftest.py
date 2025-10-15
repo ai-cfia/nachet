@@ -281,3 +281,29 @@ async def cleanup_test_organizations(integration_db_session: AsyncSession):
         )
         await integration_db_session.execute(org_stmt)
         await integration_db_session.flush()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def cleanup_test_users(integration_db_session: AsyncSession):
+    """
+    Cleanup fixture to track and remove test users.
+
+    Users may have foreign key dependencies from folders, annotations, and objects.
+    This fixture performs hard delete of users. If foreign key constraints exist,
+    the test should handle dependent entity cleanup first, or database cascade
+    rules will handle it.
+
+    Yields a list that tests can append user IDs to for cleanup.
+    """
+    created_user_ids = []
+
+    yield created_user_ids
+
+    # Cleanup: hard delete test users
+    if created_user_ids:
+        from app.db.model import Users
+        from sqlalchemy import delete
+
+        stmt = delete(Users).where(Users.id.in_(created_user_ids))
+        await integration_db_session.execute(stmt)
+        await integration_db_session.flush()

@@ -5,9 +5,14 @@ Provides service layer for Users operations with RBAC, logging, and error handli
 """
 
 from typing import Dict, Any, Type
+from uuid import UUID
+import traceback
+
+from fastapi import HTTPException, status
 
 from app.service.base_crud import BaseCRUDService
 from app.db.model import Users
+from app.db.utils import sessionmanager
 from app.exceptions import (
     UserNotFoundError,
     UserCreationError,
@@ -85,3 +90,83 @@ class UserService(BaseCRUDService[Users]):
     def get_deletion_exception(cls) -> Type[Exception]:
         """Return User-specific DeletionError exception class."""
         return UserDeletionError
+
+    @classmethod
+    async def create(cls, user_id: UUID, **kwargs) -> Dict[str, Any]:
+        """
+        Create a new user (requires CFIA admin).
+
+        This override eagerly loads the organization_ref relationship to prevent
+        greenlet errors when serializing the entity outside the session context.
+
+        Args:
+            user_id: UUID of the requesting user
+            **kwargs: User attributes (email, organization, etc.)
+
+        Returns:
+            Dictionary representation of the created user
+
+        Raises:
+            HTTPException: 401 if not authenticated, 403 if not admin, 500 on errors
+        """
+        entity_name = cls.get_entity_name()
+        entity_name_lower = entity_name.lower()
+        creation_exc = cls.get_creation_exception()
+
+        try:
+            # RBAC: Only CFIA admin can create
+            # Lazy import to avoid circular dependency
+            from app.service.rbac import RbacService
+
+            await RbacService.verify_user_is_cfia_admin(user_id)
+
+            async with sessionmanager.get_session() as session:
+                data_service_class = cls.get_data_service_class()
+                data_service = data_service_class(session)
+                user = await data_service.create(**kwargs)
+
+                # Eagerly load organization_ref to avoid greenlet errors in serialize_entity
+                await session.refresh(user, attribute_names=["organization_ref"])
+
+                result = cls.serialize_entity(user)
+                await session.commit()
+
+                logger = cls._get_logger()
+                logger.info(
+                    f"{entity_name} created successfully",
+                    user_id=str(user_id),
+                    entity_id=str(user.id),
+                )
+
+                return result
+
+        except HTTPException:
+            raise
+        except creation_exc as e:
+            logger = cls._get_logger()
+            logger.error(
+                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                user_id=str(user_id),
+            )
+            logger.debug(
+                f"Traceback for failed create {entity_name_lower}",
+                traceback=traceback.format_exc(),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create {entity_name_lower}",
+            )
+        except Exception as e:
+            logger = cls._get_logger()
+            logger.error(
+                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                user_id=str(user_id),
+            )
+            logger.debug(
+                f"Traceback for failed create {entity_name_lower}",
+                traceback=traceback.format_exc(),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create {entity_name_lower}",
+            )
