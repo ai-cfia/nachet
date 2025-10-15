@@ -7,19 +7,19 @@ permissions:
   actions: write
 
 on:
-  pull_request:
+  # Trigger after backend and frontend tests complete successfully
+  workflow_run:
+    workflows:
+      - "backend tests"
+      - "frontend tests"
     types:
-      - opened
-      - synchronize
-    paths:
-      - "backend/**"
-      - "frontend/**"
-  push:
+      - completed
     branches:
       - main
-    paths:
-      - "backend/**"
-      - "frontend/**"
+      - "**"  # All branches for PRs
+  
+  # Keep manual trigger option
+  workflow_dispatch:
 
 defaults:
   run:
@@ -27,9 +27,15 @@ defaults:
 
 jobs:
   end-to-end-test:
+    # Only run if all prerequisite workflows succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     environment: e2e-test-env
     timeout-minutes: 15
+    # Prevent duplicate runs for the same PR
+    concurrency:
+      group: e2e-${{ github.event.workflow_run.head_branch || github.ref }}
+      cancel-in-progress: true
 
     services:
       nachet-db:

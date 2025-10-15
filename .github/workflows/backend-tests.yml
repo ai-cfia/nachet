@@ -7,19 +7,15 @@ permissions:
   actions: write
 
 on:
-  pull_request:
+  # Trigger after backend lint complete successfully
+  workflow_run:
+    workflows:
+      - "backend lint"
     types:
-      - opened
-      - synchronize
-    paths:
-      - "backend/**"
-      - ".github/workflows/backend-*"
-  push:
+      - completed
     branches:
       - main
-    paths:
-      - "backend/**"
-      - ".github/workflows/backend-*"
+      - "**" # All branches for PRs
 
 defaults:
   run:
