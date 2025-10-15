@@ -51,6 +51,34 @@ class OrganizationDataService(BaseCRUDDataService[Organization]):
         result = await self.session.execute(query)
         return result.scalar_one_or_none() is not None
 
+    async def user_has_specific_role(
+        self, user_id: UUID, role_id: UUID, organization_id: UUID
+    ) -> bool:
+        """
+        Check if a user has a specific role ID in an organization.
+
+        Args:
+            user_id: The user's UUID
+            role_id: The specific role UUID to check
+            organization_id: The organization UUID
+
+        Returns:
+            True if user has the specific role in the organization, False otherwise
+        """
+        query = (
+            select(RbacUserRole)
+            .join(RbacRole, RbacUserRole.role_id == RbacRole.id)
+            .join(Users, RbacUserRole.user_id == Users.id)
+            .where(Users.id == user_id)
+            .where(RbacRole.id == role_id)
+            .where(RbacRole.organization_id == organization_id)
+            .where(Users.active.is_(True))
+            .where(RbacUserRole.active.is_(True))
+            .where(RbacRole.active.is_(True))
+        )
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none() is not None
+
     async def get_user_organization_id(self, user_id: UUID) -> Optional[UUID]:
         """
         Get the organization ID for a user.

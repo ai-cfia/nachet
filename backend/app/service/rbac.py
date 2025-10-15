@@ -257,6 +257,107 @@ class RbacService:
 
         return user_org_id
 
+    @staticmethod
+    async def verify_user_has_entity_access(
+        user_id: UUID, 
+        entity_org_user_role_id: Optional[UUID], 
+        entity_org_admin_role_id: Optional[UUID]
+    ) -> bool:
+        """
+        Verify if user has access to an entity based on entity's role fields.
+        
+        User has access if they have:
+        - CFIA admin role (cross-organization authority), OR
+        - Organization admin role matching entity's org_admin_role_id, OR  
+        - Organization user role matching entity's org_user_role_id
+        
+        Args:
+            user_id: The user's UUID
+            entity_org_user_role_id: Entity's org_user_role_id field
+            entity_org_admin_role_id: Entity's org_admin_role_id field
+            
+        Returns:
+            True if user has access, False otherwise
+        """
+        try:
+            # Check if user is CFIA admin (highest authority)
+            if await RbacService.is_user_cfia_admin(user_id):
+                return True
+                
+            # Get user's roles in their organization
+            async with sessionmanager.get_session() as session:
+                from app.datastore import OrganizationDataService
+                
+                # Get user's organization
+                user_org_id = await OrganizationDataService(session).get_user_organization_id(user_id)
+                if not user_org_id:
+                    return False
+                
+                # Check if user has admin role matching entity's org_admin_role_id
+                if entity_org_admin_role_id:
+                    has_admin_role = await OrganizationDataService(session).user_has_specific_role(
+                        user_id, entity_org_admin_role_id, user_org_id
+                    )
+                    if has_admin_role:
+                        return True
+                
+                # Check if user has user role matching entity's org_user_role_id  
+                if entity_org_user_role_id:
+                    has_user_role = await OrganizationDataService(session).user_has_specific_role(
+                        user_id, entity_org_user_role_id, user_org_id
+                    )
+                    if has_user_role:
+                        return True
+                        
+                return False
+                
+        except Exception:
+            return False
+
+    @staticmethod
+    async def verify_user_has_entity_admin_access(
+        user_id: UUID,
+        entity_org_admin_role_id: Optional[UUID]
+    ) -> bool:
+        """
+        Verify if user has admin-level access to an entity.
+        
+        User has admin access if they have:
+        - CFIA admin role (cross-organization authority), OR
+        - Organization admin role matching entity's org_admin_role_id
+        
+        Args:
+            user_id: The user's UUID
+            entity_org_admin_role_id: Entity's org_admin_role_id field
+            
+        Returns:
+            True if user has admin access, False otherwise
+        """
+        try:
+            # Check if user is CFIA admin (highest authority)
+            if await RbacService.is_user_cfia_admin(user_id):
+                return True
+                
+            # Check if user has admin role matching entity's org_admin_role_id
+            if entity_org_admin_role_id:
+                async with sessionmanager.get_session() as session:
+                    from app.datastore import OrganizationDataService
+                    
+                    # Get user's organization
+                    user_org_id = await OrganizationDataService(session).get_user_organization_id(user_id)
+                    if not user_org_id:
+                        return False
+                    
+                    has_admin_role = await OrganizationDataService(session).user_has_specific_role(
+                        user_id, entity_org_admin_role_id, user_org_id
+                    )
+                    return has_admin_role
+                    
+            return False
+            
+        except Exception:
+            return False
+
 
 # ============================================================================
 # CRUD Services for RBAC entities
