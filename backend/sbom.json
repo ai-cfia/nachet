@@ -2779,8 +2779,8 @@
       "version": "25.0"
     },
     {
-      "bom-ref": "pillow==11.3.0",
-      "description": "Python Imaging Library (Fork)",
+      "bom-ref": "pillow==12.0.0",
+      "description": "Python Imaging Library (fork)",
       "externalReferences": [
         {
           "comment": "from packaging metadata Project-URL: Documentation",
@@ -2827,9 +2827,9 @@
         }
       ],
       "name": "pillow",
-      "purl": "pkg:pypi/pillow@11.3.0",
+      "purl": "pkg:pypi/pillow@12.0.0",
       "type": "library",
-      "version": "11.3.0"
+      "version": "12.0.0"
     },
     {
       "bom-ref": "pip-requirements-parser==32.0.1",
@@ -5315,10 +5315,9 @@
         "defusedxml==0.7.1",
         "packaging==25.0",
         "pytest-cov==6.2.1",
-        "pytest==8.4.1",
-        "typing_extensions==4.14.1"
+        "pytest==8.4.1"
       ],
-      "ref": "pillow==11.3.0"
+      "ref": "pillow==12.0.0"
     },
     {
       "dependsOn": [
@@ -5517,7 +5516,7 @@
         "opentelemetry-exporter-otlp-proto-grpc==1.37.0",
         "opentelemetry-exporter-otlp-proto-http==1.37.0",
         "opentelemetry-sdk==1.37.0",
-        "pillow==11.3.0",
+        "pillow==12.0.0",
         "psycopg-pool==3.2.6",
         "psycopg==3.2.10",
         "pydantic-settings==2.10.1",
