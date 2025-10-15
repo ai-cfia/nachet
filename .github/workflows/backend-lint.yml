@@ -60,7 +60,6 @@ jobs:
     with:
       working-directory: backend
   uv-lock-check:
-    needs: backend-lint
     name: Check uv.lock is up to date
     runs-on: ubuntu-latest
     steps:
@@ -84,7 +83,6 @@ jobs:
         working-directory: backend
 
   uv-sbom-check:
-    needs: uv-lock-check
     name: Check SBOM is up to date
     uses: ./.github/workflows/uv-sbom-check.yml
     secrets: inherit
