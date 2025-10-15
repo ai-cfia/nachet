@@ -58,6 +58,72 @@ set -a; source .env.test.local; set +a; uv run pytest tests/test_feedback.py::te
 set -a; source .env.test.local; set +a; uv run pytest tests/ --cov=. --cov-report=term-missing
 ```
 
+#### Run Integration Tests Only
+
+Integration tests use real database connections without mocks. They are marked with `@pytest.mark.integration`.
+
+**Prerequisites:**
+
+- PostgreSQL server running and accessible
+- Environment variables configured in `.env.test.local`
+
+**Database setup is AUTOMATIC!** The test fixtures will automatically detect if the database schema is missing and run `app/db/db_setup_test.py` to set it up for you. You don't need to manually run any setup scripts.
+
+**Running integration tests:**
+
+```bash
+# Run all integration tests (database auto-setup on first run)
+set -a; source .env.test.local; set +a; uv run pytest tests/integration/ -v
+
+# Run specific integration test file
+set -a; source .env.test.local; set +a; uv run pytest tests/integration/test_seed_integration.py -v
+
+# Run integration tests with markers
+set -a; source .env.test.local; set +a; uv run pytest -m integration -v
+
+# Skip integration tests (run only unit tests)
+set -a; source .env.test.local; set +a; uv run pytest -m "not integration" -v
+```
+
+**Manual setup (optional):** If you prefer to set up the database manually:
+
+```bash
+cd backend
+python app/db/db_setup_test.py
+```
+
+### Test Types
+
+#### Unit Tests
+
+Unit tests use mocks and stubs to test components in isolation:
+
+- Located in `tests/test_*.py`
+- Fast execution
+- Mock database, external services, and dependencies
+- Examples: `test_seed_service.py`, `test_model_service.py`
+
+#### Integration Tests
+
+Integration tests verify the full stack without mocks:
+
+- Located in `tests/integration/test_*_integration.py`
+- Use real PostgreSQL database connections
+- Test complete workflows: Service → DataService → SQLAlchemy → PostgreSQL
+- Slower execution but higher confidence
+- Examples: `test_seed_integration.py`
+
+**Key differences:**
+
+| Aspect | Unit Tests | Integration Tests |
+|--------|-----------|-------------------|
+| **Database** | Mocked | Real PostgreSQL |
+| **Sessions** | Mock AsyncSession | Real sessionmanager |
+| **Speed** | Fast (milliseconds) | Slower (seconds) |
+| **Isolation** | Complete | Transaction-based |
+| **Dependencies** | All mocked | Only external APIs mocked |
+| **Confidence** | Lower | Higher |
+
 ### Test Environment Configuration
 
 The `.env.test.local` file contains required environment variables:
