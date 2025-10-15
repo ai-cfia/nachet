@@ -7,7 +7,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.orm import joinedload, selectinload
 
 # Import BaseCRUDDataService directly to avoid circular import
-from app.service.base_crud import BaseCRUDDataService
+from app.datastore.base_crud import BaseCRUDDataService
 from app.db.model import Pipeline, Model, PipelineModel, PipelineDefault
 
 

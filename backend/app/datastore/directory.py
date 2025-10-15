@@ -3,7 +3,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from app.db.model import Folder, Picture
-from app.service.base_crud import BaseCRUDDataService
+from app.datastore.base_crud import BaseCRUDDataService
 
 
 class DirectoryDataService(BaseCRUDDataService[Folder]):
