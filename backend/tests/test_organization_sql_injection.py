@@ -63,7 +63,7 @@ class TestOrganizationServiceSQLInjection:
                 async def commit(self):
                     pass
 
-                async def refresh(self, obj):
+                async def refresh(self, obj, attribute_names=None):
                     pass
 
             class MockDataService:
@@ -147,7 +147,7 @@ class TestOrganizationServiceSQLInjection:
             async def commit(self):
                 pass
 
-            async def refresh(self, obj):
+            async def refresh(self, obj, attribute_names=None):
                 pass
 
         class MockDataService:
@@ -227,7 +227,7 @@ class TestOrganizationServiceSQLInjection:
             async def commit(self):
                 pass
 
-            async def refresh(self, obj):
+            async def refresh(self, obj, attribute_names=None):
                 pass
 
         class MockDataService:
@@ -420,7 +420,7 @@ class TestOrganizationServiceSQLInjection:
             async def commit(self):
                 pass
 
-            async def refresh(self, obj):
+            async def refresh(self, obj, attribute_names=None):
                 pass
 
         class MockDataService:
