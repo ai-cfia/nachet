@@ -397,6 +397,7 @@ class PipelineModelService(BaseCRUDService[PipelineModel]):
             "pipeline_name": entity.pipeline.name if entity.pipeline else None,
             "model_id": str(entity.model_id),
             "model_name": entity.model.name if entity.model else None,
+            "step": entity.step,
             "active": entity.active,
             "date_created": entity.date_created.isoformat(),
         }

@@ -46,6 +46,7 @@ class ImageObjectsService(BaseCRUDService[Object]):
             "user_id": str(entity.user_id),
             "user_email": entity.user.email if entity.user else None,
             "org_admin_id": str(entity.org_admin_id),
+            "org_user_role_id": str(entity.org_user_role_id) if entity.org_user_role_id else None,
             "inference_id": str(entity.inference_id),
             "picture_id": str(entity.picture_id),
             "pipeline_id": str(entity.pipeline_id),

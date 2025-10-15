@@ -46,6 +46,7 @@ class DirectoryService(BaseCRUDService[Folder]):
             "id": str(entity.id),
             "user_id": str(entity.user_id),
             "org_admin_id": str(entity.org_admin_id),
+            "org_user_role_id": str(entity.org_user_role_id) if entity.org_user_role_id else None,
             "name": entity.name,
             "folder_prefix": entity.folder_prefix,
             "description": entity.description,
@@ -123,6 +124,7 @@ class DirectoryService(BaseCRUDService[Folder]):
     async def create_directory(
         user_id: UUID,
         org_admin_id: UUID,
+        org_user_role_id: UUID,
         name: str,
         folder_prefix: str,
         description: str = "",
@@ -136,6 +138,7 @@ class DirectoryService(BaseCRUDService[Folder]):
         Args:
             user_id: UUID of the user creating the directory
             org_admin_id: UUID of the organization admin role
+            org_user_role_id: UUID of the organization user role
             name: Name of the directory
             folder_prefix: Folder prefix (path) for the directory
             description: Optional description of the directory
@@ -153,7 +156,7 @@ class DirectoryService(BaseCRUDService[Folder]):
             async with sessionmanager.get_session() as session:
                 data_service = DirectoryDataService(session)
                 new_directory_id = await data_service.create_directory(
-                    str(user_id), str(org_admin_id), name, folder_prefix, description
+                    str(user_id), str(org_admin_id), str(org_user_role_id), name, folder_prefix, description
                 )
                 await session.commit()
 

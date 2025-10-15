@@ -47,6 +47,7 @@ class ImageService(BaseCRUDService[Picture]):
             "folder_name": entity.folder.name if entity.folder else None,
             "user_id": str(entity.user_id),
             "org_admin_id": str(entity.org_admin_id),
+            "org_user_role_id": str(entity.org_user_role_id) if entity.org_user_role_id else None,
             "active": entity.active,
             "date_created": entity.date_created.isoformat() if entity.date_created else None,
             "width": entity.width,

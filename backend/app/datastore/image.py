@@ -26,8 +26,10 @@ class ImageDataService(BaseCRUDDataService[Picture]):
         Loads:
         - folder: The folder containing this picture
         - org_admin_role: The organization admin role
+        - org_user_role: The organization user role
         """
         return [
             selectinload(Picture.folder),
             selectinload(Picture.org_admin_role),
+            selectinload(Picture.org_user_role),
         ]

@@ -29,10 +29,12 @@ class AnnotationDataService(BaseCRUDDataService[Annotation]):
             - user: The user who created the annotation
             - pipeline: The pipeline used for annotation
             - org_admin_role: The organization admin role
+            - org_user_role: The organization user role
         """
         return [
             selectinload(Annotation.picture),
             selectinload(Annotation.user),
             selectinload(Annotation.pipeline),
             selectinload(Annotation.org_admin_role),
+            selectinload(Annotation.org_user_role),
         ]

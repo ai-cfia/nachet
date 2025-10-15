@@ -15,8 +15,20 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
         return Folder
 
     def get_query_options(self) -> list:
-        """Load pictures relationship."""
-        return [selectinload(Folder.pictures)]
+        """
+        Load relationships for all Folder queries.
+        
+        Returns:
+            List of SQLAlchemy query options for loading relationships:
+            - pictures: The pictures in this folder
+            - org_admin_role: The organization admin role
+            - org_user_role: The organization user role
+        """
+        return [
+            selectinload(Folder.pictures),
+            selectinload(Folder.org_admin_role),
+            selectinload(Folder.org_user_role),
+        ]
 
     # Custom methods for directory-specific operations
     async def get_user_directories_count(self, user_id: str) -> List[Folder]:
@@ -49,6 +61,7 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
         self,
         user_id: str,
         org_admin_id: str,
+        org_user_role_id: str,
         name: str,
         folder_prefix: str,
         description: str = "",
@@ -58,6 +71,8 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
 
         Args:
             user_id: The ID of the user creating the directory.
+            org_admin_id: The ID of the organization admin role.
+            org_user_role_id: The ID of the organization user role.
             name: The name of the directory.
             folder_prefix: The folder prefix (path) for the directory.
             description: Optional description of the directory.
@@ -68,6 +83,7 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
         new_directory = Folder(
             user_id=user_id,
             org_admin_id=org_admin_id,
+            org_user_role_id=org_user_role_id,
             name=name,
             folder_prefix=folder_prefix,
             description=description,
