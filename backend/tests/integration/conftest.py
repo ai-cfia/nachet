@@ -246,3 +246,38 @@ async def cleanup_test_seeds(integration_db_session: AsyncSession):
         stmt = delete(Seed).where(Seed.id.in_(created_seed_ids))
         await integration_db_session.execute(stmt)
         await integration_db_session.flush()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def cleanup_test_organizations(integration_db_session: AsyncSession):
+    """
+    Cleanup fixture to track and remove test organizations and their RBAC roles.
+
+    Organizations have associated RBAC roles that must be deleted first due to
+    foreign key constraints. This fixture handles cleanup in the correct order:
+    1. Delete RBAC roles associated with the organization
+    2. Delete the organization itself
+
+    Yields a list that tests can append organization IDs to for cleanup.
+    """
+    created_organization_ids = []
+
+    yield created_organization_ids
+
+    # Cleanup: hard delete organizations and their roles
+    if created_organization_ids:
+        from app.db.model import Organization, RbacRole
+        from sqlalchemy import delete
+
+        # First delete RBAC roles associated with these organizations
+        role_stmt = delete(RbacRole).where(
+            RbacRole.organization_id.in_(created_organization_ids)
+        )
+        await integration_db_session.execute(role_stmt)
+
+        # Then delete the organizations
+        org_stmt = delete(Organization).where(
+            Organization.id.in_(created_organization_ids)
+        )
+        await integration_db_session.execute(org_stmt)
+        await integration_db_session.flush()

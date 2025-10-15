@@ -210,8 +210,8 @@ class OrganizationService(BaseCRUDService[Organization]):
                 # Commit transaction
                 await session.commit()
 
-                # Refresh to get relationships
-                await session.refresh(organization)
+                # Refresh to get relationships with eager loading
+                await session.refresh(organization, attribute_names=["rbac_roles"])
 
                 logger = cls._get_logger()
                 logger.info(
