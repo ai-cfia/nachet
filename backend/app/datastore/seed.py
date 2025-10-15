@@ -1,6 +1,6 @@
 from typing import Type, List, Dict, Any
 from sqlalchemy import select
-from app.service.base_crud import BaseCRUDDataService
+from app.datastore.base_crud import BaseCRUDDataService
 from app.db.model import Seed
 
 

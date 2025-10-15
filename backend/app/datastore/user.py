@@ -8,7 +8,7 @@ from typing import Type
 from sqlalchemy.orm import selectinload
 
 from app.db.model import Users
-from app.service.base_crud import BaseCRUDDataService
+from app.datastore.base_crud import BaseCRUDDataService
 
 
 class UserDataService(BaseCRUDDataService[Users]):

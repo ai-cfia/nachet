@@ -7,7 +7,7 @@ from typing import Sequence
 from sqlalchemy.orm import selectinload
 
 from app.db.model import Object
-from app.service.base_crud import BaseCRUDDataService
+from app.datastore.base_crud import BaseCRUDDataService
 
 
 class ImageObjectsDataService(BaseCRUDDataService[Object]):

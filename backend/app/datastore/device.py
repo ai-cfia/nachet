@@ -2,7 +2,7 @@ from typing import Type
 from sqlalchemy.orm import selectinload
 
 from app.db.model import DeviceBrand, DeviceModel, DeviceLens
-from app.service.base_crud import BaseCRUDDataService
+from app.datastore.base_crud import BaseCRUDDataService
 
 
 class DeviceBrandDataService(BaseCRUDDataService[DeviceBrand]):

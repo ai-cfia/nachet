@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.db.model import Model, ModelTask
-from app.service.base_crud import BaseCRUDDataService
+from app.datastore.base_crud import BaseCRUDDataService
 
 
 class ModelDataService(BaseCRUDDataService[Model]):

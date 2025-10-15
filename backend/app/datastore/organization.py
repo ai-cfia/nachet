@@ -2,7 +2,7 @@ from typing import Optional, Type
 from uuid import UUID
 from sqlalchemy import select
 
-from app.service.base_crud import BaseCRUDDataService
+from app.datastore.base_crud import BaseCRUDDataService
 from app.db.model import Organization, RbacRole, Users, RbacUserRole
 from sqlalchemy.orm import selectinload
 

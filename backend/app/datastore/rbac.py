@@ -11,7 +11,7 @@ from app.db.model import (
     RbacPermission,
     RbacRolePermissionResource,
 )
-from app.service.base_crud import BaseCRUDDataService
+from app.datastore.base_crud import BaseCRUDDataService
 
 
 class RbacDataService:
