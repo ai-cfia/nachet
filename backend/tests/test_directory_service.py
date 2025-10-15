@@ -590,6 +590,7 @@ class TestDirectoryServiceCreateDirectory:
         result = await DirectoryService.create_directory(
             user_id=user_id,
             org_admin_id=org_admin_id,
+            org_user_role_id=org_admin_id,  # Using same ID for test simplicity
             name="Custom Directory",
             folder_prefix="custom-dir",
             description="Custom description",

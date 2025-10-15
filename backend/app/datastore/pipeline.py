@@ -24,10 +24,13 @@ class PipelineDataService(BaseCRUDDataService[Pipeline]):
         Return query options for eager loading Pipeline relationships.
         
         Returns:
-            List of SQLAlchemy query options for loading pipeline_models and related models
+            List of SQLAlchemy query options for loading pipeline_models and related models,
+            ordered by step for proper pipeline sequence
         """
         return [
-            selectinload(Pipeline.pipeline_models).selectinload(PipelineModel.model)
+            selectinload(Pipeline.pipeline_models)
+            .selectinload(PipelineModel.model)
+            .options(selectinload(PipelineModel).order_by(PipelineModel.step))
         ]
 
     async def get_all_pipelines(self) -> List[Pipeline]:
@@ -35,13 +38,15 @@ class PipelineDataService(BaseCRUDDataService[Pipeline]):
         Retrieve all active pipelines with their associated models.
 
         Returns:
-            List of Pipeline objects with loaded models
+            List of Pipeline objects with loaded models ordered by step
         """
         stmt = (
             select(Pipeline)
             .where(Pipeline.active.is_(True))
             .options(
-                selectinload(Pipeline.pipeline_models).selectinload(PipelineModel.model)
+                selectinload(Pipeline.pipeline_models)
+                .selectinload(PipelineModel.model)
+                .options(selectinload(PipelineModel).order_by(PipelineModel.step))
             )
         )
         result = await self.session.execute(stmt)
@@ -121,7 +126,7 @@ class PipelineDataService(BaseCRUDDataService[Pipeline]):
                 )
             )
             .options(joinedload(Model.model_task))
-            .order_by(PipelineModel.date_created)
+            .order_by(PipelineModel.step)
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())

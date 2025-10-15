@@ -34,6 +34,7 @@ class ImageObjectsDataService(BaseCRUDDataService[Object]):
         - verifier_user: The user who verified the object
         - pipeline: The pipeline used for inference
         - org_admin_role: The organization admin role
+        - org_user_role: The organization user role
         """
         return [
             selectinload(Object.annotation),
@@ -46,4 +47,5 @@ class ImageObjectsDataService(BaseCRUDDataService[Object]):
             selectinload(Object.verifier_user),
             selectinload(Object.pipeline),
             selectinload(Object.org_admin_role),
+            selectinload(Object.org_user_role),
         ]

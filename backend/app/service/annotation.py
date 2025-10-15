@@ -56,6 +56,7 @@ class AnnotationService(BaseCRUDService[Annotation]):
             "user_id": str(entity.user_id),
             "user_email": entity.user.email if entity.user else None,
             "org_admin_id": str(entity.org_admin_id),
+            "org_user_role_id": str(entity.org_user_role_id) if entity.org_user_role_id else None,
             "picture_id": str(entity.picture_id),
             "pipeline_id": str(entity.pipeline_id) if entity.pipeline_id else None,
             "pipeline_name": entity.pipeline.name if entity.pipeline else None,

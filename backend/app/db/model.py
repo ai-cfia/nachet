@@ -177,6 +177,7 @@ class PipelineModel(Base):
         UUID, ForeignKey("pipeline.id"), nullable=False
     )
     model_id: Mapped[UUID] = mapped_column(UUID, ForeignKey("model.id"), nullable=False)
+    step: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Relationships
     pipeline: Mapped["Pipeline"] = relationship(
@@ -216,16 +217,24 @@ class RbacRole(Base):
         relationship("RbacRolePermissionResource", back_populates="role")
     )
     folders: Mapped[List["Folder"]] = relationship(
-        "Folder", back_populates="org_admin_role"
+        "Folder",
+        foreign_keys="[Folder.org_admin_role_id]",
+        back_populates="org_admin_role",
     )
     pictures: Mapped[List["Picture"]] = relationship(
-        "Picture", back_populates="org_admin_role"
+        "Picture",
+        foreign_keys="[Picture.org_admin_role_id]",
+        back_populates="org_admin_role",
     )
     annotations: Mapped[List["Annotation"]] = relationship(
-        "Annotation", back_populates="org_admin_role"
+        "Annotation",
+        foreign_keys="[Annotation.org_admin_role_id]",
+        back_populates="org_admin_role",
     )
     objects: Mapped[List["Object"]] = relationship(
-        "Object", back_populates="org_admin_role"
+        "Object",
+        foreign_keys="[Object.org_admin_role_id]",
+        back_populates="org_admin_role",
     )
 
 
@@ -371,7 +380,10 @@ class Folder(Base):
 
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(UUID, ForeignKey("users.id"), nullable=False)
-    org_admin_id: Mapped[UUID] = mapped_column(
+    org_user_role_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("rbac_role.id"), nullable=False
+    )
+    org_admin_role_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("rbac_role.id"), nullable=False
     )
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -389,7 +401,13 @@ class Folder(Base):
     user: Mapped["Users"] = relationship("Users", back_populates="folders")
     pictures: Mapped[List["Picture"]] = relationship("Picture", back_populates="folder")
     org_admin_role: Mapped["RbacRole"] = relationship(
-        "RbacRole", back_populates="folders"
+        "RbacRole",
+        foreign_keys=[org_admin_role_id],
+        back_populates="folders",
+    )
+    org_user_role: Mapped["RbacRole"] = relationship(
+        "RbacRole",
+        foreign_keys=[org_user_role_id],
     )
 
 
@@ -401,7 +419,10 @@ class Picture(Base):
         UUID, ForeignKey("folder.id", ondelete="CASCADE"), nullable=False
     )
     user_id: Mapped[UUID] = mapped_column(UUID, ForeignKey("users.id"), nullable=False)
-    org_admin_id: Mapped[UUID] = mapped_column(
+    org_user_role_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("rbac_role.id"), nullable=False
+    )
+    org_admin_role_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("rbac_role.id"), nullable=False
     )
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -433,7 +454,13 @@ class Picture(Base):
     )
     objects: Mapped[List["Object"]] = relationship("Object", back_populates="picture")
     org_admin_role: Mapped["RbacRole"] = relationship(
-        "RbacRole", back_populates="pictures"
+        "RbacRole",
+        foreign_keys=[org_admin_role_id],
+        back_populates="pictures",
+    )
+    org_user_role: Mapped["RbacRole"] = relationship(
+        "RbacRole",
+        foreign_keys=[org_user_role_id],
     )
 
 
@@ -442,7 +469,10 @@ class Annotation(Base):
 
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(UUID, ForeignKey("users.id"), nullable=False)
-    org_admin_id: Mapped[UUID] = mapped_column(
+    org_user_role_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("rbac_role.id"), nullable=False
+    )
+    org_admin_role_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("rbac_role.id"), nullable=False
     )
     picture_id: Mapped[UUID] = mapped_column(
@@ -468,7 +498,13 @@ class Annotation(Base):
         "Object", back_populates="annotation"
     )
     org_admin_role: Mapped["RbacRole"] = relationship(
-        "RbacRole", back_populates="annotations"
+        "RbacRole",
+        foreign_keys=[org_admin_role_id],
+        back_populates="annotations",
+    )
+    org_user_role: Mapped["RbacRole"] = relationship(
+        "RbacRole",
+        foreign_keys=[org_user_role_id],
     )
 
 
@@ -477,7 +513,10 @@ class Object(Base):
 
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(UUID, ForeignKey("users.id"), nullable=False)
-    org_admin_id: Mapped[UUID] = mapped_column(
+    org_user_role_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("rbac_role.id"), nullable=False
+    )
+    org_admin_role_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("rbac_role.id"), nullable=False
     )
     inference_id: Mapped[UUID] = mapped_column(
@@ -539,7 +578,13 @@ class Object(Base):
     )
     pipeline: Mapped["Pipeline"] = relationship("Pipeline", back_populates="objects")
     org_admin_role: Mapped["RbacRole"] = relationship(
-        "RbacRole", back_populates="objects"
+        "RbacRole",
+        foreign_keys=[org_admin_role_id],
+        back_populates="objects",
+    )
+    org_user_role: Mapped["RbacRole"] = relationship(
+        "RbacRole",
+        foreign_keys=[org_user_role_id],
     )
 
 
