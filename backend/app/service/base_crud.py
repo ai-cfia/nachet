@@ -4,6 +4,58 @@ Generic base CRUD service providing reusable patterns for all entity services.
 This module implements a generic CRUD service using Python's typing.Generic to
 eliminate code duplication across service classes. All entity-specific services
 should inherit from BaseCRUDService and BaseCRUDDataService.
+
+AUTHORIZATION FRAMEWORK:
+
+This module provides two CRUD service base classes:
+
+1. BaseCRUDService - Original implementation with basic RBAC:
+   - GET operations: Any authenticated user
+   - CUD operations: CFIA admin only
+   
+2. AuthorizedBaseCRUDService - Enhanced implementation with role-based access:
+   - retrieve: org_user_role_id OR org_admin_role_id OR cfia_admin_role_id
+   - update: org_user_role_id OR org_admin_role_id OR cfia_admin_role_id  
+   - delete: org_admin_role_id OR cfia_admin_role_id (admin-only)
+   - create: Must override verify_create_access() in implementing classes
+
+MIGRATION GUIDE:
+
+To migrate from BaseCRUDService to AuthorizedBaseCRUDService:
+
+1. Change inheritance:
+   class MyService(BaseCRUDService[MyEntity]):  # OLD
+   class MyService(AuthorizedBaseCRUDService[MyEntity]):  # NEW
+
+2. Implement create authorization:
+   @classmethod
+   async def verify_create_access(cls, user_id: UUID, **kwargs) -> None:
+       # Choose one of these patterns:
+       
+       # Pattern 1: Only org admins can create
+       await RbacService.verify_user_is_org_admin(user_id)
+       
+       # Pattern 2: Any authenticated user can create
+       await RbacService.get_user_organization_id(user_id)
+       
+       # Pattern 3: Custom logic based on creation parameters
+       if kwargs.get('restricted_field'):
+           await RbacService.verify_user_is_cfia_admin(user_id)
+       else:
+           await RbacService.verify_user_is_org_admin(user_id)
+
+3. Ensure entities have role fields:
+   - org_user_role_id: UUID field linking to user role
+   - org_admin_role_id: UUID field linking to admin role
+
+ROLE-BASED ACCESS PATTERNS:
+
+The authorization system uses three levels of access:
+- org_user_role_id: Basic user access within organization
+- org_admin_role_id: Admin access within organization  
+- cfia_admin_role_id: Cross-organization admin access
+
+Access is granted if user has ANY of the matching roles for the operation.
 """
 
 import traceback
@@ -11,6 +63,7 @@ from typing import TypeVar, Generic, Optional, Dict, Any, Type
 from uuid import UUID
 from sqlalchemy.orm import DeclarativeBase
 from fastapi import HTTPException, status
+from abc import ABC, abstractmethod
 
 from app.db.utils import sessionmanager
 from app.service.logs import LogService
@@ -519,4 +572,502 @@ class BaseCRUDService(Generic[T]):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to delete {entity_name_lower}",
+            )
+
+
+# ============================================================================
+# Authorization-Enhanced CRUD Service 
+# ============================================================================
+
+
+class AuthorizationMixin(ABC, Generic[T]):
+    """
+    Abstract mixin defining authorization methods for entity operations.
+
+    Implementing classes must define how to verify user access for each operation
+    based on entity role fields (org_user_role_id, org_admin_role_id).
+    """
+    
+    @abstractmethod
+    async def verify_retrieve_access(self, user_id: UUID, entity: T) -> None:
+        """
+        Verify user can retrieve/view the entity.
+        
+        Args:
+            user_id: UUID of the requesting user
+            entity: The entity being accessed
+            
+        Raises:
+            HTTPException: 403 if access denied
+        """
+        pass
+        
+    @abstractmethod 
+    async def verify_update_access(self, user_id: UUID, entity: T) -> None:
+        """
+        Verify user can update the entity.
+        
+        Args:
+            user_id: UUID of the requesting user
+            entity: The entity being updated
+            
+        Raises:
+            HTTPException: 403 if access denied
+        """
+        pass
+        
+    @abstractmethod
+    async def verify_delete_access(self, user_id: UUID, entity: T) -> None:
+        """
+        Verify user can delete the entity.
+        
+        Args:
+            user_id: UUID of the requesting user
+            entity: The entity being deleted
+            
+        Raises:
+            HTTPException: 403 if access denied
+        """
+        pass
+        
+    @abstractmethod
+    async def verify_create_access(self, user_id: UUID, **kwargs) -> None:
+        """
+        Verify user can create entities.
+        
+        Must be implemented by subclasses as creation rules vary by entity type.
+        
+        Args:
+            user_id: UUID of the requesting user
+            **kwargs: Entity creation parameters
+            
+        Raises:
+            HTTPException: 403 if access denied
+        """
+        pass
+
+
+class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
+    """
+    Enhanced CRUD service with role-based authorization.
+    
+    Implements fine-grained access control based on entity role fields:
+    - retrieve: org_user_role_id OR org_admin_role_id OR cfia_admin_role_id
+    - update: org_user_role_id OR org_admin_role_id OR cfia_admin_role_id  
+    - delete: org_admin_role_id OR cfia_admin_role_id (admin-only)
+    - create: Must override verify_create_access() in implementing classes
+    
+    Entities must have org_user_role_id and org_admin_role_id fields.
+    
+    Example usage:
+        class MyEntityService(AuthorizedBaseCRUDService[MyEntity]):
+            @classmethod
+            async def verify_create_access(cls, user_id: UUID, **kwargs) -> None:
+                # Custom creation authorization logic
+                await RbacService.verify_user_is_org_admin(user_id)
+    """
+    
+    @classmethod
+    async def verify_retrieve_access(cls, user_id: UUID, entity: T) -> None:
+        """
+        Verify user can retrieve/view the entity.
+        
+        Access granted if user has:
+        - org_user_role_id matching entity.org_user_role_id, OR
+        - org_admin_role_id matching entity.org_admin_role_id, OR  
+        - cfia_admin_role_id (cross-organization authority)
+        """
+        from app.service.rbac import RbacService
+        
+        # Get entity role fields
+        org_user_role_id = getattr(entity, 'org_user_role_id', None)
+        org_admin_role_id = getattr(entity, 'org_admin_role_id', None)
+        
+        # Check access using RbacService utility
+        has_access = await RbacService.verify_user_has_entity_access(
+            user_id, org_user_role_id, org_admin_role_id
+        )
+        
+        if not has_access:
+            entity_name = cls.get_entity_name()
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied to retrieve {entity_name}",
+            )
+    
+    @classmethod        
+    async def verify_update_access(cls, user_id: UUID, entity: T) -> None:
+        """
+        Verify user can update the entity.
+        
+        Access granted if user has:
+        - org_user_role_id matching entity.org_user_role_id, OR
+        - org_admin_role_id matching entity.org_admin_role_id, OR
+        - cfia_admin_role_id (cross-organization authority)
+        """
+        from app.service.rbac import RbacService
+        
+        # Get entity role fields  
+        org_user_role_id = getattr(entity, 'org_user_role_id', None)
+        org_admin_role_id = getattr(entity, 'org_admin_role_id', None)
+        
+        # Check access using RbacService utility
+        has_access = await RbacService.verify_user_has_entity_access(
+            user_id, org_user_role_id, org_admin_role_id
+        )
+        
+        if not has_access:
+            entity_name = cls.get_entity_name()
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied to update {entity_name}",
+            )
+    
+    @classmethod
+    async def verify_delete_access(cls, user_id: UUID, entity: T) -> None:
+        """
+        Verify user can delete the entity.
+        
+        Access granted if user has:
+        - org_admin_role_id matching entity.org_admin_role_id, OR
+        - cfia_admin_role_id (cross-organization authority)
+        
+        Note: org_user_role_id is NOT sufficient for deletion (admin-only operation)
+        """
+        from app.service.rbac import RbacService
+        
+        # Get entity admin role field
+        org_admin_role_id = getattr(entity, 'org_admin_role_id', None)
+        
+        # Check admin access using RbacService utility
+        has_admin_access = await RbacService.verify_user_has_entity_admin_access(
+            user_id, org_admin_role_id
+        )
+        
+        if not has_admin_access:
+            entity_name = cls.get_entity_name()
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied to delete {entity_name} - admin role required",
+            )
+    
+    @classmethod
+    async def verify_create_access(cls, user_id: UUID, **kwargs) -> None:
+        """
+        Verify user can create entities.
+        
+        MUST BE OVERRIDDEN in implementing classes.
+        Creation authorization varies by entity type and business rules.
+        
+        Raises:
+            NotImplementedError: If not overridden by subclass
+        """
+        entity_name = cls.get_entity_name()
+        raise NotImplementedError(
+            f"{cls.__name__} must implement verify_create_access() for {entity_name} creation. "
+            f"Example: async def verify_create_access(cls, user_id: UUID, **kwargs) -> None: "
+            f"await RbacService.verify_user_is_org_admin(user_id)"
+        )
+
+    # Override CRUD methods to include authorization checks
+    
+    @classmethod
+    async def get_by_id(cls, user_id: UUID, entity_id: UUID) -> Dict[str, Any]:
+        """
+        Retrieve a single entity by ID with authorization check.
+        
+        Overrides BaseCRUDService.get_by_id() to add authorization verification.
+        """
+        entity_name = cls.get_entity_name()
+        entity_name_lower = entity_name.lower()
+        not_found_exc = cls.get_not_found_exception()
+
+        try:
+            # Basic authentication check
+            from app.service.rbac import RbacService
+            await RbacService.get_user_organization_id(user_id)
+
+            async with sessionmanager.get_session() as session:
+                data_service_class = cls.get_data_service_class()
+                data_service = data_service_class(session)
+                entity = await data_service.get_by_id(entity_id)
+
+                if not entity:
+                    raise not_found_exc(f"{entity_name} {entity_id} not found")
+
+                # Authorization check
+                await cls.verify_retrieve_access(user_id, entity)
+
+                result = cls.serialize_entity(entity)
+                await session.commit()
+                return result
+
+        except HTTPException:
+            raise
+        except not_found_exc as e:
+            logger = cls._get_logger()
+            logger.warning(
+                f"{entity_name} not found: {cls._sanitize_error_message(e)}",
+                user_id=str(user_id),
+                entity_id=str(entity_id),
+            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        except Exception as e:
+            logger = cls._get_logger()
+            logger.error(
+                f"Failed to retrieve {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                user_id=str(user_id),
+                entity_id=str(entity_id),
+            )
+            logger.debug(
+                f"Traceback for failed retrieve {entity_name_lower}",
+                traceback=traceback.format_exc(),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to retrieve {entity_name_lower}",
+            )
+
+    @classmethod
+    async def update(cls, user_id: UUID, entity_id: UUID, **kwargs) -> Dict[str, Any]:
+        """
+        Update an existing entity with authorization check.
+        
+        Overrides BaseCRUDService.update() to add authorization verification.
+        """
+        entity_name = cls.get_entity_name()
+        entity_name_lower = entity_name.lower()
+        not_found_exc = cls.get_not_found_exception()
+        update_exc = cls.get_update_exception()
+
+        try:
+            # Basic authentication check
+            from app.service.rbac import RbacService
+            await RbacService.get_user_organization_id(user_id)
+
+            async with sessionmanager.get_session() as session:
+                data_service_class = cls.get_data_service_class()
+                data_service = data_service_class(session)
+                
+                # Get entity first for authorization check
+                entity = await data_service.get_by_id(entity_id)
+                if not entity:
+                    raise not_found_exc(f"{entity_name} {entity_id} not found")
+
+                # Authorization check
+                await cls.verify_update_access(user_id, entity)
+                
+                # Perform update
+                updated_entity = await data_service.update(entity_id, **kwargs)
+                if not updated_entity:
+                    raise not_found_exc(f"{entity_name} {entity_id} not found")
+
+                result = cls.serialize_entity(updated_entity)
+                await session.commit()
+
+                logger = cls._get_logger()
+                logger.info(
+                    f"{entity_name} updated successfully",
+                    user_id=str(user_id),
+                    entity_id=str(entity_id),
+                )
+
+                return result
+
+        except HTTPException:
+            raise
+        except not_found_exc as e:
+            logger = cls._get_logger()
+            logger.warning(
+                f"{entity_name} not found for update: {cls._sanitize_error_message(e)}",
+                user_id=str(user_id),
+                entity_id=str(entity_id),
+            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        except update_exc as e:
+            logger = cls._get_logger()
+            logger.error(
+                f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                user_id=str(user_id),
+                entity_id=str(entity_id),
+            )
+            logger.debug(
+                f"Traceback for failed update {entity_name_lower}",
+                traceback=traceback.format_exc(),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to update {entity_name_lower}",
+            )
+        except Exception as e:
+            logger = cls._get_logger()
+            logger.error(
+                f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                user_id=str(user_id),
+                entity_id=str(entity_id),
+            )
+            logger.debug(
+                f"Traceback for failed update {entity_name_lower}",
+                traceback=traceback.format_exc(),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to update {entity_name_lower}",
+            )
+
+    @classmethod
+    async def delete(cls, user_id: UUID, entity_id: UUID) -> Dict[str, str]:
+        """
+        Soft delete an entity with authorization check.
+        
+        Overrides BaseCRUDService.delete() to add authorization verification.
+        """
+        entity_name = cls.get_entity_name()
+        entity_name_lower = entity_name.lower()
+        not_found_exc = cls.get_not_found_exception()
+        deletion_exc = cls.get_deletion_exception()
+
+        try:
+            # Basic authentication check
+            from app.service.rbac import RbacService
+            await RbacService.get_user_organization_id(user_id)
+
+            async with sessionmanager.get_session() as session:
+                data_service_class = cls.get_data_service_class()
+                data_service = data_service_class(session)
+                
+                # Get entity first for authorization check
+                entity = await data_service.get_by_id(entity_id)
+                if not entity:
+                    raise not_found_exc(f"{entity_name} {entity_id} not found")
+
+                # Authorization check
+                await cls.verify_delete_access(user_id, entity)
+                
+                # Perform soft delete
+                deleted_entity = await data_service.soft_delete(entity_id)
+                if not deleted_entity:
+                    raise not_found_exc(f"{entity_name} {entity_id} not found")
+
+                await session.commit()
+
+                logger = cls._get_logger()
+                logger.info(
+                    f"{entity_name} soft deleted successfully",
+                    user_id=str(user_id),
+                    entity_id=str(entity_id),
+                )
+
+                return {
+                    "message": f"{entity_name} soft deleted successfully",
+                    "id": str(entity_id),
+                }
+
+        except HTTPException:
+            raise
+        except not_found_exc as e:
+            logger = cls._get_logger()
+            logger.warning(
+                f"{entity_name} not found for deletion: {cls._sanitize_error_message(e)}",
+                user_id=str(user_id),
+                entity_id=str(entity_id),
+            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        except deletion_exc as e:
+            logger = cls._get_logger()
+            logger.error(
+                f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                user_id=str(user_id),
+                entity_id=str(entity_id),
+            )
+            logger.debug(
+                f"Traceback for failed delete {entity_name_lower}",
+                traceback=traceback.format_exc(),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to delete {entity_name_lower}",
+            )
+        except Exception as e:
+            logger = cls._get_logger()
+            logger.error(
+                f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                user_id=str(user_id),
+                entity_id=str(entity_id),
+            )
+            logger.debug(
+                f"Traceback for failed delete {entity_name_lower}",
+                traceback=traceback.format_exc(),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to delete {entity_name_lower}",
+            )
+
+    @classmethod
+    async def create(cls, user_id: UUID, **kwargs) -> Dict[str, Any]:
+        """
+        Create a new entity with authorization check.
+        
+        Overrides BaseCRUDService.create() to add authorization verification.
+        Subclasses MUST implement verify_create_access().
+        """
+        entity_name = cls.get_entity_name()
+        entity_name_lower = entity_name.lower()
+        creation_exc = cls.get_creation_exception()
+
+        try:
+            # Basic authentication check
+            from app.service.rbac import RbacService
+            await RbacService.get_user_organization_id(user_id)
+
+            # Authorization check (must be implemented by subclass)
+            await cls.verify_create_access(user_id, **kwargs)
+
+            async with sessionmanager.get_session() as session:
+                data_service_class = cls.get_data_service_class()
+                data_service = data_service_class(session)
+                entity = await data_service.create(**kwargs)
+
+                result = cls.serialize_entity(entity)
+                await session.commit()
+
+                logger = cls._get_logger()
+                logger.info(
+                    f"{entity_name} created successfully",
+                    user_id=str(user_id),
+                    entity_id=str(entity.id),
+                )
+
+                return result
+
+        except HTTPException:
+            raise
+        except creation_exc as e:
+            logger = cls._get_logger()
+            logger.error(
+                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                user_id=str(user_id),
+            )
+            logger.debug(
+                f"Traceback for failed create {entity_name_lower}",
+                traceback=traceback.format_exc(),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create {entity_name_lower}",
+            )
+        except Exception as e:
+            logger = cls._get_logger()
+            logger.error(
+                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                user_id=str(user_id),
+            )
+            logger.debug(
+                f"Traceback for failed create {entity_name_lower}",
+                traceback=traceback.format_exc(),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create {entity_name_lower}",
             )
