@@ -201,24 +201,30 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
 
     async with async_session.begin() as session:
         # Create pipeline-model relationships
+        # Step 1: seed-detector-rcnn-1 (detection)
         pipeline_model_1 = PipelineModel(
             id=uuid.UUID("0704a8a6-7853-4530-a49a-d98a884a3f71"),
             pipeline_id=uuid.UUID("cc901051-34e0-4e21-803f-76e159848046"),
             model_id=uuid.UUID("52fd7ca2-8101-4541-ae49-d6d92ac69196"),
+            step=1,
             active=True,
         )
 
+        # Step 2: swin-27-spp (classification)
         pipeline_model_2 = PipelineModel(
             id=uuid.UUID("3dad6eb9-56c6-4bc1-b8ab-c683f186b874"),
             pipeline_id=uuid.UUID("cc901051-34e0-4e21-803f-76e159848046"),
             model_id=uuid.UUID("e83ee51e-830e-403a-a48f-d216ae91abb9"),
+            step=2,
             active=True,
         )
 
+        # Step 3: swin-15e-spp (classification)
         pipeline_model_3 = PipelineModel(
             id=uuid.UUID("b2d0f715-7d64-48ed-8f5f-b3ce338918c4"),
             pipeline_id=uuid.UUID("cc901051-34e0-4e21-803f-76e159848046"),
             model_id=uuid.UUID("ecef8395-e6d5-47a3-8f3d-8424b4dd3816"),
+            step=3,
             active=True,
         )
 
@@ -336,7 +342,8 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         default_folder = Folder(
             id=uuid.UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479"),
             user_id=uuid.UUID("8ea46a6b-7d37-4fbb-a66f-775112376e16"),
-            org_admin_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
+            org_user_role_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
+            org_admin_role_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
             name="default",
             folder_prefix="test-org/test-user",
             description="Default folder for test user",
@@ -374,7 +381,8 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
     #             id=uuid.UUID("10101010-1010-1010-1010-101010101010"),
     #             folder_id=uuid.UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479"),
     #             user_id=uuid.UUID("8ea46a6b-7d37-4fbb-a66f-775112376e16"),
-    #             org_admin_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
+    #             org_user_role_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
+    #             org_admin_role_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
     #             width=1024,
     #             height=768,
     #             sha256="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -394,7 +402,8 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
     #         sample_annotation = Annotation(
     #             id=uuid.UUID("20202020-2020-2020-2020-202020202020"),
     #             user_id=uuid.UUID("8ea46a6b-7d37-4fbb-a66f-775112376e16"),
-    #             org_admin_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
+    #             org_user_role_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
+    #             org_admin_role_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
     #             picture_id=uuid.UUID("10101010-1010-1010-1010-101010101010"),
     #             pipeline_id=uuid.UUID("cc901051-34e0-4e21-803f-76e159848046"),
     #             raw_data={
@@ -415,7 +424,8 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
     #         sample_object = Object(
     #             id=uuid.UUID("30303030-3030-3030-3030-303030303030"),
     #             user_id=uuid.UUID("8ea46a6b-7d37-4fbb-a66f-775112376e16"),
-    #             org_admin_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
+    #             org_user_role_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
+    #             org_admin_role_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
     #             inference_id=uuid.UUID("20202020-2020-2020-2020-202020202020"),
     #             picture_id=uuid.UUID("10101010-1010-1010-1010-101010101010"),
     #             pipeline_id=uuid.UUID("cc901051-34e0-4e21-803f-76e159848046"),
