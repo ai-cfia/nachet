@@ -3,6 +3,7 @@ Business logic layer for Object (ImageObjects) entities.
 """
 
 from typing import Any, Dict, Type
+from uuid import UUID
 
 from app.db.model import Object
 from app.exceptions import (
@@ -11,10 +12,10 @@ from app.exceptions import (
     ImageObjectsNotFoundError,
     ImageObjectsUpdateError,
 )
-from app.service.base_crud import BaseCRUDService
+from app.service.base_crud import AuthorizedBaseCRUDService
 
 
-class ImageObjectsService(BaseCRUDService[Object]):
+class ImageObjectsService(AuthorizedBaseCRUDService[Object]):
     """Service for managing Object (ImageObjects) CRUD operations."""
 
     @classmethod
@@ -45,7 +46,7 @@ class ImageObjectsService(BaseCRUDService[Object]):
             "id": str(entity.id),
             "user_id": str(entity.user_id),
             "user_email": entity.user.email if entity.user else None,
-            "org_admin_id": str(entity.org_admin_id),
+            "org_admin_role_id": str(entity.org_admin_role_id),
             "org_user_role_id": str(entity.org_user_role_id) if entity.org_user_role_id else None,
             "inference_id": str(entity.inference_id),
             "picture_id": str(entity.picture_id),
@@ -61,13 +62,13 @@ class ImageObjectsService(BaseCRUDService[Object]):
             },
             # Top predictions
             "top_id": str(entity.top_id),
-            "top_seed_name": entity.seed_top_1.name if entity.seed_top_1 else None,
+            "top_seed_name": entity.seed_top_1.name_code if entity.seed_top_1 else None,
             "top_score": entity.top_score,
             "top_id_2": str(entity.top_id_2) if entity.top_id_2 else None,
-            "top_seed_name_2": entity.seed_top_2.name if entity.seed_top_2 else None,
+            "top_seed_name_2": entity.seed_top_2.name_code if entity.seed_top_2 else None,
             "top_score_2": entity.top_score_2,
             "top_id_3": str(entity.top_id_3) if entity.top_id_3 else None,
-            "top_seed_name_3": entity.seed_top_3.name if entity.seed_top_3 else None,
+            "top_seed_name_3": entity.seed_top_3.name_code if entity.seed_top_3 else None,
             "top_score_3": entity.top_score_3,
             # Dates
             "date_created": entity.date_created.isoformat() if entity.date_created else None,
@@ -102,3 +103,25 @@ class ImageObjectsService(BaseCRUDService[Object]):
     def get_deletion_exception(cls) -> Type[Exception]:
         """Return the exception to raise when image object deletion fails."""
         return ImageObjectsDeletionError
+
+    @classmethod
+    async def verify_create_access(cls, _user_id: UUID, **kwargs) -> None:
+        """
+        Verify user can create image objects.
+
+        Authorization: Any authenticated user
+
+        Based on the business requirements, image objects (detection results) can be
+        created by any authenticated user within their organization. This matches the
+        authorization pattern used for images.
+
+        Args:
+            _user_id: UUID of the requesting user
+            **kwargs: Image object creation parameters
+
+        Raises:
+            HTTPException: 403 if user is not authenticated or not associated with an organization
+        """
+        from app.service.rbac import RbacService
+        # Verify user is authenticated and associated with an organization
+        await RbacService.get_user_organization_id(_user_id)
