@@ -142,7 +142,7 @@ class BaseCRUDDataService(Generic[T]):
             **kwargs: Attributes to set on the new entity
 
         Returns:
-            The created entity object
+            The created entity object with relationships loaded
         """
         model_class = self.get_model_class()
         kwargs["active"] = True  # Ensure active is set
@@ -150,6 +150,18 @@ class BaseCRUDDataService(Generic[T]):
         self.session.add(entity)
         await self.session.flush()
         await self.session.refresh(entity)
+
+        # Re-fetch with relationships loaded if query options are defined
+        query_options = self.get_query_options()
+        if query_options:
+            query = (
+                select(model_class)
+                .where(model_class.id == entity.id)
+                .options(*query_options)
+            )
+            result = await self.session.execute(query)
+            entity = result.scalar_one()
+
         return entity
 
     async def update(self, entity_id: UUID, **kwargs) -> Optional[T]:

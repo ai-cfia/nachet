@@ -1,8 +1,8 @@
 """First migration
 
-Revision ID: ad6e5cf95fb4
+Revision ID: 39f2bd6b63a7
 Revises: 
-Create Date: 2025-10-15 21:41:27.515073
+Create Date: 2025-10-16 13:10:52.403829
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'ad6e5cf95fb4'
+revision: str = '39f2bd6b63a7'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -234,11 +234,11 @@ def upgrade() -> None:
     )
     op.create_table('picture',
     sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('active', sa.Boolean(), nullable=False),
     sa.Column('folder_id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('org_user_role_id', sa.UUID(), nullable=False),
     sa.Column('org_admin_role_id', sa.UUID(), nullable=False),
-    sa.Column('active', sa.Boolean(), nullable=False),
     sa.Column('date_created', sa.DateTime(timezone=True), nullable=False),
     sa.Column('width', sa.Integer(), nullable=False),
     sa.Column('height', sa.Integer(), nullable=False),
@@ -263,6 +263,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_picture_sha256'), 'picture', ['sha256'], unique=False)
     op.create_table('annotation',
     sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('active', sa.Boolean(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('org_user_role_id', sa.UUID(), nullable=False),
     sa.Column('org_admin_role_id', sa.UUID(), nullable=False),
@@ -279,6 +280,7 @@ def upgrade() -> None:
     )
     op.create_table('object',
     sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('active', sa.Boolean(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('org_user_role_id', sa.UUID(), nullable=False),
     sa.Column('org_admin_role_id', sa.UUID(), nullable=False),
