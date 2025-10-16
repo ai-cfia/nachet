@@ -19,7 +19,7 @@ class ImageDataService(BaseCRUDDataService[Picture]):
         return Picture
 
     @classmethod
-    async def get_query_options(cls) -> Sequence:
+    def get_query_options(cls) -> Sequence:
         """
         Return query options for eager loading relationships.
 

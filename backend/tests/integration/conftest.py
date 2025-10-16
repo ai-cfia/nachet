@@ -340,6 +340,35 @@ async def cleanup_test_folders(integration_db_session: AsyncSession):
         await integration_db_session.flush()
 
 
+@pytest_asyncio.fixture(scope="function")
+async def cleanup_test_pictures(integration_db_session: AsyncSession):
+    """
+    Cleanup fixture to track and remove test pictures.
+
+    Pictures may have foreign key dependencies and are linked to folders.
+    This fixture performs hard delete of pictures and their associated folders.
+
+    Yields a list that tests can append picture/folder IDs to for cleanup.
+    """
+    created_ids = []
+
+    yield created_ids
+
+    # Cleanup: hard delete pictures first, then folders
+    if created_ids:
+        from app.db.model import Picture, Folder
+        from sqlalchemy import delete
+
+        # Separate picture IDs from folder IDs based on what exists in database
+        stmt_pictures = delete(Picture).where(Picture.id.in_(created_ids))
+        await integration_db_session.execute(stmt_pictures)
+
+        stmt_folders = delete(Folder).where(Folder.id.in_(created_ids))
+        await integration_db_session.execute(stmt_folders)
+        
+        await integration_db_session.flush()
+
+
 @pytest_asyncio.fixture(scope="session")
 def test_org_admin_role() -> UUID:
     """
