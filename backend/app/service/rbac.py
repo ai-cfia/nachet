@@ -76,7 +76,7 @@ class RbacService:
         """
         # Lazy import to avoid circular dependency
         from app.datastore import OrganizationDataService
-        
+
         async with sessionmanager.get_session() as session:
             org_id = await OrganizationDataService(session).get_user_organization_id(
                 user_id
@@ -89,6 +89,68 @@ class RbacService:
                 )
 
             return org_id
+
+    @staticmethod
+    async def get_org_admin_role_id(organization_id: UUID) -> UUID:
+        """
+        Get the admin role ID for an organization.
+
+        Args:
+            organization_id: The organization's UUID
+
+        Returns:
+            UUID of the admin role for the organization
+
+        Raises:
+            HTTPException: 500 if organization admin role not found
+        """
+        async with sessionmanager.get_session() as session:
+            stmt = select(RbacRole).where(
+                RbacRole.organization_id == organization_id,
+                RbacRole.name == "admin",
+                RbacRole.active == True  # noqa: E712
+            )
+            result = await session.execute(stmt)
+            org_admin_role = result.scalar_one_or_none()
+
+            if not org_admin_role:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Organization admin role not found"
+                )
+
+            return org_admin_role.id
+
+    @staticmethod
+    async def get_org_user_role_id(organization_id: UUID) -> UUID:
+        """
+        Get the user role ID for an organization.
+
+        Args:
+            organization_id: The organization's UUID
+
+        Returns:
+            UUID of the user role for the organization
+
+        Raises:
+            HTTPException: 500 if organization user role not found
+        """
+        async with sessionmanager.get_session() as session:
+            stmt = select(RbacRole).where(
+                RbacRole.organization_id == organization_id,
+                RbacRole.name == "user",
+                RbacRole.active == True  # noqa: E712
+            )
+            result = await session.execute(stmt)
+            org_user_role = result.scalar_one_or_none()
+
+            if not org_user_role:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Organization user role not found"
+                )
+
+            return org_user_role.id
 
     @staticmethod
     async def verify_user_has_role(

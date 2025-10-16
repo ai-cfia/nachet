@@ -1005,7 +1005,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             )
 
     @classmethod
-    async def create(cls, user_id: UUID, **kwargs) -> Dict[str, Any]:
+    async def create(cls, _user_id: UUID, **kwargs) -> Dict[str, Any]:
         """
         Create a new entity with authorization check.
         
@@ -1019,10 +1019,10 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
         try:
             # Basic authentication check
             from app.service.rbac import RbacService
-            await RbacService.get_user_organization_id(user_id)
+            await RbacService.get_user_organization_id(_user_id)
 
             # Authorization check (must be implemented by subclass)
-            await cls.verify_create_access(user_id, **kwargs)
+            await cls.verify_create_access(_user_id, **kwargs)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -1035,7 +1035,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
                 logger = cls._get_logger()
                 logger.info(
                     f"{entity_name} created successfully",
-                    user_id=str(user_id),
+                    user_id=str(_user_id),
                     entity_id=str(entity.id),
                 )
 
@@ -1047,7 +1047,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             logger = cls._get_logger()
             logger.error(
                 f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
-                user_id=str(user_id),
+                user_id=str(_user_id),
             )
             logger.debug(
                 f"Traceback for failed create {entity_name_lower}",
@@ -1061,7 +1061,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             logger = cls._get_logger()
             logger.error(
                 f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
-                user_id=str(user_id),
+                user_id=str(_user_id),
             )
             logger.debug(
                 f"Traceback for failed create {entity_name_lower}",
