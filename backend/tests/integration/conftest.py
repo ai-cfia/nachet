@@ -354,15 +354,25 @@ async def cleanup_test_pictures(integration_db_session: AsyncSession):
 
     yield created_ids
 
-    # Cleanup: hard delete pictures first, then folders
+    # Cleanup: delete in proper order to respect foreign key constraints
+    # Order: Object -> Annotation -> Picture -> Folder
     if created_ids:
-        from app.db.model import Picture, Folder
+        from app.db.model import Picture, Folder, Object, Annotation
         from sqlalchemy import delete
 
-        # Separate picture IDs from folder IDs based on what exists in database
+        # Delete objects that reference pictures
+        stmt_objects = delete(Object).where(Object.picture_id.in_(created_ids))
+        await integration_db_session.execute(stmt_objects)
+
+        # Delete annotations that reference pictures
+        stmt_annotations = delete(Annotation).where(Annotation.picture_id.in_(created_ids))
+        await integration_db_session.execute(stmt_annotations)
+
+        # Delete pictures
         stmt_pictures = delete(Picture).where(Picture.id.in_(created_ids))
         await integration_db_session.execute(stmt_pictures)
 
+        # Delete folders
         stmt_folders = delete(Folder).where(Folder.id.in_(created_ids))
         await integration_db_session.execute(stmt_folders)
         
