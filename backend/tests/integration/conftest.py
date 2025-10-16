@@ -289,9 +289,11 @@ async def cleanup_test_users(integration_db_session: AsyncSession):
     Cleanup fixture to track and remove test users.
 
     Users may have foreign key dependencies from folders, annotations, and objects.
-    This fixture performs hard delete of users. If foreign key constraints exist,
-    the test should handle dependent entity cleanup first, or database cascade
-    rules will handle it.
+    This fixture performs hard delete of users after first deleting dependent folders.
+
+    Order of deletion:
+    1. Delete folders associated with the users
+    2. Delete the users themselves
 
     Yields a list that tests can append user IDs to for cleanup.
     """
@@ -299,11 +301,16 @@ async def cleanup_test_users(integration_db_session: AsyncSession):
 
     yield created_user_ids
 
-    # Cleanup: hard delete test users
+    # Cleanup: hard delete folders first, then users
     if created_user_ids:
-        from app.db.model import Users
+        from app.db.model import Users, Folder
         from sqlalchemy import delete
 
+        # First delete folders that reference these users
+        folder_stmt = delete(Folder).where(Folder.user_id.in_(created_user_ids))
+        await integration_db_session.execute(folder_stmt)
+
+        # Then delete the users
         stmt = delete(Users).where(Users.id.in_(created_user_ids))
         await integration_db_session.execute(stmt)
         await integration_db_session.flush()

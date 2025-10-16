@@ -399,8 +399,8 @@ class TestUserServiceIntegrationCreate:
         test_organization: UUID,
         cleanup_test_users: list,
     ):
-        """Verify optional default_folder_id is handled correctly."""
-        # Create without default_folder_id
+        """Verify default folder is automatically created with username from email."""
+        # Create user - default folder should be created automatically
         result = await UserService.create(
             user_id=test_admin_user,
             email="nofolder@test.com",
@@ -410,8 +410,8 @@ class TestUserServiceIntegrationCreate:
         user_id = UUID(result["id"])
         cleanup_test_users.append(user_id)
 
-        # Verify default_folder_id is None
-        assert result["default_folder_id"] is None
+        # Verify default_folder_id is set (folder was created automatically)
+        assert result["default_folder_id"] is not None
 
     async def test_create_organization_ref_is_loaded(
         self,
@@ -819,6 +819,78 @@ class TestUserServiceIntegrationCrossMethod:
         assert isinstance(result["date_created"], str)
         assert isinstance(result["date_updated"], str)
         assert isinstance(result["active"], bool)
-        
+
         # Verify organization_name is included
         assert "organization_name" in result
+
+    async def test_default_folder_created_with_email_username(
+        self,
+        integration_db_session: AsyncSession,
+        test_admin_user: UUID,
+        test_organization: UUID,
+        cleanup_test_users: list,
+    ):
+        """Verify default folder is automatically created using username from email."""
+        # Create user with specific email
+        result = await UserService.create(
+            user_id=test_admin_user,
+            email="john.doe@inspection.gc.ca",
+            organization=test_organization,
+        )
+
+        user_id = UUID(result["id"])
+        cleanup_test_users.append(user_id)
+
+        # Verify default_folder_id is set
+        assert result["default_folder_id"] is not None
+        folder_id = UUID(result["default_folder_id"])
+
+        # Verify folder exists in database with correct folder_prefix
+        from app.db.model import Folder
+        from sqlalchemy import select
+
+        stmt = select(Folder).where(Folder.id == folder_id)
+        folder_result = await integration_db_session.execute(stmt)
+        folder = folder_result.scalar_one_or_none()
+
+        assert folder is not None
+        assert folder.name == "default"
+        # folder_prefix should be organization_folder_prefix/username
+        # The test organization doesn't have folder_prefix set, so it defaults to "default-org"
+        assert "john.doe" in folder.folder_prefix
+        assert folder.description == "Default folder for john.doe@inspection.gc.ca"
+        assert folder.user_id == user_id
+        assert folder.active is True
+
+    async def test_default_folder_handles_email_without_at_symbol(
+        self,
+        integration_db_session: AsyncSession,
+        test_admin_user: UUID,
+        test_organization: UUID,
+        cleanup_test_users: list,
+    ):
+        """Verify default folder creation handles edge case of no @ in email."""
+        # Create user with no email (edge case)
+        result = await UserService.create(
+            user_id=test_admin_user,
+            email="",
+            organization=test_organization,
+        )
+
+        user_id = UUID(result["id"])
+        cleanup_test_users.append(user_id)
+
+        # Even without email, a default folder should be created with "user" as username
+        assert result["default_folder_id"] is not None
+        folder_id = UUID(result["default_folder_id"])
+
+        # Verify folder exists with fallback username "user"
+        from app.db.model import Folder
+        from sqlalchemy import select
+
+        stmt = select(Folder).where(Folder.id == folder_id)
+        folder_result = await integration_db_session.execute(stmt)
+        folder = folder_result.scalar_one_or_none()
+
+        assert folder is not None
+        assert "user" in folder.folder_prefix
