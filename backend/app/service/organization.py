@@ -152,7 +152,7 @@ class OrganizationService(BaseCRUDService[Organization]):
         user_id: UUID,
         name: str,
         description: str,
-        folder_prefix: Optional[str] = None,
+        folder_prefix: Optional[str] = "/",
     ) -> Dict[str, Any]:
         """
         Create a new organization with automatic RBAC role creation.

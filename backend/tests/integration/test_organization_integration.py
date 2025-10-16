@@ -562,7 +562,7 @@ class TestOrganizationServiceIntegrationCreate:
         cleanup_test_organizations.append(org_id)
 
         # Verify
-        assert result["folder_prefix"] is None or result["folder_prefix"] == ""
+        assert result["folder_prefix"] == "/"
 
     async def test_create_as_cfia_admin_succeeds(
         self,
