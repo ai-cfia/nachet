@@ -314,3 +314,63 @@ async def cleanup_test_users(integration_db_session: AsyncSession):
         stmt = delete(Users).where(Users.id.in_(created_user_ids))
         await integration_db_session.execute(stmt)
         await integration_db_session.flush()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def cleanup_test_folders(integration_db_session: AsyncSession):
+    """
+    Cleanup fixture to track and remove test folders (directories).
+
+    Folders may have foreign key dependencies from pictures and other entities.
+    This fixture performs hard delete of folders.
+
+    Yields a list that tests can append folder IDs to for cleanup.
+    """
+    created_folder_ids = []
+
+    yield created_folder_ids
+
+    # Cleanup: hard delete folders
+    if created_folder_ids:
+        from app.db.model import Folder
+        from sqlalchemy import delete
+
+        stmt = delete(Folder).where(Folder.id.in_(created_folder_ids))
+        await integration_db_session.execute(stmt)
+        await integration_db_session.flush()
+
+
+@pytest_asyncio.fixture(scope="session")
+def test_org_admin_role() -> UUID:
+    """
+    Return the pre-seeded admin role UUID from db_setup_test.py.
+
+    This role is created during database setup for the test organization.
+
+    Role details:
+        - ID: 87654321-4321-4321-4321-210987654321
+        - Name: Admin
+        - Organization: 12345678-1234-1234-1234-123456789012
+
+    Returns:
+        UUID of the pre-seeded admin role
+    """
+    return UUID("87654321-4321-4321-4321-210987654321")
+
+
+@pytest_asyncio.fixture(scope="session")
+def test_org_user_role() -> UUID:
+    """
+    Return the pre-seeded user role UUID from db_setup_test.py.
+
+    This role is referenced in the default folder creation.
+
+    Role details:
+        - ID: cf75fcb9-b237-529a-a991-0fb69fb5ec1f
+        - Name: User
+        - Organization: 12345678-1234-1234-1234-123456789012
+
+    Returns:
+        UUID of the pre-seeded user role
+    """
+    return UUID("cf75fcb9-b237-529a-a991-0fb69fb5ec1f")

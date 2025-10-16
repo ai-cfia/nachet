@@ -31,6 +31,45 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
         ]
 
     # Custom methods for directory-specific operations
+
+    @classmethod
+    async def get_user_directories_with_count(cls, user_id: str) -> List[Folder]:
+        """
+        Retrieve all directories for a user with picture counts.
+
+        This is a standalone method that manages its own session lifecycle.
+
+        Args:
+            user_id: The ID of the user whose directories are to be fetched.
+
+        Returns:
+            List of tuples with directory data and picture counts.
+        """
+        from app.db.utils import sessionmanager
+
+        async with sessionmanager.get_session() as session:
+            data_service = cls(session)
+            return await data_service.get_user_directories_count(user_id)
+
+    @classmethod
+    async def get_org_directories_with_count(cls, org_user_role_id: str) -> List[Folder]:
+        """
+        Retrieve all directories for an organization with picture counts.
+
+        This is a standalone method that manages its own session lifecycle.
+
+        Args:
+            org_user_role_id: The organization's user role ID to filter by.
+
+        Returns:
+            List of tuples with directory data and picture counts.
+        """
+        from app.db.utils import sessionmanager
+
+        async with sessionmanager.get_session() as session:
+            data_service = cls(session)
+            return await data_service.get_org_directories_count(org_user_role_id)
+
     async def get_user_directories_count(self, user_id: str) -> List[Folder]:
         """
         Retrieve all directories for a given user and number of pictures from the database.
@@ -54,6 +93,38 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
             .group_by(Folder.id, Folder.name, Folder.folder_prefix, Folder.description)
         )
         # print(stmt.compile(dialect=postgresql.dialect()))
+        result = await self.session.execute(stmt)
+        return result.all()
+
+    async def get_org_directories_count(self, org_user_role_id: str) -> List[Folder]:
+        """
+        Retrieve all directories for an organization and number of pictures from the database.
+
+        Args:
+            org_user_role_id: The organization's user role ID to filter by.
+        Returns:
+            List of tuples with directory data and picture counts.
+        """
+        stmt = (
+            select(
+                Folder.id,
+                Folder.user_id,
+                Folder.name,
+                Folder.folder_prefix,
+                Folder.description,
+                func.count(Picture.id).label("picture_count"),
+            )
+            .join(Picture, isouter=True)
+            .where(Folder.org_user_role_id == org_user_role_id)
+            .where(Folder.active.is_(True))
+            .group_by(
+                Folder.id,
+                Folder.user_id,
+                Folder.name,
+                Folder.folder_prefix,
+                Folder.description,
+            )
+        )
         result = await self.session.execute(stmt)
         return result.all()
 
