@@ -425,11 +425,6 @@ class TestImageObjectsServiceIntegrationUpdate:
 class TestImageObjectsServiceIntegrationDelete:
     """Integration tests for ImageObjectsService.delete method."""
 
-    # TODO: Enable delete tests once 'active' field is added to Object model
-    # Currently Object model lacks 'active' field required for soft delete functionality.
-    # These tests are skipped until the database schema is updated.
-
-    @pytest.mark.skip(reason="TODO: Add 'active' field to Object model for soft delete support")
     @pytest.mark.asyncio
     async def test_delete_success_as_admin(
         self,
@@ -542,7 +537,6 @@ class TestImageObjectsServiceIntegrationDelete:
         cleanup_test_pictures.append(picture["id"])
         cleanup_test_pictures.append(folder_id)
 
-    @pytest.mark.skip(reason="TODO: Add 'active' field to Object model for soft delete support")
     @pytest.mark.asyncio
     async def test_delete_unauthorized_non_admin(
         self,

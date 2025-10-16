@@ -415,6 +415,7 @@ class Picture(Base):
     __tablename__ = "picture"
 
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     folder_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("folder.id", ondelete="CASCADE"), nullable=False
     )
@@ -425,7 +426,6 @@ class Picture(Base):
     org_admin_role_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("rbac_role.id"), nullable=False
     )
-    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     date_created: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=func.current_timestamp()
     )
@@ -468,6 +468,7 @@ class Annotation(Base):
     __tablename__ = "annotation"
 
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     user_id: Mapped[UUID] = mapped_column(UUID, ForeignKey("users.id"), nullable=False)
     org_user_role_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("rbac_role.id"), nullable=False
@@ -512,6 +513,7 @@ class Object(Base):
     __tablename__ = "object"
 
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     user_id: Mapped[UUID] = mapped_column(UUID, ForeignKey("users.id"), nullable=False)
     org_user_role_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("rbac_role.id"), nullable=False

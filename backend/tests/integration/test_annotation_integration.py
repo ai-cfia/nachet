@@ -316,11 +316,6 @@ class TestAnnotationServiceIntegrationUpdate:
 class TestAnnotationServiceIntegrationDelete:
     """Integration tests for AnnotationService.delete method."""
 
-    # TODO: Enable delete tests once 'active' field is added to Annotation model
-    # Currently Annotation model lacks 'active' field required for soft delete functionality.
-    # These tests are skipped until the database schema is updated.
-
-    @pytest.mark.skip(reason="TODO: Add 'active' field to Annotation model for soft delete support")
     @pytest.mark.asyncio
     async def test_delete_success_as_admin(
         self,
@@ -392,22 +387,16 @@ class TestAnnotationServiceIntegrationDelete:
         assert "id" in result
         assert result["id"] == annotation_id
 
-        # Verify annotation no longer exists (should raise 404)
-        # Note: Since Annotation doesn't have 'active' field, this is a hard delete
-        # The annotation should truly be gone from the database
-        try:
+        # Verify annotation is soft deleted (active=False)
+        # get_by_id filters by active=True, so should return 404
+        with pytest.raises(HTTPException) as exc_info:
             await AnnotationService.get_by_id(test_admin_user, annotation_id)
-            # If we get here, the annotation still exists - test should fail
-            assert False, "Annotation should have been deleted but still exists"
-        except HTTPException as e:
-            # This is expected - annotation should not exist
-            assert e.status_code == 404
+        assert exc_info.value.status_code == 404
 
         # Cleanup (only picture and folder since annotation is deleted)
         cleanup_test_pictures.append(picture["id"])
         cleanup_test_pictures.append(folder_id)
 
-    @pytest.mark.skip(reason="TODO: Add 'active' field to Annotation model for soft delete support")
     @pytest.mark.asyncio
     async def test_delete_unauthorized_non_admin(
         self,
