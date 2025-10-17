@@ -91,5 +91,5 @@ jobs:
         if: steps.sbom-check.outputs.needs_update == 'true'
         run: |
           echo "SBOM file needs to be regenerated. Please run:"
-            echo "cd nachet && ./generate-sbom.sh ${{ inputs.working-directory }} "
+          echo "cd nachet && ./generate-sbom.sh ${{ inputs.working-directory }} "
           exit 1
