@@ -4,11 +4,12 @@ User service using generic BaseCRUDService.
 Provides service layer for Users operations with RBAC, logging, and error handling.
 """
 
-from typing import Dict, Any, Type
+from typing import Dict, Any, Type, TYPE_CHECKING
 from uuid import UUID
 import traceback
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 
 from app.service.base_crud import BaseCRUDService
 from app.db.model import Users
@@ -19,6 +20,9 @@ from app.exceptions import (
     UserUpdateError,
     UserDeletionError,
 )
+
+if TYPE_CHECKING:
+    from app.service.auth import User
 
 
 class UserService(BaseCRUDService[Users]):
@@ -92,6 +96,82 @@ class UserService(BaseCRUDService[Users]):
         return UserDeletionError
 
     @classmethod
+    async def _create_default_folder(cls, session, user: Users, email: str) -> None:
+        """
+        Create a default folder for a user.
+
+        This is a private helper method shared by create() and register_user()
+        to avoid code duplication.
+
+        Args:
+            session: Active database session
+            user: User entity (must have organization_ref loaded)
+            email: User's email address
+
+        Raises:
+            Exception: Logs warning but doesn't raise (folder creation is non-critical)
+        """
+        try:
+            from app.db.model import RbacRole, Folder
+
+            # Extract username from email
+            username = email.split("@")[0] if email and "@" in email else "user"
+
+            # Get organization folder prefix
+            org_folder_prefix = user.organization_ref.folder_prefix or "default-org"
+
+            # Construct folder prefix: organization/username
+            folder_prefix = f"{org_folder_prefix}/{username}"
+
+            # Get the admin role for this organization
+            stmt = select(RbacRole).where(
+                RbacRole.organization_id == user.organization,
+                RbacRole.name == "admin",
+                RbacRole.active == True  # noqa: E712
+            )
+            result = await session.execute(stmt)
+            org_admin_role = result.scalar_one()
+
+            # Get the organization user role for this organization
+            stmt = select(RbacRole).where(
+                RbacRole.organization_id == user.organization,
+                RbacRole.name == "user",
+                RbacRole.active == True  # noqa: E712
+            )
+            result = await session.execute(stmt)
+            org_user_role = result.scalar_one()
+
+            # Create the default folder
+            default_folder = Folder(
+                user_id=user.id,
+                org_user_role_id=org_user_role.id,
+                org_admin_role_id=org_admin_role.id,
+                name="default",
+                folder_prefix=folder_prefix,
+                description=f"Default folder for {email}",
+                active=True,
+            )
+            session.add(default_folder)
+            await session.flush()
+
+            # Link the folder to the user
+            user.default_folder_id = default_folder.id
+
+            logger = cls._get_logger()
+            logger.info(
+                "Created default folder for user",
+                user_id=str(user.id),
+                folder_id=str(default_folder.id),
+                folder_prefix=folder_prefix,
+            )
+        except Exception as folder_error:
+            logger = cls._get_logger()
+            logger.warning(
+                f"Failed to create default folder for user, continuing without folder: {str(folder_error)}",
+                user_id=str(user.id),
+            )
+
+    @classmethod
     async def create(cls, user_id: UUID, **kwargs) -> Dict[str, Any]:
         """
         Create a new user (requires CFIA admin).
@@ -132,60 +212,8 @@ class UserService(BaseCRUDService[Users]):
                 await session.refresh(user, attribute_names=["organization_ref"])
 
                 # Create default folder for the new user
-                # Since only CFIA admin can create users (verified above), we can safely
-                # create the folder using the organization's admin role
-                try:
-                    email = kwargs.get("email", "")
-                    username = email.split("@")[0] if email and "@" in email else "user"
-
-                    # Get organization folder_prefix
-                    org_folder_prefix = user.organization_ref.folder_prefix or "default-org"
-
-                    # Construct folder prefix: organization/username
-                    folder_prefix = f"{org_folder_prefix}/{username}"
-
-                    # Get organization admin role for the user's organization
-                    from sqlalchemy import select
-                    from app.db.model import RbacRole, Folder
-
-                    # Get the admin role for this organization
-                    stmt = select(RbacRole).where(
-                        RbacRole.organization_id == user.organization,
-                        RbacRole.name == "admin",
-                        RbacRole.active == True  # noqa: E712
-                    )
-                    result = await session.execute(stmt)
-                    org_admin_role = result.scalar_one()
-
-                    # Create the default folder
-                    default_folder = Folder(
-                        user_id=user.id,
-                        org_user_role_id=org_admin_role.id,
-                        org_admin_role_id=org_admin_role.id,
-                        name="default",
-                        folder_prefix=folder_prefix,
-                        description=f"Default folder for {email}",
-                        active=True,
-                    )
-                    session.add(default_folder)
-                    await session.flush()
-
-                    # Link the folder to the user
-                    user.default_folder_id = default_folder.id
-
-                    logger = cls._get_logger()
-                    logger.info(
-                        "Created default folder for user",
-                        user_id=str(user.id),
-                        folder_id=str(default_folder.id),
-                        folder_prefix=folder_prefix,
-                    )
-                except Exception as folder_error:
-                    logger = cls._get_logger()
-                    logger.warning(
-                        f"Failed to create default folder for user, continuing without folder: {str(folder_error)}",
-                        user_id=str(user.id),
-                    )
+                email = kwargs.get("email", "")
+                await cls._create_default_folder(session, user, email)
 
                 result = cls.serialize_entity(user)
                 await session.commit()
@@ -228,4 +256,156 @@ class UserService(BaseCRUDService[Users]):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to create {entity_name_lower}",
+            )
+
+    @classmethod
+    async def check_user_registration(cls, user: "User") -> bool:
+        """
+        Check if a user is registered in the system.
+
+        If the user is not registered and not already in pending_registration,
+        automatically creates a pending registration entry.
+
+        Args:
+            user: User object from JWT token (contains oid and email)
+
+        Returns:
+            True if user is registered, False otherwise
+        """
+        try:
+            async with sessionmanager.get_session() as session:
+                # Check if user exists in users table
+                query = select(Users).where(Users.id == UUID(user.oid))
+                result = await session.execute(query)
+                existing_user = result.scalar_one_or_none()
+
+                if existing_user:
+                    return True
+
+                # User not registered - check if already in pending_registration
+                from app.datastore.pending_registration import (
+                    PendingRegistrationDataService,
+                )
+
+                pending_service = PendingRegistrationDataService(session)
+                pending_registration = await pending_service.get_by_azure_oid(user.oid)
+
+                if not pending_registration:
+                    # Create pending registration entry to prevent abuse
+                    await pending_service.create(
+                        azure_ad_oid=user.oid, email=user.email
+                    )
+                    await session.commit()
+
+                    logger = cls._get_logger()
+                    logger.info(
+                        "Created pending registration for user",
+                        azure_ad_oid=user.oid,
+                        email=user.email,
+                    )
+
+                return False
+
+        except Exception as e:
+            logger = cls._get_logger()
+            logger.error(
+                f"Error checking user registration: {cls._sanitize_error_message(e)}",
+                azure_ad_oid=user.oid,
+            )
+            logger.debug(
+                "Traceback for check_user_registration error",
+                traceback=traceback.format_exc(),
+            )
+            # Don't expose internal errors, just return False
+            return False
+
+    @classmethod
+    async def register_user(
+        cls, admin_user_id: UUID, azure_ad_oid: str, organization_id: UUID, email: str
+    ) -> Dict[str, Any]:
+        """
+        Register a user by assigning them to an organization (CFIA admin only).
+
+        This method:
+        1. Verifies the admin has permission
+        2. Creates a full user record with organization
+        3. Deletes the pending registration entry
+
+        Args:
+            admin_user_id: UUID of the admin performing the registration
+            azure_ad_oid: Azure AD object ID of the user to register
+            organization_id: Organization to assign the user to
+            email: User's email address
+
+        Returns:
+            Dictionary representation of the created user
+
+        Raises:
+            HTTPException: 401 if not authenticated, 403 if not admin, 500 on errors
+        """
+        entity_name = cls.get_entity_name()
+        entity_name_lower = entity_name.lower()
+
+        try:
+            # RBAC: Only CFIA admin can register users
+            from app.service.rbac import RbacService
+
+            await RbacService.verify_user_is_cfia_admin(admin_user_id)
+
+            async with sessionmanager.get_session() as session:
+                # Create the user using the existing create method
+                # Note: We need to pass id explicitly as azure_ad_oid
+                data_service_class = cls.get_data_service_class()
+                data_service = data_service_class(session)
+
+                user = await data_service.create(
+                    id=UUID(azure_ad_oid),
+                    email=email,
+                    organization=organization_id,
+                    registered_by=admin_user_id,
+                )
+
+                # Eagerly load organization_ref to avoid greenlet errors
+                await session.refresh(user, attribute_names=["organization_ref"])
+
+                # Create default folder for the new user
+                await cls._create_default_folder(session, user, email)
+
+                # Delete from pending_registration table
+                from app.datastore.pending_registration import (
+                    PendingRegistrationDataService,
+                )
+
+                pending_service = PendingRegistrationDataService(session)
+                await pending_service.delete(azure_ad_oid)
+
+                result = cls.serialize_entity(user)
+                await session.commit()
+
+                logger = cls._get_logger()
+                logger.info(
+                    f"{entity_name} registered successfully",
+                    admin_user_id=str(admin_user_id),
+                    user_id=str(user.id),
+                    organization_id=str(organization_id),
+                )
+
+                return result
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger = cls._get_logger()
+            logger.error(
+                f"Failed to register {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                admin_user_id=str(admin_user_id),
+                azure_ad_oid=azure_ad_oid,
+            )
+            logger.debug(
+                f"Traceback for failed register {entity_name_lower}",
+                traceback=traceback.format_exc(),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to register {entity_name_lower}",
             )

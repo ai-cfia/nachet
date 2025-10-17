@@ -349,6 +349,7 @@ class Users(Base):
     organization: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("organization.id"), nullable=False
     )
+    registered_by: Mapped[Optional[UUID]] = mapped_column(UUID)
 
     # Relationships
     organization_ref: Mapped["Organization"] = relationship(
@@ -680,4 +681,14 @@ class ChangeLog(Base):
     # Relationships
     user: Mapped[Optional["Users"]] = relationship(
         "Users", back_populates="change_logs"
+    )
+
+
+class PendingRegistration(Base):
+    __tablename__ = "pending_registration"
+
+    azure_ad_oid: Mapped[str] = mapped_column(String(255), primary_key=True)
+    email: Mapped[Optional[str]] = mapped_column(String(255))
+    date_created: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=func.current_timestamp()
     )

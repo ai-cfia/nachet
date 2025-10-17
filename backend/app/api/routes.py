@@ -7,6 +7,7 @@ from app.service import (
     FrontendService,
     LogService,
     DeviceService,
+    UserService,
 )
 from app.service.auth import User, get_current_user
 from app.api.config import get_limiter
@@ -201,6 +202,22 @@ async def get_directories(
     _get_logger().debug("get_directories endpoint called", user_id=current_user.oid)
     directories = await DirectoryService.get_user_directories(current_user.oid)
     return directories
+
+
+@router.get(
+    "/is-registered",
+    status_code=status.HTTP_200_OK,
+    name="Check if User is Registered [AUTH REQUIRED]",
+)
+@limiter.limit("10/minute")
+async def check_user_registration(
+    request: Request, current_user: User = Depends(get_current_user)
+):
+    _get_logger().debug(
+        "check_user_registration endpoint called", user_id=current_user.oid
+    )
+    is_registered = await UserService.check_user_registration(current_user)
+    return {"is_registered": is_registered}
 
 
 @router.get(

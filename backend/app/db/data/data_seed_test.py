@@ -5,6 +5,7 @@ This script contains functions to seed the development database with initial dat
 using SQLAlchemy ORM models instead of raw SQL.
 """
 
+import os
 import uuid
 from datetime import datetime
 
@@ -22,7 +23,6 @@ from app.db.model import (
     Organization,
     Users,
     Folder,
-    RbacRole,
     RbacPermission,
     RbacResource,
     RbacRolePermissionResource,
@@ -61,6 +61,10 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
     # print("Dev data compatible semver: 0.2.0")
     # Use SessionManager's factory for consistent session management
     async_session = sessionmanager.get_session_factory()
+
+    # Get CFIA organization and admin role IDs from environment
+    cfia_org_id = uuid.UUID(os.getenv("CFIA_ORGANIZATION_ID", "12345678-1234-1234-1234-123456789012"))
+    cfia_admin_role_id = uuid.UUID(os.getenv("CFIA_ADMIN_ROLE_ID", "87654321-4321-4321-4321-210987654321"))
 
     # Add device brand and models
     async with async_session.begin() as session:
@@ -231,22 +235,17 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
 
     async with async_session.begin() as session:
         # Create organization first (required for foreign key references)
+        # Use CFIA org ID from environment for test organization
         organization = Organization(
-            id=uuid.UUID("12345678-1234-1234-1234-123456789012"),
+            id=cfia_org_id,
             name="Test Organization",
             description="Default test organization for development",
             active=True,
         )
         session.add(organization)
 
-        # Create RBAC role (basic admin role)
-        admin_role = RbacRole(
-            id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
-            organization_id=uuid.UUID("12345678-1234-1234-1234-123456789012"),
-            name="Admin",
-            description="Administrator role with full access",
-        )
-        session.add(admin_role)
+        # Note: RBAC roles (admin, user, verifier) will be created by seed_rbac_constants below
+        # The admin role ID will be: uuid.uuid5(cfia_org_id, "admin")
 
         # Add RBAC permissions
 
@@ -294,20 +293,21 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
 
         # Add role-permission-resource mappings
         # Admin role gets admin permission on all resources
+        # Use the CFIA admin role ID from environment
         admin_pictures = RbacRolePermissionResource(
-            role_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
+            role_id=cfia_admin_role_id,
             permission_id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
             resource_id=uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
             active=True,
         )
         admin_models = RbacRolePermissionResource(
-            role_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
+            role_id=cfia_admin_role_id,
             permission_id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
             resource_id=uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
             active=True,
         )
         admin_users = RbacRolePermissionResource(
-            role_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
+            role_id=cfia_admin_role_id,
             permission_id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
             resource_id=uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc"),
             active=True,
@@ -315,9 +315,8 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
         session.add_all([admin_pictures, admin_models, admin_users])
 
         # Seed RBAC constants (route-based permissions)
-        await seed_rbac_constants(
-            session, uuid.UUID("12345678-1234-1234-1234-123456789012")
-        )
+        # This will create admin, user, and verifier roles
+        await seed_rbac_constants(session, cfia_org_id)
     _get_logger().info(
         "Organization, rbac roles, rbac permissions, rbac resources, and route policies added"
     )
@@ -331,17 +330,21 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
             email="test.user@inspection.gc.ca",
             date_created=datetime(2024, 10, 30, 19, 59, 56, 653932),
             date_updated=datetime(2024, 10, 30, 19, 59, 56, 653932),
-            organization=uuid.UUID("12345678-1234-1234-1234-123456789012"),
+            organization=cfia_org_id,
             active=True,
+            registered_by=None,  # Pre-seeded test user has no registering admin
         )
         session.add(test_user)
 
         # Create default folder
+        # Use admin role ID from environment for CFIA org
+        admin_role_id = cfia_admin_role_id
+        user_role_id = uuid.uuid5(cfia_org_id, "user")
         default_folder = Folder(
             id=uuid.UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479"),
             user_id=uuid.UUID("8ea46a6b-7d37-4fbb-a66f-775112376e16"),
-            org_admin_role_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
-            org_user_role_id=uuid.UUID("cf75fcb9-b237-529a-a991-0fb69fb5ec1f"),  # Using the user role
+            org_admin_role_id=admin_role_id,
+            org_user_role_id=user_role_id,
             name="default",
             folder_prefix="test-org/test-user",
             description="Default folder for test user",
@@ -353,11 +356,12 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
         test_user.default_folder_id = uuid.UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479")
     _get_logger().info("Test user and default folder added")
 
-    # Add user-role mapping
+    # Add user-role mapping (assign test user to CFIA admin role)
     async with async_session.begin() as session:
+        # Use admin role ID from environment for CFIA org
         user_role_mapping = RbacUserRole(
             user_id=uuid.UUID("8ea46a6b-7d37-4fbb-a66f-775112376e16"),
-            role_id=uuid.UUID("87654321-4321-4321-4321-210987654321"),
+            role_id=cfia_admin_role_id,
             active=True,
         )
         session.add(user_role_mapping)

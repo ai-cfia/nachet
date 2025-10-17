@@ -131,9 +131,16 @@ async def seed_rbac_roles(session: AsyncSession, organization_id: UUID) -> dict:
         and str(organization_id) == settings.cfia_organization_id
     )
 
+    # For CFIA org, use the admin role ID from environment if available
+    # Otherwise generate deterministically with uuid.uuid5
+    if is_cfia and settings.cfia_admin_role_id:
+        admin_role_id = UUID(settings.cfia_admin_role_id)
+    else:
+        admin_role_id = uuid.uuid5(organization_id, "admin")
+
     roles = [
         RbacRole(
-            id=uuid.uuid5(organization_id, "admin"),
+            id=admin_role_id,
             organization_id=organization_id,
             name="admin",  # Generic name for all orgs
             description="Administrator with full organization access",
