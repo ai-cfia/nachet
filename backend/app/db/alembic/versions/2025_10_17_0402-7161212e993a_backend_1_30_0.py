@@ -1,8 +1,8 @@
-"""First migration
+"""backend 1.30.0
 
-Revision ID: 39f2bd6b63a7
+Revision ID: 7161212e993a
 Revises: 
-Create Date: 2025-10-16 13:10:52.403829
+Create Date: 2025-10-17 04:02:08.195254
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '39f2bd6b63a7'
+revision: str = '7161212e993a'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -43,6 +43,12 @@ def upgrade() -> None:
     sa.Column('description', sa.Text(), nullable=False),
     sa.Column('folder_prefix', sa.Text(), nullable=True),
     sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('pending_registration',
+    sa.Column('azure_ad_oid', sa.String(length=255), nullable=False),
+    sa.Column('email', sa.String(length=255), nullable=True),
+    sa.Column('date_created', sa.DateTime(timezone=True), nullable=False),
+    sa.PrimaryKeyConstraint('azure_ad_oid')
     )
     op.create_table('pipeline',
     sa.Column('id', sa.UUID(), nullable=False),
@@ -168,6 +174,7 @@ def upgrade() -> None:
     sa.Column('date_updated', sa.DateTime(timezone=True), nullable=False),
     sa.Column('default_folder_id', sa.UUID(), nullable=True),
     sa.Column('organization', sa.UUID(), nullable=False),
+    sa.Column('registered_by', sa.UUID(), nullable=True),
     sa.ForeignKeyConstraint(['organization'], ['organization.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -346,6 +353,7 @@ def downgrade() -> None:
     op.drop_table('rbac_resource')
     op.drop_table('rbac_permission')
     op.drop_table('pipeline')
+    op.drop_table('pending_registration')
     op.drop_table('organization')
     op.drop_table('model_task')
     op.drop_table('device_brand')

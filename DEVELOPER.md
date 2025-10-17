@@ -75,7 +75,10 @@ nachet/backend$ source .venv/bin/activate
 
 # initialize the database (creates tables, runs migrations, creates initial user)
 nachet/backend$ cd app/db
+nachet/backend/app/db$ export $(grep -v '^#' ../../.env.local | xargs)
 nachet/backend/app/db$ uv run db_setup_local.py
+nachet/backend/app/db$ export $(grep -v '^#' ../../.env.test.local | xargs)
+nachet/backend/app/db$ uv run db_setup_test.py
 
 # run all db tests with coverage
 nachet/backend/app/db$ uv run pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
@@ -85,11 +88,11 @@ nachet/backend/app/db$ uv run pytest tests/ -v --tb=short --cov=. --cov-report=x
 nachet/backend/app/db$ uv run pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing -m "not integration"
 
 # run tests
-nachet/backend$ ./run_tests.sh
+nachet/backend$ uv run pytest tests/ -v --tb=short
 nachet/backend$ deactivate
 
 # lint
-nachet/backend$  uv run ruff check .
+nachet/backend$  uv run ruff check --fix
 
 # push frontend build to blob storage
 nachet/backend$ uv run app/scripts/push_frontend_to_blob.py
