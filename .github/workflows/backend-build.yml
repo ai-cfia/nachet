@@ -15,8 +15,12 @@ permissions:
   packages: write
 
 concurrency:
-  group: backend-build-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
+# concurrency:
+#   group: backend-build-${{ github.ref }}
+#   cancel-in-progress: true
 
 env:
   IS_MONOREPO: true
