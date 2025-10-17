@@ -295,7 +295,7 @@ class UserService(BaseCRUDService[Users]):
                 if not pending_registration:
                     # Create pending registration entry to prevent abuse
                     await pending_service.create(
-                        azure_ad_oid=user.oid, email=user.email
+                        azure_ad_oid=user.oid, email=user.preferred_username
                     )
                     await session.commit()
 
