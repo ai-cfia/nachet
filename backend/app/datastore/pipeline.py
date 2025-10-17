@@ -19,18 +19,10 @@ class PipelineDataService(BaseCRUDDataService[Pipeline]):
         """Return the Pipeline model class."""
         return Pipeline
 
-    def get_query_options(self) -> list:
-        """
-        Return query options for eager loading Pipeline relationships.
-        
-        Returns:
-            List of SQLAlchemy query options for loading pipeline_models and related models,
-            ordered by step for proper pipeline sequence
-        """
+    def get_eager_load_options(self):
+        """Get eager loading options for Pipeline queries."""
         return [
-            selectinload(Pipeline.pipeline_models)
-            .selectinload(PipelineModel.model)
-            .options(selectinload(PipelineModel).order_by(PipelineModel.step))
+            selectinload(Pipeline.pipeline_models).selectinload(PipelineModel.model)
         ]
 
     async def get_all_pipelines(self) -> List[Pipeline]:
@@ -44,9 +36,7 @@ class PipelineDataService(BaseCRUDDataService[Pipeline]):
             select(Pipeline)
             .where(Pipeline.active.is_(True))
             .options(
-                selectinload(Pipeline.pipeline_models)
-                .selectinload(PipelineModel.model)
-                .options(selectinload(PipelineModel).order_by(PipelineModel.step))
+                selectinload(Pipeline.pipeline_models).selectinload(PipelineModel.model)
             )
         )
         result = await self.session.execute(stmt)
