@@ -267,7 +267,8 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Failed to retrieve directories for user {user_id}: {DirectoryService._sanitize_error_message(e)}")
+            error_msg = f"Failed to retrieve directories for user {user_id}: {DirectoryService._sanitize_error_message(e)}"
+            logger.error(error_msg)
             raise DirectoryNotFoundError(
                 f"Failed to retrieve directories for user {user_id}"
             )
@@ -313,7 +314,8 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Failed to retrieve org directories for user {user_id}: {DirectoryService._sanitize_error_message(e)}")
+            error_msg = f"Failed to retrieve org directories for user {user_id}: {DirectoryService._sanitize_error_message(e)}"
+            logger.error(error_msg)
             raise DirectoryNotFoundError(
                 f"Failed to retrieve organization directories for user {user_id}"
             )

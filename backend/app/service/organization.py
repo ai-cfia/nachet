@@ -214,8 +214,9 @@ class OrganizationService(BaseCRUDService[Organization]):
                 await session.refresh(organization, attribute_names=["rbac_roles"])
 
                 logger = cls._get_logger()
+                info_msg = "Organization created with roles"
                 logger.info(
-                    "Organization created with roles",
+                    info_msg,
                     user_id=str(user_id),
                     organization_id=str(organization.id),
                     admin_role_id=str(admin_role.id),
@@ -228,15 +229,17 @@ class OrganizationService(BaseCRUDService[Organization]):
             raise
         except Exception as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to create organization: {str(e)}"
             logger.error(
-                f"Failed to create organization: {str(e)}",
+                error_msg,
                 error=str(e),
                 error_type=type(e).__name__,
                 user_id=str(user_id),
                 organization_name=name,
             )
+            debug_msg = "Traceback for failed create organization"
             logger.debug(
-                "Traceback for failed create organization",
+                debug_msg,
                 traceback=traceback.format_exc(),
             )
             raise HTTPException(

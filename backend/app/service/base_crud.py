@@ -240,8 +240,9 @@ class BaseCRUDService(Generic[T]):
             raise
         except Exception as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to retrieve {entity_name_plural}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to retrieve {entity_name_plural}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(user_id),
                 offset=offset,
                 limit=limit,
@@ -297,16 +298,18 @@ class BaseCRUDService(Generic[T]):
             raise
         except not_found_exc as e:
             logger = cls._get_logger()
+            warning_msg = f"{entity_name} not found: {cls._sanitize_error_message(e)}"
             logger.warning(
-                f"{entity_name} not found: {cls._sanitize_error_message(e)}",
+                warning_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except Exception as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to retrieve {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to retrieve {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -366,8 +369,9 @@ class BaseCRUDService(Generic[T]):
             raise
         except creation_exc as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(user_id),
             )
             logger.debug(
@@ -446,16 +450,18 @@ class BaseCRUDService(Generic[T]):
             raise
         except not_found_exc as e:
             logger = cls._get_logger()
+            warning_msg = f"{entity_name} not found for update: {cls._sanitize_error_message(e)}"
             logger.warning(
-                f"{entity_name} not found for update: {cls._sanitize_error_message(e)}",
+                warning_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except update_exc as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -469,8 +475,9 @@ class BaseCRUDService(Generic[T]):
             )
         except Exception as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -537,16 +544,18 @@ class BaseCRUDService(Generic[T]):
             raise
         except not_found_exc as e:
             logger = cls._get_logger()
+            warning_msg = f"{entity_name} not found for deletion: {cls._sanitize_error_message(e)}"
             logger.warning(
-                f"{entity_name} not found for deletion: {cls._sanitize_error_message(e)}",
+                warning_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except deletion_exc as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -560,8 +569,9 @@ class BaseCRUDService(Generic[T]):
             )
         except Exception as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -806,16 +816,18 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             raise
         except not_found_exc as e:
             logger = cls._get_logger()
+            warning_msg = f"{entity_name} not found: {cls._sanitize_error_message(e)}"
             logger.warning(
-                f"{entity_name} not found: {cls._sanitize_error_message(e)}",
+                warning_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except Exception as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to retrieve {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to retrieve {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -878,16 +890,18 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             raise
         except not_found_exc as e:
             logger = cls._get_logger()
+            warning_msg = f"{entity_name} not found for update: {cls._sanitize_error_message(e)}"
             logger.warning(
-                f"{entity_name} not found for update: {cls._sanitize_error_message(e)}",
+                warning_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except update_exc as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -901,8 +915,9 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             )
         except Exception as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -967,16 +982,18 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             raise
         except not_found_exc as e:
             logger = cls._get_logger()
+            warning_msg = f"{entity_name} not found for deletion: {cls._sanitize_error_message(e)}"
             logger.warning(
-                f"{entity_name} not found for deletion: {cls._sanitize_error_message(e)}",
+                warning_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except deletion_exc as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -990,8 +1007,9 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             )
         except Exception as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(user_id),
                 entity_id=str(entity_id),
             )
@@ -1045,8 +1063,9 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             raise
         except creation_exc as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(_user_id),
             )
             logger.debug(
@@ -1059,8 +1078,9 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             )
         except Exception as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(_user_id),
             )
             logger.debug(

@@ -162,11 +162,14 @@ def test_organization() -> UUID:
     Return the pre-seeded test organization UUID from db_setup_test.py.
 
     This organization is created during database setup with admin roles already configured.
+    The UUID comes from the CFIA_ORGANIZATION_ID environment variable.
 
     Returns:
-        UUID of the pre-seeded test organization: 12345678-1234-1234-1234-123456789012
+        UUID of the pre-seeded test organization
     """
-    return UUID("12345678-1234-1234-1234-123456789012")
+    from uuid import UUID
+    cfia_org_id = os.getenv("CFIA_ORGANIZATION_ID", "12345678-1234-1234-1234-123456789012")
+    return UUID(cfia_org_id)
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -385,31 +388,25 @@ def test_org_admin_role() -> UUID:
     Return the pre-seeded admin role UUID from db_setup_test.py.
 
     This role is created during database setup for the test organization.
-
-    Role details:
-        - ID: 87654321-4321-4321-4321-210987654321
-        - Name: Admin
-        - Organization: 12345678-1234-1234-1234-123456789012
+    The UUID comes from the CFIA_ADMIN_ROLE_ID environment variable.
 
     Returns:
         UUID of the pre-seeded admin role
     """
-    return UUID("87654321-4321-4321-4321-210987654321")
+    cfia_admin_role_id = os.getenv("CFIA_ADMIN_ROLE_ID", "87654321-4321-4321-4321-210987654321")
+    return UUID(cfia_admin_role_id)
 
 
 @pytest_asyncio.fixture(scope="session")
-def test_org_user_role() -> UUID:
+def test_org_user_role(test_organization: UUID) -> UUID:
     """
     Return the pre-seeded user role UUID from db_setup_test.py.
 
     This role is referenced in the default folder creation.
-
-    Role details:
-        - ID: cf75fcb9-b237-529a-a991-0fb69fb5ec1f
-        - Name: User
-        - Organization: 12345678-1234-1234-1234-123456789012
+    The UUID is calculated using uuid.uuid5(organization_id, "user").
 
     Returns:
         UUID of the pre-seeded user role
     """
-    return UUID("cf75fcb9-b237-529a-a991-0fb69fb5ec1f")
+    import uuid
+    return uuid.uuid5(test_organization, "user")
