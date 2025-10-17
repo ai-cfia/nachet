@@ -29,7 +29,7 @@ defaults:
     working-directory: backend/app/db
 
 jobs:
-  test:
+  db-module-tests:
     runs-on: ubuntu-latest
     environment: datastore_ci
     timeout-minutes: 15
@@ -56,7 +56,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Install uv
         uses: astral-sh/setup-uv@b7bf78939d77607a9ccb489e4ec4651ba1092d5c
