@@ -684,6 +684,44 @@
       "version": "1.3.0"
     },
     {
+      "bom-ref": "astroid==4.0.1",
+      "description": "An abstract syntax tree for Python with inference support.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Docs",
+          "type": "documentation",
+          "url": "https://pylint.readthedocs.io/projects/astroid/en/latest/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Bug tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/pylint-dev/astroid/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Discord server",
+          "type": "other",
+          "url": "https://discord.gg/Egy6P8AMB5"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source Code",
+          "type": "other",
+          "url": "https://github.com/pylint-dev/astroid"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "LGPL-2.1-or-later"
+          }
+        }
+      ],
+      "name": "astroid",
+      "purl": "pkg:pypi/astroid@4.0.1",
+      "type": "library",
+      "version": "4.0.1"
+    },
+    {
       "bom-ref": "attrs==25.3.0",
       "description": "Classes Without Boilerplate",
       "externalReferences": [
@@ -1300,6 +1338,55 @@
       "purl": "pkg:pypi/defusedxml@0.7.1",
       "type": "library",
       "version": "0.7.1"
+    },
+    {
+      "bom-ref": "dill==0.4.0",
+      "description": "serialize all of Python",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata: Download-URL",
+          "type": "distribution",
+          "url": "https://pypi.org/project/dill/#files"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "http://dill.rtfd.io"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Bug Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/uqfoundation/dill/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source Code",
+          "type": "other",
+          "url": "https://github.com/uqfoundation/dill"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/uqfoundation/dill"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "BSD-3-Clause"
+          }
+        },
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: BSD License"
+          }
+        }
+      ],
+      "name": "dill",
+      "purl": "pkg:pypi/dill@0.4.0",
+      "type": "library",
+      "version": "0.4.0"
     },
     {
       "bom-ref": "dnspython==2.7.0",
@@ -2025,6 +2112,50 @@
       "version": "20.11.0"
     },
     {
+      "bom-ref": "isort==7.0.0",
+      "description": "A Python utility / library to sort Python imports.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://pycqa.github.io/isort/index.html"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://github.com/PyCQA/isort/releases"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/PyCQA/isort"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://pycqa.github.io/isort/index.html"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "isort",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "colors"
+        }
+      ],
+      "purl": "pkg:pypi/isort@7.0.0",
+      "type": "library",
+      "version": "7.0.0"
+    },
+    {
       "bom-ref": "jsonpointer==3.0.0",
       "description": "Identify specific nodes in a JSON document (RFC 6901) ",
       "externalReferences": [
@@ -2337,6 +2468,29 @@
       "purl": "pkg:pypi/markdown-it-py@4.0.0",
       "type": "library",
       "version": "4.0.0"
+    },
+    {
+      "bom-ref": "mccabe==0.7.0",
+      "description": "McCabe checker, plugin for flake8",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/pycqa/mccabe"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "mccabe",
+      "purl": "pkg:pypi/mccabe@0.7.0",
+      "type": "library",
+      "version": "0.7.0"
     },
     {
       "bom-ref": "mdurl==0.1.2",
@@ -2855,6 +3009,49 @@
       "version": "32.0.1"
     },
     {
+      "bom-ref": "platformdirs==4.5.0",
+      "description": "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://platformdirs.readthedocs.io"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/tox-dev/platformdirs/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/tox-dev/platformdirs"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://github.com/tox-dev/platformdirs/releases"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/tox-dev/platformdirs"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "platformdirs",
+      "purl": "pkg:pypi/platformdirs@4.5.0",
+      "type": "library",
+      "version": "4.5.0"
+    },
+    {
       "bom-ref": "pluggy==1.6.0",
       "description": "plugin and hook calling mechanisms for python",
       "licenses": [
@@ -3153,6 +3350,34 @@
       "version": "2.1.0"
     },
     {
+      "bom-ref": "py2puml==0.10.0",
+      "description": "Generate PlantUML class diagrams to document your Python application.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/lucsorel/py2puml"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/lucsorel/py2puml"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "py2puml",
+      "purl": "pkg:pypi/py2puml@0.10.0",
+      "type": "library",
+      "version": "0.10.0"
+    },
+    {
       "bom-ref": "pycparser==2.22",
       "description": "C parser in Python",
       "externalReferences": [
@@ -3304,6 +3529,82 @@
       "purl": "pkg:pypi/pydantic-core@2.33.2",
       "type": "library",
       "version": "2.33.2"
+    },
+    {
+      "bom-ref": "pydeps==3.0.1",
+      "description": "Display module dependencies",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/thebjorn/pydeps"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: BSD License"
+          }
+        }
+      ],
+      "name": "pydeps",
+      "purl": "pkg:pypi/pydeps@3.0.1",
+      "type": "library",
+      "version": "3.0.1"
+    },
+    {
+      "bom-ref": "pylint==4.0.1",
+      "description": "python code static checker",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Bug Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/pylint-dev/pylint/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Discord Server",
+          "type": "other",
+          "url": "https://discord.com/invite/Egy6P8AMB5"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source Code",
+          "type": "other",
+          "url": "https://github.com/pylint-dev/pylint"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: User Guide",
+          "type": "other",
+          "url": "https://pylint.readthedocs.io/en/latest/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Docs: Contributor Guide",
+          "type": "other",
+          "url": "https://pylint.readthedocs.io/en/latest/development_guide/contributor_guide/index.html"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: What's New",
+          "type": "other",
+          "url": "https://pylint.readthedocs.io/en/latest/whatsnew/3/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: homepage",
+          "type": "website",
+          "url": "https://github.com/pylint-dev/pylint"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "GPL-2.0-or-later"
+          }
+        }
+      ],
+      "name": "pylint",
+      "purl": "pkg:pypi/pylint@4.0.1",
+      "type": "library",
+      "version": "4.0.1"
     },
     {
       "bom-ref": "pyparsing==3.2.3",
@@ -4090,6 +4391,44 @@
       "version": "0.47.3"
     },
     {
+      "bom-ref": "stdlib-list==0.11.1",
+      "description": "A list of Python Standard Libraries (2.7 through 3.13).",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://pypi.github.io/stdlib-list/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issues",
+          "type": "issue-tracker",
+          "url": "https://github.com/pypi/stdlib-list/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/pypi/stdlib-list"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://pypi.org/project/stdlib-list/"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "stdlib-list",
+      "purl": "pkg:pypi/stdlib-list@0.11.1",
+      "type": "library",
+      "version": "0.11.1"
+    },
+    {
       "bom-ref": "toml==0.10.2",
       "description": "Python Library for Tom's Obvious, Minimal Language",
       "externalReferences": [
@@ -4111,6 +4450,34 @@
       "purl": "pkg:pypi/toml@0.10.2",
       "type": "library",
       "version": "0.10.2"
+    },
+    {
+      "bom-ref": "tomlkit==0.13.3",
+      "description": "Style preserving TOML library",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/sdispater/tomlkit"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/sdispater/tomlkit"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "tomlkit",
+      "purl": "pkg:pypi/tomlkit@0.13.3",
+      "type": "library",
+      "version": "0.13.3"
     },
     {
       "bom-ref": "tqdm==4.67.1",
@@ -4900,6 +5267,12 @@
     },
     {
       "dependsOn": [
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "astroid==4.0.1"
+    },
+    {
+      "dependsOn": [
         "coverage==7.10.6",
         "pytest==8.4.1"
       ],
@@ -4948,6 +5321,7 @@
     },
     {
       "dependsOn": [
+        "isort==7.0.0",
         "pytest==8.4.1"
       ],
       "ref": "boolean.py==5.0"
@@ -5012,6 +5386,9 @@
       "ref": "defusedxml==0.7.1"
     },
     {
+      "ref": "dill==0.4.0"
+    },
+    {
       "dependsOn": [
         "Hypercorn==0.17.3",
         "coverage==7.10.6",
@@ -5020,6 +5397,7 @@
         "httpcore==1.0.9",
         "httpx==0.28.1",
         "idna==3.10",
+        "pylint==4.0.1",
         "pytest-cov==6.2.1",
         "pytest==8.4.1"
       ],
@@ -5149,6 +5527,9 @@
       "ref": "isoduration==20.11.0"
     },
     {
+      "ref": "isort==7.0.0"
+    },
+    {
       "ref": "jsonpointer==3.0.0"
     },
     {
@@ -5214,6 +5595,9 @@
         "requests==2.32.4"
       ],
       "ref": "markdown-it-py==4.0.0"
+    },
+    {
+      "ref": "mccabe==0.7.0"
     },
     {
       "ref": "mdurl==0.1.2"
@@ -5302,6 +5686,7 @@
     {
       "dependsOn": [
         "SQLAlchemy==2.0.43",
+        "isort==7.0.0",
         "pytest==8.4.1"
       ],
       "ref": "packageurl-python==0.17.5"
@@ -5329,6 +5714,13 @@
     },
     {
       "dependsOn": [
+        "pytest-cov==6.2.1",
+        "pytest==8.4.1"
+      ],
+      "ref": "platformdirs==4.5.0"
+    },
+    {
+      "dependsOn": [
         "coverage==7.10.6",
         "pytest==8.4.1"
       ],
@@ -5353,6 +5745,7 @@
       "dependsOn": [
         "anyio==4.10.0",
         "dnspython==2.7.0",
+        "isort==7.0.0",
         "psycopg-pool==3.2.6",
         "pytest-cov==6.2.1",
         "pytest==8.4.1",
@@ -5365,6 +5758,9 @@
         "defusedxml==0.7.1"
       ],
       "ref": "py-serializable==2.1.0"
+    },
+    {
+      "ref": "py2puml==0.10.0"
     },
     {
       "ref": "pycparser==2.22"
@@ -5394,6 +5790,24 @@
         "typing_extensions==4.14.1"
       ],
       "ref": "pydantic_core==2.33.2"
+    },
+    {
+      "dependsOn": [
+        "stdlib-list==0.11.1"
+      ],
+      "ref": "pydeps==3.0.1"
+    },
+    {
+      "dependsOn": [
+        "astroid==4.0.1",
+        "dill==0.4.0",
+        "isort==7.0.0",
+        "mccabe==0.7.0",
+        "platformdirs==4.5.0",
+        "tomlkit==0.13.3",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "pylint==4.0.1"
     },
     {
       "dependsOn": [
@@ -5565,7 +5979,19 @@
       "ref": "starlette==0.47.3"
     },
     {
+      "dependsOn": [
+        "coverage==7.10.6",
+        "pytest-cov==6.2.1",
+        "pytest==8.4.1",
+        "ruff==0.13.2"
+      ],
+      "ref": "stdlib-list==0.11.1"
+    },
+    {
       "ref": "toml==0.10.2"
+    },
+    {
+      "ref": "tomlkit==0.13.3"
     },
     {
       "dependsOn": [
@@ -5702,7 +6128,7 @@
       ],
       "name": "nachet-backend",
       "type": "application",
-      "version": "1.31.0"
+      "version": "1.32.0"
     },
     "properties": [
       {
