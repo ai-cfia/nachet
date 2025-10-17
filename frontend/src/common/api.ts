@@ -16,6 +16,7 @@ import {
   // UserIdResponseSchema,
   SessionIdResponseSchema,
   BooleanResponseSchema,
+  IsRegisteredResponseSchema,
   // VoidResponseSchema,
   ReadAzureStorageDirApiSchema,
   ApiInferenceDataSchema,
@@ -118,6 +119,36 @@ export const pingBackend = async ({
     BooleanResponseSchema,
     response.status == "ok",
     "pingBackend",
+  );
+};
+
+export const checkUserRegistration = async ({
+  backendUrl,
+  accessToken,
+}: {
+  backendUrl: string;
+  accessToken: string;
+}): Promise<{ is_registered: boolean }> => {
+  if (backendUrl === "" || backendUrl == null) {
+    throw new ValueError("Backend URL is null or empty");
+  }
+  if (accessToken === "" || accessToken == null) {
+    throw new ValueError("Access token is null or empty");
+  }
+  const request = {
+    method: "get",
+    url: `${backendUrl}/is-registered`,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  };
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(
+    IsRegisteredResponseSchema,
+    response,
+    "checkUserRegistration",
   );
 };
 

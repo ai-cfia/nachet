@@ -14,6 +14,7 @@ import {
   requestClassList,
   sendNegativeFeedback,
   sendPositiveFeedback,
+  checkUserRegistration,
   // requestUUID,
 } from "./api";
 import {
@@ -55,5 +56,6 @@ export {
   requestClassList,
   sendNegativeFeedback,
   sendPositiveFeedback,
+  checkUserRegistration,
   // requestUUID,
 };

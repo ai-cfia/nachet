@@ -655,6 +655,10 @@ export const SessionIdResponseSchema = z.object({
 
 export const BooleanResponseSchema = z.boolean();
 
+export const IsRegisteredResponseSchema = z.object({
+  is_registered: z.boolean(),
+});
+
 // Void response for operations that don't return data (but still succeed)
 export const VoidResponseSchema = z
   .any()
@@ -691,3 +695,4 @@ export type ReadAzureStorageDirApi = z.infer<
 >;
 export type UserIdResponse = z.infer<typeof UserIdResponseSchema>;
 export type SessionIdResponse = z.infer<typeof SessionIdResponseSchema>;
+export type IsRegisteredResponse = z.infer<typeof IsRegisteredResponseSchema>;
