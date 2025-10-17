@@ -192,15 +192,17 @@ class ModelService(BaseCRUDService[Model]):
             raise
         except Exception as e:
             logger = ModelService._get_logger()
+            error_msg = f"Failed to retrieve models by task: {str(e)}"
             logger.error(
-                f"Failed to retrieve models by task: {str(e)}",
+                error_msg,
                 error=str(e),
                 error_type=type(e).__name__,
                 user_id=str(user_id),
                 task_id=task_id,
             )
+            debug_msg = "Traceback for failed retrieve models by task"
             logger.debug(
-                "Traceback for failed retrieve models by task",
+                debug_msg,
                 traceback=traceback.format_exc(),
             )
             raise HTTPException(

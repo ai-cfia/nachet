@@ -231,8 +231,9 @@ class UserService(BaseCRUDService[Users]):
             raise
         except creation_exc as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(user_id),
             )
             logger.debug(
@@ -245,8 +246,9 @@ class UserService(BaseCRUDService[Users]):
             )
         except Exception as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(user_id),
             )
             logger.debug(
@@ -308,8 +310,9 @@ class UserService(BaseCRUDService[Users]):
 
         except Exception as e:
             logger = cls._get_logger()
+            error_msg = f"Error checking user registration: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Error checking user registration: {cls._sanitize_error_message(e)}",
+                error_msg,
                 azure_ad_oid=user.oid,
             )
             logger.debug(
@@ -396,8 +399,9 @@ class UserService(BaseCRUDService[Users]):
             raise
         except Exception as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to register {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to register {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 admin_user_id=str(admin_user_id),
                 azure_ad_oid=azure_ad_oid,
             )

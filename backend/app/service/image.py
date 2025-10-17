@@ -160,8 +160,9 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
                 await session.commit()
 
                 logger = cls._get_logger()
+                info_msg = f"{entity_name} created successfully"
                 logger.info(
-                    f"{entity_name} created successfully",
+                    info_msg,
                     user_id=str(_user_id),
                     entity_id=str(entity.id),
                 )
@@ -172,8 +173,9 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
             raise
         except creation_exc as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(_user_id),
             )
             raise HTTPException(
@@ -182,8 +184,9 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
             )
         except Exception as e:
             logger = cls._get_logger()
+            error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
-                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
+                error_msg,
                 user_id=str(_user_id),
             )
             raise HTTPException(
