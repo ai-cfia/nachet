@@ -17,6 +17,7 @@ import {
   ImageCache,
   StorageDirectory,
   MicroscopeFeed,
+  RegistrationStatusPopup,
 } from "@components/body";
 import { useBackendUrl, useDecoderTiff } from "@hooks";
 import {
@@ -40,6 +41,7 @@ import {
   fetchModelMetadata,
   inferenceRequest,
   readAzureStorageDir,
+  checkUserRegistration,
   // requestUUID,
 } from "@common";
 import {
@@ -95,6 +97,9 @@ const Body: React.FC<params> = (props) => {
   const [isLoading, setIsLoading] = useState(false);
   const [metadata, setMetadata] = useState<ModelMetadata[]>([]);
   const [showInference, setShowInference] = useState<boolean>(true);
+  const [registrationCheckComplete, setRegistrationCheckComplete] =
+    useState(false);
+  const [registrationModalOpen, setRegistrationModalOpen] = useState(false);
 
   // Derive imageSrc, imageTiff, and labelOccurrences from imageCache and imageIndex
   const currentImageData = useMemo(() => {
@@ -311,6 +316,60 @@ const Body: React.FC<params> = (props) => {
     if (uuid == null || uuid === "") {
       return;
     }
+    if (registrationCheckComplete) {
+      return; // Only check once
+    }
+
+    const checkRegistration = async () => {
+      try {
+        const accessToken = await acquireAccessToken(msalInstance, [
+          apiScopeClaim,
+        ]);
+        const response = await checkUserRegistration({
+          backendUrl,
+          accessToken,
+        });
+
+        if (!response.is_registered) {
+          setRegistrationModalOpen(true);
+          // Don't proceed to load directories
+        } else {
+          setRegistrationCheckComplete(true);
+        }
+      } catch (error) {
+        console.error(error);
+        alert("Error checking registration status, see console for details");
+      }
+    };
+
+    checkRegistration();
+  }, [
+    uuid,
+    backendUrl,
+    msalInstance,
+    apiScopeClaim,
+    isAuthenticated,
+    inProgress,
+    registrationCheckComplete,
+  ]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    if (inProgress !== InteractionStatus.None) {
+      return;
+    }
+    if (backendUrl == null || backendUrl === "") {
+      console.error("Backend URL is undefined, null or empty.");
+      return;
+    }
+    if (uuid == null || uuid === "") {
+      return;
+    }
+    if (!registrationCheckComplete) {
+      return; // Wait for registration check to complete
+    }
 
     const loadAzureStorageDir = async () => {
       try {
@@ -344,6 +403,7 @@ const Body: React.FC<params> = (props) => {
     apiScopeClaim,
     isAuthenticated,
     inProgress,
+    registrationCheckComplete,
   ]);
 
   useEffect(() => {
@@ -405,6 +465,12 @@ const Body: React.FC<params> = (props) => {
             /* Auth popup closes automatically when user is authenticated */
           }}
           apiScopeClaim={apiScopeClaim}
+        />
+      )}
+      {registrationModalOpen && (
+        <RegistrationStatusPopup
+          userOid={uuid}
+          setPopupOpen={setRegistrationModalOpen}
         />
       )}
       {batchUploadOpen && (

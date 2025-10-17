@@ -7,6 +7,7 @@ import ModelPopup from "./model_popup/ModelPopup";
 import SaveCapturePopup from "./save_capture_popup/SaveCapturePopup";
 import SwitchDevicePopup from "./switch_device_popup/SwitchDevicePopup";
 import CreativeCommonsPopup from "./creative_commons_popup/CreativeCommonsPopup";
+import RegistrationStatusPopup from "./registration_status_popup/RegistrationStatusPopup";
 import ClassificationResults from "./classification_results";
 import ImageCache from "./image_cache/ImageCache";
 import StorageDirectory from "./directory_list";
@@ -23,6 +24,7 @@ export {
   SaveCapturePopup,
   SwitchDevicePopup,
   CreativeCommonsPopup,
+  RegistrationStatusPopup,
   ClassificationResults,
   ImageCache,
   StorageDirectory,
