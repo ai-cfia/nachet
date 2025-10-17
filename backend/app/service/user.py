@@ -127,7 +127,7 @@ class UserService(BaseCRUDService[Users]):
             stmt = select(RbacRole).where(
                 RbacRole.organization_id == user.organization,
                 RbacRole.name == "admin",
-                RbacRole.active == True  # noqa: E712
+                RbacRole.active == True,  # noqa: E712
             )
             result = await session.execute(stmt)
             org_admin_role = result.scalar_one()
@@ -136,7 +136,7 @@ class UserService(BaseCRUDService[Users]):
             stmt = select(RbacRole).where(
                 RbacRole.organization_id == user.organization,
                 RbacRole.name == "user",
-                RbacRole.active == True  # noqa: E712
+                RbacRole.active == True,  # noqa: E712
             )
             result = await session.execute(stmt)
             org_user_role = result.scalar_one()
@@ -146,7 +146,7 @@ class UserService(BaseCRUDService[Users]):
                 user_id=user.id,
                 org_user_role_id=org_user_role.id,
                 org_admin_role_id=org_admin_role.id,
-                name="default",
+                name=username,
                 folder_prefix=folder_prefix,
                 description=f"Default folder for {email}",
                 active=True,
@@ -310,7 +310,9 @@ class UserService(BaseCRUDService[Users]):
 
         except Exception as e:
             logger = cls._get_logger()
-            error_msg = f"Error checking user registration: {cls._sanitize_error_message(e)}"
+            error_msg = (
+                f"Error checking user registration: {cls._sanitize_error_message(e)}"
+            )
             logger.error(
                 error_msg,
                 azure_ad_oid=user.oid,
@@ -346,6 +348,12 @@ class UserService(BaseCRUDService[Users]):
         Raises:
             HTTPException: 401 if not authenticated, 403 if not admin, 500 on errors
         """
+        if not admin_user_id or not azure_ad_oid or not organization_id or not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required parameters for user registration",
+            )
+
         entity_name = cls.get_entity_name()
         entity_name_lower = entity_name.lower()
 
