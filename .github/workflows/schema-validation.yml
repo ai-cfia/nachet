@@ -90,6 +90,8 @@ jobs:
           TESTING: "false"
           DEBUG: ${{ secrets.DEBUG }}
           NACHET_SCHEMA: ${{ secrets.NACHET_SCHEMA }}
+          CFIA_ORGANIZATION_ID: ${{ secrets.CFIA_ORGANIZATION_ID }}
+          CFIA_ADMIN_ROLE_ID: ${{ secrets.CFIA_ADMIN_ROLE_ID }}
 
       - name: Use Alembic Check
         working-directory: backend/app/db
@@ -107,3 +109,5 @@ jobs:
           TESTING: "false"
           DEBUG: ${{ secrets.DEBUG }}
           NACHET_SCHEMA: ${{ secrets.NACHET_SCHEMA }}
+          CFIA_ORGANIZATION_ID: ${{ secrets.CFIA_ORGANIZATION_ID }}
+          CFIA_ADMIN_ROLE_ID: ${{ secrets.CFIA_ADMIN_ROLE_ID }}
