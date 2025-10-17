@@ -240,8 +240,9 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         # Use CFIA org ID from environment for test organization
         organization = Organization(
             id=cfia_org_id,
-            name="Test Organization",
+            name="Canadian Food Inspection Agency",
             description="Default test organization for development",
+            folder_prefix="cfia",
             active=True,
         )
         session.add(organization)
