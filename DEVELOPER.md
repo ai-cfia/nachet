@@ -187,6 +187,99 @@ nachet/backend/app/db $ uv run validate_orm_alembic.py
 
 # check if your database is synchronized with the alembic head
 nachet/backend/app/db $ uv run validate_db_synchronized.py
+
+# UML and diagram
+nachet/backend $ for module in annotation auth base_crud change_log constants device directory frontend image image_objects logs model organization pipeline rbac seed user; do \
+  echo "Generating UML for service/$module..." && \
+  uv run pyreverse -o puml -A -s 1 -p "service_$module" "app/service/$module" -d eac/ && \
+  uv run pyreverse -o png -A -s 1 --colorized -p "service_$module" "app/service/$module" -d eac/; \
+done && \
+echo "UML diagrams generated successfully" && \
+ls -lh eac/
+
+nachet/backend $ for module in annotation base_crud change_log device directory image image_objects model organization pending_registration pipeline rbac seed user; do \
+  echo "Generating UML for datastore/$module..." && \
+  uv run pyreverse -o puml -A -s 1 -p "datastore_$module" "app/datastore/$module" -d eac/ && \
+  uv run pyreverse -o png -A -s 1 --colorized -p "datastore_$module" "app/datastore/$module" -d eac/; \
+done && \
+echo "UML diagrams generated successfully" && \
+ls -lh eac/
+
+nachet/backend $ uv run pyreverse -o puml -A -s 1 -p "api" "app/api/" -d eac/ && \
+uv run pyreverse -o png -A -s 1 --colorized -p "api" "app/api/" -d eac/ && \
+echo "UML diagrams generated successfully" && \
+ls -lh eac/
+
+nachet/backend $ uv run pyreverse -o puml -A -s 1 -p "middleware" "app/middleware/" -d eac/ && \
+uv run pyreverse -o png -A -s 1 --colorized -p "middleware" "app/middleware/" -d eac/ && \
+echo "UML diagrams generated successfully" && \
+ls -lh eac/
+
+# Core blob layer (interface, manager, models, exceptions)
+nachet/backend $ uv run pyreverse -o puml -A -s 1 -p "blob_core" "app/blob/interface.py" "app/blob/manager.py" "app/blob/models.py" "app/blob/exceptions.py" -d eac/ && \
+uv run pyreverse -o png -A -s 1 --colorized -p "blob_core" "app/blob/interface.py" "app/blob/manager.py" "app/blob/models.py" "app/blob/exceptions.py" -d eac/ && \
+echo "UML diagrams generated successfully" && \
+ls -lh eac/
+
+# Blob interface only
+nachet/backend $ mkdir -p eac && \
+echo "Generating UML for blob interface..." && \
+uv run pyreverse -o puml -A -s 1 -p "blob_interface" "app/blob/interface.py" -d eac/ && \
+uv run pyreverse -o png -A -s 1 --colorized -p "blob_interface" "app/blob/interface.py" -d eac/ && \
+echo "UML diagrams generated successfully" && \
+ls -lh eac/
+
+# Blob manager only
+nachet/backend $ mkdir -p eac && \
+echo "Generating UML for blob manager..." && \
+uv run pyreverse -o puml -A -s 1 -p "blob_manager" "app/blob/manager.py" -d eac/ && \
+uv run pyreverse -o png -A -s 1 --colorized -p "blob_manager" "app/blob/manager.py" -d eac/ && \
+echo "UML diagrams generated successfully" && \
+ls -lh eac/
+
+# Blob models (BaseModel classes)
+nachet/backend $ mkdir -p eac && \
+echo "Generating UML for blob models..." && \
+uv run pyreverse -o puml -A -s 1 -p "blob_models" "app/blob/models.py" -d eac/ && \
+uv run pyreverse -o png -A -s 1 --colorized -p "blob_models" "app/blob/models.py" -d eac/ && \
+echo "UML diagrams generated successfully" && \
+ls -lh eac/
+
+# Blob exceptions (BlobStorageError classes)
+nachet/backend $ mkdir -p eac && \
+echo "Generating UML for blob exceptions..." && \
+uv run pyreverse -o puml -A -s 1 -p "blob_exceptions" "app/blob/exceptions.py" -d eac/ && \
+uv run pyreverse -o png -A -s 1 --colorized -p "blob_exceptions" "app/blob/exceptions.py" -d eac/ && \
+echo "UML diagrams generated successfully" && \
+ls -lh eac/
+
+# Azure blob client
+nachet/backend $ uv run pyreverse -o puml -A -s 1 -p "blob_azure_client" "app/blob/azure/client.py" -d eac/ && \
+uv run pyreverse -o png -A -s 1 --colorized -p "blob_azure_client" "app/blob/azure/client.py" -d eac/ && \
+echo "UML diagrams generated successfully" && \
+ls -lh eac/
+
+# Azure blob storage
+nachet/backend $ uv run pyreverse -o puml -A -s 1 -p "blob_azure_storage" "app/blob/azure/storage.py" -d eac/ && \
+uv run pyreverse -o png -A -s 1 --colorized -p "blob_azure_storage" "app/blob/azure/storage.py" -d eac/ && \
+echo "UML diagrams generated successfully" && \
+ls -lh eac/
+
+# Azure blob operations (each operation type separately)
+nachet/backend $ for operation in blob_operations container_operations metadata_operations security_operations tier_operations advanced_operations; do \
+  echo "Generating UML for blob azure operations/$operation..." && \
+  uv run pyreverse -o puml -A -s 1 -p "blob_azure_${operation}" "app/blob/azure/operations/${operation}.py" -d eac/ && \
+  uv run pyreverse -o png -A -s 1 --colorized -p "blob_azure_${operation}" "app/blob/azure/operations/${operation}.py" -d eac/; \
+done && \
+echo "UML diagrams generated successfully" && \
+ls -lh eac/
+
+# Azure blob utilities
+nachet/backend $ uv run pyreverse -o puml -A -s 1 -p "blob_azure_utils" "app/blob/azure/utils/" -d eac/ && \
+uv run pyreverse -o png -A -s 1 --colorized -p "blob_azure_utils" "app/blob/azure/utils/" -d eac/ && \
+echo "UML diagrams generated successfully" && \
+ls -lh eac/
+
 ```
 
 ## Development
