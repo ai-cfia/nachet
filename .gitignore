@@ -187,3 +187,5 @@ db/postgres-data/
 /blob-report/
 /playwright/.cache/
 .vscode/settings.json
+
+**/eac/
