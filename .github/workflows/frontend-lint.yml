@@ -4,6 +4,10 @@ permissions:
   pull-requests: write
   actions: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     paths:
@@ -19,10 +23,6 @@ on:
     paths:
       - "frontend/**"
       - ".github/workflows/frontend-*.yml"
-
-concurrency:
-  group: frontend-lint-${{ github.ref }}
-  cancel-in-progress: true
 
 env:
   IS_MONOREPO: true
