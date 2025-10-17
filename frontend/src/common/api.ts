@@ -591,3 +591,40 @@ export const batchUploadImage = async ({
     "batchUploadImage",
   );
 };
+
+export const sendLogToBackend = async ({
+  backendUrl,
+  accessToken,
+  logData,
+}: {
+  backendUrl: string;
+  accessToken: string;
+  logData: {
+    level: "ERROR" | "WARNING" | "INFO" | "DEBUG";
+    message: string;
+    error_type?: string;
+    stack_trace?: string;
+    url?: string;
+    timestamp?: string;
+    user_agent?: string;
+    extra?: Record<string, any>;
+  };
+}): Promise<void> => {
+  if (backendUrl === "" || backendUrl == null) {
+    throw new ValueError("Backend URL is null or empty");
+  }
+  if (accessToken === "" || accessToken == null) {
+    throw new ValueError("Access token is null or empty");
+  }
+  const request = {
+    method: "post",
+    url: `${backendUrl}/logs`,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    data: logData,
+  };
+  await handleAxios<unknown>(request);
+};

@@ -12,14 +12,22 @@ interface LogEntry {
   extra?: Record<string, any>;
 }
 
+type TokenProvider = () => Promise<string | null>;
+
 class ErrorLogger {
   private apiEndpoint: string;
   private sessionId: string;
   private correlationId: string | null = null;
+  private tokenProvider: TokenProvider | null = null;
 
-  constructor() {
-    this.apiEndpoint = `${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/logs`;
+  constructor(tokenProvider?: TokenProvider) {
+    this.apiEndpoint = `${import.meta.env.VITE_LOG_API_URL || "http://localhost:8080"}`;
     this.sessionId = this.generateSessionId();
+    this.tokenProvider = tokenProvider || null;
+  }
+
+  public setTokenProvider(tokenProvider: TokenProvider): void {
+    this.tokenProvider = tokenProvider;
   }
 
   private generateSessionId(): string {
@@ -56,12 +64,30 @@ class ErrorLogger {
         user_agent: navigator.userAgent,
       };
 
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "X-Session-ID": this.sessionId,
+        "X-Correlation-ID": this.getCorrelationId(),
+      };
+
+      // Try to get access token if token provider is available
+      if (this.tokenProvider) {
+        try {
+          const token = await this.tokenProvider();
+          if (token) {
+            headers["Authorization"] = `Bearer ${token}`;
+          }
+        } catch (tokenError) {
+          // Log token acquisition failure but continue without auth
+          console.warn(
+            "Failed to acquire token for logs endpoint:",
+            tokenError,
+          );
+        }
+      }
+
       await axios.post(this.apiEndpoint, logData, {
-        headers: {
-          "Content-Type": "application/json",
-          "X-Session-ID": this.sessionId,
-          "X-Correlation-ID": this.getCorrelationId(),
-        },
+        headers,
         withCredentials: true,
       });
     } catch (error) {

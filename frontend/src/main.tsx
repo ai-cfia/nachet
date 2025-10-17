@@ -10,6 +10,8 @@ import {
 import { CacheProvider } from "@emotion/react";
 import { createEmotionCache } from "./common/emotionCache";
 import { ErrorBoundary } from "@components/body/index.ts";
+import { errorLogger } from "./logging";
+import { acquireAccessToken } from "./common/auth";
 
 const msalConfig: Configuration = {
   auth: {
@@ -68,6 +70,19 @@ const apiScopeClaim =
   (import.meta.env.VITE_AZURE_API_SCOPE_CLAIM ?? "");
 
 console.log("Azure API Scope Claim: ", apiScopeClaim);
+
+// Set up token provider for error logger
+errorLogger.setTokenProvider(async () => {
+  try {
+    const scopes = apiScopeClaim ? [apiScopeClaim] : [];
+    const token = await acquireAccessToken(msalInstance, scopes);
+    return token;
+  } catch (error) {
+    // If token acquisition fails, return null (logs will be sent without auth)
+    console.warn("Failed to acquire token for error logger:", error);
+    return null;
+  }
+});
 
 // Create Emotion cache with CSP nonce support
 const emotionCache = createEmotionCache();
