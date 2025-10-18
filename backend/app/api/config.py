@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     otel_enabled: bool = False  # Set to False for scripts/standalone use without OTEL
     otel_exporter_protocol: str = "grpc"  # "grpc" or "http"
     otel_exporter_endpoint: str = "http://alloy.monitoring.svc.cluster.local:4317"
+    dbos_exporter_endpoint: str = "http://alloy.monitoring.svc.cluster.local:4318"
     log_level: str = "INFO"
 
     # api settings

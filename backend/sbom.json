@@ -1312,6 +1312,28 @@
       "version": "10.5.0"
     },
     {
+      "bom-ref": "dbos==2.2.0",
+      "description": "Ultra-lightweight durable execution in Python",
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "dbos",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "otel"
+        }
+      ],
+      "purl": "pkg:pypi/dbos@2.2.0",
+      "type": "library",
+      "version": "2.2.0"
+    },
+    {
       "bom-ref": "defusedxml==0.7.1",
       "description": "XML bomb protection for Python stdlib modules",
       "externalReferences": [
@@ -3253,6 +3275,64 @@
       "version": "3.2.10"
     },
     {
+      "bom-ref": "psycopg-binary==3.2.10",
+      "description": "PostgreSQL database adapter for Python -- C optimisation distribution",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Download",
+          "type": "distribution",
+          "url": "https://pypi.org/project/psycopg-binary/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://psycopg.org/psycopg3/docs/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issue Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/psycopg/psycopg/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Code",
+          "type": "other",
+          "url": "https://github.com/psycopg/psycopg"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Funding",
+          "type": "other",
+          "url": "https://github.com/sponsors/dvarrazzo"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changes",
+          "type": "release-notes",
+          "url": "https://psycopg.org/psycopg3/docs/news.html"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://psycopg.org/"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://psycopg.org/psycopg3/"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "LGPL-3.0-only"
+          }
+        }
+      ],
+      "name": "psycopg-binary",
+      "purl": "pkg:pypi/psycopg-binary@3.2.10",
+      "type": "library",
+      "version": "3.2.10"
+    },
+    {
       "bom-ref": "psycopg-pool==3.2.6",
       "description": "Connection Pool for Psycopg",
       "externalReferences": [
@@ -4575,6 +4655,49 @@
       "version": "0.17.3"
     },
     {
+      "bom-ref": "typer-slim==0.19.2",
+      "description": "Typer, build great CLIs. Easy to code. Based on Python type hints.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://typer.tiangolo.com"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issues",
+          "type": "issue-tracker",
+          "url": "https://github.com/fastapi/typer/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://typer.tiangolo.com/release-notes/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/fastapi/typer"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/fastapi/typer"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "typer-slim",
+      "purl": "pkg:pypi/typer-slim@0.19.2",
+      "type": "library",
+      "version": "0.19.2"
+    },
+    {
       "bom-ref": "types-python-dateutil==2.9.0.20250708",
       "description": "Typing stubs for python-dateutil",
       "externalReferences": [
@@ -5383,6 +5506,20 @@
       "ref": "cyclonedx-python-lib==10.5.0"
     },
     {
+      "dependsOn": [
+        "PyYAML==6.0.3",
+        "SQLAlchemy==2.0.43",
+        "opentelemetry-api==1.37.0",
+        "opentelemetry-exporter-otlp-proto-http==1.37.0",
+        "opentelemetry-sdk==1.37.0",
+        "psycopg==3.2.10",
+        "python-dateutil==2.9.0.post0",
+        "typer-slim==0.19.2",
+        "websockets==15.0.1"
+      ],
+      "ref": "dbos==2.2.0"
+    },
+    {
       "ref": "defusedxml==0.7.1"
     },
     {
@@ -5736,6 +5873,9 @@
       "ref": "protobuf==6.32.1"
     },
     {
+      "ref": "psycopg-binary==3.2.10"
+    },
+    {
       "dependsOn": [
         "typing_extensions==4.14.1"
       ],
@@ -5746,6 +5886,7 @@
         "anyio==4.10.0",
         "dnspython==2.7.0",
         "isort==7.0.0",
+        "psycopg-binary==3.2.10",
         "psycopg-pool==3.2.6",
         "pytest-cov==6.2.1",
         "pytest==8.4.1",
@@ -5921,6 +6062,7 @@
         "azure-storage-blob==12.26.0",
         "beartype==0.21.0",
         "cryptography==46.0.2",
+        "dbos==2.2.0",
         "fastapi==0.116.1",
         "h2==4.3.0",
         "httpx==0.28.1",
@@ -6001,6 +6143,15 @@
         "requests==2.32.4"
       ],
       "ref": "tqdm==4.67.1"
+    },
+    {
+      "dependsOn": [
+        "click==8.2.1",
+        "rich==14.1.0",
+        "shellingham==1.5.4",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "typer-slim==0.19.2"
     },
     {
       "dependsOn": [
