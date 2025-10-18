@@ -854,7 +854,7 @@ class TestUserServiceIntegrationCrossMethod:
         folder = folder_result.scalar_one_or_none()
 
         assert folder is not None
-        assert folder.name == "default"
+        assert folder.name == "john.doe"
         # folder_prefix should be organization_folder_prefix/username
         # The test organization doesn't have folder_prefix set, so it defaults to "default-org"
         assert "john.doe" in folder.folder_prefix
