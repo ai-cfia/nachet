@@ -29,13 +29,14 @@ Requirements:
 import asyncio
 import argparse
 import sys
+import os
 from uuid import UUID
 from typing import Optional
 from dotenv import load_dotenv
 
-# Add the app directory to the path
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# # Add the app directory to the path
+# import os
+# sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from sqlalchemy import select
 from app.db.utils import sessionmanager
