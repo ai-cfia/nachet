@@ -177,7 +177,11 @@ coverage/
 # Sensitive files
 **/*.auto.tfvars
 **/*.local
-blob/data/
+blob/azurite/
+blob/minio/
+blob/ozone/
+blob/garage/meta/
+blob/garage/data/
 db/pgadmin-data/
 db/postgres-data/
 

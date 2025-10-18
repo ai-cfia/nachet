@@ -35,7 +35,7 @@ services:
     # command: "azurite --blobHost 127.0.0.1 --blobPort 10000 --queueHost 127.0.0.1 --queuePort 10001"
     command: "azurite --loose --blobHost 0.0.0.0 --blobPort 10000 --location /workspace --debug /workspace/debug.log"
     volumes:
-      - ./blob/data:/workspace
+      - ./blob/azurite/data:/workspace
     ports:
       - "12434:10000"
     # network_mode: bridge
@@ -69,27 +69,29 @@ services:
     networks:
       - nachet-local-network
 
-  nachet-frontend:
-    container_name: nachet-frontend
+  # optional frontend service, uncomment to use
+  # for debugging dev build
+  # nachet-frontend:
+  #   container_name: nachet-frontend
 
-    # uncomment these to build frontend from source
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    image: local/nachet-frontend:latest
+  #   # uncomment these to build frontend from source
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile.dev
+  #   image: local/nachet-frontend:latest
 
-    # uncomment these to use prebuilt image from ghcr
-    # image: ghcr.io/ai-cfia/nachet-frontend:0.10.3
-    # command: ["npm run dev --host"]
-    env_file:
-      - ./frontend/.env.config.local
-    volumes:
-      - ./frontend:/app
-    ports:
-      # - "12436:5173"
-      - "12436:12436" # for ghcr images
-    depends_on:
-      - nachet-backend
+  #   # uncomment these to use prebuilt image from ghcr
+  #   # image: ghcr.io/ai-cfia/nachet-frontend:0.10.3
+  #   # command: ["npm run dev --host"]
+  #   env_file:
+  #     - ./frontend/.env.config.local
+  #   volumes:
+  #     - ./frontend:/app
+  #   ports:
+  #     # - "12436:5173"
+  #     - "12436:12436" # for ghcr images
+  #   depends_on:
+  #     - nachet-backend
 
   #######################################################################################
   # Use these to deploy a second version of backend and frontend for testing
@@ -271,6 +273,184 @@ services:
       - loki
     networks:
       - nachet-local-network
+
+  #######################################################################################
+  # S3 compatible storage options
+  #######################################################################################
+
+  # Garage S3 compatible storage
+  nachet-op-blob:
+    image: dxflrs/garage:v2.1.0
+    container_name: nachet-op-blob
+    restart: unless-stopped
+    environment:
+      - RUST_LOG=garage=debug
+    ports:
+      - "12440:12440"
+      - "12441:12441"
+      # - "12442:12442"
+      - "12443:12443"
+      # - "12444:12444"
+    volumes:
+      - ./blob/garage/garage.toml.local:/etc/garage.toml
+      - ./blob/garage/meta:/var/lib/garage/meta
+      - ./blob/garage/data:/var/lib/garage/data
+    networks:
+      - nachet-local-network
+
+  nachet-op-blob-webui:
+    image: khairul169/garage-webui:latest
+    container_name: nachet-op-blob-webui
+    restart: unless-stopped
+    volumes:
+      - ./blob/garage/garage.toml.local:/etc/garage.toml:ro
+    ports:
+      - 3909:3909
+    environment:
+      API_BASE_URL: "http://nachet-op-blob:12443"
+      S3_ENDPOINT_URL: "http://nachet-op-blob:12440"
+    extra_hosts:
+     - "host.docker.internal:host-gateway"
+    depends_on:
+      - nachet-op-blob
+    networks:
+      - nachet-local-network
+
+  # Optional, garage is less complex
+  # Only use this if you need S3 features not available in garage
+  # ozone S3 compatible storage containers
+  # datanode:
+  #   container_name: nachet-oz-datanode
+  #   image: ${OZONE_IMAGE:-apache/ozone}:${OZONE_IMAGE_VERSION:-2.0.0}${OZONE_IMAGE_FLAVOR:-}
+  #   ports:
+  #     - 9864
+  #   environment:
+  #       OZONE-SITE.XML_hdds.datanode.dir: "blob/ozone/data/hdds"
+  #       OZONE-SITE.XML_ozone.metadata.dirs: "blob/ozone/data/metadata"
+  #       OZONE-SITE.XML_ozone.om.address: "om"
+  #       OZONE-SITE.XML_ozone.om.http-address: "om:9874"
+  #       OZONE-SITE.XML_ozone.recon.address: "recon:9891"
+  #       OZONE-SITE.XML_ozone.recon.db.dir: "blob/ozone/data/metadata/recon"
+  #       OZONE-SITE.XML_ozone.replication: "1"
+  #       OZONE-SITE.XML_ozone.scm.block.client.address: "scm"
+  #       OZONE-SITE.XML_ozone.scm.client.address: "scm"
+  #       OZONE-SITE.XML_ozone.scm.datanode.id.dir: "blob/ozone/data/metadata"
+  #       OZONE-SITE.XML_ozone.scm.names: "scm"
+  #       no_proxy: "om,recon,scm,s3g,localhost,127.0.0.1"
+  #   command: ["ozone", "datanode"]
+  #   networks:
+  #     - nachet-local-network
+  # om:
+  #   container_name: nachet-oz-om
+  #   image: ${OZONE_IMAGE:-apache/ozone}:${OZONE_IMAGE_VERSION:-2.0.0}${OZONE_IMAGE_FLAVOR:-}
+  #   ports:
+  #     - 9874:9874
+  #   environment:
+  #     OZONE-SITE.XML_hdds.datanode.dir: "blob/ozone/data/hdds"
+  #     OZONE-SITE.XML_ozone.metadata.dirs: "blob/ozone/data/metadata"
+  #     OZONE-SITE.XML_ozone.om.address: "om"
+  #     OZONE-SITE.XML_ozone.om.http-address: "om:9874"
+  #     OZONE-SITE.XML_ozone.recon.address: "recon:9891"
+  #     OZONE-SITE.XML_ozone.recon.db.dir: "blob/ozone/data/metadata/recon"
+  #     OZONE-SITE.XML_ozone.replication: "1"
+  #     OZONE-SITE.XML_ozone.scm.block.client.address: "scm"
+  #     OZONE-SITE.XML_ozone.scm.client.address: "scm"
+  #     OZONE-SITE.XML_ozone.scm.datanode.id.dir: "blob/ozone/data/metadata"
+  #     OZONE-SITE.XML_ozone.scm.names: "scm"
+  #     no_proxy: "om,recon,scm,s3g,localhost,127.0.0.1"
+  #     CORE-SITE.XML_hadoop.proxyuser.hadoop.hosts: "*"
+  #     CORE-SITE.XML_hadoop.proxyuser.hadoop.groups: "*"
+  #     ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
+  #     WAITFOR: scm:9876
+  #   command: ["ozone", "om"]
+  #   networks:
+  #     - nachet-local-network
+  # scm:
+  #   container_name: nachet-oz-scm
+  #   image: ${OZONE_IMAGE:-apache/ozone}:${OZONE_IMAGE_VERSION:-2.0.0}${OZONE_IMAGE_FLAVOR:-}
+  #   ports:
+  #     - 9876:9876
+  #   environment:
+  #     OZONE-SITE.XML_hdds.datanode.dir: "blob/ozone/data/hdds"
+  #     OZONE-SITE.XML_ozone.metadata.dirs: "blob/ozone/data/metadata"
+  #     OZONE-SITE.XML_ozone.om.address: "om"
+  #     OZONE-SITE.XML_ozone.om.http-address: "om:9874"
+  #     OZONE-SITE.XML_ozone.recon.address: "recon:9891"
+  #     OZONE-SITE.XML_ozone.recon.db.dir: "blob/ozone/data/metadata/recon"
+  #     OZONE-SITE.XML_ozone.replication: "1"
+  #     OZONE-SITE.XML_ozone.scm.block.client.address: "scm"
+  #     OZONE-SITE.XML_ozone.scm.client.address: "scm"
+  #     OZONE-SITE.XML_ozone.scm.datanode.id.dir: "blob/ozone/data/metadata"
+  #     OZONE-SITE.XML_ozone.scm.names: "scm"
+  #     no_proxy: "om,recon,scm,s3g,localhost,127.0.0.1"
+  #     ENSURE_SCM_INITIALIZED: /data/metadata/scm/current/VERSION
+  #   command: ["ozone", "scm"]
+  #   networks:
+  #     - nachet-local-network
+  # recon:
+  #   container_name: nachet-oz-recon
+  #   image: ${OZONE_IMAGE:-apache/ozone}:${OZONE_IMAGE_VERSION:-2.0.0}${OZONE_IMAGE_FLAVOR:-}
+  #   ports:
+  #     - 9888:9888
+  #   environment:
+  #     OZONE-SITE.XML_hdds.datanode.dir: "blob/ozone/data/hdds"
+  #     OZONE-SITE.XML_ozone.metadata.dirs: "blob/ozone/data/metadata"
+  #     OZONE-SITE.XML_ozone.om.address: "om"
+  #     OZONE-SITE.XML_ozone.om.http-address: "om:9874"
+  #     OZONE-SITE.XML_ozone.recon.address: "recon:9891"
+  #     OZONE-SITE.XML_ozone.recon.db.dir: "blob/ozone/data/metadata/recon"
+  #     OZONE-SITE.XML_ozone.replication: "1"
+  #     OZONE-SITE.XML_ozone.scm.block.client.address: "scm"
+  #     OZONE-SITE.XML_ozone.scm.client.address: "scm"
+  #     OZONE-SITE.XML_ozone.scm.datanode.id.dir: "blob/ozone/data/metadata"
+  #     OZONE-SITE.XML_ozone.scm.names: "scm"
+  #     no_proxy: "om,recon,scm,s3g,localhost,127.0.0.1"
+  #   command: ["ozone", "recon"]
+  #   networks:
+  #     - nachet-local-network
+  # s3g:
+  #   container_name: nachet-oz-s3g
+  #   image: ${OZONE_IMAGE:-apache/ozone}:${OZONE_IMAGE_VERSION:-2.0.0}${OZONE_IMAGE_FLAVOR:-}
+  #   ports:
+  #     - 9878:9878
+  #   environment:
+  #     OZONE-SITE.XML_hdds.datanode.dir: "blob/ozone/data/hdds"
+  #     OZONE-SITE.XML_ozone.metadata.dirs: "blob/ozone/data/metadata"
+  #     OZONE-SITE.XML_ozone.om.address: "om"
+  #     OZONE-SITE.XML_ozone.om.http-address: "om:9874"
+  #     OZONE-SITE.XML_ozone.recon.address: "recon:9891"
+  #     OZONE-SITE.XML_ozone.recon.db.dir: "blob/ozone/data/metadata/recon"
+  #     OZONE-SITE.XML_ozone.replication: "1"
+  #     OZONE-SITE.XML_ozone.scm.block.client.address: "scm"
+  #     OZONE-SITE.XML_ozone.scm.client.address: "scm"
+  #     OZONE-SITE.XML_ozone.scm.datanode.id.dir: "blob/ozone/data/metadata"
+  #     OZONE-SITE.XML_ozone.scm.names: "scm"
+  #     no_proxy: "om,recon,scm,s3g,localhost,127.0.0.1"
+  #   command: ["ozone", "s3g"]
+  #   networks:
+  #     - nachet-local-network
+  # httpfs:
+  #   container_name: nachet-oz-httpfs
+  #   image: ${OZONE_IMAGE:-apache/ozone}:${OZONE_IMAGE_VERSION:-2.0.0}${OZONE_IMAGE_FLAVOR:-}
+  #   ports:
+  #     - 14000:14000
+  #   environment:
+  #     OZONE-SITE.XML_hdds.datanode.dir: "blob/ozone/data/hdds"
+  #     OZONE-SITE.XML_ozone.metadata.dirs: "blob/ozone/data/metadata"
+  #     OZONE-SITE.XML_ozone.om.address: "om"
+  #     OZONE-SITE.XML_ozone.om.http-address: "om:9874"
+  #     OZONE-SITE.XML_ozone.recon.address: "recon:9891"
+  #     OZONE-SITE.XML_ozone.recon.db.dir: "blob/ozone/data/metadata/recon"
+  #     OZONE-SITE.XML_ozone.replication: "1"
+  #     OZONE-SITE.XML_ozone.scm.block.client.address: "scm"
+  #     OZONE-SITE.XML_ozone.scm.client.address: "scm"
+  #     OZONE-SITE.XML_ozone.scm.datanode.id.dir: "blob/ozone/data/metadata"
+  #     OZONE-SITE.XML_ozone.scm.names: "scm"
+  #     no_proxy: "om,recon,scm,s3g,localhost,127.0.0.1"
+  #     CORE-SITE.XML_fs.defaultFS: "ofs://om"
+  #   command: ["ozone", "httpfs"]
+  #   networks:
+  #     - nachet-local-network
 
 networks:
   nachet-local-network: {}

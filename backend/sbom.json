@@ -912,6 +912,68 @@
       "version": "5.0"
     },
     {
+      "bom-ref": "boto3==1.40.55",
+      "description": "The AWS SDK for Python",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://boto3.amazonaws.com/v1/documentation/api/latest/index.html"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/boto/boto3"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/boto/boto3"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "boto3",
+      "purl": "pkg:pypi/boto3@1.40.55",
+      "type": "library",
+      "version": "1.40.55"
+    },
+    {
+      "bom-ref": "botocore==1.40.55",
+      "description": "Low-level, data-driven core of boto 3.",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/boto/botocore"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "name": "botocore",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "crt"
+        }
+      ],
+      "purl": "pkg:pypi/botocore@1.40.55",
+      "type": "library",
+      "version": "1.40.55"
+    },
+    {
       "bom-ref": "certifi==2025.7.14",
       "description": "Python package for providing Mozilla's CA Bundle.",
       "externalReferences": [
@@ -2176,6 +2238,29 @@
       "purl": "pkg:pypi/isort@7.0.0",
       "type": "library",
       "version": "7.0.0"
+    },
+    {
+      "bom-ref": "jmespath==1.0.1",
+      "description": "JSON Matching Expressions",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/jmespath/jmespath.py"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "jmespath",
+      "purl": "pkg:pypi/jmespath@1.0.1",
+      "type": "library",
+      "version": "1.0.1"
     },
     {
       "bom-ref": "jsonpointer==3.0.0",
@@ -4279,6 +4364,29 @@
       "version": "0.13.2"
     },
     {
+      "bom-ref": "s3transfer==0.14.0",
+      "description": "An Amazon S3 Transfer Manager",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/boto/s3transfer"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: Apache Software License"
+          }
+        }
+      ],
+      "name": "s3transfer",
+      "purl": "pkg:pypi/s3transfer@0.14.0",
+      "type": "library",
+      "version": "0.14.0"
+    },
+    {
       "bom-ref": "shellingham==1.5.4",
       "description": "Tool to Detect Surrounding Shell",
       "externalReferences": [
@@ -5450,6 +5558,22 @@
       "ref": "boolean.py==5.0"
     },
     {
+      "dependsOn": [
+        "botocore==1.40.55",
+        "jmespath==1.0.1",
+        "s3transfer==0.14.0"
+      ],
+      "ref": "boto3==1.40.55"
+    },
+    {
+      "dependsOn": [
+        "jmespath==1.0.1",
+        "python-dateutil==2.9.0.post0",
+        "urllib3==2.5.0"
+      ],
+      "ref": "botocore==1.40.55"
+    },
+    {
       "ref": "certifi==2025.7.14"
     },
     {
@@ -5665,6 +5789,9 @@
     },
     {
       "ref": "isort==7.0.0"
+    },
+    {
+      "ref": "jmespath==1.0.1"
     },
     {
       "ref": "jsonpointer==3.0.0"
@@ -5910,6 +6037,7 @@
       "dependsOn": [
         "PyYAML==6.0.3",
         "azure-identity==1.25.1",
+        "boto3==1.40.55",
         "pydantic==2.11.10",
         "python-dotenv==1.1.1",
         "typing-inspection==0.4.1"
@@ -6061,6 +6189,7 @@
         "azure-identity==1.25.1",
         "azure-storage-blob==12.26.0",
         "beartype==0.21.0",
+        "boto3==1.40.55",
         "cryptography==46.0.2",
         "dbos==2.2.0",
         "fastapi==0.116.1",
@@ -6090,6 +6219,12 @@
     },
     {
       "ref": "ruff==0.13.2"
+    },
+    {
+      "dependsOn": [
+        "botocore==1.40.55"
+      ],
+      "ref": "s3transfer==0.14.0"
     },
     {
       "ref": "shellingham==1.5.4"
@@ -6279,7 +6414,7 @@
       ],
       "name": "nachet-backend",
       "type": "application",
-      "version": "1.32.0"
+      "version": "1.33.0"
     },
     "properties": [
       {
