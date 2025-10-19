@@ -201,7 +201,7 @@ Newline (\n) must be replaced with &#10; or &#x0A;
 The following example illustrates the use of an XML entity code as a substitution for a carriage return. This DeleteObjects request deletes an object with the key parameter /some/prefix/objectwith\rcarriagereturn (where the \r is the carriage return).
 
 ```xml
-<Delete xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+<Delete xmlns="http://s3.amazonaws.com/doc/2006-03-01/">  <!-- markdownlint-disable-line MD034 -->
   <Object>
     <Key>/some/prefix/objectwith&#13;carriagereturn</Key>
   </Object>

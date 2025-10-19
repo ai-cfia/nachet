@@ -69,9 +69,9 @@ amzn-s3-demo-bucket
 
 The following example bucket names are valid but not recommended for uses other than static website hosting because they contain periods (.):
 
-example.com
+example.com  <!-- markdownlint-disable-line MD034 -->
 
-<www.example.com>
+<www.example.com>  <!-- markdownlint-disable-line MD034 -->
 
 my.example.s3.bucket
 
