@@ -94,7 +94,7 @@ def create_blob_storage_client(provider: str, config: dict) -> BlobStorageInterf
     Factory function to create a new blob storage client instance.
 
     Args:
-        provider: Storage provider name (e.g., 'azure', 'aws', 'gcp')
+        provider: Storage provider name (e.g., 'azure', 'minio', 's3')
         config: Provider-specific configuration
 
     Returns:
@@ -107,9 +107,17 @@ def create_blob_storage_client(provider: str, config: dict) -> BlobStorageInterf
         from .azure.storage import AzureBlobStorage
 
         return AzureBlobStorage(config)
+    elif provider.lower() == "minio":
+        from .minio.storage import MinioBlobStorage
+
+        return MinioBlobStorage(config)
+    elif provider.lower() == "s3":
+        from .s3.storage import S3BlobStorage
+
+        return S3BlobStorage(config)
     else:
         raise InvalidConfigurationError(
-            "provider", f"Unsupported provider: {provider}. Supported providers: azure"
+            "provider", f"Unsupported provider: {provider}. Supported providers: azure, minio, s3"
         )
 
 

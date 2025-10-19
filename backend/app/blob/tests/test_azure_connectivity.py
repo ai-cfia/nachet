@@ -21,6 +21,7 @@ from app.blob.exceptions import (
     BlobStorageError,
 )
 from app.api.config import get_settings
+from .test_utils import sanitize_config_for_display, sanitize_connection_string
 
 # Load test environment variables
 if not os.getenv("BLOB_STORAGE_PROVIDER"):
@@ -224,7 +225,9 @@ class TestConnectionStringGeneration:
         for part in expected_parts:
             assert part in connection_string, f"Missing part: {part}"
 
-        print(f"✅ Generated connection string: {connection_string}")
+        # Sanitize connection string before printing to avoid leaking credentials
+        sanitized_conn_str = sanitize_connection_string(connection_string)
+        print(f"✅ Generated connection string: {sanitized_conn_str}")
 
     @pytest.mark.parametrize(
         "config_fields,should_pass",
@@ -362,7 +365,9 @@ class TestConfigurationIntegration:
             assert config["blob_storage_name"] == settings.blob_storage_name
             assert config["blob_storage_key"] == settings.blob_storage_key
 
-        print(f"📋 Test config: {config}")
+        # Sanitize config before printing to avoid leaking credentials
+        sanitized_config = sanitize_config_for_display(config)
+        print(f"📋 Test config: {sanitized_config}")
 
     def test_azure_connection_string_format(self):
         """Test that Azure connection string has correct format."""
@@ -383,11 +388,14 @@ class TestConfigurationIntegration:
         # Should be valid format (no None values)
         assert "None" not in connection_string
 
-        print(f"🔗 Connection string format: {connection_string[:50]}...")
+        # Sanitize before printing to avoid credential leakage
+        sanitized_conn_str = sanitize_connection_string(connection_string)
+        print(f"🔗 Connection string format: {sanitized_conn_str[:80]}...")
 
-        # Verify it contains actual values from config
+        # Verify it contains actual values from config (without exposing them in assertions)
+        # Check for presence of key components without printing the actual secrets
         assert config["blob_storage_name"] in connection_string
-        assert config["blob_storage_key"] in connection_string
+        assert "AccountKey=" in connection_string  # Verify key is present without exposing value
 
     def test_settings_blob_config(self):
         """Test that settings properly generate blob config."""

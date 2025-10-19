@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     blob_storage_endpoint_suffix: str | None = None
     blob_storage_endpoint_base: str | None = None
 
+    s3_access_key: str | None = None
+    s3_secret_key: str | None = None
+    s3_region_name: str | None = None
+    s3_endpoint_url: str | None = None
+    s3_use_ssl: bool = False
+    s3_verify: bool = True
+
     cors_allow_origins: str | None = None
     trusted_hosts: str | None = None
 
@@ -103,6 +110,19 @@ class Settings(BaseSettings):
             "blob_storage_endpoint_protocol": self.blob_storage_endpoint_protocol,
             "blob_storage_endpoint_suffix": self.blob_storage_endpoint_suffix,
             "blob_storage_endpoint_base": self.blob_storage_endpoint_base,
+        }
+
+    @computed_field
+    @property
+    def s3_storage_config(self) -> dict:
+        """Configuration for s3 blob storage initialization."""
+        return {
+            "s3_endpoint_url": self.s3_endpoint_url,
+            "s3_access_key": self.s3_access_key,
+            "s3_secret_key": self.s3_secret_key,
+            "s3_region_name": self.s3_region_name,
+            "s3_use_ssl": self.s3_use_ssl,
+            "s3_verify": self.s3_verify,
         }
 
     @computed_field
@@ -177,6 +197,7 @@ async def lifespan(app: FastAPI):
     # Initialize logging infrastructure
     print("Lifespan Initializing logging...")
     from app.service import LogService
+
     LogService.setup_logging(settings.logging_config)
     print("Lifespan Logging initialized successfully")
 
@@ -241,7 +262,9 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
     app.add_middleware(HeadersMiddleware, preset=settings.security_headers_preset)
     app.add_middleware(SlowAPIMiddleware)
-    app.add_middleware(LoggingMiddleware)  # Request/response logging with correlation IDs
+    app.add_middleware(
+        LoggingMiddleware
+    )  # Request/response logging with correlation IDs
 
     # Database SessionManager will be available via app.state.sessionmanager after lifespan startup
 
@@ -250,7 +273,7 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, e: Exception):
         # Get correlation_id from request state if available
-        correlation_id = getattr(request.state, 'correlation_id', None)
+        correlation_id = getattr(request.state, "correlation_id", None)
 
         log_error(e)
 
@@ -259,8 +282,7 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
             response_content["correlation_id"] = correlation_id
 
         return JSONResponse(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            content=response_content
+            status_code=HTTPStatus.INTERNAL_SERVER_ERROR, content=response_content
         )
 
     return app

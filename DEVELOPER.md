@@ -25,10 +25,121 @@ nachet$ cd db
 # enter your own values in the .env.config.local file
 nachet/db$ cp .env.config.template .env.config.local
 nachet/db$ nano .env.config.local
+nachet/db$ cd ..
+
+# create required folders
+nachet$ mkdir -p db/postgres-data
+nachet$ mkdir -p db/pgadmin-data
+nachet$ mkdir -p blob/azurite
+# optional ozone, only if you need s3 api call implemented in ozone but missing from garage
+nachet$ mkdir -p blob/ozone
 
 # create database and pgadmin containers
-nachet/db$ cd ..
-nachet$ docker compose -f docker-compose.yaml up -d nachet-db nachet-pgadmin nachet-blob
+nachet$ docker compose -f docker-compose.yaml up -d nachet-db nachet-pgadmin 
+
+# azurite blob storage
+# you can use azure storage explorer to view the blobs https://azure.microsoft.com/en-us/products/storage/storage-explorer#Download-4
+nachet$ docker compose -f docker-compose.yaml up -d nachet-blob --force-recreate
+
+# ozone s3 compatible storage (optional)
+# nachet$ docker compose -f docker-compose.yaml up -d datanode om scm recon s3g httpfs
+
+# garage s3 compatible storage (preferred, single container)
+nachet$ docker compose -f docker-compose.yaml up -d nachet-op-blob nachet-op-blob-webui --force-recreate
+
+# check garage status
+nachet$ docker exec -ti nachet-op-blob /garage status
+|  ==== HEALTHY NODES ====
+|  ID                Hostname      Address          Tags  Zone  Capacity          DataAvail  Version
+|  63a9650ddf005cc6  c8cdccadde8e  127.0.0.1:12441              NO ROLE ASSIGNED             v2.1.0
+
+# setup zone and capacity , replace 63a9 with your node ID
+nachet$ docker exec -ti nachet-op-blob /garage layout assign -z dc1 -c 1G 63a9
+|  Role changes are staged but not yet committed.
+|  Use `garage layout show` to view staged role changes,
+|  and `garage layout apply` to enact staged changes.
+
+nachet$ docker exec -ti nachet-op-blob /garage layout apply --version 1 
+|  ==== COMPUTATION OF A NEW PARTITION ASSIGNATION ====
+|
+|  Partitions are replicated 1 times on at least 1 distinct zones.
+|
+|  Optimal partition size:                     3.9 MB
+|  Usable capacity / total cluster capacity:   1000.0 MB / 1000.0 MB (100.0 %)
+|  Effective capacity (replication factor 1):  1000.0 MB
+|
+|  dc1                 Tags  Partitions        Capacity   Usable capacity
+|    63a9650ddf005cc6  []    256 (256 new)     1000.0 MB  1000.0 MB (100.0%)
+|    TOTAL                   256 (256 unique)  1000.0 MB  1000.0 MB (100.0%)
+|
+|
+|  New cluster layout with updated role assignment has been applied in cluster.
+|  Data will now be moved around between nodes accordingly.
+
+# create access keys . put these in your env files
+nachet$ docker exec -ti nachet-op-blob /garage key create nachet-local-dev-key
+| ==== ACCESS KEY INFORMATION ====
+| Key ID:              <your access key id>
+| Key name:            nachet-local-dev-key
+| Secret key:          <your secret access key>
+| Created:             2025-10-19 03:58:46.375 +00:00
+| Validity:            valid
+| Expiration:          never
+|
+| Can create buckets:  false
+|
+| ==== BUCKETS FOR THIS KEY ====
+| Permissions  ID  Global aliases  Local aliases
+
+# create a bucket / container . put this in your env files
+nachet$ docker exec -ti nachet-op-blob /garage bucket create nachet-local-dev-bucket
+| ==== BUCKET INFORMATION ====
+| Bucket:          7a89fed6e3b655390dc7a9e2dda7d6903a903226a0755844274b078c4bede739
+| Created:         2025-10-19 04:19:45.339 +00:00
+|
+| Size:            0 B (0 B)
+| Objects:         0
+|
+| Website access:  false
+|
+| Global alias:    nachet-local-dev-bucket
+|
+| ==== KEYS FOR THIS BUCKET ====
+| Permissions  Access key    Local aliases
+
+# assign permissions to the key for this bucket
+nachet$ docker exec -ti nachet-op-blob /garage bucket allow --read --write --owner nachet-local-dev-bucket --key nachet-local-dev-key
+
+| ==== BUCKET INFORMATION ====
+| Bucket:          7a89fed6e3b655390dc7a9e2dda7d6903a903226a0755844274b078c4bede739
+| Created:         2025-10-19 04:19:45.339 +00:00
+| 
+| Size:            0 B (0 B)
+| Objects:         0
+| 
+| Website access:  false
+| 
+| Global alias:    nachet-local-dev-bucket
+| 
+| ==== KEYS FOR THIS BUCKET ====
+| Permissions  Access key                                        Local aliases
+| RWO          <your access key id>  nachet-local-dev-key  
+
+# allow the key to create buckets
+nachet$ docker exec -ti nachet-op-blob /garage key allow --create-bucket nachet-local-dev-key
+| ==== ACCESS KEY INFORMATION ====
+| Key ID:              <your access key id>
+| Key name:            nachet-local-dev-key
+| Secret key:          (redacted)
+| Created:             2025-10-19 03:58:46.375 +00:00
+| Validity:            valid
+| Expiration:          never
+|
+| Can create buckets:  true
+|
+| ==== BUCKETS FOR THIS KEY ====
+| Permissions  ID                Global aliases           Local aliases
+| RWO          7a89fed6e3b65539  nachet-local-dev-bucket 
 ```  
 
 - access pgadmin at <http://localhost:12433>  
@@ -36,34 +147,29 @@ nachet$ docker compose -f docker-compose.yaml up -d nachet-db nachet-pgadmin nac
 - create a new server with the database connection details from the .env.config.local file  
 - browse your database and schema using pgadmin
 
-<!-- ### Datastore setup deprecated
+### observability setup grafana alloy loki
 
 ```bash
-nachet$ cd datastore
-
-# enter your own values in the .env.test.local file
-nachet/datastore$ cp .env.test.template .env.test.local
-nachet/datastore$ nano .env.test.local
-
 # enter your own values in the .env.local file
-nachet/datastore$ cp .env.template .env.local
-nachet/datastore$ nano .env.local
-
-# initialize venv
-nachet/datastore$ uv sync
-nachet/datastore$ source .venv/bin/activate
-nachet/datastore$ ./run_tests.sh
-nachet/datastore$ deactivate
-``` -->
+nachet$ cd observability
+nachet/observability$ cp .env.template .env.local
+nachet/observability$ nano .env.local
+nachet$ cd ..
+nachet$ docker compose -f docker-compose.yaml up -d grafana loki alloy
+```
 
 ### Backend setup
 
 ```bash
 nachet$ cd backend
 
-# enter your own values in the .env.config.local file
-nachet/backend$ cp .env.config.template .env.config.local
-nachet/backend$ nano .env.config.local
+# enter your own values in the .env.local file
+nachet/backend$ cp .env.template .env.local
+nachet/backend$ nano .env.local
+
+# enter your own values in the .env.container.local file
+nachet/backend$ cp .env.template .env.container.local
+nachet/backend$ nano .env.container.local
 
 # enter your own values in the .env.test.local file
 nachet/backend$ cp .env.test.template .env.test.local
