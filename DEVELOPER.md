@@ -396,6 +396,18 @@ At this point you will have the full stack, you will be able to test integration
 
 - When making changes to the backend, ensure that you update the database schema if necessary. Use Alembic for managing database migrations.
 - the first step should be to bump the version in the `backend/pyproject.toml` file.
+- run the sbom generation script to update the software bill of materials `nachet $ ./generate_sbom.sh backend`
 - build your changes locally `nachet $ docker compose -f docker-compose.yaml build nachet-backend --no-cache`
 - deploy your changes locally `nachet $ docker compose -f docker-compose.yaml up -d nachet-backend --force-recreate`
 - quick check module imports are good `nachet/backend $  python -c "import app.main"`
+
+## Frontend changes
+
+- When making changes to the frontend, ensure that you test the application in different browsers for compatibility.
+- the first step should be to bump the version in the `frontend/package.json` file.
+- run the sbom generation script to update the software bill of materials `nachet $ ./generate_sbom.sh frontend`
+- run `npm run prestart`
+- build your changes locally `nachet/frontend $ npm run build`
+- push the new build to blob storage `nachet/backend $ uv run app/scripts/push_frontend_to_blob.py --clean`
+- you can also debug by running the frontend in dev mode and connecting to the backend `nachet/frontend $ npm run dev -- --port 12438`
+- you can also run the frontend in a container `nachet $ docker compose -f docker-compose.yaml build nachet-frontend --no-cache && docker compose -f docker-compose.yaml up -d nachet-frontend --force-recreate`

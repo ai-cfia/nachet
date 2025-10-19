@@ -17,10 +17,10 @@ class ValidationHelper:
     @staticmethod
     def validate_blob_name(name: str) -> str:
         """
-        Validate blob name (S3 object key) is not empty.
+        Validate blob name using unified cross-platform validation.
 
-        S3 object keys can contain any UTF-8 character, but we enforce
-        basic constraints for consistency with Azure implementation.
+        Uses the unified validation module to ensure compatibility with
+        both Azure Blob Storage and S3.
 
         Args:
             name: Blob name to validate
@@ -31,28 +31,16 @@ class ValidationHelper:
         Raises:
             BlobStorageError: If name is invalid
         """
-        if not name or name.strip() == "":
-            raise BlobStorageError("Blob name cannot be empty")
-
-        # S3 allows most characters, but we maintain similar constraints to Azure
-        # for consistency across implementations
-        if not all(c.isalnum() or c in "-_/." for c in name):
-            raise BlobStorageError(
-                "Blob name can only contain letters, numbers, hyphens, underscores, periods, and slashes"
-            )
-        return name.strip()
+        from ...validation import validate_blob_name as unified_validate_blob_name
+        return unified_validate_blob_name(name)
 
     @staticmethod
     def validate_container_name(container: str) -> str:
         """
-        Validate container name (S3 bucket name) follows S3 naming rules.
+        Validate container name using unified cross-platform validation.
 
-        S3 bucket naming rules:
-        - Must be 3-63 characters long
-        - Can contain lowercase letters, numbers, hyphens, and periods
-        - Must start with a letter or number
-        - Must not be formatted as an IP address
-        - No consecutive periods or hyphens next to periods
+        Uses the unified validation module to ensure compatibility with
+        both Azure Blob Storage and S3.
 
         Args:
             container: Container name to validate
@@ -63,41 +51,8 @@ class ValidationHelper:
         Raises:
             BlobStorageError: If name is invalid
         """
-        if not container or container.strip() == "":
-            raise BlobStorageError("Container name cannot be empty")
-
-        container = container.strip().lower()
-
-        # Length check
-        if len(container) < 3 or len(container) > 63:
-            raise BlobStorageError("Container name must be between 3 and 63 characters")
-
-        # Must start with letter or number
-        if not (container[0].isalpha() or container[0].isdigit()):
-            raise BlobStorageError("Container name must start with a letter or number")
-
-        # Must end with letter or number
-        if not (container[-1].isalpha() or container[-1].isdigit()):
-            raise BlobStorageError("Container name must end with a letter or number")
-
-        # Check valid characters
-        if not all(c.islower() or c.isdigit() or c in "-." for c in container):
-            raise BlobStorageError(
-                "Container name can only contain lowercase letters, numbers, hyphens, and periods"
-            )
-
-        # Check for consecutive periods or hyphens next to periods
-        if ".." in container or ".-" in container or "-." in container:
-            raise BlobStorageError(
-                "Container name cannot contain consecutive periods or hyphens adjacent to periods"
-            )
-
-        # Check if formatted as IP address (basic check)
-        parts = container.split(".")
-        if len(parts) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in parts):
-            raise BlobStorageError("Container name cannot be formatted as an IP address")
-
-        return container
+        from ...validation import validate_container_name as unified_validate_container_name
+        return unified_validate_container_name(container)
 
     @staticmethod
     def validate_data_not_none(data: Any) -> None:
