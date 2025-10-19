@@ -93,32 +93,32 @@ Each resource has a corresponding base URI, which refers to the resource itself.
 
 For the storage account, the base URI includes the name of the account only:
 
-<https://myaccount.blob.core.windows.net>  <!-- markdownlint-disable-line MD034 -->
+<https://myaccount.blob.core.windows.net>  <!-- markdown-link-check-disable-line -->
 
 For a container, the base URI includes the name of the account and the name of the container:
 
-<https://myaccount.blob.core.windows.net/mycontainer>  <!-- markdownlint-disable-line MD034 -->
+<https://myaccount.blob.core.windows.net/mycontainer>  <!-- markdown-link-check-disable-line -->
 
 For a blob, the base URI includes the name of the account, the name of the container, and the name of the blob:
 
-<https://myaccount.blob.core.windows.net/mycontainer/myblob>  <!-- markdownlint-disable-line MD034 -->
+<https://myaccount.blob.core.windows.net/mycontainer/myblob>  <!-- markdown-link-check-disable-line -->
 
 A storage account may have a root container, a default container that can be omitted from the URI. A blob in the root container can be referenced without naming the container, or the root container can be explicitly referenced by its name ($root). See Working with the Root Container for more information. The following URIs both refer to a blob in the root container:
 
 Copy
-<https://myaccount.blob.core.windows.net/myblob>   <!-- markdownlint-disable-line MD034 -->
-<https://myaccount.blob.core.windows.net/$root/myblob>   <!-- markdownlint-disable-line MD034 -->
+<https://myaccount.blob.core.windows.net/myblob>   <!-- markdown-link-check-disable-line -->
+<https://myaccount.blob.core.windows.net/$root/myblob>   <!-- markdown-link-check-disable-line -->
 Blob Snapshots
 A snapshot is a read-only version of a blob stored as it was at the time the snapshot was created. You can use snapshots to create a backup or checkpoint of a blob. A snapshot blob name includes the base blob URI plus a date-time value that indicates when the snapshot was created.
 
 For example, assume that a blob has the following URI:
 
-<https://myaccount.blob.core.windows.net/mycontainer/myblob>  <!-- markdownlint-disable-line MD034 -->
+<https://myaccount.blob.core.windows.net/mycontainer/myblob>  <!-- markdown-link-check-disable-line -->
 
 The URI for a snapshot of that blob is formed as follows:
 
 ```text
-<https://myaccount.blob.core.windows.net/mycontainer/myblob?snapshot=><DateTime>  <!-- markdownlint-disable-line MD034 -->
+<https://myaccount.blob.core.windows.net/mycontainer/myblob?snapshot=><DateTime>  <!-- markdown-link-check-disable-line -->
 ```
 
 Unicode characters not recommended for use in container or blob names
