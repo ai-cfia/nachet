@@ -159,8 +159,8 @@ jobs:
           BLOB_STORAGE_ENDPOINT_SUFFIX: ${{ secrets.BLOB_STORAGE_ENDPOINT_SUFFIX }}
           BLOB_STORAGE_ENDPOINT_BASE: ${{ secrets.BLOB_STORAGE_ENDPOINT_BASE }}
           S3_ENDPOINT_URL: http://127.0.0.1:12440
-          S3_ACCESS_KEY_ID: ${{ steps.garage_init.outputs.ACCESS_KEY }}
-          S3_SECRET_ACCESS_KEY: ${{ steps.garage_init.outputs.SECRET_KEY }}
+          S3_ACCESS_KEY: ${{ steps.garage_init.outputs.ACCESS_KEY }}
+          S3_SECRET_KEY: ${{ steps.garage_init.outputs.SECRET_KEY }}
           S3_REGION_NAME: garage
           S3_USE_SSL: false
           S3_VERIFY: false
