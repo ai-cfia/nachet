@@ -18,8 +18,10 @@ class ValidationHelper:
     @staticmethod
     def validate_blob_name(name: str) -> str:
         """
-        Validate blob name is not empty, and contains only letters,
-        numbers, hyphens, underscores, periods, and slashes.
+        Validate blob name using unified cross-platform validation.
+
+        Uses the unified validation module to ensure compatibility with
+        both Azure Blob Storage and S3.
 
         Args:
             name: Blob name to validate
@@ -30,38 +32,28 @@ class ValidationHelper:
         Raises:
             BlobStorageError: If name is invalid
         """
-        if not name or name.strip() == "":
-            raise BlobStorageError("Blob name cannot be empty")
-        if not all(c.isalnum() or c in "-_/." for c in name):
-            raise BlobStorageError(
-                "Blob name can only contain letters, numbers, hyphens, underscores, periods, and slashes"
-            )
-        return name.strip()
+        from ...validation import validate_blob_name as unified_validate_blob_name
+        return unified_validate_blob_name(name)
 
     @staticmethod
     def validate_container_name(container: str) -> str:
         """
-        Validate container name not empty, and contains only lower case
-        letters, numbers, hyphens, and slashes. must start with letter.
+        Validate container name using unified cross-platform validation.
+
+        Uses the unified validation module to ensure compatibility with
+        both Azure Blob Storage and S3.
 
         Args:
             container: Container name to validate
 
         Returns:
-            Validated container name
+            Validated container name (lowercase)
 
         Raises:
             BlobStorageError: If name is invalid
         """
-        if not container or container.strip() == "":
-            raise BlobStorageError("Container name cannot be empty")
-        if not container[0].isalpha():
-            raise BlobStorageError("Container name must start with a letter")
-        if not all(c.islower() or c.isdigit() or c in "-/" for c in container):
-            raise BlobStorageError(
-                "Container name can only contain lower case letters, numbers, hyphens, and slashes"
-            )
-        return container.strip().lower()
+        from ...validation import validate_container_name as unified_validate_container_name
+        return unified_validate_container_name(container)
 
     @staticmethod
     def validate_data_not_none(data: Any) -> None:
