@@ -11,9 +11,13 @@ from app.service import (
 )
 from app.service.auth import User, get_current_user
 from app.api.config import get_limiter
+# from app.api.test_dbos import router as test_dbos_router
 
 router = APIRouter()
 limiter = get_limiter()
+
+# Include DBOS test router (no auth required for testing)
+# router.include_router(test_dbos_router)
 
 # Module-level logger
 _logger = None
