@@ -65,34 +65,104 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
     cfia_org_id = uuid.UUID(os.getenv("CFIA_ORGANIZATION_ID", "12345678-1234-1234-1234-123456789012"))
     cfia_admin_role_id = uuid.UUID(os.getenv("CFIA_ADMIN_ROLE_ID", "87654321-4321-4321-4321-210987654321"))
 
-    # Add device brand and models
+    # Add device brand (Tagarno), models, and lenses
     async with async_session.begin() as session:
-        device_brand = DeviceBrand(
-            id=uuid.UUID("dddddddd-dddd-dddd-dddd-dddddddddddd"),
-            name="Test Device Brand",
-            description="Default test device brand for development",
+        # Tagarno brand
+        tagarno_brand = DeviceBrand(
+            id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+            name="Tagarno",
+            description="Tagarno microscope devices",
             active=True,
         )
-        session.add(device_brand)
+        session.add(tagarno_brand)
 
-        device_model = DeviceModel(
-            id=uuid.UUID("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
-            device_brand_id=uuid.UUID("dddddddd-dddd-dddd-dddd-dddddddddddd"),
-            name="Test Camera Model",
-            description="Default test camera model",
-            active=True,
-        )
-        session.add(device_model)
+        # Tagarno models
+        tagarno_models = [
+            DeviceModel(
+                id=uuid.UUID("22222222-2222-2222-2222-222222222221"),
+                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                name="Prestige",
+                description="Tagarno Prestige microscope model",
+                active=True,
+            ),
+            DeviceModel(
+                id=uuid.UUID("22222222-2222-2222-2222-222222222222"),
+                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                name="T50",
+                description="Tagarno T50 microscope model",
+                active=True,
+            ),
+            DeviceModel(
+                id=uuid.UUID("22222222-2222-2222-2222-222222222223"),
+                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                name="Trend",
+                description="Tagarno Trend microscope model",
+                active=True,
+            ),
+            DeviceModel(
+                id=uuid.UUID("22222222-2222-2222-2222-222222222224"),
+                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                name="Front",
+                description="Tagarno Front microscope model",
+                active=True,
+            ),
+            DeviceModel(
+                id=uuid.UUID("22222222-2222-2222-2222-222222222225"),
+                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                name="Move",
+                description="Tagarno Move microscope model",
+                active=True,
+            ),
+            DeviceModel(
+                id=uuid.UUID("22222222-2222-2222-2222-222222222226"),
+                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                name="Zap",
+                description="Tagarno Zap microscope model",
+                active=True,
+            ),
+            DeviceModel(
+                id=uuid.UUID("22222222-2222-2222-2222-222222222227"),
+                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                name="Zip",
+                description="Tagarno Zip microscope model",
+                active=True,
+            ),
+        ]
+        session.add_all(tagarno_models)
 
-        device_lens = DeviceLens(
-            id=uuid.UUID("ffffffff-ffff-ffff-ffff-ffffffffffff"),
-            device_brand_id=uuid.UUID("dddddddd-dddd-dddd-dddd-dddddddddddd"),
-            name="Test Lens Model",
-            description="Default test lens model",
-            active=True,
-        )
-        session.add(device_lens)
-    _get_logger().info("Device brand and models added")
+        # Tagarno lenses
+        tagarno_lenses = [
+            DeviceLens(
+                id=uuid.UUID("33333333-3333-3333-3333-333333333331"),
+                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                name="+3",
+                description="Tagarno +3 magnification lens",
+                active=True,
+            ),
+            DeviceLens(
+                id=uuid.UUID("33333333-3333-3333-3333-333333333332"),
+                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                name="+4",
+                description="Tagarno +4 magnification lens",
+                active=True,
+            ),
+            DeviceLens(
+                id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
+                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                name="+5",
+                description="Tagarno +5 magnification lens",
+                active=True,
+            ),
+            DeviceLens(
+                id=uuid.UUID("33333333-3333-3333-3333-333333333334"),
+                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                name="+10",
+                description="Tagarno +10 magnification lens",
+                active=True,
+            ),
+        ]
+        session.add_all(tagarno_lenses)
+    _get_logger().info("Tagarno device brand, models (7), and lenses (4) added")
 
     async with async_session.begin() as session:
         # Create model tasks first
