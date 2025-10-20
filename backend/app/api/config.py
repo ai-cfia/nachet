@@ -83,6 +83,12 @@ class Settings(BaseSettings):
     cfia_admin_role_id: str | None = None
     cfia_user_role_id: str | None = None
 
+    # image processing pipeline settings
+    azure_sanitization_function_url: str | None = None
+    azure_sanitization_function_key: str | None = None
+    backend_url: str | None = None
+    is_test_environment: bool = False
+
     @computed_field
     @property
     def allowed_origin_list(self) -> list[str]:

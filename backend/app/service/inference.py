@@ -1,0 +1,177 @@
+"""
+Inference Service
+
+Business logic layer for image inference and processing API endpoints.
+Coordinates between ImageProcessingService, DirectoryService, and other services.
+"""
+
+from typing import Dict, Any
+from uuid import UUID
+
+from app.model.inference import InferenceRequest, ImageSubmissionResponse
+from app.service import ImageProcessingService, DirectoryService, SeedService
+from app.service.organization import OrganizationService
+from app.service.constants import get_cfia_admin_role_id
+from app.exceptions import ImageProcessingError
+from app.db.utils import sessionmanager
+
+
+class InferenceService:
+    """Service layer for inference-related business logic."""
+
+    @staticmethod
+    async def submit_inference_request(
+        request: InferenceRequest,
+        user_id: UUID,
+    ) -> ImageSubmissionResponse:
+        """
+        Process image inference submission request (MVP: upload → scan → sanitize).
+
+        Coordinates all the steps needed to submit an image for processing:
+        1. Lookup/create folder
+        2. Get user's organization
+        3. Normalize names for blob storage
+        4. Submit to ImageProcessingService
+
+        Manages database session and logging internally.
+
+        Args:
+            request: InferenceRequest with image data and metadata
+            user_id: UUID of requesting user
+
+        Returns:
+            ImageSubmissionResponse with image_id, workflow_id, status
+
+        Raises:
+            ValueError: If folder not found or validation fails
+            ImageProcessingError: If submission fails
+        """
+        from app.service.logs import LogService
+
+        logger = LogService.get_logger()
+
+        logger.debug(
+            "Processing inference request",
+            user_id=str(user_id),
+            folder_name=request.folder_name,
+        )
+
+        try:
+            async with sessionmanager.get_session() as session:
+                # Get user's organization for org_name
+                # TODO: Implement proper organization lookup from user
+                # For now, use a default or extract from user metadata
+                org_name = OrganizationService.normalize_org_name("default-org")
+
+                # Get or create folder by folder_name
+                directories = await DirectoryService.get_user_directories(user_id)
+                folder_id = None
+
+                # Find folder by name
+                for directory in directories.get("directories", []):
+                    if directory.get("name") == request.folder_name:
+                        folder_id = UUID(directory.get("id"))
+                        break
+
+                if not folder_id:
+                    # Folder not found - raise error
+                    # TODO: Optionally create folder automatically
+                    logger.error(
+                        f"Folder not found: {request.folder_name}",
+                        user_id=str(user_id),
+                    )
+                    raise ValueError(f"Folder '{request.folder_name}' not found for user")
+
+                # Extract filename from image data (use folder_name as fallback)
+                filename = f"{request.folder_name}.png"
+
+                # Get genus/species from folder metadata or use defaults
+                # TODO: Extract from folder metadata, seed database, or image metadata
+                genus = SeedService.normalize_taxonomic_name("unknown")
+                species = SeedService.normalize_taxonomic_name("unknown")
+
+                # Get user role IDs
+                # TODO: Get actual role IDs from user/organization
+                org_admin_role_id = get_cfia_admin_role_id()
+                org_user_role_id = get_cfia_admin_role_id()  # TODO: Get actual user role
+
+                # Submit image for processing
+                result = await ImageProcessingService.submit_image_for_processing(
+                    session=session,
+                    image_data=request.image,
+                    filename=filename,
+                    genus=genus,
+                    species=species,
+                    org_name=org_name,
+                    user_id=user_id,
+                    folder_id=folder_id,
+                    org_user_role_id=org_user_role_id,
+                    org_admin_role_id=org_admin_role_id,
+                    image_metadata=request.imageDims,
+                )
+
+                logger.info(
+                    f"Image submitted for processing: {result['image_id']}",
+                    user_id=str(user_id),
+                    workflow_id=result["workflow_id"],
+                )
+
+                return ImageSubmissionResponse(**result)
+
+        except ValueError:
+            raise
+        except Exception as e:
+            logger.error(
+                f"Failed to submit inference: {str(e)}",
+                user_id=str(user_id),
+                error_type=type(e).__name__,
+            )
+            raise ImageProcessingError(f"Failed to submit inference: {str(e)}") from e
+
+    @staticmethod
+    async def get_inference_status(
+        image_id: UUID,
+        user_id: UUID,
+    ) -> Dict[str, Any]:
+        """
+        Get processing status for an image.
+
+        Manages database session and logging internally.
+        Could add additional business logic here if needed (caching, auth checks, etc.)
+
+        Args:
+            image_id: UUID of the image
+            user_id: UUID of requesting user (for logging/auth)
+
+        Returns:
+            Dict with status information
+
+        Raises:
+            ImageProcessingError: If status retrieval fails
+        """
+        from app.service.logs import LogService
+
+        logger = LogService.get_logger()
+
+        logger.debug(
+            f"Getting status for image {image_id}",
+            user_id=str(user_id),
+            image_id=str(image_id),
+        )
+
+        try:
+            async with sessionmanager.get_session() as session:
+                return await ImageProcessingService.get_processing_status(
+                    session=session,
+                    image_id=image_id,
+                )
+        except Exception as e:
+            logger.error(
+                f"Failed to get status for image {image_id}: {str(e)}",
+                user_id=str(user_id),
+                image_id=str(image_id),
+                error_type=type(e).__name__,
+            )
+            raise ImageProcessingError(
+                f"Failed to get inference status: {str(e)}"
+            ) from e

@@ -6,6 +6,30 @@
 
 ## Recent Progress (October 20, 2025)
 
+✅ **Completed Tasks 11, 12, 13 + Refactoring (API Endpoints & Code Organization):**
+
+**Phase 1 - Initial Implementation:**
+
+- Created `app/api/callbacks.py` with sanitization callback endpoint
+- Added config settings for Azure Function integration to `app/api/config.py`
+- Added `POST /inf` endpoint (async image submission, legacy-compatible)
+- Added `GET /inf/{image_id}/status` endpoint (status polling)
+- Implemented name normalization functions (taxonomic and org names)
+
+**Phase 2 - Refactoring for Separation of Concerns:**
+
+- Created `app/model/inference.py` with Pydantic models (InferenceRequest, ImageSubmissionResponse, SanitizationCallbackRequest)
+- Created `app/service/inference.py` with business logic layer (InferenceService)
+- Moved `normalize_taxonomic_name()` to `SeedService`
+- Moved `normalize_org_name()` to `OrganizationService`
+- Added `handle_sanitization_callback()` to `ImageProcessingService`
+- Refactored `routes.py` to use service layer (removed inline business logic)
+- Moved callback route from `callbacks.py` to `routes.py`
+- Deleted `callbacks.py` (route consolidated into main routes file)
+- Removed all feedback tags causing syntax errors
+
+## Previous Progress (October 20, 2025)
+
 ✅ **Completed Tasks 1.5 through 7-9 + DBOS Integration:**
 
 - Created `app/service/constants.py` with `Bucket` and `ProcessingStatus` enums
@@ -147,33 +171,36 @@ After review, DBOS is **already integrated** in the project (added Oct 18, 2025)
   - [ ] Create `requirements.txt` - add azure-functions, Pillow, azure-storage-blob
   - [ ] Create `host.json` and `local.settings.json`
 
-- [ ] **Task 11:** Create callback endpoint in `app/api/callbacks.py`
-  - [ ] Implement `/api/v1/callbacks/sanitization-complete` POST endpoint
-  - [ ] Use DBOS send to notify waiting workflow
+- [x] **Task 11:** Create callback endpoint in `app/api/callbacks.py` ✅ COMPLETED
+  - [x] Implement `/api/v1/callbacks/sanitization-complete` POST endpoint
+  - [x] Use DBOS send to notify waiting workflow
+  - [x] Add function key authentication
 
-## Phase 3: API Endpoints
+## Phase 3: API Endpoints ✅ COMPLETED
 
-- [ ] **Task 12:** Add image submission endpoint in `app/api/routes.py`
-  - [ ] Implement `POST /inf` - accepts base64 images with genus/species
-  - [ ] Add name normalization functions (taxonomic and org names)
-  - [ ] Call `ImageProcessingService.submit_image_for_processing()`
+- [x] **Task 12:** Add image submission endpoint in `app/api/routes.py` ✅ COMPLETED
+  - [x] Implement `POST /inf` - accepts base64 images (legacy-compatible format)
+  - [x] Add name normalization functions (taxonomic and org names)
+  - [x] Call `ImageProcessingService.submit_image_for_processing()`
+  - [x] Returns UUID immediately for async processing
 
-- [ ] **Task 13:** Add status polling endpoint in `app/api/routes.py`
-  - [ ] Implement `GET /inf/{image_id}/status`
-  - [ ] Call `ImageProcessingService.get_processing_status()`
+- [x] **Task 13:** Add status polling endpoint in `app/api/routes.py` ✅ COMPLETED
+  - [x] Implement `GET /inf/{image_id}/status`
+  - [x] Call `ImageProcessingService.get_processing_status()`
+  - [x] Returns detailed status with progress, timestamps, blob URLs
 
 ## Phase 4: Queue Management
 
 - [x] **Task 14:** Create queue configuration in `app/service/image_processing_queue.py`
   - [x] Define `image_processing_queue` with concurrency and rate limits
 
-## Phase 4.5: Configuration Updates Needed
+## Phase 4.5: Configuration Updates ✅ COMPLETED
 
-- [ ] **Task 14.5:** Add missing settings to `app/api/config.py`
-  - [ ] Add `azure_sanitization_function_url` setting
-  - [ ] Add `azure_sanitization_function_key` setting
-  - [ ] Add `backend_url` setting
-  - [ ] Add `is_test_environment` setting (or use existing env check)
+- [x] **Task 14.5:** Add missing settings to `app/api/config.py` ✅ COMPLETED
+  - [x] Add `azure_sanitization_function_url` setting
+  - [x] Add `azure_sanitization_function_key` setting
+  - [x] Add `backend_url` setting
+  - [x] Add `is_test_environment` setting
 
 ## Phase 5: Testing
 

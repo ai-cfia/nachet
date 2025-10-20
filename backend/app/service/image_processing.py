@@ -451,3 +451,96 @@ class ImageProcessingService:
             ProcessingStatus.CANCELLED: 0,
         }
         return progress_map.get(status, 0)
+
+    @staticmethod
+    async def handle_sanitization_callback(
+        image_id: str,
+        status: str,
+        sanitized_blob_url: Optional[str],
+        error: Optional[str],
+        function_key: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Handle sanitization completion callback from Azure Function.
+
+        Validates the function key, validates the request, and sends a DBOS message
+        to the waiting workflow using the DBOS messaging system (recv/send pattern).
+
+        Args:
+            image_id: UUID string of the image
+            status: "success" or "failed"
+            sanitized_blob_url: URL to sanitized blob (if successful)
+            error: Error message (if failed)
+            function_key: Azure Function authentication key (optional)
+
+        Returns:
+            Dict with confirmation message
+
+        Raises:
+            ValueError: If image_id is invalid UUID or function key is invalid
+            ImageProcessingError: If message send fails or config error
+        """
+        from app.api.config import get_settings
+
+        try:
+            # Validate function key if provided
+            if function_key is not None:
+                settings = get_settings()
+                expected_key = settings.azure_sanitization_function_key
+
+                if not expected_key:
+                    raise ImageProcessingError(
+                        "Sanitization function key not configured"
+                    )
+
+                if function_key != expected_key:
+                    DBOS.logger.warning(
+                        f"Invalid function key in sanitization callback for image {image_id}"
+                    )
+                    raise ValueError("Invalid function key")
+
+            # Validate image_id is valid UUID
+            try:
+                _image_uuid = UUID(image_id)
+            except ValueError as e:
+                raise ValueError(f"Invalid image_id format: {image_id}") from e
+
+            # Prepare message for workflow
+            message = {
+                "status": status,
+                "sanitized_blob_url": sanitized_blob_url,
+                "error": error,
+            }
+
+            # Send message to waiting workflow using DBOS messaging
+            # Topic format matches what workflow is listening on: "sanitization-{image_id}"
+            topic = f"sanitization-{image_id}"
+
+            await DBOS.send_async(
+                destination_id=topic,
+                message=message,
+                topic=topic,
+            )
+
+            DBOS.logger.info(
+                f"Sanitization callback processed for image {image_id}: {status}"
+            )
+
+            return {
+                "message": "Callback received and workflow notified",
+                "image_id": image_id,
+                "status": status,
+            }
+
+        except ValueError:
+            raise
+        except ImageProcessingError:
+            raise
+        except Exception as e:
+            DBOS.logger.error(
+                f"Failed to process sanitization callback: {str(e)}",
+                exc_info=True,
+            )
+            raise ImageProcessingError(
+                f"Failed to process sanitization callback: {str(e)}"
+            ) from e

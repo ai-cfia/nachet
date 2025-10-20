@@ -1,5 +1,7 @@
 from typing import Dict, Any, Type, List
 from uuid import UUID
+import re
+
 from app.service.base_crud import BaseCRUDService, BaseCRUDDataService
 from app.datastore.seed import SeedDataService
 from app.db.model import Seed
@@ -67,14 +69,14 @@ class SeedService(BaseCRUDService[Seed]):
     async def get_seed_data() -> Dict[str, List[Dict[str, Any]]]:
         """
         Retrieve active seed data with subset of columns.
-        
+
         Returns simplified seed information for active seeds only.
         This is a public endpoint that doesn't require authentication.
-        
+
         Returns:
             Dict[str, List[Dict[str, Any]]]: Dictionary with 'seeds' key containing list of seed records.
             Each seed record contains: seed_id, name_code, family, genus, species, seed_metadata
-            
+
         Raises:
             SeedError: If data retrieval fails
         """
@@ -85,3 +87,49 @@ class SeedService(BaseCRUDService[Seed]):
             return {"seeds": [seed._asdict() for seed in seeds] if seeds else []}
         except Exception as e:
             raise SeedError(f"Failed to retrieve seed data: {str(e)}") from e
+
+    @staticmethod
+    def normalize_taxonomic_name(name: str) -> str:
+        """
+        Normalize taxonomic names (genus/species) for blob storage paths.
+
+        Used to create consistent, filesystem-safe names for blob storage organization.
+
+        Rules:
+        - Lowercase only
+        - Only letters (a-z) and dashes allowed
+        - Remove all other characters
+        - Multiple consecutive dashes collapsed to single dash
+        - Strip leading/trailing dashes
+
+        Args:
+            name: Raw taxonomic name (e.g., "Avena Fatua")
+
+        Returns:
+            Normalized name (e.g., "avena-fatua")
+
+        Example:
+            >>> SeedService.normalize_taxonomic_name("Avena Fatua")
+            'avena-fatua'
+            >>> SeedService.normalize_taxonomic_name("Bromus-tectorum")
+            'bromus-tectorum'
+        """
+        if not name:
+            return "unknown"
+
+        # Convert to lowercase
+        name = name.lower().strip()
+
+        # Replace spaces with dashes
+        name = name.replace(" ", "-")
+
+        # Remove all characters except a-z and dashes
+        name = re.sub(r'[^a-z\-]', '', name)
+
+        # Collapse multiple consecutive dashes
+        name = re.sub(r'-+', '-', name)
+
+        # Strip leading/trailing dashes
+        name = name.strip('-')
+
+        return name if name else "unknown"
