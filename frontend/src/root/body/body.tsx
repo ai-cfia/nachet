@@ -13,13 +13,14 @@ import {
   SaveCapturePopup,
   ModelPopup,
   SwitchDevicePopup,
+  DeviceInfoPopup,
   ClassificationResults,
   ImageCache,
   StorageDirectory,
   MicroscopeFeed,
   RegistrationStatusPopup,
 } from "@components/body";
-import { useBackendUrl, useDecoderTiff } from "@hooks";
+import { useBackendUrl, useDecoderTiff, useDeviceData } from "@hooks";
 import {
   InteractionRequiredAuthError,
   InteractionStatus,
@@ -74,6 +75,7 @@ const Body: React.FC<params> = (props) => {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [modelInfoPopupOpen, setModelInfoPopupOpen] = useState(false);
   const [switchDeviceOpen, setSwitchDeviceOpen] = useState(false);
+  const [deviceInfoOpen, setDeviceInfoOpen] = useState(false);
   const [createDirectoryOpen, setCreateDirectoryOpen] = useState(false);
   const [imageCache, setImageCache] = useState<Images[]>([]);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -127,6 +129,7 @@ const Body: React.FC<params> = (props) => {
   const isAuthenticated = useIsAuthenticated();
   const accountInfo = useAccount();
   const uuid = accountInfo?.idTokenClaims?.oid ?? "";
+  const { devicesData } = useDeviceData(backendUrl, apiScopeClaim);
 
   // Derive authPopupOpen from authentication state
   const authPopupOpen = useMemo(() => {
@@ -537,6 +540,13 @@ const Body: React.FC<params> = (props) => {
           activeDeviceId={activeDeviceId}
         />
       )}
+      {deviceInfoOpen && (
+        <DeviceInfoPopup
+          setDeviceInfoOpen={setDeviceInfoOpen}
+          deviceInfoOpen={deviceInfoOpen}
+          devicesData={devicesData}
+        />
+      )}
       {props.creativeCommonsPopupOpen && (
         <CreativeCommonsPopup
           setCreativeCommonsPopupOpen={props.setCreativeCommonsPopupOpen}
@@ -593,6 +603,7 @@ const Body: React.FC<params> = (props) => {
               activeDeviceId={activeDeviceId}
               devices={devices}
               setSwitchDeviceOpen={setSwitchDeviceOpen}
+              setDeviceInfoOpen={setDeviceInfoOpen}
               isLoading={isLoading}
               canvasRef={canvasRef}
               setSaveOpen={setSaveOpen}

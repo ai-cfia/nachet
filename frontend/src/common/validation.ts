@@ -664,6 +664,31 @@ export const VoidResponseSchema = z
   .any()
   .refine(() => true, "Operation completed successfully");
 
+// Device schemas
+export const DeviceModelSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+});
+
+export const DeviceLensSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+});
+
+export const DeviceBrandSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  models: z.array(DeviceModelSchema),
+  lenses: z.array(DeviceLensSchema),
+});
+
+export const ApiDevicesResponseSchema = z.object({
+  devices: z.array(DeviceBrandSchema),
+});
+
 // Generic validation function for API responses
 export function validateApiResponse<T>(
   schema: z.ZodSchema<T>,
@@ -696,3 +721,7 @@ export type ReadAzureStorageDirApi = z.infer<
 export type UserIdResponse = z.infer<typeof UserIdResponseSchema>;
 export type SessionIdResponse = z.infer<typeof SessionIdResponseSchema>;
 export type IsRegisteredResponse = z.infer<typeof IsRegisteredResponseSchema>;
+export type ApiDevicesResponse = z.infer<typeof ApiDevicesResponseSchema>;
+export type DeviceBrand = z.infer<typeof DeviceBrandSchema>;
+export type DeviceModel = z.infer<typeof DeviceModelSchema>;
+export type DeviceLens = z.infer<typeof DeviceLensSchema>;

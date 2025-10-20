@@ -9,6 +9,7 @@ import {
   Images,
   ModelMetadata,
   ReadAzureStorageDirApi,
+  ApiDevicesResponse,
 } from "./types";
 import { z } from "zod";
 import {
@@ -22,6 +23,7 @@ import {
   ApiInferenceDataSchema,
   ModelMetadataSchema,
   ApiSpeciesDataSchema,
+  ApiDevicesResponseSchema,
 } from "./validation";
 import { errorLogger } from "../logging";
 
@@ -343,6 +345,37 @@ export const fetchModelMetadata = async ({
     z.array(ModelMetadataSchema),
     response,
     "fetchModelMetadata",
+  );
+};
+
+export const fetchDevices = async ({
+  backendUrl,
+  accessToken,
+}: {
+  backendUrl: string;
+  accessToken: string;
+}): Promise<ApiDevicesResponse> => {
+  if (backendUrl === "" || backendUrl == null) {
+    throw new ValueError("Backend URL is null or empty");
+  }
+  if (accessToken === "" || accessToken == null) {
+    throw new ValueError("Access token is null or empty");
+  }
+  const request = {
+    method: "get",
+    url: `${backendUrl}/get-devices`,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    data: {},
+  };
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(
+    ApiDevicesResponseSchema,
+    response,
+    "fetchDevices",
   );
 };
 

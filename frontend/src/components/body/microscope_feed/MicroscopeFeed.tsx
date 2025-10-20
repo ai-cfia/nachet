@@ -11,6 +11,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import CropFreeIcon from "@mui/icons-material/CropFree";
 import DonutSmallIcon from "@mui/icons-material/DonutSmall";
 import FormatShapesOutlinedIcon from "@mui/icons-material/FormatShapesOutlined";
+import InfoIcon from "@mui/icons-material/Info";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { colours } from "@styles/colours";
 
@@ -43,6 +44,7 @@ interface MicroscopeFeedProps {
   activeDeviceId: string | undefined;
   devices: MediaDeviceInfo[];
   setSwitchDeviceOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setDeviceInfoOpen: React.Dispatch<React.SetStateAction<boolean>>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   setSaveOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setBatchUploadOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -122,6 +124,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     activeDeviceId,
     devices,
     setSwitchDeviceOpen,
+    setDeviceInfoOpen,
     canvasRef,
     setSaveOpen,
     setBatchUploadOpen,
@@ -433,6 +436,14 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
             setSwitchDeviceOpen(true);
           }}
           sx={{ paddingRight: "0.2vh" }}
+        />
+        <ButtonMicroscopeFeed
+          label="INFO"
+          icon={<InfoIcon color="inherit" style={iconStyle} />}
+          disabled={false} // Always active
+          onClick={() => {
+            setDeviceInfoOpen(true);
+          }}
         />
         <ButtonMicroscopeFeed
           label="CAPTURE"
