@@ -363,7 +363,7 @@ export const fetchDevices = async ({
   }
   const request = {
     method: "get",
-    url: `${backendUrl}/get-devices`,
+    url: `${backendUrl}/devices`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",

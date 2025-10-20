@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Box,
   Dialog,
@@ -14,6 +14,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
 import { ApiDevicesResponse } from "@common/types";
+import { useDeviceStore } from "@stores/useDeviceStore";
 
 interface DeviceInfoPopupProps {
   setDeviceInfoOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -22,16 +23,32 @@ interface DeviceInfoPopupProps {
 }
 
 const DeviceInfoPopup: React.FC<DeviceInfoPopupProps> = (props) => {
+  const { deviceSelection, setDeviceSelection } = useDeviceStore();
+
+  // Initialize state with persisted values directly
   const [selectedBrandId, setSelectedBrandId] = useState<string>("");
   const [selectedModelId, setSelectedModelId] = useState<string>("");
   const [selectedLensId, setSelectedLensId] = useState<string>("");
 
+  // Load persisted values when popup opens (only when transitioning to open)
+  useEffect(() => {
+    if (props.deviceInfoOpen) {
+      // Use a functional update to avoid dependency on state setters
+      setSelectedBrandId(() => deviceSelection.selectedBrandId);
+      setSelectedModelId(() => deviceSelection.selectedModelId);
+      setSelectedLensId(() => deviceSelection.selectedLensId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.deviceInfoOpen]); // Only re-run when dialog opens/closes
+
   const handleClose = (): void => {
+    // Save selections to Zustand store
+    setDeviceSelection({
+      selectedBrandId,
+      selectedModelId,
+      selectedLensId,
+    });
     props.setDeviceInfoOpen(false);
-    // Reset selections when closing
-    setSelectedBrandId("");
-    setSelectedModelId("");
-    setSelectedLensId("");
   };
 
   // Get the selected brand object

@@ -26,6 +26,31 @@ vi.mock("@hooks", () => ({
     isLoading: false,
     error: null,
   }),
+  useDeviceData: () => ({
+    devicesData: {
+      devices: [
+        {
+          id: "brand1",
+          name: "Test Brand",
+          description: "Test brand description",
+          models: [
+            {
+              id: "model1",
+              name: "Test Model",
+            },
+          ],
+          lenses: [
+            {
+              id: "lens1",
+              name: "Test Lens",
+            },
+          ],
+        },
+      ],
+    },
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 // Mock react-webcam
@@ -42,6 +67,27 @@ vi.mock("@stores/useSpeciesStore", () => ({
     setSpeciesData: vi.fn(),
     setLoading: vi.fn(),
     setError: vi.fn(),
+  }),
+}));
+
+// Mock the device store
+vi.mock("@stores/useDeviceStore", () => ({
+  useDeviceStore: () => ({
+    devicesData: null,
+    isLoading: false,
+    error: null,
+    deviceSelection: {
+      selectedBrandId: "",
+      selectedModelId: "",
+      selectedLensId: "",
+    },
+    setDevicesData: vi.fn(),
+    setLoading: vi.fn(),
+    setError: vi.fn(),
+    clearDevicesData: vi.fn(),
+    setDeviceSelection: vi.fn(),
+    clearDeviceSelection: vi.fn(),
+    isDeviceInfoSet: () => false,
   }),
 }));
 

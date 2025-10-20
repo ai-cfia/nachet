@@ -37,6 +37,7 @@ import { getUnscaledCoordinates } from "@common/imageutils";
 import { FreeformBox, NegativeFeedbackForm } from "../feedback_form";
 import ApiAction from "../api_action";
 import ScaledInferenceBox from "../scaled_inference_box";
+import { useDeviceStore } from "@stores/useDeviceStore";
 
 interface MicroscopeFeedProps {
   webcamRef: React.RefObject<Webcam | null>;
@@ -144,6 +145,8 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     uuid,
     apiScopeClaim,
   } = props;
+
+  const { isDeviceInfoSet } = useDeviceStore();
 
   const width = windowSize.width * 0.575;
   const height = windowSize.height * 0.605;
@@ -438,7 +441,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
           sx={{ paddingRight: "0.2vh" }}
         />
         <ButtonMicroscopeFeed
-          label="INFO"
+          label="DEVICE"
           icon={<InfoIcon color="inherit" style={iconStyle} />}
           disabled={false} // Always active
           onClick={() => {
@@ -448,7 +451,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
         <ButtonMicroscopeFeed
           label="CAPTURE"
           icon={<AddAPhotoIcon color="inherit" style={iconStyle} />}
-          disabled={!isWebcamActive} // Disable when the webcam is active
+          disabled={!isWebcamActive || !isDeviceInfoSet()} // Disable when the webcam is inactive or device info is not set
           onClick={() => {
             capture();
           }}
