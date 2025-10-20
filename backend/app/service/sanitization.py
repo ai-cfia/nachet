@@ -5,7 +5,6 @@ import aiohttp
 
 from dbos import DBOS
 from app.service.constants import Bucket
-from app.api.config import Settings
 from app.exceptions import SanitizationError
 
 
@@ -26,7 +25,9 @@ async def trigger_sanitization_function(
     4. Upload to nachet-sanitized with path: {genus}/{species}/{uuidv7}.png
     5. Call backend callback endpoint
     """
-    settings = Settings()
+    from app.api.config import get_settings
+
+    settings = get_settings()
 
     # Determine sanitized container based on environment
     sanitized_container = Bucket.get_sanitized_container(

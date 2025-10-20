@@ -91,8 +91,10 @@ class TestBlobOperations:
 
         # Patch get_blob_storage to return our mock (it's an async function)
         with patch('app.service.blob_operations.get_blob_storage', side_effect=create_mock_get_blob_storage(mock_blob_storage)):
-            with patch('app.service.blob_operations.Settings') as mock_settings_cls:
-                mock_settings_cls.return_value.is_test_environment = True
+            with patch('app.api.config.get_settings') as mock_get_settings:
+                mock_settings = MagicMock()
+                mock_settings.is_test_environment = True
+                mock_get_settings.return_value = mock_settings
 
                 # Act
                 blob_url = await upload_to_azure_blob(
@@ -135,8 +137,10 @@ class TestBlobOperations:
 
         # Patch get_blob_storage to return our mock (it's an async function)
         with patch('app.service.blob_operations.get_blob_storage', side_effect=create_mock_get_blob_storage(mock_blob_storage)):
-            with patch('app.service.blob_operations.Settings') as mock_settings_cls:
-                mock_settings_cls.return_value.is_test_environment = True
+            with patch('app.api.config.get_settings') as mock_get_settings:
+                mock_settings = MagicMock()
+                mock_settings.is_test_environment = True
+                mock_get_settings.return_value = mock_settings
 
                 # Act
                 blob_url = await upload_to_azure_blob(
@@ -262,8 +266,8 @@ class TestSanitizationOperations:
         mock_session_ctx.__aenter__.return_value = mock_session_inst
         mock_session_ctx.__aexit__.return_value = None
 
-        # Patch both Settings and aiohttp.ClientSession
-        with patch('app.service.sanitization.Settings', return_value=mock_settings):
+        # Patch both get_settings and aiohttp.ClientSession
+        with patch('app.api.config.get_settings', return_value=mock_settings):
             with patch('app.service.sanitization.aiohttp.ClientSession', return_value=mock_session_ctx):
                 # Act
                 await trigger_sanitization_function(
@@ -320,8 +324,8 @@ class TestSanitizationOperations:
         mock_session_ctx.__aenter__.return_value = mock_session_inst
         mock_session_ctx.__aexit__.return_value = None
 
-        # Patch both Settings and aiohttp.ClientSession
-        with patch('app.service.sanitization.Settings', return_value=mock_settings):
+        # Patch both get_settings and aiohttp.ClientSession
+        with patch('app.api.config.get_settings', return_value=mock_settings):
             with patch('app.service.sanitization.aiohttp.ClientSession', return_value=mock_session_ctx):
                 # Act & Assert
                 with pytest.raises(SanitizationError) as exc_info:
@@ -509,8 +513,10 @@ class TestErrorHandling:
 
         # Patch get_blob_storage to return our mock (it's an async function)
         with patch('app.service.blob_operations.get_blob_storage', side_effect=create_mock_get_blob_storage(mock_blob_storage)):
-            with patch('app.service.blob_operations.Settings') as mock_settings_cls:
-                mock_settings_cls.return_value.is_test_environment = True
+            with patch('app.api.config.get_settings') as mock_get_settings:
+                mock_settings = MagicMock()
+                mock_settings.is_test_environment = True
+                mock_get_settings.return_value = mock_settings
 
                 # Act & Assert
                 with pytest.raises(BlobUploadError) as exc_info:

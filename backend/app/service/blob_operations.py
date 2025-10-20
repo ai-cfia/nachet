@@ -6,7 +6,6 @@ from uuid import UUID
 from dbos import DBOS
 from app.blob.manager import get_blob_storage
 from app.service.constants import Bucket
-from app.api.config import Settings
 from app.exceptions import BlobUploadError, BlobDownloadError, DefenderScanTimeoutError, DefenderScanFailedError
 
 
@@ -25,8 +24,10 @@ async def upload_to_azure_blob(
     Naming structure: {org-name}/{genus}-{species}/{uuidv7}.{ext}
     Example: cfia-org/avena-fatua/01933e4f-8b2a-7890-abcd-ef1234567890.png
     """
+    from app.api.config import get_settings
+
     storage = await get_blob_storage()
-    settings = Settings()
+    settings = get_settings()
 
     # Determine container based on environment
     container = Bucket.get_original_container(is_test=settings.is_test_environment)
