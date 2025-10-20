@@ -15,7 +15,7 @@
           "type": "library",
           "name": "cyclonedx-library",
           "group": "@cyclonedx",
-          "version": "9.0.0",
+          "version": "9.1.0",
           "author": "Jan Kowalleck",
           "description": "Core functionality of CycloneDX for JavaScript (Node.js or WebBrowser).",
           "licenses": [
@@ -4353,8 +4353,8 @@
       "type": "library",
       "name": "cyclonedx-library",
       "group": "@cyclonedx",
-      "version": "9.0.0",
-      "bom-ref": "nachet-frontend@0.15.0|@cyclonedx/cyclonedx-library@9.0.0",
+      "version": "9.1.0",
+      "bom-ref": "nachet-frontend@0.15.0|@cyclonedx/cyclonedx-library@9.1.0",
       "licenses": [
         {
           "license": {
@@ -4363,15 +4363,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40cyclonedx/cyclonedx-library@9.0.0",
+      "purl": "pkg:npm/%40cyclonedx/cyclonedx-library@9.1.0",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@cyclonedx/cyclonedx-library/-/cyclonedx-library-9.0.0.tgz",
+          "url": "https://registry.npmjs.org/@cyclonedx/cyclonedx-library/-/cyclonedx-library-9.1.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "28ee33f34def1296885da8f27797fc6c361ba9aa678149beb4a5ab2c39f524d933961e788e215cf3483b0a6d11620393283b5d532d4c175422125a145fd379b7"
+              "content": "6fd9a5b47220b693337aed2c127c464d457525ff5690331b97c903628d9afd7311b58507fedfd83a808a0d72595731d4de1d268f786b4438f2b204723d12ab3f"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -10807,8 +10807,8 @@
       "type": "library",
       "name": "eslint-plugin",
       "group": "@typescript-eslint",
-      "version": "8.46.1",
-      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/eslint-plugin@8.46.1",
+      "version": "8.46.2",
+      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/eslint-plugin@8.46.2",
       "licenses": [
         {
           "license": {
@@ -10817,15 +10817,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/eslint-plugin@8.46.1",
+      "purl": "pkg:npm/%40typescript-eslint/eslint-plugin@8.46.2",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.46.1.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.46.2.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "ad4b0b87c3d79818dd88f63e1268f3f4d5f6c87be14b5d6fd1247ac4d2649b918cd4c3bd79aff51a80ca9471d91ab3897252ff719da2fef454615b63461ac755"
+              "content": "64604c4e8cbce7bfcd20f69a0ae70851082ab9e3a2abb1de00a92196fa95578966d3cf735055ba8a44724b1daff9c02129e5023ee5951de8a6ca4e83c35898df"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -10846,7 +10846,7 @@
           "type": "library",
           "name": "ignore",
           "version": "7.0.5",
-          "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/eslint-plugin@8.46.1|ignore@7.0.5",
+          "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/eslint-plugin@8.46.2|ignore@7.0.5",
           "licenses": [
             {
               "license": {
@@ -10886,8 +10886,8 @@
       "type": "library",
       "name": "parser",
       "group": "@typescript-eslint",
-      "version": "8.46.1",
-      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/parser@8.46.1",
+      "version": "8.46.2",
+      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/parser@8.46.2",
       "licenses": [
         {
           "license": {
@@ -10896,15 +10896,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/parser@8.46.1",
+      "purl": "pkg:npm/%40typescript-eslint/parser@8.46.2",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/parser/-/parser-8.46.1.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/parser/-/parser-8.46.2.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "e89492681666b0abc491b45491fed98fb76bbbff190ab27102a02b70b69531e7b9f74ec976d11b286b19ef3362226fd4024a465246923191174a19cdd83d4764"
+              "content": "0673aba159754a0acf2f2c2ac72a9d2789774b632c2952c357166f8c8d44a1ef1ebf6af79060e8f8f70c8a13660c4fbafca8e44ee6d22679aa19966341206afe"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -10925,8 +10925,8 @@
       "type": "library",
       "name": "project-service",
       "group": "@typescript-eslint",
-      "version": "8.46.1",
-      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/project-service@8.46.1",
+      "version": "8.46.2",
+      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/project-service@8.46.2",
       "licenses": [
         {
           "license": {
@@ -10935,15 +10935,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/project-service@8.46.1",
+      "purl": "pkg:npm/%40typescript-eslint/project-service@8.46.2",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/project-service/-/project-service-8.46.1.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/project-service/-/project-service-8.46.2.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "14e21a155307cd1b245ebe49e09a7c945555d20cf99e0bf74479a7f84e07631489dc3803cd4edf548d7f33b223875cdfe92ec72286883ad967d47e72f15fbd66"
+              "content": "3d42ce2d9f62ab023b8577262f87d57c8b018ba00df58c517347eb6ef9a0f1ffb885002343919834a2b40c802b368fab38a991fe2058c24a419a72308a7e3006"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -10964,8 +10964,8 @@
       "type": "library",
       "name": "scope-manager",
       "group": "@typescript-eslint",
-      "version": "8.46.1",
-      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/scope-manager@8.46.1",
+      "version": "8.46.2",
+      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/scope-manager@8.46.2",
       "licenses": [
         {
           "license": {
@@ -10974,15 +10974,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/scope-manager@8.46.1",
+      "purl": "pkg:npm/%40typescript-eslint/scope-manager@8.46.2",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/scope-manager/-/scope-manager-8.46.1.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/scope-manager/-/scope-manager-8.46.2.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "c1e2fd1a0dffe45d295502a217c78e5c5669f1e9aa5b366c389b9645436d1d3f94355db14897a09a908d407cb7eda11021b4e84eaed11ca856bceb266ccebcd0"
+              "content": "2c5e1bfcd986bdd5841c3d87e0cb070fc9f2e89a6254d0f3ad266bdc2b1c9048026c01996d83380aac6f8bd2fe5aa0cc4fee753b3cbb96dd8cf9dd092c4b81a8"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -11003,8 +11003,8 @@
       "type": "library",
       "name": "tsconfig-utils",
       "group": "@typescript-eslint",
-      "version": "8.46.1",
-      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/tsconfig-utils@8.46.1",
+      "version": "8.46.2",
+      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/tsconfig-utils@8.46.2",
       "licenses": [
         {
           "license": {
@@ -11013,15 +11013,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/tsconfig-utils@8.46.1",
+      "purl": "pkg:npm/%40typescript-eslint/tsconfig-utils@8.46.2",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/tsconfig-utils/-/tsconfig-utils-8.46.1.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/tsconfig-utils/-/tsconfig-utils-8.46.2.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "5fcf3e27f0b016f94907e98ad3d545ab1e451381f97170fe1ff05dcdad9a1169126fc867588428acd72c711978204a350b3f5523ffbfaff8e719691b58fc79e2"
+              "content": "6bb407e9fc384b9efe179cb6148c71483ca2e4ce147c617e265d5b08677bf8be0ab1a518f341ac885fedd14a111431c082e2a505a00258946676b73a5df9246a"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -11042,8 +11042,8 @@
       "type": "library",
       "name": "type-utils",
       "group": "@typescript-eslint",
-      "version": "8.46.1",
-      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/type-utils@8.46.1",
+      "version": "8.46.2",
+      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/type-utils@8.46.2",
       "licenses": [
         {
           "license": {
@@ -11052,15 +11052,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/type-utils@8.46.1",
+      "purl": "pkg:npm/%40typescript-eslint/type-utils@8.46.2",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/type-utils/-/type-utils-8.46.1.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/type-utils/-/type-utils-8.46.2.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "f81966887222aae7c1c645673ad1708da87fbeb905e0cb4a2afa57aca48f2c2902b40a7c1f4d7f555e37b1fa80f7c39dee72690dc1679308327d06ce1b400cbf"
+              "content": "1db3cce0b6da000b7f0e3c57686f72892f5bace3b3e9f69b6a5e2ebd499a5187ba9772b5a61403310281454aebd3a05093192f2195551edb6a8b26ccf6726c2c"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -11081,8 +11081,8 @@
       "type": "library",
       "name": "types",
       "group": "@typescript-eslint",
-      "version": "8.46.1",
-      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.1",
+      "version": "8.46.2",
+      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.2",
       "licenses": [
         {
           "license": {
@@ -11091,15 +11091,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/types@8.46.1",
+      "purl": "pkg:npm/%40typescript-eslint/types@8.46.2",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/types/-/types-8.46.1.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/types/-/types-8.46.2.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "0beb28a6b1811f05817640e96da442e2968606b9085f156536885a74be68d247e1b17a8e0ba1981f64bf39b9a283e2341d30e5f3031a4724b0adfad754ff3fa5"
+              "content": "94d09609babbae983ba83b10adddc3e8dc9662efa091310d906e4829885421cc526f9f52402fe1110f8cac6e2c4e00558214e89cd5aae366c0fdde3262e9a575"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -11120,8 +11120,8 @@
       "type": "library",
       "name": "typescript-estree",
       "group": "@typescript-eslint",
-      "version": "8.46.1",
-      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.1",
+      "version": "8.46.2",
+      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.2",
       "licenses": [
         {
           "license": {
@@ -11130,15 +11130,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/typescript-estree@8.46.1",
+      "purl": "pkg:npm/%40typescript-eslint/typescript-estree@8.46.2",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/typescript-estree/-/typescript-estree-8.46.1.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/typescript-estree/-/typescript-estree-8.46.2.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "b8889f8d3e2cf1c40a150f190575f2a14383b51a0077b17bf86f0c2a6b738f5efed546ddcc5979d80cd1c994722aa3c7860cef5ee9e749c915bb7e9f946cbc72"
+              "content": "7fbad6ecb2766fb521d84890fbbb336ba4436676a36cd6de9a7e7839be9f47041b81c227f8659fcae1c31d162046866ed4fe006b255272b456f987db4ef3d0a1"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -11159,7 +11159,7 @@
           "type": "library",
           "name": "brace-expansion",
           "version": "2.0.2",
-          "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.1|brace-expansion@2.0.2",
+          "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.2|brace-expansion@2.0.2",
           "licenses": [
             {
               "license": {
@@ -11197,7 +11197,7 @@
           "type": "library",
           "name": "minimatch",
           "version": "9.0.5",
-          "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.1|minimatch@9.0.5",
+          "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.2|minimatch@9.0.5",
           "licenses": [
             {
               "license": {
@@ -11235,7 +11235,7 @@
           "type": "library",
           "name": "semver",
           "version": "7.7.3",
-          "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.1|semver@7.7.3",
+          "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.2|semver@7.7.3",
           "licenses": [
             {
               "license": {
@@ -11275,8 +11275,8 @@
       "type": "library",
       "name": "utils",
       "group": "@typescript-eslint",
-      "version": "8.46.1",
-      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/utils@8.46.1",
+      "version": "8.46.2",
+      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/utils@8.46.2",
       "licenses": [
         {
           "license": {
@@ -11285,15 +11285,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/utils@8.46.1",
+      "purl": "pkg:npm/%40typescript-eslint/utils@8.46.2",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/utils/-/utils-8.46.1.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/utils/-/utils-8.46.2.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "be4614cba2dd652eead6ffc6c5bd99b3bcf38ae5cdd30c6ab1eb4975e65d45efdfe5dc09160966baf6417d3522bc2b631fbdb90b58d60837e969d69d0fde440d"
+              "content": "b04c71cee731d13b9de6d1345ea474953d29b0142f1299e98ae97d5db194075430a56249029b353bf67b849c4b1a264b04a302bad8d3cc38267759ae12106756"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -11314,8 +11314,8 @@
       "type": "library",
       "name": "visitor-keys",
       "group": "@typescript-eslint",
-      "version": "8.46.1",
-      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.1",
+      "version": "8.46.2",
+      "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.2",
       "licenses": [
         {
           "license": {
@@ -11324,15 +11324,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40typescript-eslint/visitor-keys@8.46.1",
+      "purl": "pkg:npm/%40typescript-eslint/visitor-keys@8.46.2",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@typescript-eslint/visitor-keys/-/visitor-keys-8.46.1.tgz",
+          "url": "https://registry.npmjs.org/@typescript-eslint/visitor-keys/-/visitor-keys-8.46.2.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "a6d92621fda20e43548dd7aed9b42a8453d5d66eaa4e71458e0ecf3c38f129668c68fd19e88f65df426bde0e50a9b646770f18758bcba7e5e7aa759664e83f34"
+              "content": "b5414c5c8e20c73ccc5ede31a46244b01b13a31d176cd435cbde04c250ff0ae67015c40fefdc5f42a3216aef47b1173f2747003c0fc766dd5d64fb469fd57fef"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -11353,7 +11353,7 @@
           "type": "library",
           "name": "eslint-visitor-keys",
           "version": "4.2.1",
-          "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.1|eslint-visitor-keys@4.2.1",
+          "bom-ref": "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.2|eslint-visitor-keys@4.2.1",
           "licenses": [
             {
               "license": {
@@ -30529,8 +30529,8 @@
     {
       "type": "library",
       "name": "resolve",
-      "version": "1.22.10",
-      "bom-ref": "nachet-frontend@0.15.0|resolve@1.22.10",
+      "version": "1.22.11",
+      "bom-ref": "nachet-frontend@0.15.0|resolve@1.22.11",
       "licenses": [
         {
           "license": {
@@ -30539,15 +30539,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/resolve@1.22.10",
+      "purl": "pkg:npm/resolve@1.22.11",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/resolve/-/resolve-1.22.10.tgz",
+          "url": "https://registry.npmjs.org/resolve/-/resolve-1.22.11.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "34f472fbf9dc20c78395302cbaac0a2227deae26b085e7c526d90d496d2a64912a3046fea81b7fefb07f8c679e7a4f85d2e39e374e420dae875db6c882d557e3"
+              "content": "45fa80bcb9cc977d77afb73da1c941d478541007b37292e3cfde70147e0b56e864f4917faf6daa9953fd00c98e538bcc5fb43ca4df23c0d83f092a5d1673234d"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -36050,8 +36050,8 @@
     {
       "type": "library",
       "name": "vite",
-      "version": "7.1.10",
-      "bom-ref": "nachet-frontend@0.15.0|vite@7.1.10",
+      "version": "7.1.11",
+      "bom-ref": "nachet-frontend@0.15.0|vite@7.1.11",
       "licenses": [
         {
           "license": {
@@ -36060,15 +36060,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/vite@7.1.10",
+      "purl": "pkg:npm/vite@7.1.11",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/vite/-/vite-7.1.10.tgz",
+          "url": "https://registry.npmjs.org/vite/-/vite-7.1.11.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "0a6baf501cd527f7b71c6c6183a71893cf0d1a04e70683a8ee882d7c92747de7d4580c4dfd60d251ae74a3ea15071b8884ef05a04656d23d9e5bbb1f8ece44b4"
+              "content": "bb37319d20d58c0a291148e58e45a1f0422b83ab65ceb8c551f31c475115b110c6c1ffdc71e7f4a903d1c8ead13b086b4c3680a6e7aafa36be28b3e5cd1ff376"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -36089,7 +36089,7 @@
           "type": "library",
           "name": "fsevents",
           "version": "2.3.3",
-          "bom-ref": "nachet-frontend@0.15.0|vite@7.1.10|fsevents@2.3.3",
+          "bom-ref": "nachet-frontend@0.15.0|vite@7.1.11|fsevents@2.3.3",
           "scope": "optional",
           "licenses": [
             {
@@ -37666,8 +37666,8 @@
         "nachet-frontend@0.15.0|@types/react@19.2.2",
         "nachet-frontend@0.15.0|@types/sanitize-html@2.16.0",
         "nachet-frontend@0.15.0|@types/utif@3.0.6",
-        "nachet-frontend@0.15.0|@typescript-eslint/eslint-plugin@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/parser@8.46.1",
+        "nachet-frontend@0.15.0|@typescript-eslint/eslint-plugin@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/parser@8.46.2",
         "nachet-frontend@0.15.0|@vitejs/plugin-react-swc@4.1.0",
         "nachet-frontend@0.15.0|@vitest/coverage-v8@3.2.4",
         "nachet-frontend@0.15.0|axios@1.12.2",
@@ -37707,7 +37707,7 @@
         "nachet-frontend@0.15.0|utif@3.1.0",
         "nachet-frontend@0.15.0|uuid@13.0.0",
         "nachet-frontend@0.15.0|vite-plugin-environment@1.1.3",
-        "nachet-frontend@0.15.0|vite@7.1.10",
+        "nachet-frontend@0.15.0|vite@7.1.11",
         "nachet-frontend@0.15.0|vitest@3.2.4",
         "nachet-frontend@0.15.0|web-vitals@5.1.0",
         "nachet-frontend@0.15.0|zod@4.1.12",
@@ -37840,7 +37840,7 @@
         "nachet-frontend@0.15.0|@babel/helper-plugin-utils@7.27.1",
         "nachet-frontend@0.15.0|debug@4.4.3",
         "nachet-frontend@0.15.0|lodash.debounce@4.0.8",
-        "nachet-frontend@0.15.0|resolve@1.22.10"
+        "nachet-frontend@0.15.0|resolve@1.22.11"
       ]
     },
     {
@@ -38625,7 +38625,7 @@
       "ref": "nachet-frontend@0.15.0|@csstools/css-tokenizer@3.0.4"
     },
     {
-      "ref": "nachet-frontend@0.15.0|@cyclonedx/cyclonedx-library@9.0.0",
+      "ref": "nachet-frontend@0.15.0|@cyclonedx/cyclonedx-library@9.1.0",
       "dependsOn": [
         "nachet-frontend@0.15.0|ajv-formats-draft2019@1.6.1",
         "nachet-frontend@0.15.0|ajv-formats@3.0.1",
@@ -38639,7 +38639,7 @@
     {
       "ref": "nachet-frontend@0.15.0|@cyclonedx/cyclonedx-npm@4.0.3",
       "dependsOn": [
-        "nachet-frontend@0.15.0|@cyclonedx/cyclonedx-library@9.0.0",
+        "nachet-frontend@0.15.0|@cyclonedx/cyclonedx-library@9.1.0",
         "nachet-frontend@0.15.0|ajv-formats-draft2019@1.6.1",
         "nachet-frontend@0.15.0|ajv-formats@3.0.1",
         "nachet-frontend@0.15.0|ajv@8.17.1",
@@ -39503,15 +39503,15 @@
       ]
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/eslint-plugin@8.46.1",
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/eslint-plugin@8.46.2",
       "dependsOn": [
         "nachet-frontend@0.15.0|@eslint-community/regexpp@4.12.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/eslint-plugin@8.46.1|ignore@7.0.5",
-        "nachet-frontend@0.15.0|@typescript-eslint/parser@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/scope-manager@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/type-utils@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/utils@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.1",
+        "nachet-frontend@0.15.0|@typescript-eslint/eslint-plugin@8.46.2|ignore@7.0.5",
+        "nachet-frontend@0.15.0|@typescript-eslint/parser@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/scope-manager@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/type-utils@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/utils@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.2",
         "nachet-frontend@0.15.0|eslint@9.38.0",
         "nachet-frontend@0.15.0|graphemer@1.4.0",
         "nachet-frontend@0.15.0|natural-compare@1.4.0",
@@ -39520,48 +39520,48 @@
       ]
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/eslint-plugin@8.46.1|ignore@7.0.5"
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/eslint-plugin@8.46.2|ignore@7.0.5"
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/parser@8.46.1",
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/parser@8.46.2",
       "dependsOn": [
-        "nachet-frontend@0.15.0|@typescript-eslint/scope-manager@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.1",
+        "nachet-frontend@0.15.0|@typescript-eslint/scope-manager@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.2",
         "nachet-frontend@0.15.0|debug@4.4.3",
         "nachet-frontend@0.15.0|eslint@9.38.0",
         "nachet-frontend@0.15.0|typescript@5.9.3"
       ]
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/project-service@8.46.1",
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/project-service@8.46.2",
       "dependsOn": [
-        "nachet-frontend@0.15.0|@typescript-eslint/tsconfig-utils@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.1",
+        "nachet-frontend@0.15.0|@typescript-eslint/tsconfig-utils@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.2",
         "nachet-frontend@0.15.0|debug@4.4.3",
         "nachet-frontend@0.15.0|typescript@5.9.3"
       ]
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/scope-manager@8.46.1",
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/scope-manager@8.46.2",
       "dependsOn": [
-        "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.1"
+        "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.2"
       ]
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/tsconfig-utils@8.46.1",
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/tsconfig-utils@8.46.2",
       "dependsOn": [
         "nachet-frontend@0.15.0|typescript@5.9.3"
       ]
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/type-utils@8.46.1",
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/type-utils@8.46.2",
       "dependsOn": [
-        "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/utils@8.46.1",
+        "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/utils@8.46.2",
         "nachet-frontend@0.15.0|debug@4.4.3",
         "nachet-frontend@0.15.0|eslint@9.38.0",
         "nachet-frontend@0.15.0|ts-api-utils@2.1.0",
@@ -39569,17 +39569,17 @@
       ]
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.1"
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.2"
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.1",
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.2",
       "dependsOn": [
-        "nachet-frontend@0.15.0|@typescript-eslint/project-service@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/tsconfig-utils@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.1|minimatch@9.0.5",
-        "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.1|semver@7.7.3",
-        "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.1",
+        "nachet-frontend@0.15.0|@typescript-eslint/project-service@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/tsconfig-utils@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.2|minimatch@9.0.5",
+        "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.2|semver@7.7.3",
+        "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.2",
         "nachet-frontend@0.15.0|debug@4.4.3",
         "nachet-frontend@0.15.0|fast-glob@3.3.3",
         "nachet-frontend@0.15.0|is-glob@4.0.3",
@@ -39588,47 +39588,47 @@
       ]
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.1|brace-expansion@2.0.2",
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.2|brace-expansion@2.0.2",
       "dependsOn": [
         "nachet-frontend@0.15.0|balanced-match@1.0.2"
       ]
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.1|minimatch@9.0.5",
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.2|minimatch@9.0.5",
       "dependsOn": [
-        "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.1|brace-expansion@2.0.2"
+        "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.2|brace-expansion@2.0.2"
       ]
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.1|semver@7.7.3"
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.2|semver@7.7.3"
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/utils@8.46.1",
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/utils@8.46.2",
       "dependsOn": [
         "nachet-frontend@0.15.0|@eslint-community/eslint-utils@4.9.0",
-        "nachet-frontend@0.15.0|@typescript-eslint/scope-manager@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.1",
+        "nachet-frontend@0.15.0|@typescript-eslint/scope-manager@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/typescript-estree@8.46.2",
         "nachet-frontend@0.15.0|eslint@9.38.0",
         "nachet-frontend@0.15.0|typescript@5.9.3"
       ]
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.1",
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.2",
       "dependsOn": [
-        "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.1",
-        "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.1|eslint-visitor-keys@4.2.1"
+        "nachet-frontend@0.15.0|@typescript-eslint/types@8.46.2",
+        "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.2|eslint-visitor-keys@4.2.1"
       ]
     },
     {
-      "ref": "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.1|eslint-visitor-keys@4.2.1"
+      "ref": "nachet-frontend@0.15.0|@typescript-eslint/visitor-keys@8.46.2|eslint-visitor-keys@4.2.1"
     },
     {
       "ref": "nachet-frontend@0.15.0|@vitejs/plugin-react-swc@4.1.0",
       "dependsOn": [
         "nachet-frontend@0.15.0|@rolldown/pluginutils@1.0.0-beta.35",
         "nachet-frontend@0.15.0|@swc/core@1.13.5",
-        "nachet-frontend@0.15.0|vite@7.1.10"
+        "nachet-frontend@0.15.0|vite@7.1.11"
       ]
     },
     {
@@ -39666,7 +39666,7 @@
         "nachet-frontend@0.15.0|@vitest/spy@3.2.4",
         "nachet-frontend@0.15.0|estree-walker@3.0.3",
         "nachet-frontend@0.15.0|magic-string@0.30.19",
-        "nachet-frontend@0.15.0|vite@7.1.10"
+        "nachet-frontend@0.15.0|vite@7.1.11"
       ]
     },
     {
@@ -39924,7 +39924,7 @@
       "dependsOn": [
         "nachet-frontend@0.15.0|@babel/runtime@7.28.4",
         "nachet-frontend@0.15.0|cosmiconfig@7.1.0",
-        "nachet-frontend@0.15.0|resolve@1.22.10"
+        "nachet-frontend@0.15.0|resolve@1.22.11"
       ]
     },
     {
@@ -40678,7 +40678,7 @@
       "dependsOn": [
         "nachet-frontend@0.15.0|eslint-import-resolver-node@0.3.9|debug@3.2.7",
         "nachet-frontend@0.15.0|is-core-module@2.16.1",
-        "nachet-frontend@0.15.0|resolve@1.22.10"
+        "nachet-frontend@0.15.0|resolve@1.22.11"
       ]
     },
     {
@@ -42686,7 +42686,7 @@
       "ref": "nachet-frontend@0.15.0|resolve-from@4.0.0"
     },
     {
-      "ref": "nachet-frontend@0.15.0|resolve@1.22.10",
+      "ref": "nachet-frontend@0.15.0|resolve@1.22.11",
       "dependsOn": [
         "nachet-frontend@0.15.0|is-core-module@2.16.1",
         "nachet-frontend@0.15.0|path-parse@1.0.7",
@@ -43558,17 +43558,17 @@
         "nachet-frontend@0.15.0|debug@4.4.3",
         "nachet-frontend@0.15.0|es-module-lexer@1.7.0",
         "nachet-frontend@0.15.0|pathe@2.0.3",
-        "nachet-frontend@0.15.0|vite@7.1.10"
+        "nachet-frontend@0.15.0|vite@7.1.11"
       ]
     },
     {
       "ref": "nachet-frontend@0.15.0|vite-plugin-environment@1.1.3",
       "dependsOn": [
-        "nachet-frontend@0.15.0|vite@7.1.10"
+        "nachet-frontend@0.15.0|vite@7.1.11"
       ]
     },
     {
-      "ref": "nachet-frontend@0.15.0|vite@7.1.10",
+      "ref": "nachet-frontend@0.15.0|vite@7.1.11",
       "dependsOn": [
         "nachet-frontend@0.15.0|@types/node@22.18.11",
         "nachet-frontend@0.15.0|esbuild@0.25.11",
@@ -43577,11 +43577,11 @@
         "nachet-frontend@0.15.0|postcss@8.5.6",
         "nachet-frontend@0.15.0|rollup@4.52.5",
         "nachet-frontend@0.15.0|tinyglobby@0.2.15",
-        "nachet-frontend@0.15.0|vite@7.1.10|fsevents@2.3.3"
+        "nachet-frontend@0.15.0|vite@7.1.11|fsevents@2.3.3"
       ]
     },
     {
-      "ref": "nachet-frontend@0.15.0|vite@7.1.10|fsevents@2.3.3"
+      "ref": "nachet-frontend@0.15.0|vite@7.1.11|fsevents@2.3.3"
     },
     {
       "ref": "nachet-frontend@0.15.0|vitest@3.2.4",
@@ -43609,7 +43609,7 @@
         "nachet-frontend@0.15.0|tinypool@1.1.1",
         "nachet-frontend@0.15.0|tinyrainbow@2.0.0",
         "nachet-frontend@0.15.0|vite-node@3.2.4",
-        "nachet-frontend@0.15.0|vite@7.1.10",
+        "nachet-frontend@0.15.0|vite@7.1.11",
         "nachet-frontend@0.15.0|why-is-node-running@2.3.0"
       ]
     },

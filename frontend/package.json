@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.15.0",
   "acia-cfia": {
-    "backend-version": "1.35.0"
+    "backend-version": "1.36.0"
   },
   "type": "module",
   "scripts": {
