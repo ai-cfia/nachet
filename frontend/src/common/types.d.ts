@@ -157,3 +157,33 @@ interface AzureStorageDirectoryItemApi {
 interface ReadAzureStorageDirApi {
   directories: AzureStorageDirectoryItemApi[];
 }
+
+export interface DeviceBrand {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface DeviceModel {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface DeviceLens {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface ApiDeviceBrand {
+  id: string;
+  name: string;
+  description: string;
+  models: DeviceModel[];
+  lenses: DeviceLens[];
+}
+
+export interface ApiDevicesResponse {
+  devices: ApiDeviceBrand[];
+}
