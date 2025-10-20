@@ -11,6 +11,7 @@ from sqlalchemy import (
     Double,
     UUID,
     UniqueConstraint,
+    Index,
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.sql import func
@@ -462,6 +463,103 @@ class Picture(Base):
     org_user_role: Mapped["RbacRole"] = relationship(
         "RbacRole",
         foreign_keys=[org_user_role_id],
+    )
+    processing_state: Mapped[Optional["ImageProcessingState"]] = relationship(
+        "ImageProcessingState",
+        back_populates="picture",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
+
+class ImageProcessingState(Base):
+    """
+    Tracks the state of image processing pipeline (upload → scan → sanitize).
+
+    Separate from Picture model to maintain clean separation of concerns
+    and allow independent state management.
+
+    Note: Does NOT track inference state, as images can be processed multiple
+    times by different models. Inference tracking is handled separately.
+    """
+
+    __tablename__ = "image_processing_state"
+
+    # Primary key - matches Picture.id
+    picture_id: Mapped[UUID] = mapped_column(
+        UUID,
+        ForeignKey("picture.id", ondelete="CASCADE"),
+        primary_key=True,
+        comment="Reference to Picture being processed",
+    )
+
+    # Current processing status (MVP scope only)
+    status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="pending",
+        index=True,
+        comment="pending|uploaded|defender_scanning|defender_scanned|sanitizing|sanitized|completed|failed|cancelled",
+    )
+
+    # DBOS workflow tracking
+    workflow_id: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True, index=True, comment="DBOS workflow UUID for tracking and recovery"
+    )
+
+    # Stage timestamps (MVP: upload → scan → sanitize only)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=func.current_timestamp()
+    )
+    uploaded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    defender_scan_started_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
+    defender_scan_completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
+    sanitization_started_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
+    sanitization_completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    failed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    # Azure Defender scan results
+    defender_scan_result: Mapped[Optional[dict]] = mapped_column(
+        JSON, comment="Defender scan tags and metadata"
+    )
+    malware_detected: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, comment="True if malware detected by Defender"
+    )
+
+    # Blob storage URLs
+    blob_url_original: Mapped[Optional[str]] = mapped_column(String(500))
+    blob_url_sanitized: Mapped[Optional[str]] = mapped_column(String(500))
+
+    # Error tracking
+    error_message: Mapped[Optional[str]] = mapped_column(String(1000))
+    error_details: Mapped[Optional[dict]] = mapped_column(
+        JSON, comment="Detailed error information including stack traces"
+    )
+    retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_retry_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    # Progress tracking
+    progress_percentage: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="0-100 progress indicator"
+    )
+
+    # Relationship back to Picture
+    picture: Mapped["Picture"] = relationship("Picture", back_populates="processing_state")
+
+    # Indexes for common queries
+    __table_args__ = (
+        Index("idx_processing_state_status", "status"),
+        Index("idx_processing_state_workflow", "workflow_id"),
+        Index("idx_processing_state_created", "created_at"),
     )
 
 

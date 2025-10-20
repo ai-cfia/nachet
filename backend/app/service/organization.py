@@ -1,6 +1,7 @@
 from typing import Dict, Any, Type, Optional
 from uuid import UUID
 import traceback
+import re
 from fastapi import HTTPException, status
 
 from app.db.utils import sessionmanager
@@ -246,3 +247,54 @@ class OrganizationService(BaseCRUDService[Organization]):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to create organization: {str(e)}",
             )
+
+    @staticmethod
+    def normalize_org_name(name: str) -> str:
+        """
+        Normalize organization name for blob storage paths.
+
+        Used to create consistent, filesystem-safe names for blob storage organization.
+        Org names are used in nachet-original container paths for access control/auditing.
+
+        Rules:
+        - Lowercase only
+        - Only alphanumeric (a-z, 0-9) and dashes allowed
+        - Maximum 10 characters
+        - Remove all other characters
+        - Multiple consecutive dashes collapsed to single dash
+        - Strip leading/trailing dashes
+
+        Args:
+            name: Raw organization name (e.g., "CFIA Organization")
+
+        Returns:
+            Normalized name, max 10 chars (e.g., "cfia-org")
+
+        Example:
+            >>> OrganizationService.normalize_org_name("CFIA Organization")
+            'cfia-org'
+            >>> OrganizationService.normalize_org_name("Research-Lab-2024")
+            'research-l'
+        """
+        if not name:
+            return "unknown"
+
+        # Convert to lowercase
+        name = name.lower().strip()
+
+        # Replace spaces with dashes
+        name = name.replace(" ", "-")
+
+        # Remove all characters except a-z, 0-9, and dashes
+        name = re.sub(r'[^a-z0-9\-]', '', name)
+
+        # Collapse multiple consecutive dashes
+        name = re.sub(r'-+', '-', name)
+
+        # Strip leading/trailing dashes
+        name = name.strip('-')
+
+        # Truncate to 10 characters
+        name = name[:10]
+
+        return name if name else "unknown"

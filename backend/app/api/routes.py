@@ -1,5 +1,8 @@
-from fastapi import APIRouter, status, Depends, Request
+from fastapi import APIRouter, status, Depends, Request, HTTPException, Header
 from fastapi.responses import Response
+from typing import Optional
+from uuid import UUID
+
 from app.service import (
     PipelineService,
     SeedService,
@@ -8,12 +11,24 @@ from app.service import (
     LogService,
     DeviceService,
     UserService,
+    ImageProcessingService,
 )
+from app.service.inference import InferenceService
 from app.service.auth import User, get_current_user
 from app.api.config import get_limiter
+from app.model.inference import (
+    InferenceRequest,
+    ImageSubmissionResponse,
+    SanitizationCallbackRequest,
+)
+from app.exceptions import ImageProcessingError
+# from app.api.test_dbos import router as test_dbos_router
 
 router = APIRouter()
 limiter = get_limiter()
+
+# Include DBOS test router (no auth required for testing)
+# router.include_router(test_dbos_router)
 
 # Module-level logger
 _logger = None
@@ -54,6 +69,153 @@ async def validate_ip_address(
         )
 
     return current_user
+
+
+# Image Processing Pipeline Endpoints
+@router.post(
+    "/inf",
+    status_code=status.HTTP_200_OK,
+    response_model=ImageSubmissionResponse,
+    name="Submit Image for Processing [AUTH REQUIRED]",
+)
+@limiter.limit("10/minute")
+async def submit_image_for_processing(
+    request: Request,
+    req: InferenceRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Submit an image for async processing (MVP: upload → scan → sanitize).
+
+    This is the new async version of the legacy /inf endpoint.
+    Returns immediately with UUID while processing continues in background.
+
+    Request body matches legacy API format:
+    {
+        "model_name": "pipeline-name",
+        "folder_name": "folder-identifier",
+        "imageDims": {"width": 1920, "height": 1080},
+        "image": "data:image/png;base64,...",
+        "area_ratio": 0.5,
+        "color_format": "hex"
+    }
+
+    Response (new format):
+    {
+        "image_id": "uuid",
+        "workflow_id": "workflow-uuid",
+        "status": "pending",
+        "message": "Image submitted for processing"
+    }
+
+    Frontend should poll GET /inf/{image_id}/status for progress.
+    """
+    # Delegate to InferenceService (handles session, logging, business logic)
+    return await InferenceService.submit_inference_request(
+        request=req,
+        user_id=current_user.oid,
+    )
+
+
+@router.get(
+    "/inf/{image_id}/status",
+    status_code=status.HTTP_200_OK,
+    name="Get Image Processing Status [AUTH REQUIRED]",
+)
+@limiter.limit("60/minute")
+async def get_image_processing_status(
+    request: Request,
+    image_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get the current processing status of an image.
+
+    Returns detailed status information including:
+    - Current processing stage (upload, scan, sanitize)
+    - Progress percentage (0-100)
+    - Timestamps for each stage
+    - Blob URLs when available
+    - Error information if failed
+
+    Frontend should poll this endpoint (with exponential backoff)
+    until status is "completed" or "failed".
+    """
+    # Validate UUID format
+    try:
+        image_uuid = UUID(image_id)
+    except ValueError:
+        raise ValueError(f"Invalid image_id format: {image_id}")
+
+    # Delegate to InferenceService (handles session, logging, business logic)
+    return await InferenceService.get_inference_status(
+        image_id=image_uuid,
+        user_id=current_user.oid,
+    )
+
+
+# Sanitization Callback Endpoint
+@router.post(
+    "/api/v1/callbacks/sanitization-complete",
+    status_code=status.HTTP_200_OK,
+    name="Sanitization Complete Callback [FUNCTION KEY AUTH]",
+)
+async def sanitization_complete_callback(
+    request_data: SanitizationCallbackRequest,
+    x_functions_key: Optional[str] = Header(None),
+):
+    """
+    Callback endpoint for Azure sanitization function.
+
+    The sanitizer calls this endpoint when image sanitization is complete.
+    Uses DBOS messaging to notify the waiting workflow.
+
+    Authentication: Validates x-functions-key header matches configured key.
+
+    Request Body:
+        {
+            "image_id": "uuid",
+            "status": "success|failed",
+            "sanitized_blob_url": "https://...",  # optional, only on success
+            "error": "error message"  # optional, only on failure
+        }
+
+    The workflow waits for this message using DBOS.recv_async() in
+    wait_for_sanitization_callback() (app/service/sanitization.py).
+    """
+    try:
+        # Delegate to ImageProcessingService (handles auth, validation, DBOS messaging)
+        return await ImageProcessingService.handle_sanitization_callback(
+            image_id=request_data.image_id,
+            status=request_data.status,
+            sanitized_blob_url=request_data.sanitized_blob_url,
+            error=request_data.error,
+            function_key=x_functions_key,
+        )
+    except ValueError as e:
+        # ValueError indicates auth or validation failure
+        if "Invalid function key" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=str(e),
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
+    except ImageProcessingError as e:
+        # ImageProcessingError indicates config or processing failure
+        if "not configured" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(e),
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to process callback: {str(e)}",
+            )
 
 
 # Rate limiter test route

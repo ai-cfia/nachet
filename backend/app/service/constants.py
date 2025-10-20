@@ -6,6 +6,7 @@ Role names are generic across all organizations.
 """
 
 from uuid import UUID
+from enum import Enum
 
 # Generic role name constants (used across all organizations)
 ROLE_ADMIN = "admin"
@@ -61,3 +62,51 @@ def get_cfia_admin_role_id() -> UUID:
             "This is required for CFIA administrator verification."
         )
     return UUID(settings.cfia_admin_role_id)
+
+
+class Bucket(str, Enum):
+    """
+    Azure Blob Storage container names.
+
+    Uses str inheritance for easy string comparison and serialization.
+    """
+    # Production containers
+    ORIGINAL = "nachet-original"
+    SANITIZED = "nachet-sanitized"
+    SPLIT = "nachet-split"
+    MODEL = "nachet-model"
+    FRONTEND = "nachet-frontend"
+    ANNOTATION = "nachet-annotation"
+    ORIGINAL_METADATA = "nachet-original-metadata"
+
+    # Test containers (used in non-production environments)
+    ORIGINAL_TEST = "nachet-original-test"
+    SANITIZED_TEST = "nachet-sanitized-test"
+
+    @classmethod
+    def get_original_container(cls, is_test: bool = False) -> str:
+        """Get the appropriate original container based on environment."""
+        return cls.ORIGINAL_TEST if is_test else cls.ORIGINAL
+
+    @classmethod
+    def get_sanitized_container(cls, is_test: bool = False) -> str:
+        """Get the appropriate sanitized container based on environment."""
+        return cls.SANITIZED_TEST if is_test else cls.SANITIZED
+
+
+class ProcessingStatus(str, Enum):
+    """
+    Image processing pipeline status values (MVP: upload → scan → sanitize).
+
+    Note: Does NOT include inference statuses, as inference is tracked separately
+    and can happen multiple times per image with different models.
+    """
+    PENDING = "pending"
+    UPLOADED = "uploaded"
+    DEFENDER_SCANNING = "defender_scanning"
+    DEFENDER_SCANNED = "defender_scanned"
+    SANITIZING = "sanitizing"
+    SANITIZED = "sanitized"
+    COMPLETED = "completed"  # Upload → Scan → Sanitize complete
+    FAILED = "failed"
+    CANCELLED = "cancelled"
