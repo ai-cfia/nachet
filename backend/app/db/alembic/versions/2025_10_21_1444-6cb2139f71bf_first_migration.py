@@ -1,8 +1,8 @@
-"""backend 1.30.0
+"""First Migration
 
-Revision ID: 7161212e993a
+Revision ID: 6cb2139f71bf
 Revises: 
-Create Date: 2025-10-17 04:02:08.195254
+Create Date: 2025-10-21 14:44:08.163477
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '7161212e993a'
+revision: str = '6cb2139f71bf'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -213,6 +213,7 @@ def upgrade() -> None:
     sa.Column('pipeline_id', sa.UUID(), nullable=False),
     sa.Column('model_id', sa.UUID(), nullable=False),
     sa.Column('step', sa.Integer(), nullable=False),
+    sa.Column('request_function', sa.Text(), nullable=False),
     sa.ForeignKeyConstraint(['model_id'], ['model.id'], ),
     sa.ForeignKeyConstraint(['pipeline_id'], ['pipeline.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -285,6 +286,54 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('image_processing_state',
+    sa.Column('picture_id', sa.UUID(), nullable=False, comment='Reference to Picture being processed'),
+    sa.Column('status', sa.String(length=50), nullable=False, comment='pending|uploaded|defender_scanning|defender_scanned|sanitizing|sanitized|completed|failed|cancelled'),
+    sa.Column('workflow_id', sa.String(length=255), nullable=True, comment='DBOS workflow UUID for tracking and recovery'),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('uploaded_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('defender_scan_started_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('defender_scan_completed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('sanitization_started_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('sanitization_completed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('failed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('defender_scan_result', sa.JSON(), nullable=True, comment='Defender scan tags and metadata'),
+    sa.Column('malware_detected', sa.Boolean(), nullable=False, comment='True if malware detected by Defender'),
+    sa.Column('blob_url_original', sa.String(length=500), nullable=True),
+    sa.Column('blob_url_sanitized', sa.String(length=500), nullable=True),
+    sa.Column('error_message', sa.String(length=1000), nullable=True),
+    sa.Column('error_details', sa.JSON(), nullable=True, comment='Detailed error information including stack traces'),
+    sa.Column('retry_count', sa.Integer(), nullable=False),
+    sa.Column('last_retry_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('progress_percentage', sa.Integer(), nullable=False, comment='0-100 progress indicator'),
+    sa.ForeignKeyConstraint(['picture_id'], ['picture.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('picture_id')
+    )
+    op.create_index('idx_processing_state_created', 'image_processing_state', ['created_at'], unique=False)
+    op.create_index('idx_processing_state_status', 'image_processing_state', ['status'], unique=False)
+    op.create_index('idx_processing_state_workflow', 'image_processing_state', ['workflow_id'], unique=False)
+    op.create_index(op.f('ix_image_processing_state_status'), 'image_processing_state', ['status'], unique=False)
+    op.create_index(op.f('ix_image_processing_state_workflow_id'), 'image_processing_state', ['workflow_id'], unique=False)
+    op.create_table('inference_request_state',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('picture_id', sa.UUID(), nullable=False, comment='Reference to Picture for which inference is requested'),
+    sa.Column('pipeline_id', sa.UUID(), nullable=False, comment='Pipeline used for inference'),
+    sa.Column('workflow_id', sa.String(length=255), nullable=True, comment='DBOS workflow UUID for tracking and recovery'),
+    sa.Column('status', sa.String(length=50), nullable=False, comment='pending|in_progress|completed|failed'),
+    sa.Column('request_payload', sa.JSON(), nullable=False, comment='Payload sent for inference request'),
+    sa.Column('response_payload', sa.JSON(), nullable=True, comment='Response received from inference request'),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('failed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('error_message', sa.String(length=1000), nullable=True),
+    sa.ForeignKeyConstraint(['picture_id'], ['picture.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['pipeline_id'], ['pipeline.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_inference_request_state_status'), 'inference_request_state', ['status'], unique=False)
+    op.create_index(op.f('ix_inference_request_state_workflow_id'), 'inference_request_state', ['workflow_id'], unique=False)
     op.create_table('object',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('active', sa.Boolean(), nullable=False),
@@ -332,6 +381,15 @@ def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_table('object')
+    op.drop_index(op.f('ix_inference_request_state_workflow_id'), table_name='inference_request_state')
+    op.drop_index(op.f('ix_inference_request_state_status'), table_name='inference_request_state')
+    op.drop_table('inference_request_state')
+    op.drop_index(op.f('ix_image_processing_state_workflow_id'), table_name='image_processing_state')
+    op.drop_index(op.f('ix_image_processing_state_status'), table_name='image_processing_state')
+    op.drop_index('idx_processing_state_workflow', table_name='image_processing_state')
+    op.drop_index('idx_processing_state_status', table_name='image_processing_state')
+    op.drop_index('idx_processing_state_created', table_name='image_processing_state')
+    op.drop_table('image_processing_state')
     op.drop_table('annotation')
     op.drop_index(op.f('ix_picture_sha256'), table_name='picture')
     op.drop_table('picture')
