@@ -211,6 +211,7 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
             pipeline_id=uuid.UUID("cc901051-34e0-4e21-803f-76e159848046"),
             model_id=uuid.UUID("52fd7ca2-8101-4541-ae49-d6d92ac69196"),
             step=1,  # Detection model - first step
+            request_function="local-seed-detector-rcnn",
             active=True,
         )
 
@@ -219,6 +220,7 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
             pipeline_id=uuid.UUID("cc901051-34e0-4e21-803f-76e159848046"),
             model_id=uuid.UUID("e83ee51e-830e-403a-a48f-d216ae91abb9"),
             step=2,  # Classification model - second step
+            request_function="local-swin-27-spp",
             active=True,
         )
 
@@ -226,7 +228,8 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
             id=uuid.UUID("b2d0f715-7d64-48ed-8f5f-b3ce338918c4"),
             pipeline_id=uuid.UUID("cc901051-34e0-4e21-803f-76e159848046"),
             model_id=uuid.UUID("ecef8395-e6d5-47a3-8f3d-8424b4dd3816"),
-            step=3,  # Classification model - third step  
+            step=3,  # Classification model - third step 
+            request_function="local-swin-15e-spp",
             active=True,
         )
 

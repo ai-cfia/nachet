@@ -179,6 +179,7 @@ class PipelineModel(Base):
     )
     model_id: Mapped[UUID] = mapped_column(UUID, ForeignKey("model.id"), nullable=False)
     step: Mapped[int] = mapped_column(Integer, nullable=False)
+    request_function: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Relationships
     pipeline: Mapped["Pipeline"] = relationship(
@@ -504,7 +505,10 @@ class ImageProcessingState(Base):
 
     # DBOS workflow tracking
     workflow_id: Mapped[Optional[str]] = mapped_column(
-        String(255), nullable=True, index=True, comment="DBOS workflow UUID for tracking and recovery"
+        String(255),
+        nullable=True,
+        index=True,
+        comment="DBOS workflow UUID for tracking and recovery",
     )
 
     # Stage timestamps (MVP: upload → scan → sanitize only)
@@ -532,7 +536,10 @@ class ImageProcessingState(Base):
         JSON, comment="Defender scan tags and metadata"
     )
     malware_detected: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, comment="True if malware detected by Defender"
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="True if malware detected by Defender",
     )
 
     # Blob storage URLs
@@ -553,7 +560,9 @@ class ImageProcessingState(Base):
     )
 
     # Relationship back to Picture
-    picture: Mapped["Picture"] = relationship("Picture", back_populates="processing_state")
+    picture: Mapped["Picture"] = relationship(
+        "Picture", back_populates="processing_state"
+    )
 
     # Indexes for common queries
     __table_args__ = (
@@ -561,6 +570,64 @@ class ImageProcessingState(Base):
         Index("idx_processing_state_workflow", "workflow_id"),
         Index("idx_processing_state_created", "created_at"),
     )
+
+
+class InferenceRequestState(Base):
+    """
+    Tracks the state of image inference requests.
+
+    Separate from Picture model to maintain clean separation of concerns
+    and allow independent state management.
+    """
+
+    __tablename__ = "inference_request_state"
+
+    id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
+    picture_id: Mapped[UUID] = mapped_column(
+        UUID,
+        ForeignKey("picture.id", ondelete="CASCADE"),
+        nullable=False,
+        comment="Reference to Picture for which inference is requested",
+    )
+    pipeline_id: Mapped[UUID] = mapped_column(
+        UUID,
+        ForeignKey("pipeline.id"),
+        nullable=False,
+        comment="Pipeline used for inference",
+    )
+
+    # DBOS workflow tracking
+    workflow_id: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True,
+        index=True,
+        comment="DBOS workflow UUID for tracking and recovery",
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="pending",
+        index=True,
+        comment="pending|in_progress|completed|failed",
+    )
+    request_payload: Mapped[dict] = mapped_column(
+        JSON, nullable=False, comment="Payload sent for inference request"
+    )
+    response_payload: Mapped[Optional[dict]] = mapped_column(
+        JSON, comment="Response received from inference request"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=func.current_timestamp()
+    )
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    failed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    error_message: Mapped[Optional[str]] = mapped_column(String(1000))
+
+    # Relationship back to Picture
+    picture: Mapped["Picture"] = relationship("Picture")
+    pipeline: Mapped["Pipeline"] = relationship("Pipeline")
 
 
 class Annotation(Base):
