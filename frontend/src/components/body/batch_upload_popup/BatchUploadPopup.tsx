@@ -731,6 +731,33 @@ const BatchUploadPopup = (props: params) => {
             </TextField>
 
             <TextField
+              id="input-magnification"
+              label="Magnification"
+              variant="outlined"
+              type="number"
+              value={magnification > 0 ? magnification : ""}
+              onChange={(e) => {
+                setMagnification(parseFloat(e.target.value) || 0);
+                if (magnificationError) setMagnificationError("");
+              }}
+              sx={{
+                marginTop: "10px",
+                width: "100%",
+              }}
+              slotProps={{
+                htmlInput: {
+                  min: 0.1,
+                  max: 1000,
+                  step: 0.1,
+                  style: { textAlign: "center" },
+                },
+              }}
+              error={!!magnificationError}
+              helperText={magnificationError}
+              disabled={uploading}
+            />
+
+            <TextField
               id="input-sample-id"
               label="Sample ID"
               variant="outlined"
@@ -760,33 +787,6 @@ const BatchUploadPopup = (props: params) => {
               brandError={deviceBrandError}
               modelError={deviceModelError}
               lensError={deviceLensError}
-            />
-
-            <TextField
-              id="input-magnification"
-              label="Magnification"
-              variant="outlined"
-              type="number"
-              value={magnification > 0 ? magnification : ""}
-              onChange={(e) => {
-                setMagnification(parseFloat(e.target.value) || 0);
-                if (magnificationError) setMagnificationError("");
-              }}
-              sx={{
-                marginTop: "10px",
-                width: "100%",
-              }}
-              slotProps={{
-                htmlInput: {
-                  min: 0.1,
-                  max: 1000,
-                  step: 0.1,
-                  style: { textAlign: "center" },
-                },
-              }}
-              error={!!magnificationError}
-              helperText={magnificationError}
-              disabled={uploading}
             />
 
             <TextField
