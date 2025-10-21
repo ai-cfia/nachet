@@ -4,10 +4,10 @@ the swin model.
 """
 
 import json
-from collections import namedtuple
 from urllib.error import URLError
 from urllib.request import Request, urlopen
-from model.model_exceptions import ModelAPIError
+from .exceptions import ModelAPIError
+from . import ModelDispatchInfo
 
 
 class SwinModelAPIError(ModelAPIError):
@@ -34,12 +34,12 @@ def process_swin_result(img_box: dict, results: dict) -> list:
     return img_box
 
 
-async def request_inference_from_torch_swin(model: namedtuple, previous_result: "dict"):
+async def request_inference_from_torch_swin(model: ModelDispatchInfo, previous_result: "dict"):
     """
     Perform inference using the SWIN model on a list of images.
 
     Args:
-        model (namedtuple): The SWIN model to use for inference.
+        model (ModelDispatchInfo): The SWIN model to use for inference.
         previous_result (dict): The previous result containing the images to perform inference on.
 
     Returns:

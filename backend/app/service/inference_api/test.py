@@ -6,18 +6,18 @@ Functions:
     request_inference_from_seed_detector: Requests inference from the seed detector model using the provided previous result.
     request_inference_from_nachet_six_seed: Requests inference from the Nachet Six Seed model.
 """
-from collections import namedtuple
-from model.model_exceptions import ModelAPIError
+from .exceptions import ModelAPIError
+from . import ModelDispatchInfo
 
 class TestModelAPIError(ModelAPIError) :
     pass
 
-async def request_inference_from_test(model: namedtuple, previous_result: str):
+async def request_inference_from_test(model: ModelDispatchInfo, previous_result: str):
     """
     Requests a test case inference.
 
     Args:
-        model (namedtuple): The model to use for the test inference.
+        model (ModelDispatchInfo): The model to use for the test inference.
         previous_result (str): The previous result to pass to the model.
 
     Returns:

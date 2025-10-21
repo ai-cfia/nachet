@@ -8,16 +8,117 @@ Coordinates between ImageProcessingService, DirectoryService, and other services
 from typing import Dict, Any
 from uuid import UUID
 
-from app.model.inference import InferenceRequest, ImageSubmissionResponse
+from app.model.inference import InferenceRequest, ImageSubmissionResponse, ApiInferenceResponse
 from app.service import ImageProcessingService, DirectoryService, SeedService
 from app.service.organization import OrganizationService
 from app.service.constants import get_cfia_admin_role_id
 from app.exceptions import ImageProcessingError
 from app.db.utils import sessionmanager
+from app.service.inference_api import InferenceDispatchService, process_api_ready_classification_result
 
 
 class InferenceService:
     """Service layer for inference-related business logic."""
+
+    @staticmethod
+    async def submit_direct_inference_request(
+        request: InferenceRequest,
+        user_id: UUID,
+    ) -> ApiInferenceResponse:
+        """
+        DISABLE IN PROD
+        Process direct image inference submission request (bypass storage and workflow).
+
+        Coordinates all the steps needed to submit an image for direct inference:
+        1. Validate request
+        2. Submit to ImageProcessingService for direct inference
+
+        Logs yes, db no.
+
+        Args:
+            request: InferenceRequest with image data and metadata
+            user_id: UUID of requesting user
+            
+        Returns:
+            ApiInferenceResponse with classification boxes and predictions
+            
+        Raises:
+            ImageProcessingError: If submission fails
+        """
+        from app.service.logs import LogService
+
+        logger = LogService.get_logger()
+
+        logger.debug(
+            "Processing direct inference request",
+            folder_name=request.folder_name,
+        )
+
+        try:
+            # Extract base64 data from data URL (strip "data:image/png;base64," prefix)
+            image_base64 = request.image
+            if image_base64.startswith("data:"):
+                # Strip data URL prefix to get just the base64 string
+                image_base64 = image_base64.split(",", 1)[1]
+            
+            # Directly submit image for inference without DB/storage
+            detection_result = await InferenceDispatchService.dispatch(
+                model={
+                    "content_type": "application/json",
+                    "api_key": "12345",
+                    "deployment_platform": "local",
+                    "request_function": "rcnn_seed_detector",
+                    "name": "rcnn_seed_detector",
+                    "endpoint": "http://nachet-detector:5001/score",
+                },
+                previous_result=image_base64,
+            )
+
+            classification_result = await InferenceDispatchService.dispatch(
+                model={
+                    "content_type": "application/json",
+                    "api_key": "12345",
+                    "deployment_platform": "local",
+                    "request_function": "swin_classifier",
+                    "name": "swin_classifier_model",
+                    "endpoint": "http://nachet-15spp-classifier:5001/score",
+                },
+                previous_result=detection_result,
+            )
+
+            logger.info(
+                "Direct inference request processed successfully",
+            )
+
+            # Process the classification result to add overlapping, colors, and label occurrence
+            # Returns API-ready result with normalized coordinates
+            api_result = await process_api_ready_classification_result(
+                result=classification_result.result,
+                imageDims=request.imageDims,
+                area_ratio=request.area_ratio,
+                color_format=request.color_format,
+            )
+            
+            # Return validated API response using Pydantic model
+            return ApiInferenceResponse(
+                filename=api_result.filename,
+                imageId="direct-inference",  # No DB storage for direct inference
+                inference_id="direct-inference",  # No DB storage for direct inference
+                boxes=api_result.boxes,
+                labelOccurrence=api_result.labelOccurrence,
+                totalBoxes=api_result.totalBoxes,
+                models=[
+                    {"name": "rcnn_seed_detector", "version": 1},
+                    {"name": "swin_classifier_model", "version": 1},
+                ],
+            )
+
+        except Exception as e:
+            logger.error(
+                f"Failed to submit direct inference: {str(e)}",
+                error_type=type(e).__name__,
+            )
+            raise ImageProcessingError(f"Failed to submit direct inference: {str(e)}") from e
 
     @staticmethod
     async def submit_inference_request(
@@ -95,6 +196,12 @@ class InferenceService:
                 org_admin_role_id = get_cfia_admin_role_id()
                 org_user_role_id = get_cfia_admin_role_id()  # TODO: Get actual user role
 
+                # Convert imageDims from list [width, height] to dict format
+                image_metadata = {
+                    "width": request.imageDims[0],
+                    "height": request.imageDims[1],
+                }
+
                 # Submit image for processing
                 result = await ImageProcessingService.submit_image_for_processing(
                     session=session,
@@ -107,7 +214,7 @@ class InferenceService:
                     folder_id=folder_id,
                     org_user_role_id=org_user_role_id,
                     org_admin_role_id=org_admin_role_id,
-                    image_metadata=request.imageDims,
+                    image_metadata=image_metadata,
                 )
 
                 logger.info(

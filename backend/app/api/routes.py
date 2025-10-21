@@ -20,6 +20,7 @@ from app.model.inference import (
     InferenceRequest,
     ImageSubmissionResponse,
     SanitizationCallbackRequest,
+    ApiInferenceResponse,
 )
 from app.exceptions import ImageProcessingError
 # from app.api.test_dbos import router as test_dbos_router
@@ -92,9 +93,9 @@ async def submit_image_for_processing(
 
     Request body matches legacy API format:
     {
-        "model_name": "pipeline-name",
+        "pipeline_id": "pipeline-name",
         "folder_name": "folder-identifier",
-        "imageDims": {"width": 1920, "height": 1080},
+        "imageDims": [1920, 1080],
         "image": "data:image/png;base64,...",
         "area_ratio": 0.5,
         "color_format": "hex"
@@ -112,6 +113,32 @@ async def submit_image_for_processing(
     """
     # Delegate to InferenceService (handles session, logging, business logic)
     return await InferenceService.submit_inference_request(
+        request=req,
+        user_id=current_user.oid,
+    )
+
+
+@router.post(
+    "/inf-direct",
+    status_code=status.HTTP_200_OK,
+    response_model=ApiInferenceResponse,
+    name="Submit Image for Direct Processing [AUTH REQUIRED]",
+)
+@limiter.limit("10/minute")
+async def submit_image_for_simple_direct_processing(
+    request: Request,
+    req: InferenceRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Submit an image for direct processing (synchronous).
+    Does not store anything.
+    Direct to the model endpoint and returns the classification result.
+    
+    Returns ApiInferenceResponse with boxes and classifications.
+    """
+    # Delegate to InferenceService (handles session, logging, business logic)
+    return await InferenceService.submit_direct_inference_request(
         request=req,
         user_id=current_user.oid,
     )
@@ -156,7 +183,7 @@ async def get_image_processing_status(
 
 # Sanitization Callback Endpoint
 @router.post(
-    "/api/v1/callbacks/sanitization-complete",
+    "/callbacks/sanitization-complete",
     status_code=status.HTTP_200_OK,
     name="Sanitization Complete Callback [FUNCTION KEY AUTH]",
 )
