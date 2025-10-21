@@ -785,10 +785,16 @@ describe("batchUploadImage", () => {
   const mockBatchUploadData = {
     containerName: "test-container",
     uuid: "user-uuid",
-    seedId: "seed-123",
-    seedName: "Test Seed",
-    zoom: 10,
-    seedCount: 5,
+    family: "Poaceae",
+    genus: "Triticum",
+    species: "aestivum",
+    nameCode: "TRIAE",
+    trayCode: "A",
+    sampleId: "SAMPLE-123",
+    deviceBrandId: "550e8400-e29b-41d4-a716-446655440000",
+    deviceModelId: "550e8400-e29b-41d4-a716-446655440001",
+    deviceLensId: "550e8400-e29b-41d4-a716-446655440002",
+    magnification: 10.5,
     imageDataUrl: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ",
     sessionId: "session-456",
   };
@@ -821,10 +827,16 @@ describe("batchUploadImage", () => {
       data: {
         container_name: mockBatchUploadData.containerName,
         user_id: mockBatchUploadData.uuid,
-        seed_id: mockBatchUploadData.seedId,
-        seed_name: mockBatchUploadData.seedName,
-        zoom_level: mockBatchUploadData.zoom,
-        nb_seeds: mockBatchUploadData.seedCount,
+        family: mockBatchUploadData.family,
+        genus: mockBatchUploadData.genus,
+        species: mockBatchUploadData.species,
+        name_code: mockBatchUploadData.nameCode,
+        tray_code: mockBatchUploadData.trayCode,
+        sample_id: mockBatchUploadData.sampleId,
+        device_brand_id: mockBatchUploadData.deviceBrandId,
+        device_model_id: mockBatchUploadData.deviceModelId,
+        device_lens_id: mockBatchUploadData.deviceLensId,
+        magnification: mockBatchUploadData.magnification,
         session_id: mockBatchUploadData.sessionId,
         image: mockBatchUploadData.imageDataUrl,
       },
@@ -886,37 +898,114 @@ describe("batchUploadImage", () => {
     ).rejects.toThrow(new ValueError("UUID is null or empty"));
   });
 
-  it("should throw ValueError for empty seed ID", async () => {
-    const invalidData = { ...mockBatchUploadData, seedId: "" };
+  it("should throw ValueError for empty family", async () => {
+    const invalidData = { ...mockBatchUploadData, family: "" };
     await expect(
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: invalidData,
         accessToken: "valid-token",
       }),
-    ).rejects.toThrow(new ValueError("Seed ID is null or empty"));
+    ).rejects.toThrow(new ValueError("Family is null or empty"));
   });
 
-  it("should throw ValueError for zero zoom", async () => {
-    const invalidData = { ...mockBatchUploadData, zoom: 0 };
+  it("should throw ValueError for empty genus", async () => {
+    const invalidData = { ...mockBatchUploadData, genus: "" };
     await expect(
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: invalidData,
         accessToken: "valid-token",
       }),
-    ).rejects.toThrow(new ValueError("Zoom is null or empty"));
+    ).rejects.toThrow(new ValueError("Genus is null or empty"));
   });
 
-  it("should throw ValueError for zero seed count", async () => {
-    const invalidData = { ...mockBatchUploadData, seedCount: 0 };
+  it("should throw ValueError for empty species", async () => {
+    const invalidData = { ...mockBatchUploadData, species: "" };
     await expect(
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: invalidData,
         accessToken: "valid-token",
       }),
-    ).rejects.toThrow(new ValueError("Seed count is null or empty"));
+    ).rejects.toThrow(new ValueError("Species is null or empty"));
+  });
+
+  it("should throw ValueError for empty name code", async () => {
+    const invalidData = { ...mockBatchUploadData, nameCode: "" };
+    await expect(
+      batchUploadImage({
+        backendUrl: "http://localhost:8080",
+        data: invalidData,
+        accessToken: "valid-token",
+      }),
+    ).rejects.toThrow(new ValueError("Name code is null or empty"));
+  });
+
+  it("should throw ValueError for zero magnification", async () => {
+    const invalidData = { ...mockBatchUploadData, magnification: 0 };
+    await expect(
+      batchUploadImage({
+        backendUrl: "http://localhost:8080",
+        data: invalidData,
+        accessToken: "valid-token",
+      }),
+    ).rejects.toThrow(new ValueError("Magnification is null or empty"));
+  });
+
+  it("should throw ValueError for empty tray code", async () => {
+    const invalidData = { ...mockBatchUploadData, trayCode: "" };
+    await expect(
+      batchUploadImage({
+        backendUrl: "http://localhost:8080",
+        data: invalidData,
+        accessToken: "valid-token",
+      }),
+    ).rejects.toThrow(new ValueError("Tray code is null or empty"));
+  });
+
+  it("should throw ValueError for empty sample ID", async () => {
+    const invalidData = { ...mockBatchUploadData, sampleId: "" };
+    await expect(
+      batchUploadImage({
+        backendUrl: "http://localhost:8080",
+        data: invalidData,
+        accessToken: "valid-token",
+      }),
+    ).rejects.toThrow(new ValueError("Sample ID is null or empty"));
+  });
+
+  it("should throw ValueError for empty device brand", async () => {
+    const invalidData = { ...mockBatchUploadData, deviceBrandId: "" };
+    await expect(
+      batchUploadImage({
+        backendUrl: "http://localhost:8080",
+        data: invalidData,
+        accessToken: "valid-token",
+      }),
+    ).rejects.toThrow(new ValueError("Device brand is null or empty"));
+  });
+
+  it("should throw ValueError for empty device model", async () => {
+    const invalidData = { ...mockBatchUploadData, deviceModelId: "" };
+    await expect(
+      batchUploadImage({
+        backendUrl: "http://localhost:8080",
+        data: invalidData,
+        accessToken: "valid-token",
+      }),
+    ).rejects.toThrow(new ValueError("Device model is null or empty"));
+  });
+
+  it("should throw ValueError for empty device lens", async () => {
+    const invalidData = { ...mockBatchUploadData, deviceLensId: "" };
+    await expect(
+      batchUploadImage({
+        backendUrl: "http://localhost:8080",
+        data: invalidData,
+        accessToken: "valid-token",
+      }),
+    ).rejects.toThrow(new ValueError("Device lens is null or empty"));
   });
 
   it("should handle upload errors", async () => {

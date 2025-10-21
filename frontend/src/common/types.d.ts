@@ -114,10 +114,16 @@ export interface ModelMetadata {
 export interface BatchUploadMetadata {
   containerName: string;
   uuid: string;
-  seedId: string;
-  seedName: string; // TODO: remove when backend is implemented
-  zoom: number;
-  seedCount: number;
+  family: string;
+  genus: string;
+  species: string;
+  nameCode: string;
+  trayCode: string; // A | B | C | D | E
+  sampleId: string;
+  deviceBrandId: string;
+  deviceModelId: string;
+  deviceLensId: string;
+  magnification: number;
   imageDataUrl: string;
   sessionId: string;
 }

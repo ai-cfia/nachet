@@ -595,10 +595,16 @@ export const batchUploadImage = async ({
   const {
     containerName,
     uuid,
-    seedId,
-    seedName, // TODO: remove when backend is implemented
-    zoom,
-    seedCount,
+    family,
+    genus,
+    species,
+    nameCode,
+    trayCode,
+    sampleId,
+    deviceBrandId,
+    deviceModelId,
+    deviceLensId,
+    magnification,
     sessionId,
     imageDataUrl,
   } = data;
@@ -617,14 +623,35 @@ export const batchUploadImage = async ({
   if (uuid === "" || uuid == null) {
     throw new ValueError("UUID is null or empty");
   }
-  if (seedId === "" || seedId == null) {
-    throw new ValueError("Seed ID is null or empty");
+  if (family === "" || family == null) {
+    throw new ValueError("Family is null or empty");
   }
-  if (zoom === 0 || zoom == null) {
-    throw new ValueError("Zoom is null or empty");
+  if (genus === "" || genus == null) {
+    throw new ValueError("Genus is null or empty");
   }
-  if (seedCount === 0 || seedCount == null) {
-    throw new ValueError("Seed count is null or empty");
+  if (species === "" || species == null) {
+    throw new ValueError("Species is null or empty");
+  }
+  if (nameCode === "" || nameCode == null) {
+    throw new ValueError("Name code is null or empty");
+  }
+  if (trayCode === "" || trayCode == null) {
+    throw new ValueError("Tray code is null or empty");
+  }
+  if (sampleId === "" || sampleId == null) {
+    throw new ValueError("Sample ID is null or empty");
+  }
+  if (deviceBrandId === "" || deviceBrandId == null) {
+    throw new ValueError("Device brand is null or empty");
+  }
+  if (deviceModelId === "" || deviceModelId == null) {
+    throw new ValueError("Device model is null or empty");
+  }
+  if (deviceLensId === "" || deviceLensId == null) {
+    throw new ValueError("Device lens is null or empty");
+  }
+  if (magnification === 0 || magnification == null) {
+    throw new ValueError("Magnification is null or empty");
   }
   if (accessToken === "" || accessToken == null) {
     throw new ValueError("Access token is null or empty");
@@ -640,10 +667,16 @@ export const batchUploadImage = async ({
     data: {
       container_name: containerName,
       user_id: uuid,
-      seed_id: seedId,
-      seed_name: seedName, // TODO: remove when backend is implemented
-      zoom_level: zoom,
-      nb_seeds: seedCount,
+      family: family,
+      genus: genus,
+      species: species,
+      name_code: nameCode,
+      tray_code: trayCode,
+      sample_id: sampleId,
+      device_brand_id: deviceBrandId,
+      device_model_id: deviceModelId,
+      device_lens_id: deviceLensId,
+      magnification: magnification,
       session_id: sessionId,
       image: imageDataUrl,
     },

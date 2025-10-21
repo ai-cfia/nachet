@@ -63,6 +63,44 @@ export const zoomLevelSchema = z
   .min(0.1, "Zoom level must be at least 0.1")
   .max(100, "Zoom level cannot exceed 100");
 
+// Magnification validation - positive float
+export const magnificationSchema = z
+  .number()
+  .min(0.1, "Magnification must be at least 0.1")
+  .max(1000, "Magnification cannot exceed 1000");
+
+// Tray code validation - dropdown selection (A-E)
+export const trayCodeSchema = z.enum(["A", "B", "C", "D", "E"], {
+  message: "Tray code must be A, B, C, D, or E",
+});
+
+// Taxonomic field validation - for family, genus, species, name_code
+export const taxonomicFieldSchema = z
+  .string()
+  .min(1, "This field cannot be empty")
+  .max(100, "This field is too long")
+  .regex(
+    /^[a-zA-Z0-9\s\-_.]+$/,
+    "Can only contain letters, numbers, spaces, hyphens, underscores, and periods",
+  )
+  .transform((val) => val.trim());
+
+// Sample ID validation - alphanumeric and dashes only
+export const sampleIdSchema = z
+  .string()
+  .min(1, "Sample ID cannot be empty")
+  .max(100, "Sample ID is too long")
+  .regex(
+    /^[a-zA-Z0-9-]+$/,
+    "Sample ID can only contain letters, numbers, and dashes",
+  )
+  .transform((val) => val.trim());
+
+// Device ID validation - UUID format
+export const deviceIdValidationSchema = z
+  .string()
+  .uuid("Please select a valid device");
+
 // Image label validation - alphanumeric with spaces and basic punctuation
 export const imageLabelSchema = z
   .string()
@@ -527,6 +565,11 @@ export type Password = z.infer<typeof passwordSchema>;
 export type FolderName = z.infer<typeof folderNameSchema>;
 export type SeedCount = z.infer<typeof seedCountSchema>;
 export type ZoomLevel = z.infer<typeof zoomLevelSchema>;
+export type Magnification = z.infer<typeof magnificationSchema>;
+export type TrayCode = z.infer<typeof trayCodeSchema>;
+export type TaxonomicField = z.infer<typeof taxonomicFieldSchema>;
+export type SampleId = z.infer<typeof sampleIdSchema>;
+export type DeviceIdValidation = z.infer<typeof deviceIdValidationSchema>;
 export type ImageLabel = z.infer<typeof imageLabelSchema>;
 export type ClassLabel = z.infer<typeof classLabelSchema>;
 export type ImageFile = z.infer<typeof imageFileSchema>;
