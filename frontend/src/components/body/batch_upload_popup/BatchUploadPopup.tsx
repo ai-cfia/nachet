@@ -4,7 +4,6 @@ import {
   Button,
   Dialog,
   DialogContent,
-  FilterOptionsState,
   FormControl,
   IconButton,
   LinearProgress,
@@ -12,10 +11,10 @@ import {
   ListItem,
   ListItemText,
   ListSubheader,
+  MenuItem,
   Stack,
   TextField,
   Typography,
-  createFilterOptions,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
@@ -25,25 +24,29 @@ import {
   ChangeEvent,
   Dispatch,
   SetStateAction,
-  SyntheticEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { batchUploadImage, batchUploadInit } from "@common/api";
 import { validateImageFile } from "@common";
-import { BatchUploadMetadata, SpeciesData } from "@common/types";
-import { useSpeciesData } from "@hooks";
+import { BatchUploadMetadata } from "@common/types";
+import { useSpeciesData, useDeviceData } from "@hooks";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
 import {
   folderNameSchema,
-  seedCountSchema,
-  zoomLevelSchema,
+  magnificationSchema,
+  trayCodeSchema,
+  taxonomicFieldSchema,
+  sampleIdSchema,
+  deviceIdValidationSchema,
   fileListSchema,
-  classLabelSchema,
 } from "@common/validation";
+import { useDeviceStore } from "@stores/useDeviceStore";
+import { DeviceSelectionFields } from "@components/common/DeviceSelectionFields";
 
 interface params {
   setBatchUploadOpen: Dispatch<SetStateAction<boolean>>;
@@ -68,87 +71,151 @@ const BatchUploadPopup = (props: params) => {
   }, [fileStatus]);
 
   const [folderName, setFolderName] = useState<string>("");
-  const [seedId, setSeedId] = useState<string>("");
-  const [zoom, setZoom] = useState<number>(0);
-  const [seedCount, setSeedCount] = useState<number>(0);
+  const [family, setFamily] = useState<string>("");
+  const [genus, setGenus] = useState<string>("");
+  const [species, setSpecies] = useState<string>("");
+  const [nameCode, setNameCode] = useState<string>("");
+  const [trayCode, setTrayCode] = useState<string>("");
+  const [sampleId, setSampleId] = useState<string>("");
+  const [deviceBrandId, setDeviceBrandId] = useState<string>("");
+  const [deviceModelId, setDeviceModelId] = useState<string>("");
+  const [deviceLensId, setDeviceLensId] = useState<string>("");
+  const [magnification, setMagnification] = useState<number>(0);
   const [sessionId, setSessionId] = useState<string>("");
+
+  // Track if user has manually edited folder name
+  const folderNameManuallyEdited = useRef<boolean>(false);
 
   // Validation error states
   const [folderNameError, setFolderNameError] = useState<string>("");
-  const [seedCountError, setSeedCountError] = useState<string>("");
-  const [zoomError, setZoomError] = useState<string>("");
+  const [familyError, setFamilyError] = useState<string>("");
+  const [genusError, setGenusError] = useState<string>("");
+  const [speciesError, setSpeciesError] = useState<string>("");
+  const [nameCodeError, setNameCodeError] = useState<string>("");
+  const [trayCodeError, setTrayCodeError] = useState<string>("");
+  const [sampleIdError, setSampleIdError] = useState<string>("");
+  const [deviceBrandError, setDeviceBrandError] = useState<string>("");
+  const [deviceModelError, setDeviceModelError] = useState<string>("");
+  const [deviceLensError, setDeviceLensError] = useState<string>("");
+  const [magnificationError, setMagnificationError] = useState<string>("");
   const [filesError, setFilesError] = useState<string>("");
-  const [classError, setClassError] = useState<string>("");
 
   const { speciesData } = useSpeciesData(backendUrl, apiScopeClaim);
+  const { devicesData } = useDeviceData(backendUrl, apiScopeClaim);
+  const { deviceSelection } = useDeviceStore();
   const { instance: msalInstance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
 
-  const classList = useMemo(() => {
+  // Get unique values for each taxonomic field
+  const availableFamilies = useMemo(() => {
     if (!speciesData?.seeds) return [];
-    return speciesData.seeds.map((seed, index) => ({
-      ...seed,
-      id: index,
-    }));
+    return Array.from(
+      new Set(speciesData.seeds.map((seed) => seed.family)),
+    ).sort();
   }, [speciesData]);
 
-  const defaultClass = useMemo(() => {
-    return {
-      id: -1,
-      seed_id: "",
-      name_code: "",
-      family: "",
-      genus: "",
-      species: "",
-      label: "",
-    };
-  }, []);
-  const [selectedClass, setSelectedClass] = useState<SpeciesData | null>(null);
-  const filter = createFilterOptions<SpeciesData>();
+  const availableGenera = useMemo(() => {
+    if (!speciesData?.seeds) return [];
+    const filtered = speciesData.seeds.filter(
+      (seed) => !family || seed.family === family,
+    );
+    return Array.from(new Set(filtered.map((seed) => seed.genus))).sort();
+  }, [speciesData, family]);
 
-  const filteredClassList = (
-    options: SpeciesData[],
-    params: FilterOptionsState<SpeciesData>,
-  ): SpeciesData[] => {
-    const { inputValue } = params;
-    if (inputValue === "") {
-      return options;
-    }
-    const filtered = filter(options, params);
+  const availableSpecies = useMemo(() => {
+    if (!speciesData?.seeds) return [];
+    const filtered = speciesData.seeds.filter(
+      (seed) =>
+        (!family || seed.family === family) && (!genus || seed.genus === genus),
+    );
+    return Array.from(new Set(filtered.map((seed) => seed.species))).sort();
+  }, [speciesData, family, genus]);
 
-    // Suggest the creation of a new value
-    const isExisting = options.some((option) => inputValue === option.label);
-    if (inputValue !== "" && !isExisting) {
-      filtered.push({
-        ...defaultClass,
-        label: `"${inputValue}"`,
-      });
-    }
+  const availableNameCodes = useMemo(() => {
+    if (!speciesData?.seeds) return [];
+    const filtered = speciesData.seeds.filter(
+      (seed) =>
+        (!family || seed.family === family) &&
+        (!genus || seed.genus === genus) &&
+        (!species || seed.species === species),
+    );
+    return Array.from(new Set(filtered.map((seed) => seed.name_code))).sort();
+  }, [speciesData, family, genus, species]);
 
-    return filtered;
+  // Normalize folder name (genus-species pattern)
+  const normalizeFolderName = (
+    genusVal: string,
+    speciesVal: string,
+  ): string => {
+    const normalizeText = (text: string) =>
+      text.toLowerCase().replace(/[^a-z]/g, "");
+    const normalizedGenus = normalizeText(genusVal);
+    const normalizedSpecies = normalizeText(speciesVal);
+    return normalizedGenus && normalizedSpecies
+      ? `${normalizedGenus}-${normalizedSpecies}`
+      : "";
   };
 
-  const getClassLabel = (option: string | SpeciesData): string => {
-    return typeof option === "string" ? option : option.label || "";
-  };
+  // Suggested folder name based on genus and species
+  const suggestedFolderName = useMemo(() => {
+    if (genus && species) {
+      return normalizeFolderName(genus, species);
+    }
+    return "";
+  }, [genus, species]);
 
-  const handleClassChange = (
-    event: SyntheticEvent<Element, Event>,
-    newValue: string | SpeciesData | null,
-  ) => {
-    event.preventDefault();
-    if (newValue == null) {
-      setSelectedClass(null);
-    } else if (typeof newValue === "string") {
-      setSelectedClass({
-        ...defaultClass,
-        label: newValue,
-      });
-    } else {
-      setSelectedClass(newValue);
-      setSeedId(newValue.seed_id);
+  // Auto-populate other fields when name_code is selected (most specific)
+  const handleNameCodeChange = (value: string) => {
+    setNameCode(value);
+    if (value && speciesData?.seeds) {
+      const matchingSeed = speciesData.seeds.find(
+        (seed) => seed.name_code === value,
+      );
+      if (matchingSeed) {
+        setFamily(matchingSeed.family);
+        setGenus(matchingSeed.genus);
+        setSpecies(matchingSeed.species);
+      }
     }
   };
+
+  // Auto-populate family/genus when species is selected if only one option
+  const handleSpeciesChange = (value: string) => {
+    setSpecies(value);
+    if (value && speciesData?.seeds) {
+      const matchingSeeds = speciesData.seeds.filter(
+        (seed) => seed.species === value,
+      );
+      const uniqueFamilies = Array.from(
+        new Set(matchingSeeds.map((s) => s.family)),
+      );
+      const uniqueGenera = Array.from(
+        new Set(matchingSeeds.map((s) => s.genus)),
+      );
+
+      if (uniqueFamilies.length === 1) setFamily(uniqueFamilies[0]);
+      if (uniqueGenera.length === 1) setGenus(uniqueGenera[0]);
+    }
+  };
+
+  // Initialize device selections from Zustand store (read-only, don't persist back)
+  // We intentionally set state directly in this effect as we're synchronizing with external Zustand store
+  useEffect(() => {
+    if (deviceSelection) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDeviceBrandId(deviceSelection.selectedBrandId);
+      setDeviceModelId(deviceSelection.selectedModelId);
+      setDeviceLensId(deviceSelection.selectedLensId);
+    }
+  }, [deviceSelection]);
+
+  // Auto-prefill folder name when both genus and species are set (only if not manually edited)
+  useEffect(() => {
+    if (suggestedFolderName && !folderNameManuallyEdited.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFolderName(suggestedFolderName);
+    }
+  }, [suggestedFolderName]);
 
   const handleFilesSelected = async (
     event: ChangeEvent<HTMLInputElement>,
@@ -194,13 +261,22 @@ const BatchUploadPopup = (props: params) => {
 
   const resetForm = (): void => {
     setFolderName("");
-    setSelectedClass(null);
-    setSeedCount(0);
-    setZoom(0);
+    setFamily("");
+    setGenus("");
+    setSpecies("");
+    setNameCode("");
+    setTrayCode("");
+    setSampleId("");
+    // Reset device fields to persisted values from store
+    setDeviceBrandId(deviceSelection.selectedBrandId);
+    setDeviceModelId(deviceSelection.selectedModelId);
+    setDeviceLensId(deviceSelection.selectedLensId);
+    setMagnification(0);
     setFiles(null);
     setFileCount(0);
     setFileStatus([]);
     setSessionId("");
+    folderNameManuallyEdited.current = false;
   };
 
   const handleUpload = (): void => {
@@ -212,10 +288,17 @@ const BatchUploadPopup = (props: params) => {
     // Clear previous errors
     setUploadError(null);
     setFolderNameError("");
-    setSeedCountError("");
-    setZoomError("");
+    setFamilyError("");
+    setGenusError("");
+    setSpeciesError("");
+    setNameCodeError("");
+    setTrayCodeError("");
+    setSampleIdError("");
+    setDeviceBrandError("");
+    setDeviceModelError("");
+    setDeviceLensError("");
+    setMagnificationError("");
     setFilesError("");
-    setClassError("");
 
     // Validate folder name
     const folderValidation = folderNameSchema.safeParse(folderName);
@@ -224,17 +307,77 @@ const BatchUploadPopup = (props: params) => {
       return;
     }
 
-    // Validate seed count
-    const seedCountValidation = seedCountSchema.safeParse(seedCount);
-    if (!seedCountValidation.success) {
-      setSeedCountError(seedCountValidation.error.issues[0].message);
+    // Validate family
+    const familyValidation = taxonomicFieldSchema.safeParse(family);
+    if (!familyValidation.success) {
+      setFamilyError(familyValidation.error.issues[0].message);
       return;
     }
 
-    // Validate zoom level
-    const zoomValidation = zoomLevelSchema.safeParse(zoom);
-    if (!zoomValidation.success) {
-      setZoomError(zoomValidation.error.issues[0].message);
+    // Validate genus
+    const genusValidation = taxonomicFieldSchema.safeParse(genus);
+    if (!genusValidation.success) {
+      setGenusError(genusValidation.error.issues[0].message);
+      return;
+    }
+
+    // Validate species
+    const speciesValidation = taxonomicFieldSchema.safeParse(species);
+    if (!speciesValidation.success) {
+      setSpeciesError(speciesValidation.error.issues[0].message);
+      return;
+    }
+
+    // Validate name code
+    const nameCodeValidation = taxonomicFieldSchema.safeParse(nameCode);
+    if (!nameCodeValidation.success) {
+      setNameCodeError(nameCodeValidation.error.issues[0].message);
+      return;
+    }
+
+    // Validate tray code
+    const trayCodeValidation = trayCodeSchema.safeParse(trayCode);
+    if (!trayCodeValidation.success) {
+      setTrayCodeError(trayCodeValidation.error.issues[0].message);
+      return;
+    }
+
+    // Validate sample ID
+    const sampleIdValidation = sampleIdSchema.safeParse(sampleId);
+    if (!sampleIdValidation.success) {
+      setSampleIdError(sampleIdValidation.error.issues[0].message);
+      return;
+    }
+
+    // Validate device brand
+    const deviceBrandValidation =
+      deviceIdValidationSchema.safeParse(deviceBrandId);
+    if (!deviceBrandValidation.success) {
+      setDeviceBrandError(deviceBrandValidation.error.issues[0].message);
+      return;
+    }
+
+    // Validate device model
+    const deviceModelValidation =
+      deviceIdValidationSchema.safeParse(deviceModelId);
+    if (!deviceModelValidation.success) {
+      setDeviceModelError(deviceModelValidation.error.issues[0].message);
+      return;
+    }
+
+    // Validate device lens
+    const deviceLensValidation =
+      deviceIdValidationSchema.safeParse(deviceLensId);
+    if (!deviceLensValidation.success) {
+      setDeviceLensError(deviceLensValidation.error.issues[0].message);
+      return;
+    }
+
+    // Validate magnification
+    const magnificationValidation =
+      magnificationSchema.safeParse(magnification);
+    if (!magnificationValidation.success) {
+      setMagnificationError(magnificationValidation.error.issues[0].message);
       return;
     }
 
@@ -247,21 +390,6 @@ const BatchUploadPopup = (props: params) => {
     if (!filesValidation.success) {
       setFilesError(filesValidation.error.issues[0].message);
       return;
-    }
-
-    // Validate class selection
-    if (selectedClass == null) {
-      setClassError("Please select a class");
-      return;
-    }
-
-    // Validate class label if it's a custom class
-    if (selectedClass.label && selectedClass.id === -1) {
-      const classValidation = classLabelSchema.safeParse(selectedClass.label);
-      if (!classValidation.success) {
-        setClassError(classValidation.error.issues[0].message);
-        return;
-      }
     }
 
     if (inProgress !== InteractionStatus.None) {
@@ -323,10 +451,16 @@ const BatchUploadPopup = (props: params) => {
           const data: BatchUploadMetadata = {
             containerName: containerName,
             uuid: uuid,
-            seedId: seedId,
-            seedName: selectedClass?.label ?? "", // TODO: remove when backend is implemented
-            zoom: zoom,
-            seedCount: seedCount,
+            family: family,
+            genus: genus,
+            species: species,
+            nameCode: nameCode,
+            trayCode: trayCode,
+            sampleId: sampleId,
+            deviceBrandId: deviceBrandId,
+            deviceModelId: deviceModelId,
+            deviceLensId: deviceLensId,
+            magnification: magnification,
             imageDataUrl: imageDataUrl,
             sessionId: sessionId,
           };
@@ -390,16 +524,22 @@ const BatchUploadPopup = (props: params) => {
     apiScopeClaim,
     backendUrl,
     containerName,
+    family,
+    genus,
+    species,
+    nameCode,
+    trayCode,
+    sampleId,
+    deviceBrandId,
+    deviceModelId,
+    deviceLensId,
+    magnification,
     fileStatus,
     files,
     msalInstance,
-    seedCount,
-    seedId,
-    selectedClass?.label,
     sessionId,
     uploading,
     uuid,
-    zoom,
   ]);
 
   return (
@@ -470,6 +610,185 @@ const BatchUploadPopup = (props: params) => {
               </Stack>
             )}
 
+            <Autocomplete
+              id="input-family"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Family"
+                  error={!!familyError}
+                  helperText={familyError}
+                />
+              )}
+              options={availableFamilies}
+              value={family}
+              onChange={(_event, newValue) => {
+                setFamily(newValue || "");
+                if (familyError) setFamilyError("");
+              }}
+              sx={{
+                marginTop: "10px",
+                width: "100%",
+              }}
+              disabled={uploading}
+            />
+
+            <Autocomplete
+              id="input-genus"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Genus"
+                  error={!!genusError}
+                  helperText={genusError}
+                />
+              )}
+              options={availableGenera}
+              value={genus}
+              onChange={(_event, newValue) => {
+                setGenus(newValue || "");
+                if (genusError) setGenusError("");
+              }}
+              sx={{
+                marginTop: "10px",
+                width: "100%",
+              }}
+              disabled={uploading}
+            />
+
+            <Autocomplete
+              id="input-species"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Species"
+                  error={!!speciesError}
+                  helperText={speciesError}
+                />
+              )}
+              options={availableSpecies}
+              value={species}
+              onChange={(_event, newValue) => {
+                handleSpeciesChange(newValue || "");
+                if (speciesError) setSpeciesError("");
+              }}
+              sx={{
+                marginTop: "10px",
+                width: "100%",
+              }}
+              disabled={uploading}
+            />
+
+            <Autocomplete
+              id="input-name-code"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Name Code"
+                  error={!!nameCodeError}
+                  helperText={nameCodeError}
+                />
+              )}
+              options={availableNameCodes}
+              value={nameCode}
+              onChange={(_event, newValue) => {
+                handleNameCodeChange(newValue || "");
+                if (nameCodeError) setNameCodeError("");
+              }}
+              sx={{
+                marginTop: "10px",
+                width: "100%",
+              }}
+              disabled={uploading}
+            />
+
+            <TextField
+              id="input-tray-code"
+              label="Tray Code"
+              variant="outlined"
+              select
+              value={trayCode}
+              onChange={(e) => {
+                setTrayCode(e.target.value);
+                if (trayCodeError) setTrayCodeError("");
+              }}
+              sx={{
+                marginTop: "10px",
+                width: "100%",
+              }}
+              error={!!trayCodeError}
+              helperText={trayCodeError}
+              disabled={uploading}
+            >
+              <MenuItem value="">
+                <em>Select Tray Code</em>
+              </MenuItem>
+              <MenuItem value="A">A</MenuItem>
+              <MenuItem value="B">B</MenuItem>
+              <MenuItem value="C">C</MenuItem>
+              <MenuItem value="D">D</MenuItem>
+              <MenuItem value="E">E</MenuItem>
+            </TextField>
+
+            <TextField
+              id="input-magnification"
+              label="Magnification"
+              variant="outlined"
+              type="number"
+              value={magnification > 0 ? magnification : ""}
+              onChange={(e) => {
+                setMagnification(parseFloat(e.target.value) || 0);
+                if (magnificationError) setMagnificationError("");
+              }}
+              sx={{
+                marginTop: "10px",
+                width: "100%",
+              }}
+              slotProps={{
+                htmlInput: {
+                  min: 0.1,
+                  max: 1000,
+                  step: 0.1,
+                  style: { textAlign: "center" },
+                },
+              }}
+              error={!!magnificationError}
+              helperText={magnificationError}
+              disabled={uploading}
+            />
+
+            <TextField
+              id="input-sample-id"
+              label="Sample ID"
+              variant="outlined"
+              value={sampleId}
+              onChange={(e) => {
+                setSampleId(e.target.value);
+                if (sampleIdError) setSampleIdError("");
+              }}
+              sx={{
+                marginTop: "10px",
+                width: "100%",
+              }}
+              error={!!sampleIdError}
+              helperText={sampleIdError}
+              disabled={uploading}
+            />
+
+            <DeviceSelectionFields
+              selectedBrandId={deviceBrandId}
+              selectedModelId={deviceModelId}
+              selectedLensId={deviceLensId}
+              onBrandChange={setDeviceBrandId}
+              onModelChange={setDeviceModelId}
+              onLensChange={setDeviceLensId}
+              devicesData={devicesData}
+              disabled={uploading}
+              brandError={deviceBrandError}
+              modelError={deviceModelError}
+              lensError={deviceLensError}
+            />
+
             <TextField
               id="input-folder-name"
               label="Folder Name"
@@ -477,99 +796,15 @@ const BatchUploadPopup = (props: params) => {
               value={folderName}
               onChange={(e) => {
                 setFolderName(e.target.value);
+                folderNameManuallyEdited.current = true;
                 if (folderNameError) setFolderNameError("");
               }}
               sx={{
                 marginTop: "10px",
                 width: "100%",
               }}
-              inputProps={{
-                min: 1,
-                max: 100,
-                style: { textAlign: "center" },
-              }}
               error={!!folderNameError}
               helperText={folderNameError}
-              disabled={uploading}
-            />
-
-            <Autocomplete
-              id="input-seed-class"
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Class"
-                  error={!!classError}
-                  helperText={classError}
-                />
-              )}
-              options={classList}
-              value={selectedClass}
-              onChange={(event, newValue) => {
-                handleClassChange(event, newValue);
-                if (classError) setClassError("");
-              }}
-              isOptionEqualToValue={(option, value) =>
-                option.label === value.label
-              }
-              filterOptions={filteredClassList}
-              disablePortal
-              selectOnFocus
-              clearOnBlur
-              handleHomeEndKeys
-              freeSolo={false}
-              getOptionLabel={getClassLabel}
-              sx={{
-                marginTop: "10px",
-                width: "100%",
-              }}
-              disabled={uploading}
-            />
-
-            <TextField
-              id="input-seed-count"
-              label="Seed Count"
-              variant="outlined"
-              type="number"
-              value={seedCount > 0 ? seedCount : ""}
-              onChange={(e) => {
-                setSeedCount(parseInt(e.target.value) || 0);
-                if (seedCountError) setSeedCountError("");
-              }}
-              sx={{
-                marginTop: "10px",
-                width: "100%",
-              }}
-              inputProps={{
-                min: 1,
-                max: 100,
-                style: { textAlign: "center" },
-              }}
-              error={!!seedCountError}
-              helperText={seedCountError}
-              disabled={uploading}
-            />
-            <TextField
-              id="input-zoom-level"
-              label="Zoom Level"
-              variant="outlined"
-              type="number"
-              value={zoom > 0 ? zoom : ""}
-              onChange={(e) => {
-                setZoom(parseInt(e.target.value) || 0);
-                if (zoomError) setZoomError("");
-              }}
-              sx={{
-                marginTop: "10px",
-                width: "100%",
-              }}
-              inputProps={{
-                min: 1,
-                max: 100,
-                style: { textAlign: "center" },
-              }}
-              error={!!zoomError}
-              helperText={zoomError}
               disabled={uploading}
             />
 

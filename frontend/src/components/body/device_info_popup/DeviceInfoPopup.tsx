@@ -5,16 +5,13 @@ import {
   DialogContent,
   IconButton,
   Button,
-  Select,
-  MenuItem,
   Typography,
-  FormControl,
-  InputLabel,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
 import { ApiDevicesResponse } from "@common/types";
 import { useDeviceStore } from "@stores/useDeviceStore";
+import { DeviceSelectionFields } from "@components/common/DeviceSelectionFields";
 
 interface DeviceInfoPopupProps {
   setDeviceInfoOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -51,7 +48,7 @@ const DeviceInfoPopup: React.FC<DeviceInfoPopupProps> = (props) => {
     props.setDeviceInfoOpen(false);
   };
 
-  // Get the selected brand object
+  // Get the selected brand object for display
   const selectedBrand = useMemo(() => {
     if (!props.devicesData || !selectedBrandId) return null;
     return (
@@ -60,22 +57,14 @@ const DeviceInfoPopup: React.FC<DeviceInfoPopupProps> = (props) => {
     );
   }, [props.devicesData, selectedBrandId]);
 
-  // Filter models based on selected brand
+  // Get available models/lenses for display
   const availableModels = useMemo(() => {
     return selectedBrand?.models || [];
   }, [selectedBrand]);
 
-  // Filter lenses based on selected brand
   const availableLenses = useMemo(() => {
     return selectedBrand?.lenses || [];
   }, [selectedBrand]);
-
-  const handleBrandChange = (brandId: string) => {
-    setSelectedBrandId(brandId);
-    // Reset model and lens when brand changes
-    setSelectedModelId("");
-    setSelectedLensId("");
-  };
 
   return (
     <Dialog
@@ -132,86 +121,15 @@ const DeviceInfoPopup: React.FC<DeviceInfoPopupProps> = (props) => {
               marginTop: "2vh",
             }}
           >
-            {/* Brand Dropdown */}
-            <FormControl fullWidth size="small">
-              <InputLabel id="device-brand-label" sx={{ fontSize: "1.4vh" }}>
-                Device Brand
-              </InputLabel>
-              <Select
-                labelId="device-brand-label"
-                value={selectedBrandId}
-                onChange={(e) => handleBrandChange(e.target.value)}
-                label="Device Brand"
-                sx={{ fontSize: "1.4vh" }}
-              >
-                <MenuItem value="" sx={{ fontSize: "1.4vh" }}>
-                  <em>Select a brand</em>
-                </MenuItem>
-                {props.devicesData?.devices.map((brand) => (
-                  <MenuItem
-                    key={brand.id}
-                    value={brand.id}
-                    sx={{ fontSize: "1.4vh" }}
-                  >
-                    {brand.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {/* Model Dropdown */}
-            <FormControl fullWidth size="small" disabled={!selectedBrandId}>
-              <InputLabel id="device-model-label" sx={{ fontSize: "1.4vh" }}>
-                Device Model
-              </InputLabel>
-              <Select
-                labelId="device-model-label"
-                value={selectedModelId}
-                onChange={(e) => setSelectedModelId(e.target.value)}
-                label="Device Model"
-                sx={{ fontSize: "1.4vh" }}
-              >
-                <MenuItem value="" sx={{ fontSize: "1.4vh" }}>
-                  <em>Select a model</em>
-                </MenuItem>
-                {availableModels.map((model) => (
-                  <MenuItem
-                    key={model.id}
-                    value={model.id}
-                    sx={{ fontSize: "1.4vh" }}
-                  >
-                    {model.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {/* Lens Dropdown */}
-            <FormControl fullWidth size="small" disabled={!selectedBrandId}>
-              <InputLabel id="device-lens-label" sx={{ fontSize: "1.4vh" }}>
-                Device Lens
-              </InputLabel>
-              <Select
-                labelId="device-lens-label"
-                value={selectedLensId}
-                onChange={(e) => setSelectedLensId(e.target.value)}
-                label="Device Lens"
-                sx={{ fontSize: "1.4vh" }}
-              >
-                <MenuItem value="" sx={{ fontSize: "1.4vh" }}>
-                  <em>Select a lens</em>
-                </MenuItem>
-                {availableLenses.map((lens) => (
-                  <MenuItem
-                    key={lens.id}
-                    value={lens.id}
-                    sx={{ fontSize: "1.4vh" }}
-                  >
-                    {lens.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <DeviceSelectionFields
+              selectedBrandId={selectedBrandId}
+              selectedModelId={selectedModelId}
+              selectedLensId={selectedLensId}
+              onBrandChange={setSelectedBrandId}
+              onModelChange={setSelectedModelId}
+              onLensChange={setSelectedLensId}
+              devicesData={props.devicesData}
+            />
 
             {/* Display selected device info */}
             {selectedBrand && (

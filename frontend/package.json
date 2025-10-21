@@ -1,7 +1,7 @@
 {
   "name": "nachet-frontend",
   "private": true,
-  "version": "0.15.0",
+  "version": "0.16.0",
   "acia-cfia": {
     "backend-version": "1.36.0"
   },
