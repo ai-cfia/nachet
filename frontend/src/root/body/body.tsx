@@ -432,7 +432,7 @@ const Body: React.FC<params> = (props) => {
         // Find the default model from the metadata
         const defaultModel = metadata.find((model) => model.default);
         if (defaultModel) {
-          setSelectedModel(defaultModel.model_name);
+          setSelectedModel(defaultModel.pipeline_id);
         }
       } catch (error) {
         console.error(error);
@@ -610,6 +610,7 @@ const Body: React.FC<params> = (props) => {
               handleInference={handleInferenceRequest}
               setSwitchModelOpen={setModelInfoPopupOpen}
               selectedModel={selectedModel}
+              metadata={metadata}
               imageCache={imageCache}
               setImageCache={setImageCache}
               imageIndex={imageIndex}

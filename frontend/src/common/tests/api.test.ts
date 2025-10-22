@@ -395,7 +395,7 @@ describe("inferenceRequest", () => {
     expect(result).toEqual(mockInferenceData);
     expect(mockedAxios).toHaveBeenCalledWith({
       method: "post",
-      url: `${backendUrl}/inf`,
+      url: `${backendUrl}/inf-direct`,
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
@@ -404,7 +404,7 @@ describe("inferenceRequest", () => {
         "X-Session-ID": "test-session-id",
       },
       data: {
-        model_name: selectedModel,
+        pipeline_id: selectedModel,
         image: mockImageObject.src,
         imageDims: mockImageObject.imageDims,
         folder_name: curDir,
@@ -577,6 +577,7 @@ describe("fetchModelMetadata", () => {
         model_name: "Seed Detector v1",
         models: ["detector-model-123"],
         pipeline_name: "seed-detection-pipeline",
+        pipeline_id: "00000000-0000-0000-0000-000000000001",
         default: true,
       },
     ];

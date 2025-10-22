@@ -23,6 +23,7 @@ import {
   FeedbackDataNegative,
   FeedbackDataPositive,
   Images,
+  ModelMetadata,
 } from "@common/types";
 import {
   sendNegativeFeedback,
@@ -52,6 +53,7 @@ interface MicroscopeFeedProps {
   setUploadOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setSwitchModelOpen: React.Dispatch<React.SetStateAction<boolean>>;
   selectedModel: string;
+  metadata: ModelMetadata[];
   imageCache: Images[];
   setImageCache: React.Dispatch<React.SetStateAction<Images[]>>;
   handleInference: () => void;
@@ -132,6 +134,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     setUploadOpen,
     setSwitchModelOpen,
     selectedModel,
+    metadata,
     imageCache,
     setImageCache,
     handleInference,
@@ -150,6 +153,12 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
 
   const width = windowSize.width * 0.575;
   const height = windowSize.height * 0.605;
+
+  // Find the model name from metadata based on selectedModel (pipeline_id)
+  const selectedModelName = useMemo(() => {
+    const model = metadata.find((m) => m.pipeline_id === selectedModel);
+    return model?.model_name || selectedModel;
+  }, [metadata, selectedModel]);
 
   const defaultBoxPosition: BoxCSS = {
     minWidth: 100,
@@ -496,7 +505,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
           sx={{ marginRight: "0.6vh" }}
         />
         <ButtonMicroscopeFeed
-          label={selectedModel.slice(0, 10)}
+          label={selectedModelName.slice(0, 10)}
           icon={<DonutSmallIcon color="inherit" style={iconStyle} />}
           disabled={isWebcamActive} // Disable when the webcam is active
           onClick={() => {

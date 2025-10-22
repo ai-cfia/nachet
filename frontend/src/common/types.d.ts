@@ -108,6 +108,7 @@ export interface ModelMetadata {
   model_name: string;
   models: string[];
   pipeline_name: string;
+  pipeline_id: string;
   default?: boolean;
 }
 

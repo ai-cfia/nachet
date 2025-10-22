@@ -28,10 +28,11 @@ describe("SwitchModel Component", () => {
     });
 
     // Simulate model selection
-    const modelToSelect = testData[0].model_name;
-    fireEvent.click(screen.getByText(modelToSelect));
+    const modelToSelect = testData[0].pipeline_id;
+    const modelName = testData[0].model_name;
+    fireEvent.click(screen.getByText(modelName));
 
-    // Assert setSelectedModel was called with the selected model name
+    // Assert setSelectedModel was called with the pipeline_id (not model name)
     expect(mockSetSelectedModel).toHaveBeenCalledWith(modelToSelect);
   });
 });

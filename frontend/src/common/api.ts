@@ -295,14 +295,14 @@ export const inferenceRequest = async ({
   }
   const request = {
     method: "post",
-    url: `${backendUrl}/inf`,
+    url: `${backendUrl}/inf-direct`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
       Authorization: `Bearer ${accessToken}`,
     },
     data: {
-      model_name: selectedModel,
+      pipeline_id: selectedModel,
       image: imageObject.src,
       imageDims: imageObject.imageDims,
       folder_name: curDir,

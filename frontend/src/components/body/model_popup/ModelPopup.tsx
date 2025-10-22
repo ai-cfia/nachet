@@ -111,7 +111,7 @@ const SwitchModel: React.FC<params> = (props) => {
                   padding: "1vh",
                   cursor: "pointer",
                   backgroundColor:
-                    props.selectedModel === data.model_name
+                    props.selectedModel === data.pipeline_id
                       ? "#f0f0f0"
                       : "#fff",
                   "&:hover": {
@@ -123,7 +123,7 @@ const SwitchModel: React.FC<params> = (props) => {
                   maxHeight: "200px",
                 }}
                 onClick={() => {
-                  selectModel(data.model_name);
+                  selectModel(data.pipeline_id);
                 }}
               >
                 <Box
@@ -141,11 +141,11 @@ const SwitchModel: React.FC<params> = (props) => {
                     {data.model_name}
                   </Typography>
                   <Radio
-                    checked={props.selectedModel === data.model_name}
+                    checked={props.selectedModel === data.pipeline_id}
                     onChange={() => {
-                      selectModel(data.model_name);
+                      selectModel(data.pipeline_id);
                     }}
-                    value={data.model_name}
+                    value={data.pipeline_id}
                   />
                 </Box>
                 <Typography
