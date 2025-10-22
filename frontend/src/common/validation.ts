@@ -620,6 +620,25 @@ export const InferenceBoxApiSchema = z.object({
   is_verified: z.boolean().optional(),
 });
 
+// Direct Inference Box schema (simplified for /inf-direct endpoint)
+export const DirectInferenceBoxSchema = z.object({
+  box: BoxCoordinatesSchema,
+  label: z.string(),
+  score: z.number(),
+  topN: z.array(
+    z.object({
+      label: z.string(),
+      score: z.number(),
+    }),
+  ),
+});
+
+// Direct Inference Response schema (for /inf-direct endpoint)
+export const DirectInferenceResponseSchema = z.object({
+  boxes: z.array(DirectInferenceBoxSchema),
+  filename: z.string(),
+});
+
 // API Inference Data schema
 export const ApiInferenceDataSchema = z.object({
   filename: z.string(),
@@ -648,6 +667,7 @@ export const ModelMetadataSchema = z.object({
   model_name: z.string(),
   models: z.array(z.string()),
   pipeline_name: z.string(),
+  pipeline_id: z.string(),
   default: z.boolean().optional(),
 });
 
