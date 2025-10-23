@@ -22,7 +22,7 @@ describe("loadResultsToCache", () => {
     filename: "test",
     imageId: "test",
     inference_id: "test",
-    models: [{ name: "test", version: 0 }],
+    models: [{ name: "test", version: "0" }],
     boxes: [
       {
         score: 0.1,
@@ -97,7 +97,7 @@ describe("loadResultsToCache", () => {
       filename: "test",
       imageId: "test",
       inference_id: "test",
-      models: [{ name: "test", version: 0 }],
+      models: [{ name: "test", version: "0" }],
       boxes: [
         {
           score: 0.1,

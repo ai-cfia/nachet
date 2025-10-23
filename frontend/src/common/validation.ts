@@ -650,7 +650,7 @@ export const ApiInferenceDataSchema = z.object({
   models: z.array(
     z.object({
       name: z.string(),
-      version: z.number(),
+      version: z.string(),
     }),
   ),
 });
