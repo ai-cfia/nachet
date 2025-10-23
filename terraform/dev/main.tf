@@ -89,10 +89,10 @@ module "container_registry" {
 module "storage_account_nachet_external" {
   source = "../modules/storage-account"
 
-  name                     = "${var.project_name}external"
-  resource_group_name      = var.resource_group_name
-  location                 = var.location
-  tags                     = var.tags
+  name                = "${var.project_name}external"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  tags                = var.tags
 
   # Storage Configuration
   account_tier             = var.storage_account_tier
@@ -103,10 +103,10 @@ module "storage_account_nachet_external" {
   allowed_ips                   = var.storage_allowed_ips
 
   # Blob Properties
-  blob_delete_retention_days     = var.blob_delete_retention_days
+  blob_delete_retention_days      = var.blob_delete_retention_days
   container_delete_retention_days = var.container_delete_retention_days
-  blob_versioning_enabled        = var.blob_versioning_enabled
-  blob_change_feed_enabled       = var.blob_change_feed_enabled
+  blob_versioning_enabled         = var.blob_versioning_enabled
+  blob_change_feed_enabled        = var.blob_change_feed_enabled
 }
 
 # Nachet Application (Combined Frontend + Backend)
