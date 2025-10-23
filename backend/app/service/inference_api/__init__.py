@@ -83,7 +83,7 @@ class InferenceDispatchService:
             content_type=model["content_type"],
             api_key=model["api_key"],
             deployment_platform=model["deployment_platform"],
-            name=model["name"],
+            name=model["model_name"],
             endpoint=model["endpoint"],
             request_function=model["request_function"],
         )

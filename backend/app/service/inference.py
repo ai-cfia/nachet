@@ -9,7 +9,7 @@ from typing import Dict, Any
 from uuid import UUID
 
 from app.model.inference import InferenceRequest, ImageSubmissionResponse, ApiInferenceResponse
-from app.service import ImageProcessingService, DirectoryService, SeedService
+from app.service import ImageProcessingService, DirectoryService, SeedService, PipelineService
 from app.service.organization import OrganizationService
 from app.service.constants import get_cfia_admin_role_id
 from app.exceptions import ImageProcessingError
@@ -21,7 +21,137 @@ class InferenceService:
     """Service layer for inference-related business logic."""
 
     @staticmethod
-    async def submit_direct_inference_request(
+    async def submit_direct_pipeline_inference_request_test(
+        request: InferenceRequest,
+        user_id: UUID,
+    ) -> ApiInferenceResponse:
+        """
+        DISABLE IN PROD
+        Process direct image inference submission request using cached pipeline steps.
+        Coordinates all the steps needed to submit an image for direct inference:
+        1. Validate request
+        2. Lookup pipeline steps from cache
+        3. Execute pipeline steps sequentially using InferenceDispatchService
+
+        Logs yes, db no.
+
+        Args:
+            request: InferenceRequest with image data and metadata (including pipeline_id)
+            user_id: UUID of requesting user
+        Returns:
+            ApiInferenceResponse with classification boxes and predictions
+        Raises:
+            ImageProcessingError: If submission fails
+            ValueError: If pipeline not found in cache
+        """
+        from app.service.logs import LogService
+
+        logger = LogService.get_logger()
+
+        logger.debug(
+            "Processing direct pipeline inference request",
+            pipeline_id=request.pipeline_id,
+            folder_name=request.folder_name,
+        )
+
+        try:
+            # Get pipeline steps from cache
+            pipeline_steps = await PipelineService.get_pipeline_steps(request.pipeline_id)
+
+            if not pipeline_steps:
+                error_msg = f"Pipeline '{request.pipeline_id}' not found in cache"
+                logger.error(
+                    error_msg,
+                    pipeline_id=request.pipeline_id,
+                    available_pipelines=PipelineService.get_cached_pipeline_names(),
+                )
+                raise ValueError(error_msg)
+
+            logger.info(
+                f"Found pipeline with {len(pipeline_steps)} steps",
+                pipeline_id=request.pipeline_id,
+                steps=[s["model_name"] for s in pipeline_steps],
+            )
+
+            # Extract base64 data from data URL (strip "data:image/png;base64," prefix)
+            image_base64 = request.image
+            if image_base64.startswith("data:"):
+                # Strip data URL prefix to get just the base64 string
+                image_base64 = image_base64.split(",", 1)[1]
+
+            # Execute pipeline steps sequentially
+            previous_result = image_base64
+            
+            for step_idx, step in enumerate(pipeline_steps, start=1):
+                logger.debug(
+                    f"Executing pipeline step {step_idx}/{len(pipeline_steps)}",
+                    step=step["step"],
+                    model_name=step["model_name"],
+                    request_function=step["request_function"],
+                )
+                
+                # Dispatch to inference service
+                step_result = await InferenceDispatchService.dispatch(
+                    model=step,
+                    previous_result=previous_result,
+                )
+                
+                # Update previous_result for next step
+                previous_result = step_result
+                
+                logger.debug(
+                    f"Completed pipeline step {step_idx}/{len(pipeline_steps)}",
+                    model_name=step["model_name"],
+                )
+
+            # The last result should be the classification result
+            classification_result = previous_result
+
+            logger.info(
+                "Direct pipeline inference request processed successfully",
+                pipeline_id=request.pipeline_id,
+                steps_executed=len(pipeline_steps),
+            )
+
+            # Process the classification result to add overlapping, colors, and label occurrence
+            # Returns API-ready result with normalized coordinates
+            api_result = await process_api_ready_classification_result(
+                result=classification_result.result,
+                imageDims=request.imageDims,
+                area_ratio=request.area_ratio,
+                color_format=request.color_format,
+            )
+            
+            # Build model info list from pipeline steps
+            models = [
+                {"name": step["model_name"], "version": step.get("version", "1")}
+                for step in pipeline_steps
+            ]
+            
+            # Return validated API response using Pydantic model
+            return ApiInferenceResponse(
+                filename=api_result.filename,
+                imageId="direct-inference",  # No DB storage for direct inference
+                inference_id="direct-inference",  # No DB storage for direct inference
+                boxes=api_result.boxes,
+                labelOccurrence=api_result.labelOccurrence,
+                totalBoxes=api_result.totalBoxes,
+                models=models,
+            )
+
+        except ValueError:
+            raise
+        except Exception as e:
+            logger.error(
+                f"Failed to submit direct pipeline inference: {str(e)}",
+                pipeline_id=request.pipeline_id,
+                error_type=type(e).__name__,
+            )
+            raise ImageProcessingError(f"Failed to submit direct pipeline inference: {str(e)}") from e
+
+
+    @staticmethod
+    async def submit_direct_inference_request_test(
         request: InferenceRequest,
         user_id: UUID,
     ) -> ApiInferenceResponse:
@@ -108,8 +238,8 @@ class InferenceService:
                 labelOccurrence=api_result.labelOccurrence,
                 totalBoxes=api_result.totalBoxes,
                 models=[
-                    {"name": "rcnn_seed_detector", "version": 1},
-                    {"name": "swin_classifier_model", "version": 1},
+                    {"name": "rcnn_seed_detector", "version": "1"},
+                    {"name": "swin_classifier_model", "version": "1"},
                 ],
             )
 

@@ -138,7 +138,7 @@ async def submit_image_for_simple_direct_processing(
     Returns ApiInferenceResponse with boxes and classifications.
     """
     # Delegate to InferenceService (handles session, logging, business logic)
-    return await InferenceService.submit_direct_inference_request(
+    return await InferenceService.submit_direct_pipeline_inference_request_test(
         request=req,
         user_id=current_user.oid,
     )
