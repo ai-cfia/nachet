@@ -74,3 +74,22 @@ variable "blob_change_feed_enabled" {
   default     = false
 }
 
+# Microsoft Defender for Storage variables
+variable "malware_scanning_enabled" {
+  description = "Enable malware scanning on upload"
+  type        = bool
+  default     = true
+}
+
+variable "malware_scanning_cap_gb_per_month" {
+  description = "Monthly cap in GB for malware scanning"
+  type        = number
+  default     = 5000
+}
+
+variable "sensitive_data_discovery_enabled" {
+  description = "Enable sensitive data discovery"
+  type        = bool
+  default     = true
+}
+

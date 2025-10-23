@@ -42,7 +42,7 @@ output "primary_connection_string" {
 #   value       = azurerm_private_endpoint.storage_account.private_service_connection[0].private_ip_address
 # }
 
-output "threat_protection_id" {
-  description = "The ID of the Advanced Threat Protection configuration"
-  value       = azurerm_advanced_threat_protection.storage.id
+output "defender_storage_id" {
+  description = "The ID of the Microsoft Defender for Storage configuration"
+  value       = azurerm_security_center_storage_defender.storage.id
 }

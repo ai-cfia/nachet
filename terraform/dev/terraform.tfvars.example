@@ -65,7 +65,9 @@ storage_account_tier              = "Standard"     # Standard or Premium
 storage_replication_type          = "LRS"          # LRS, GRS, RAGRS, ZRS, etc.
 storage_public_access_enabled     = true           # Enable public access
 storage_allowed_ips               = ["YOUR_IP_ADDRESS/32", "ANOTHER_IP/32"]  # Replace with your IPs
-storage_threat_protection_enabled = true           # Enable malware scanning
+storage_malware_scanning_enabled = true            # Enable malware scanning
+storage_malware_scanning_cap_gb_per_month = 5000   # Monthly scanning limit in GB
+storage_sensitive_data_discovery_enabled = true    # Enable sensitive data discovery
 
 # Blob Storage Properties (Optional - defaults provided)
 blob_delete_retention_days       = 7               # Days to retain deleted blobs

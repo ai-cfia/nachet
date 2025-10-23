@@ -102,6 +102,11 @@ module "storage_account_nachet_external" {
   public_network_access_enabled = var.storage_public_access_enabled
   allowed_ips                   = var.storage_allowed_ips
 
+  # Security Features
+  malware_scanning_enabled          = var.storage_malware_scanning_enabled
+  malware_scanning_cap_gb_per_month = var.storage_malware_scanning_cap_gb_per_month
+  sensitive_data_discovery_enabled  = var.storage_sensitive_data_discovery_enabled
+
   # Blob Properties
   blob_delete_retention_days      = var.blob_delete_retention_days
   container_delete_retention_days = var.container_delete_retention_days

@@ -29,10 +29,12 @@ resource "azurerm_storage_account" "main" {
   tags = var.tags
 }
 
-# Microsoft Defender for Storage (malware scanning) - using storage account threat detection
-resource "azurerm_advanced_threat_protection" "storage" {
-  target_resource_id = azurerm_storage_account.main.id
-  enabled            = true
+# Microsoft Defender for Storage (malware scanning)
+resource "azurerm_security_center_storage_defender" "storage" {
+  storage_account_id                          = azurerm_storage_account.main.id
+  malware_scanning_on_upload_enabled          = var.malware_scanning_enabled
+  malware_scanning_on_upload_cap_gb_per_month = var.malware_scanning_cap_gb_per_month
+  sensitive_data_discovery_enabled            = var.sensitive_data_discovery_enabled
 }
 
 # Private endpoint (commented out for now)

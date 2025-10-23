@@ -302,8 +302,20 @@ variable "storage_allowed_ips" {
   default     = []
 }
 
-variable "storage_threat_protection_enabled" {
-  description = "Enable Advanced Threat Protection for Storage Account"
+variable "storage_malware_scanning_enabled" {
+  description = "Enable malware scanning on upload for Storage Account"
+  type        = bool
+  default     = true
+}
+
+variable "storage_malware_scanning_cap_gb_per_month" {
+  description = "Monthly cap in GB for malware scanning"
+  type        = number
+  default     = 5000
+}
+
+variable "storage_sensitive_data_discovery_enabled" {
+  description = "Enable sensitive data discovery for Storage Account"
   type        = bool
   default     = true
 }
