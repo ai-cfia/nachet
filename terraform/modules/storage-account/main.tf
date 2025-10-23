@@ -32,6 +32,7 @@ resource "azurerm_storage_account" "main" {
 # Microsoft Defender for Storage (malware scanning)
 resource "azurerm_security_center_storage_defender" "storage" {
   storage_account_id                          = azurerm_storage_account.main.id
+  override_subscription_settings_enabled      = true
   malware_scanning_on_upload_enabled          = var.malware_scanning_enabled
   malware_scanning_on_upload_cap_gb_per_month = var.malware_scanning_cap_gb_per_month
   sensitive_data_discovery_enabled            = var.sensitive_data_discovery_enabled
