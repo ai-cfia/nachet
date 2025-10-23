@@ -63,8 +63,12 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
     async_session = sessionmanager.get_session_factory()
 
     # Get CFIA organization and admin role IDs from environment
-    cfia_org_id = uuid.UUID(os.getenv("CFIA_ORGANIZATION_ID", "12345678-1234-1234-1234-123456789012"))
-    cfia_admin_role_id = uuid.UUID(os.getenv("CFIA_ADMIN_ROLE_ID", "87654321-4321-4321-4321-210987654321"))
+    cfia_org_id = uuid.UUID(
+        os.getenv("CFIA_ORGANIZATION_ID", "12345678-1234-1234-1234-123456789012")
+    )
+    cfia_admin_role_id = uuid.UUID(
+        os.getenv("CFIA_ADMIN_ROLE_ID", "87654321-4321-4321-4321-210987654321")
+    )
 
     # Add device brand and models
     async with async_session.begin() as session:
@@ -194,6 +198,70 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
         session.add(pipeline)
     _get_logger().info("Pipeline added")
 
+    async with async_session.begin() as session:
+        # Create pipeline
+        from datetime import date
+
+        pipeline = Pipeline(
+            id=uuid.UUID("41852dde-beed-44bc-bd94-f36e3bd783b8"),
+            name="15 spp RCNN SWIN",
+            active=True,
+            # Use new normalized columns
+            created_by="Test User",
+            creation_date=date(2025, 1, 30),
+            description="Use a Swin transformer to classify the seeds",
+            job_name="",
+            version="1",
+            dataset="",
+            identifiable=[],
+            metrics=[],
+            default=True,
+            # Keep data field for backward compatibility with existing structure
+            data={
+                "models": ["seed-detector-rcnn-1", "swin-15e-spp"],
+                "created_by": "Test User",
+                "creation_date": "2025-01-30",
+                "description": "Use a Swin transformer to classify the seeds",
+                "job_name": "",
+                "version": "1",
+                "dataset": "",
+            },
+        )
+        session.add(pipeline)
+    _get_logger().info("Pipeline added")
+
+    async with async_session.begin() as session:
+        # Create pipeline
+        from datetime import date
+
+        pipeline = Pipeline(
+            id=uuid.UUID("3f2e39a0-d5db-44cc-a391-f4603333f721"),
+            name="27 spp RCNN SWIN",
+            active=True,
+            # Use new normalized columns
+            created_by="Test User",
+            creation_date=date(2025, 1, 30),
+            description="Use a Swin transformer to classify the seeds",
+            job_name="",
+            version="1",
+            dataset="",
+            identifiable=[],
+            metrics=[],
+            default=True,
+            # Keep data field for backward compatibility with existing structure
+            data={
+                "models": ["seed-detector-rcnn-1", "swin-27-spp"],
+                "created_by": "Test User",
+                "creation_date": "2025-01-30",
+                "description": "Use a Swin transformer to classify the seeds",
+                "job_name": "",
+                "version": "1",
+                "dataset": "",
+            },
+        )
+        session.add(pipeline)
+    _get_logger().info("Pipeline added")
+
     # Add pipeline default
     async with async_session.begin() as session:
         pipeline_default = PipelineDefault(
@@ -211,7 +279,7 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
             pipeline_id=uuid.UUID("cc901051-34e0-4e21-803f-76e159848046"),
             model_id=uuid.UUID("52fd7ca2-8101-4541-ae49-d6d92ac69196"),
             step=1,  # Detection model - first step
-            request_function="local-seed-detector-rcnn",
+            request_function="rcnn_seed_detector",
             active=True,
         )
 
@@ -220,7 +288,7 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
             pipeline_id=uuid.UUID("cc901051-34e0-4e21-803f-76e159848046"),
             model_id=uuid.UUID("e83ee51e-830e-403a-a48f-d216ae91abb9"),
             step=2,  # Classification model - second step
-            request_function="local-swin-27-spp",
+            request_function="ensemble_a",
             active=True,
         )
 
@@ -228,12 +296,58 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
             id=uuid.UUID("b2d0f715-7d64-48ed-8f5f-b3ce338918c4"),
             pipeline_id=uuid.UUID("cc901051-34e0-4e21-803f-76e159848046"),
             model_id=uuid.UUID("ecef8395-e6d5-47a3-8f3d-8424b4dd3816"),
-            step=3,  # Classification model - third step 
-            request_function="local-swin-15e-spp",
+            step=3,  # Classification model - third step
+            request_function="ensemble_b",
             active=True,
         )
 
-        session.add_all([pipeline_model_1, pipeline_model_2, pipeline_model_3])
+        pipeline_model_4 = PipelineModel(
+            id=uuid.UUID("e6d6c6fb-ba63-476b-9ced-e591e5bcccf4"),
+            pipeline_id=uuid.UUID("41852dde-beed-44bc-bd94-f36e3bd783b8"),
+            model_id=uuid.UUID("52fd7ca2-8101-4541-ae49-d6d92ac69196"),
+            step=1,
+            request_function="rcnn_seed_detector",
+            active=True,
+        )
+
+        pipeline_model_5 = PipelineModel(
+            id=uuid.UUID("20597e09-50b5-4191-97c1-24b8aeb05260"),
+            pipeline_id=uuid.UUID("41852dde-beed-44bc-bd94-f36e3bd783b8"),
+            model_id=uuid.UUID("ecef8395-e6d5-47a3-8f3d-8424b4dd3816"),
+            step=2,
+            request_function="swin_classifier",
+            active=True,
+        )
+
+        pipeline_model_6 = PipelineModel(
+            id=uuid.UUID("a487e3dd-a502-4c99-9998-0db91d36e98a"),
+            pipeline_id=uuid.UUID("3f2e39a0-d5db-44cc-a391-f4603333f721"),
+            model_id=uuid.UUID("52fd7ca2-8101-4541-ae49-d6d92ac69196"),
+            step=1,
+            request_function="rcnn_seed_detector",
+            active=True,
+        )
+
+        pipeline_model_7 = PipelineModel(
+            id=uuid.UUID("14852c5d-7751-4112-92cc-f199d50a1e39"),
+            pipeline_id=uuid.UUID("3f2e39a0-d5db-44cc-a391-f4603333f721"),
+            model_id=uuid.UUID("e83ee51e-830e-403a-a48f-d216ae91abb9"),
+            step=2,
+            request_function="swin_classifier",
+            active=True,
+        )
+
+        session.add_all(
+            [
+                pipeline_model_1,
+                pipeline_model_2,
+                pipeline_model_3,
+                pipeline_model_4,
+                pipeline_model_5,
+                pipeline_model_6,
+                pipeline_model_7,
+            ]
+        )
     _get_logger().info("Pipeline models added")
 
     async with async_session.begin() as session:

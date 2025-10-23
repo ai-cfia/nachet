@@ -8,6 +8,7 @@ from app.db.utils import sessionmanager
 from app.datastore import PipelineDataService
 from app.service.base_crud import BaseCRUDService
 from app.service.logs import LogService
+from app.service.cache import CacheService
 from app.db.model import Pipeline, PipelineDefault, PipelineModel
 from app.exceptions import (
     PipelineNotFoundError,
@@ -24,14 +25,16 @@ from app.exceptions import (
     PipelineModelDeletionError,
 )
 
+PIPELINE_CACHE_KEY = "pipelines"
+
 
 class PipelineService(BaseCRUDService[Pipeline]):
     """
     Service class to handle pipeline-related operations.
-    
+
     Extends BaseCRUDService to provide standard CRUD operations with RBAC.
     Also includes legacy methods for specialized pipeline queries.
-    
+
     Access Control:
     - GET operations (get_all, get_by_id): Any authenticated user
     - CUD operations (create, update, delete): CFIA admin only
@@ -65,10 +68,10 @@ class PipelineService(BaseCRUDService[Pipeline]):
     def serialize_entity(cls, entity: Pipeline) -> Dict[str, Any]:
         """
         Convert Pipeline entity to dictionary for API response.
-        
+
         Args:
             entity: The Pipeline object to serialize
-            
+
         Returns:
             Dictionary representation of the pipeline
         """
@@ -161,6 +164,8 @@ class PipelineService(BaseCRUDService[Pipeline]):
                                 "content_type": model.content_type,
                                 "deployment_platform": model.deployment_platform,
                                 "endpoint_name": model.endpoint_name,
+                                "request_function": pipeline_model.request_function,
+                                "step": pipeline_model.step,
                             }
                             pipeline_dict["models"].append(model_dict)
 
@@ -173,10 +178,177 @@ class PipelineService(BaseCRUDService[Pipeline]):
                 status_code=500, detail=f"Failed to retrieve pipelines: {str(e)}"
             )
 
-    @staticmethod
-    async def get_model_endpoints_metadata() -> List[Dict[str, Any]]:
+    @classmethod
+    async def initialize_cache(cls) -> Dict[str, Any]:
+        """
+        Initialize the pipeline cache with data from the database.
+
+        Builds a cached structure for fast lookups:
+        - by_id: UUID -> full pipeline config
+        - by_name: name -> UUID
+
+        Returns:
+            Stats dict with initialization info
+        """
+        logger = cls._get_logger()
+        logger.info("Initializing pipeline cache...")
+
+        # Fetch pipelines from database
+        pipelines = await cls.get_pipelines()
+
+        # Build cache structure with domain logic
+        cache_data = {
+            "by_id": {},
+            "by_name": {},
+        }
+
+        for pipeline in pipelines:
+            try:
+                pipeline_id = pipeline["pipeline_id"]
+                pipeline_name = pipeline["pipeline_name"]
+
+                # Build ordered steps from models
+                steps = []
+                for model in pipeline.get("models", []):
+                    step = {
+                        "step": model.get("step"),
+                        "model_id": model.get("model_id"),
+                        "model_name": model.get("model_name"),
+                        "request_function": model.get("request_function"),
+                        "endpoint": model.get("endpoint"),
+                        "api_key": model.get("api_key"),
+                        "content_type": model.get("content_type"),
+                        "deployment_platform": model.get("deployment_platform"),
+                        "version": model.get("version"),
+                        "endpoint_name": model.get("endpoint_name"),
+                    }
+                    steps.append(step)
+
+                # Sort steps by step number
+                steps.sort(key=lambda x: x["step"])
+
+                # Store pipeline config
+                pipeline_config = {
+                    "pipeline_id": pipeline_id,
+                    "pipeline_name": pipeline_name,
+                    "steps": steps,
+                    "metadata": {
+                        "created_by": pipeline.get("created_by"),
+                        "creation_date": pipeline.get("creation_date"),
+                        "description": pipeline.get("description"),
+                        "job_name": pipeline.get("job_name"),
+                        "version": pipeline.get("version"),
+                        "dataset": pipeline.get("dataset"),
+                        "identifiable": pipeline.get("identifiable", []),
+                        "metrics": pipeline.get("metrics", []),
+                    },
+                }
+
+                cache_data["by_id"][pipeline_id] = pipeline_config
+                cache_data["by_name"][pipeline_name] = pipeline_id
+
+                logger.debug(
+                    f"Cached pipeline: {pipeline_name}",
+                    pipeline_id=pipeline_id,
+                    steps=len(steps),
+                )
+
+            except Exception as e:
+                logger.error(
+                    f"Failed to cache pipeline: {str(e)}",
+                    pipeline=pipeline,
+                    error_type=type(e).__name__,
+                )
+
+        # Store in cache
+        CacheService.set(PIPELINE_CACHE_KEY, cache_data)
+
+        stats = {
+            "total_pipelines": len(cache_data["by_id"]),
+            "total_steps": sum(
+                len(p.get("steps", [])) for p in cache_data["by_id"].values()
+            ),
+            "pipeline_names": list(cache_data["by_name"].keys()),
+        }
+
+        logger.info(
+            f"Pipeline cache initialized with {stats['total_pipelines']} pipelines",
+            pipeline_names=stats["pipeline_names"],
+        )
+        return stats
+
+    @classmethod
+    async def get_pipeline_steps(
+        cls, pipeline_identifier: str
+    ) -> Optional[List[Dict[str, Any]]]:
+        """
+        Get ordered pipeline steps for inference execution from cache.
+
+        Automatically initializes cache if not already initialized.
+
+        Args:
+            pipeline_identifier: Pipeline UUID or name
+
+        Returns:
+            List of step dictionaries or None if not found
+        """
+        cache_data = CacheService.get(PIPELINE_CACHE_KEY)
+        if not cache_data:
+            cls._get_logger().info(
+                "Pipeline cache not initialized, initializing now...",
+                pipeline_identifier=pipeline_identifier,
+            )
+            await cls.initialize_cache()
+            cache_data = CacheService.get(PIPELINE_CACHE_KEY)
+
+        # Try as UUID first
+        pipeline = cache_data.get("by_id", {}).get(pipeline_identifier)
+
+        # Try as name if not found by ID
+        if not pipeline:
+            pipeline_id = cache_data.get("by_name", {}).get(pipeline_identifier)
+            if pipeline_id:
+                pipeline = cache_data.get("by_id", {}).get(pipeline_id)
+
+        if pipeline:
+            return pipeline.get("steps", [])
+
+        cls._get_logger().warning(
+            f"Pipeline not found in cache: {pipeline_identifier}",
+            available_pipelines=list(cache_data.get("by_name", {}).keys()),
+        )
+        return None
+
+    @classmethod
+    def get_cached_pipeline_names(cls) -> List[str]:
+        """
+        Get list of all cached pipeline names.
+
+        Returns:
+            List of pipeline names
+        """
+        cache_data = CacheService.get(PIPELINE_CACHE_KEY)
+        if not cache_data:
+            return []
+        return list(cache_data.get("by_name", {}).keys())
+
+    @classmethod
+    async def refresh_cache(cls) -> Dict[str, Any]:
+        """
+        Refresh the pipeline cache with updated data from database.
+
+        Returns:
+            Stats dict with refresh info
+        """
+        cls._get_logger().info("Refreshing pipeline cache...")
+        return await cls.initialize_cache()
+
+    @classmethod
+    async def get_model_endpoints_metadata(cls) -> List[Dict[str, Any]]:
         """
         Retrieves model endpoints metadata from the database in the format expected by the frontend.
+
+        Lazy-loads the pipeline cache on first call.
 
         Returns:
             List of ModelMetadata objects matching the frontend interface.
@@ -184,6 +356,15 @@ class PipelineService(BaseCRUDService[Pipeline]):
         Raises:
             HTTPException: If database operation fails.
         """
+        # Lazy initialize cache if not already initialized
+        cache_data = CacheService.get(PIPELINE_CACHE_KEY)
+        if cache_data is None:
+            cls._get_logger().info(
+                "Pipeline cache not initialized, initializing now..."
+            )
+            await cls.initialize_cache()
+            cache_data = CacheService.get(PIPELINE_CACHE_KEY)
+
         try:
             async with sessionmanager.get_session() as session:
                 repository = PipelineDataService(session)
@@ -231,74 +412,13 @@ class PipelineService(BaseCRUDService[Pipeline]):
                 detail=f"Failed to retrieve model endpoints metadata: {str(e)}",
             )
 
-    @staticmethod
-    async def get_pipeline_by_name(name: str) -> Optional[Dict[str, Any]]:
-        """
-        Retrieves a specific pipeline by name.
-
-        Args:
-            name: The pipeline name to search for
-
-        Returns:
-            Dictionary representing the pipeline or None if not found.
-
-        Raises:
-            HTTPException: If database operation fails.
-        """
-        try:
-            async with sessionmanager.get_session() as session:
-                repository = PipelineDataService(session)
-                pipeline = await repository.get_pipeline_by_name(name)
-
-                if not pipeline:
-                    return None
-
-                pipeline_dict = {
-                    "pipeline_id": str(pipeline.id),
-                    "pipeline_name": pipeline.name,
-                    "created_by": pipeline.created_by,
-                    "creation_date": pipeline.creation_date.isoformat()
-                    if pipeline.creation_date
-                    else None,
-                    "description": pipeline.description,
-                    "job_name": pipeline.job_name,
-                    "version": pipeline.version,
-                    "dataset": pipeline.dataset,
-                    "identifiable": pipeline.identifiable or [],
-                    "metrics": pipeline.metrics or [],
-                    "models": [],
-                }
-
-                for pipeline_model in pipeline.pipeline_models:
-                    if pipeline_model.active and pipeline_model.model.active:
-                        model = pipeline_model.model
-                        model_dict = {
-                            "model_id": str(model.id),
-                            "model_name": model.name,
-                            "version": model.version,
-                            "endpoint": model.api_url,
-                            "api_key": model.api_key,
-                            "content_type": model.content_type,
-                            "deployment_platform": model.deployment_platform,
-                            "endpoint_name": model.endpoint_name,
-                        }
-                        pipeline_dict["models"].append(model_dict)
-
-                return pipeline_dict
-
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to retrieve pipeline '{name}': {str(e)}",
-            )
-
 
 class PipelineDefaultService(BaseCRUDService[PipelineDefault]):
     """
     Service class to handle pipeline_default-related operations.
-    
+
     Extends BaseCRUDService to provide standard CRUD operations with RBAC.
-    
+
     Access Control:
     - GET operations (get_all, get_by_id): Any authenticated user
     - CUD operations (create, update, delete): CFIA admin only
@@ -320,10 +440,10 @@ class PipelineDefaultService(BaseCRUDService[PipelineDefault]):
     def serialize_entity(cls, entity: PipelineDefault) -> Dict[str, Any]:
         """
         Convert PipelineDefault entity to dictionary for API response.
-        
+
         Args:
             entity: The PipelineDefault object to serialize
-            
+
         Returns:
             Dictionary representation of the pipeline default
         """
@@ -360,9 +480,9 @@ class PipelineDefaultService(BaseCRUDService[PipelineDefault]):
 class PipelineModelService(BaseCRUDService[PipelineModel]):
     """
     Service class to handle pipeline_model-related operations.
-    
+
     Extends BaseCRUDService to provide standard CRUD operations with RBAC.
-    
+
     Access Control:
     - GET operations (get_all, get_by_id): Any authenticated user
     - CUD operations (create, update, delete): CFIA admin only
@@ -384,10 +504,10 @@ class PipelineModelService(BaseCRUDService[PipelineModel]):
     def serialize_entity(cls, entity: PipelineModel) -> Dict[str, Any]:
         """
         Convert PipelineModel entity to dictionary for API response.
-        
+
         Args:
             entity: The PipelineModel object to serialize
-            
+
         Returns:
             Dictionary representation of the pipeline model
         """

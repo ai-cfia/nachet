@@ -51,6 +51,7 @@ class TestRequestInferenceFromSeedDetector:
             deployment_platform=deployment_platform,
             name="seed_detector_model",
             endpoint=detector_api_endpoint,
+            request_function="rcnn_seed_detector",
         )
 
         # Call the async function
@@ -89,6 +90,7 @@ class TestRequestInferenceFromSeedDetector:
             deployment_platform=deployment_platform,
             name="swin_classifier_model",
             endpoint=classifier_api_endpoint,
+            request_function="swin_classifier",
         )
 
         # Call the classifier with the detection result

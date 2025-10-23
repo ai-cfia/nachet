@@ -51,13 +51,20 @@ def process_swin_result(
         # Get the top prediction (first in the list)
         top_prediction = classification.predictions[0]
 
-        # Remove the index prefix from label (e.g., "0 Avena fatua" -> "Avena fatua")
-        cleaned_label = " ".join(top_prediction.label.split(" ")[1:])
+        # Remove the index prefix from label if present (e.g., "0 Avena fatua" -> "Avena fatua")
+        # Check if first part is a digit (index prefix) before removing it
+        def clean_label(label: str) -> str:
+            parts = label.split(" ", 1)  # Split only on first space
+            if len(parts) > 1 and parts[0].isdigit():
+                return parts[1]  # Remove numeric index prefix
+            return label  # No index prefix, return as-is
+
+        cleaned_label = clean_label(top_prediction.label)
 
         # Build topN predictions with cleaned labels using Pydantic model
         top_n_predictions = [
             TopNPredictionCleaned(
-                label=" ".join(pred.label.split(" ")[1:]),
+                label=clean_label(pred.label),
                 score=pred.score
             )
             for pred in classification.predictions

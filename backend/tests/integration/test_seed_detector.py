@@ -43,6 +43,7 @@ class TestRequestInferenceFromSeedDetector:
             deployment_platform=deployment_platform,
             name="seed_detector_model",
             endpoint=api_endpoint,
+            request_function="rcnn_seed_detector",
         )
 
         # Call the async function

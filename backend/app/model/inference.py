@@ -297,7 +297,7 @@ class ModelInfo(BaseModel):
     """Model information for API response."""
 
     name: str
-    version: int
+    version: str
 
 
 class ApiInferenceBox(BaseModel):
