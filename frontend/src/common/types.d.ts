@@ -18,7 +18,7 @@ export interface ApiInferenceData {
     [key: string]: number;
   };
   totalBoxes: number;
-  models: Array<{ name: string; version: number }>;
+  models: Array<{ name: string; version: string }>;
 }
 export interface Images {
   index: number;

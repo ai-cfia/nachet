@@ -232,7 +232,7 @@ describe("loadResultsToCache", () => {
       ],
       labelOccurrence: { seed_name: 1 },
       totalBoxes: 1,
-      models: [{ name: "test-model", version: 1 }],
+      models: [{ name: "test-model", version: "1" }],
     };
 
     const result = loadResultsToCache(mockInferenceData, mockImageCache, 0);
@@ -305,7 +305,7 @@ describe("loadResultsToCache", () => {
       ],
       labelOccurrence: { seed_name: 2 },
       totalBoxes: 2,
-      models: [{ name: "test-model", version: 1 }],
+      models: [{ name: "test-model", version: "1" }],
     };
 
     const result = loadResultsToCache(mockInferenceData, mockImageCache, 0);
@@ -340,7 +340,7 @@ describe("loadResultsToCache", () => {
       boxes: [],
       labelOccurrence: { seed_name: 0 },
       totalBoxes: 0,
-      models: [{ name: "test-model", version: 1 }],
+      models: [{ name: "test-model", version: "1" }],
     };
 
     const result = loadResultsToCache(mockInferenceData, mockImageCache, 0);
@@ -402,7 +402,7 @@ describe("loadResultsToCache", () => {
       ],
       labelOccurrence: { seed_name: 1 },
       totalBoxes: 1,
-      models: [{ name: "test-model", version: 1 }],
+      models: [{ name: "test-model", version: "1" }],
     };
 
     const result = loadResultsToCache(

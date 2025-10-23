@@ -370,7 +370,7 @@ describe("inferenceRequest", () => {
       boxes: [],
       labelOccurrence: { seed_name: 0 },
       totalBoxes: 0,
-      models: [{ name: "test-model", version: 1 }],
+      models: [{ name: "test-model", version: "1" }],
     };
     mockedAxios.mockResolvedValue({
       ok: true,
@@ -1045,7 +1045,7 @@ describe("sendPositiveFeedback", () => {
       boxes: [],
       labelOccurrence: { seed_name: 2 },
       totalBoxes: 2,
-      models: [{ name: "test-model", version: 1 }],
+      models: [{ name: "test-model", version: "1" }],
     };
     mockedAxios.mockResolvedValue({
       ok: true,
@@ -1130,7 +1130,7 @@ describe("sendNegativeFeedback", () => {
       boxes: [],
       labelOccurrence: { seed_name: 0 },
       totalBoxes: 0,
-      models: [{ name: "test-model", version: 1 }],
+      models: [{ name: "test-model", version: "1" }],
     };
     mockedAxios.mockResolvedValue({
       ok: true,
@@ -1208,7 +1208,7 @@ describe("sendFeedbackNewBox", () => {
       ],
       labelOccurrence: { "new-seed-type": 1 },
       totalBoxes: 1,
-      models: [{ name: "test-model", version: 1 }],
+      models: [{ name: "test-model", version: "1" }],
     };
     mockedAxios.mockResolvedValue({
       ok: true,
