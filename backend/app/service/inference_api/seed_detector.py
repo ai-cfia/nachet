@@ -121,8 +121,7 @@ async def request_inference_from_seed_detector(
 
         # Return structured dataclass with Pydantic model
         return ModelInferenceDetectorResult(
-            result=validated_response,
-            images=cropped_images
+            result=validated_response, images=cropped_images
         )
     except ValidationError as error:
         print(f"Pydantic validation error: {error}")

@@ -7,7 +7,13 @@ from app.middleware.headers.csp_nonce_manager import CSPNonceManager
 
 
 class HeadersMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: ASGIApp, preset: str = None, use_csp_nonce: bool = True, **custom_headers):
+    def __init__(
+        self,
+        app: ASGIApp,
+        preset: str = None,
+        use_csp_nonce: bool = True,
+        **custom_headers,
+    ):
         headers = PRESETS.get(preset, {}).copy() if preset else {}
 
         for param_name, value in custom_headers.items():

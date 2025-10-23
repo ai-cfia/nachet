@@ -27,6 +27,7 @@ def _get_logger():
     global _logger
     if _logger is None:
         from app.service.logs import LogService
+
         _logger = LogService.get_logger()
     return _logger
 
@@ -237,7 +238,7 @@ class AdvancedOperations:
                     source_container=source_container,
                     source_name=source_name,
                     dest_container=dest_container,
-                    dest_name=dest_name
+                    dest_name=dest_name,
                 )
 
             return {
@@ -322,7 +323,7 @@ class AdvancedOperations:
             _get_logger().info(
                 "Rollback: Successfully deleted destination blob after failed move",
                 dest_container=dest_container,
-                dest_name=dest_name
+                dest_name=dest_name,
             )
         except Exception as cleanup_error:
             _get_logger().error(
@@ -330,5 +331,5 @@ class AdvancedOperations:
                 dest_container=dest_container,
                 dest_name=dest_name,
                 error=str(cleanup_error),
-                error_type=type(cleanup_error).__name__
+                error_type=type(cleanup_error).__name__,
             )

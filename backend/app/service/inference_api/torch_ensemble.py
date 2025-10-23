@@ -15,12 +15,12 @@ from app.model.inference import (
     EnhancedClassificationResult,
     ClassifiedBox,
     TopNPredictionCleaned,
-    BoundingBoxAPI
+    BoundingBoxAPI,
 )
 from . import (
     ModelDispatchInfo,
     ModelInferenceDetectorResult,
-    ModelInferenceClassifierResult
+    ModelInferenceClassifierResult,
 )
 
 
@@ -37,7 +37,7 @@ SPECIES_LIST = [
 
 def process_swin_result(
     detection_response: SeedDetectorAPIResponse,
-    classification_results: list[SwinClassificationAPIResponse]
+    classification_results: list[SwinClassificationAPIResponse],
 ) -> EnhancedClassificationResult:
     """
     Process SWIN classification results and merge them with detection boxes.
@@ -56,7 +56,9 @@ def process_swin_result(
     # Create the enhanced result structure
     enhanced_boxes = []
 
-    for detection_box, classification in zip(detection_response.boxes, classification_results):
+    for detection_box, classification in zip(
+        detection_response.boxes, classification_results
+    ):
         # Get the top prediction (first in the list)
         top_prediction = classification.predictions[0]
 
@@ -66,10 +68,7 @@ def process_swin_result(
 
         # Build topN predictions with cleaned labels using Pydantic model
         top_n_predictions = [
-            TopNPredictionCleaned(
-                label=pred.label,
-                score=pred.score
-            )
+            TopNPredictionCleaned(label=pred.label, score=pred.score)
             for pred in classification.predictions
         ]
 
@@ -79,24 +78,22 @@ def process_swin_result(
                 topX=detection_box.box.topX,
                 topY=detection_box.box.topY,
                 bottomX=detection_box.box.bottomX,
-                bottomY=detection_box.box.bottomY
+                bottomY=detection_box.box.bottomY,
             ),
             label=label,
             score=score,
-            topN=top_n_predictions
+            topN=top_n_predictions,
         )
         enhanced_boxes.append(enhanced_box)
 
     # Return the enhanced result as Pydantic model
     return EnhancedClassificationResult(
-        boxes=enhanced_boxes,
-        filename="default_filename"
+        boxes=enhanced_boxes, filename="default_filename"
     )
 
 
 async def request_inference_ensemble_a(
-    model: ModelDispatchInfo,
-    previous_result: ModelInferenceDetectorResult
+    model: ModelDispatchInfo, previous_result: ModelInferenceDetectorResult
 ) -> ModelInferenceClassifierResult:
     """
     Perform inference using the SWIN model on a list of cropped seed images.
@@ -141,18 +138,23 @@ async def request_inference_ensemble_a(
             # Validate the SWIN API response
             validated_classification = SwinClassificationAPIResponse(inf_result_json)
 
-            print(f"Result for image {idx + 1}: \n {json.dumps([p.model_dump() for p in validated_classification.predictions], indent=4)}")
+            print(
+                f"Result for image {idx + 1}: \n {json.dumps([p.model_dump() for p in validated_classification.predictions], indent=4)}"
+            )
             classification_results.append(validated_classification)
 
-        print(f"Total classifications: {len(classification_results)}")  # TODO Transform into logging
+        print(
+            f"Total classifications: {len(classification_results)}"
+        )  # TODO Transform into logging
 
         # Merge detection boxes with classification results
-        enhanced_result = process_swin_result(detection_response, classification_results)
+        enhanced_result = process_swin_result(
+            detection_response, classification_results
+        )
 
         # Return result with images for potential use in ensemble pipelines
         return ModelInferenceClassifierResult(
-            result=enhanced_result,
-            images=previous_result.images
+            result=enhanced_result, images=previous_result.images
         )
 
     except ValidationError as error:
@@ -174,8 +176,7 @@ async def request_inference_ensemble_a(
 
 
 async def request_inference_ensemble_b(
-    model: ModelDispatchInfo,
-    previous_result: ModelInferenceClassifierResult
+    model: ModelDispatchInfo, previous_result: ModelInferenceClassifierResult
 ) -> ModelInferenceClassifierResult:
     """
     Perform secondary inference on images that match specific species in the species list.
@@ -225,9 +226,13 @@ async def request_inference_ensemble_b(
                 inf_result_json = json.loads(inf_result.decode("utf8"))
 
                 # Validate the SWIN API response
-                validated_classification = SwinClassificationAPIResponse(inf_result_json)
+                validated_classification = SwinClassificationAPIResponse(
+                    inf_result_json
+                )
 
-                print(f"Result for image {idx + 1}: \n {json.dumps([p.model_dump() for p in validated_classification.predictions], indent=4)}")
+                print(
+                    f"Result for image {idx + 1}: \n {json.dumps([p.model_dump() for p in validated_classification.predictions], indent=4)}"
+                )
 
                 # Get the top prediction
                 top_prediction = validated_classification.predictions[0]
@@ -241,8 +246,10 @@ async def request_inference_ensemble_b(
                 # Build topN predictions with cleaned labels
                 top_n_predictions = [
                     TopNPredictionCleaned(
-                        label=" ".join(pred.label.split(" ")[1:]) if pred.label.split(" ")[0].isdigit() else pred.label,
-                        score=pred.score
+                        label=" ".join(pred.label.split(" ")[1:])
+                        if pred.label.split(" ")[0].isdigit()
+                        else pred.label,
+                        score=pred.score,
                     )
                     for pred in validated_classification.predictions
                 ]
@@ -253,16 +260,17 @@ async def request_inference_ensemble_b(
                     update={
                         "label": corrected_label,
                         "score": top_prediction.score,
-                        "topN": top_n_predictions
+                        "topN": top_n_predictions,
                     }
                 )
 
-        print(f"Amended result: {amended_result.model_dump_json(indent=4)}")  # TODO Transform into logging
+        print(
+            f"Amended result: {amended_result.model_dump_json(indent=4)}"
+        )  # TODO Transform into logging
 
         # Return wrapped in dataclass for consistency with other inference functions
         return ModelInferenceClassifierResult(
-            result=amended_result,
-            images=previous_result.images
+            result=amended_result, images=previous_result.images
         )
 
     except ValidationError as error:

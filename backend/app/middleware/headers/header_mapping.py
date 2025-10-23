@@ -1,4 +1,3 @@
-
 PARAM_TO_HEADER = {
     "content_security_policy": "Content-Security-Policy",
     "frame_options": "X-Frame-Options",

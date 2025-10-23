@@ -58,7 +58,7 @@ def cleanup_database():
     env["PGPASSWORD"] = pg_password
 
     print(f"check testing database if it exists: {pg_db}")
-    check_db_cmd = f'psql -h {pg_host} -p {pg_port} -U {pg_user} -lqt | cut -d \| -f 1 | grep -w {pg_db}'
+    check_db_cmd = f"psql -h {pg_host} -p {pg_port} -U {pg_user} -lqt | cut -d \| -f 1 | grep -w {pg_db}"
     db_exists = run_command(check_db_cmd, env=env)
     if not db_exists:
         print(f"Database {pg_db} does not exist. Nothing to clean up.")

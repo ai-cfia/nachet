@@ -22,7 +22,7 @@ class UserDataService(BaseCRUDDataService[Users]):
     def get_query_options(self) -> list:
         """
         Load the organization relationship for all queries.
-        
+
         Returns:
             List of SQLAlchemy query options for loading the organization_ref relationship
         """

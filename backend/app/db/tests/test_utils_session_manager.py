@@ -16,6 +16,7 @@ from app.db.utils import (
 if not os.getenv("NACHET_SCHEMA"):
     load_dotenv("../../.env.test.local")
 
+
 class TestSessionManager:
     """Test cases for the SessionManager class."""
 
@@ -58,7 +59,8 @@ class TestSessionManager:
 
         # Verify logger was called with expected message
         mock_logger.info.assert_called_once_with(
-            "Database SessionManager initialized", database_url="sqlite+aiosqlite:///:memory:"
+            "Database SessionManager initialized",
+            database_url="sqlite+aiosqlite:///:memory:",
         )
 
     def test_session_manager_get_session_factory_success(self):
@@ -227,7 +229,7 @@ class TestGetDb:
         mock_session = AsyncMock(spec=AsyncSession)
 
         # Mock the get_session method to return our mock session directly (synchronously)
-        with patch.object(sessionmanager, 'get_session', return_value=mock_session):
+        with patch.object(sessionmanager, "get_session", return_value=mock_session):
             # Test get_db
             async_gen = get_db()
             yielded_session = await async_gen.__anext__()
@@ -256,7 +258,7 @@ class TestGetDb:
         mock_session = AsyncMock(spec=AsyncSession)
 
         # Mock the get_session method to return our mock session directly (synchronously)
-        with patch.object(sessionmanager, 'get_session', return_value=mock_session):
+        with patch.object(sessionmanager, "get_session", return_value=mock_session):
             # Test get_db with exception
             async_gen = get_db()
             await async_gen.__anext__()
@@ -277,7 +279,13 @@ class TestGetDb:
     async def test_get_db_not_initialized(self):
         """Test get_db when sessionmanager is not initialized."""
         # Mock get_session to raise RuntimeError as it would when not initialized
-        with patch.object(sessionmanager, 'get_session', side_effect=RuntimeError("SessionManager not initialized. Call init() first.")):
+        with patch.object(
+            sessionmanager,
+            "get_session",
+            side_effect=RuntimeError(
+                "SessionManager not initialized. Call init() first."
+            ),
+        ):
             with pytest.raises(RuntimeError, match="SessionManager not initialized"):
                 async_gen = get_db()
                 await async_gen.__anext__()

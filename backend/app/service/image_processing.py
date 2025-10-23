@@ -75,6 +75,7 @@ class ImageProcessingService:
         try:
             # Generate UUIDv7 immediately
             from uuid_extensions import uuid7
+
             image_id = uuid7()
 
             # Validate folder exists
@@ -197,7 +198,9 @@ class ImageProcessingService:
             processing_state = result.scalar_one_or_none()
 
             if not processing_state:
-                raise ImageProcessingError(f"No processing state found for image {image_id}")
+                raise ImageProcessingError(
+                    f"No processing state found for image {image_id}"
+                )
 
             workflow_id = processing_state.workflow_id
 
@@ -224,18 +227,36 @@ class ImageProcessingService:
                 "progress_percentage": processing_state.progress_percentage,
                 "stages": {
                     "upload": processing_state.uploaded_at is not None,
-                    "defender_scan": processing_state.defender_scan_completed_at is not None,
-                    "sanitization": processing_state.sanitization_completed_at is not None,
+                    "defender_scan": processing_state.defender_scan_completed_at
+                    is not None,
+                    "sanitization": processing_state.sanitization_completed_at
+                    is not None,
                 },
                 "timestamps": {
-                    "created": processing_state.created_at.isoformat() if processing_state.created_at else None,
-                    "uploaded": processing_state.uploaded_at.isoformat() if processing_state.uploaded_at else None,
-                    "defender_scan_started": processing_state.defender_scan_started_at.isoformat() if processing_state.defender_scan_started_at else None,
-                    "defender_scan_completed": processing_state.defender_scan_completed_at.isoformat() if processing_state.defender_scan_completed_at else None,
-                    "sanitization_started": processing_state.sanitization_started_at.isoformat() if processing_state.sanitization_started_at else None,
-                    "sanitization_completed": processing_state.sanitization_completed_at.isoformat() if processing_state.sanitization_completed_at else None,
-                    "completed": processing_state.completed_at.isoformat() if processing_state.completed_at else None,
-                    "failed": processing_state.failed_at.isoformat() if processing_state.failed_at else None,
+                    "created": processing_state.created_at.isoformat()
+                    if processing_state.created_at
+                    else None,
+                    "uploaded": processing_state.uploaded_at.isoformat()
+                    if processing_state.uploaded_at
+                    else None,
+                    "defender_scan_started": processing_state.defender_scan_started_at.isoformat()
+                    if processing_state.defender_scan_started_at
+                    else None,
+                    "defender_scan_completed": processing_state.defender_scan_completed_at.isoformat()
+                    if processing_state.defender_scan_completed_at
+                    else None,
+                    "sanitization_started": processing_state.sanitization_started_at.isoformat()
+                    if processing_state.sanitization_started_at
+                    else None,
+                    "sanitization_completed": processing_state.sanitization_completed_at.isoformat()
+                    if processing_state.sanitization_completed_at
+                    else None,
+                    "completed": processing_state.completed_at.isoformat()
+                    if processing_state.completed_at
+                    else None,
+                    "failed": processing_state.failed_at.isoformat()
+                    if processing_state.failed_at
+                    else None,
                 },
                 "blob_urls": {
                     "original": processing_state.blob_url_original,
@@ -291,7 +312,9 @@ class ImageProcessingService:
             processing_state = result.scalar_one_or_none()
 
             if not processing_state:
-                raise ImageProcessingError(f"No processing state found for image {image_id}")
+                raise ImageProcessingError(
+                    f"No processing state found for image {image_id}"
+                )
 
             workflow_id = processing_state.workflow_id
 
@@ -347,7 +370,9 @@ class ImageProcessingService:
             processing_state = result.scalar_one_or_none()
 
             if not processing_state:
-                raise ImageProcessingError(f"No processing state found for image {image_id}")
+                raise ImageProcessingError(
+                    f"No processing state found for image {image_id}"
+                )
 
             if processing_state.status != ProcessingStatus.FAILED:
                 raise ImageProcessingError(
@@ -394,10 +419,10 @@ class ImageProcessingService:
 
         # Format validation (basic magic number check)
         valid_formats = {
-            b'\xff\xd8\xff': 'jpeg',
-            b'\x89PNG\r\n\x1a\n': 'png',
-            b'GIF87a': 'gif',
-            b'GIF89a': 'gif',
+            b"\xff\xd8\xff": "jpeg",
+            b"\x89PNG\r\n\x1a\n": "png",
+            b"GIF87a": "gif",
+            b"GIF89a": "gif",
         }
 
         is_valid = any(file_bytes.startswith(magic) for magic in valid_formats.keys())
@@ -415,6 +440,7 @@ class ImageProcessingService:
         # Extract dimensions and format
         try:
             from PIL import Image
+
             image = Image.open(io.BytesIO(file_bytes))
             width, height = image.size
             format_type = image.format.lower() if image.format else "unknown"

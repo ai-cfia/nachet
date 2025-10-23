@@ -50,16 +50,19 @@ async def init_db():
     env = os.environ.copy()
     env["PGPASSWORD"] = db_password
     check_cmd = f'psql -h {db_host} -p {db_port} -U {db_user} -d {db_name} -c "SELECT 1 FROM \\"{db_schema}\\".seed LIMIT 1" 2>&1'
-    result = subprocess.run(check_cmd, shell=True, capture_output=True, text=True, env=env)
+    result = subprocess.run(
+        check_cmd, shell=True, capture_output=True, text=True, env=env
+    )
 
     if result.returncode != 0:
         # Database schema not found - try to set it up automatically
-        print("\n" + "="*77)
+        print("\n" + "=" * 77)
         print("Test database schema not found. Running automatic setup...")
-        print("="*77 + "\n")
+        print("=" * 77 + "\n")
 
         # Find the database setup script
         from pathlib import Path
+
         backend_dir = Path(__file__).parent.parent.parent  # Go up to backend/
         setup_script = backend_dir / "app" / "db" / "db_setup_test.py"
 
@@ -88,13 +91,13 @@ Manual setup:
                 env=env,  # Uses environment with loaded .env.test.local
                 capture_output=True,
                 text=True,
-                timeout=300  # 5 minute timeout
+                timeout=300,  # 5 minute timeout
             )
 
             if result.returncode == 0:
-                print("\n" + "="*77)
+                print("\n" + "=" * 77)
                 print("✓ Database setup completed successfully!")
-                print("="*77 + "\n")
+                print("=" * 77 + "\n")
                 print(result.stdout)
             else:
                 error_msg = f"""
@@ -168,7 +171,10 @@ def test_organization() -> UUID:
         UUID of the pre-seeded test organization
     """
     from uuid import UUID
-    cfia_org_id = os.getenv("CFIA_ORGANIZATION_ID", "12345678-1234-1234-1234-123456789012")
+
+    cfia_org_id = os.getenv(
+        "CFIA_ORGANIZATION_ID", "12345678-1234-1234-1234-123456789012"
+    )
     return UUID(cfia_org_id)
 
 
@@ -368,7 +374,9 @@ async def cleanup_test_pictures(integration_db_session: AsyncSession):
         await integration_db_session.execute(stmt_objects)
 
         # Delete annotations that reference pictures
-        stmt_annotations = delete(Annotation).where(Annotation.picture_id.in_(created_ids))
+        stmt_annotations = delete(Annotation).where(
+            Annotation.picture_id.in_(created_ids)
+        )
         await integration_db_session.execute(stmt_annotations)
 
         # Delete pictures
@@ -378,7 +386,7 @@ async def cleanup_test_pictures(integration_db_session: AsyncSession):
         # Delete folders
         stmt_folders = delete(Folder).where(Folder.id.in_(created_ids))
         await integration_db_session.execute(stmt_folders)
-        
+
         await integration_db_session.flush()
 
 
@@ -393,7 +401,9 @@ def test_org_admin_role() -> UUID:
     Returns:
         UUID of the pre-seeded admin role
     """
-    cfia_admin_role_id = os.getenv("CFIA_ADMIN_ROLE_ID", "87654321-4321-4321-4321-210987654321")
+    cfia_admin_role_id = os.getenv(
+        "CFIA_ADMIN_ROLE_ID", "87654321-4321-4321-4321-210987654321"
+    )
     return UUID(cfia_admin_role_id)
 
 
@@ -409,4 +419,5 @@ def test_org_user_role(test_organization: UUID) -> UUID:
         UUID of the pre-seeded user role
     """
     import uuid
+
     return uuid.uuid5(test_organization, "user")

@@ -743,9 +743,7 @@ class TestImageObjectsServiceIntegrationGetAll:
             objects.append(obj)
 
         # Get all image objects
-        result = await ImageObjectsService.get_all(
-            test_admin_user, offset=0, limit=10
-        )
+        result = await ImageObjectsService.get_all(test_admin_user, offset=0, limit=10)
 
         # Verify result structure
         assert "items" in result
@@ -860,9 +858,7 @@ class TestImageObjectsServiceIntegrationGetAll:
             objects.append(obj)
 
         # Test pagination: limit 2
-        result = await ImageObjectsService.get_all(
-            test_admin_user, offset=0, limit=2
-        )
+        result = await ImageObjectsService.get_all(test_admin_user, offset=0, limit=2)
 
         assert result["limit"] == 2
         assert result["offset"] == 0

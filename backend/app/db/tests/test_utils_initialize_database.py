@@ -126,7 +126,7 @@ class TestInitializeDatabase:
 
         # Verify logger was called (3 times: init start, SessionManager init, init complete)
         assert mock_logger.info.call_count == 3
-        
+
         # Check for start message
         first_call = mock_logger.info.call_args_list[0]
         assert first_call[0][0] == "Initializing database..."
@@ -294,12 +294,12 @@ class TestInitializeDatabase:
 
         # Verify logger was called with expected messages (3 times total)
         assert mock_logger.info.call_count == 3
-        
+
         # Check messages
         first_call = mock_logger.info.call_args_list[0]
         second_call = mock_logger.info.call_args_list[1]
         third_call = mock_logger.info.call_args_list[2]
-        
+
         assert first_call[0][0] == "Initializing database..."
         assert second_call[0][0] == "Database SessionManager initialized"
         assert third_call[0][0] == "Database initialization completed successfully"

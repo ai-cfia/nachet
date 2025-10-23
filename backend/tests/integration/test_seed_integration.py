@@ -165,7 +165,9 @@ class TestSeedServiceIntegrationGetAll:
         await integration_db_session.commit()
 
         # Filter by Brassicaceae
-        result = await SeedService.get_all(test_user, filters={"family": "Brassicaceae"})
+        result = await SeedService.get_all(
+            test_user, filters={"family": "Brassicaceae"}
+        )
 
         # Verify only Brassicaceae seeds returned
         assert "seeds" in result
@@ -217,7 +219,11 @@ class TestSeedServiceIntegrationGetAll:
         result_asc = await SeedService.get_all(
             test_user, order_by="genus", order_direction="asc", limit=100
         )
-        genera_asc = [s["genus"] for s in result_asc["seeds"] if s["name_code"] in ["SEED-A", "SEED-Z"]]
+        genera_asc = [
+            s["genus"]
+            for s in result_asc["seeds"]
+            if s["name_code"] in ["SEED-A", "SEED-Z"]
+        ]
         if len(genera_asc) == 2:
             assert genera_asc == ["Aaa", "Zzz"]
 
@@ -225,7 +231,11 @@ class TestSeedServiceIntegrationGetAll:
         result_desc = await SeedService.get_all(
             test_user, order_by="genus", order_direction="desc", limit=100
         )
-        genera_desc = [s["genus"] for s in result_desc["seeds"] if s["name_code"] in ["SEED-A", "SEED-Z"]]
+        genera_desc = [
+            s["genus"]
+            for s in result_desc["seeds"]
+            if s["name_code"] in ["SEED-A", "SEED-Z"]
+        ]
         if len(genera_desc) == 2:
             assert genera_desc == ["Zzz", "Aaa"]
 
@@ -438,6 +448,7 @@ class TestSeedServiceIntegrationCreate:
 
         # Verify persistence - query database directly
         from sqlalchemy import select
+
         query = select(Seed).where(Seed.id == seed_id)
         db_result = await integration_db_session.execute(query)
         db_seed = db_result.scalar_one_or_none()
@@ -506,6 +517,7 @@ class TestSeedServiceIntegrationCreate:
     ):
         """Verify create auto-generates UUID and timestamps."""
         import time
+
         before_create = datetime.now(timezone.utc)
         time.sleep(0.1)  # Small delay to ensure timestamp difference
 
@@ -534,6 +546,7 @@ class TestSeedServiceIntegrationCreate:
 
         # Parse timestamps and verify they're in reasonable range
         from datetime import datetime as dt
+
         created = dt.fromisoformat(result["date_created"].replace("Z", "+00:00"))
         updated = dt.fromisoformat(result["date_updated"].replace("Z", "+00:00"))
 
@@ -565,6 +578,7 @@ class TestSeedServiceIntegrationCreate:
 
         # Query directly from database
         from sqlalchemy import select
+
         query = select(Seed).where(Seed.id == seed_id).where(Seed.active.is_(True))
         db_result = await integration_db_session.execute(query)
         persisted_seed = db_result.scalar_one_or_none()
@@ -625,7 +639,7 @@ class TestSeedServiceIntegrationUpdate:
         # Verify persistence in database using a fresh session to avoid cache issues
         from sqlalchemy import select
         from app.db.utils import sessionmanager
-        
+
         async with sessionmanager.get_session() as fresh_session:
             query = select(Seed).where(Seed.id == seed_id)
             db_result = await fresh_session.execute(query)
@@ -852,7 +866,7 @@ class TestSeedServiceIntegrationDelete:
         # Verify it's soft deleted using a fresh session to avoid cache issues
         from sqlalchemy import select
         from app.db.utils import sessionmanager
-        
+
         async with sessionmanager.get_session() as fresh_session:
             query = select(Seed).where(Seed.id == seed_id)
             db_result = await fresh_session.execute(query)
@@ -1109,7 +1123,9 @@ class TestSeedServiceIntegrationGetSeedData:
 
         # Filter our test seeds
         test_seed_codes = [f"INACTIVE-{i:03d}" for i in range(3)]
-        found_test_seeds = [s for s in result["seeds"] if s["name_code"] in test_seed_codes]
+        found_test_seeds = [
+            s for s in result["seeds"] if s["name_code"] in test_seed_codes
+        ]
 
         # Should not find any of our inactive test seeds
         assert len(found_test_seeds) == 0

@@ -30,7 +30,9 @@ async def check_db_synchronization(logger=None):
     os.environ["ALEMBIC_MIGRATION_LOG_LEVEL"] = "WARNING"
 
     if logger:
-        logger.info("Checking if database is synchronized with alembic head", database=db_name)
+        logger.info(
+            "Checking if database is synchronized with alembic head", database=db_name
+        )
     await validate_database_startup(async_engine)
 
 

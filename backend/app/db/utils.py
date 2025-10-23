@@ -28,6 +28,7 @@ def _get_logger():
     if _logger is None:
         # Import here to avoid circular dependency
         from app.service import LogService
+
         _logger = LogService.get_logger()
     return _logger
 
@@ -43,7 +44,9 @@ class SessionManager:
         """Initialize the SessionManager with database URL and engine options."""
         self.engine = create_async_engine(url, **engine_kwargs)
         self._sessionmaker = async_sessionmaker(self.engine, expire_on_commit=False)
-        _get_logger().info("Database SessionManager initialized", database_url=url.split("@")[-1])  # Hide credentials
+        _get_logger().info(
+            "Database SessionManager initialized", database_url=url.split("@")[-1]
+        )  # Hide credentials
 
     def get_session_factory(self) -> async_sessionmaker:
         """Get the async sessionmaker factory."""
@@ -314,7 +317,9 @@ async def run_migrations(async_engine: AsyncEngine, target_version: str = "head"
     try:
         await run_alembic_func(async_engine, _alembic_upgrade, target=target_version)
     except Exception as e:
-        _get_logger().error("Migration failed", error=str(e), target_version=target_version)
+        _get_logger().error(
+            "Migration failed", error=str(e), target_version=target_version
+        )
         raise
 
 
@@ -339,5 +344,7 @@ async def create_migration_file(async_engine: AsyncEngine, message: str):
     try:
         await run_alembic_func(async_engine, _alembic_generate, message=message)
     except Exception as e:
-        _get_logger().error("Failed to create new migration file", error=str(e), message=message)
+        _get_logger().error(
+            "Failed to create new migration file", error=str(e), message=message
+        )
         raise

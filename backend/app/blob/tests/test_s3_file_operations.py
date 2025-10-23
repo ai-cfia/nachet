@@ -266,7 +266,11 @@ class TestUploadBlob(TestS3FileOperations):
 
         properties = await storage.get_blob_properties(TEST_CONTAINER, blob_path)
         # Note: Some S3 implementations may not preserve content-type exactly
-        assert properties["content_type"] in ["application/json", "binary/octet-stream", "application/octet-stream"]
+        assert properties["content_type"] in [
+            "application/json",
+            "binary/octet-stream",
+            "application/octet-stream",
+        ]
 
     @pytest.mark.asyncio
     async def test_upload_with_folder_structure(
@@ -655,7 +659,11 @@ class TestGetBlobProperties(TestS3FileOperations):
         assert properties["container"] == TEST_CONTAINER
         assert properties["size"] == len(sample_image_data)
         # Note: Some S3 implementations may not preserve content-type exactly
-        assert properties["content_type"] in ["image/png", "binary/octet-stream", "application/octet-stream"]
+        assert properties["content_type"] in [
+            "image/png",
+            "binary/octet-stream",
+            "application/octet-stream",
+        ]
         assert "etag" in properties
         assert "last_modified" in properties
 

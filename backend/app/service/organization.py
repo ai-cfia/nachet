@@ -52,7 +52,7 @@ class OrganizationService(BaseCRUDService[Organization]):
     def serialize_entity(cls, entity: Organization) -> Dict[str, Any]:
         """
         Convert Organization entity to dictionary for API response.
-        
+
         Includes RBAC roles for the organization.
         """
         return {
@@ -286,13 +286,13 @@ class OrganizationService(BaseCRUDService[Organization]):
         name = name.replace(" ", "-")
 
         # Remove all characters except a-z, 0-9, and dashes
-        name = re.sub(r'[^a-z0-9\-]', '', name)
+        name = re.sub(r"[^a-z0-9\-]", "", name)
 
         # Collapse multiple consecutive dashes
-        name = re.sub(r'-+', '-', name)
+        name = re.sub(r"-+", "-", name)
 
         # Strip leading/trailing dashes
-        name = name.strip('-')
+        name = name.strip("-")
 
         # Truncate to 10 characters
         name = name[:10]

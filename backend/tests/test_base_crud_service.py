@@ -120,9 +120,7 @@ async def test_get_all_success(
     mock_data_service = AsyncMock()
     mock_data_service.get_all.return_value = ([mock_entity], 1)
 
-    with patch.object(
-        MockEntityDataService, "__init__", return_value=None
-    ):
+    with patch.object(MockEntityDataService, "__init__", return_value=None):
         with patch.object(
             MockEntityDataService, "get_all", return_value=([mock_entity], 1)
         ):
@@ -176,16 +174,12 @@ async def test_get_all_with_pagination(
     # Create multiple entities for pagination test
     entities = [mock_entity, mock_entity]
 
-    with patch.object(
-        MockEntityDataService, "__init__", return_value=None
-    ):
+    with patch.object(MockEntityDataService, "__init__", return_value=None):
         with patch.object(
             MockEntityDataService, "get_all", return_value=(entities, 150)
         ) as mock_get_all:
             # Act
-            result = await MockEntityService.get_all(
-                mock_user_id, offset=50, limit=50
-            )
+            result = await MockEntityService.get_all(mock_user_id, offset=50, limit=50)
 
             # Assert
             assert result["total"] == 150
@@ -211,17 +205,13 @@ async def test_get_all_with_filters(
     mock_session = AsyncMock()
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
-    with patch.object(
-        MockEntityDataService, "__init__", return_value=None
-    ):
+    with patch.object(MockEntityDataService, "__init__", return_value=None):
         with patch.object(
             MockEntityDataService, "get_all", return_value=([mock_entity], 1)
         ) as mock_get_all:
             # Act
             filters = {"name": "Test Entity", "active": True}
-            result = await MockEntityService.get_all(
-                mock_user_id, filters=filters
-            )
+            result = await MockEntityService.get_all(mock_user_id, filters=filters)
 
             # Assert
             assert result["total"] == 1
@@ -243,9 +233,7 @@ async def test_get_all_with_sorting(
     mock_session = AsyncMock()
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
-    with patch.object(
-        MockEntityDataService, "__init__", return_value=None
-    ):
+    with patch.object(MockEntityDataService, "__init__", return_value=None):
         with patch.object(
             MockEntityDataService, "get_all", return_value=([mock_entity], 1)
         ) as mock_get_all:
@@ -276,9 +264,7 @@ async def test_get_by_id_success(
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
     with patch.object(MockEntityDataService, "__init__", return_value=None):
-        with patch.object(
-            MockEntityDataService, "get_by_id", return_value=mock_entity
-        ):
+        with patch.object(MockEntityDataService, "get_by_id", return_value=mock_entity):
             # Act
             result = await MockEntityService.get_by_id(mock_user_id, mock_entity_id)
 
@@ -326,9 +312,7 @@ async def test_create_success(
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
     with patch.object(MockEntityDataService, "__init__", return_value=None):
-        with patch.object(
-            MockEntityDataService, "create", return_value=mock_entity
-        ):
+        with patch.object(MockEntityDataService, "create", return_value=mock_entity):
             # Act
             result = await MockEntityService.create(
                 mock_user_id, name="Test Entity", active=True
@@ -346,7 +330,9 @@ async def test_create_success(
 async def test_create_rbac_failure(mock_verify_cfia_admin, mock_user_id):
     """Test create fails when user is not admin."""
     # Arrange
-    mock_verify_cfia_admin.side_effect = HTTPException(status_code=403, detail="Forbidden")
+    mock_verify_cfia_admin.side_effect = HTTPException(
+        status_code=403, detail="Forbidden"
+    )
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc_info:
@@ -370,14 +356,10 @@ async def test_update_success(
     mock_session = AsyncMock()
     mock_get_session.return_value.__aenter__.return_value = mock_session
 
-    updated_entity = MockEntity(
-        id=mock_entity_id, name="Updated Entity", active=True
-    )
+    updated_entity = MockEntity(id=mock_entity_id, name="Updated Entity", active=True)
 
     with patch.object(MockEntityDataService, "__init__", return_value=None):
-        with patch.object(
-            MockEntityDataService, "update", return_value=updated_entity
-        ):
+        with patch.object(MockEntityDataService, "update", return_value=updated_entity):
             # Act
             result = await MockEntityService.update(
                 mock_user_id, mock_entity_id, name="Updated Entity"
@@ -417,10 +399,14 @@ async def test_update_not_found(
 
 @pytest.mark.asyncio
 @patch("app.service.rbac.RbacService.verify_user_is_cfia_admin")
-async def test_update_rbac_failure(mock_verify_cfia_admin, mock_user_id, mock_entity_id):
+async def test_update_rbac_failure(
+    mock_verify_cfia_admin, mock_user_id, mock_entity_id
+):
     """Test update fails when user is not admin."""
     # Arrange
-    mock_verify_cfia_admin.side_effect = HTTPException(status_code=403, detail="Forbidden")
+    mock_verify_cfia_admin.side_effect = HTTPException(
+        status_code=403, detail="Forbidden"
+    )
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc_info:
@@ -486,10 +472,14 @@ async def test_delete_not_found(
 
 @pytest.mark.asyncio
 @patch("app.service.rbac.RbacService.verify_user_is_cfia_admin")
-async def test_delete_rbac_failure(mock_verify_cfia_admin, mock_user_id, mock_entity_id):
+async def test_delete_rbac_failure(
+    mock_verify_cfia_admin, mock_user_id, mock_entity_id
+):
     """Test delete fails when user is not admin."""
     # Arrange
-    mock_verify_cfia_admin.side_effect = HTTPException(status_code=403, detail="Forbidden")
+    mock_verify_cfia_admin.side_effect = HTTPException(
+        status_code=403, detail="Forbidden"
+    )
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc_info:

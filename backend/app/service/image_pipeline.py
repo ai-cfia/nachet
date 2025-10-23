@@ -63,9 +63,9 @@ async def process_image_pipeline(
 
         # Publish initial progress event
         await DBOS.set_event_async("processing_status", "started")
-        await DBOS.set_event_async("timestamps", {
-            "started": datetime.utcnow().isoformat()
-        })
+        await DBOS.set_event_async(
+            "timestamps", {"started": datetime.utcnow().isoformat()}
+        )
 
         # Step 1: Upload to Azure Blob Storage (nachet-original)
         DBOS.logger.info(f"[{image_id}] Step 1: Uploading to nachet-original")
@@ -116,10 +116,13 @@ async def process_image_pipeline(
         # Publish completion
         await DBOS.set_event_async("processing_status", "completed")
         all_events = await DBOS.get_all_events_async(DBOS.workflow_id)
-        await DBOS.set_event_async("timestamps", {
-            **all_events.get("timestamps", {}),
-            "completed": datetime.utcnow().isoformat()
-        })
+        await DBOS.set_event_async(
+            "timestamps",
+            {
+                **all_events.get("timestamps", {}),
+                "completed": datetime.utcnow().isoformat(),
+            },
+        )
 
         DBOS.logger.info(f"[{image_id}] Pipeline completed successfully")
 
@@ -135,10 +138,13 @@ async def process_image_pipeline(
 
         # Publish error event
         await DBOS.set_event_async("processing_status", "failed")
-        await DBOS.set_event_async("error_details", {
-            "error": str(e),
-            "error_type": type(e).__name__,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        await DBOS.set_event_async(
+            "error_details",
+            {
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
 
         raise

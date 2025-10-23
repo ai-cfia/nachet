@@ -2,7 +2,10 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.model.inference import SeedDetectorAPIResponse, EnhancedClassificationResult
+    from app.model.inference import (
+        SeedDetectorAPIResponse,
+        EnhancedClassificationResult,
+    )
 
 
 @dataclass
@@ -68,6 +71,7 @@ from .inference import (
     process_enhanced_classification_result as process_enhanced_classification_result,
     process_api_ready_classification_result as process_api_ready_classification_result,
 )
+
 # from .torch_swin import request_inference_from_torch_swin
 from .torch_ensemble import (
     request_inference_ensemble_a,
@@ -87,7 +91,7 @@ class InferenceDispatchService:
             endpoint=model["endpoint"],
             request_function=model["request_function"],
         )
-        
+
         match model["request_function"]:
             case "rcnn_seed_detector":
                 return request_inference_from_seed_detector(model_info, previous_result)

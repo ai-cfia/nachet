@@ -304,15 +304,15 @@ class TestOrganizationServiceSQLInjection:
 
             async def update(self, entity_id, **kwargs):
                 # Extract name from kwargs
-                name = kwargs.get('name')
+                name = kwargs.get("name")
                 if name:
                     assert name == malicious_name
 
                 org = Organization(
                     id=entity_id,
                     name=name or malicious_name,
-                    description=kwargs.get('description', "Test"),
-                    folder_prefix=kwargs.get('folder_prefix', "test"),
+                    description=kwargs.get("description", "Test"),
+                    folder_prefix=kwargs.get("folder_prefix", "test"),
                     date_created=datetime.now(timezone.utc),
                     active=True,
                 )

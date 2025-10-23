@@ -405,7 +405,9 @@ class TestPipelineServiceUpdate:
 
         # Should raise 404
         with pytest.raises(HTTPException) as exc_info:
-            await PipelineService.update(user_id, pipeline_id, name="Pipeline 1 Updated")
+            await PipelineService.update(
+                user_id, pipeline_id, name="Pipeline 1 Updated"
+            )
 
         assert exc_info.value.status_code == 404
 

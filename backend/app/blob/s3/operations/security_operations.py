@@ -23,6 +23,7 @@ def _get_logger():
     global _logger
     if _logger is None:
         from app.service.logs import LogService
+
         _logger = LogService.get_logger()
     return _logger
 
@@ -81,7 +82,7 @@ class SecurityOperations:
 
         # Validate container exists
         await ErrorHandler.check_container_exists(self._client, container)
-        
+
         # Only check blob exists for read/delete operations
         # For write operations, blob doesn't need to exist yet
         if "write" not in permissions:
@@ -103,7 +104,7 @@ class SecurityOperations:
             container=container,
             blob=name,
             method=client_method,
-            expiry_seconds=expiry_seconds
+            expiry_seconds=expiry_seconds,
         )
 
         # Generate presigned URL
@@ -128,7 +129,9 @@ class SecurityOperations:
             "method": client_method,
         }
 
-        _get_logger().info("Presigned URL generated successfully", container=container, blob=name)
+        _get_logger().info(
+            "Presigned URL generated successfully", container=container, blob=name
+        )
         return result
 
     @ErrorHandler.handle_service_errors("generate container presigned URL")
@@ -175,7 +178,7 @@ class SecurityOperations:
             "Generating presigned URL for S3 bucket",
             container=container,
             method=client_method,
-            expiry_seconds=expiry_seconds
+            expiry_seconds=expiry_seconds,
         )
 
         # Generate presigned URL
@@ -199,5 +202,7 @@ class SecurityOperations:
             "method": client_method,
         }
 
-        _get_logger().info("Container presigned URL generated successfully", container=container)
+        _get_logger().info(
+            "Container presigned URL generated successfully", container=container
+        )
         return result

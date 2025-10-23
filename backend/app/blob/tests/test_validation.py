@@ -152,8 +152,10 @@ class TestContainerNameValidation:
         with pytest.raises(BlobStorageError) as exc_info:
             validate_container_name(name)
         # xn--test fails because of consecutive hyphens, others fail due to reserved prefix
-        assert ("reserved prefix" in str(exc_info.value).lower() or
-                "consecutive hyphens" in str(exc_info.value).lower())
+        assert (
+            "reserved prefix" in str(exc_info.value).lower()
+            or "consecutive hyphens" in str(exc_info.value).lower()
+        )
 
     # Invalid container names - reserved suffixes
     @pytest.mark.parametrize(
@@ -171,9 +173,11 @@ class TestContainerNameValidation:
         with pytest.raises(BlobStorageError) as exc_info:
             validate_container_name(name)
         # Some fail due to consecutive hyphens or periods, others due to reserved suffix
-        assert ("reserved suffix" in str(exc_info.value).lower() or
-                "consecutive hyphens" in str(exc_info.value).lower() or
-                "can only contain" in str(exc_info.value).lower())
+        assert (
+            "reserved suffix" in str(exc_info.value).lower()
+            or "consecutive hyphens" in str(exc_info.value).lower()
+            or "can only contain" in str(exc_info.value).lower()
+        )
 
 
 class TestBlobNameValidation:
@@ -251,7 +255,7 @@ class TestBlobNameValidation:
     # Invalid blob names - characters to avoid
     @pytest.mark.parametrize(
         "char",
-        ['\\', '{', '}', '^', '%', '`', ']', '"', '<', '>', '~', '#', '|'],
+        ["\\", "{", "}", "^", "%", "`", "]", '"', "<", ">", "~", "#", "|"],
     )
     def test_invalid_blob_names_avoid_characters(self, char):
         """Test that blob names with characters to avoid fail validation."""
@@ -263,7 +267,7 @@ class TestBlobNameValidation:
     # Invalid blob names - invalid characters
     @pytest.mark.parametrize(
         "char",
-        ['@', '&', '$', '=', ';', ':', '+', ',', '?', ' '],
+        ["@", "&", "$", "=", ";", ":", "+", ",", "?", " "],
     )
     def test_invalid_blob_names_invalid_characters(self, char):
         """Test that blob names with invalid characters fail validation."""
@@ -271,7 +275,10 @@ class TestBlobNameValidation:
         with pytest.raises(BlobStorageError) as exc_info:
             validate_blob_name(name)
         # Should fail with invalid characters message
-        assert "invalid characters" in str(exc_info.value).lower() or "can only contain" in str(exc_info.value).lower()
+        assert (
+            "invalid characters" in str(exc_info.value).lower()
+            or "can only contain" in str(exc_info.value).lower()
+        )
 
     def test_invalid_blob_names_tab_character(self):
         """Test that blob names with tab character fail (control character)."""

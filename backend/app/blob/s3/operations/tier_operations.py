@@ -23,6 +23,7 @@ def _get_logger():
     global _logger
     if _logger is None:
         from app.service.logs import LogService
+
         _logger = LogService.get_logger()
     return _logger
 
@@ -81,7 +82,7 @@ class TierOperations:
             "Attempting to set blob storage class",
             container=container,
             blob=name,
-            tier=validated_tier
+            tier=validated_tier,
         )
 
         try:
@@ -100,7 +101,7 @@ class TierOperations:
                 "Blob storage class set successfully",
                 container=container,
                 blob=name,
-                tier=validated_tier
+                tier=validated_tier,
             )
             return True
 
@@ -114,7 +115,7 @@ class TierOperations:
                     container=container,
                     blob=name,
                     tier=validated_tier,
-                    error=str(e)
+                    error=str(e),
                 )
                 # Return True as the operation is "successful" (just not supported)
                 return True

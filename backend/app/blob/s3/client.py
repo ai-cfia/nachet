@@ -12,6 +12,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 class S3ConfigurationError(Exception):
     """Raised when S3 configuration is invalid."""
+
     pass
 
 
@@ -24,6 +25,7 @@ def _get_logger():
     global _logger
     if _logger is None:
         from app.service.logs import LogService
+
         _logger = LogService.get_logger()
     return _logger
 
@@ -62,7 +64,7 @@ def create_s3_client(config: Dict[str, Any]):
             _get_logger().error(
                 "Missing S3 credentials in configuration",
                 has_access_key=bool(access_key_id),
-                has_secret_key=bool(secret_access_key)
+                has_secret_key=bool(secret_access_key),
             )
             raise S3ConfigurationError(
                 "S3 credentials (s3_access_key_id and s3_secret_access_key) are required"
@@ -91,13 +93,11 @@ def create_s3_client(config: Dict[str, Any]):
                 "Creating S3 client with custom endpoint",
                 endpoint_url=endpoint_url,
                 region=region,
-                use_ssl=use_ssl
+                use_ssl=use_ssl,
             )
         else:
             _get_logger().info(
-                "Creating S3 client for AWS",
-                region=region,
-                use_ssl=use_ssl
+                "Creating S3 client for AWS", region=region, use_ssl=use_ssl
             )
 
         # Create the S3 client
@@ -111,9 +111,7 @@ def create_s3_client(config: Dict[str, Any]):
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if error_code in ["InvalidAccessKeyId", "SignatureDoesNotMatch"]:
                 _get_logger().error(
-                    "S3 authentication failed",
-                    error_code=error_code,
-                    error=str(e)
+                    "S3 authentication failed", error_code=error_code, error=str(e)
                 )
                 raise S3ConfigurationError(
                     f"Invalid S3 credentials: {e.response.get('Error', {}).get('Message', str(e))}"
@@ -123,7 +121,7 @@ def create_s3_client(config: Dict[str, Any]):
                 _get_logger().warning(
                     "S3 client created but connection test failed",
                     error_code=error_code,
-                    error=str(e)
+                    error=str(e),
                 )
 
         return s3_client
@@ -134,7 +132,7 @@ def create_s3_client(config: Dict[str, Any]):
         _get_logger().error(
             "BotoCoreError during S3 client creation",
             error=str(e),
-            error_type=type(e).__name__
+            error_type=type(e).__name__,
         )
         raise S3ConfigurationError(
             f"Failed to create S3 client due to configuration error: {str(e)}"
@@ -143,7 +141,7 @@ def create_s3_client(config: Dict[str, Any]):
         _get_logger().error(
             "Unhandled exception in S3 client creation",
             error=str(e),
-            error_type=type(e).__name__
+            error_type=type(e).__name__,
         )
         raise Exception(f"S3 client creation failed: {str(e)}")
 
@@ -163,9 +161,7 @@ def validate_s3_connection(s3_client) -> bool:
         return True
     except Exception as e:
         _get_logger().error(
-            "S3 connection validation failed",
-            error=str(e),
-            error_type=type(e).__name__
+            "S3 connection validation failed", error=str(e), error_type=type(e).__name__
         )
         return False
 

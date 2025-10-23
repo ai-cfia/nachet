@@ -79,18 +79,18 @@ def validate_container_name(name: str) -> str:
 
     # Check for valid characters (only lowercase letters, numbers, and hyphens after converting to lowercase)
     # Note: name is already lowercase at this point
-    if not all(c.islower() or c.isdigit() or c == '-' for c in name):
-        invalid_chars = set(c for c in name if not (c.islower() or c.isdigit() or c == '-'))
+    if not all(c.islower() or c.isdigit() or c == "-" for c in name):
+        invalid_chars = set(
+            c for c in name if not (c.islower() or c.isdigit() or c == "-")
+        )
         raise BlobStorageError(
             f"Container name can only contain lowercase letters, numbers, and hyphens. "
             f"Invalid characters: {', '.join(repr(c) for c in sorted(invalid_chars))}"
         )
 
     # Check for consecutive hyphens (must happen after character validation)
-    if '--' in name:
-        raise BlobStorageError(
-            "Container name cannot contain consecutive hyphens (--)"
-        )
+    if "--" in name:
+        raise BlobStorageError("Container name cannot contain consecutive hyphens (--)")
 
     # Check if formatted as IP address (must happen after converting to lowercase)
     if _is_ip_address_format(name):
@@ -147,9 +147,7 @@ def validate_blob_name(name: str) -> str:
     name = name.strip()
 
     if name != original_name:
-        raise BlobStorageError(
-            "Blob name cannot have leading or trailing whitespace"
-        )
+        raise BlobStorageError("Blob name cannot have leading or trailing whitespace")
 
     # Check length (1-1024 characters)
     if len(name) > 1024:
@@ -184,8 +182,8 @@ def validate_blob_name(name: str) -> str:
 
     # Check for allowed characters (conservative approach)
     # Allow: alphanumeric, hyphen, underscore, period, forward slash
-    if not all(c.isalnum() or c in '-_/.' for c in name):
-        invalid_chars = set(c for c in name if not (c.isalnum() or c in '-_/.'))
+    if not all(c.isalnum() or c in "-_/." for c in name):
+        invalid_chars = set(c for c in name if not (c.isalnum() or c in "-_/."))
         raise BlobStorageError(
             f"Blob name can only contain letters, numbers, hyphens, underscores, "
             f"periods, and forward slashes. "
@@ -193,7 +191,7 @@ def validate_blob_name(name: str) -> str:
         )
 
     # Check for trailing dots or slashes (backslash already caught above)
-    if name.endswith(('.', '/')):
+    if name.endswith((".", "/")):
         raise BlobStorageError(
             f"Blob name cannot end with a dot (.) or forward slash (/). "
             f"Name ends with: '{name[-1]}'"
@@ -206,14 +204,14 @@ def validate_blob_name(name: str) -> str:
         )
 
     # Check path segment count (Azure flat storage limit: 254 segments)
-    segments = name.split('/')
+    segments = name.split("/")
     if len(segments) > 254:
         raise BlobStorageError(
             f"Blob name cannot have more than 254 path segments (got {len(segments)})"
         )
 
     # Check for double slashes (empty path segments)
-    if '//' in name:
+    if "//" in name:
         raise BlobStorageError(
             "Blob name cannot contain consecutive forward slashes (//)"
         )
@@ -231,7 +229,7 @@ def _is_ip_address_format(name: str) -> bool:
     Returns:
         True if the name looks like an IP address (e.g., 192.168.5.4)
     """
-    parts = name.split('.')
+    parts = name.split(".")
 
     # Must have exactly 4 parts
     if len(parts) != 4:
@@ -244,7 +242,7 @@ def _is_ip_address_format(name: str) -> bool:
             if num < 0 or num > 255:
                 return False
             # Check for leading zeros (e.g., 192.168.01.1 is not valid)
-            if len(part) > 1 and part[0] == '0':
+            if len(part) > 1 and part[0] == "0":
                 return False
         return True
     except ValueError:
@@ -265,11 +263,11 @@ def _has_period_only_segments(name: str) -> bool:
         True if the name contains . or .. as standalone path segments
     """
     # Split by forward slash to get path segments
-    segments = name.split('/')
+    segments = name.split("/")
 
     for segment in segments:
         # Check for standalone period segments
-        if segment == '.' or segment == '..':
+        if segment == "." or segment == "..":
             return True
 
     return False
@@ -297,30 +295,24 @@ def validate_metadata_key(key: str) -> str:
         raise ValidationError("metadata_key", key, "Metadata key cannot be empty")
 
     # Must start with letter or underscore
-    if not (key[0].isalpha() or key[0] == '_'):
+    if not (key[0].isalpha() or key[0] == "_"):
         raise ValidationError(
-            "metadata_key",
-            key,
-            "Metadata key must start with a letter or underscore"
+            "metadata_key", key, "Metadata key must start with a letter or underscore"
         )
 
     # Must contain only letters, numbers, or underscores
-    if not all(c.isalnum() or c == '_' for c in key):
+    if not all(c.isalnum() or c == "_" for c in key):
         raise ValidationError(
             "metadata_key",
             key,
-            "Metadata key can only contain letters, numbers, or underscores"
+            "Metadata key can only contain letters, numbers, or underscores",
         )
 
     # Must be valid ASCII
     try:
-        key.encode('ascii')
+        key.encode("ascii")
     except UnicodeEncodeError:
-        raise ValidationError(
-            "metadata_key",
-            key,
-            "Metadata key must be valid ASCII"
-        )
+        raise ValidationError("metadata_key", key, "Metadata key must be valid ASCII")
 
     return key
 
@@ -345,12 +337,10 @@ def validate_metadata_value(value: str) -> str:
 
     # Must be valid ASCII
     try:
-        value.encode('ascii')
+        value.encode("ascii")
     except UnicodeEncodeError:
         raise ValidationError(
-            "metadata_value",
-            value,
-            "Metadata value must be valid ASCII"
+            "metadata_value", value, "Metadata value must be valid ASCII"
         )
 
     return value

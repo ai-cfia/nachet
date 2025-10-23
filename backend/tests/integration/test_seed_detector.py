@@ -58,11 +58,11 @@ class TestRequestInferenceFromSeedDetector:
         # (Pydantic validates the schema during construction)
         assert isinstance(result.result, SeedDetectorAPIResponse)
         assert isinstance(result.result.boxes, list)
-        
+
         # Verify cropped images match detected boxes
         assert isinstance(result.images, list)
         assert len(result.images) == len(result.result.boxes)
-        
+
         # Verify each cropped image is valid base64
         for i, cropped_image in enumerate(result.images):
             assert isinstance(cropped_image, bytes), f"Cropped image {i} is not bytes"

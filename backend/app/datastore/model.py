@@ -120,7 +120,7 @@ class ModelTaskDataService(BaseCRUDDataService[ModelTask]):
     def get_query_options(self) -> list:
         """
         Return query options for eager loading ModelTask relationships.
-        
+
         Returns:
             List of SQLAlchemy query options for loading the models relationship
         """

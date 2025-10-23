@@ -89,10 +89,7 @@ async def wait_for_sanitization_callback(
 
         DBOS.logger.info(f"Waiting for sanitization callback on topic: {topic}")
 
-        message = await DBOS.recv_async(
-            topic=topic,
-            timeout_seconds=timeout_sec
-        )
+        message = await DBOS.recv_async(topic=topic, timeout_seconds=timeout_sec)
 
         if not message:
             raise SanitizationError(f"Sanitization timed out after {timeout_sec}s")
@@ -105,7 +102,9 @@ async def wait_for_sanitization_callback(
             error = message.get("error", "Unknown error")
             raise SanitizationError(f"Sanitization failed: {error}")
         else:
-            raise SanitizationError(f"Invalid sanitization status: {message.get('status')}")
+            raise SanitizationError(
+                f"Invalid sanitization status: {message.get('status')}"
+            )
 
     except Exception as e:
         if isinstance(e, SanitizationError):

@@ -395,7 +395,9 @@ class TestConfigurationIntegration:
         # Verify it contains actual values from config (without exposing them in assertions)
         # Check for presence of key components without printing the actual secrets
         assert config["blob_storage_name"] in connection_string
-        assert "AccountKey=" in connection_string  # Verify key is present without exposing value
+        assert (
+            "AccountKey=" in connection_string
+        )  # Verify key is present without exposing value
 
     def test_settings_blob_config(self):
         """Test that settings properly generate blob config."""

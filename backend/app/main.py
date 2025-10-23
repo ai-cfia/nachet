@@ -6,7 +6,7 @@ from dbos import DBOS, DBOSConfig
 
 
 app = create_app(Settings(), api_router, lifespan=lifespan)
-    
+
 dbos_config = DBOSConfig(
     name="nachet-dbos",
     dbos_system_schema="nachetdbos",
@@ -19,7 +19,7 @@ dbos_config = DBOSConfig(
     # otlp_traces_endpoints=["http://localhost:4318/v1/traces"]
     run_admin_server=True,
     admin_port=3001,
-    application_version="1.32.0"
+    application_version="1.32.0",
 )
 
 DBOS(fastapi=app, config=dbos_config)

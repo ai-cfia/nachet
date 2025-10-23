@@ -497,36 +497,43 @@ class RbacUserRoleDeletionError(RbacUserRoleError):
 
 class ImageProcessingError(Exception):
     """Base exception for image processing errors."""
+
     pass
 
 
 class InvalidImageError(ImageProcessingError):
     """Image validation failed."""
+
     pass
 
 
 class BlobUploadError(ImageProcessingError):
     """Failed to upload blob to Azure Storage."""
+
     pass
 
 
 class BlobDownloadError(ImageProcessingError):
     """Failed to download blob from Azure Storage."""
+
     pass
 
 
 class DefenderScanTimeoutError(ImageProcessingError):
     """Azure Defender scan timed out."""
+
     pass
 
 
 class DefenderScanFailedError(ImageProcessingError):
     """Azure Defender scan detected malware."""
+
     pass
 
 
 class SanitizationError(ImageProcessingError):
     """Sanitization operation failed."""
+
     pass
 
 

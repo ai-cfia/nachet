@@ -130,7 +130,9 @@ async def submit_toy_workflow(request: ToyWorkflowRequest):
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to start workflow: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to start workflow: {str(e)}"
+        )
 
 
 @router.get("/workflow/{workflow_id}", response_model=WorkflowStatusResponse)
@@ -170,7 +172,9 @@ async def get_workflow_status(workflow_id: str):
         workflow_handle = await DBOS.retrieve_workflow_async(workflow_id)
 
         if workflow_handle is None:
-            raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Workflow {workflow_id} not found"
+            )
 
         # Get workflow status
         status = await workflow_handle.get_status()
@@ -206,7 +210,9 @@ async def get_workflow_status(workflow_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get workflow status: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get workflow status: {str(e)}"
+        )
 
 
 @router.get("/workflow/{workflow_id}/events")
@@ -237,7 +243,9 @@ async def get_workflow_events(workflow_id: str):
         workflow_handle = await DBOS.retrieve_workflow_async(workflow_id)
 
         if workflow_handle is None:
-            raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"Workflow {workflow_id} not found"
+            )
 
         # Get all events
         events = await DBOS.get_all_events_async(workflow_id)
@@ -250,7 +258,9 @@ async def get_workflow_events(workflow_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get workflow events: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get workflow events: {str(e)}"
+        )
 
 
 @router.post("/sync-workflow")

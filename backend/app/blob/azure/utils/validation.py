@@ -33,6 +33,7 @@ class ValidationHelper:
             BlobStorageError: If name is invalid
         """
         from ...validation import validate_blob_name as unified_validate_blob_name
+
         return unified_validate_blob_name(name)
 
     @staticmethod
@@ -52,7 +53,10 @@ class ValidationHelper:
         Raises:
             BlobStorageError: If name is invalid
         """
-        from ...validation import validate_container_name as unified_validate_container_name
+        from ...validation import (
+            validate_container_name as unified_validate_container_name,
+        )
+
         return unified_validate_container_name(container)
 
     @staticmethod

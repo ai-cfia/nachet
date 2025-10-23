@@ -29,6 +29,7 @@ def _get_logger():
     global _logger
     if _logger is None:
         from app.service.logs import LogService
+
         _logger = LogService.get_logger()
     return _logger
 
@@ -93,14 +94,17 @@ class ContainerOperations:
                     # S3 doesn't have bucket-level metadata like Azure
                     # We can get tags instead which serve a similar purpose
                     tag_response = self._client.get_bucket_tagging(Bucket=bucket_name)
-                    metadata = {tag["Key"]: tag["Value"] for tag in tag_response.get("TagSet", [])}
+                    metadata = {
+                        tag["Key"]: tag["Value"]
+                        for tag in tag_response.get("TagSet", [])
+                    }
                 except ClientError as e:
                     error_code = e.response.get("Error", {}).get("Code", "Unknown")
                     if error_code not in ["NoSuchTagSet"]:
                         _get_logger().warning(
                             "Failed to get bucket tags",
                             bucket=bucket_name,
-                            error=str(e)
+                            error=str(e),
                         )
 
             # Convert S3 bucket to ContainerInfo model
@@ -154,7 +158,9 @@ class ContainerOperations:
             metadata = {}
             try:
                 tag_response = self._client.get_bucket_tagging(Bucket=name)
-                metadata = {tag["Key"]: tag["Value"] for tag in tag_response.get("TagSet", [])}
+                metadata = {
+                    tag["Key"]: tag["Value"] for tag in tag_response.get("TagSet", [])
+                }
             except ClientError:
                 pass
 
@@ -187,7 +193,7 @@ class ContainerOperations:
                 if region and region != "us-east-1":
                     self._client.create_bucket(
                         Bucket=name,
-                        CreateBucketConfiguration={"LocationConstraint": region}
+                        CreateBucketConfiguration={"LocationConstraint": region},
                     )
                 else:
                     raise
@@ -200,8 +206,7 @@ class ContainerOperations:
             tag_set = [{"Key": k, "Value": v} for k, v in metadata.items()]
             try:
                 self._client.put_bucket_tagging(
-                    Bucket=name,
-                    Tagging={"TagSet": tag_set}
+                    Bucket=name, Tagging={"TagSet": tag_set}
                 )
             except ClientError as e:
                 error_code = e.response.get("Error", {}).get("Code", "Unknown")
@@ -211,7 +216,7 @@ class ContainerOperations:
                     _get_logger().warning(
                         "Bucket tagging not supported or failed, continuing without tags",
                         bucket=name,
-                        error_code=error_code
+                        error_code=error_code,
                     )
                 else:
                     raise
@@ -252,7 +257,9 @@ class ContainerOperations:
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if error_code in ["NoSuchBucket", "404"]:
-                _get_logger().info("Bucket does not exist, nothing to delete", bucket=name)
+                _get_logger().info(
+                    "Bucket does not exist, nothing to delete", bucket=name
+                )
                 return False
             raise
 
@@ -344,11 +351,15 @@ class ContainerOperations:
         metadata = {}
         try:
             tag_response = self._client.get_bucket_tagging(Bucket=name)
-            metadata = {tag["Key"]: tag["Value"] for tag in tag_response.get("TagSet", [])}
+            metadata = {
+                tag["Key"]: tag["Value"] for tag in tag_response.get("TagSet", [])
+            }
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if error_code not in ["NoSuchTagSet"]:
-                _get_logger().warning("Failed to get bucket tags", bucket=name, error=str(e))
+                _get_logger().warning(
+                    "Failed to get bucket tags", bucket=name, error=str(e)
+                )
 
         # Convert to ContainerInfo model
         container_info = ContainerInfo(

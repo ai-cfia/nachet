@@ -2,7 +2,7 @@
 Integration tests for AnnotationService - NO MOCKS.
 
 These tests verify the complete integration of AnnotationService with:
-- AuthorizedBaseCRUDService inheritance  
+- AuthorizedBaseCRUDService inheritance
 - Role-based access control (RBAC) via RbacService
 - Database operations via AnnotationDataService
 - Proper relationship loading and serialization
@@ -73,7 +73,7 @@ class TestAnnotationServiceIntegrationBasic:
         raw_data = {"inference": "test_inference", "confidence": 0.95}
         annotation = await AnnotationService.create(
             _user_id=test_admin_user,  # Use _user_id parameter
-            user_id=test_admin_user,   # And user_id in kwargs
+            user_id=test_admin_user,  # And user_id in kwargs
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -89,9 +89,7 @@ class TestAnnotationServiceIntegrationBasic:
         assert annotation["org_admin_role_id"] == str(test_org_admin_role)
 
         # Retrieve annotation by ID
-        retrieved = await AnnotationService.get_by_id(
-            test_admin_user, annotation["id"]
-        )
+        retrieved = await AnnotationService.get_by_id(test_admin_user, annotation["id"])
 
         # Verify retrieved annotation
         assert retrieved is not None
@@ -624,9 +622,7 @@ class TestAnnotationServiceIntegrationGetAll:
             annotations.append(annotation)
 
         # Get first 2 annotations
-        result = await AnnotationService.get_all(
-            test_admin_user, limit=2, offset=0
-        )
+        result = await AnnotationService.get_all(test_admin_user, limit=2, offset=0)
         assert "items" in result
         assert "total" in result
         assert len(result["items"]) >= 2
@@ -703,9 +699,7 @@ class TestAnnotationServiceIntegrationRetrieve:
         )
 
         # Retrieve as same organization user (should succeed)
-        result = await AnnotationService.get_by_id(
-            test_admin_user, annotation["id"]
-        )
+        result = await AnnotationService.get_by_id(test_admin_user, annotation["id"])
 
         # Verify result
         assert result is not None
@@ -779,9 +773,7 @@ class TestAnnotationServiceIntegrationRetrieve:
         )
 
         # Retrieve annotation
-        result = await AnnotationService.get_by_id(
-            test_admin_user, annotation["id"]
-        )
+        result = await AnnotationService.get_by_id(test_admin_user, annotation["id"])
 
         # Verify all relationship data is present
         assert "user_email" in result

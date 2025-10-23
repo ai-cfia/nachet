@@ -6,7 +6,12 @@ from uuid import UUID
 from dbos import DBOS
 from app.blob.manager import get_blob_storage
 from app.service.constants import Bucket
-from app.exceptions import BlobUploadError, BlobDownloadError, DefenderScanTimeoutError, DefenderScanFailedError
+from app.exceptions import (
+    BlobUploadError,
+    BlobDownloadError,
+    DefenderScanTimeoutError,
+    DefenderScanFailedError,
+)
 
 
 @DBOS.step(retries_allowed=True, max_attempts=5, interval_seconds=1.0, backoff_rate=2.0)
@@ -33,7 +38,7 @@ async def upload_to_azure_blob(
     container = Bucket.get_original_container(is_test=settings.is_test_environment)
 
     # Extract file extension
-    file_ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'png'
+    file_ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "png"
 
     # Generate blob path: {org-name}/{genus}-{species}/{uuidv7}.{ext}
     blob_name = f"{org_name}/{genus}-{species}/{image_id}.{file_ext}"
@@ -70,9 +75,9 @@ async def wait_for_defender_scan(
 
     # Extract container and blob name from URL
     # Parse: https://{account}.blob.core.windows.net/{container}/{blob}
-    parts = blob_url.split('/')
+    parts = blob_url.split("/")
     container = parts[3]
-    blob_name = '/'.join(parts[4:])
+    blob_name = "/".join(parts[4:])
 
     max_attempts = timeout_sec // 5  # Poll every 5 seconds
 
@@ -112,9 +117,9 @@ async def download_sanitized_blob(
     storage = await get_blob_storage()
 
     # Parse URL to get container and blob name
-    parts = sanitized_blob_url.split('/')
+    parts = sanitized_blob_url.split("/")
     container = parts[3]
-    blob_name = '/'.join(parts[4:])
+    blob_name = "/".join(parts[4:])
 
     try:
         blob_bytes = await storage.download_blob(container, blob_name)

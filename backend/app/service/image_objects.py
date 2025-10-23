@@ -47,7 +47,9 @@ class ImageObjectsService(AuthorizedBaseCRUDService[Object]):
             "user_id": str(entity.user_id),
             "user_email": entity.user.email if entity.user else None,
             "org_admin_role_id": str(entity.org_admin_role_id),
-            "org_user_role_id": str(entity.org_user_role_id) if entity.org_user_role_id else None,
+            "org_user_role_id": str(entity.org_user_role_id)
+            if entity.org_user_role_id
+            else None,
             "inference_id": str(entity.inference_id),
             "picture_id": str(entity.picture_id),
             "pipeline_id": str(entity.pipeline_id),
@@ -65,23 +67,41 @@ class ImageObjectsService(AuthorizedBaseCRUDService[Object]):
             "top_seed_name": entity.seed_top_1.name_code if entity.seed_top_1 else None,
             "top_score": entity.top_score,
             "top_id_2": str(entity.top_id_2) if entity.top_id_2 else None,
-            "top_seed_name_2": entity.seed_top_2.name_code if entity.seed_top_2 else None,
+            "top_seed_name_2": entity.seed_top_2.name_code
+            if entity.seed_top_2
+            else None,
             "top_score_2": entity.top_score_2,
             "top_id_3": str(entity.top_id_3) if entity.top_id_3 else None,
-            "top_seed_name_3": entity.seed_top_3.name_code if entity.seed_top_3 else None,
+            "top_seed_name_3": entity.seed_top_3.name_code
+            if entity.seed_top_3
+            else None,
             "top_score_3": entity.top_score_3,
             # Dates
-            "date_created": entity.date_created.isoformat() if entity.date_created else None,
-            "date_verified": entity.date_verified.isoformat() if entity.date_verified else None,
-            "date_feedback": entity.date_feedback.isoformat() if entity.date_feedback else None,
+            "date_created": entity.date_created.isoformat()
+            if entity.date_created
+            else None,
+            "date_verified": entity.date_verified.isoformat()
+            if entity.date_verified
+            else None,
+            "date_feedback": entity.date_feedback.isoformat()
+            if entity.date_feedback
+            else None,
             # Update flags
             "box_update": entity.box_update,
             "species_update": entity.species_update,
             # Feedback and verification
-            "feedback_user_id": str(entity.feedback_user_id) if entity.feedback_user_id else None,
-            "feedback_user_email": entity.feedback_user.email if entity.feedback_user else None,
-            "verifier_user_id": str(entity.verifier_user_id) if entity.verifier_user_id else None,
-            "verifier_user_email": entity.verifier_user.email if entity.verifier_user else None,
+            "feedback_user_id": str(entity.feedback_user_id)
+            if entity.feedback_user_id
+            else None,
+            "feedback_user_email": entity.feedback_user.email
+            if entity.feedback_user
+            else None,
+            "verifier_user_id": str(entity.verifier_user_id)
+            if entity.verifier_user_id
+            else None,
+            "verifier_user_email": entity.verifier_user.email
+            if entity.verifier_user
+            else None,
         }
 
     @classmethod
@@ -123,5 +143,6 @@ class ImageObjectsService(AuthorizedBaseCRUDService[Object]):
             HTTPException: 403 if user is not authenticated or not associated with an organization
         """
         from app.service.rbac import RbacService
+
         # Verify user is authenticated and associated with an organization
         await RbacService.get_user_organization_id(_user_id)

@@ -31,7 +31,7 @@ from app.blob.exceptions import (
     InvalidConfigurationError,
     BlobStorageError,
     ContainerNotFoundError,
-)# Load test environment variables
+)  # Load test environment variables
 from app.api.config import get_settings
 
 # Load test environment variables
@@ -79,7 +79,7 @@ async def cleanup_test_containers():
                     blobs_result = await storage.list_blobs(container_name)
                     for blob in blobs_result.get("blobs", []):
                         await storage.delete_blob(container_name, blob["name"])
-                    
+
                     # Now delete the container
                     await storage.delete_container(container_name)
                     print(f"Cleaned up test container: {container_name}")
@@ -141,7 +141,7 @@ class TestS3ContainerOperations:
                         await storage.delete_blob(container_name, blob["name"])
                 except Exception:
                     pass
-                
+
                 # Delete container
                 await storage.delete_container(container_name)
             except Exception:
@@ -364,9 +364,7 @@ class TestDeleteContainer(TestS3ContainerOperations):
 
         # Create container and upload a blob
         await storage.create_container(test_container_name)
-        await storage.upload_blob(
-            test_container_name, "test-file.txt", b"test content"
-        )
+        await storage.upload_blob(test_container_name, "test-file.txt", b"test content")
 
         # S3 requires empty bucket to delete
         # Should fail because bucket is not empty
@@ -434,8 +432,10 @@ class TestListContainers(TestS3ContainerOperations):
 
         # Should include our test container
         container_names = [c["name"] for c in result["containers"]]
-        matching = [name for name in container_names if name.startswith("nachet-s3-test-")]
-        
+        matching = [
+            name for name in container_names if name.startswith("nachet-s3-test-")
+        ]
+
         assert len(matching) >= 1
         assert test_container_name in matching
 

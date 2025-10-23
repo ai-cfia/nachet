@@ -124,12 +124,12 @@ class SeedService(BaseCRUDService[Seed]):
         name = name.replace(" ", "-")
 
         # Remove all characters except a-z and dashes
-        name = re.sub(r'[^a-z\-]', '', name)
+        name = re.sub(r"[^a-z\-]", "", name)
 
         # Collapse multiple consecutive dashes
-        name = re.sub(r'-+', '-', name)
+        name = re.sub(r"-+", "-", name)
 
         # Strip leading/trailing dashes
-        name = name.strip('-')
+        name = name.strip("-")
 
         return name if name else "unknown"

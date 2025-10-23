@@ -18,7 +18,9 @@ def validate_orm_classes(logger=None):
             logger.info("ORM class definitions are valid")
     except Exception as e:
         if logger:
-            logger.error("ORM validation failed", error=str(e), error_type=type(e).__name__)
+            logger.error(
+                "ORM validation failed", error=str(e), error_type=type(e).__name__
+            )
         raise e
 
 

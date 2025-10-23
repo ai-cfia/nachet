@@ -24,6 +24,7 @@ def _get_logger():
     global _logger
     if _logger is None:
         from app.service.logs import LogService
+
         _logger = LogService.get_logger()
     return _logger
 
@@ -47,8 +48,8 @@ class MetadataOperations:
         """
         Set custom metadata for a blob.
 
-        Note: In S3-compatible storage (like Apache Ozone), setting metadata 
-        requires re-uploading the object with new metadata since copy_object 
+        Note: In S3-compatible storage (like Apache Ozone), setting metadata
+        requires re-uploading the object with new metadata since copy_object
         to self is not supported. This is different from Azure's direct metadata update.
 
         Args:
@@ -83,7 +84,7 @@ class MetadataOperations:
             _get_logger().info(
                 "Metadata unchanged, skipping update operation",
                 container=container,
-                blob=name
+                blob=name,
             )
             return
 
@@ -92,7 +93,7 @@ class MetadataOperations:
         _get_logger().info(
             "Setting blob metadata via re-upload (Apache Ozone workaround)",
             container=container,
-            blob=name
+            blob=name,
         )
 
         # Download the current object
@@ -113,7 +114,7 @@ class MetadataOperations:
             "Blob metadata set successfully",
             container=container,
             blob=name,
-            size=len(content)
+            size=len(content),
         )
 
     @ErrorHandler.handle_service_errors("get blob metadata")
@@ -146,7 +147,12 @@ class MetadataOperations:
 
         # Return metadata as a regular dictionary
         metadata = response.get("Metadata", {})
-        _get_logger().info("Retrieved blob metadata", container=container, blob=name, count=len(metadata))
+        _get_logger().info(
+            "Retrieved blob metadata",
+            container=container,
+            blob=name,
+            count=len(metadata),
+        )
         return dict(metadata) if metadata else {}
 
     @ErrorHandler.handle_service_errors("set blob tags")
@@ -181,11 +187,14 @@ class MetadataOperations:
         tag_set = [{"Key": k, "Value": v} for k, v in (tags or {}).items()]
         try:
             self._client.put_object_tagging(
-                Bucket=container,
-                Key=name,
-                Tagging={"TagSet": tag_set}
+                Bucket=container, Key=name, Tagging={"TagSet": tag_set}
             )
-            _get_logger().info("Blob tags set successfully", container=container, blob=name, count=len(tags))
+            _get_logger().info(
+                "Blob tags set successfully",
+                container=container,
+                blob=name,
+                count=len(tags),
+            )
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             # Some S3 implementations (like Garage) don't support object tagging
@@ -194,7 +203,7 @@ class MetadataOperations:
                     "Object tagging not supported, operation skipped",
                     container=container,
                     blob=name,
-                    error_code=error_code
+                    error_code=error_code,
                 )
             else:
                 raise
@@ -229,7 +238,9 @@ class MetadataOperations:
             response = self._client.get_object_tagging(Bucket=container, Key=name)
             # Convert tag set to dictionary
             tags = {tag["Key"]: tag["Value"] for tag in response.get("TagSet", [])}
-            _get_logger().info("Retrieved blob tags", container=container, blob=name, count=len(tags))
+            _get_logger().info(
+                "Retrieved blob tags", container=container, blob=name, count=len(tags)
+            )
             return tags
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
@@ -239,7 +250,7 @@ class MetadataOperations:
                     "Object tagging not supported, returning empty tags",
                     container=container,
                     blob=name,
-                    error_code=error_code
+                    error_code=error_code,
                 )
                 return {}
             else:

@@ -34,6 +34,7 @@ def _get_logger():
     global _logger
     if _logger is None:
         from app.service.logs import LogService
+
         _logger = LogService.get_logger()
     return _logger
 
@@ -68,24 +69,26 @@ class S3BlobStorage(BlobStorageInterface):
     def _initialize_client(self):
         """Initialize the S3 client using boto3."""
         try:
-            if not self.config.get("s3_access_key_id") or not self.config.get("s3_secret_access_key"):
+            if not self.config.get("s3_access_key_id") or not self.config.get(
+                "s3_secret_access_key"
+            ):
                 raise InvalidConfigurationError(
                     "s3_credentials",
-                    "S3 credentials (s3_access_key_id and s3_secret_access_key) are required"
+                    "S3 credentials (s3_access_key_id and s3_secret_access_key) are required",
                 )
 
             self._s3_client = create_s3_client(self.config)
             _get_logger().info(
                 "S3 Blob Storage client initialized",
                 endpoint_url=self.config.get("s3_endpoint_url", "AWS S3"),
-                region=self.config.get("s3_region", "us-east-1")
+                region=self.config.get("s3_region", "us-east-1"),
             )
 
         except Exception as e:
             _get_logger().error(
                 "Failed to initialize S3 client",
                 error=str(e),
-                error_type=type(e).__name__
+                error_type=type(e).__name__,
             )
             raise InvalidConfigurationError(
                 "s3_client",

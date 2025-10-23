@@ -625,7 +625,9 @@ class TestDeviceModelServiceCreate:
         )
 
         # Call service with kwargs
-        result = await DeviceModelService.create(user_id, name="iPhone 15", device_brand_id=brand_id)
+        result = await DeviceModelService.create(
+            user_id, name="iPhone 15", device_brand_id=brand_id
+        )
 
         # Verify
         assert result["name"] == "iPhone 15"
@@ -749,7 +751,9 @@ class TestDeviceLensServiceCreate:
         )
 
         # Call service with kwargs
-        result = await DeviceLensService.create(user_id, name="Wide Angle", device_brand_id=brand_id)
+        result = await DeviceLensService.create(
+            user_id, name="Wide Angle", device_brand_id=brand_id
+        )
 
         # Verify
         assert result["name"] == "Wide Angle"
@@ -775,7 +779,9 @@ class TestDeviceLensServiceCreate:
 
         # Should raise 403
         with pytest.raises(HTTPException) as exc_info:
-            await DeviceLensService.create(user_id, name="Wide Angle", device_brand_id=uuid4())
+            await DeviceLensService.create(
+                user_id, name="Wide Angle", device_brand_id=uuid4()
+            )
 
         assert exc_info.value.status_code == 403
 

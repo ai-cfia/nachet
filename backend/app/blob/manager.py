@@ -40,6 +40,7 @@ def _get_logger():
     global _logger
     if _logger is None:
         from app.service.logs import LogService
+
         _logger = LogService.get_logger()
     return _logger
 
@@ -84,7 +85,7 @@ class BlobStorageManager:
                 self._initialized = True
                 _get_logger().info(
                     "BlobStorageManager initialized with singleton client",
-                    provider=provider
+                    provider=provider,
                 )
             except Exception as e:
                 raise InvalidConfigurationError(
@@ -129,7 +130,11 @@ class BlobStorageManager:
             await self._client.list_containers()
             return True
         except Exception as e:
-            _get_logger().warning("Blob storage health check failed", error=str(e), error_type=type(e).__name__)
+            _get_logger().warning(
+                "Blob storage health check failed",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
             return False
 
     async def refresh_connection(self):
@@ -208,7 +213,9 @@ async def blob_storage_context() -> AsyncGenerator[BlobStorageInterface, None]:
         yield storage
     except Exception as e:
         # Log error, could add retry logic here
-        _get_logger().error("Blob storage operation failed", error=str(e), error_type=type(e).__name__)
+        _get_logger().error(
+            "Blob storage operation failed", error=str(e), error_type=type(e).__name__
+        )
         raise
 
 
@@ -334,7 +341,7 @@ class BlobStorageHealthCheck:
                     "Blob storage health check failed, retrying",
                     attempt=attempt + 1,
                     max_attempts=max_retries + 1,
-                    delay_seconds=delay
+                    delay_seconds=delay,
                 )
                 await asyncio.sleep(delay)
 
