@@ -70,6 +70,7 @@ class Bucket(str, Enum):
 
     Uses str inheritance for easy string comparison and serialization.
     """
+
     # Production containers
     ORIGINAL = "nachet-original"
     SANITIZED = "nachet-sanitized"
@@ -101,6 +102,7 @@ class ProcessingStatus(str, Enum):
     Note: Does NOT include inference statuses, as inference is tracked separately
     and can happen multiple times per image with different models.
     """
+
     PENDING = "pending"
     UPLOADED = "uploaded"
     DEFENDER_SCANNING = "defender_scanning"

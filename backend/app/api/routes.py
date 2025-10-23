@@ -134,7 +134,7 @@ async def submit_image_for_simple_direct_processing(
     Submit an image for direct processing (synchronous).
     Does not store anything.
     Direct to the model endpoint and returns the classification result.
-    
+
     Returns ApiInferenceResponse with boxes and classifications.
     """
     # Delegate to InferenceService (handles session, logging, business logic)

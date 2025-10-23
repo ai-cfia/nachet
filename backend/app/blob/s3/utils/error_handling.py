@@ -84,7 +84,10 @@ class ErrorHandler:
                         container = args[1] if len(args) > 1 else "unknown"
                         blob_name = args[2] if len(args) > 2 else "unknown"
                         raise BlobNotFoundError(container, blob_name)
-                    elif error_code in ["BucketAlreadyExists", "BucketAlreadyOwnedByYou"]:
+                    elif error_code in [
+                        "BucketAlreadyExists",
+                        "BucketAlreadyOwnedByYou",
+                    ]:
                         container = args[1] if len(args) > 1 else "unknown"
                         raise ContainerAlreadyExistsError(container)
                     elif error_code == "AccessDenied":
@@ -92,13 +95,13 @@ class ErrorHandler:
                     elif error_code in ["InvalidAccessKeyId", "SignatureDoesNotMatch"]:
                         raise InvalidConfigurationError(
                             "s3_credentials",
-                            f"Invalid S3 credentials: {e.response.get('Error', {}).get('Message', str(e))}"
+                            f"Invalid S3 credentials: {e.response.get('Error', {}).get('Message', str(e))}",
                         )
                     else:
                         _get_logger().error(
                             f"S3 ClientError during {operation_name}",
                             error_code=error_code,
-                            error=str(e)
+                            error=str(e),
                         )
                         raise BlobStorageError(
                             f"Failed to {operation_name}: {error_code} - {str(e)}"
@@ -107,7 +110,7 @@ class ErrorHandler:
                     _get_logger().error(
                         f"BotoCoreError during {operation_name}",
                         error=str(e),
-                        error_type=type(e).__name__
+                        error_type=type(e).__name__,
                     )
                     raise ConnectionError(
                         f"Failed to connect to S3 storage during {operation_name}: {str(e)}"
@@ -116,7 +119,7 @@ class ErrorHandler:
                     _get_logger().error(
                         f"Unexpected error during {operation_name}",
                         error=str(e),
-                        error_type=type(e).__name__
+                        error_type=type(e).__name__,
                     )
                     raise BlobStorageError(f"Failed to {operation_name}: {str(e)}")
 
@@ -152,9 +155,7 @@ class ErrorHandler:
             raise ConnectionError(f"Failed to check container existence: {str(e)}")
 
     @staticmethod
-    async def check_blob_exists(
-        client: "S3Client", container: str, name: str
-    ) -> None:
+    async def check_blob_exists(client: "S3Client", container: str, name: str) -> None:
         """
         Check if a blob (object) exists and raise appropriate error if not.
 

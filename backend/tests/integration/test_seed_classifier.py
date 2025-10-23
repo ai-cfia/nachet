@@ -55,7 +55,9 @@ class TestRequestInferenceFromSeedDetector:
         )
 
         # Call the async function
-        detection_result = await request_inference_from_seed_detector(detector_model, image_bytes)
+        detection_result = await request_inference_from_seed_detector(
+            detector_model, image_bytes
+        )
 
         # Verify detection result structure exists
         assert detection_result is not None
@@ -66,11 +68,11 @@ class TestRequestInferenceFromSeedDetector:
         # (Pydantic validates the schema during construction)
         assert isinstance(detection_result.result, SeedDetectorAPIResponse)
         assert isinstance(detection_result.result.boxes, list)
-        
+
         # Verify cropped images match detected boxes
         assert isinstance(detection_result.images, list)
         assert len(detection_result.images) == len(detection_result.result.boxes)
-        
+
         # Verify each cropped image is valid base64
         for i, cropped_image in enumerate(detection_result.images):
             assert isinstance(cropped_image, bytes), f"Cropped image {i} is not bytes"
@@ -94,7 +96,9 @@ class TestRequestInferenceFromSeedDetector:
         )
 
         # Call the classifier with the detection result
-        classification_result = await request_inference_from_swin(classifier_model, detection_result)
+        classification_result = await request_inference_from_swin(
+            classifier_model, detection_result
+        )
 
         # Verify classification result structure exists
         assert classification_result is not None
@@ -103,7 +107,9 @@ class TestRequestInferenceFromSeedDetector:
         # Verify enhanced classification results are valid
         assert isinstance(classification_result.result, EnhancedClassificationResult)
         assert isinstance(classification_result.result.boxes, list)
-        assert len(classification_result.result.boxes) == len(detection_result.result.boxes)
+        assert len(classification_result.result.boxes) == len(
+            detection_result.result.boxes
+        )
 
         # Verify each enhanced box has classification data
         for i, box in enumerate(classification_result.result.boxes):
@@ -111,15 +117,15 @@ class TestRequestInferenceFromSeedDetector:
             assert hasattr(box, "label"), f"Box {i} missing label"
             assert hasattr(box, "score"), f"Box {i} missing score"
             assert hasattr(box, "topN"), f"Box {i} missing topN predictions"
-            
+
             # Verify label is a string
             assert isinstance(box.label, str), f"Box {i} label is not a string"
             assert len(box.label) > 0, f"Box {i} label is empty"
-            
+
             # Verify score is normalized
             assert isinstance(box.score, (int, float)), f"Box {i} score is not numeric"
             assert 0.0 <= box.score <= 1.0, f"Box {i} score {box.score} out of range"
-            
+
             # Verify topN predictions list exists
             assert isinstance(box.topN, list), f"Box {i} topN is not a list"
             assert len(box.topN) > 0, f"Box {i} topN is empty"

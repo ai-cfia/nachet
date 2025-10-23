@@ -50,7 +50,9 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
             "id": str(entity.id),
             "user_id": str(entity.user_id),
             "org_admin_role_id": str(entity.org_admin_role_id),
-            "org_user_role_id": str(entity.org_user_role_id) if entity.org_user_role_id else None,
+            "org_user_role_id": str(entity.org_user_role_id)
+            if entity.org_user_role_id
+            else None,
             "name": entity.name,
             "folder_prefix": entity.folder_prefix,
             "description": entity.description,
@@ -170,40 +172,40 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         if not fullpath:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="fullpath cannot be empty"
+                detail="fullpath cannot be empty",
             )
 
         if not fullpath.startswith("/"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="fullpath must start with /"
+                detail="fullpath must start with /",
             )
 
         # Cannot have consecutive slashes (check this first)
         if "//" in fullpath:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="fullpath cannot contain consecutive slashes"
+                detail="fullpath cannot contain consecutive slashes",
             )
 
         # Check for valid characters: alphanumeric, /, _, -, .
         # AND must end with alphanumeric character
-        if not re.match(r'^[a-zA-Z0-9/_.\-]+[a-zA-Z0-9]$', fullpath):
+        if not re.match(r"^[a-zA-Z0-9/_.\-]+[a-zA-Z0-9]$", fullpath):
             # Determine which rule was violated for better error message
-            if not re.match(r'^[a-zA-Z0-9/_.\-]+$', fullpath):
+            if not re.match(r"^[a-zA-Z0-9/_.\-]+$", fullpath):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="fullpath can only contain alphanumeric characters, slash, underscore, dash, and period"
+                    detail="fullpath can only contain alphanumeric characters, slash, underscore, dash, and period",
                 )
             else:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="fullpath must end with an alphanumeric character"
+                    detail="fullpath must end with an alphanumeric character",
                 )
 
         # Extract folder name (after last slash) and folder_prefix (path before last slash)
         last_slash_index = fullpath.rfind("/")
-        folder_name = fullpath[last_slash_index + 1:]
+        folder_name = fullpath[last_slash_index + 1 :]
 
         # For fullpath like "/project", folder_prefix should be "/"
         # For fullpath like "/org/team/project", folder_prefix should be "/org/team/"
@@ -212,19 +214,19 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
             folder_prefix = "/"
         else:
             # Nested folder like "/org/team/project"
-            folder_prefix = fullpath[:last_slash_index + 1]  # Include trailing slash
+            folder_prefix = fullpath[: last_slash_index + 1]  # Include trailing slash
 
         if not folder_name:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="fullpath must contain a folder name after the last slash"
+                detail="fullpath must contain a folder name after the last slash",
             )
 
         # Folder name cannot contain slashes (already guaranteed by extraction logic)
         if "/" in folder_name:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="folder name cannot contain slashes"
+                detail="folder name cannot contain slashes",
             )
 
         return folder_name, folder_prefix
@@ -255,9 +257,7 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
                 str(user_id)
             )
 
-            logger.info(
-                f"Retrieved {len(directories)} directories for user {user_id}"
-            )
+            logger.info(f"Retrieved {len(directories)} directories for user {user_id}")
 
             return {
                 "directories": [directory._asdict() for directory in directories]
@@ -420,10 +420,7 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
 
         # Use the standard update() method which handles authorization
         result = await cls.update(
-            user_id,
-            directory_id,
-            name=folder_name,
-            folder_prefix=folder_prefix
+            user_id, directory_id, name=folder_name, folder_prefix=folder_prefix
         )
 
         logger.info(

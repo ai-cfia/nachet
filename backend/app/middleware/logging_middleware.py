@@ -37,8 +37,14 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         # Get or generate correlation ID (using UUIDv7 for time-ordered IDs)
-        correlation_id = request.headers.get('X-Correlation-ID') or request.headers.get('x-correlation-id') or str(uuid7())
-        session_id = request.headers.get('X-Session-ID') or request.headers.get('x-session-id')
+        correlation_id = (
+            request.headers.get("X-Correlation-ID")
+            or request.headers.get("x-correlation-id")
+            or str(uuid7())
+        )
+        session_id = request.headers.get("X-Session-ID") or request.headers.get(
+            "x-session-id"
+        )
 
         # Store in request state for access in endpoints
         request.state.correlation_id = correlation_id
@@ -51,8 +57,10 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             LogService.set_session_id(session_id)
 
         # Extract user ID from request state (set by auth middleware/dependency)
-        if hasattr(request.state, 'user') and request.state.user:
-            user_id = getattr(request.state.user, 'oid', None) or getattr(request.state.user, 'id', None)
+        if hasattr(request.state, "user") and request.state.user:
+            user_id = getattr(request.state.user, "oid", None) or getattr(
+                request.state.user, "id", None
+            )
             if user_id:
                 LogService.set_user_id(str(user_id))
 
@@ -62,9 +70,9 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             method=request.method,
             path=request.url.path,
             remote_addr=request.client.host if request.client else None,
-            user_agent=request.headers.get('User-Agent', ''),
+            user_agent=request.headers.get("User-Agent", ""),
             correlation_id=correlation_id,
-            session_id=session_id
+            session_id=session_id,
         )
 
         try:
@@ -83,11 +91,11 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 status_code=response.status_code,
                 duration_ms=round(duration * 1000, 2),
                 correlation_id=correlation_id,
-                session_id=session_id
+                session_id=session_id,
             )
 
             # Add correlation ID to response headers
-            response.headers['X-Correlation-ID'] = correlation_id
+            response.headers["X-Correlation-ID"] = correlation_id
 
             return response
 
@@ -104,7 +112,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 method=request.method,
                 remote_addr=request.client.host if request.client else None,
                 session_id=session_id,
-                duration_ms=round(duration * 1000, 2)
+                duration_ms=round(duration * 1000, 2),
             )
 
             # Re-raise to let FastAPI's exception handlers deal with it

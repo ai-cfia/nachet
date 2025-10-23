@@ -4,7 +4,9 @@ from PIL import Image
 import io
 
 
-def get_test_image_bytes(filename: str = "test.png", width: int = 100, height: int = 100, color: str = "red") -> bytes:
+def get_test_image_bytes(
+    filename: str = "test.png", width: int = 100, height: int = 100, color: str = "red"
+) -> bytes:
     """
     Generate a test image as bytes.
 
@@ -18,16 +20,16 @@ def get_test_image_bytes(filename: str = "test.png", width: int = 100, height: i
         bytes: PNG image data as bytes
     """
     # Create a simple test image
-    img = Image.new('RGB', (width, height), color=color)
+    img = Image.new("RGB", (width, height), color=color)
 
     # Determine format from filename extension
-    ext = filename.split('.')[-1].upper()
-    if ext == 'JPG':
-        ext = 'JPEG'
+    ext = filename.split(".")[-1].upper()
+    if ext == "JPG":
+        ext = "JPEG"
 
     # Save to bytes buffer
     buffer = io.BytesIO()
-    img.save(buffer, format=ext if ext in ['PNG', 'JPEG'] else 'PNG')
+    img.save(buffer, format=ext if ext in ["PNG", "JPEG"] else "PNG")
 
     return buffer.getvalue()
 

@@ -40,20 +40,29 @@ from dotenv import load_dotenv
 
 from sqlalchemy import select
 from app.db.utils import sessionmanager
-from app.db.model import PendingRegistration, Organization, Users, RbacRole, RbacUserRole
+from app.db.model import (
+    PendingRegistration,
+    Organization,
+    Users,
+    RbacRole,
+    RbacUserRole,
+)
 from app.service.user import UserService
 from app.datastore.pending_registration import PendingRegistrationDataService
 from app.api.config import get_settings
 
+
 async def list_pending_registrations():
     """List all pending user registrations."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("PENDING USER REGISTRATIONS")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     async with sessionmanager.get_session() as session:
         # Get all pending registrations
-        stmt = select(PendingRegistration).order_by(PendingRegistration.date_created.desc())
+        stmt = select(PendingRegistration).order_by(
+            PendingRegistration.date_created.desc()
+        )
         result = await session.execute(stmt)
         pending_users = result.scalars().all()
 
@@ -64,7 +73,9 @@ async def list_pending_registrations():
         for i, user in enumerate(pending_users, 1):
             print(f"{i}. Azure AD OID: {user.azure_ad_oid}")
             print(f"   Email: {user.email or 'N/A'}")
-            print(f"   Date Created: {user.date_created.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+            print(
+                f"   Date Created: {user.date_created.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+            )
             print()
 
         print(f"Total: {len(pending_users)} pending registration(s)")
@@ -73,12 +84,16 @@ async def list_pending_registrations():
 
 async def list_organizations():
     """List all organizations."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("ORGANIZATIONS")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     async with sessionmanager.get_session() as session:
-        stmt = select(Organization).where(Organization.active.is_(True)).order_by(Organization.name)
+        stmt = (
+            select(Organization)
+            .where(Organization.active.is_(True))
+            .order_by(Organization.name)
+        )
         result = await session.execute(stmt)
         orgs = result.scalars().all()
 
@@ -109,15 +124,14 @@ async def get_pending_user_by_email(email: str) -> Optional[PendingRegistration]
 async def verify_admin_user(admin_user_id: UUID) -> bool:
     """Verify that the admin user exists and is active."""
     async with sessionmanager.get_session() as session:
-        stmt = select(Users).where(
-            Users.id == admin_user_id,
-            Users.active.is_(True)
-        )
+        stmt = select(Users).where(Users.id == admin_user_id, Users.active.is_(True))
         result = await session.execute(stmt)
         admin_user = result.scalar_one_or_none()
 
         if not admin_user:
-            print(f"\n❌ ERROR: Admin user with ID {admin_user_id} not found or inactive.")
+            print(
+                f"\n❌ ERROR: Admin user with ID {admin_user_id} not found or inactive."
+            )
             return False
 
         print(f"\n✓ Admin user verified: {admin_user.email or 'No email'}")
@@ -128,8 +142,7 @@ async def verify_organization(org_id: UUID) -> bool:
     """Verify that the organization exists and is active."""
     async with sessionmanager.get_session() as session:
         stmt = select(Organization).where(
-            Organization.id == org_id,
-            Organization.active.is_(True)
+            Organization.id == org_id, Organization.active.is_(True)
         )
         result = await session.execute(stmt)
         org = result.scalar_one_or_none()
@@ -142,7 +155,9 @@ async def verify_organization(org_id: UUID) -> bool:
         return True
 
 
-async def assign_user_role(user_id: UUID, org_id: UUID, role_name: str = "user") -> bool:
+async def assign_user_role(
+    user_id: UUID, org_id: UUID, role_name: str = "user"
+) -> bool:
     """
     Assign a role to a user in an organization.
 
@@ -160,19 +175,20 @@ async def assign_user_role(user_id: UUID, org_id: UUID, role_name: str = "user")
             stmt = select(RbacRole).where(
                 RbacRole.organization_id == org_id,
                 RbacRole.name == role_name,
-                RbacRole.active.is_(True)
+                RbacRole.active.is_(True),
             )
             result = await session.execute(stmt)
             role = result.scalar_one_or_none()
 
             if not role:
-                print(f"\n⚠️  WARNING: Role '{role_name}' not found for organization {org_id}")
+                print(
+                    f"\n⚠️  WARNING: Role '{role_name}' not found for organization {org_id}"
+                )
                 return False
 
             # Check if user already has this role
             stmt = select(RbacUserRole).where(
-                RbacUserRole.user_id == user_id,
-                RbacUserRole.role_id == role.id
+                RbacUserRole.user_id == user_id, RbacUserRole.role_id == role.id
             )
             result = await session.execute(stmt)
             existing = result.scalar_one_or_none()
@@ -182,11 +198,7 @@ async def assign_user_role(user_id: UUID, org_id: UUID, role_name: str = "user")
                 return True
 
             # Assign the role
-            user_role = RbacUserRole(
-                user_id=user_id,
-                role_id=role.id,
-                active=True
-            )
+            user_role = RbacUserRole(user_id=user_id, role_id=role.id, active=True)
             session.add(user_role)
             await session.commit()
 
@@ -200,9 +212,9 @@ async def assign_user_role(user_id: UUID, org_id: UUID, role_name: str = "user")
 
 async def register_user(azure_ad_oid: str, org_id: UUID, admin_user_id: UUID):
     """Register a user."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("USER REGISTRATION")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     # Verify admin user
     if not await verify_admin_user(admin_user_id):
@@ -218,7 +230,9 @@ async def register_user(azure_ad_oid: str, org_id: UUID, admin_user_id: UUID):
         pending_user = await pending_service.get_by_azure_oid(azure_ad_oid)
 
         if not pending_user:
-            print(f"\n❌ ERROR: No pending registration found for Azure AD OID: {azure_ad_oid}")
+            print(
+                f"\n❌ ERROR: No pending registration found for Azure AD OID: {azure_ad_oid}"
+            )
             print("   The user must login at least once before they can be registered.")
             return False
 
@@ -232,8 +246,10 @@ async def register_user(azure_ad_oid: str, org_id: UUID, admin_user_id: UUID):
         print()
 
         # Confirm registration
-        confirmation = input("⚠️  Are you sure you want to register this user? (yes/no): ")
-        if confirmation.lower() not in ['yes', 'y']:
+        confirmation = input(
+            "⚠️  Are you sure you want to register this user? (yes/no): "
+        )
+        if confirmation.lower() not in ["yes", "y"]:
             print("\n❌ Registration cancelled.")
             return False
 
@@ -245,7 +261,7 @@ async def register_user(azure_ad_oid: str, org_id: UUID, admin_user_id: UUID):
                 admin_user_id=admin_user_id,
                 azure_ad_oid=azure_ad_oid,
                 organization_id=org_id,
-                email=email
+                email=email,
             )
 
             print("\n✅ SUCCESS: User registered successfully!")
@@ -259,13 +275,14 @@ async def register_user(azure_ad_oid: str, org_id: UUID, admin_user_id: UUID):
 
             # Assign default "user" role to the newly registered user
             print("🔄 Assigning default 'user' role...")
-            await assign_user_role(UUID(result['id']), org_id, "user")
+            await assign_user_role(UUID(result["id"]), org_id, "user")
 
             return True
 
         except Exception as e:
             print(f"\n❌ ERROR: Failed to register user: {str(e)}")
             import traceback
+
             print("\nFull error:")
             traceback.print_exc()
             return False
@@ -294,32 +311,49 @@ Notes:
   - All IDs should be in UUID format
   - The admin user must be a CFIA admin with proper permissions
   - The user must have logged in at least once to appear in pending registrations
-        """
+        """,
     )
 
-    parser.add_argument('--list', action='store_true',
-                       help='List all pending user registrations')
+    parser.add_argument(
+        "--list", action="store_true", help="List all pending user registrations"
+    )
 
-    parser.add_argument('--list-orgs', action='store_true',
-                       help='List all organizations')
+    parser.add_argument(
+        "--list-orgs", action="store_true", help="List all organizations"
+    )
 
-    parser.add_argument('--register', metavar='AZURE_AD_OID',
-                       help='Azure AD OID of the user to register')
+    parser.add_argument(
+        "--register",
+        metavar="AZURE_AD_OID",
+        help="Azure AD OID of the user to register",
+    )
 
-    parser.add_argument('--register-email', metavar='EMAIL',
-                       help='Email of the user to register')
+    parser.add_argument(
+        "--register-email", metavar="EMAIL", help="Email of the user to register"
+    )
 
-    parser.add_argument('--org', metavar='ORG_ID',
-                       help='Organization ID (UUID) to assign the user to')
+    parser.add_argument(
+        "--org", metavar="ORG_ID", help="Organization ID (UUID) to assign the user to"
+    )
 
-    parser.add_argument('--admin', metavar='ADMIN_ID',
-                       help='Admin user ID (UUID) performing the registration')
+    parser.add_argument(
+        "--admin",
+        metavar="ADMIN_ID",
+        help="Admin user ID (UUID) performing the registration",
+    )
 
-    parser.add_argument('--assign-role', nargs=2, metavar=('USER_ID', 'ROLE_NAME'),
-                       help='Assign a role to a user: USER_ID ROLE_NAME (e.g., --assign-role <uuid> admin)')
+    parser.add_argument(
+        "--assign-role",
+        nargs=2,
+        metavar=("USER_ID", "ROLE_NAME"),
+        help="Assign a role to a user: USER_ID ROLE_NAME (e.g., --assign-role <uuid> admin)",
+    )
 
-    parser.add_argument('--assign-role-org', metavar='ORG_ID',
-                       help='Organization ID for role assignment (required with --assign-role)')
+    parser.add_argument(
+        "--assign-role-org",
+        metavar="ORG_ID",
+        help="Organization ID for role assignment (required with --assign-role)",
+    )
 
     args = parser.parse_args()
 
@@ -384,8 +418,12 @@ Notes:
             # Look up the Azure AD OID by email
             pending_user = await get_pending_user_by_email(args.register_email)
             if not pending_user:
-                print(f"\n❌ ERROR: No pending registration found for email: {args.register_email}")
-                print("   The user must login at least once before they can be registered.")
+                print(
+                    f"\n❌ ERROR: No pending registration found for email: {args.register_email}"
+                )
+                print(
+                    "   The user must login at least once before they can be registered."
+                )
                 sys.exit(1)
 
             azure_ad_oid = pending_user.azure_ad_oid

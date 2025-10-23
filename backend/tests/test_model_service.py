@@ -448,7 +448,10 @@ class TestModelServiceCreate:
             )
 
         assert exc_info.value.status_code == 403
-        assert "CFIA administrator" in exc_info.value.detail or "admin" in exc_info.value.detail.lower()
+        assert (
+            "CFIA administrator" in exc_info.value.detail
+            or "admin" in exc_info.value.detail.lower()
+        )
 
 
 class TestModelServiceUpdate:

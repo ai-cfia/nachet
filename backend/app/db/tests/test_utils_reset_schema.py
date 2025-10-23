@@ -340,7 +340,7 @@ class TestResetDatabaseSchema:
 
         # Verify logger was called
         assert mock_logger.info.call_count == 2
-        
+
         # Check for start message
         first_call = mock_logger.info.call_args_list[0]
         assert first_call[0][0] == "Resetting database schema"

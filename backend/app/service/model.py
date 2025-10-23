@@ -153,7 +153,9 @@ class ModelService(BaseCRUDService[Model]):
     # ==========================================
 
     @staticmethod
-    async def get_by_task_id(user_id: UUID, task_id: int) -> Dict[str, List[Dict[str, Any]]]:
+    async def get_by_task_id(
+        user_id: UUID, task_id: int
+    ) -> Dict[str, List[Dict[str, Any]]]:
         """
         Retrieve all active models for a specific task.
 
@@ -182,9 +184,7 @@ class ModelService(BaseCRUDService[Model]):
                 models = await data_service.get_by_task_id(task_id)
 
                 return {
-                    "models": [
-                        ModelService.serialize_entity(model) for model in models
-                    ]
+                    "models": [ModelService.serialize_entity(model) for model in models]
                 }
 
         except HTTPException:
@@ -214,9 +214,9 @@ class ModelService(BaseCRUDService[Model]):
 class ModelTaskService(BaseCRUDService[ModelTask]):
     """
     Service class to handle model_task-related operations.
-    
+
     Extends BaseCRUDService to provide standard CRUD operations with RBAC.
-    
+
     Access Control:
     - GET operations (get_all, get_by_id): Any authenticated user
     - CUD operations (create, update, delete): CFIA admin only
@@ -238,10 +238,10 @@ class ModelTaskService(BaseCRUDService[ModelTask]):
     def serialize_entity(cls, entity: ModelTask) -> Dict[str, Any]:
         """
         Convert ModelTask entity to dictionary for API response.
-        
+
         Args:
             entity: The ModelTask object to serialize
-            
+
         Returns:
             Dictionary representation of the model task
         """

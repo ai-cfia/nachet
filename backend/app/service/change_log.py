@@ -43,7 +43,9 @@ class ChangeLogService(BaseCRUDService[ChangeLog]):
         """
         return {
             "id": str(entity.id),
-            "date_created": entity.date_created.isoformat() if entity.date_created else None,
+            "date_created": entity.date_created.isoformat()
+            if entity.date_created
+            else None,
             "user_id": str(entity.user_id),
             "user_email": entity.user.email if entity.user else None,
             "table": entity.table,

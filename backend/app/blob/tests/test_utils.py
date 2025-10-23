@@ -25,23 +25,23 @@ def sanitize_config_for_display(config: Dict[str, Any]) -> Dict[str, Any]:
 
     # List of sensitive keys that should be redacted
     sensitive_keys = [
-        'blob_storage_key',
-        's3_secret_key',
-        's3_access_key',
-        's3_secret_access_key',
-        's3_access_key_id',
-        'account_key',
-        'secret_access_key',
-        'access_key_id',
-        'connection_string',
-        'password',
-        'secret',
-        'token',
+        "blob_storage_key",
+        "s3_secret_key",
+        "s3_access_key",
+        "s3_secret_access_key",
+        "s3_access_key_id",
+        "account_key",
+        "secret_access_key",
+        "access_key_id",
+        "connection_string",
+        "password",
+        "secret",
+        "token",
     ]
 
     for key in sensitive_keys:
         if key in safe_config:
-            safe_config[key] = '***REDACTED***'
+            safe_config[key] = "***REDACTED***"
 
     return safe_config
 
@@ -63,13 +63,13 @@ def sanitize_connection_string(connection_string: str) -> str:
         return ""
 
     # Replace AccountKey value with redacted placeholder
-    parts = connection_string.split(';')
+    parts = connection_string.split(";")
     sanitized_parts = []
 
     for part in parts:
-        if 'AccountKey=' in part:
-            sanitized_parts.append('AccountKey=***REDACTED***')
+        if "AccountKey=" in part:
+            sanitized_parts.append("AccountKey=***REDACTED***")
         else:
             sanitized_parts.append(part)
 
-    return ';'.join(sanitized_parts)
+    return ";".join(sanitized_parts)

@@ -15,20 +15,22 @@ from app.model.inference import (
     EnhancedClassificationResult,
     ClassifiedBox,
     TopNPredictionCleaned,
-    BoundingBoxAPI
+    BoundingBoxAPI,
 )
 from . import (
     ModelDispatchInfo,
     ModelInferenceDetectorResult,
-    ModelInferenceClassifierResult
+    ModelInferenceClassifierResult,
 )
 
-class SwinModelAPIError(ModelAPIError) :
+
+class SwinModelAPIError(ModelAPIError):
     pass
+
 
 def process_swin_result(
     detection_response: SeedDetectorAPIResponse,
-    classification_results: list[SwinClassificationAPIResponse]
+    classification_results: list[SwinClassificationAPIResponse],
 ) -> EnhancedClassificationResult:
     """
     Process SWIN classification results and merge them with detection boxes.
@@ -47,7 +49,9 @@ def process_swin_result(
     # Create the enhanced result structure
     enhanced_boxes = []
 
-    for detection_box, classification in zip(detection_response.boxes, classification_results):
+    for detection_box, classification in zip(
+        detection_response.boxes, classification_results
+    ):
         # Get the top prediction (first in the list)
         top_prediction = classification.predictions[0]
 
@@ -63,10 +67,7 @@ def process_swin_result(
 
         # Build topN predictions with cleaned labels using Pydantic model
         top_n_predictions = [
-            TopNPredictionCleaned(
-                label=clean_label(pred.label),
-                score=pred.score
-            )
+            TopNPredictionCleaned(label=clean_label(pred.label), score=pred.score)
             for pred in classification.predictions
         ]
 
@@ -76,24 +77,22 @@ def process_swin_result(
                 topX=detection_box.box.topX,
                 topY=detection_box.box.topY,
                 bottomX=detection_box.box.bottomX,
-                bottomY=detection_box.box.bottomY
+                bottomY=detection_box.box.bottomY,
             ),
             label=cleaned_label,
             score=top_prediction.score,
-            topN=top_n_predictions
+            topN=top_n_predictions,
         )
         enhanced_boxes.append(enhanced_box)
 
     # Return the enhanced result as Pydantic model
     return EnhancedClassificationResult(
-        boxes=enhanced_boxes,
-        filename="default_filename"
+        boxes=enhanced_boxes, filename="default_filename"
     )
 
 
 async def request_inference_from_swin(
-    model: ModelDispatchInfo,
-    previous_result: ModelInferenceDetectorResult
+    model: ModelDispatchInfo, previous_result: ModelInferenceDetectorResult
 ) -> ModelInferenceClassifierResult:
     """
     Perform inference using the SWIN model on a list of cropped seed images.
@@ -122,7 +121,7 @@ async def request_inference_from_swin(
             headers = {
                 "Content-Type": model.content_type,
                 "Authorization": ("Bearer " + model.api_key),
-                model.deployment_platform: model.name
+                model.deployment_platform: model.name,
             }
             body = img
             req = Request(model.endpoint, body, headers, method="POST")
@@ -134,13 +133,19 @@ async def request_inference_from_swin(
             # Validate the SWIN API response
             validated_classification = SwinClassificationAPIResponse(result_list)
 
-            print(f"Result for image {idx + 1}: \n {json.dumps([p.model_dump() for p in validated_classification.predictions], indent=4)}")
+            print(
+                f"Result for image {idx + 1}: \n {json.dumps([p.model_dump() for p in validated_classification.predictions], indent=4)}"
+            )
             classification_results.append(validated_classification)
 
-        print(f"Total classifications: {len(classification_results)}")  # TODO Transform into logging
+        print(
+            f"Total classifications: {len(classification_results)}"
+        )  # TODO Transform into logging
 
         # Merge detection boxes with classification results
-        enhanced_result = process_swin_result(detection_response, classification_results)
+        enhanced_result = process_swin_result(
+            detection_response, classification_results
+        )
         # print(json.dumps(enhanced_result, indent=4))
 
         return ModelInferenceClassifierResult(result=enhanced_result)
@@ -150,6 +155,14 @@ async def request_inference_from_swin(
         raise SwinModelAPIError(
             f"Invalid data structure from SWIN API:\n {str(error)}"
         ) from error
-    except (TypeError, IndexError, AttributeError, URLError, json.JSONDecodeError) as error:
+    except (
+        TypeError,
+        IndexError,
+        AttributeError,
+        URLError,
+        json.JSONDecodeError,
+    ) as error:
         print(error)
-        raise SwinModelAPIError(f"An error occurred while processing the request:\n {str(error)}") from error
+        raise SwinModelAPIError(
+            f"An error occurred while processing the request:\n {str(error)}"
+        ) from error

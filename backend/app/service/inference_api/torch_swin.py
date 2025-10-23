@@ -34,7 +34,9 @@ def process_swin_result(img_box: dict, results: dict) -> list:
     return img_box
 
 
-async def request_inference_from_torch_swin(model: ModelDispatchInfo, previous_result: "dict"):
+async def request_inference_from_torch_swin(
+    model: ModelDispatchInfo, previous_result: "dict"
+):
     """
     Perform inference using the SWIN model on a list of images.
 

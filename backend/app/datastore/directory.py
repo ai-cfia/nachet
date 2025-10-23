@@ -17,7 +17,7 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
     def get_query_options(self) -> list:
         """
         Load relationships for all Folder queries.
-        
+
         Returns:
             List of SQLAlchemy query options for loading relationships:
             - pictures: The pictures in this folder
@@ -52,7 +52,9 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
             return await data_service.get_user_directories_count(user_id)
 
     @classmethod
-    async def get_org_directories_with_count(cls, org_user_role_id: str) -> List[Folder]:
+    async def get_org_directories_with_count(
+        cls, org_user_role_id: str
+    ) -> List[Folder]:
         """
         Retrieve all directories for an organization with picture counts.
 

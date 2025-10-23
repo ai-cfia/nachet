@@ -50,6 +50,7 @@ class TestImageServiceIntegrationCreate:
         """Authenticated users should be able to create new images."""
         # Create test folder first (images need a folder)
         from app.db.model import Folder
+
         folder_id = uuid4()
         test_folder = Folder(
             id=folder_id,
@@ -134,6 +135,7 @@ class TestImageServiceIntegrationRetrieve:
         """User with org_user_role_id should be able to retrieve images."""
         # Create test folder first
         from app.db.model import Folder
+
         folder_id = uuid4()
         test_folder = Folder(
             id=folder_id,
@@ -192,6 +194,7 @@ class TestImageServiceIntegrationRetrieve:
         """User from different organization should be denied access."""
         # Create test folder first
         from app.db.model import Folder
+
         folder_id = uuid4()
         test_folder = Folder(
             id=folder_id,
@@ -254,6 +257,7 @@ class TestImageServiceIntegrationUpdate:
         """Admin users should be able to update images."""
         # Create test folder first
         from app.db.model import Folder
+
         folder_id = uuid4()
         test_folder = Folder(
             id=folder_id,
@@ -294,10 +298,10 @@ class TestImageServiceIntegrationUpdate:
 
         # Update image metadata
         result = await ImageService.update(
-            test_admin_user, 
+            test_admin_user,
             picture_id,
             name="updated_name.jpg",
-            description="Updated description"
+            description="Updated description",
         )
 
         # Verify
@@ -313,7 +317,9 @@ class TestImageServiceIntegrationUpdate:
         nonexistent_id = uuid4()
 
         with pytest.raises(HTTPException) as exc_info:
-            await ImageService.update(test_admin_user, nonexistent_id, name="new_name.jpg")
+            await ImageService.update(
+                test_admin_user, nonexistent_id, name="new_name.jpg"
+            )
 
         assert exc_info.value.status_code == 404
 
@@ -335,6 +341,7 @@ class TestImageServiceIntegrationDelete:
         """Admin users should be able to soft delete images."""
         # Create test folder first
         from app.db.model import Folder
+
         folder_id = uuid4()
         test_folder = Folder(
             id=folder_id,
@@ -405,6 +412,7 @@ class TestImageServiceIntegrationDelete:
         """Non-admin users should get 403 when deleting."""
         # Create test folder first
         from app.db.model import Folder
+
         folder_id = uuid4()
         test_folder = Folder(
             id=folder_id,
@@ -467,6 +475,7 @@ class TestImageServiceIntegrationGetAll:
         """Authenticated users should be able to list images."""
         # Create test folder first
         from app.db.model import Folder
+
         folder_id = uuid4()
         test_folder = Folder(
             id=folder_id,
@@ -518,7 +527,7 @@ class TestImageServiceIntegrationGetAll:
         assert "offset" in result
         assert "limit" in result
         assert "has_more" in result
-        
+
         # We should get at least our test images
         assert len(result["items"]) >= 3
         assert result["total"] >= 3
@@ -541,6 +550,7 @@ class TestImageServiceIntegrationAuthorizationEdgeCases:
         """CFIA admin should have cross-organization access to all images."""
         # Create test folder first
         from app.db.model import Folder
+
         folder_id = uuid4()
         test_folder = Folder(
             id=folder_id,
@@ -586,9 +596,7 @@ class TestImageServiceIntegrationAuthorizationEdgeCases:
 
         # CFIA admin should be able to update cross-organization
         update_result = await ImageService.update(
-            test_admin_user, 
-            picture_id,
-            description="Updated by CFIA admin"
+            test_admin_user, picture_id, description="Updated by CFIA admin"
         )
         assert update_result["description"] == "Updated by CFIA admin"
 
@@ -608,6 +616,7 @@ class TestImageServiceIntegrationAuthorizationEdgeCases:
         """Test that org admin has delete access but org user does not."""
         # Create test folder first
         from app.db.model import Folder
+
         folder_id = uuid4()
         test_folder = Folder(
             id=folder_id,
@@ -626,7 +635,7 @@ class TestImageServiceIntegrationAuthorizationEdgeCases:
         # Create two pictures - one for org admin test, one for org user test
         admin_picture_id = uuid4()
         user_picture_id = uuid4()
-        
+
         admin_picture = Picture(
             id=admin_picture_id,
             folder_id=folder_id,
@@ -643,7 +652,7 @@ class TestImageServiceIntegrationAuthorizationEdgeCases:
             active=True,
             date_created=datetime.now(timezone.utc),
         )
-        
+
         user_picture = Picture(
             id=user_picture_id,
             folder_id=folder_id,
@@ -660,21 +669,23 @@ class TestImageServiceIntegrationAuthorizationEdgeCases:
             active=True,
             date_created=datetime.now(timezone.utc),
         )
-        
+
         integration_db_session.add(admin_picture)
         integration_db_session.add(user_picture)
         cleanup_test_pictures.extend([admin_picture_id, user_picture_id, folder_id])
         await integration_db_session.commit()
 
         # User with admin role should be able to delete
-        admin_delete_result = await ImageService.delete(test_admin_user, admin_picture_id)
+        admin_delete_result = await ImageService.delete(
+            test_admin_user, admin_picture_id
+        )
         assert "deleted successfully" in admin_delete_result["message"]
 
         # Both admin and user can read/update - verify user can still update
         user_update_result = await ImageService.update(
             test_admin_user,  # This user has both admin and user roles
             user_picture_id,
-            description="Updated by user role"
+            description="Updated by user role",
         )
         assert user_update_result["description"] == "Updated by user role"
 
@@ -690,6 +701,7 @@ class TestImageServiceIntegrationAuthorizationEdgeCases:
         """Test access to inactive (soft-deleted) pictures."""
         # Create test folder first
         from app.db.model import Folder
+
         folder_id = uuid4()
         test_folder = Folder(
             id=folder_id,

@@ -14,10 +14,10 @@ class SeedDataService(BaseCRUDDataService[Seed]):
     async def get_seed_data(self) -> List[Dict[str, Any]]:
         """
         Get active seed data with subset of columns.
-        
+
         Returns only specific columns (seed_id, name_code, family, genus, species, seed_metadata)
         for active seeds only.
-        
+
         Returns:
             List[Dict[str, Any]]: List of seed records with subset of columns as SQLAlchemy Row objects
         """

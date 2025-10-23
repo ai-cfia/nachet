@@ -333,7 +333,9 @@ class TestSeedServiceUpdate:
         )
 
         # Call service
-        result = await SeedService.update(user_id, seed_id, family="Brassicaceae Updated")
+        result = await SeedService.update(
+            user_id, seed_id, family="Brassicaceae Updated"
+        )
 
         # Verify
         assert result["family"] == "Brassicaceae Updated"
@@ -498,27 +500,31 @@ class TestSeedServiceGetSeedData:
         class MockRow:
             def __init__(self, data):
                 self._data = data
-            
+
             def _asdict(self):
                 return self._data
 
         mock_rows = [
-            MockRow({
-                "seed_id": "seed-123",
-                "name_code": "WHEAT-001",
-                "family": "Poaceae",
-                "genus": "Triticum",
-                "species": "aestivum",
-                "seed_metadata": {"color": "golden"}
-            }),
-            MockRow({
-                "seed_id": "seed-456",
-                "name_code": "CORN-001",
-                "family": "Poaceae",
-                "genus": "Zea",
-                "species": "mays",
-                "seed_metadata": {"color": "yellow"}
-            })
+            MockRow(
+                {
+                    "seed_id": "seed-123",
+                    "name_code": "WHEAT-001",
+                    "family": "Poaceae",
+                    "genus": "Triticum",
+                    "species": "aestivum",
+                    "seed_metadata": {"color": "golden"},
+                }
+            ),
+            MockRow(
+                {
+                    "seed_id": "seed-456",
+                    "name_code": "CORN-001",
+                    "family": "Poaceae",
+                    "genus": "Zea",
+                    "species": "mays",
+                    "seed_metadata": {"color": "yellow"},
+                }
+            ),
         ]
 
         # Mock session
@@ -532,8 +538,7 @@ class TestSeedServiceGetSeedData:
             return mock_rows
 
         monkeypatch.setattr(
-            "app.datastore.seed.SeedDataService.get_seed_data",
-            mock_get_seed_data
+            "app.datastore.seed.SeedDataService.get_seed_data", mock_get_seed_data
         )
 
         # Call service method
@@ -571,8 +576,7 @@ class TestSeedServiceGetSeedData:
             return []
 
         monkeypatch.setattr(
-            "app.datastore.seed.SeedDataService.get_seed_data",
-            mock_get_seed_data_empty
+            "app.datastore.seed.SeedDataService.get_seed_data", mock_get_seed_data_empty
         )
 
         result = await SeedService.get_seed_data()
@@ -596,8 +600,7 @@ class TestSeedServiceGetSeedData:
             raise Exception("Database connection failed")
 
         monkeypatch.setattr(
-            "app.datastore.seed.SeedDataService.get_seed_data",
-            mock_get_seed_data_error
+            "app.datastore.seed.SeedDataService.get_seed_data", mock_get_seed_data_error
         )
 
         # Verify SeedError is raised

@@ -48,9 +48,13 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
             "folder_name": entity.folder.name if entity.folder else None,
             "user_id": str(entity.user_id),
             "org_admin_role_id": str(entity.org_admin_role_id),
-            "org_user_role_id": str(entity.org_user_role_id) if entity.org_user_role_id else None,
+            "org_user_role_id": str(entity.org_user_role_id)
+            if entity.org_user_role_id
+            else None,
             "active": entity.active,
-            "date_created": entity.date_created.isoformat() if entity.date_created else None,
+            "date_created": entity.date_created.isoformat()
+            if entity.date_created
+            else None,
             "width": entity.width,
             "height": entity.height,
             "sha256": entity.sha256,
@@ -61,9 +65,15 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
             "size_on_disk_sanitized": entity.size_on_disk_sanitized,
             "magnification": entity.magnification,
             "blob_url_sanitized": entity.blob_url_sanitized,
-            "device_model_id": str(entity.device_model_id) if entity.device_model_id else None,
-            "device_lens_id": str(entity.device_lens_id) if entity.device_lens_id else None,
-            "single_species_image": str(entity.single_species_image) if entity.single_species_image else None,
+            "device_model_id": str(entity.device_model_id)
+            if entity.device_model_id
+            else None,
+            "device_lens_id": str(entity.device_lens_id)
+            if entity.device_lens_id
+            else None,
+            "single_species_image": str(entity.single_species_image)
+            if entity.single_species_image
+            else None,
             "description": entity.description,
         }
 
@@ -106,6 +116,7 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
             HTTPException: 403 if user is not authenticated or not associated with an organization
         """
         from app.service.rbac import RbacService
+
         # Verify user is authenticated and associated with an organization
         await RbacService.get_user_organization_id(_user_id)
 
@@ -127,7 +138,7 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
         from app.service.rbac import RbacService
         from app.db.utils import sessionmanager
         from fastapi import HTTPException, status
-        
+
         entity_name = cls.get_entity_name()
         entity_name_lower = entity_name.lower()
         creation_exc = cls.get_creation_exception()
@@ -145,14 +156,14 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
                 data_service = data_service_class(session)
-                
+
                 # Create the entity
                 entity = await data_service.create(**kwargs)
-                
+
                 # Reload the entity with relationships using get_by_id
                 # This will use get_query_options() to load relationships
                 entity_with_relationships = await data_service.get_by_id(entity.id)
-                
+
                 if not entity_with_relationships:
                     raise creation_exc(f"Failed to reload created {entity_name_lower}")
 

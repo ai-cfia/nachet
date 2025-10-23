@@ -8,13 +8,25 @@ Coordinates between ImageProcessingService, DirectoryService, and other services
 from typing import Dict, Any
 from uuid import UUID
 
-from app.model.inference import InferenceRequest, ImageSubmissionResponse, ApiInferenceResponse
-from app.service import ImageProcessingService, DirectoryService, SeedService, PipelineService
+from app.model.inference import (
+    InferenceRequest,
+    ImageSubmissionResponse,
+    ApiInferenceResponse,
+)
+from app.service import (
+    ImageProcessingService,
+    DirectoryService,
+    SeedService,
+    PipelineService,
+)
 from app.service.organization import OrganizationService
 from app.service.constants import get_cfia_admin_role_id
 from app.exceptions import ImageProcessingError
 from app.db.utils import sessionmanager
-from app.service.inference_api import InferenceDispatchService, process_api_ready_classification_result
+from app.service.inference_api import (
+    InferenceDispatchService,
+    process_api_ready_classification_result,
+)
 
 
 class InferenceService:
@@ -56,7 +68,9 @@ class InferenceService:
 
         try:
             # Get pipeline steps from cache
-            pipeline_steps = await PipelineService.get_pipeline_steps(request.pipeline_id)
+            pipeline_steps = await PipelineService.get_pipeline_steps(
+                request.pipeline_id
+            )
 
             if not pipeline_steps:
                 error_msg = f"Pipeline '{request.pipeline_id}' not found in cache"
@@ -81,7 +95,7 @@ class InferenceService:
 
             # Execute pipeline steps sequentially
             previous_result = image_base64
-            
+
             for step_idx, step in enumerate(pipeline_steps, start=1):
                 logger.debug(
                     f"Executing pipeline step {step_idx}/{len(pipeline_steps)}",
@@ -89,16 +103,16 @@ class InferenceService:
                     model_name=step["model_name"],
                     request_function=step["request_function"],
                 )
-                
+
                 # Dispatch to inference service
                 step_result = await InferenceDispatchService.dispatch(
                     model=step,
                     previous_result=previous_result,
                 )
-                
+
                 # Update previous_result for next step
                 previous_result = step_result
-                
+
                 logger.debug(
                     f"Completed pipeline step {step_idx}/{len(pipeline_steps)}",
                     model_name=step["model_name"],
@@ -121,13 +135,13 @@ class InferenceService:
                 area_ratio=request.area_ratio,
                 color_format=request.color_format,
             )
-            
+
             # Build model info list from pipeline steps
             models = [
                 {"name": step["model_name"], "version": step.get("version", "1")}
                 for step in pipeline_steps
             ]
-            
+
             # Return validated API response using Pydantic model
             return ApiInferenceResponse(
                 filename=api_result.filename,
@@ -147,8 +161,9 @@ class InferenceService:
                 pipeline_id=request.pipeline_id,
                 error_type=type(e).__name__,
             )
-            raise ImageProcessingError(f"Failed to submit direct pipeline inference: {str(e)}") from e
-
+            raise ImageProcessingError(
+                f"Failed to submit direct pipeline inference: {str(e)}"
+            ) from e
 
     @staticmethod
     async def submit_direct_inference_request_test(
@@ -168,10 +183,10 @@ class InferenceService:
         Args:
             request: InferenceRequest with image data and metadata
             user_id: UUID of requesting user
-            
+
         Returns:
             ApiInferenceResponse with classification boxes and predictions
-            
+
         Raises:
             ImageProcessingError: If submission fails
         """
@@ -190,7 +205,7 @@ class InferenceService:
             if image_base64.startswith("data:"):
                 # Strip data URL prefix to get just the base64 string
                 image_base64 = image_base64.split(",", 1)[1]
-            
+
             # Directly submit image for inference without DB/storage
             detection_result = await InferenceDispatchService.dispatch(
                 model={
@@ -228,7 +243,7 @@ class InferenceService:
                 area_ratio=request.area_ratio,
                 color_format=request.color_format,
             )
-            
+
             # Return validated API response using Pydantic model
             return ApiInferenceResponse(
                 filename=api_result.filename,
@@ -248,7 +263,9 @@ class InferenceService:
                 f"Failed to submit direct inference: {str(e)}",
                 error_type=type(e).__name__,
             )
-            raise ImageProcessingError(f"Failed to submit direct inference: {str(e)}") from e
+            raise ImageProcessingError(
+                f"Failed to submit direct inference: {str(e)}"
+            ) from e
 
     @staticmethod
     async def submit_inference_request(
@@ -311,7 +328,9 @@ class InferenceService:
                         f"Folder not found: {request.folder_name}",
                         user_id=str(user_id),
                     )
-                    raise ValueError(f"Folder '{request.folder_name}' not found for user")
+                    raise ValueError(
+                        f"Folder '{request.folder_name}' not found for user"
+                    )
 
                 # Extract filename from image data (use folder_name as fallback)
                 filename = f"{request.folder_name}.png"
@@ -324,7 +343,9 @@ class InferenceService:
                 # Get user role IDs
                 # TODO: Get actual role IDs from user/organization
                 org_admin_role_id = get_cfia_admin_role_id()
-                org_user_role_id = get_cfia_admin_role_id()  # TODO: Get actual user role
+                org_user_role_id = (
+                    get_cfia_admin_role_id()
+                )  # TODO: Get actual user role
 
                 # Convert imageDims from list [width, height] to dict format
                 image_metadata = {

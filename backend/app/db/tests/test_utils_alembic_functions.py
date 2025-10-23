@@ -85,7 +85,9 @@ class TestAlembicUpgrade:
         mock_upgrade.assert_called_once_with(mock_cfg, "head")
 
         # Verify success message was logged
-        mock_logger.info.assert_called_once_with("Migrations completed successfully", target="head")
+        mock_logger.info.assert_called_once_with(
+            "Migrations completed successfully", target="head"
+        )
 
     @patch("app.db.utils.command.upgrade")
     @patch("app.db.utils._get_logger")
@@ -107,7 +109,9 @@ class TestAlembicUpgrade:
         mock_upgrade.assert_called_once_with(mock_cfg, target_version)
 
         # Verify success message was logged
-        mock_logger.info.assert_called_once_with("Migrations completed successfully", target=target_version)
+        mock_logger.info.assert_called_once_with(
+            "Migrations completed successfully", target=target_version
+        )
 
     @patch("app.db.utils.command.upgrade")
     def test_alembic_upgrade_command_error(self, mock_upgrade):

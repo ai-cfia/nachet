@@ -32,6 +32,7 @@ class ValidationHelper:
             BlobStorageError: If name is invalid
         """
         from ...validation import validate_blob_name as unified_validate_blob_name
+
         return unified_validate_blob_name(name)
 
     @staticmethod
@@ -51,7 +52,10 @@ class ValidationHelper:
         Raises:
             BlobStorageError: If name is invalid
         """
-        from ...validation import validate_container_name as unified_validate_container_name
+        from ...validation import (
+            validate_container_name as unified_validate_container_name,
+        )
+
         return unified_validate_container_name(container)
 
     @staticmethod
@@ -143,7 +147,7 @@ class ValidationHelper:
         if not access_key_id or not secret_access_key:
             raise InvalidConfigurationError(
                 "access_key_id and secret_access_key",
-                "S3 credentials are required for presigned URL generation"
+                "S3 credentials are required for presigned URL generation",
             )
 
         return access_key_id, secret_access_key

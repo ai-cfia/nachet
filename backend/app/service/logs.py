@@ -11,13 +11,19 @@ from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter as HTTPLogExporter
-from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter as GRPCLogExporter
+from opentelemetry.exporter.otlp.proto.http._log_exporter import (
+    OTLPLogExporter as HTTPLogExporter,
+)
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import (
+    OTLPLogExporter as GRPCLogExporter,
+)
 
 # Context variables for request tracing
-correlation_id_var: ContextVar[Optional[str]] = ContextVar('correlation_id', default=None)
-session_id_var: ContextVar[Optional[str]] = ContextVar('session_id', default=None)
-user_id_var: ContextVar[Optional[str]] = ContextVar('user_id', default=None)
+correlation_id_var: ContextVar[Optional[str]] = ContextVar(
+    "correlation_id", default=None
+)
+session_id_var: ContextVar[Optional[str]] = ContextVar("session_id", default=None)
+user_id_var: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
 
 
 class LoguruToOTELBridge:
@@ -37,7 +43,7 @@ class LoguruToOTELBridge:
             "SUCCESS": logging.INFO,
             "WARNING": logging.WARNING,
             "ERROR": logging.ERROR,
-            "CRITICAL": logging.CRITICAL
+            "CRITICAL": logging.CRITICAL,
         }
 
     def write(self, message):
@@ -53,7 +59,7 @@ class LoguruToOTELBridge:
                 "session_id": LogService.get_session_id(),
                 "user_id": LogService.get_user_id(),
                 "service": "nachet-backend",
-                **record.get("extra", {})
+                **record.get("extra", {}),
             }
 
             # Use service_name from record if present (e.g., frontend logs)
@@ -61,9 +67,7 @@ class LoguruToOTELBridge:
                 extra["service_name"] = "nachet-backend"
 
             self.python_logger.log(
-                self.level_map.get(level, logging.INFO),
-                msg,
-                extra=extra
+                self.level_map.get(level, logging.INFO), msg, extra=extra
             )
 
 
@@ -116,7 +120,7 @@ class LogService:
         """Sanitize error messages to prevent format string interpretation by the logger."""
         error_str = str(error)
         # Escape % characters to prevent logger from interpreting them as format placeholders
-        return error_str.replace('%', '%%')
+        return error_str.replace("%", "%%")
 
     @staticmethod
     def custom_formatter(record):
@@ -178,13 +182,11 @@ class LogService:
         logger.remove()
 
         # Console logging only - no OTEL overhead
-        logger.add(
-            sys.stdout,
-            format=cls.custom_formatter,
-            level=log_level
-        )
+        logger.add(sys.stdout, format=cls.custom_formatter, level=log_level)
 
-        logger.info("Console-only logging initialized (OTEL disabled)", log_level=log_level)
+        logger.info(
+            "Console-only logging initialized (OTEL disabled)", log_level=log_level
+        )
 
         cls._initialized = True
         cls._logger = logger
@@ -214,22 +216,22 @@ class LogService:
 
         enable_otel = config.get("enable_otel", False)  # Disabled by default
         otel_protocol = config.get("otel_exporter_protocol", "grpc").lower()
-        endpoint = config.get("otel_exporter_endpoint", "http://alloy.monitoring.svc.cluster.local:4317")
+        endpoint = config.get(
+            "otel_exporter_endpoint", "http://alloy.monitoring.svc.cluster.local:4317"
+        )
         log_level = config.get("log_level", "INFO").upper()
 
         # Remove default loguru handler
         logger.remove()
 
         # Console logging (always enabled)
-        logger.add(
-            sys.stdout,
-            format=cls.custom_formatter,
-            level=log_level
-        )
+        logger.add(sys.stdout, format=cls.custom_formatter, level=log_level)
 
         # OTEL logging setup (optional)
         if not enable_otel:
-            logger.info("OTEL disabled - using console-only logging", log_level=log_level)
+            logger.info(
+                "OTEL disabled - using console-only logging", log_level=log_level
+            )
             cls._initialized = True
             cls._logger = logger
             return logger
@@ -242,22 +244,16 @@ class LogService:
                     endpoint = endpoint.rstrip("/") + "/v1/logs"
 
             # Setup OTEL logger provider with service name
-            resource = Resource(attributes={
-                ResourceAttributes.SERVICE_NAME: "nachet-backend"
-            })
+            resource = Resource(
+                attributes={ResourceAttributes.SERVICE_NAME: "nachet-backend"}
+            )
             logger_provider = LoggerProvider(resource=resource)
 
             # Create exporter based on protocol
             if otel_protocol == "http":
-                otlp_exporter = HTTPLogExporter(
-                    endpoint=endpoint,
-                    insecure=True
-                )
+                otlp_exporter = HTTPLogExporter(endpoint=endpoint, insecure=True)
             else:
-                otlp_exporter = GRPCLogExporter(
-                    endpoint=endpoint,
-                    insecure=True
-                )
+                otlp_exporter = GRPCLogExporter(endpoint=endpoint, insecure=True)
 
             # Add processor
             logger_provider.add_log_record_processor(
@@ -272,7 +268,12 @@ class LogService:
             bridge = LoguruToOTELBridge(otel_handler)
             logger.add(bridge, level=log_level)
 
-            logger.info("OTEL logging initialized", protocol=otel_protocol, endpoint=endpoint, log_level=log_level)
+            logger.info(
+                "OTEL logging initialized",
+                protocol=otel_protocol,
+                endpoint=endpoint,
+                log_level=log_level,
+            )
 
         except Exception as e:
             # OTEL setup failed - log warning and continue with console-only
@@ -318,15 +319,15 @@ class LogService:
             log = cls.get_logger()
 
             # Extract log data with defaults
-            level = log_data.get('level', 'ERROR').upper()
-            message = log_data.get('message', 'Frontend log')
-            error_type = log_data.get('error_type', 'UnknownError')
-            stack_trace = log_data.get('stack_trace', '')
-            url = log_data.get('url', '')
-            user_agent = log_data.get('user_agent', '')
-            user_id = log_data.get('user_id', '')
-            correlation_id = log_data.get('correlation_id')
-            session_id = log_data.get('session_id')
+            level = log_data.get("level", "ERROR").upper()
+            message = log_data.get("message", "Frontend log")
+            error_type = log_data.get("error_type", "UnknownError")
+            stack_trace = log_data.get("stack_trace", "")
+            url = log_data.get("url", "")
+            user_agent = log_data.get("user_agent", "")
+            user_id = log_data.get("user_id", "")
+            correlation_id = log_data.get("correlation_id")
+            session_id = log_data.get("session_id")
 
             # Build extra context for structured logging
             extra_context = {
@@ -345,21 +346,17 @@ class LogService:
                 extra_context["stack_trace"] = stack_trace
 
             # Log based on level using loguru
-            if level == 'ERROR':
+            if level == "ERROR":
                 log.bind(**extra_context).error(f"Frontend error: {message}")
-            elif level == 'WARNING':
+            elif level == "WARNING":
                 log.bind(**extra_context).warning(f"Frontend warning: {message}")
             else:
                 log.bind(**extra_context).info(f"Frontend log: {message}")
 
-            return {
-                "status": "logged",
-                "correlation_id": correlation_id or "N/A"
-            }
+            return {"status": "logged", "correlation_id": correlation_id or "N/A"}
 
         except Exception as e:
-            logger.error(f"Error processing frontend log: {cls._sanitize_error_message(e)}")
-            return {
-                "status": "error",
-                "error": "Failed to process log"
-            }
+            logger.error(
+                f"Error processing frontend log: {cls._sanitize_error_message(e)}"
+            )
+            return {"status": "error", "error": "Failed to process log"}

@@ -1,6 +1,7 @@
 """
 Contains the colors palettes uses to colors the boxes.
 """
+
 import numpy as np
 from typing import Union
 
@@ -23,7 +24,8 @@ primary_colors = {
         "#FFEB00",
         "#87633A",
         "#FF1493",
-        "#676765"),
+        "#676765",
+    ),
     "rgb": (
         (237, 28, 36),
         (0, 90, 255),
@@ -33,7 +35,8 @@ primary_colors = {
         (255, 235, 0),
         (135, 99, 58),
         (255, 20, 147),
-        (103, 103, 101))
+        (103, 103, 101),
+    ),
 }
 
 # light_colors
@@ -52,7 +55,7 @@ light_colors = {
         "#DDD59D",
         "#BF8654",
         "#EAD0D6",
-        "#CACACA"
+        "#CACACA",
     ),
     "rgb": (
         (166, 218, 244),
@@ -63,9 +66,10 @@ light_colors = {
         (221, 213, 157),
         (191, 134, 84),
         (234, 208, 214),
-        (202, 202, 202)
-    )
+        (202, 202, 202),
+    ),
 }
+
 
 def mixing_palettes(dict1: dict, dict2: dict) -> dict:
     """
@@ -76,7 +80,10 @@ def mixing_palettes(dict1: dict, dict2: dict) -> dict:
 
     return {key: dict1[key] + dict2[key] for key in dict1.keys()}
 
-def shades_colors(base_color: Union[str, tuple], num_shades = 5, lighten_factor = 0.15, darken_factor = 0.1) -> tuple:
+
+def shades_colors(
+    base_color: Union[str, tuple], num_shades=5, lighten_factor=0.15, darken_factor=0.1
+) -> tuple:
     """
     Generate shades of a color based on the base color.
 
@@ -89,16 +96,23 @@ def shades_colors(base_color: Union[str, tuple], num_shades = 5, lighten_factor 
     Returns:
         tuple: RGB tuples representing the shade color.
     """
+
     def hex_to_rgb(hex_value):
         hex_value = hex_value.lstrip("#")
-        return tuple(int(hex_value[i:i + len(hex_value) // 3], 16) for i in range(0, len(hex_value), len(hex_value) // 3))
+        return tuple(
+            int(hex_value[i : i + len(hex_value) // 3], 16)
+            for i in range(0, len(hex_value), len(hex_value) // 3)
+        )
 
     is_hex = base_color[0]
     if is_hex == "#":
         base_color = hex_to_rgb(base_color)
 
     base_rgb = np.array(base_color)
-    shades = [base_rgb * (1 - lighten_factor * i) * (1 - darken_factor * (num_shades - i)) for i in range(num_shades)]
+    shades = [
+        base_rgb * (1 - lighten_factor * i) * (1 - darken_factor * (num_shades - i))
+        for i in range(num_shades)
+    ]
     color = [tuple(base_rgb - shade.astype(int)) for shade in shades][-1]
 
-    return color if is_hex != '#' else f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}"
+    return color if is_hex != "#" else f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}"

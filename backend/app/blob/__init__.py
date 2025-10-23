@@ -117,7 +117,8 @@ def create_blob_storage_client(provider: str, config: dict) -> BlobStorageInterf
         return S3BlobStorage(config)
     else:
         raise InvalidConfigurationError(
-            "provider", f"Unsupported provider: {provider}. Supported providers: azure, minio, s3"
+            "provider",
+            f"Unsupported provider: {provider}. Supported providers: azure, minio, s3",
         )
 
 

@@ -26,11 +26,7 @@ class MockBlobStorage(BlobStorageInterface):
         self.malware_detected = detected
 
     async def upload_blob(
-        self,
-        container: str,
-        name: str,
-        data: Union[bytes, str, BinaryIO],
-        **kwargs
+        self, container: str, name: str, data: Union[bytes, str, BinaryIO], **kwargs
     ) -> Dict[str, Any]:
         """Mock blob upload with optional failure simulation."""
         self.attempt_count += 1
@@ -39,7 +35,9 @@ class MockBlobStorage(BlobStorageInterface):
             raise Exception("Simulated upload failure")
 
         # Convert container to string if it's an Enum
-        container_name = str(container.value if hasattr(container, 'value') else container)
+        container_name = str(
+            container.value if hasattr(container, "value") else container
+        )
 
         # Convert data to bytes if needed
         if isinstance(data, str):
@@ -50,7 +48,7 @@ class MockBlobStorage(BlobStorageInterface):
         self.uploaded_blobs[f"{container_name}/{name}"] = data
 
         # Store metadata if provided
-        metadata = kwargs.get('metadata', {})
+        metadata = kwargs.get("metadata", {})
         if metadata:
             self.blob_metadata[f"{container_name}/{name}"] = metadata
 
@@ -83,17 +81,22 @@ class MockBlobStorage(BlobStorageInterface):
         data = self.uploaded_blobs[key]
         chunk_size = 1024
         for i in range(0, len(data), chunk_size):
-            yield data[i:i + chunk_size]
+            yield data[i : i + chunk_size]
 
     async def get_blob_tags(self, container: str, name: str) -> Dict[str, str]:
         """Mock getting blob tags (for Defender scan results)."""
         # Convert container to string if it's an Enum
-        container_name = str(container.value if hasattr(container, 'value') else container)
+        container_name = str(
+            container.value if hasattr(container, "value") else container
+        )
         key = f"{container_name}/{name}"
-        return self.blob_tags.get(key, {
-            "defender_scan_complete": "true",
-            "malware_detected": "true" if self.malware_detected else "false",
-        })
+        return self.blob_tags.get(
+            key,
+            {
+                "defender_scan_complete": "true",
+                "malware_detected": "true" if self.malware_detected else "false",
+            },
+        )
 
     async def set_blob_tags(
         self, container: str, name: str, tags: Dict[str, str]
@@ -148,17 +151,19 @@ class MockBlobStorage(BlobStorageInterface):
 
     async def list_blobs(self, container: str, **kwargs) -> Dict[str, Any]:
         """Mock listing blobs in a container."""
-        prefix = kwargs.get('name_starts_with', '')
+        prefix = kwargs.get("name_starts_with", "")
         blobs = []
 
         for key in self.uploaded_blobs.keys():
             if key.startswith(f"{container}/"):
                 name = key.replace(f"{container}/", "", 1)
                 if name.startswith(prefix):
-                    blobs.append({
-                        "name": name,
-                        "size": len(self.uploaded_blobs[key]),
-                    })
+                    blobs.append(
+                        {
+                            "name": name,
+                            "size": len(self.uploaded_blobs[key]),
+                        }
+                    )
 
         return {"blobs": blobs}
 
@@ -179,7 +184,9 @@ class MockBlobStorage(BlobStorageInterface):
 
         self.uploaded_blobs[dest_key] = self.uploaded_blobs[source_key]
 
-        return {"url": f"https://test.blob.core.windows.net/{dest_container}/{dest_name}"}
+        return {
+            "url": f"https://test.blob.core.windows.net/{dest_container}/{dest_name}"
+        }
 
     async def move_blob(
         self,
@@ -190,7 +197,9 @@ class MockBlobStorage(BlobStorageInterface):
         **kwargs,
     ) -> Dict[str, Any]:
         """Mock blob move."""
-        result = await self.copy_blob(source_container, source_name, dest_container, dest_name, **kwargs)
+        result = await self.copy_blob(
+            source_container, source_name, dest_container, dest_name, **kwargs
+        )
         await self.delete_blob(source_container, source_name)
         return result
 

@@ -173,7 +173,7 @@ class PipelineDefaultDataService(BaseCRUDDataService[PipelineDefault]):
     def get_query_options(self) -> list:
         """
         Return query options for eager loading PipelineDefault relationships.
-        
+
         Returns:
             List of SQLAlchemy query options for loading the pipeline relationship
         """
@@ -191,7 +191,7 @@ class PipelineModelDataService(BaseCRUDDataService[PipelineModel]):
     def get_query_options(self) -> list:
         """
         Return query options for eager loading PipelineModel relationships.
-        
+
         Returns:
             List of SQLAlchemy query options for loading pipeline and model relationships
         """

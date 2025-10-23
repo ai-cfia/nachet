@@ -46,12 +46,16 @@ from app.api.config import get_settings
 
 async def list_organizations():
     """List all organizations."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("ORGANIZATIONS")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     async with sessionmanager.get_session() as session:
-        stmt = select(Organization).where(Organization.active.is_(True)).order_by(Organization.name)
+        stmt = (
+            select(Organization)
+            .where(Organization.active.is_(True))
+            .order_by(Organization.name)
+        )
         result = await session.execute(stmt)
         orgs = result.scalars().all()
 
@@ -75,15 +79,14 @@ async def list_organizations():
 async def verify_admin_user(admin_user_id: UUID) -> bool:
     """Verify that the admin user exists and is active."""
     async with sessionmanager.get_session() as session:
-        stmt = select(Users).where(
-            Users.id == admin_user_id,
-            Users.active.is_(True)
-        )
+        stmt = select(Users).where(Users.id == admin_user_id, Users.active.is_(True))
         result = await session.execute(stmt)
         admin_user = result.scalar_one_or_none()
 
         if not admin_user:
-            print(f"\n❌ ERROR: Admin user with ID {admin_user_id} not found or inactive.")
+            print(
+                f"\n❌ ERROR: Admin user with ID {admin_user_id} not found or inactive."
+            )
             return False
 
         print(f"\n✓ Admin user verified: {admin_user.email or 'No email'}")
@@ -100,15 +103,12 @@ async def check_organization_exists(name: str) -> bool:
 
 
 async def create_organization(
-    name: str,
-    description: str,
-    folder_prefix: Optional[str],
-    admin_user_id: UUID
+    name: str, description: str, folder_prefix: Optional[str], admin_user_id: UUID
 ):
     """Create a new organization."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("ORGANIZATION CREATION")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     # Verify admin user
     if not await verify_admin_user(admin_user_id):
@@ -121,12 +121,18 @@ async def create_organization(
 
     # Validate folder prefix format
     if folder_prefix:
-        if not folder_prefix.replace('-', '').replace('_', '').isalnum():
-            print(f"\n❌ ERROR: Folder prefix '{folder_prefix}' contains invalid characters.")
-            print("   Folder prefix should only contain lowercase letters, numbers, hyphens, and underscores.")
+        if not folder_prefix.replace("-", "").replace("_", "").isalnum():
+            print(
+                f"\n❌ ERROR: Folder prefix '{folder_prefix}' contains invalid characters."
+            )
+            print(
+                "   Folder prefix should only contain lowercase letters, numbers, hyphens, and underscores."
+            )
             return False
         if folder_prefix != folder_prefix.lower():
-            print(f"\n⚠️  WARNING: Folder prefix will be converted to lowercase: '{folder_prefix.lower()}'")
+            print(
+                f"\n⚠️  WARNING: Folder prefix will be converted to lowercase: '{folder_prefix.lower()}'"
+            )
             folder_prefix = folder_prefix.lower()
 
     print("\n📋 Organization Details:")
@@ -137,8 +143,10 @@ async def create_organization(
     print()
 
     # Confirm creation
-    confirmation = input("⚠️  Are you sure you want to create this organization? (yes/no): ")
-    if confirmation.lower() not in ['yes', 'y']:
+    confirmation = input(
+        "⚠️  Are you sure you want to create this organization? (yes/no): "
+    )
+    if confirmation.lower() not in ["yes", "y"]:
         print("\n❌ Organization creation cancelled.")
         return False
 
@@ -150,7 +158,7 @@ async def create_organization(
             user_id=admin_user_id,
             name=name,
             description=description,
-            folder_prefix=folder_prefix
+            folder_prefix=folder_prefix,
         )
 
         print("\n✅ SUCCESS: Organization created successfully!")
@@ -163,9 +171,9 @@ async def create_organization(
         print()
 
         # Display created RBAC roles
-        if 'rbac_roles' in result and result['rbac_roles']:
+        if "rbac_roles" in result and result["rbac_roles"]:
             print("🔐 RBAC Roles Created:")
-            for role in result['rbac_roles']:
+            for role in result["rbac_roles"]:
                 print(f"   - {role['name']}: {role['description']} (ID: {role['id']})")
             print()
 
@@ -180,6 +188,7 @@ async def create_organization(
     except Exception as e:
         print(f"\n❌ ERROR: Failed to create organization: {str(e)}")
         import traceback
+
         print("\nFull error:")
         traceback.print_exc()
         return False
@@ -213,26 +222,36 @@ Notes:
   - Organization names must be unique
   - Folder prefixes should be lowercase with hyphens (e.g., "my-org")
   - Two RBAC roles are automatically created: "admin" and "user"
-        """
+        """,
     )
 
-    parser.add_argument('--list', action='store_true',
-                       help='List all organizations')
+    parser.add_argument("--list", action="store_true", help="List all organizations")
 
-    parser.add_argument('--create', action='store_true',
-                       help='Create a new organization')
+    parser.add_argument(
+        "--create", action="store_true", help="Create a new organization"
+    )
 
-    parser.add_argument('--name', metavar='NAME',
-                       help='Organization name (required for --create)')
+    parser.add_argument(
+        "--name", metavar="NAME", help="Organization name (required for --create)"
+    )
 
-    parser.add_argument('--description', metavar='DESC',
-                       help='Organization description (required for --create)')
+    parser.add_argument(
+        "--description",
+        metavar="DESC",
+        help="Organization description (required for --create)",
+    )
 
-    parser.add_argument('--folder-prefix', metavar='PREFIX',
-                       help='Folder prefix for the organization (optional, lowercase recommended)')
+    parser.add_argument(
+        "--folder-prefix",
+        metavar="PREFIX",
+        help="Folder prefix for the organization (optional, lowercase recommended)",
+    )
 
-    parser.add_argument('--admin', metavar='ADMIN_ID',
-                       help='Admin user ID (UUID) performing the creation (required for --create)')
+    parser.add_argument(
+        "--admin",
+        metavar="ADMIN_ID",
+        help="Admin user ID (UUID) performing the creation (required for --create)",
+    )
 
     args = parser.parse_args()
 
@@ -281,7 +300,7 @@ Notes:
                 name=args.name,
                 description=args.description,
                 folder_prefix=args.folder_prefix,
-                admin_user_id=admin_id
+                admin_user_id=admin_id,
             )
             sys.exit(0 if success else 1)
 

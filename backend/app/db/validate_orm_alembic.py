@@ -26,7 +26,9 @@ async def check_migration_file_needed(logger=None):
     os.environ["ALEMBIC_MIGRATION_LOG_LEVEL"] = "WARNING"
 
     if logger:
-        logger.info("Checking if a new migration file is needed to match the current ORM state")
+        logger.info(
+            "Checking if a new migration file is needed to match the current ORM state"
+        )
     await check_if_new_migration_file_needed(async_engine)
 
 

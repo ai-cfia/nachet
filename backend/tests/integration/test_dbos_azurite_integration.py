@@ -47,7 +47,12 @@ def get_test_config():
 
 
 @pytest_asyncio.fixture
-async def test_folder(integration_db_session: AsyncSession, test_user: UUID, test_org_admin_role: UUID, test_org_user_role: UUID):
+async def test_folder(
+    integration_db_session: AsyncSession,
+    test_user: UUID,
+    test_org_admin_role: UUID,
+    test_org_user_role: UUID,
+):
     """Create a test folder for image uploads."""
     folder = Folder(
         id=uuid4(),
@@ -241,7 +246,7 @@ class TestAzuriteBlobOperations:
 
         # Assert
         assert result is not None
-        
+
         # Source should not exist
         source_exists = await azure_storage.blob_exists(container_name, source_blob)
         assert source_exists is False
@@ -380,7 +385,9 @@ class TestAzuriteImageProcessingWorkflow:
         processing_state.status = ProcessingStatus.UPLOADED
         processing_state.progress_percentage = 25
         processing_state.uploaded_at = datetime.now(timezone.utc)
-        processing_state.blob_url_original = f"http://localhost:12434/devstoreaccount1/{container_name}/{blob_name}"
+        processing_state.blob_url_original = (
+            f"http://localhost:12434/devstoreaccount1/{container_name}/{blob_name}"
+        )
         await integration_db_session.commit()
 
         # Assert - Verify upload
@@ -414,7 +421,7 @@ class TestAzuriteImageProcessingWorkflow:
         image_id = uuid7()
         original_container = "nachet-original-test"
         sanitized_container = "nachet-sanitized-test"
-        
+
         await azure_storage.create_container(original_container)
         await azure_storage.create_container(sanitized_container)
 
@@ -449,7 +456,7 @@ class TestAzuriteImageProcessingWorkflow:
         # Act - Stage 1: Upload to original container
         file_bytes = get_test_seed_image()
         original_blob_name = f"cfia-org/avena-fatua/{image_id}.png"
-        
+
         await azure_storage.upload_blob(
             container=original_container,
             name=original_blob_name,
@@ -465,7 +472,7 @@ class TestAzuriteImageProcessingWorkflow:
 
         # Stage 2: Simulate sanitization (copy to sanitized container)
         sanitized_blob_name = f"avena/fatua/{image_id}.png"
-        
+
         await azure_storage.copy_blob(
             source_container=original_container,
             source_name=original_blob_name,
@@ -487,7 +494,7 @@ class TestAzuriteImageProcessingWorkflow:
 
         # Assert - Verify all stages
         await integration_db_session.refresh(processing_state)
-        
+
         assert processing_state.status == ProcessingStatus.COMPLETED
         assert processing_state.progress_percentage == 100
         assert processing_state.uploaded_at is not None
@@ -497,19 +504,29 @@ class TestAzuriteImageProcessingWorkflow:
         assert processing_state.blob_url_sanitized is not None
 
         # Verify both blobs exist
-        original_exists = await azure_storage.blob_exists(original_container, original_blob_name)
-        sanitized_exists = await azure_storage.blob_exists(sanitized_container, sanitized_blob_name)
-        
+        original_exists = await azure_storage.blob_exists(
+            original_container, original_blob_name
+        )
+        sanitized_exists = await azure_storage.blob_exists(
+            sanitized_container, sanitized_blob_name
+        )
+
         assert original_exists is True
         assert sanitized_exists is True
 
         # Verify we can download both
-        original_data = await azure_storage.download_blob(original_container, original_blob_name)
-        sanitized_data = await azure_storage.download_blob(sanitized_container, sanitized_blob_name)
-        
+        original_data = await azure_storage.download_blob(
+            original_container, original_blob_name
+        )
+        sanitized_data = await azure_storage.download_blob(
+            sanitized_container, sanitized_blob_name
+        )
+
         assert len(original_data) > 0
         assert len(sanitized_data) > 0
-        assert original_data == sanitized_data  # Should be identical (no actual sanitization)
+        assert (
+            original_data == sanitized_data
+        )  # Should be identical (no actual sanitization)
 
         # Clean up
         await azure_storage.delete_blob(original_container, original_blob_name)

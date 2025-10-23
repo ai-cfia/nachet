@@ -108,7 +108,7 @@ class RbacService:
             stmt = select(RbacRole).where(
                 RbacRole.organization_id == organization_id,
                 RbacRole.name == "admin",
-                RbacRole.active == True  # noqa: E712
+                RbacRole.active == True,  # noqa: E712
             )
             result = await session.execute(stmt)
             org_admin_role = result.scalar_one_or_none()
@@ -116,7 +116,7 @@ class RbacService:
             if not org_admin_role:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Organization admin role not found"
+                    detail="Organization admin role not found",
                 )
 
             return org_admin_role.id
@@ -139,7 +139,7 @@ class RbacService:
             stmt = select(RbacRole).where(
                 RbacRole.organization_id == organization_id,
                 RbacRole.name == "user",
-                RbacRole.active == True  # noqa: E712
+                RbacRole.active == True,  # noqa: E712
             )
             result = await session.execute(stmt)
             org_user_role = result.scalar_one_or_none()
@@ -147,7 +147,7 @@ class RbacService:
             if not org_user_role:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Organization user role not found"
+                    detail="Organization user role not found",
                 )
 
             return org_user_role.id
@@ -171,7 +171,7 @@ class RbacService:
         """
         # Lazy import to avoid circular dependency
         from app.datastore import OrganizationDataService
-        
+
         async with sessionmanager.get_session() as session:
             # Get organization ID if not provided
             if organization_id is None:
@@ -321,23 +321,23 @@ class RbacService:
 
     @staticmethod
     async def verify_user_has_entity_access(
-        user_id: UUID, 
-        entity_org_user_role_id: Optional[UUID], 
-        entity_org_admin_role_id: Optional[UUID]
+        user_id: UUID,
+        entity_org_user_role_id: Optional[UUID],
+        entity_org_admin_role_id: Optional[UUID],
     ) -> bool:
         """
         Verify if user has access to an entity based on entity's role fields.
-        
+
         User has access if they have:
         - CFIA admin role (cross-organization authority), OR
-        - Organization admin role matching entity's org_admin_role_id, OR  
+        - Organization admin role matching entity's org_admin_role_id, OR
         - Organization user role matching entity's org_user_role_id
-        
+
         Args:
             user_id: The user's UUID
             entity_org_user_role_id: Entity's org_user_role_id field
             entity_org_admin_role_id: Entity's org_admin_role_id field
-            
+
         Returns:
             True if user has access, False otherwise
         """
@@ -345,53 +345,58 @@ class RbacService:
             # Check if user is CFIA admin (highest authority)
             if await RbacService.is_user_cfia_admin(user_id):
                 return True
-                
+
             # Get user's roles in their organization
             async with sessionmanager.get_session() as session:
                 from app.datastore import OrganizationDataService
-                
+
                 # Get user's organization
-                user_org_id = await OrganizationDataService(session).get_user_organization_id(user_id)
+                user_org_id = await OrganizationDataService(
+                    session
+                ).get_user_organization_id(user_id)
                 if not user_org_id:
                     return False
-                
+
                 # Check if user has admin role matching entity's org_admin_role_id
                 if entity_org_admin_role_id:
-                    has_admin_role = await OrganizationDataService(session).user_has_specific_role(
+                    has_admin_role = await OrganizationDataService(
+                        session
+                    ).user_has_specific_role(
                         user_id, entity_org_admin_role_id, user_org_id
                     )
                     if has_admin_role:
                         return True
-                
-                # Check if user has user role matching entity's org_user_role_id  
+
+                # Check if user has user role matching entity's org_user_role_id
                 if entity_org_user_role_id:
-                    has_user_role = await OrganizationDataService(session).user_has_specific_role(
+                    has_user_role = await OrganizationDataService(
+                        session
+                    ).user_has_specific_role(
                         user_id, entity_org_user_role_id, user_org_id
                     )
                     if has_user_role:
                         return True
-                        
+
                 return False
-                
+
         except Exception:
             return False
 
     @staticmethod
     async def verify_user_has_entity_admin_access(
-        user_id: UUID,
-        entity_org_admin_role_id: Optional[UUID]
+        user_id: UUID, entity_org_admin_role_id: Optional[UUID]
     ) -> bool:
         """
         Verify if user has admin-level access to an entity.
-        
+
         User has admin access if they have:
         - CFIA admin role (cross-organization authority), OR
         - Organization admin role matching entity's org_admin_role_id
-        
+
         Args:
             user_id: The user's UUID
             entity_org_admin_role_id: Entity's org_admin_role_id field
-            
+
         Returns:
             True if user has admin access, False otherwise
         """
@@ -399,24 +404,28 @@ class RbacService:
             # Check if user is CFIA admin (highest authority)
             if await RbacService.is_user_cfia_admin(user_id):
                 return True
-                
+
             # Check if user has admin role matching entity's org_admin_role_id
             if entity_org_admin_role_id:
                 async with sessionmanager.get_session() as session:
                     from app.datastore import OrganizationDataService
-                    
+
                     # Get user's organization
-                    user_org_id = await OrganizationDataService(session).get_user_organization_id(user_id)
+                    user_org_id = await OrganizationDataService(
+                        session
+                    ).get_user_organization_id(user_id)
                     if not user_org_id:
                         return False
-                    
-                    has_admin_role = await OrganizationDataService(session).user_has_specific_role(
+
+                    has_admin_role = await OrganizationDataService(
+                        session
+                    ).user_has_specific_role(
                         user_id, entity_org_admin_role_id, user_org_id
                     )
                     return has_admin_role
-                    
+
             return False
-            
+
         except Exception:
             return False
 
@@ -454,10 +463,16 @@ class RbacRoleService(BaseCRUDService[RbacRole]):
             "id": str(entity.id),
             "name": entity.name,
             "description": entity.description,
-            "organization_id": str(entity.organization_id) if entity.organization_id else None,
+            "organization_id": str(entity.organization_id)
+            if entity.organization_id
+            else None,
             "active": entity.active,
-            "date_created": entity.date_created.isoformat() if hasattr(entity, 'date_created') else None,
-            "date_updated": entity.date_updated.isoformat() if hasattr(entity, 'date_updated') else None,
+            "date_created": entity.date_created.isoformat()
+            if hasattr(entity, "date_created")
+            else None,
+            "date_updated": entity.date_updated.isoformat()
+            if hasattr(entity, "date_updated")
+            else None,
         }
 
     @classmethod
@@ -510,8 +525,12 @@ class RbacPermissionService(BaseCRUDService[RbacPermission]):
             "name": entity.name,
             "description": entity.description,
             "active": entity.active,
-            "date_created": entity.date_created.isoformat() if hasattr(entity, 'date_created') else None,
-            "date_updated": entity.date_updated.isoformat() if hasattr(entity, 'date_updated') else None,
+            "date_created": entity.date_created.isoformat()
+            if hasattr(entity, "date_created")
+            else None,
+            "date_updated": entity.date_updated.isoformat()
+            if hasattr(entity, "date_updated")
+            else None,
         }
 
     @classmethod
@@ -564,8 +583,12 @@ class RbacResourceService(BaseCRUDService[RbacResource]):
             "name": entity.name,
             "description": entity.description,
             "active": entity.active,
-            "date_created": entity.date_created.isoformat() if hasattr(entity, 'date_created') else None,
-            "date_updated": entity.date_updated.isoformat() if hasattr(entity, 'date_updated') else None,
+            "date_created": entity.date_created.isoformat()
+            if hasattr(entity, "date_created")
+            else None,
+            "date_updated": entity.date_updated.isoformat()
+            if hasattr(entity, "date_updated")
+            else None,
         }
 
     @classmethod
@@ -618,8 +641,12 @@ class RbacRolePermissionResourceService(BaseCRUDService[RbacRolePermissionResour
             "role_id": str(entity.role_id),
             "permission_id": str(entity.permission_id),
             "resource_id": str(entity.resource_id),
-            "date_created": entity.date_created.isoformat() if hasattr(entity, 'date_created') else None,
-            "date_updated": entity.date_updated.isoformat() if hasattr(entity, 'date_updated') else None,
+            "date_created": entity.date_created.isoformat()
+            if hasattr(entity, "date_created")
+            else None,
+            "date_updated": entity.date_updated.isoformat()
+            if hasattr(entity, "date_updated")
+            else None,
         }
 
     @classmethod
@@ -665,6 +692,7 @@ class RbacRolePermissionResourceService(BaseCRUDService[RbacRolePermissionResour
         try:
             # Lazy import to avoid circular dependency
             from app.service.rbac import RbacService
+
             await RbacService.get_user_organization_id(user_id)
 
             async with sessionmanager.get_session() as session:
@@ -708,6 +736,7 @@ class RbacRolePermissionResourceService(BaseCRUDService[RbacRolePermissionResour
         try:
             # Lazy import to avoid circular dependency
             from app.service.rbac import RbacService
+
             await RbacService.verify_user_is_cfia_admin(user_id)
 
             async with sessionmanager.get_session() as session:
@@ -762,8 +791,12 @@ class RbacUserRoleService(BaseCRUDService[RbacUserRole]):
             "user_id": str(entity.user_id),
             "role_id": str(entity.role_id),
             "active": entity.active,
-            "date_created": entity.date_created.isoformat() if hasattr(entity, 'date_created') else None,
-            "date_updated": entity.date_updated.isoformat() if hasattr(entity, 'date_updated') else None,
+            "date_created": entity.date_created.isoformat()
+            if hasattr(entity, "date_created")
+            else None,
+            "date_updated": entity.date_updated.isoformat()
+            if hasattr(entity, "date_updated")
+            else None,
         }
 
     @classmethod
@@ -808,11 +841,14 @@ class RbacUserRoleService(BaseCRUDService[RbacUserRole]):
         try:
             # Lazy import to avoid circular dependency
             from app.service.rbac import RbacService
+
             await RbacService.get_user_organization_id(requesting_user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = RbacUserRoleDataService(session)
-                entity = await data_service.get_by_composite_key(target_user_id, role_id)
+                entity = await data_service.get_by_composite_key(
+                    target_user_id, role_id
+                )
 
                 if not entity:
                     raise RbacUserRoleNotFoundError(
@@ -847,11 +883,14 @@ class RbacUserRoleService(BaseCRUDService[RbacUserRole]):
         try:
             # Lazy import to avoid circular dependency
             from app.service.rbac import RbacService
+
             await RbacService.verify_user_is_cfia_admin(requesting_user_id)
 
             async with sessionmanager.get_session() as session:
                 data_service = RbacUserRoleDataService(session)
-                deleted = await data_service.delete_by_composite_key(target_user_id, role_id)
+                deleted = await data_service.delete_by_composite_key(
+                    target_user_id, role_id
+                )
 
                 if not deleted:
                     raise RbacUserRoleNotFoundError(
@@ -864,6 +903,4 @@ class RbacUserRoleService(BaseCRUDService[RbacUserRole]):
         except RbacUserRoleNotFoundError:
             raise
         except Exception as e:
-            raise RbacUserRoleDeletionError(
-                f"Failed to delete RbacUserRole: {str(e)}"
-            )
+            raise RbacUserRoleDeletionError(f"Failed to delete RbacUserRole: {str(e)}")

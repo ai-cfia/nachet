@@ -28,6 +28,7 @@ def _get_logger():
     global _logger
     if _logger is None:
         from app.service.logs import LogService
+
         _logger = LogService.get_logger()
     return _logger
 
@@ -91,7 +92,7 @@ class AdvancedOperations:
             source_container=source_container,
             source_name=source_name,
             dest_container=dest_container,
-            dest_name=dest_name
+            dest_name=dest_name,
         )
 
         # Perform copy operation
@@ -127,7 +128,7 @@ class AdvancedOperations:
             source_container=source_container,
             source_name=source_name,
             dest_container=dest_container,
-            dest_name=dest_name
+            dest_name=dest_name,
         )
 
         return result
@@ -172,7 +173,7 @@ class AdvancedOperations:
                 source_container=source_container,
                 source_name=source_name,
                 dest_container=dest_container,
-                dest_name=dest_name
+                dest_name=dest_name,
             )
 
             copy_result = await self.copy_blob(
@@ -210,7 +211,7 @@ class AdvancedOperations:
             _get_logger().info(
                 "Move operation copy successful, deleting source",
                 source_container=source_container,
-                source_name=source_name
+                source_name=source_name,
             )
 
             delete_successful = await self._delete_blob_for_move(
@@ -225,7 +226,7 @@ class AdvancedOperations:
                     source_container=source_container,
                     source_name=source_name,
                     dest_container=dest_container,
-                    dest_name=dest_name
+                    dest_name=dest_name,
                 )
 
             _get_logger().info(
@@ -234,7 +235,7 @@ class AdvancedOperations:
                 source_name=source_name,
                 dest_container=dest_container,
                 dest_name=dest_name,
-                delete_successful=delete_successful
+                delete_successful=delete_successful,
             )
 
             return {
@@ -264,7 +265,7 @@ class AdvancedOperations:
                     source_name=source_name,
                     dest_container=dest_container,
                     dest_name=dest_name,
-                    error=str(e)
+                    error=str(e),
                 )
                 await self._rollback_copy(dest_container, dest_name)
             raise e
@@ -278,7 +279,7 @@ class AdvancedOperations:
                     dest_container=dest_container,
                     dest_name=dest_name,
                     error=str(e),
-                    error_type=type(e).__name__
+                    error_type=type(e).__name__,
                 )
                 await self._rollback_copy(dest_container, dest_name)
             raise BlobStorageError(f"Unexpected error during blob move: {str(e)}")
@@ -339,7 +340,7 @@ class AdvancedOperations:
                 container=container,
                 blob=name,
                 error=str(e),
-                error_type=type(e).__name__
+                error_type=type(e).__name__,
             )
             return False
 
@@ -356,7 +357,7 @@ class AdvancedOperations:
             _get_logger().info(
                 "Rollback: Successfully deleted destination blob after failed move",
                 dest_container=dest_container,
-                dest_name=dest_name
+                dest_name=dest_name,
             )
         except Exception as cleanup_error:
             _get_logger().error(
@@ -364,5 +365,5 @@ class AdvancedOperations:
                 dest_container=dest_container,
                 dest_name=dest_name,
                 error=str(cleanup_error),
-                error_type=type(cleanup_error).__name__
+                error_type=type(cleanup_error).__name__,
             )

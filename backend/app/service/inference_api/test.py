@@ -6,11 +6,14 @@ Functions:
     request_inference_from_seed_detector: Requests inference from the seed detector model using the provided previous result.
     request_inference_from_nachet_six_seed: Requests inference from the Nachet Six Seed model.
 """
+
 from .exceptions import ModelAPIError
 from . import ModelDispatchInfo
 
-class TestModelAPIError(ModelAPIError) :
+
+class TestModelAPIError(ModelAPIError):
     pass
+
 
 async def request_inference_from_test(model: ModelDispatchInfo, previous_result: str):
     """
@@ -27,9 +30,11 @@ async def request_inference_from_test(model: ModelDispatchInfo, previous_result:
         ProcessInferenceResultsError: If an error occurs while processing the request.
     """
     try:
-        if previous_result == '':
-           raise ValueError("The result send to the inference function is empty")
-        print(f"processing test request for {model.name} with {type(previous_result)} arguments")
+        if previous_result == "":
+            raise ValueError("The result send to the inference function is empty")
+        print(
+            f"processing test request for {model.name} with {type(previous_result)} arguments"
+        )
         return [
             {
                 "filename": "test_image.jpg",
@@ -39,7 +44,7 @@ async def request_inference_from_test(model: ModelDispatchInfo, previous_result:
                             "topX": 0.078,
                             "topY": 0.068,
                             "bottomX": 0.86,
-                            "bottomY": 0.56
+                            "bottomY": 0.56,
                         },
                         "label": "Ambrosia artemisiifolia",
                         "score": 1.0,
@@ -51,16 +56,12 @@ async def request_inference_from_test(model: ModelDispatchInfo, previous_result:
                         ],
                     }
                 ],
-                "models" : 
-                    [
-                        {
-                            "name" : model.name,
-                            "version" : 1
-                        }
-                    ]
+                "models": [{"name": model.name, "version": 1}],
             }
         ]
 
     except ValueError as error:
         print(error)
-        raise TestModelAPIError(f"An error occurred while processing the requests :\n {str(error)}") from error
+        raise TestModelAPIError(
+            f"An error occurred while processing the requests :\n {str(error)}"
+        ) from error

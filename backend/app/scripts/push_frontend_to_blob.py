@@ -25,7 +25,7 @@ Usage:
 
   # Custom source directory and container
   uv run python -m app.scripts.push_frontend_to_blob --source ../frontend/dist --container frontend
-  
+
   # Clean and upload (delete everything first)
   uv run python -m app.scripts.push_frontend_to_blob --clean
 
@@ -193,7 +193,9 @@ async def upload_directory(
 
     if not files:
         if logger:
-            logger.warning("No files found in source directory", source_dir=str(source_dir))
+            logger.warning(
+                "No files found in source directory", source_dir=str(source_dir)
+            )
         return 0, 0
 
     if logger:
@@ -265,7 +267,9 @@ async def upload_version_file(
         )
         if logger:
             logger.info(
-                "Created version file", version_filename=version_filename, version=version
+                "Created version file",
+                version_filename=version_filename,
+                version=version,
             )
         return True
     except Exception as e:
@@ -279,7 +283,10 @@ async def upload_version_file(
 
 
 async def ensure_container_exists(
-    storage_client: BlobStorageInterface, container_name: str, dry_run: bool = False, logger=None
+    storage_client: BlobStorageInterface,
+    container_name: str,
+    dry_run: bool = False,
+    logger=None,
 ) -> bool:
     """
     Ensure the target container exists, create if it doesn't.
@@ -381,7 +388,9 @@ async def clean_container(
 
         if logger:
             logger.info(
-                "Found files to delete", blob_count=len(blobs), container_name=container_name
+                "Found files to delete",
+                blob_count=len(blobs),
+                container_name=container_name,
             )
 
         successful = 0
@@ -565,7 +574,9 @@ async def main():
         return 1
 
     # Ensure container exists
-    if not await ensure_container_exists(storage_client, container_name, args.dry_run, logger):
+    if not await ensure_container_exists(
+        storage_client, container_name, args.dry_run, logger
+    ):
         return 1
 
     # Generate version from Vite build hash
@@ -619,7 +630,12 @@ async def main():
     # Upload version file
     if not args.skip_version:
         version_uploaded = await upload_version_file(
-            storage_client, container_name, version, version_filename, args.dry_run, logger
+            storage_client,
+            container_name,
+            version,
+            version_filename,
+            args.dry_run,
+            logger,
         )
         if version_uploaded:
             successful += 1
@@ -636,7 +652,9 @@ async def main():
         await verify_upload(storage_client, container_name, successful, logger)
 
     if args.dry_run:
-        logger.info("Dry run completed", hint="Use without --dry-run to actually upload")
+        logger.info(
+            "Dry run completed", hint="Use without --dry-run to actually upload"
+        )
         return 0
 
     return 0 if failed == 0 else 1

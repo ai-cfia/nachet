@@ -24,7 +24,9 @@ class PendingRegistrationDataService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_by_azure_oid(self, azure_ad_oid: str) -> Optional[PendingRegistration]:
+    async def get_by_azure_oid(
+        self, azure_ad_oid: str
+    ) -> Optional[PendingRegistration]:
         """
         Retrieve a pending registration by Azure AD OID.
 
@@ -40,7 +42,9 @@ class PendingRegistrationDataService:
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
-    async def create(self, azure_ad_oid: str, email: Optional[str] = None) -> PendingRegistration:
+    async def create(
+        self, azure_ad_oid: str, email: Optional[str] = None
+    ) -> PendingRegistration:
         """
         Create a new pending registration.
 
@@ -52,8 +56,7 @@ class PendingRegistrationDataService:
             The created PendingRegistration object
         """
         pending_registration = PendingRegistration(
-            azure_ad_oid=azure_ad_oid,
-            email=email
+            azure_ad_oid=azure_ad_oid, email=email
         )
         self.session.add(pending_registration)
         await self.session.flush()

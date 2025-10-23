@@ -613,7 +613,7 @@ class TestDirectoryServiceIntegrationRenameDirectory:
         result = await DirectoryService.rename_directory(
             user_id=test_admin_user,
             directory_id=folder_id,
-            fullpath="/org/team/renamed_project"
+            fullpath="/org/team/renamed_project",
         )
 
         # Verify
@@ -634,7 +634,7 @@ class TestDirectoryServiceIntegrationRenameDirectory:
             await DirectoryService.rename_directory(
                 user_id=test_admin_user,
                 directory_id=nonexistent_id,
-                fullpath="/org/renamed_project"
+                fullpath="/org/renamed_project",
             )
 
         assert exc_info.value.status_code == 404

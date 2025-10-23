@@ -213,7 +213,7 @@ class ClassifiedBox(BaseModel):
 class PixelBoundingBox(BaseModel):
     """
     Bounding box coordinates in pixel values.
-    
+
     Used after converting from normalized coordinates (0.0-1.0)
     to absolute pixel positions.
     """
@@ -227,7 +227,7 @@ class PixelBoundingBox(BaseModel):
 class ProcessedClassifiedBox(BaseModel):
     """
     Classified box with additional processing information.
-    
+
     Extends ClassifiedBox with overlapping detection, color assignment,
     and pixel coordinates (converted from normalized coordinates).
     """
@@ -246,7 +246,7 @@ class ProcessedClassifiedBox(BaseModel):
 class ProcessedInferenceResult(BaseModel):
     """
     Complete processed inference result with all post-processing applied.
-    
+
     This includes overlapping detection, color assignment, pixel coordinate conversion,
     and summary statistics.
     """
@@ -274,7 +274,7 @@ class EnhancedClassificationResult(BaseModel):
 class ApiReadyInferenceResult(BaseModel):
     """
     API-ready inference result with normalized coordinates.
-    
+
     Similar to ProcessedInferenceResult but maintains normalized coordinates (0.0-1.0)
     for API responses. Includes overlapping detection, colors, and summary statistics.
     Uses ApiInferenceBox to match frontend schema exactly.
@@ -303,10 +303,10 @@ class ModelInfo(BaseModel):
 class ApiInferenceBox(BaseModel):
     """
     Inference box matching frontend InferenceBoxApiSchema.
-    
+
     This is the exact format expected by the frontend for each box in the inference results.
     Includes all required fields for frontend visualization and interaction.
-    
+
     Note: Frontend expects PIXEL coordinates, not normalized coordinates!
     """
 
@@ -318,14 +318,18 @@ class ApiInferenceBox(BaseModel):
     object_type_id: str = Field(description="Type identifier for the detected object")
     box_id: str = Field(description="Unique identifier for this bounding box")
     overlapping: bool = Field(description="Whether this box overlaps with others")
-    overlappingIndices: int = Field(description="Index of overlapping box (if any), -1 if none")
-    is_verified: bool = Field(default=False, description="Whether this box has been verified by user")
+    overlappingIndices: int = Field(
+        description="Index of overlapping box (if any), -1 if none"
+    )
+    is_verified: bool = Field(
+        default=False, description="Whether this box has been verified by user"
+    )
 
 
 class ApiInferenceResponse(BaseModel):
     """
     Complete inference response matching frontend ApiInferenceDataSchema.
-    
+
     This is the format expected by the frontend for inference results.
     Used by /inf-direct endpoint.
     """
@@ -339,4 +343,3 @@ class ApiInferenceResponse(BaseModel):
     )
     totalBoxes: int = Field(description="Total number of detected boxes")
     models: list[ModelInfo] = Field(description="Models used for inference")
-

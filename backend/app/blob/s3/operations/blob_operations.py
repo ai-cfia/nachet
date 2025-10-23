@@ -36,6 +36,7 @@ def _get_logger():
     global _logger
     if _logger is None:
         from app.service.logs import LogService
+
         _logger = LogService.get_logger()
     return _logger
 
@@ -95,6 +96,7 @@ class BlobOperations:
             try:
                 self._client.head_object(Bucket=container, Key=name)
                 from ...exceptions import BlobAlreadyExistsError
+
                 raise BlobAlreadyExistsError(container, name)
             except ClientError as e:
                 error_code = e.response.get("Error", {}).get("Code", "Unknown")
@@ -131,9 +133,7 @@ class BlobOperations:
         if tags:
             tag_set = [{"Key": k, "Value": v} for k, v in tags.items()]
             self._client.put_object_tagging(
-                Bucket=container,
-                Key=name,
-                Tagging={"TagSet": tag_set}
+                Bucket=container, Key=name, Tagging={"TagSet": tag_set}
             )
 
         # Get object metadata to build result
@@ -144,7 +144,9 @@ class BlobOperations:
         object_url = f"{endpoint_url}/{container}/{name}"
 
         # Extract content MD5
-        content_md5 = head_response.get("ContentMD5") or response.get("ETag", "").strip('"')
+        content_md5 = head_response.get("ContentMD5") or response.get("ETag", "").strip(
+            '"'
+        )
 
         # Create UploadResult
         upload_result = UploadResult(
@@ -217,7 +219,7 @@ class BlobOperations:
             "Blob downloaded successfully",
             container=container,
             blob=name,
-            size=len(blob_data)
+            size=len(blob_data),
         )
         return blob_data
 
@@ -274,7 +276,9 @@ class BlobOperations:
                     get_params["Range"] = f"bytes={start}-"
 
             # Download blob as stream
-            _get_logger().info("Downloading blob stream from S3", container=container, blob=name)
+            _get_logger().info(
+                "Downloading blob stream from S3", container=container, blob=name
+            )
             response = self._client.get_object(**get_params)
 
             # Yield chunks from StreamingBody
@@ -285,9 +289,16 @@ class BlobOperations:
                     break
                 yield chunk
 
-            _get_logger().info("Blob stream download completed", container=container, blob=name)
-        
-        except (ContainerNotFoundError, BlobNotFoundError, ConnectionError, BlobStorageError):
+            _get_logger().info(
+                "Blob stream download completed", container=container, blob=name
+            )
+
+        except (
+            ContainerNotFoundError,
+            BlobNotFoundError,
+            ConnectionError,
+            BlobStorageError,
+        ):
             # Re-raise our custom exceptions without wrapping
             raise
         except ClientError as e:
@@ -297,10 +308,20 @@ class BlobOperations:
             elif error_code == "NoSuchKey":
                 raise BlobNotFoundError(container, name)
             else:
-                _get_logger().error("S3 ClientError during download blob stream", error_code=error_code, error=str(e))
-                raise BlobStorageError(f"Failed to download blob stream: {error_code} - {str(e)}")
+                _get_logger().error(
+                    "S3 ClientError during download blob stream",
+                    error_code=error_code,
+                    error=str(e),
+                )
+                raise BlobStorageError(
+                    f"Failed to download blob stream: {error_code} - {str(e)}"
+                )
         except Exception as e:
-            _get_logger().error("Unexpected error during download blob stream", error=str(e), error_type=type(e).__name__)
+            _get_logger().error(
+                "Unexpected error during download blob stream",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
             raise BlobStorageError(f"Failed to download blob stream: {str(e)}")
 
     @ErrorHandler.handle_service_errors("delete blob")
@@ -333,7 +354,11 @@ class BlobOperations:
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if error_code in ["NoSuchKey", "404"]:
-                _get_logger().info("Blob does not exist, nothing to delete", container=container, blob=name)
+                _get_logger().info(
+                    "Blob does not exist, nothing to delete",
+                    container=container,
+                    blob=name,
+                )
                 return False
             raise
 
@@ -344,12 +369,16 @@ class BlobOperations:
         # Verify deletion (S3 delete_object doesn't fail if object doesn't exist)
         try:
             self._client.head_object(Bucket=container, Key=name)
-            _get_logger().warning("Blob still exists after deletion", container=container, blob=name)
+            _get_logger().warning(
+                "Blob still exists after deletion", container=container, blob=name
+            )
             return False
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "Unknown")
             if error_code in ["NoSuchKey", "404"]:
-                _get_logger().info("Blob deleted successfully", container=container, blob=name)
+                _get_logger().info(
+                    "Blob deleted successfully", container=container, blob=name
+                )
                 return True
             raise
 
@@ -422,7 +451,12 @@ class BlobOperations:
             tag_response = self._client.get_object_tagging(Bucket=container, Key=name)
             tags = {tag["Key"]: tag["Value"] for tag in tag_response.get("TagSet", [])}
         except ClientError as e:
-            _get_logger().warning("Failed to get object tags", container=container, blob=name, error=str(e))
+            _get_logger().warning(
+                "Failed to get object tags",
+                container=container,
+                blob=name,
+                error=str(e),
+            )
 
         # Convert to BlobProperties model
         blob_properties = BlobProperties(
@@ -494,7 +528,9 @@ class BlobOperations:
         if options.max_results:
             list_params["MaxKeys"] = options.max_results
 
-        _get_logger().info("Listing blobs in S3 bucket", container=container, prefix=options.prefix)
+        _get_logger().info(
+            "Listing blobs in S3 bucket", container=container, prefix=options.prefix
+        )
         response = self._client.list_objects_v2(**list_params)
 
         # Process results
@@ -504,16 +540,18 @@ class BlobOperations:
             if options.include_tags:
                 try:
                     tag_response = self._client.get_object_tagging(
-                        Bucket=container,
-                        Key=obj["Key"]
+                        Bucket=container, Key=obj["Key"]
                     )
-                    tags = {tag["Key"]: tag["Value"] for tag in tag_response.get("TagSet", [])}
+                    tags = {
+                        tag["Key"]: tag["Value"]
+                        for tag in tag_response.get("TagSet", [])
+                    }
                 except ClientError as e:
                     _get_logger().warning(
                         "Failed to get tags for object",
                         container=container,
                         blob=obj["Key"],
-                        error=str(e)
+                        error=str(e),
                     )
 
             # Get metadata if requested (requires separate API call per object)
@@ -521,8 +559,7 @@ class BlobOperations:
             if options.include_metadata:
                 try:
                     head_response = self._client.head_object(
-                        Bucket=container,
-                        Key=obj["Key"]
+                        Bucket=container, Key=obj["Key"]
                     )
                     metadata = head_response.get("Metadata", {})
                 except ClientError as e:
@@ -530,7 +567,7 @@ class BlobOperations:
                         "Failed to get metadata for object",
                         container=container,
                         blob=obj["Key"],
-                        error=str(e)
+                        error=str(e),
                     )
 
             # Create BlobInfo
@@ -558,7 +595,9 @@ class BlobOperations:
             total_count=len(blobs),
         )
 
-        _get_logger().info("Listed blobs successfully", container=container, count=len(blobs))
+        _get_logger().info(
+            "Listed blobs successfully", container=container, count=len(blobs)
+        )
         return result.model_dump()
 
     @ErrorHandler.handle_service_errors("get blob URL")
