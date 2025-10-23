@@ -86,6 +86,29 @@ module "container_registry" {
   allowed_ip_2 = var.acr_allowed_ip_2
 }
 
+module "storage_account_nachet_external" {
+  source = "../modules/storage-account"
+
+  name                     = "${var.project_name}external"
+  resource_group_name      = var.resource_group_name
+  location                 = var.location
+  tags                     = var.tags
+
+  # Storage Configuration
+  account_tier             = var.storage_account_tier
+  account_replication_type = var.storage_replication_type
+
+  # Network Security
+  public_network_access_enabled = var.storage_public_access_enabled
+  allowed_ips                   = var.storage_allowed_ips
+
+  # Blob Properties
+  blob_delete_retention_days     = var.blob_delete_retention_days
+  container_delete_retention_days = var.container_delete_retention_days
+  blob_versioning_enabled        = var.blob_versioning_enabled
+  blob_change_feed_enabled       = var.blob_change_feed_enabled
+}
+
 # Nachet Application (Combined Frontend + Backend)
 # module "nachet" {
 #   source = "../modules/container-app-nachet"

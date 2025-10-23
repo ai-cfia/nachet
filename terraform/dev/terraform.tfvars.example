@@ -54,8 +54,24 @@ postgresql_admin_password     = "YourDevPasswordHere123!"
 postgresql_sku_name           = "B_Standard_B1ms"  # 1 vCPU, 2GB RAM - Cheapest
 postgresql_storage_mb         = 32768              # 32GB - Minimum
 postgresql_version            = "16"
-public_network_access_enabled = true               # Enable public access
-database_url                  = "postgresql://nachetadmin:YourDevPasswordHere123!@nachet-psql-dev.postgres.database.azure.com:5432/nachet_db"
+postgresql_public_network_access_enabled = true   # Enable public access
+
+# Container Registry Configuration
+acr_allowed_ip_1 = "YOUR_IP_ADDRESS"              # Replace with your IP
+acr_allowed_ip_2 = "ANOTHER_IP_ADDRESS"           # Replace with another IP if needed
+
+# Storage Account Configuration
+storage_account_tier              = "Standard"     # Standard or Premium
+storage_replication_type          = "LRS"          # LRS, GRS, RAGRS, ZRS, etc.
+storage_public_access_enabled     = true           # Enable public access
+storage_allowed_ips               = ["YOUR_IP_ADDRESS/32", "ANOTHER_IP/32"]  # Replace with your IPs
+storage_threat_protection_enabled = true           # Enable malware scanning
+
+# Blob Storage Properties (Optional - defaults provided)
+blob_delete_retention_days       = 7               # Days to retain deleted blobs
+container_delete_retention_days  = 7               # Days to retain deleted containers
+blob_versioning_enabled          = false          # Enable blob versioning for audit
+blob_change_feed_enabled         = false          # Enable change feed for monitoring
 
 # Container Apps Resources (Minimum configurations for cost optimization)
 container_app_cpu    = 0.25   # Minimum CPU

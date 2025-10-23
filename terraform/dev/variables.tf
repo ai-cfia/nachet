@@ -277,6 +277,61 @@ variable "acr_allowed_ip_2" {
   type        = string
 }
 
+# Storage Account Configuration
+variable "storage_account_tier" {
+  description = "The tier of the storage account"
+  type        = string
+  default     = "Standard"
+}
+
+variable "storage_replication_type" {
+  description = "The replication type of the storage account"
+  type        = string
+  default     = "LRS"
+}
+
+variable "storage_public_access_enabled" {
+  description = "Whether the public network access is enabled for storage account"
+  type        = bool
+  default     = true
+}
+
+variable "storage_allowed_ips" {
+  description = "List of IP addresses/CIDR blocks allowed to access the Storage Account"
+  type        = list(string)
+  default     = []
+}
+
+variable "storage_threat_protection_enabled" {
+  description = "Enable Advanced Threat Protection for Storage Account"
+  type        = bool
+  default     = true
+}
+
+variable "blob_delete_retention_days" {
+  description = "Number of days to retain deleted blobs"
+  type        = number
+  default     = 7
+}
+
+variable "container_delete_retention_days" {
+  description = "Number of days to retain deleted containers"
+  type        = number
+  default     = 7
+}
+
+variable "blob_versioning_enabled" {
+  description = "Enable blob versioning"
+  type        = bool
+  default     = false
+}
+
+variable "blob_change_feed_enabled" {
+  description = "Enable blob change feed"
+  type        = bool
+  default     = false
+}
+
 # Container Instance Configuration
 # variable "container_instances_subnet_name" {
 #   description = "Name of the subnet for container instances"

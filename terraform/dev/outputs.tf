@@ -124,3 +124,36 @@
 #   description = "PgAdmin container FQDN"
 #   value       = module.pgadmin.fqdn
 # }
+
+# Storage Account Outputs
+output "storage_account_id" {
+  description = "Storage Account ID"
+  value       = module.storage_account.id
+}
+
+output "storage_account_name" {
+  description = "Storage Account name"
+  value       = module.storage_account.name
+}
+
+output "storage_account_primary_blob_endpoint" {
+  description = "Storage Account primary blob endpoint"
+  value       = module.storage_account.primary_blob_endpoint
+}
+
+output "storage_account_primary_access_key" {
+  description = "Storage Account primary access key"
+  value       = module.storage_account.primary_access_key
+  sensitive   = true
+}
+
+output "storage_account_primary_connection_string" {
+  description = "Storage Account primary connection string"
+  value       = module.storage_account.primary_connection_string
+  sensitive   = true
+}
+
+output "storage_account_threat_protection_id" {
+  description = "Storage Account threat protection ID"
+  value       = module.storage_account.threat_protection_id
+}
