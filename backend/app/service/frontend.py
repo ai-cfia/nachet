@@ -5,7 +5,8 @@ Frontend service module for serving SPA static files from Azure Blob Storage.
 import re
 import mimetypes
 from typing import Dict, Optional, Tuple
-from fastapi import HTTPException
+from fastapi import HTTPException, status
+from fastapi.responses import Response
 from app.blob.manager import blob_storage_manager
 from app.blob.exceptions import BlobNotFoundError
 from app.service.logs import LogService
@@ -270,3 +271,63 @@ class FrontendService:
             "total_size_bytes": total_size,
             "current_version": cls._current_version,
         }
+
+    @classmethod
+    async def process_file_request(
+        cls, path: str, csp_nonce: Optional[str] = None
+    ) -> Response:
+        """
+        Process a file request with security validation and fallback handling.
+
+        This method handles serving frontend static files with:
+        - Path normalization and validation to prevent directory traversal attacks
+        - Primary attempt to serve the requested file
+        - Fallback to index.html for SPA client-side routing
+        - Error handling and logging
+
+        Args:
+            path: Request path (may contain leading slash)
+            csp_nonce: Optional CSP nonce from request state (set by HeadersMiddleware)
+
+        Returns:
+            FastAPI Response object with file content and appropriate status code
+
+        Security:
+            - Validates paths to prevent directory traversal attacks
+            - Blocks paths containing ".." or starting with "/"
+            - Only serves files from the frontend/dist/ directory (blob container)
+        """
+        # Validate path to prevent directory traversal attacks
+        # Normalize and check for dangerous patterns
+        normalized_path = path.lstrip("/")
+
+        # Block directory traversal attempts
+        if ".." in normalized_path or normalized_path.startswith("/"):
+            return Response(
+                content="Invalid file path",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                media_type="text/plain",
+            )
+
+        try:
+            # Try to serve the requested file
+            content, content_type = await cls.get_file(normalized_path, csp_nonce)
+            return Response(content=content, media_type=content_type)
+        except Exception:
+            # Fallback to index.html for client-side routing (SPA)
+            # This allows React Router to handle the route
+            try:
+                content, content_type = await cls.get_file("index.html", csp_nonce)
+                return Response(content=content, media_type=content_type)
+            except Exception as e:
+                # If even index.html fails, return 500
+                cls._get_logger().error(
+                    "Error serving frontend file",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                )
+                return Response(
+                    content="Failed to load frontend file",
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    media_type="text/plain",
+                )

@@ -13,6 +13,9 @@ ROLE_ADMIN = "admin"
 ROLE_USER = "user"
 ROLE_VERIFIER = "verifier"  # CFIA-specific role (other orgs don't have this)
 
+MAX_BINARY_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_BASE64_LENGTH = int(MAX_BINARY_SIZE * 4 / 3)
+
 
 def get_cfia_org_id() -> UUID:
     """

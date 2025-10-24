@@ -20,13 +20,14 @@ from app.service import (
     PipelineService,
 )
 from app.service.organization import OrganizationService
-from app.service.constants import get_cfia_admin_role_id
+from app.service.constants import get_cfia_admin_role_id, MAX_BASE64_LENGTH
 from app.exceptions import ImageProcessingError
 from app.db.utils import sessionmanager
 from app.service.inference_api import (
     InferenceDispatchService,
     process_api_ready_classification_result,
 )
+from app.datastore.image import ImageDataService
 
 
 class InferenceService:
@@ -268,11 +269,126 @@ class InferenceService:
             ) from e
 
     @staticmethod
+    def _url_to_binary(image_base64: str) -> bytes:
+        """
+        Validate the uploaded image file. Decode from base64 and check type, size, dimensions.
+        Issue #229 #231
+
+        Args:
+            image_base64: Base64-encoded image data
+
+        Returns:
+            binary: Decoded binary image data
+
+        Raises:
+            ValueError: If validation fails
+        """
+        import base64
+        import magic
+        import mimetypes
+
+        # validate size (max 10MB)
+        if len(image_base64) > MAX_BASE64_LENGTH:
+            raise ValueError("Image size exceeds maximum limit of 10MB")
+
+        if len(image_base64.strip()) < 2049:
+            raise ValueError("Image size is too small or empty")
+
+        if image_base64.startswith("data:"):
+            # Strip data URL prefix to get just the base64 string
+            image_base64 = image_base64.split(",", 1)[1]
+        # Decode base64 to binary
+        image_bytes = base64.b64decode(image_base64)
+
+        if mimetypes.guess_type(image_base64, strict=True) != ("image/png", None):
+            raise ValueError("Uploaded file is not a valid PNG image")
+
+        # Validate image type
+        if (
+            not magic.from_buffer(image_bytes, mime=True)
+            .read(2048)
+            .startswith("image/png")
+        ):
+            raise ValueError("Uploaded file is not a valid image type")
+
+        # validate dimensions
+        header = image_bytes[:24]
+        width = int.from_bytes(header[16:20], "big")
+        height = int.from_bytes(header[20:24], "big")
+        if width < 384 or height < 384:
+            raise ValueError(
+                "Image dimensions are too small, minimum is 384x384 pixels"
+            )
+        if width > 1920 and height > 1080:
+            raise ValueError(
+                "Image dimensions are too large, maximum is 1920x1080 pixels"
+            )
+
+        return image_bytes
+
+    @staticmethod
+    async def _get_hash(image_bytes: bytes) -> (str, UUID | None):
+        """
+        Returns the UUID of an existing image if a duplicate is found based on SHA256 hash.
+        Issue #234
+
+        Args:
+            image_bytes: Binary image data
+
+        Returns:
+            str: SHA256 hash of the image
+            UUID | None: UUID of the duplicate image if found, None otherwise
+
+        Raises:
+            ImageProcessingError: If duplicate check fails
+        """
+        import hashlib
+
+        try:
+            # Compute hash of the image
+            image_hash = hashlib.sha256(image_bytes).hexdigest()
+
+            # Check if image with this hash already exists in database
+            async with sessionmanager.get_session() as session:
+                image_service = ImageDataService(session)
+                duplicate_uuid = await image_service.check_sha256_exists(image_hash)
+                return duplicate_uuid, image_hash
+
+        except Exception as e:
+            raise ImageProcessingError(f"Failed to compute image hash: {str(e)}") from e
+
+    @staticmethod
     async def submit_inference_request(
         request: InferenceRequest,
         user_id: UUID,
     ) -> ImageSubmissionResponse:
         """
+
+        Submit an image for async processing (MVP: upload → scan → sanitize).
+
+        This is the new async version of the legacy /inf endpoint.
+        Returns immediately with UUID while processing continues in background.
+
+        Request body matches legacy API format:
+        {
+            "pipeline_id": "pipeline-name",
+            "folder_name": "folder-identifier",
+            "imageDims": [1920, 1080],
+            "image": "data:image/png;base64,...",
+            "area_ratio": 0.5,
+            "color_format": "hex"
+        }
+
+        Response (new format):
+        {
+            "request_id": "uuid",
+            "workflow_id": "workflow-uuid",
+            "status": "pending",
+            "message": "Image submitted for processing"
+        }
+
+        Frontend should poll GET /inf/{image_id}/status for progress.
+
         Process image inference submission request (MVP: upload → scan → sanitize).
 
         Coordinates all the steps needed to submit an image for processing:
