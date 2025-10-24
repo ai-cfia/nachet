@@ -85,32 +85,6 @@ async def submit_image_for_processing(
     req: InferenceRequest,
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Submit an image for async processing (MVP: upload → scan → sanitize).
-
-    This is the new async version of the legacy /inf endpoint.
-    Returns immediately with UUID while processing continues in background.
-
-    Request body matches legacy API format:
-    {
-        "pipeline_id": "pipeline-name",
-        "folder_name": "folder-identifier",
-        "imageDims": [1920, 1080],
-        "image": "data:image/png;base64,...",
-        "area_ratio": 0.5,
-        "color_format": "hex"
-    }
-
-    Response (new format):
-    {
-        "image_id": "uuid",
-        "workflow_id": "workflow-uuid",
-        "status": "pending",
-        "message": "Image submitted for processing"
-    }
-
-    Frontend should poll GET /inf/{image_id}/status for progress.
-    """
     # Delegate to InferenceService (handles session, logging, business logic)
     return await InferenceService.submit_inference_request(
         request=req,
@@ -345,35 +319,6 @@ async def get_seed_data(
 )
 @limiter.limit("10/minute")
 async def get_devices(request: Request, current_user: User = Depends(get_current_user)):
-    """
-    Get all device information organized by brand.
-
-    Returns:
-        Dictionary with "devices" key containing array of brand objects:
-        {
-            "devices": [
-                {
-                    "id": "uuid",
-                    "name": "brand_name",
-                    "description": "Brand description",
-                    "models": [
-                        {
-                            "id": "uuid",
-                            "name": "model1",
-                            "description": "Model description"
-                        }
-                    ],
-                    "lenses": [
-                        {
-                            "id": "uuid",
-                            "name": "lens1",
-                            "description": "Lens description"
-                        }
-                    ]
-                }
-            ]
-        }
-    """
     _get_logger().debug("get_devices endpoint called", user_id=current_user.oid)
     devices = await DeviceService.get_all_devices(current_user.oid)
     return devices
@@ -489,41 +434,8 @@ async def serve_frontend_static(request: Request, path: str):
     """
     await FrontendService.check_and_update_version()
 
-    # Validate path to prevent directory traversal attacks
-    # Normalize and check for dangerous patterns
-    normalized_path = path.lstrip("/")
-
-    # Block directory traversal attempts
-    if ".." in normalized_path or normalized_path.startswith("/"):
-        return Response(
-            content="Invalid file path",
-            status_code=status.HTTP_400_BAD_REQUEST,
-            media_type="text/plain",
-        )
-
     # Get CSP nonce from request state (set by HeadersMiddleware)
     csp_nonce = getattr(request.state, "csp_nonce", None)
-    try:
-        # Try to serve the requested file
-        content, content_type = await FrontendService.get_file(
-            normalized_path, csp_nonce
-        )
-        return Response(content=content, media_type=content_type)
-    except Exception:
-        # Fallback to index.html for client-side routing (SPA)
-        # This allows React Router to handle the route
-        try:
-            content, content_type = await FrontendService.get_file(
-                "index.html", csp_nonce
-            )
-            return Response(content=content, media_type=content_type)
-        except Exception as e:
-            # If even index.html fails, return 500
-            _get_logger().error(
-                "Error serving frontend file", error=str(e), error_type=type(e).__name__
-            )
-            return Response(
-                content="Failed to load frontend file",
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                media_type="text/plain",
-            )
+
+    # Delegate to FrontendService for file processing and security validation
+    return await FrontendService.process_file_request(path, csp_nonce)
