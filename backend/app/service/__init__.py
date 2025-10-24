@@ -27,7 +27,6 @@ from .annotation import AnnotationService
 from .image import ImageService
 from .change_log import ChangeLogService
 from .image_objects import ImageObjectsService
-from .image_processing import ImageProcessingService
 
 __all__ = [
     "PipelineService",
@@ -54,5 +53,4 @@ __all__ = [
     "ImageService",
     "ChangeLogService",
     "ImageObjectsService",
-    "ImageProcessingService",
 ]
