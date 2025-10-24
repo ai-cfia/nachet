@@ -1,6 +1,6 @@
-from fastapi import APIRouter, status, Depends, Request, HTTPException, Header
+from fastapi import APIRouter, status, Depends, Request #, HTTPException, Header
 from fastapi.responses import Response
-from typing import Optional
+# from typing import Optional
 from uuid import UUID
 
 from app.service import (
@@ -11,7 +11,6 @@ from app.service import (
     LogService,
     DeviceService,
     UserService,
-    ImageProcessingService,
 )
 from app.service.inference import InferenceService
 from app.service.auth import User, get_current_user
@@ -19,10 +18,10 @@ from app.api.config import get_limiter
 from app.model.inference import (
     InferenceRequest,
     ImageSubmissionResponse,
-    SanitizationCallbackRequest,
+    # SanitizationCallbackRequest,
     ApiInferenceResponse,
 )
-from app.exceptions import ImageProcessingError
+# from app.exceptions import ImageProcessingError
 # from app.api.test_dbos import router as test_dbos_router
 
 router = APIRouter()
@@ -156,67 +155,67 @@ async def get_image_processing_status(
 
 
 # Sanitization Callback Endpoint
-@router.post(
-    "/callbacks/sanitization-complete",
-    status_code=status.HTTP_200_OK,
-    name="Sanitization Complete Callback [FUNCTION KEY AUTH]",
-)
-async def sanitization_complete_callback(
-    request_data: SanitizationCallbackRequest,
-    x_functions_key: Optional[str] = Header(None),
-):
-    """
-    Callback endpoint for Azure sanitization function.
+# @router.post(
+#     "/callbacks/sanitization-complete",
+#     status_code=status.HTTP_200_OK,
+#     name="Sanitization Complete Callback [FUNCTION KEY AUTH]",
+# )
+# async def sanitization_complete_callback(
+#     request_data: SanitizationCallbackRequest,
+#     x_functions_key: Optional[str] = Header(None),
+# ):
+#     """
+#     Callback endpoint for Azure sanitization function.
 
-    The sanitizer calls this endpoint when image sanitization is complete.
-    Uses DBOS messaging to notify the waiting workflow.
+#     The sanitizer calls this endpoint when image sanitization is complete.
+#     Uses DBOS messaging to notify the waiting workflow.
 
-    Authentication: Validates x-functions-key header matches configured key.
+#     Authentication: Validates x-functions-key header matches configured key.
 
-    Request Body:
-        {
-            "image_id": "uuid",
-            "status": "success|failed",
-            "sanitized_blob_url": "https://...",  # optional, only on success
-            "error": "error message"  # optional, only on failure
-        }
+#     Request Body:
+#         {
+#             "image_id": "uuid",
+#             "status": "success|failed",
+#             "sanitized_blob_url": "https://...",  # optional, only on success
+#             "error": "error message"  # optional, only on failure
+#         }
 
-    The workflow waits for this message using DBOS.recv_async() in
-    wait_for_sanitization_callback() (app/service/sanitization.py).
-    """
-    try:
-        # Delegate to ImageProcessingService (handles auth, validation, DBOS messaging)
-        return await ImageProcessingService.handle_sanitization_callback(
-            image_id=request_data.image_id,
-            status=request_data.status,
-            sanitized_blob_url=request_data.sanitized_blob_url,
-            error=request_data.error,
-            function_key=x_functions_key,
-        )
-    except ValueError as e:
-        # ValueError indicates auth or validation failure
-        if "Invalid function key" in str(e):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=str(e),
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=str(e),
-            )
-    except ImageProcessingError as e:
-        # ImageProcessingError indicates config or processing failure
-        if "not configured" in str(e):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=str(e),
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to process callback: {str(e)}",
-            )
+#     The workflow waits for this message using DBOS.recv_async() in
+#     wait_for_sanitization_callback() (app/service/sanitization.py).
+#     """
+#     try:
+#         # Delegate to InferenceService (handles auth, validation, DBOS messaging)
+#         return await InferenceService.handle_sanitization_callback(
+#             image_id=request_data.image_id,
+#             status=request_data.status,
+#             sanitized_blob_url=request_data.sanitized_blob_url,
+#             error=request_data.error,
+#             function_key=x_functions_key,
+#         )
+#     except ValueError as e:
+#         # ValueError indicates auth or validation failure
+#         if "Invalid function key" in str(e):
+#             raise HTTPException(
+#                 status_code=status.HTTP_401_UNAUTHORIZED,
+#                 detail=str(e),
+#             )
+#         else:
+#             raise HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail=str(e),
+#             )
+#     except ImageProcessingError as e:
+#         # ImageProcessingError indicates config or processing failure
+#         if "not configured" in str(e):
+#             raise HTTPException(
+#                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#                 detail=str(e),
+#             )
+#         else:
+#             raise HTTPException(
+#                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#                 detail=f"Failed to process callback: {str(e)}",
+#             )
 
 
 # Rate limiter test route
