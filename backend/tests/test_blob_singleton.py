@@ -51,7 +51,11 @@ def reset_manager():
 def real_config():
     """Real configuration from Settings class."""
     settings = Settings()
-    return settings.blob_storage_config
+    return {
+        "cloud": ("azure", settings.blob_storage_config),
+        "external": ("azure", settings.blob_storage_external_config),
+        "onprem": ("s3", settings.s3_storage_config),
+    }
 
 
 @pytest.fixture
@@ -69,37 +73,37 @@ class TestBlobStorageSingleton:
     ):
         """Test that multiple calls to get_blob_storage return the same client instance."""
         # Skip test if no configuration available
-        if not real_config["blob_storage_name"] or not real_config["blob_storage_key"]:
-            pytest.skip("Azure Blob Storage configuration not available")
+        _, config = real_config["onprem"]
+        if not config.get("s3_access_key") or not config.get("s3_secret_key"):
+            pytest.skip("S3 Blob Storage configuration not available")
 
-        # Initialize the manager
-        await clean_manager.init("azure", real_config)
+        # Initialize the manager with all storage accounts
+        await clean_manager.init_multiple(real_config)
 
-        # Get client multiple times
-        client1 = clean_manager.get_client()
-        client2 = clean_manager.get_client()
-        client3 = get_blob_storage()
+        # Get onprem client multiple times
+        client1 = clean_manager.get_client("onprem")
+        client2 = clean_manager.get_client("onprem")
+        client3 = get_blob_storage("onprem")
 
         # Verify all calls return the same instance
         assert client1 is client2
         assert client2 is client3
         assert client1 is client3
 
-        # Verify it's the actual AzureBlobStorage instance
-        assert hasattr(
-            client1, "_blob_service_client"
-        )  # Should have the underlying Azure client
+        # Verify it's the actual S3BlobStorage instance
+        assert hasattr(client1, "_s3_client")  # Should have the underlying S3 client
 
     @pytest.mark.asyncio
     async def test_factory_creates_new_instances(self, real_config, reset_manager):
         """Test that the factory function creates new instances each time."""
         # Skip test if no configuration available
-        if not real_config["blob_storage_name"] or not real_config["blob_storage_key"]:
-            pytest.skip("Azure Blob Storage configuration not available")
+        _, config = real_config["onprem"]
+        if not config.get("s3_access_key") or not config.get("s3_secret_key"):
+            pytest.skip("S3 Blob Storage configuration not available")
 
         # Create multiple clients using factory
-        client1 = create_blob_storage_client("azure", real_config)
-        client2 = create_blob_storage_client("azure", real_config)
+        client1 = create_blob_storage_client("s3", config)
+        client2 = create_blob_storage_client("s3", config)
 
         # Verify different instances
         assert client1 is not client2
@@ -111,20 +115,21 @@ class TestBlobStorageSingleton:
     ):
         """Test that manager reuses the same client after initialization."""
         # Skip test if no configuration available
-        if not real_config["blob_storage_name"] or not real_config["blob_storage_key"]:
-            pytest.skip("Azure Blob Storage configuration not available")
+        _, config = real_config["onprem"]
+        if not config.get("s3_access_key") or not config.get("s3_secret_key"):
+            pytest.skip("S3 Blob Storage configuration not available")
 
         # Verify not initialized initially
         assert not clean_manager.is_initialized()
 
-        # Initialize
-        await clean_manager.init("azure", real_config)
+        # Initialize with all storage accounts
+        await clean_manager.init_multiple(real_config)
 
         # Verify initialized
         assert clean_manager.is_initialized()
 
-        # Get client multiple times and verify same instance
-        clients = [clean_manager.get_client() for _ in range(5)]
+        # Get onprem client multiple times and verify same instance
+        clients = [clean_manager.get_client("onprem") for _ in range(5)]
 
         # All should be the same instance
         for i in range(1, len(clients)):
@@ -136,24 +141,25 @@ class TestBlobStorageSingleton:
     ):
         """Test that refreshing connection creates a new client but maintains singleton pattern."""
         # Skip test if no configuration available
-        if not real_config["blob_storage_name"] or not real_config["blob_storage_key"]:
-            pytest.skip("Azure Blob Storage configuration not available")
+        _, config = real_config["onprem"]
+        if not config.get("s3_access_key") or not config.get("s3_secret_key"):
+            pytest.skip("S3 Blob Storage configuration not available")
 
-        # Initialize with first instance
-        await clean_manager.init("azure", real_config)
-        client_before = clean_manager.get_client()
+        # Initialize with all storage accounts
+        await clean_manager.init_multiple(real_config)
+        client_before = clean_manager.get_client("onprem")
         client_before_id = id(client_before)
 
-        # Refresh connection
-        await clean_manager.refresh_connection()
-        client_after = clean_manager.get_client()
+        # Refresh onprem connection
+        await clean_manager.refresh_connection("onprem")
+        client_after = clean_manager.get_client("onprem")
 
         # Should now have a new instance
         assert id(client_after) != client_before_id
         assert client_after is not client_before
 
         # Multiple calls after refresh should return same new instance
-        client_after2 = clean_manager.get_client()
+        client_after2 = clean_manager.get_client("onprem")
         assert client_after is client_after2
 
     @pytest.mark.asyncio
@@ -166,10 +172,10 @@ class TestBlobStorageSingleton:
 
         # Should raise RuntimeError
         with pytest.raises(RuntimeError, match="BlobStorageManager not initialized"):
-            clean_manager.get_client()
+            clean_manager.get_client("onprem")
 
         with pytest.raises(RuntimeError, match="BlobStorageManager not initialized"):
-            get_blob_storage()
+            get_blob_storage("onprem")
 
     @pytest.mark.asyncio
     async def test_concurrent_access_same_instance(
@@ -177,16 +183,17 @@ class TestBlobStorageSingleton:
     ):
         """Test that concurrent access returns the same singleton instance."""
         # Skip test if no configuration available
-        if not real_config["blob_storage_name"] or not real_config["blob_storage_key"]:
-            pytest.skip("Azure Blob Storage configuration not available")
+        _, config = real_config["onprem"]
+        if not config.get("s3_access_key") or not config.get("s3_secret_key"):
+            pytest.skip("S3 Blob Storage configuration not available")
 
-        # Initialize
-        await clean_manager.init("azure", real_config)
-        expected_client = clean_manager.get_client()
+        # Initialize with all storage accounts
+        await clean_manager.init_multiple(real_config)
+        expected_client = clean_manager.get_client("onprem")
 
         # Concurrent access simulation
         async def get_client_task():
-            return clean_manager.get_client()
+            return clean_manager.get_client("onprem")
 
         # Run multiple concurrent tasks
         tasks = [get_client_task() for _ in range(10)]
@@ -203,12 +210,13 @@ class TestBlobStorageSingleton:
     ):
         """Test that closing and reinitializing creates a new singleton instance."""
         # Skip test if no configuration available
-        if not real_config["blob_storage_name"] or not real_config["blob_storage_key"]:
-            pytest.skip("Azure Blob Storage configuration not available")
+        _, config = real_config["onprem"]
+        if not config.get("s3_access_key") or not config.get("s3_secret_key"):
+            pytest.skip("S3 Blob Storage configuration not available")
 
         # First initialization
-        await clean_manager.init("azure", real_config)
-        client1 = clean_manager.get_client()
+        await clean_manager.init_multiple(real_config)
+        client1 = clean_manager.get_client("onprem")
         client1_id = id(client1)
 
         # Close
@@ -216,42 +224,46 @@ class TestBlobStorageSingleton:
         assert not clean_manager.is_initialized()
 
         # Reinitialize
-        await clean_manager.init("azure", real_config)
-        client2 = clean_manager.get_client()
+        await clean_manager.init_multiple(real_config)
+        client2 = clean_manager.get_client("onprem")
 
         # Should be different instance
         assert id(client2) != client1_id
         assert client2 is not client1
 
         # Multiple calls should return the new singleton
-        client3 = clean_manager.get_client()
+        client3 = clean_manager.get_client("onprem")
         assert client3 is client2
 
     def test_unsupported_provider_raises_error(self, real_config):
         """Test that unsupported provider raises InvalidConfigurationError."""
+        _, config = real_config["onprem"]
         with pytest.raises(
             InvalidConfigurationError, match="Unsupported provider: unsupported"
         ):
-            create_blob_storage_client("unsupported", real_config)
+            create_blob_storage_client("unsupported", config)
 
     @pytest.mark.asyncio
     async def test_initialization_error_handling(self, clean_manager, reset_manager):
         """Test that initialization errors are properly handled."""
         # Use invalid configuration
         invalid_config = {
-            "blob_storage_provider": "azure",
-            "blob_storage_name": "invalid",
-            "blob_storage_key": "invalid",
-            "blob_storage_endpoint_protocol": "https",
-            "blob_storage_endpoint_suffix": "core.windows.net",
-            "blob_storage_endpoint_base": "invalid",
+            "onprem": (
+                "s3",
+                {
+                    "s3_access_key": "invalid",
+                    "s3_secret_key": "invalid",
+                    "s3_endpoint_url": "http://invalid:9878",
+                    "s3_region": "us-east-1",
+                },
+            )
         }
 
         # Should raise InvalidConfigurationError
         with pytest.raises(
-            InvalidConfigurationError, match="Failed to initialize blob storage client"
+            InvalidConfigurationError, match="Failed to initialize blob storage clients"
         ):
-            await clean_manager.init("azure", invalid_config)
+            await clean_manager.init_multiple(invalid_config)
 
         # Manager should not be initialized
         assert not clean_manager.is_initialized()
@@ -262,19 +274,24 @@ class TestBlobStorageSingleton:
     ):
         """Test that health check uses the singleton client."""
         # Skip test if no configuration available
-        if not real_config["blob_storage_name"] or not real_config["blob_storage_key"]:
-            pytest.skip("Azure Blob Storage configuration not available")
+        _, config = real_config["onprem"]
+        if not config.get("s3_access_key") or not config.get("s3_secret_key"):
+            pytest.skip("S3 Blob Storage configuration not available")
 
-        # Initialize
-        await clean_manager.init("azure", real_config)
+        # Initialize with all storage accounts
+        await clean_manager.init_multiple(real_config)
 
-        # Health check should pass
+        # Health check should pass for all storages
         health_result = await clean_manager.health_check()
         assert health_result is True
 
+        # Health check for specific storage
+        health_result_onprem = await clean_manager.health_check("onprem")
+        assert health_result_onprem is True
+
         # Verify the singleton client is still the same
-        client = clean_manager.get_client()
-        expected_client = clean_manager.get_client()
+        client = clean_manager.get_client("onprem")
+        expected_client = clean_manager.get_client("onprem")
         assert client is expected_client
 
 
@@ -285,19 +302,19 @@ class TestBlobStorageIntegration:
     async def test_initialize_blob_storage_function(self, settings, reset_manager):
         """Test the global initialize_blob_storage function."""
         # Skip test if no configuration available
-        real_config = settings.blob_storage_config
-        if not real_config["blob_storage_name"] or not real_config["blob_storage_key"]:
-            pytest.skip("Azure Blob Storage configuration not available")
+        s3_config = settings.s3_storage_config
+        if not s3_config.get("s3_access_key") or not s3_config.get("s3_secret_key"):
+            pytest.skip("S3 Blob Storage configuration not available")
 
         # Initialize using the global function with real settings
         await initialize_blob_storage(settings)
 
-        # Verify singleton is accessible
-        client = get_blob_storage()
-        assert client is not None
+        # Verify all storage accounts are accessible
+        client_onprem = get_blob_storage("onprem")
+        assert client_onprem is not None
         assert hasattr(
-            client, "_blob_service_client"
-        )  # Should be real AzureBlobStorage instance
+            client_onprem, "_s3_client"
+        )  # Should be real S3BlobStorage instance
 
         # Clean up
         await close_blob_storage()
@@ -310,7 +327,7 @@ class TestBlobStorageIntegration:
 
         # Should raise error when trying to get client
         with pytest.raises(RuntimeError):
-            get_blob_storage()
+            get_blob_storage("onprem")
 
 
 if __name__ == "__main__":

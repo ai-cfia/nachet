@@ -122,14 +122,18 @@ def create_blob_storage_client(provider: str, config: dict) -> BlobStorageInterf
         )
 
 
-def get_blob_storage() -> BlobStorageInterface:
+def get_blob_storage(name: str) -> BlobStorageInterface:
     """
-    Get the singleton blob storage client from the manager.
+    Get a specific blob storage client from the manager.
+
+    Args:
+        name: Storage account name ('cloud', 'external', or 'onprem')
 
     Returns:
-        BlobStorageInterface singleton instance
+        BlobStorageInterface instance for the specified storage
 
     Raises:
         RuntimeError: If blob storage manager is not initialized
+        KeyError: If storage name not found
     """
-    return blob_storage_manager.get_client()
+    return blob_storage_manager.get_client(name)
