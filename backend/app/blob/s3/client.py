@@ -51,15 +51,10 @@ def create_s3_client(config: Dict[str, Any]):
         Exception: For unhandled exceptions during client creation
     """
     try:
-        # Extract configuration
-        access_key_id = config.get("s3_access_key_id")
-        secret_access_key = config.get("s3_secret_access_key")
-        region = config.get("s3_region", "us-east-1")
-        endpoint_url = config.get("s3_endpoint_url")
-        use_ssl = config.get("s3_use_ssl")
-        verify = config.get("s3_verify", True)
+        # Extract and validate credentials
+        access_key_id = config.get("s3_access_key")
+        secret_access_key = config.get("s3_secret_key")
 
-        # Validate required fields
         if not access_key_id or not secret_access_key:
             _get_logger().error(
                 "Missing S3 credentials in configuration",
@@ -70,15 +65,16 @@ def create_s3_client(config: Dict[str, Any]):
                 "S3 credentials (s3_access_key_id and s3_secret_access_key) are required"
             )
 
-        # Auto-detect SSL from endpoint URL if not explicitly set
-        if use_ssl is None and endpoint_url:
-            use_ssl = endpoint_url.startswith("https://")
-        elif use_ssl is None:
-            use_ssl = True
+        # Extract configuration with defaults
+        region = config.get("s3_region_name", "ceph")
+        endpoint_url = config.get("s3_endpoint_url")
+        use_ssl = config.get("s3_use_ssl")
+        verify = config.get("s3_verify", True)
 
         # Build client parameters
         client_params = {
             "service_name": "s3",
+            "endpoint_url": endpoint_url,
             "aws_access_key_id": access_key_id,
             "aws_secret_access_key": secret_access_key,
             "region_name": region,
@@ -86,19 +82,13 @@ def create_s3_client(config: Dict[str, Any]):
             "verify": verify,
         }
 
-        # Add endpoint URL for S3-compatible services (like Ozone)
-        if endpoint_url:
-            client_params["endpoint_url"] = endpoint_url
-            _get_logger().info(
-                "Creating S3 client with custom endpoint",
-                endpoint_url=endpoint_url,
-                region=region,
-                use_ssl=use_ssl,
-            )
-        else:
-            _get_logger().info(
-                "Creating S3 client for AWS", region=region, use_ssl=use_ssl
-            )
+        # Log client creation
+        _get_logger().info(
+            f"Creating S3 client {'with custom endpoint' if endpoint_url else 'for AWS'}",
+            endpoint_url=endpoint_url,
+            region=region,
+            use_ssl=use_ssl,
+        )
 
         # Create the S3 client
         s3_client = boto3.client(**client_params)

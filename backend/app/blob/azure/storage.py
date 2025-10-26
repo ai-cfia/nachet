@@ -88,12 +88,23 @@ class AzureBlobStorage(BlobStorageInterface):
 
     def azure_storage_connection_string(self) -> str:
         """Build Azure storage connection string from config dictionary."""
+        # For core.windows.net, the account name is already in the base URL
+        # For other endpoints (like Azurite), we need to append the account name
+        endpoint_suffix = self.config["blob_storage_endpoint_suffix"]
+        base_url = self.config["blob_storage_endpoint_base"]
+
+        if endpoint_suffix == "core.windows.net":
+            blob_endpoint = base_url
+        else:
+            # For Azurite and other custom endpoints, append account name
+            blob_endpoint = f"{base_url}/{self.config['blob_storage_name']}"
+
         return (
             f"DefaultEndpointsProtocol={self.config['blob_storage_endpoint_protocol']};"
             f"AccountName={self.config['blob_storage_name']};"
             f"AccountKey={self.config['blob_storage_key']};"
-            f"EndpointSuffix={self.config['blob_storage_endpoint_suffix']};"
-            f"BlobEndpoint={self.config['blob_storage_endpoint_base']}/{self.config['blob_storage_name']};"
+            f"EndpointSuffix={endpoint_suffix};"
+            f"BlobEndpoint={blob_endpoint};"
         )
 
     # Container operations - delegate to ContainerOperations

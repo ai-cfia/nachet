@@ -69,14 +69,6 @@ class S3BlobStorage(BlobStorageInterface):
     def _initialize_client(self):
         """Initialize the S3 client using boto3."""
         try:
-            if not self.config.get("s3_access_key_id") or not self.config.get(
-                "s3_secret_access_key"
-            ):
-                raise InvalidConfigurationError(
-                    "s3_credentials",
-                    "S3 credentials (s3_access_key_id and s3_secret_access_key) are required",
-                )
-
             self._s3_client = create_s3_client(self.config)
             _get_logger().info(
                 "S3 Blob Storage client initialized",
