@@ -15,6 +15,7 @@ class MockBlobStorage(BlobStorageInterface):
         self.attempt_count = 0
         self.failure_count = 0
         self.malware_detected = False
+        self.scan_result = None  # Optional custom scan result
 
     def set_failure_count(self, count: int):
         """Set number of times to fail before succeeding."""
@@ -24,6 +25,19 @@ class MockBlobStorage(BlobStorageInterface):
     def set_malware_detected(self, detected: bool):
         """Configure mock to simulate malware detection."""
         self.malware_detected = detected
+
+    def set_scan_result(self, scan_result: str):
+        """
+        Configure mock to simulate specific Azure Defender scan result.
+
+        Valid values:
+        - "No threats found" (clean)
+        - "Malicious" (malware detected)
+        - "Not scanned" (unsupported type/encryption)
+        - "SAM259201: Scan failed - internal service error."
+        - etc. (any SAM error code)
+        """
+        self.scan_result = scan_result
 
     async def upload_blob(
         self, container: str, name: str, data: Union[bytes, str, BinaryIO], **kwargs
@@ -53,10 +67,17 @@ class MockBlobStorage(BlobStorageInterface):
             self.blob_metadata[f"{container_name}/{name}"] = metadata
 
         # Automatically set Defender scan tags (simulate instant scan)
+        # Use custom scan result if set, otherwise use malware_detected flag
+        if self.scan_result:
+            result = self.scan_result
+        elif self.malware_detected:
+            result = "Malicious"
+        else:
+            result = "No threats found"
+
         self.blob_tags[f"{container_name}/{name}"] = {
-            "defender_scan_complete": "true",
-            "malware_detected": "true" if self.malware_detected else "false",
-            "scan_timestamp": "2025-10-20T00:00:00Z",
+            "Malware scanning scan result": result,
+            "Malware scanning scan time UTC": "2025-10-20T00:00:00Z",
         }
 
         url = f"https://test.blob.core.windows.net/{container_name}/{name}"
@@ -90,11 +111,20 @@ class MockBlobStorage(BlobStorageInterface):
             container.value if hasattr(container, "value") else container
         )
         key = f"{container_name}/{name}"
+
+        # Use custom scan result if set, otherwise use malware_detected flag
+        if self.scan_result:
+            result = self.scan_result
+        elif self.malware_detected:
+            result = "Malicious"
+        else:
+            result = "No threats found"
+
         return self.blob_tags.get(
             key,
             {
-                "defender_scan_complete": "true",
-                "malware_detected": "true" if self.malware_detected else "false",
+                "Malware scanning scan result": result,
+                "Malware scanning scan time UTC": "2025-10-20T00:00:00Z",
             },
         )
 
@@ -271,9 +301,10 @@ class MockDefender:
         self.scan_delay_seconds = seconds
 
     def get_scan_result(self) -> Dict[str, str]:
-        """Get mock scan result tags."""
+        """Get mock scan result tags using Azure Defender standard tag names."""
         return {
-            "defender_scan_complete": "true",
-            "malware_detected": "true" if self.malware_detected else "false",
-            "scan_timestamp": "2025-10-20T00:00:00Z",
+            "Malware scanning scan result": "Malicious"
+            if self.malware_detected
+            else "No threats found",
+            "Malware scanning scan time UTC": "2025-10-20T00:00:00Z",
         }

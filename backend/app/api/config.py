@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     blob_storage_endpoint_suffix: str | None = None
     blob_storage_endpoint_base: str | None = None
 
+    blob_storage_external_name: str | None = None
+    blob_storage_external_key: str | None = None
+    blob_storage_external_endpoint_protocol: str | None = None
+    blob_storage_external_endpoint_suffix: str | None = None
+    blob_storage_external_endpoint_base: str | None = None
+
+    blob_container_prefix: str = "nachet-"
+
     s3_access_key: str | None = None
     s3_secret_key: str | None = None
     s3_region_name: str | None = None
@@ -116,6 +124,19 @@ class Settings(BaseSettings):
             "blob_storage_endpoint_protocol": self.blob_storage_endpoint_protocol,
             "blob_storage_endpoint_suffix": self.blob_storage_endpoint_suffix,
             "blob_storage_endpoint_base": self.blob_storage_endpoint_base,
+        }
+
+    @computed_field
+    @property
+    def blob_storage_external_config(self) -> dict:
+        """Configuration for external blob storage initialization."""
+        # Normalize to standard blob_storage_* field names for Azure client
+        return {
+            "blob_storage_name": self.blob_storage_external_name,
+            "blob_storage_key": self.blob_storage_external_key,
+            "blob_storage_endpoint_protocol": self.blob_storage_external_endpoint_protocol,
+            "blob_storage_endpoint_suffix": self.blob_storage_external_endpoint_suffix,
+            "blob_storage_endpoint_base": self.blob_storage_external_endpoint_base,
         }
 
     @computed_field
