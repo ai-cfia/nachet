@@ -3,7 +3,7 @@ Pydantic models for image inference and processing endpoints.
 """
 
 from pydantic import BaseModel, Field, RootModel, ConfigDict
-from typing import Optional
+from beartype.typing import Optional
 
 
 class InferenceRequest(BaseModel):
@@ -15,6 +15,7 @@ class InferenceRequest(BaseModel):
 
     pipeline_id: str
     folder_name: str
+    folder_id: str  # UUID as string
     imageDims: list[int] = Field(
         description="Image dimensions as [width, height]", min_length=2, max_length=2
     )
