@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from beartype.typing import Any, Dict
 
 import jwt
 

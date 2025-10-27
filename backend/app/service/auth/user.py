@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal, Optional
+from beartype.typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 

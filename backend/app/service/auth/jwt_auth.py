@@ -1,9 +1,11 @@
 import os
-from typing import Optional
+from uuid import UUID
+from beartype.typing import Optional
 from fastapi import HTTPException, status
 from fastapi.security import SecurityScopes
 from starlette.requests import HTTPConnection
 from app.service.auth.auth import SingleTenantAzureAuthorizationCodeBearer
+from app.service.auth.user import User
 from app.api.config import get_settings
 
 
@@ -39,11 +41,42 @@ class JWTAuthenticator:
         return self._auth_scheme
 
     async def __call__(
-        self, request: HTTPConnection = None, security_scopes: SecurityScopes = None
-    ):
-        """Make this callable as a FastAPI dependency"""
+        self, request: HTTPConnection, security_scopes: SecurityScopes
+    ) -> User:
+        """
+        Make this callable as a FastAPI dependency.
+
+        Validates the JWT token and ensures the user has a valid oid (object ID).
+
+        Raises:
+            HTTPException: If user oid is missing or invalid
+        """
         auth_scheme = self._get_auth_scheme()
-        return await auth_scheme(request, security_scopes)
+        user = await auth_scheme(request, security_scopes)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required",
+            )
+
+        # Validate that oid exists and is a valid UUID
+        if not user.oid:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User ID (oid) is missing from token",
+            )
+
+        try:
+            # Validate that oid is a valid UUID format
+            UUID(user.oid)
+        except (ValueError, TypeError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid user ID format: {user.oid}",
+            ) from e
+
+        return user
 
 
 # Global authenticator instance

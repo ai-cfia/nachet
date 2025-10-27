@@ -1,6 +1,7 @@
 import inspect
 import logging
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional
+from collections.abc import Awaitable, Callable
+from beartype.typing import TYPE_CHECKING, Any, Optional
 
 import jwt
 from fastapi.exceptions import HTTPException
@@ -45,7 +46,7 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
         app_client_id: str,
         auto_error: bool = True,
         tenant_id: Optional[str] = None,
-        scopes: Optional[Dict[str, str]] = None,
+        scopes: Optional[dict[str, str]] = None,
         multi_tenant: bool = False,
         leeway: int = 0,
         validate_iss: bool = True,
@@ -308,8 +309,8 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
         access_token: str,
         key: "AllowedPublicKeys",
         iss: str,
-        options: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        options: dict[str, Any],
+    ) -> dict[str, Any]:
         """
         Validates the token using the provided key and options.
         """
@@ -333,7 +334,7 @@ class SingleTenantAzureAuthorizationCodeBearer(AzureAuthorizationCodeBearerBase)
         app_client_id: str,
         tenant_id: str,
         auto_error: bool = True,
-        scopes: Optional[Dict[str, str]] = None,
+        scopes: Optional[dict[str, str]] = None,
         leeway: int = 0,
         allow_guest_users: bool = False,
         openid_config_use_app_id: bool = False,
@@ -400,7 +401,7 @@ class MultiTenantAzureAuthorizationCodeBearer(AzureAuthorizationCodeBearerBase):
         self,
         app_client_id: str,
         auto_error: bool = True,
-        scopes: Optional[Dict[str, str]] = None,
+        scopes: Optional[dict[str, str]] = None,
         leeway: int = 0,
         validate_iss: bool = True,
         iss_callable: Optional[Callable[[str], Awaitable[str]]] = None,
@@ -476,7 +477,7 @@ class B2CMultiTenantAuthorizationCodeBearer(AzureAuthorizationCodeBearerBase):
         self,
         app_client_id: str,
         auto_error: bool = True,
-        scopes: Optional[Dict[str, str]] = None,
+        scopes: Optional[dict[str, str]] = None,
         leeway: int = 0,
         validate_iss: bool = True,
         iss_callable: Optional[Callable[[str], Awaitable[str]]] = None,
