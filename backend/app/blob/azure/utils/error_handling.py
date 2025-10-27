@@ -5,7 +5,7 @@ This module provides common error handling patterns extracted from the original
 AzureBlobStorage class to promote code reuse and consistency.
 """
 
-from typing import Callable, Any
+from beartype.typing import Callable, Any, Optional
 from azure.core.exceptions import ServiceRequestError, ResourceNotFoundError
 from azure.storage.blob import BlobServiceClient
 
@@ -69,7 +69,7 @@ class ErrorHandler:
         try:
             container_client = client.get_container_client(container)
             if not container_client.exists():
-                raise ContainerNotFoundError(f"Container '{container}' does not exist")
+                raise ContainerNotFoundError(container)
         except ServiceRequestError as e:
             raise ConnectionError(f"Failed to check container existence: {str(e)}")
 
@@ -103,7 +103,7 @@ class ErrorHandler:
             raise ConnectionError(f"Failed to check blob existence: {str(e)}")
 
     @staticmethod
-    def handle_resource_not_found(container: str, blob_name: str = None):
+    def handle_resource_not_found(container: str, blob_name: Optional[str] = None):
         """
         Handle ResourceNotFoundError by determining if it's a container or blob issue.
 
@@ -122,15 +122,19 @@ class ErrorHandler:
                 container_client = client.get_container_client(container)
                 if not container_client.exists():
                     raise ContainerNotFoundError(
-                        container, f"Container not found: {str(original_error)}"
+                        container,
+                        {"error": f"Container not found: {str(original_error)}"},
                     )
                 elif blob_name:
                     raise BlobNotFoundError(
-                        container, blob_name, f"Blob not found: {str(original_error)}"
+                        container,
+                        blob_name,
+                        {"error": f"Blob not found: {str(original_error)}"},
                     )
                 else:
                     raise ContainerNotFoundError(
-                        container, f"Container not found: {str(original_error)}"
+                        container,
+                        {"error": f"Container not found: {str(original_error)}"},
                     )
             except (ContainerNotFoundError, BlobNotFoundError):
                 raise
@@ -140,11 +144,12 @@ class ErrorHandler:
                     raise BlobNotFoundError(
                         container,
                         blob_name,
-                        f"Resource not found: {str(original_error)}",
+                        {"error": f"Resource not found: {str(original_error)}"},
                     )
                 else:
                     raise ContainerNotFoundError(
-                        container, f"Resource not found: {str(original_error)}"
+                        container,
+                        {"error": f"Resource not found: {str(original_error)}"},
                     )
 
         return handler

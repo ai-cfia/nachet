@@ -5,7 +5,7 @@ This module handles security-related operations including SAS token generation
 for both blobs and containers with various permissions and expiry settings.
 """
 
-from typing import List, Dict, Any
+from beartype.typing import List, Dict, Any
 from datetime import datetime, timedelta, timezone
 from azure.storage.blob import (
     BlobServiceClient,

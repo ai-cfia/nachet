@@ -5,7 +5,7 @@ This module provides common validation patterns and helper functions
 used across different operation classes.
 """
 
-from typing import Dict, Any, Optional
+from beartype.typing import Dict, Any, Optional, cast
 from azure.storage.blob import StandardBlobTier
 
 from ...exceptions import BlobStorageError, InvalidConfigurationError
@@ -87,7 +87,7 @@ class ValidationHelper:
         Raises:
             BlobStorageError: If tier is invalid
         """
-        tier_mapping = {
+        tier_mapping: Dict[str, Any] = {
             "Hot": StandardBlobTier.Hot,
             "Cool": StandardBlobTier.Cool,
         }
@@ -95,7 +95,7 @@ class ValidationHelper:
         if tier not in tier_mapping:
             raise BlobStorageError(f"Invalid tier '{tier}'. Must be one of: Hot, Cool")
 
-        return tier_mapping[tier]
+        return cast(StandardBlobTier, tier_mapping[tier])
 
     @staticmethod
     def validate_sas_permissions(
@@ -142,8 +142,9 @@ class ValidationHelper:
             or not client.credential.account_key
         ):
             raise InvalidConfigurationError(
+                "account_key",
                 "Account key is required for SAS token generation. "
-                "Ensure connection string contains AccountKey parameter."
+                "Ensure connection string contains AccountKey parameter.",
             )
 
         return client.account_name, client.credential.account_key
@@ -195,6 +196,7 @@ class ValidationHelper:
                 container=container,
                 name=name,
                 tier=tier,
+                tier_change_time=None,
             )
         except ValueError as e:
             raise BlobStorageError(f"Invalid tier '{tier}': {str(e)}")
