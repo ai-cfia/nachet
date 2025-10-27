@@ -89,9 +89,14 @@ class TestPipelineServiceGetAll:
         # Mock data service
         mock_data_service = AsyncMock()
         mock_data_service.get_all = AsyncMock(return_value=([pipeline1, pipeline2], 2))
+
+        # Mock the get_data_service_class method to return a callable that creates the mock
+        def mock_get_data_service_class():
+            return lambda session: mock_data_service
+
         monkeypatch.setattr(
-            "app.service.pipeline.PipelineDataService",
-            lambda session: mock_data_service,
+            "app.service.pipeline.PipelineService.get_data_service_class",
+            mock_get_data_service_class,
         )
 
         # Call service
@@ -156,9 +161,14 @@ class TestPipelineServiceGetById:
         # Mock data service
         mock_data_service = AsyncMock()
         mock_data_service.get_by_id = AsyncMock(return_value=pipeline)
+
+        # Mock the get_data_service_class method to return a callable that creates the mock
+        def mock_get_data_service_class():
+            return lambda session: mock_data_service
+
         monkeypatch.setattr(
-            "app.service.pipeline.PipelineDataService",
-            lambda session: mock_data_service,
+            "app.service.pipeline.PipelineService.get_data_service_class",
+            mock_get_data_service_class,
         )
 
         # Call service
@@ -196,9 +206,14 @@ class TestPipelineServiceGetById:
         # Mock data service - pipeline not found
         mock_data_service = AsyncMock()
         mock_data_service.get_by_id = AsyncMock(return_value=None)
+
+        # Mock the get_data_service_class method to return a callable that creates the mock
+        def mock_get_data_service_class():
+            return lambda session: mock_data_service
+
         monkeypatch.setattr(
-            "app.service.pipeline.PipelineDataService",
-            lambda session: mock_data_service,
+            "app.service.pipeline.PipelineService.get_data_service_class",
+            mock_get_data_service_class,
         )
 
         # Should raise 404
@@ -256,14 +271,19 @@ class TestPipelineServiceCreate:
         # Mock data service
         mock_data_service = AsyncMock()
         mock_data_service.create = AsyncMock(return_value=pipeline)
+
+        # Mock the get_data_service_class method to return a callable that creates the mock
+        def mock_get_data_service_class():
+            return lambda session: mock_data_service
+
         monkeypatch.setattr(
-            "app.service.pipeline.PipelineDataService",
-            lambda session: mock_data_service,
+            "app.service.pipeline.PipelineService.get_data_service_class",
+            mock_get_data_service_class,
         )
 
         # Call service
         result = await PipelineService.create(
-            user_id=user_id,
+            requester_id=user_id,
             name="Pipeline 1",
             data={"key": "value"},
             created_by="user1",
@@ -295,7 +315,7 @@ class TestPipelineServiceCreate:
         # Should raise 403
         with pytest.raises(HTTPException) as exc_info:
             await PipelineService.create(
-                user_id=user_id,
+                requester_id=user_id,
                 name="Pipeline 1",
                 data={"key": "value"},
             )
@@ -350,9 +370,14 @@ class TestPipelineServiceUpdate:
         # Mock data service
         mock_data_service = AsyncMock()
         mock_data_service.update = AsyncMock(return_value=pipeline)
+
+        # Mock the get_data_service_class method to return a callable that creates the mock
+        def mock_get_data_service_class():
+            return lambda session: mock_data_service
+
         monkeypatch.setattr(
-            "app.service.pipeline.PipelineDataService",
-            lambda session: mock_data_service,
+            "app.service.pipeline.PipelineService.get_data_service_class",
+            mock_get_data_service_class,
         )
 
         # Call service
@@ -398,9 +423,14 @@ class TestPipelineServiceUpdate:
         # Mock data service - pipeline not found
         mock_data_service = AsyncMock()
         mock_data_service.update = AsyncMock(return_value=None)
+
+        # Mock the get_data_service_class method to return a callable that creates the mock
+        def mock_get_data_service_class():
+            return lambda session: mock_data_service
+
         monkeypatch.setattr(
-            "app.service.pipeline.PipelineDataService",
-            lambda session: mock_data_service,
+            "app.service.pipeline.PipelineService.get_data_service_class",
+            mock_get_data_service_class,
         )
 
         # Should raise 404
@@ -448,9 +478,14 @@ class TestPipelineServiceDelete:
         # Mock data service
         mock_data_service = AsyncMock()
         mock_data_service.soft_delete = AsyncMock(return_value=pipeline)
+
+        # Mock the get_data_service_class method to return a callable that creates the mock
+        def mock_get_data_service_class():
+            return lambda session: mock_data_service
+
         monkeypatch.setattr(
-            "app.service.pipeline.PipelineDataService",
-            lambda session: mock_data_service,
+            "app.service.pipeline.PipelineService.get_data_service_class",
+            mock_get_data_service_class,
         )
 
         # Call service
@@ -488,9 +523,14 @@ class TestPipelineServiceDelete:
         # Mock data service - pipeline not found
         mock_data_service = AsyncMock()
         mock_data_service.soft_delete = AsyncMock(return_value=None)
+
+        # Mock the get_data_service_class method to return a callable that creates the mock
+        def mock_get_data_service_class():
+            return lambda session: mock_data_service
+
         monkeypatch.setattr(
-            "app.service.pipeline.PipelineDataService",
-            lambda session: mock_data_service,
+            "app.service.pipeline.PipelineService.get_data_service_class",
+            mock_get_data_service_class,
         )
 
         # Should raise 404

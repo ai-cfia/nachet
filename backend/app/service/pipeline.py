@@ -2,7 +2,7 @@
 Pipeline service module.
 """
 
-from typing import List, Dict, Any, Optional, Type
+from beartype.typing import List, Dict, Any, Optional, Type
 from fastapi import HTTPException
 from app.db.utils import sessionmanager
 from app.datastore import PipelineDataService
@@ -300,6 +300,11 @@ class PipelineService(BaseCRUDService[Pipeline]):
             )
             await cls.initialize_cache()
             cache_data = CacheService.get(PIPELINE_CACHE_KEY)
+
+        # Type guard: cache_data should now be initialized
+        if cache_data is None:
+            cls._get_logger().error("Failed to initialize pipeline cache")
+            return None
 
         # Try as UUID first
         pipeline = cache_data.get("by_id", {}).get(pipeline_identifier)
