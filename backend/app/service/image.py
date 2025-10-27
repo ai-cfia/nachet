@@ -2,7 +2,7 @@
 Business logic layer for Picture (Image) entities.
 """
 
-from typing import Any, Dict, Type
+from beartype.typing import Any, Dict, Type
 from uuid import UUID
 
 from app.db.model import Picture
@@ -98,7 +98,7 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
         return ImageDeletionError
 
     @classmethod
-    async def verify_create_access(cls, _user_id: UUID, **kwargs) -> None:
+    async def verify_create_access(cls, requester_id: UUID, **kwargs) -> None:
         """
         Verify user can create images.
 
@@ -109,7 +109,7 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
         authentication while allowing users to upload images.
 
         Args:
-            _user_id: UUID of the requesting user
+            requester_id: UUID of the requesting user
             **kwargs: Image creation parameters
 
         Raises:
@@ -118,10 +118,10 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
         from app.service.rbac import RbacService
 
         # Verify user is authenticated and associated with an organization
-        await RbacService.get_user_organization_id(_user_id)
+        await RbacService.get_user_organization_id(requester_id)
 
     @classmethod
-    async def create(cls, _user_id: UUID, **kwargs) -> Dict[str, Any]:
+    async def create(cls, requester_id: UUID, **kwargs) -> Dict[str, Any]:
         """
         Override create to ensure user_id is included and relationships are loaded.
 
@@ -129,7 +129,7 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
         to avoid the greenlet error when accessing entity.folder.name in serialization.
 
         Args:
-            _user_id: UUID of the requesting user
+            requester_id: UUID of the requesting user
             **kwargs: Picture attributes including folder_id, org_user_role_id, etc.
 
         Returns:
@@ -145,13 +145,13 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
 
         try:
             # Basic authentication check
-            await RbacService.get_user_organization_id(_user_id)
+            await RbacService.get_user_organization_id(requester_id)
 
             # Authorization check
-            await cls.verify_create_access(_user_id, **kwargs)
+            await cls.verify_create_access(requester_id, **kwargs)
 
             # Ensure user_id is included in kwargs for Picture model
-            kwargs["user_id"] = _user_id
+            kwargs["user_id"] = requester_id
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -174,7 +174,7 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
                 info_msg = f"{entity_name} created successfully"
                 logger.info(
                     info_msg,
-                    user_id=str(_user_id),
+                    user_id=str(requester_id),
                     entity_id=str(entity.id),
                 )
 
@@ -187,7 +187,7 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
             error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
                 error_msg,
-                user_id=str(_user_id),
+                user_id=str(requester_id),
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -198,7 +198,7 @@ class ImageService(AuthorizedBaseCRUDService[Picture]):
             error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
                 error_msg,
-                user_id=str(_user_id),
+                user_id=str(requester_id),
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
