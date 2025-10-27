@@ -15,7 +15,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.sql import func
-from typing import List, Optional
+from beartype.typing import List, Optional
 from uuid import uuid4  # , UUID
 from datetime import datetime, date
 
@@ -316,6 +316,13 @@ class RbacRolePermissionResource(Base):
 
 class Organization(Base):
     __tablename__ = "organization"
+    # __table_args__ = (
+    #     Index(
+    #         "ix_organization_name_prefix",
+    #         func.substring(func.lower(name), 1, 10),
+    #         unique=True,
+    #     ),
+    # )
 
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

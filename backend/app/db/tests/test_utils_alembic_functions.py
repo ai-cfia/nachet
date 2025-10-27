@@ -1,11 +1,12 @@
 import os
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock, Mock
+from unittest.mock import patch, AsyncMock, Mock
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.exc import SQLAlchemyError
 from alembic.config import Config
 from dotenv import load_dotenv
 import pytest_asyncio
+from beartype.roar import BeartypeCallHintParamViolation
 
 from app.db.utils import (
     _alembic_upgrade,
@@ -16,6 +17,37 @@ from app.db.utils import (
     check_if_new_migration_file_needed,
     create_migration_file,
 )
+
+
+# Helper mock class that implements AsyncEngineProtocol
+class MockAsyncEngine:
+    """Mock that implements AsyncEngineProtocol for testing."""
+
+    def __init__(self):
+        self.begin_called = False
+        self.dispose_called = False
+        self._begin_return = None
+        self._begin_side_effect = None
+
+    def begin(self):
+        """Mock begin method."""
+        self.begin_called = True
+        if self._begin_side_effect:
+            raise self._begin_side_effect
+        return self._begin_return
+
+    async def dispose(self) -> None:
+        """Mock dispose method."""
+        self.dispose_called = True
+
+    def set_begin_return(self, value):
+        """Set what begin() should return."""
+        self._begin_return = value
+
+    def set_begin_side_effect(self, exception):
+        """Set exception that begin() should raise."""
+        self._begin_side_effect = exception
+
 
 # Load test environment variables
 if not os.getenv("NACHET_SCHEMA"):
@@ -301,8 +333,8 @@ class TestRunAlembicFunc:
         mock_context_manager.__aenter__.return_value = mock_conn
         mock_context_manager.__aexit__.return_value = None
 
-        mock_engine = MagicMock()
-        mock_engine.begin.return_value = mock_context_manager
+        mock_engine = MockAsyncEngine()
+        mock_engine.set_begin_return(mock_context_manager)
 
         mock_alembic_func = Mock()
 
@@ -316,7 +348,7 @@ class TestRunAlembicFunc:
         mock_config_class.assert_called_once_with("alembic.ini")
 
         # Verify transaction context was used
-        mock_engine.begin.assert_called_once()
+        assert mock_engine.begin_called
         mock_context_manager.__aenter__.assert_called_once()
         mock_context_manager.__aexit__.assert_called_once()
 
@@ -337,8 +369,8 @@ class TestRunAlembicFunc:
         mock_context_manager = AsyncMock()
         mock_context_manager.__aenter__.return_value = mock_conn
 
-        mock_engine = MagicMock()
-        mock_engine.begin.return_value = mock_context_manager
+        mock_engine = MockAsyncEngine()
+        mock_engine.set_begin_return(mock_context_manager)
 
         mock_alembic_func = Mock()
 
@@ -360,8 +392,8 @@ class TestRunAlembicFunc:
         mock_config = Mock()
         mock_config_class.return_value = mock_config
 
-        mock_engine = MagicMock()
-        mock_engine.begin.side_effect = SQLAlchemyError("Connection failed")
+        mock_engine = MockAsyncEngine()
+        mock_engine.set_begin_side_effect(SQLAlchemyError("Connection failed"))
 
         mock_alembic_func = Mock()
 
@@ -387,8 +419,8 @@ class TestRunAlembicFunc:
         mock_context_manager = AsyncMock()
         mock_context_manager.__aenter__.return_value = mock_conn
 
-        mock_engine = MagicMock()
-        mock_engine.begin.return_value = mock_context_manager
+        mock_engine = MockAsyncEngine()
+        mock_engine.set_begin_return(mock_context_manager)
 
         mock_alembic_func = Mock()
 
@@ -404,7 +436,7 @@ class TestRunAlembicFunc:
         """Test run_alembic_func when config creation fails."""
         mock_config_class.side_effect = Exception("Config creation failed")
 
-        mock_engine = MagicMock()
+        mock_engine = MockAsyncEngine()
         mock_alembic_func = Mock()
 
         with pytest.raises(Exception, match="Config creation failed"):
@@ -728,18 +760,15 @@ class TestAlembicFunctionsErrorScenarios:
     @patch("app.db.utils.run_alembic_func")
     async def test_all_functions_handle_none_engine(self, mock_run_alembic_func):
         """Test that functions handle None engine gracefully."""
-        mock_run_alembic_func.side_effect = AttributeError(
-            "'NoneType' has no attribute"
-        )
+        # Beartype now catches None before the function executes
+        with pytest.raises(BeartypeCallHintParamViolation):
+            await run_migrations(None)  # type: ignore[arg-type]
 
-        with pytest.raises(AttributeError):
-            await run_migrations(None)
+        with pytest.raises(BeartypeCallHintParamViolation):
+            await check_if_new_migration_file_needed(None)  # type: ignore[arg-type]
 
-        with pytest.raises(AttributeError):
-            await check_if_new_migration_file_needed(None)
-
-        with pytest.raises(AttributeError):
-            await create_migration_file(None, "test message")
+        with pytest.raises(BeartypeCallHintParamViolation):
+            await create_migration_file(None, "test message")  # type: ignore[arg-type]
 
     @pytest.mark.asyncio
     @patch("app.db.utils.run_alembic_func")

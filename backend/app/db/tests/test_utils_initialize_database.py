@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 import pytest_asyncio
+from beartype.roar import BeartypeCallHintParamViolation
 
 from app.db.utils import (
     initialize_database,
@@ -150,7 +151,7 @@ class TestInitializeDatabase:
     async def test_initialize_database_none_settings(self):
         """Test initialize_database with None settings."""
         with pytest.raises(ValueError, match="Settings instance must be provided"):
-            await initialize_database(None)
+            await initialize_database(None)  # type: ignore[arg-type]
 
         # Verify sessionmanager was not initialized
         assert sessionmanager.engine is None
@@ -575,7 +576,7 @@ class TestInitializeDatabaseErrorScenarios:
         malformed_settings = MalformedSettings()
 
         with pytest.raises(Exception, match="Settings access failed"):
-            await initialize_database(malformed_settings)
+            await initialize_database(malformed_settings)  # type: ignore[arg-type]
 
     @pytest.mark.asyncio
     @patch("app.db.utils.validate_database_startup")
@@ -631,14 +632,14 @@ class TestInitializeDatabaseEdgeCases:
     @pytest.mark.asyncio
     async def test_initialize_database_empty_string_settings(self):
         """Test initialize_database with empty string as settings."""
-        with pytest.raises(AttributeError):
-            await initialize_database("")
+        with pytest.raises(BeartypeCallHintParamViolation):
+            await initialize_database("")  # type: ignore[arg-type]
 
     @pytest.mark.asyncio
     async def test_initialize_database_numeric_settings(self):
         """Test initialize_database with numeric value as settings."""
-        with pytest.raises(AttributeError):
-            await initialize_database(123)
+        with pytest.raises(BeartypeCallHintParamViolation):
+            await initialize_database(123)  # type: ignore[arg-type]
 
     @pytest.mark.asyncio
     @patch("app.db.utils.validate_database_startup")

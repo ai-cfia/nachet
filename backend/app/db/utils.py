@@ -1,6 +1,16 @@
+from __future__ import annotations
+
 import os
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Optional, AsyncGenerator
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Optional,
+    AsyncGenerator,
+    Protocol,
+    runtime_checkable,
+    Union,
+)
 from tqdm import tqdm
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
@@ -15,7 +25,43 @@ from alembic.script import ScriptDirectory
 from alembic.runtime import migration
 
 if TYPE_CHECKING:
-    from app.api.config import Settings
+    pass
+
+
+@runtime_checkable
+class SettingsProtocol(Protocol):
+    """Protocol defining the Settings interface needed by this module.
+
+    This allows us to avoid circular imports while maintaining type safety.
+    Any object with a db_conn_info property that returns a dict will satisfy this protocol.
+    """
+
+    @property
+    def db_conn_info(self) -> dict:
+        """Database connection configuration dictionary."""
+        ...
+
+
+@runtime_checkable
+class AsyncEngineProtocol(Protocol):
+    """Protocol for AsyncEngine-like objects.
+
+    This protocol allows mocks and real AsyncEngine objects to be used interchangeably.
+    """
+
+    def begin(self) -> Any: ...
+    async def dispose(self) -> None: ...
+
+
+@runtime_checkable
+class AsyncSessionMakerProtocol(Protocol):
+    """Protocol for async_sessionmaker-like objects.
+
+    This protocol allows mocks and real async_sessionmaker objects to be used interchangeably.
+    """
+
+    def __call__(self) -> AsyncSession: ...
+    def begin(self) -> Any: ...
 
 
 # Module-level logger
@@ -37,8 +83,10 @@ class SessionManager:
     """Manages asynchronous DB sessions with connection pooling."""
 
     def __init__(self) -> None:
-        self.engine: Optional[AsyncEngine] = None
-        self._sessionmaker: Optional[async_sessionmaker] = None
+        self.engine: Optional[Union[AsyncEngine, AsyncEngineProtocol]] = None
+        self._sessionmaker: Optional[
+            Union[async_sessionmaker, AsyncSessionMakerProtocol]
+        ] = None
 
     def init(self, url: str, **engine_kwargs):
         """Initialize the SessionManager with database URL and engine options."""
@@ -48,7 +96,9 @@ class SessionManager:
             "Database SessionManager initialized", database_url=url.split("@")[-1]
         )  # Hide credentials
 
-    def get_session_factory(self) -> async_sessionmaker:
+    def get_session_factory(
+        self,
+    ) -> Union[async_sessionmaker, AsyncSessionMakerProtocol]:
         """Get the async sessionmaker factory."""
         if not self._sessionmaker:
             raise RuntimeError("SessionManager not initialized. Call init() first.")
@@ -60,7 +110,7 @@ class SessionManager:
             raise RuntimeError("SessionManager not initialized. Call init() first.")
         return self._sessionmaker()
 
-    def get_engine(self) -> AsyncEngine:
+    def get_engine(self) -> Union[AsyncEngine, AsyncEngineProtocol]:
         """Get the async engine."""
         if not self.engine:
             raise RuntimeError("SessionManager not initialized. Call init() first.")
@@ -116,7 +166,7 @@ def reset_database_engine():
     sessionmanager._sessionmaker = None
 
 
-async def initialize_database(settings: "Settings" = None):
+async def initialize_database(settings: Optional[SettingsProtocol] = None):
     """
     Initialize and validate database on application startup.
 
@@ -247,7 +297,9 @@ def _check_migration_version_sync(connection, script_dir):
     return current_heads, expected_heads
 
 
-async def validate_database_startup(async_engine: AsyncEngine):
+async def validate_database_startup(
+    async_engine: Union[AsyncEngine, AsyncEngineProtocol],
+):
     """
     Lightweight startup validation - just check migration version.
     Ensures database is migrated to the expected version.
@@ -303,7 +355,9 @@ def _alembic_generate(connection, cfg, message: str):
     _get_logger().info("New migration file created", message=message)
 
 
-async def run_alembic_func(async_engine: AsyncEngine, alembic_func, *args, **kwargs):
+async def run_alembic_func(
+    async_engine: Union[AsyncEngine, AsyncEngineProtocol], alembic_func, *args, **kwargs
+):
     """Run an Alembic function within the context of the async engine."""
     with alembic_directory_context():
         alembic_cfg = Config("alembic.ini")
@@ -312,7 +366,9 @@ async def run_alembic_func(async_engine: AsyncEngine, alembic_func, *args, **kwa
             await conn.run_sync(alembic_func, alembic_cfg, *args, **kwargs)
 
 
-async def run_migrations(async_engine: AsyncEngine, target_version: str = "head"):
+async def run_migrations(
+    async_engine: Union[AsyncEngine, AsyncEngineProtocol], target_version: str = "head"
+):
     """Run migrations using the provided async engine."""
     try:
         await run_alembic_func(async_engine, _alembic_upgrade, target=target_version)
@@ -323,7 +379,9 @@ async def run_migrations(async_engine: AsyncEngine, target_version: str = "head"
         raise
 
 
-async def check_if_new_migration_file_needed(async_engine: AsyncEngine):
+async def check_if_new_migration_file_needed(
+    async_engine: Union[AsyncEngine, AsyncEngineProtocol],
+):
     """Check if a new migration file is needed."""
     try:
         await run_alembic_func(async_engine, _alembic_check)
@@ -332,7 +390,9 @@ async def check_if_new_migration_file_needed(async_engine: AsyncEngine):
         raise
 
 
-async def create_migration_file(async_engine: AsyncEngine, message: str):
+async def create_migration_file(
+    async_engine: Union[AsyncEngine, AsyncEngineProtocol], message: str
+):
     """Create a new migration file if needed."""
     # if exception is raised, new migration file is needed
     try:
