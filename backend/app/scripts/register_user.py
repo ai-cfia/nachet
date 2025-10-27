@@ -159,7 +159,11 @@ async def assign_user_role(
     user_id: UUID, org_id: UUID, role_name: str = "user"
 ) -> bool:
     """
-    Assign a role to a user in an organization.
+    Manually assign a role to an existing user in an organization.
+
+    This function is used for assigning additional roles (like "admin") to users
+    who are already registered. The default "user" role is automatically assigned
+    during registration via UserService.register_user().
 
     Args:
         user_id: UUID of the user
@@ -211,7 +215,26 @@ async def assign_user_role(
 
 
 async def register_user(azure_ad_oid: str, org_id: UUID, admin_user_id: UUID):
-    """Register a user."""
+    """
+    Register a user in the system.
+
+    This function:
+    1. Verifies the admin user has permission
+    2. Verifies the organization exists and is active
+    3. Calls UserService.register_user() which:
+       - Creates a full user record with organization
+       - Creates a default folder
+       - Assigns the default "user" role automatically
+       - Deletes the pending registration entry
+
+    Args:
+        azure_ad_oid: Azure AD object ID of the user to register
+        org_id: Organization UUID to assign the user to
+        admin_user_id: Admin user UUID performing the registration
+
+    Returns:
+        True if successful, False otherwise
+    """
     print("\n" + "=" * 80)
     print("USER REGISTRATION")
     print("=" * 80 + "\n")
@@ -271,11 +294,8 @@ async def register_user(azure_ad_oid: str, org_id: UUID, admin_user_id: UUID):
             print(f"   Organization: {result['organization_name']}")
             print(f"   Default Folder ID: {result['default_folder_id']}")
             print(f"   Date Created: {result['date_created']}")
+            print("   Default Role: user (automatically assigned)")
             print()
-
-            # Assign default "user" role to the newly registered user
-            print("🔄 Assigning default 'user' role...")
-            await assign_user_role(UUID(result["id"]), org_id, "user")
 
             return True
 
