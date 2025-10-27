@@ -69,7 +69,7 @@ class RbacDataService:
             )
         )
         result = await self.session.execute(stmt)
-        return result.scalar()
+        return bool(result.scalar())
 
 
 # ============================================================================

@@ -46,7 +46,7 @@ class ModelDataService(BaseCRUDDataService[Model]):
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
-    async def create(
+    async def create(  # type: ignore[override]
         self,
         task_id: int,
         name: str,

@@ -2,13 +2,27 @@
 Database repository layer for pipeline and model operations.
 """
 
-from typing import List, Optional, Dict, Any, Type
+from typing import List, Optional, Dict, Type, TypedDict
 from sqlalchemy import select, and_
 from sqlalchemy.orm import joinedload, selectinload
 
 # Import BaseCRUDDataService directly to avoid circular import
 from app.datastore.base_crud import BaseCRUDDataService
 from app.db.model import Pipeline, Model, PipelineModel, PipelineDefault
+
+
+class PipelineModelInfo(TypedDict):
+    """Model information in pipeline mapping."""
+    id: str
+    name: str
+    version: str | None
+    endpoint_name: str
+    api_url: str
+    api_key: str
+    content_type: str
+    deployment_platform: str
+    task_name: str | None
+    date_model_training: str | None
 
 
 class PipelineDataService(BaseCRUDDataService[Pipeline]):
@@ -121,7 +135,7 @@ class PipelineDataService(BaseCRUDDataService[Pipeline]):
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_pipeline_models_mapping(self) -> Dict[str, List[Dict[str, Any]]]:
+    async def get_pipeline_models_mapping(self) -> dict[str, list[PipelineModelInfo]]:
         """
         Get a mapping of pipeline names to their associated model information.
 

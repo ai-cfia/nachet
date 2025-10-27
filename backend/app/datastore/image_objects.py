@@ -17,8 +17,7 @@ class ImageObjectsDataService(BaseCRUDDataService[Object]):
         """Return the Object model class."""
         return Object
 
-    @classmethod
-    def get_query_options(cls) -> Sequence:
+    def get_query_options(self) -> list:
         """
         Return query options for eager loading relationships.
 

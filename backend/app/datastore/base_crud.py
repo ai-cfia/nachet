@@ -6,14 +6,25 @@ eliminate code duplication across service classes. All entity-specific services
 should inherit from BaseCRUDService and BaseCRUDDataService.
 """
 
-from typing import TypeVar, Generic, List, Optional, Dict, Any, Type
+from typing import TypeVar, Generic, List, Optional, Dict, Any, Type, Protocol, cast
 from uuid import UUID
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, Mapped
+
+
+class CRUDModel(Protocol):
+    """Protocol defining the required attributes for CRUD operations."""
+    id: Mapped[UUID]
+    active: Mapped[bool]
+    date_created: Mapped[datetime]
+
 
 # Generic type variable for database models
 T = TypeVar("T", bound=DeclarativeBase)
+# Type variable for model classes
+ModelClass = TypeVar("ModelClass", bound=Type[DeclarativeBase])
 
 
 class BaseCRUDDataService(Generic[T]):
@@ -72,13 +83,15 @@ class BaseCRUDDataService(Generic[T]):
             Tuple of (list of entity objects, total count before pagination)
         """
         model_class = self.get_model_class()
+        # Type assertion: All model classes used with CRUD must have these attributes
+        model_class_typed = cast(Type[CRUDModel], model_class)
 
         # Enforce limit bounds
         limit = min(max(1, limit), 1000)
         offset = max(0, offset)
 
         # Base query
-        query = select(model_class).where(model_class.active.is_(True))
+        query = select(model_class).where(model_class_typed.active.is_(True))
 
         # Apply filters
         if filters:
@@ -92,7 +105,7 @@ class BaseCRUDDataService(Generic[T]):
 
         count_query = sa_select(func.count()).select_from(query.alias())
         count_result = await self.session.execute(count_query)
-        total_count = count_result.scalar()
+        total_count = count_result.scalar() or 0
 
         # Apply sorting
         if order_by and hasattr(model_class, order_by):
@@ -101,9 +114,9 @@ class BaseCRUDDataService(Generic[T]):
                 query = query.order_by(order_field.desc())
             else:
                 query = query.order_by(order_field.asc())
-        elif hasattr(model_class, "date_created"):
+        else:
             # Default sort by date_created descending (newest first)
-            query = query.order_by(model_class.date_created.desc())
+            query = query.order_by(model_class_typed.date_created.desc())
 
         # Apply pagination
         query = query.offset(offset).limit(limit)
@@ -125,10 +138,12 @@ class BaseCRUDDataService(Generic[T]):
             Entity object if found and active, None otherwise
         """
         model_class = self.get_model_class()
+        # Type assertion: All model classes used with CRUD must have these attributes
+        model_class_typed = cast(Type[CRUDModel], model_class)
         query = (
             select(model_class)
-            .where(model_class.id == entity_id)
-            .where(model_class.active.is_(True))
+            .where(model_class_typed.id == entity_id)
+            .where(model_class_typed.active.is_(True))
             .options(*self.get_query_options())
         )
         result = await self.session.execute(query)
@@ -145,6 +160,8 @@ class BaseCRUDDataService(Generic[T]):
             The created entity object with relationships loaded
         """
         model_class = self.get_model_class()
+        # Type assertion: All model classes used with CRUD must have these attributes
+        model_class_typed = cast(Type[CRUDModel], model_class)
         kwargs["active"] = True  # Ensure active is set
         entity = model_class(**kwargs)
         self.session.add(entity)
@@ -154,9 +171,11 @@ class BaseCRUDDataService(Generic[T]):
         # Re-fetch with relationships loaded if query options are defined
         query_options = self.get_query_options()
         if query_options:
+            # Cast entity to access id attribute for type checker
+            entity_typed = cast(CRUDModel, entity)
             query = (
                 select(model_class)
-                .where(model_class.id == entity.id)
+                .where(model_class_typed.id == entity_typed.id)
                 .options(*query_options)
             )
             result = await self.session.execute(query)
@@ -199,14 +218,18 @@ class BaseCRUDDataService(Generic[T]):
             The soft-deleted entity object if found, None otherwise
         """
         model_class = self.get_model_class()
-        query = select(model_class).where(model_class.id == entity_id)
+        # Type assertion: All model classes used with CRUD must have these attributes
+        model_class_typed = cast(Type[CRUDModel], model_class)
+        query = select(model_class).where(model_class_typed.id == entity_id)
         result = await self.session.execute(query)
         entity = result.scalar_one_or_none()
 
         if not entity:
             return None
 
-        entity.active = False
+        # Cast entity to access active attribute for type checker
+        entity_typed = cast(CRUDModel, entity)
+        entity_typed.active = False
         await self.session.flush()
         await self.session.refresh(entity)
         return entity
