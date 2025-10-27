@@ -75,17 +75,17 @@ class Bucket(str, Enum):
     """
 
     # Production containers
-    ORIGINAL = "nachet-original"
-    SANITIZED = "nachet-sanitized"
-    SPLIT = "nachet-split"
-    MODEL = "nachet-model"
-    FRONTEND = "nachet-frontend"
-    ANNOTATION = "nachet-annotation"
-    ORIGINAL_METADATA = "nachet-original-metadata"
+    ORIGINAL = "original"
+    SANITIZED = "sanitized"
+    SPLIT = "split"
+    MODEL = "model"
+    FRONTEND = "frontend"
+    ANNOTATION = "annotation"
+    ORIGINAL_METADATA = "original-metadata"
 
     # Test containers (used in non-production environments)
-    ORIGINAL_TEST = "nachet-original-test"
-    SANITIZED_TEST = "nachet-sanitized-test"
+    ORIGINAL_TEST = "original-test"
+    SANITIZED_TEST = "sanitized-test"
 
     @classmethod
     def get_original_container(cls, is_test: bool = False) -> str:
@@ -115,3 +115,15 @@ class ProcessingStatus(str, Enum):
     COMPLETED = "completed"  # Upload → Scan → Sanitize complete
     FAILED = "failed"
     CANCELLED = "cancelled"
+
+
+class BlobAccount(str, Enum):
+    """
+    Azure Blob Storage account names.
+
+    Uses str inheritance for easy string comparison and serialization.
+    """
+
+    ONPREM = "onprem"
+    EXTERNAL = "external"
+    CLOUD = "cloud"
