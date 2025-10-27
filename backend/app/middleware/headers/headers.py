@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-from beartype.typing import Any, Awaitable, Callable
+from beartype.typing import Any, Awaitable, Callable, MutableMapping
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -9,14 +8,18 @@ from app.middleware.headers.presets import PRESETS
 from app.middleware.headers.header_mapping import PARAM_TO_HEADER
 from app.middleware.headers.csp_nonce_manager import CSPNonceManager
 
-if TYPE_CHECKING:
-    from starlette.types import ASGIApp
-
 
 class HeadersMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
-        app: ASGIApp,
+        app: Callable[
+            [
+                MutableMapping[str, Any],
+                Callable[[], Awaitable[MutableMapping[str, Any]]],
+                Callable[[MutableMapping[str, Any]], Awaitable[None]],
+            ],
+            Awaitable[None],
+        ],
         preset: str | None = None,
         use_csp_nonce: bool = True,
         **custom_headers: Any,
