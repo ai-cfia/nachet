@@ -526,7 +526,13 @@ class DefenderScanTimeoutError(ImageProcessingError):
 
 
 class DefenderScanFailedError(ImageProcessingError):
-    """Azure Defender scan detected malware."""
+    """Azure Defender scan detected malware or encountered an error."""
+
+    pass
+
+
+class DefenderScanNotScannedError(ImageProcessingError):
+    """Azure Defender could not scan the blob (unsupported type, encryption, etc)."""
 
     pass
 
