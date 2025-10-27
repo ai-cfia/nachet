@@ -251,7 +251,7 @@ class LogService:
 
             # Create exporter based on protocol
             if otel_protocol == "http":
-                otlp_exporter = HTTPLogExporter(endpoint=endpoint, insecure=True)
+                otlp_exporter = HTTPLogExporter(endpoint=endpoint)
             else:
                 otlp_exporter = GRPCLogExporter(endpoint=endpoint, insecure=True)
 
