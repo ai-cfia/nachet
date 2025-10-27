@@ -7,7 +7,15 @@ using Pydantic models. The implementation uses a composition pattern
 with focused operation classes for better maintainability.
 """
 
-from typing import Dict, Any, List, Union, BinaryIO, AsyncIterator, TYPE_CHECKING
+from beartype.typing import (
+    Dict,
+    Any,
+    List,
+    Union,
+    BinaryIO,
+    AsyncIterator,
+    Optional,
+)
 from datetime import timedelta
 
 from ..interface import BlobStorageInterface
@@ -21,9 +29,6 @@ from .operations import (
     AdvancedOperations,
     TierOperations,
 )
-
-if TYPE_CHECKING:
-    from mypy_boto3_s3.client import S3Client
 
 # Module-level logger
 _logger = None
@@ -62,7 +67,7 @@ class S3BlobStorage(BlobStorageInterface):
                 - s3_verify: Whether to verify SSL certificates (optional)
         """
         self.config = config
-        self._s3_client: "S3Client" = None
+        self._s3_client: Optional[Any] = None  # Type: S3Client (boto3)
         self._initialize_client()
         self._initialize_operations()
 
@@ -89,6 +94,7 @@ class S3BlobStorage(BlobStorageInterface):
 
     def _initialize_operations(self):
         """Initialize operation classes with the S3 client."""
+        assert self._s3_client is not None, "S3 client must be initialized"
         self._blob_ops = BlobOperations(self._s3_client)
         self._container_ops = ContainerOperations(self._s3_client)
         self._metadata_ops = MetadataOperations(self._s3_client)
@@ -128,7 +134,7 @@ class S3BlobStorage(BlobStorageInterface):
         """Download a blob (object) from storage."""
         return await self._blob_ops.download_blob(container, name, **kwargs)
 
-    async def download_blob_stream(
+    async def download_blob_stream(  # type: ignore[override]
         self, container: str, name: str, **kwargs
     ) -> AsyncIterator[bytes]:
         """Download a blob (object) as a stream."""

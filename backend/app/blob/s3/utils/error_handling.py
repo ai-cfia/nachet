@@ -5,7 +5,7 @@ This module provides common error handling patterns for S3-compatible storage
 systems (Apache Ozone), promoting code reuse and consistency.
 """
 
-from typing import Callable, Any, TYPE_CHECKING
+from beartype.typing import Callable, Any
 from botocore.exceptions import ClientError, BotoCoreError
 
 from ...exceptions import (
@@ -18,9 +18,6 @@ from ...exceptions import (
     InvalidConfigurationError,
     PermissionError as BlobPermissionError,
 )
-
-if TYPE_CHECKING:
-    from mypy_boto3_s3.client import S3Client
 
 # Lazy-loaded logger to avoid circular imports
 _logger = None
@@ -128,7 +125,7 @@ class ErrorHandler:
         return decorator
 
     @staticmethod
-    async def check_container_exists(client: "S3Client", container: str) -> None:
+    async def check_container_exists(client: Any, container: str) -> None:  # Type: S3Client (boto3)
         """
         Check if a container (bucket) exists and raise appropriate error if not.
 
@@ -155,7 +152,7 @@ class ErrorHandler:
             raise ConnectionError(f"Failed to check container existence: {str(e)}")
 
     @staticmethod
-    async def check_blob_exists(client: "S3Client", container: str, name: str) -> None:
+    async def check_blob_exists(client: Any, container: str, name: str) -> None:  # Type: S3Client (boto3)
         """
         Check if a blob (object) exists and raise appropriate error if not.
 

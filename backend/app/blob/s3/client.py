@@ -7,7 +7,7 @@ for Apache Ozone S3-compatible storage.
 
 import boto3
 from botocore.config import Config
-from typing import Dict, Any, Optional
+from beartype.typing import Dict, Any, Optional
 from botocore.exceptions import BotoCoreError, ClientError
 
 

@@ -5,7 +5,13 @@ This module handles basic blob CRUD operations including upload, download,
 delete, existence checks, and property retrieval using boto3.
 """
 
-from typing import Dict, Any, Union, BinaryIO, AsyncIterator, TYPE_CHECKING
+from beartype.typing import (
+    Dict,
+    Any,
+    Union,
+    BinaryIO,
+    AsyncIterator,
+)
 from botocore.exceptions import ClientError
 
 from ..utils.error_handling import ErrorHandler
@@ -24,9 +30,6 @@ from ...exceptions import (
     BlobStorageError,
 )
 
-if TYPE_CHECKING:
-    from mypy_boto3_s3.client import S3Client
-
 # Lazy-loaded logger to avoid circular imports
 _logger = None
 
@@ -44,7 +47,7 @@ def _get_logger():
 class BlobOperations:
     """Handles blob-specific operations for S3-compatible storage."""
 
-    def __init__(self, s3_client: "S3Client"):
+    def __init__(self, s3_client: Any):  # Type: S3Client (boto3)
         """
         Initialize blob operations with S3 client.
 
@@ -131,10 +134,11 @@ class BlobOperations:
 
         # Add tags if provided (separate operation in S3)
         if tags:
-            tag_set = [{"Key": k, "Value": v} for k, v in tags.items()]
-            self._client.put_object_tagging(
-                Bucket=container, Key=name, Tagging={"TagSet": tag_set}
-            )
+            tag_set: list["TagTypeDef"] = [
+                {"Key": k, "Value": v} for k, v in tags.items()
+            ]
+            tagging: "TaggingTypeDef" = {"TagSet": tag_set}
+            self._client.put_object_tagging(Bucket=container, Key=name, Tagging=tagging)
 
         # Get object metadata to build result
         head_response = self._client.head_object(Bucket=container, Key=name)
@@ -210,7 +214,7 @@ class BlobOperations:
 
         # Download blob
         _get_logger().info("Downloading blob from S3", container=container, blob=name)
-        response = self._client.get_object(**get_params)
+        response = self._client.get_object(**get_params)  # type: ignore[arg-type]
 
         # Read all data from the StreamingBody
         blob_data = response["Body"].read()
@@ -279,7 +283,7 @@ class BlobOperations:
             _get_logger().info(
                 "Downloading blob stream from S3", container=container, blob=name
             )
-            response = self._client.get_object(**get_params)
+            response = self._client.get_object(**get_params)  # type: ignore[arg-type]
 
             # Yield chunks from StreamingBody
             streaming_body = response["Body"]
@@ -510,15 +514,15 @@ class BlobOperations:
         # Parse options
         options = kwargs.get("options")
         if isinstance(options, dict):
-            options = ListOptions(**options)
+            options = ListOptions(**options)  # type: ignore[arg-type]
         elif options is None:
-            options = ListOptions()
+            options = ListOptions()  # type: ignore[call-arg]
 
         blobs = []
         continuation_token = None
 
         # List objects in the bucket
-        list_params = {
+        list_params: Dict[str, Any] = {
             "Bucket": container,
         }
 
@@ -526,21 +530,25 @@ class BlobOperations:
             list_params["Prefix"] = options.prefix
 
         if options.max_results:
-            list_params["MaxKeys"] = options.max_results
+            list_params["MaxKeys"] = int(options.max_results)
 
         _get_logger().info(
             "Listing blobs in S3 bucket", container=container, prefix=options.prefix
         )
-        response = self._client.list_objects_v2(**list_params)
+        response = self._client.list_objects_v2(**list_params)  # type: ignore[arg-type]
 
         # Process results
         for obj in response.get("Contents", []):
             # Get tags if requested (requires separate API call per object)
+            obj_key = obj.get("Key")
+            if not obj_key:
+                continue  # Skip objects without Key
+
             tags = {}
             if options.include_tags:
                 try:
                     tag_response = self._client.get_object_tagging(
-                        Bucket=container, Key=obj["Key"]
+                        Bucket=container, Key=obj_key
                     )
                     tags = {
                         tag["Key"]: tag["Value"]
@@ -550,7 +558,7 @@ class BlobOperations:
                     _get_logger().warning(
                         "Failed to get tags for object",
                         container=container,
-                        blob=obj["Key"],
+                        blob=obj_key,
                         error=str(e),
                     )
 
@@ -559,23 +567,29 @@ class BlobOperations:
             if options.include_metadata:
                 try:
                     head_response = self._client.head_object(
-                        Bucket=container, Key=obj["Key"]
+                        Bucket=container, Key=obj_key
                     )
                     metadata = head_response.get("Metadata", {})
                 except ClientError as e:
                     _get_logger().warning(
                         "Failed to get metadata for object",
                         container=container,
-                        blob=obj["Key"],
+                        blob=obj_key,
                         error=str(e),
                     )
 
             # Create BlobInfo
+            last_modified = obj.get("LastModified")
+            if not last_modified:
+                from datetime import datetime, timezone
+
+                last_modified = datetime.now(timezone.utc)
+
             blob_info = BlobInfo(
-                name=obj["Key"],
+                name=obj_key,
                 container=container,
                 size=obj.get("Size", 0),
-                last_modified=obj.get("LastModified"),
+                last_modified=last_modified,
                 etag=obj.get("ETag", "").strip('"'),
                 content_type="application/octet-stream",  # Not available in list response
                 metadata=metadata,
