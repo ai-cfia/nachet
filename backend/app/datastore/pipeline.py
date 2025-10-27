@@ -2,7 +2,7 @@
 Database repository layer for pipeline and model operations.
 """
 
-from beartype.typing import List, Optional, Dict, Type, TypedDict
+from beartype.typing import List, Optional, Type, TypedDict
 from sqlalchemy import select, and_
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -13,6 +13,7 @@ from app.db.model import Pipeline, Model, PipelineModel, PipelineDefault
 
 class PipelineModelInfo(TypedDict):
     """Model information in pipeline mapping."""
+
     id: str
     name: str
     version: str | None

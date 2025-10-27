@@ -2,7 +2,6 @@
 Data access layer for Object (ImageObjects) entities.
 """
 
-from beartype.typing import Sequence
 from sqlalchemy.orm import selectinload
 
 from app.db.model import Object

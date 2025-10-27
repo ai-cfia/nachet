@@ -6,7 +6,17 @@ eliminate code duplication across service classes. All entity-specific services
 should inherit from BaseCRUDService and BaseCRUDDataService.
 """
 
-from beartype.typing import TypeVar, Generic, List, Optional, Dict, Any, Type, Protocol, cast
+from beartype.typing import (
+    TypeVar,
+    Generic,
+    List,
+    Optional,
+    Dict,
+    Any,
+    Type,
+    Protocol,
+    cast,
+)
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +26,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped
 
 class CRUDModel(Protocol):
     """Protocol defining the required attributes for CRUD operations."""
+
     id: Mapped[UUID]
     active: Mapped[bool]
     date_created: Mapped[datetime]
