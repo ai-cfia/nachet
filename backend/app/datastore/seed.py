@@ -7,6 +7,7 @@ from app.db.model import Seed
 
 class SeedDataRow(TypedDict):
     """Row type for seed data query results."""
+
     seed_id: UUID
     name_code: str
     family: str

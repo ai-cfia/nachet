@@ -1,4 +1,4 @@
-from beartype.typing import Type, Optional, Sequence, TypedDict
+from beartype.typing import Type, Optional, TypedDict
 from uuid import UUID
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
@@ -9,6 +9,7 @@ from app.datastore.base_crud import BaseCRUDDataService
 
 class UserDirectoryRow(TypedDict):
     """Row type for user directory with count query results."""
+
     id: UUID
     name: str
     folder_prefix: str
@@ -18,6 +19,7 @@ class UserDirectoryRow(TypedDict):
 
 class OrgDirectoryRow(TypedDict):
     """Row type for organization directory with count query results."""
+
     id: UUID
     user_id: UUID
     name: str
@@ -94,9 +96,7 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
             data_service = cls(session)
             return await data_service.get_org_directories_count(org_user_role_id)
 
-    async def get_user_directories_count(
-        self, user_id: str
-    ) -> list[UserDirectoryRow]:
+    async def get_user_directories_count(self, user_id: str) -> list[UserDirectoryRow]:
         """
         Retrieve all directories for a given user and number of pictures from the database.
 

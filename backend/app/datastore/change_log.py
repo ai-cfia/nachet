@@ -2,8 +2,6 @@
 Data access layer for ChangeLog entities.
 """
 
-from beartype.typing import Sequence
-
 from sqlalchemy.orm import selectinload
 
 from app.db.model import ChangeLog
