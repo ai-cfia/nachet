@@ -5,7 +5,7 @@ Log service module for processing frontend logs and managing logging infrastruct
 import sys
 import logging
 from contextvars import ContextVar
-from typing import Dict, Any, Optional
+from beartype.typing import Dict, Any, Optional
 from loguru import logger
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
