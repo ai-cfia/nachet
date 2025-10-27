@@ -39,9 +39,11 @@ def get_s3_test_config():
         # Don't print raw config - it contains sensitive credentials
         return {
             "s3_endpoint_url": config["s3_endpoint_url"],
-            "s3_access_key_id": config["s3_access_key"],
-            "s3_secret_access_key": config["s3_secret_key"],
-            "s3_region": config["s3_region_name"],  # Note: config uses 's3_region_name'
+            "s3_access_key": config["s3_access_key"],
+            "s3_secret_key": config["s3_secret_key"],
+            "s3_region_name": config[
+                "s3_region_name"
+            ],  # Note: config uses 's3_region_name'
             "s3_use_ssl": config["s3_use_ssl"],
             "s3_verify": config["s3_verify"],
         }

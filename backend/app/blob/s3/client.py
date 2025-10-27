@@ -6,6 +6,7 @@ for Apache Ozone S3-compatible storage.
 """
 
 import boto3
+from botocore.config import Config
 from typing import Dict, Any, Optional
 from botocore.exceptions import BotoCoreError, ClientError
 
@@ -38,10 +39,12 @@ def create_s3_client(config: Dict[str, Any]):
         config: Configuration dictionary containing:
             - s3_access_key_id: AWS access key ID
             - s3_secret_access_key: AWS secret access key
-            - s3_region: AWS region (default: us-east-1)
+            - s3_region_name: AWS region (default: us-east-1)
             - s3_endpoint_url: Custom endpoint URL for S3-compatible services like Ozone
             - s3_use_ssl: Whether to use SSL (default: True for https endpoints)
             - s3_verify: Whether to verify SSL certificates (default: True)
+            - s3_connect_timeout: Connection timeout in seconds (default: 5)
+            - s3_read_timeout: Read timeout in seconds (default: 10)
 
     Returns:
         boto3 S3 client instance
@@ -70,6 +73,15 @@ def create_s3_client(config: Dict[str, Any]):
         endpoint_url = config.get("s3_endpoint_url")
         use_ssl = config.get("s3_use_ssl")
         verify = config.get("s3_verify", True)
+        connect_timeout = config.get("s3_connect_timeout", 5)
+        read_timeout = config.get("s3_read_timeout", 10)
+
+        # Create boto3 config with timeout settings
+        boto_config = Config(
+            connect_timeout=connect_timeout,
+            read_timeout=read_timeout,
+            retries={"max_attempts": 2, "mode": "standard"},
+        )
 
         # Build client parameters
         client_params = {
@@ -80,6 +92,7 @@ def create_s3_client(config: Dict[str, Any]):
             "region_name": region,
             "use_ssl": use_ssl,
             "verify": verify,
+            "config": boto_config,
         }
 
         # Log client creation

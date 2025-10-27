@@ -25,20 +25,27 @@ def _get_logger():
     return _logger
 
 
-def create_blob_service_client(storage_url):
+def create_blob_service_client(storage_url, connection_timeout=None, read_timeout=None):
     """
     This function creates a BlobServiceClient object
 
     Parameters:
     - storage_url: the url of the storage account
+    - connection_timeout: connection timeout in seconds (default: None uses Azure SDK default)
+    - read_timeout: read timeout in seconds (default: None uses Azure SDK default)
 
     Returns: BlobServiceClient object
     """
     try:
-        # Create a blob service client
-        blob_service_client = BlobServiceClient.from_connection_string(
-            conn_str=storage_url
-        )
+        # Create a blob service client with optional timeout configuration
+        client_kwargs = {"conn_str": storage_url}
+
+        # Add timeout configuration if provided
+        if connection_timeout is not None or read_timeout is not None:
+            client_kwargs["connection_timeout"] = connection_timeout
+            client_kwargs["read_timeout"] = read_timeout
+
+        blob_service_client = BlobServiceClient.from_connection_string(**client_kwargs)
         return blob_service_client
     except ValueError as e:
         _get_logger().error(
