@@ -5,16 +5,12 @@ Logging middleware for FastAPI to log all API requests and responses.
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
-from beartype.typing import Awaitable, Callable
+from beartype.typing import Any, Awaitable, Callable, MutableMapping
 from uuid6 import uuid7
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 from app.service.logs import LogService
-
-if TYPE_CHECKING:
-    from starlette.types import ASGIApp
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -30,7 +26,17 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     - Adds correlation_id to response headers
     """
 
-    def __init__(self, app: ASGIApp):
+    def __init__(
+        self,
+        app: Callable[
+            [
+                MutableMapping[str, Any],
+                Callable[[], Awaitable[MutableMapping[str, Any]]],
+                Callable[[MutableMapping[str, Any]], Awaitable[None]],
+            ],
+            Awaitable[None],
+        ],
+    ):
         super().__init__(app)
         self._logger = None
 
