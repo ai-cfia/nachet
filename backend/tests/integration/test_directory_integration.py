@@ -51,7 +51,7 @@ class TestDirectoryServiceIntegrationCreate:
         # Call service using create_directory which handles user_id correctly
         result = await DirectoryService.create_directory(
             user_id=test_admin_user,
-            fullpath="/test/directory",
+            fullpath="test/directory",
             description="New test directory",
         )
 
@@ -72,7 +72,7 @@ class TestDirectoryServiceIntegrationCreate:
         with pytest.raises(HTTPException) as exc_info:
             await DirectoryService.create_directory(
                 user_id=test_regular_user,
-                fullpath="/test/unauthorized",
+                fullpath="test/unauthorized",
                 description="Should fail",
             )
 
@@ -245,7 +245,7 @@ class TestDirectoryServiceIntegrationCreateDirectory:
         # Call service with fullpath
         result = await DirectoryService.create_directory(
             user_id=test_admin_user,
-            fullpath="/org/team/project",
+            fullpath="org/team/project",
             description="Test project",
         )
 
@@ -257,7 +257,7 @@ class TestDirectoryServiceIntegrationCreateDirectory:
         assert "id" in result
         assert "message" in result
         assert "created successfully" in result["message"]
-        assert "/org/team/project" in result["message"]
+        assert "org/team/project" in result["message"]
 
     async def test_create_directory_valid_path_with_allowed_chars(
         self,
@@ -272,7 +272,7 @@ class TestDirectoryServiceIntegrationCreateDirectory:
         # Test with valid characters: alphanumeric, dash, underscore, period
         result = await DirectoryService.create_directory(
             user_id=test_admin_user,
-            fullpath="/org/my_project-v1.0",  # Valid: ends with alphanumeric
+            fullpath="org/my_project-v1.0",  # Valid: ends with alphanumeric
             description="",
         )
 
@@ -283,20 +283,20 @@ class TestDirectoryServiceIntegrationCreateDirectory:
         # Verify
         assert "id" in result
 
-    async def test_create_directory_invalid_path_no_leading_slash(
+    async def test_create_directory_invalid_path_with_leading_slash(
         self,
         test_admin_user: UUID,
     ):
-        """Should reject paths that don't start with /."""
+        """Should reject paths that start with / (users should provide relative paths)."""
         with pytest.raises(HTTPException) as exc_info:
             await DirectoryService.create_directory(
                 user_id=test_admin_user,
-                fullpath="org/team/project",  # Missing leading /
+                fullpath="/org/team/project",  # Has leading / (causes //)
                 description="Test",
             )
 
         assert exc_info.value.status_code == 400
-        assert "must start with /" in exc_info.value.detail
+        assert "consecutive slashes" in exc_info.value.detail
 
     async def test_create_directory_invalid_path_trailing_slash(
         self,
@@ -306,7 +306,7 @@ class TestDirectoryServiceIntegrationCreateDirectory:
         with pytest.raises(HTTPException) as exc_info:
             await DirectoryService.create_directory(
                 user_id=test_admin_user,
-                fullpath="/org/team/",  # Ends with /
+                fullpath="org/team/",  # Ends with /
                 description="Test",
             )
 
@@ -321,7 +321,7 @@ class TestDirectoryServiceIntegrationCreateDirectory:
         with pytest.raises(HTTPException) as exc_info:
             await DirectoryService.create_directory(
                 user_id=test_admin_user,
-                fullpath="/org//team/project",  # Consecutive slashes
+                fullpath="org//team/project",  # Consecutive slashes
                 description="Test",
             )
 
@@ -336,7 +336,7 @@ class TestDirectoryServiceIntegrationCreateDirectory:
         with pytest.raises(HTTPException) as exc_info:
             await DirectoryService.create_directory(
                 user_id=test_admin_user,
-                fullpath="/org/team$/project",  # Invalid char: $
+                fullpath="org/team$/project",  # Invalid char: $
                 description="Test",
             )
 
@@ -613,14 +613,14 @@ class TestDirectoryServiceIntegrationRenameDirectory:
         result = await DirectoryService.rename_directory(
             user_id=test_admin_user,
             directory_id=folder_id,
-            fullpath="/org/team/renamed_project",
+            fullpath="org/team/renamed_project",
         )
 
         # Verify
         assert "id" in result
         assert "message" in result
         assert "renamed" in result["message"].lower()
-        assert "/org/team/renamed_project" in result["message"]
+        assert "org/team/renamed_project" in result["message"]
 
     async def test_rename_directory_not_found(
         self,
@@ -634,7 +634,7 @@ class TestDirectoryServiceIntegrationRenameDirectory:
             await DirectoryService.rename_directory(
                 user_id=test_admin_user,
                 directory_id=nonexistent_id,
-                fullpath="/org/renamed_project",
+                fullpath="org/renamed_project",
             )
 
         assert exc_info.value.status_code == 404
