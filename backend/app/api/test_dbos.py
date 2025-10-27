@@ -56,7 +56,7 @@ that DBOS workflows are working correctly.
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Any
+from beartype.typing import Dict, Any
 
 from dbos import DBOS
 from app.service.toy_workflow import toy_workflow
@@ -180,13 +180,16 @@ async def get_workflow_status(workflow_id: str):
         status = await workflow_handle.get_status()
 
         # Try to get result if completed
-        result = None
-        error = None
+        result: Dict[str, Any] | None = None
+        error: str | None = None
 
         if status.status == "SUCCESS":
             try:
                 # Get result using get_result() instead of get_result_async()
-                result = workflow_handle.get_result()
+                raw_result = workflow_handle.get_result()
+                # Ensure result is a dict, not a coroutine
+                if isinstance(raw_result, dict):
+                    result = raw_result
             except AttributeError:
                 # Fallback: try to get events which contain the result
                 try:
@@ -198,7 +201,8 @@ async def get_workflow_status(workflow_id: str):
             except Exception as e:
                 error = f"Failed to get result: {str(e)}"
         elif status.status == "ERROR":
-            error = status.error
+            # Convert error to string if it's an Exception
+            error = str(status.error) if status.error else None
 
         return WorkflowStatusResponse(
             workflow_id=workflow_id,

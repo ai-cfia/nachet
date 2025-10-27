@@ -71,6 +71,7 @@ class Settings(BaseSettings):
     trusted_hosts: str | None = None
 
     # frontend static files settings
+    frontend_blob_container: str | None = None
     frontend_version_file: str | None = None
 
     # logging/observability settings
@@ -279,12 +280,12 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     app = FastAPI(
         lifespan=lifespan, docs_url=settings.swagger_path, root_path=settings.base_path
     )
-    app.settings = settings
+    app.settings = settings  # type: ignore[attr-defined]
 
     # Initialize rate limiter and add to app state before middleware
     limiter = get_limiter()
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
     app.add_middleware(
         CORSMiddleware,
