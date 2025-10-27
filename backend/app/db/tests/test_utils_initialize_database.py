@@ -483,12 +483,18 @@ class TestInitializeDatabaseErrorScenarios:
         reset_database_engine()
 
     @pytest.mark.asyncio
-    async def test_initialize_database_missing_db_conn_info(self):
-        """Test initialize_database when settings lacks db_conn_info."""
-        settings = Mock(spec=Settings)
-        del settings.db_conn_info  # Remove the attribute
+    async def test_initialize_database_invalid_db_conn_info_type(self):
+        """Test initialize_database when settings.db_conn_info returns non-dict.
 
-        with pytest.raises(AttributeError):
+        Note: With beartype enforcement, the settings object must satisfy SettingsProtocol,
+        but we can still test what happens when db_conn_info returns an invalid value.
+        """
+        # Create a mock that satisfies SettingsProtocol but returns invalid db_conn_info
+        settings = Mock(spec=Settings)
+        # Return a string instead of dict - this will fail when trying to unpack with **
+        settings.db_conn_info = "not a dictionary"
+
+        with pytest.raises(TypeError, match="argument after \\*\\* must be a mapping"):
             await initialize_database(settings)
 
     @pytest.mark.asyncio
