@@ -214,12 +214,13 @@ class TestConnectionStringGeneration:
         connection_string = storage.azure_storage_connection_string()
 
         # Verify the format
+        # For core.windows.net, BlobEndpoint should NOT have account suffix
         expected_parts = [
             "DefaultEndpointsProtocol=https",
             "AccountName=testaccount",
             "AccountKey=dGVzdGtleQ==",
             "EndpointSuffix=core.windows.net",
-            "BlobEndpoint=https://testaccount.blob.core.windows.net/testaccount",
+            "BlobEndpoint=https://testaccount.blob.core.windows.net",
         ]
 
         for part in expected_parts:

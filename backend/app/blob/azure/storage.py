@@ -68,7 +68,15 @@ class AzureBlobStorage(BlobStorageInterface):
                     "connection_string", "Azure storage connection string is required"
                 )
 
-            self._blob_service_client = create_blob_service_client(connection_string)
+            # Extract timeout settings from config
+            connection_timeout = self.config.get("connection_timeout")
+            read_timeout = self.config.get("read_timeout")
+
+            self._blob_service_client = create_blob_service_client(
+                connection_string,
+                connection_timeout=connection_timeout,
+                read_timeout=read_timeout,
+            )
             _get_logger().info("Azure Blob Storage client initialized")
 
         except Exception as e:
