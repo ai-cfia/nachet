@@ -20,8 +20,7 @@ class ImageDataService(BaseCRUDDataService[Picture]):
         """Return the Picture model class."""
         return Picture
 
-    @classmethod
-    def get_query_options(cls) -> Sequence:
+    def get_query_options(self) -> list:
         """
         Return query options for eager loading relationships.
 

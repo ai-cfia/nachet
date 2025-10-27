@@ -1,4 +1,4 @@
-from typing import Optional, Type
+from typing import Optional, Type, cast
 from uuid import UUID
 from sqlalchemy import select
 
@@ -117,7 +117,8 @@ class OrganizationDataService(BaseCRUDDataService[Organization]):
             .where(Users.active.is_(True))
         )
         result = await self.session.execute(query)
-        return result.scalar_one_or_none()
+        org_id = result.scalar_one_or_none()
+        return cast(Optional[UUID], org_id)
 
     async def get_user_org_roles(
         self, user_id: UUID

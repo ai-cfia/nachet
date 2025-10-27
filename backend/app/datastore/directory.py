@@ -1,9 +1,29 @@
-from typing import List, Type, Optional
+from typing import Type, Optional, Sequence, TypedDict
+from uuid import UUID
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from app.db.model import Folder, Picture
 from app.datastore.base_crud import BaseCRUDDataService
+
+
+class UserDirectoryRow(TypedDict):
+    """Row type for user directory with count query results."""
+    id: UUID
+    name: str
+    folder_prefix: str
+    description: str
+    picture_count: int
+
+
+class OrgDirectoryRow(TypedDict):
+    """Row type for organization directory with count query results."""
+    id: UUID
+    user_id: UUID
+    name: str
+    folder_prefix: str
+    description: str
+    picture_count: int
 
 
 class DirectoryDataService(BaseCRUDDataService[Folder]):
@@ -33,7 +53,9 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
     # Custom methods for directory-specific operations
 
     @classmethod
-    async def get_user_directories_with_count(cls, user_id: str) -> List[Folder]:
+    async def get_user_directories_with_count(
+        cls, user_id: str
+    ) -> list[UserDirectoryRow]:
         """
         Retrieve all directories for a user with picture counts.
 
@@ -43,7 +65,7 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
             user_id: The ID of the user whose directories are to be fetched.
 
         Returns:
-            List of tuples with directory data and picture counts.
+            List of dictionaries with directory data and picture counts
         """
         from app.db.utils import sessionmanager
 
@@ -54,7 +76,7 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
     @classmethod
     async def get_org_directories_with_count(
         cls, org_user_role_id: str
-    ) -> List[Folder]:
+    ) -> list[OrgDirectoryRow]:
         """
         Retrieve all directories for an organization with picture counts.
 
@@ -64,7 +86,7 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
             org_user_role_id: The organization's user role ID to filter by.
 
         Returns:
-            List of tuples with directory data and picture counts.
+            List of dictionaries with directory data and picture counts
         """
         from app.db.utils import sessionmanager
 
@@ -72,14 +94,16 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
             data_service = cls(session)
             return await data_service.get_org_directories_count(org_user_role_id)
 
-    async def get_user_directories_count(self, user_id: str) -> List[Folder]:
+    async def get_user_directories_count(
+        self, user_id: str
+    ) -> list[UserDirectoryRow]:
         """
         Retrieve all directories for a given user and number of pictures from the database.
 
         Args:
             user_id: The ID of the user whose directories are to be fetched.
         Returns:
-            List of Folder objects.
+            List of dictionaries with directory data and picture counts
         """
         stmt = (
             select(
@@ -96,16 +120,18 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
         )
         # print(stmt.compile(dialect=postgresql.dialect()))
         result = await self.session.execute(stmt)
-        return result.all()
+        return [row._asdict() for row in result.all()]  # type: ignore[misc]
 
-    async def get_org_directories_count(self, org_user_role_id: str) -> List[Folder]:
+    async def get_org_directories_count(
+        self, org_user_role_id: str
+    ) -> list[OrgDirectoryRow]:
         """
         Retrieve all directories for an organization and number of pictures from the database.
 
         Args:
             org_user_role_id: The organization's user role ID to filter by.
         Returns:
-            List of tuples with directory data and picture counts.
+            List of dictionaries with directory data and picture counts
         """
         stmt = (
             select(
@@ -128,7 +154,7 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
             )
         )
         result = await self.session.execute(stmt)
-        return result.all()
+        return [row._asdict() for row in result.all()]  # type: ignore[misc]
 
     async def create_directory(
         self,
@@ -164,7 +190,7 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
         )
         self.session.add(new_directory)
         await self.session.flush()  # Ensure the new directory gets an ID
-        return new_directory._asdict()["id"]
+        return str(new_directory.id)
 
     async def rename_directory(self, directory_id: str, new_name: str) -> str:
         """
@@ -191,7 +217,7 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
             await self.session.flush()  # Ensure changes are applied
         else:
             raise ValueError(f"Directory with ID {directory_id} not found or inactive.")
-        return directory._asdict()["id"]
+        return str(directory.id)
 
     async def check_folder_exists(
         self, folder_id: str, user_role_id: str
