@@ -70,9 +70,18 @@ class TestRbacRoleService:
         # Mock data service
         mock_data_service = AsyncMock()
         mock_data_service.get_all = AsyncMock(return_value=([role], 1))
+
+        # Create a mock class that returns the mock instance
+        class MockDataServiceClass:
+            def __init__(self, session):
+                pass
+
+            async def get_all(self, **kwargs):
+                return await mock_data_service.get_all(**kwargs)
+
         monkeypatch.setattr(
-            "app.service.rbac.RbacRoleDataService",
-            lambda session: mock_data_service,
+            "app.service.rbac.RbacRoleService.get_data_service_class",
+            lambda: MockDataServiceClass,
         )
 
         # Call service
@@ -123,9 +132,18 @@ class TestRbacPermissionService:
         # Mock data service
         mock_data_service = AsyncMock()
         mock_data_service.get_all = AsyncMock(return_value=([perm], 1))
+
+        # Create a mock class that returns the mock instance
+        class MockDataServiceClass:
+            def __init__(self, session):
+                pass
+
+            async def get_all(self, **kwargs):
+                return await mock_data_service.get_all(**kwargs)
+
         monkeypatch.setattr(
-            "app.service.rbac.RbacPermissionDataService",
-            lambda session: mock_data_service,
+            "app.service.rbac.RbacPermissionService.get_data_service_class",
+            lambda: MockDataServiceClass,
         )
 
         # Call service
@@ -176,9 +194,18 @@ class TestRbacResourceService:
         # Mock data service
         mock_data_service = AsyncMock()
         mock_data_service.get_all = AsyncMock(return_value=([resource], 1))
+
+        # Create a mock class that returns the mock instance
+        class MockDataServiceClass:
+            def __init__(self, session):
+                pass
+
+            async def get_all(self, **kwargs):
+                return await mock_data_service.get_all(**kwargs)
+
         monkeypatch.setattr(
-            "app.service.rbac.RbacResourceDataService",
-            lambda session: mock_data_service,
+            "app.service.rbac.RbacResourceService.get_data_service_class",
+            lambda: MockDataServiceClass,
         )
 
         # Call service
@@ -228,9 +255,18 @@ class TestRbacRolePermissionResourceService:
         # Mock data service
         mock_data_service = AsyncMock()
         mock_data_service.get_all = AsyncMock(return_value=([mapping], 1))
+
+        # Create a mock class that returns the mock instance
+        class MockDataServiceClass:
+            def __init__(self, session):
+                pass
+
+            async def get_all(self, **kwargs):
+                return await mock_data_service.get_all(**kwargs)
+
         monkeypatch.setattr(
-            "app.service.rbac.RbacRolePermissionResourceDataService",
-            lambda session: mock_data_service,
+            "app.service.rbac.RbacRolePermissionResourceService.get_data_service_class",
+            lambda: MockDataServiceClass,
         )
 
         # Call service
@@ -280,9 +316,18 @@ class TestRbacUserRoleService:
         # Mock data service
         mock_data_service = AsyncMock()
         mock_data_service.get_all = AsyncMock(return_value=([user_role], 1))
+
+        # Create a mock class that returns the mock instance
+        class MockDataServiceClass:
+            def __init__(self, session):
+                pass
+
+            async def get_all(self, **kwargs):
+                return await mock_data_service.get_all(**kwargs)
+
         monkeypatch.setattr(
-            "app.service.rbac.RbacUserRoleDataService",
-            lambda session: mock_data_service,
+            "app.service.rbac.RbacUserRoleService.get_data_service_class",
+            lambda: MockDataServiceClass,
         )
 
         # Call service

@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import Optional, Type, Dict, Any
+from beartype.typing import Optional, Dict, Any, cast
 from dataclasses import dataclass
 from fastapi import HTTPException, status, Request
 from sqlalchemy import select
@@ -138,7 +138,7 @@ class RbacService:
                     detail="Organization admin role not found",
                 )
 
-            return org_admin_role.id
+            return cast(UUID, org_admin_role.id)
 
     @staticmethod
     async def get_user_org_roles(user_id: UUID) -> UserOrgRoles:
@@ -210,7 +210,7 @@ class RbacService:
                     detail="Organization user role not found",
                 )
 
-            return org_user_role.id
+            return cast(UUID, org_user_role.id)
 
     @staticmethod
     async def verify_user_has_role(
@@ -373,6 +373,7 @@ class RbacService:
             HTTPException: 403 if user is not admin in their org
         """
         user_org_id = await RbacService.get_user_organization_id(user_id)
+        assert user_org_id is not None  # get_user_organization_id raises if None
 
         # Verify user has "admin" role in their org
         await RbacService.verify_user_has_role(user_id, ROLE_ADMIN, user_org_id)
@@ -512,7 +513,7 @@ class RbacRoleService(BaseCRUDService[RbacRole]):
         return "RbacRole"
 
     @classmethod
-    def get_data_service_class(cls) -> Type[RbacRoleDataService]:
+    def get_data_service_class(cls) -> type[RbacRoleDataService]:
         """Return the data service class."""
         return RbacRoleDataService
 
@@ -536,22 +537,22 @@ class RbacRoleService(BaseCRUDService[RbacRole]):
         }
 
     @classmethod
-    def get_not_found_exception(cls) -> Type[Exception]:
+    def get_not_found_exception(cls) -> type[Exception]:
         """Return RbacRole NotFoundError exception class."""
         return RbacRoleNotFoundError
 
     @classmethod
-    def get_creation_exception(cls) -> Type[Exception]:
+    def get_creation_exception(cls) -> type[Exception]:
         """Return RbacRole CreationError exception class."""
         return RbacRoleCreationError
 
     @classmethod
-    def get_update_exception(cls) -> Type[Exception]:
+    def get_update_exception(cls) -> type[Exception]:
         """Return RbacRole UpdateError exception class."""
         return RbacRoleUpdateError
 
     @classmethod
-    def get_deletion_exception(cls) -> Type[Exception]:
+    def get_deletion_exception(cls) -> type[Exception]:
         """Return RbacRole DeletionError exception class."""
         return RbacRoleDeletionError
 
@@ -573,7 +574,7 @@ class RbacPermissionService(BaseCRUDService[RbacPermission]):
         return "RbacPermission"
 
     @classmethod
-    def get_data_service_class(cls) -> Type[RbacPermissionDataService]:
+    def get_data_service_class(cls) -> type[RbacPermissionDataService]:
         """Return the data service class."""
         return RbacPermissionDataService
 
@@ -594,22 +595,22 @@ class RbacPermissionService(BaseCRUDService[RbacPermission]):
         }
 
     @classmethod
-    def get_not_found_exception(cls) -> Type[Exception]:
+    def get_not_found_exception(cls) -> type[Exception]:
         """Return RbacPermission NotFoundError exception class."""
         return RbacPermissionNotFoundError
 
     @classmethod
-    def get_creation_exception(cls) -> Type[Exception]:
+    def get_creation_exception(cls) -> type[Exception]:
         """Return RbacPermission CreationError exception class."""
         return RbacPermissionCreationError
 
     @classmethod
-    def get_update_exception(cls) -> Type[Exception]:
+    def get_update_exception(cls) -> type[Exception]:
         """Return RbacPermission UpdateError exception class."""
         return RbacPermissionUpdateError
 
     @classmethod
-    def get_deletion_exception(cls) -> Type[Exception]:
+    def get_deletion_exception(cls) -> type[Exception]:
         """Return RbacPermission DeletionError exception class."""
         return RbacPermissionDeletionError
 
@@ -631,7 +632,7 @@ class RbacResourceService(BaseCRUDService[RbacResource]):
         return "RbacResource"
 
     @classmethod
-    def get_data_service_class(cls) -> Type[RbacResourceDataService]:
+    def get_data_service_class(cls) -> type[RbacResourceDataService]:
         """Return the data service class."""
         return RbacResourceDataService
 
@@ -652,22 +653,22 @@ class RbacResourceService(BaseCRUDService[RbacResource]):
         }
 
     @classmethod
-    def get_not_found_exception(cls) -> Type[Exception]:
+    def get_not_found_exception(cls) -> type[Exception]:
         """Return RbacResource NotFoundError exception class."""
         return RbacResourceNotFoundError
 
     @classmethod
-    def get_creation_exception(cls) -> Type[Exception]:
+    def get_creation_exception(cls) -> type[Exception]:
         """Return RbacResource CreationError exception class."""
         return RbacResourceCreationError
 
     @classmethod
-    def get_update_exception(cls) -> Type[Exception]:
+    def get_update_exception(cls) -> type[Exception]:
         """Return RbacResource UpdateError exception class."""
         return RbacResourceUpdateError
 
     @classmethod
-    def get_deletion_exception(cls) -> Type[Exception]:
+    def get_deletion_exception(cls) -> type[Exception]:
         """Return RbacResource DeletionError exception class."""
         return RbacResourceDeletionError
 
@@ -690,7 +691,7 @@ class RbacRolePermissionResourceService(BaseCRUDService[RbacRolePermissionResour
         return "RbacRolePermissionResource"
 
     @classmethod
-    def get_data_service_class(cls) -> Type[RbacRolePermissionResourceDataService]:
+    def get_data_service_class(cls) -> type[RbacRolePermissionResourceDataService]:
         """Return the data service class."""
         return RbacRolePermissionResourceDataService
 
@@ -710,22 +711,22 @@ class RbacRolePermissionResourceService(BaseCRUDService[RbacRolePermissionResour
         }
 
     @classmethod
-    def get_not_found_exception(cls) -> Type[Exception]:
+    def get_not_found_exception(cls) -> type[Exception]:
         """Return RbacRolePermissionResource NotFoundError exception class."""
         return RbacRolePermissionResourceNotFoundError
 
     @classmethod
-    def get_creation_exception(cls) -> Type[Exception]:
+    def get_creation_exception(cls) -> type[Exception]:
         """Return RbacRolePermissionResource CreationError exception class."""
         return RbacRolePermissionResourceCreationError
 
     @classmethod
-    def get_update_exception(cls) -> Type[Exception]:
+    def get_update_exception(cls) -> type[Exception]:
         """Return RbacRolePermissionResource UpdateError exception class."""
         return RbacRolePermissionResourceUpdateError
 
     @classmethod
-    def get_deletion_exception(cls) -> Type[Exception]:
+    def get_deletion_exception(cls) -> type[Exception]:
         """Return RbacRolePermissionResource DeletionError exception class."""
         return RbacRolePermissionResourceDeletionError
 
@@ -840,7 +841,7 @@ class RbacUserRoleService(BaseCRUDService[RbacUserRole]):
         return "RbacUserRole"
 
     @classmethod
-    def get_data_service_class(cls) -> Type[RbacUserRoleDataService]:
+    def get_data_service_class(cls) -> type[RbacUserRoleDataService]:
         """Return the data service class."""
         return RbacUserRoleDataService
 
@@ -860,22 +861,22 @@ class RbacUserRoleService(BaseCRUDService[RbacUserRole]):
         }
 
     @classmethod
-    def get_not_found_exception(cls) -> Type[Exception]:
+    def get_not_found_exception(cls) -> type[Exception]:
         """Return RbacUserRole NotFoundError exception class."""
         return RbacUserRoleNotFoundError
 
     @classmethod
-    def get_creation_exception(cls) -> Type[Exception]:
+    def get_creation_exception(cls) -> type[Exception]:
         """Return RbacUserRole CreationError exception class."""
         return RbacUserRoleCreationError
 
     @classmethod
-    def get_update_exception(cls) -> Type[Exception]:
+    def get_update_exception(cls) -> type[Exception]:
         """Return RbacUserRole UpdateError exception class."""
         return RbacUserRoleUpdateError
 
     @classmethod
-    def get_deletion_exception(cls) -> Type[Exception]:
+    def get_deletion_exception(cls) -> type[Exception]:
         """Return RbacUserRole DeletionError exception class."""
         return RbacUserRoleDeletionError
 
