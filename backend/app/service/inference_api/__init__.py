@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from beartype.typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.model.inference import (
@@ -81,7 +81,12 @@ from .torch_ensemble import (
 
 class InferenceDispatchService:
     @staticmethod
-    def dispatch(model: dict[str, str], previous_result: str):
+    def dispatch(
+        model: dict[str, str],
+        previous_result: str
+        | ModelInferenceDetectorResult
+        | ModelInferenceClassifierResult,
+    ):
         # Convert dict to ModelDispatchInfo dataclass for type safety
         model_info = ModelDispatchInfo(
             content_type=model["content_type"],
@@ -94,14 +99,33 @@ class InferenceDispatchService:
 
         match model["request_function"]:
             case "rcnn_seed_detector":
+                # Seed detector expects a base64 string
+                if not isinstance(previous_result, str):
+                    raise TypeError("rcnn_seed_detector expects a base64 string")
                 return request_inference_from_seed_detector(model_info, previous_result)
             case "swin_classifier":
+                # SWIN classifier expects ModelInferenceDetectorResult
+                if not isinstance(previous_result, ModelInferenceDetectorResult):
+                    raise TypeError(
+                        "swin_classifier expects ModelInferenceDetectorResult"
+                    )
                 return request_inference_from_swin(model_info, previous_result)
             case "ensemble_a":
+                # Ensemble A expects ModelInferenceDetectorResult
+                if not isinstance(previous_result, ModelInferenceDetectorResult):
+                    raise TypeError("ensemble_a expects ModelInferenceDetectorResult")
                 return request_inference_ensemble_a(model_info, previous_result)
             case "ensemble_b":
+                # Ensemble B expects ModelInferenceClassifierResult
+                if not isinstance(previous_result, ModelInferenceClassifierResult):
+                    raise TypeError("ensemble_b expects ModelInferenceClassifierResult")
                 return request_inference_ensemble_b(model_info, previous_result)
             case "request_inference_from_test":
+                # Test function expects a base64 string
+                if not isinstance(previous_result, str):
+                    raise TypeError(
+                        "request_inference_from_test expects a base64 string"
+                    )
                 return request_inference_from_test(model_info, previous_result)
             # case "request_inference_from_torch_swin":
             #     return request_inference_from_torch_swin(model_info, previous_result)

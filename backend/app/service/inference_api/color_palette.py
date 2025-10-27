@@ -3,7 +3,7 @@ Contains the colors palettes uses to colors the boxes.
 """
 
 import numpy as np
-from typing import Union
+from beartype.typing import Union
 
 
 # Find color by name or hex code: https://www.color-name.com
@@ -83,7 +83,7 @@ def mixing_palettes(dict1: dict, dict2: dict) -> dict:
 
 def shades_colors(
     base_color: Union[str, tuple], num_shades=5, lighten_factor=0.15, darken_factor=0.1
-) -> tuple:
+) -> Union[tuple[int, int, int], str]:
     """
     Generate shades of a color based on the base color.
 
@@ -94,18 +94,20 @@ def shades_colors(
         darken_factor (float): Factor to darken the base color (0 to 1, default is 0.1).
 
     Returns:
-        tuple: RGB tuples representing the shade color.
+        tuple[int, int, int] | str: RGB tuple representing the shade color, or hex string if input was hex.
     """
 
-    def hex_to_rgb(hex_value):
+    def hex_to_rgb(hex_value: str) -> tuple[int, int, int]:
         hex_value = hex_value.lstrip("#")
         return tuple(
             int(hex_value[i : i + len(hex_value) // 3], 16)
             for i in range(0, len(hex_value), len(hex_value) // 3)
-        )
+        )  # type: ignore
 
-    is_hex = base_color[0]
-    if is_hex == "#":
+    # Check if base_color is a hex string
+    is_hex = isinstance(base_color, str) and base_color.startswith("#")
+
+    if is_hex and isinstance(base_color, str):
         base_color = hex_to_rgb(base_color)
 
     base_rgb = np.array(base_color)
@@ -113,6 +115,10 @@ def shades_colors(
         base_rgb * (1 - lighten_factor * i) * (1 - darken_factor * (num_shades - i))
         for i in range(num_shades)
     ]
-    color = [tuple(base_rgb - shade.astype(int)) for shade in shades][-1]
+    color_tuple = tuple(int(x) for x in (base_rgb - shades[-1].astype(int)))
 
-    return color if is_hex != "#" else f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}"
+    # Return hex string if input was hex, otherwise return RGB tuple
+    if is_hex:
+        return f"#{color_tuple[0]:02x}{color_tuple[1]:02x}{color_tuple[2]:02x}"
+    else:
+        return color_tuple  # type: ignore
