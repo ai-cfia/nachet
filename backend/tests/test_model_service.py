@@ -22,6 +22,24 @@ if not os.getenv("NACHET_SCHEMA"):
     load_dotenv(".env.test.local")
 
 
+def create_mock_data_service_class(mock_data_service):
+    """
+    Create a proper mock class for data service that beartype can validate.
+
+    This is necessary because beartype expects get_data_service_class() to return
+    a class type, not a lambda function or instance.
+    """
+
+    class MockDataServiceClass:
+        def __init__(self, session):
+            self.session = session
+
+        def __getattr__(self, name):
+            return getattr(mock_data_service, name)
+
+    return MockDataServiceClass
+
+
 # ============================================================================
 # ModelService Tests
 # ============================================================================
@@ -109,8 +127,8 @@ class TestModelServiceGetAll:
         # Base class get_all returns tuple: (entities, total_count)
         mock_data_service.get_all = AsyncMock(return_value=([model1, model2], 2))
         monkeypatch.setattr(
-            "app.service.model.ModelDataService",
-            lambda session: mock_data_service,
+            "app.service.model.ModelService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
@@ -184,8 +202,8 @@ class TestModelServiceGetById:
         mock_data_service = AsyncMock()
         mock_data_service.get_by_id = AsyncMock(return_value=model)
         monkeypatch.setattr(
-            "app.service.model.ModelDataService",
-            lambda session: mock_data_service,
+            "app.service.model.ModelService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
@@ -225,8 +243,8 @@ class TestModelServiceGetById:
         mock_data_service = AsyncMock()
         mock_data_service.get_by_id = AsyncMock(return_value=None)
         monkeypatch.setattr(
-            "app.service.model.ModelDataService",
-            lambda session: mock_data_service,
+            "app.service.model.ModelService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Should raise 404
@@ -315,6 +333,8 @@ class TestModelServiceGetByTaskId:
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
         # Mock data service
+        # NOTE: get_by_task_id() doesn't use get_data_service_class(),
+        # it directly instantiates ModelDataService(session)
         mock_data_service = AsyncMock()
         mock_data_service.get_by_task_id = AsyncMock(return_value=[model1, model2])
         monkeypatch.setattr(
@@ -393,13 +413,13 @@ class TestModelServiceCreate:
         mock_data_service = AsyncMock()
         mock_data_service.create = AsyncMock(return_value=model)
         monkeypatch.setattr(
-            "app.service.model.ModelDataService",
-            lambda session: mock_data_service,
+            "app.service.model.ModelService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
         result = await ModelService.create(
-            user_id=user_id,
+            requester_id=user_id,
             task_id=task_id,
             name="Model v1",
             endpoint_name="endpoint1",
@@ -437,7 +457,7 @@ class TestModelServiceCreate:
         # Should raise 403
         with pytest.raises(HTTPException) as exc_info:
             await ModelService.create(
-                user_id=user_id,
+                requester_id=user_id,
                 task_id=task_id,
                 name="Model v1",
                 endpoint_name="endpoint1",
@@ -514,13 +534,13 @@ class TestModelServiceUpdate:
         mock_data_service = AsyncMock()
         mock_data_service.update = AsyncMock(return_value=model)
         monkeypatch.setattr(
-            "app.service.model.ModelDataService",
-            lambda session: mock_data_service,
+            "app.service.model.ModelService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
         result = await ModelService.update(
-            user_id=user_id,
+            requester_id=user_id,
             entity_id=model_id,
             name="Model v2",
             version="2.0.0",
@@ -562,13 +582,15 @@ class TestModelServiceUpdate:
         mock_data_service = AsyncMock()
         mock_data_service.update = AsyncMock(return_value=None)
         monkeypatch.setattr(
-            "app.service.model.ModelDataService",
-            lambda session: mock_data_service,
+            "app.service.model.ModelService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Should raise 404
         with pytest.raises(HTTPException) as exc_info:
-            await ModelService.update(user_id, entity_id=model_id, name="Model v2")
+            await ModelService.update(
+                requester_id=user_id, entity_id=model_id, name="Model v2"
+            )
 
         assert exc_info.value.status_code == 404
 
@@ -617,8 +639,8 @@ class TestModelServiceDelete:
         mock_data_service = AsyncMock()
         mock_data_service.soft_delete = AsyncMock(return_value=model)
         monkeypatch.setattr(
-            "app.service.model.ModelDataService",
-            lambda session: mock_data_service,
+            "app.service.model.ModelService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
@@ -657,8 +679,8 @@ class TestModelServiceDelete:
         mock_data_service = AsyncMock()
         mock_data_service.soft_delete = AsyncMock(return_value=None)
         monkeypatch.setattr(
-            "app.service.model.ModelDataService",
-            lambda session: mock_data_service,
+            "app.service.model.ModelService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Should raise 404

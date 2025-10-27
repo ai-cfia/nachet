@@ -4,7 +4,7 @@ Model service using generic BaseCRUDService.
 Provides service layer for Model operations with RBAC, logging, and error handling.
 """
 
-from typing import Dict, Any, List, Type, Optional
+from beartype.typing import Dict, Any, List, Type, Optional
 from uuid import UUID
 import traceback
 from fastapi import HTTPException, status
@@ -105,7 +105,7 @@ class ModelService(BaseCRUDService[Model]):
     @classmethod
     async def get_all(
         cls,
-        user_id: UUID,
+        requester_id: UUID,
         offset: int = 0,
         limit: int = 100,
         filters: Optional[Dict[str, Any]] = None,
@@ -121,7 +121,7 @@ class ModelService(BaseCRUDService[Model]):
         Access: Any authenticated user
 
         Args:
-            user_id: The requesting user's UUID
+            requester_id: The requesting user's UUID
             offset: Number of records to skip (default: 0)
             limit: Maximum records to return (default: 100, max: 1000)
             filters: Dictionary of field_name: value pairs for filtering (optional)
@@ -136,7 +136,7 @@ class ModelService(BaseCRUDService[Model]):
         """
         # Call base class implementation
         result = await super().get_all(
-            user_id=user_id,
+            requester_id=requester_id,
             offset=offset,
             limit=limit,
             filters=filters,
