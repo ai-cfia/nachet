@@ -27,35 +27,38 @@ class TestSessionManager:
         assert sm._sessionmaker is None
 
     @patch("app.db.utils.create_async_engine")
-    @patch("app.db.utils.async_sessionmaker")
     @patch("app.db.utils._get_logger")
-    def test_session_manager_init_success(
-        self, mock_get_logger, mock_sessionmaker, mock_create_engine
-    ):
+    def test_session_manager_init_success(self, mock_get_logger, mock_create_engine):
         """Test successful initialization of SessionManager."""
         # Setup mocks
         mock_engine = AsyncMock(spec=AsyncEngine)
         mock_create_engine.return_value = mock_engine
-        mock_sm = Mock(spec=async_sessionmaker)
-        mock_sessionmaker.return_value = mock_sm
         mock_logger = Mock()
         mock_get_logger.return_value = mock_logger
 
         # Create and initialize SessionManager
         sm = SessionManager()
-        sm.init("sqlite+aiosqlite:///:memory:", echo=True, pool_size=5)
 
-        # Verify engine creation
-        mock_create_engine.assert_called_once_with(
-            "sqlite+aiosqlite:///:memory:", echo=True, pool_size=5
-        )
+        # Patch async_sessionmaker at the instance level to avoid beartype issues
+        with patch("app.db.utils.async_sessionmaker") as mock_sessionmaker:
+            mock_sm = Mock(spec=async_sessionmaker)
+            mock_sessionmaker.return_value = mock_sm
 
-        # Verify sessionmaker creation
-        mock_sessionmaker.assert_called_once_with(mock_engine, expire_on_commit=False)
+            sm.init("sqlite+aiosqlite:///:memory:", echo=True, pool_size=5)
 
-        # Verify state
-        assert sm.engine == mock_engine
-        assert sm._sessionmaker == mock_sm
+            # Verify engine creation
+            mock_create_engine.assert_called_once_with(
+                "sqlite+aiosqlite:///:memory:", echo=True, pool_size=5
+            )
+
+            # Verify sessionmaker creation
+            mock_sessionmaker.assert_called_once_with(
+                mock_engine, expire_on_commit=False
+            )
+
+            # Verify state
+            assert sm.engine == mock_engine
+            assert sm._sessionmaker == mock_sm
 
         # Verify logger was called with expected message
         mock_logger.info.assert_called_once_with(
@@ -469,7 +472,7 @@ class TestErrorHandling:
             sm.get_session_factory()
 
         with pytest.raises(RuntimeError):
-            await sm.get_session()
+            sm.get_session()
 
         with pytest.raises(RuntimeError):
             sm.get_engine()

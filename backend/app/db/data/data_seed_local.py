@@ -536,14 +536,14 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
             org_user_role_id=user_role_id,
             org_admin_role_id=admin_role_id,
             name="default",
-            folder_prefix="test-org/test-user",
+            folder_prefix="/cfia/test-user",
             description="Default folder for test user",
             active=True,
         )
         session.add(default_folder)
 
         # Update user's default folder (after folder is created)
-        test_user.default_folder_id = uuid.UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479")
+        test_user.default_folder_id = uuid.UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479")  # type: ignore[assignment]
     _get_logger().info("Test user and default folder added")
 
     # Add user-role mapping (assign test user to CFIA admin role)

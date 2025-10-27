@@ -11,7 +11,8 @@ def validate_orm_classes(logger=None):
         model_task = Base.metadata.tables.get("model_task")
         if logger:
             logger.info("Found table", table=str(model_task))
-            logger.info("Table columns", columns=str(model_task.columns))
+            if model_task is not None:
+                logger.info("Table columns", columns=str(model_task.columns))
         # This will raise exceptions if there are mapping issues
         configure_mappers()
         if logger:
