@@ -59,7 +59,7 @@ Access is granted if user has ANY of the matching roles for the operation.
 """
 
 import traceback
-from typing import TypeVar, Generic, Optional, Dict, Any, Type
+from typing import TypeVar, Generic, Optional, Dict, Any, Type, Protocol, cast, runtime_checkable
 from uuid import UUID
 from sqlalchemy.orm import DeclarativeBase
 from fastapi import HTTPException, status
@@ -68,6 +68,15 @@ from abc import ABC, abstractmethod
 from app.db.utils import sessionmanager
 from app.service.logs import LogService
 from app.datastore.base_crud import BaseCRUDDataService
+
+
+# Protocol for entities with an id attribute
+@runtime_checkable
+class HasId(Protocol):
+    """Protocol for database entities that have an id field."""
+
+    id: UUID
+
 
 # Generic type variable for database models
 T = TypeVar("T", bound=DeclarativeBase)
@@ -357,10 +366,13 @@ class BaseCRUDService(Generic[T]):
                 await session.commit()
 
                 logger = cls._get_logger()
+                # Type assertion: entity conforms to HasId protocol
+                # All database entities should have an id field
+                entity_with_id = cast(HasId, entity)
                 logger.info(
                     f"{entity_name} created successfully",
                     user_id=str(user_id),
-                    entity_id=str(entity.id),
+                    entity_id=str(entity_with_id.id),
                 )
 
                 return result
@@ -600,8 +612,9 @@ class AuthorizationMixin(ABC, Generic[T]):
     based on entity role fields (org_user_role_id, org_admin_role_id).
     """
 
+    @classmethod
     @abstractmethod
-    async def verify_retrieve_access(self, user_id: UUID, entity: T) -> None:
+    async def verify_retrieve_access(cls, user_id: UUID, entity: T) -> None:
         """
         Verify user can retrieve/view the entity.
 
@@ -614,8 +627,9 @@ class AuthorizationMixin(ABC, Generic[T]):
         """
         pass
 
+    @classmethod
     @abstractmethod
-    async def verify_update_access(self, user_id: UUID, entity: T) -> None:
+    async def verify_update_access(cls, user_id: UUID, entity: T) -> None:
         """
         Verify user can update the entity.
 
@@ -628,8 +642,9 @@ class AuthorizationMixin(ABC, Generic[T]):
         """
         pass
 
+    @classmethod
     @abstractmethod
-    async def verify_delete_access(self, user_id: UUID, entity: T) -> None:
+    async def verify_delete_access(cls, user_id: UUID, entity: T) -> None:
         """
         Verify user can delete the entity.
 
@@ -642,8 +657,9 @@ class AuthorizationMixin(ABC, Generic[T]):
         """
         pass
 
+    @classmethod
     @abstractmethod
-    async def verify_create_access(self, user_id: UUID, **kwargs) -> None:
+    async def verify_create_access(cls, user_id: UUID, **kwargs) -> None:
         """
         Verify user can create entities.
 
@@ -1030,7 +1046,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             )
 
     @classmethod
-    async def create(cls, _user_id: UUID, **kwargs) -> Dict[str, Any]:
+    async def create(cls, user_id: UUID, **kwargs) -> Dict[str, Any]:
         """
         Create a new entity with authorization check.
 
@@ -1045,10 +1061,10 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             # Basic authentication check
             from app.service.rbac import RbacService
 
-            await RbacService.get_user_organization_id(_user_id)
+            await RbacService.get_user_organization_id(user_id)
 
             # Authorization check (must be implemented by subclass)
-            await cls.verify_create_access(_user_id, **kwargs)
+            await cls.verify_create_access(user_id, **kwargs)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -1059,10 +1075,13 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
                 await session.commit()
 
                 logger = cls._get_logger()
+                # Type assertion: entity conforms to HasId protocol
+                # All database entities should have an id field
+                entity_with_id = cast(HasId, entity)
                 logger.info(
                     f"{entity_name} created successfully",
-                    user_id=str(_user_id),
-                    entity_id=str(entity.id),
+                    user_id=str(user_id),
+                    entity_id=str(entity_with_id.id),
                 )
 
                 return result
@@ -1074,7 +1093,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
                 error_msg,
-                user_id=str(_user_id),
+                user_id=str(user_id),
             )
             logger.debug(
                 f"Traceback for failed create {entity_name_lower}",
@@ -1089,7 +1108,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
                 error_msg,
-                user_id=str(_user_id),
+                user_id=str(user_id),
             )
             logger.debug(
                 f"Traceback for failed create {entity_name_lower}",
