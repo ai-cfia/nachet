@@ -33,9 +33,10 @@ import uuid
 import json
 
 # from datetime import datetime
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, create_autospec
 from dotenv import load_dotenv
 from pathlib import Path
+from azure.storage.blob import BlobServiceClient
 
 from app.blob.azure.storage import AzureBlobStorage
 
@@ -859,7 +860,8 @@ class TestFileErrorHandling(TestFileOperations):
     async def test_connection_error_handling(self, storage):
         """Test handling of connection errors."""
         # Mock the blob operations client to raise ServiceRequestError
-        with patch.object(storage._blob_ops, "_client") as mock_client:
+        # Use create_autospec to create a properly typed mock for beartype
+        with patch.object(storage._blob_ops, "_client", create_autospec(BlobServiceClient, instance=True)) as mock_client:
             mock_container_client = MagicMock()
             mock_client.get_container_client.return_value = mock_container_client
 
@@ -882,8 +884,9 @@ class TestFileErrorHandling(TestFileOperations):
         blob_path = test_blob_paths["original"]
         cleanup_blobs(blob_path)
 
-        # Test with None data
-        with pytest.raises(BlobStorageError):
+        # Test with None data - beartype will catch this at the type hint level
+        from beartype.roar import BeartypeCallHintParamViolation
+        with pytest.raises((BlobStorageError, BeartypeCallHintParamViolation)):
             await storage.upload_blob(TEST_CONTAINER, blob_path, None)
 
     @pytest.mark.asyncio
@@ -1573,32 +1576,33 @@ class TestFileErrorHandling(TestFileOperations):
     @pytest.mark.asyncio
     async def test_metadata_tags_validation_errors(self, storage, sample_image_data):
         """Test validation errors for metadata and tags."""
+        from beartype.roar import BeartypeCallHintParamViolation
         blob_path = f"validation-test/errors-{str(uuid.uuid4()).lower()}.png"
 
         try:
             # Upload blob first
             await storage.upload_blob(TEST_CONTAINER, blob_path, sample_image_data)
 
-            # Test invalid metadata types
-            with pytest.raises(BlobStorageError, match="must be strings"):
+            # Test invalid metadata types - beartype catches type violations
+            with pytest.raises((BlobStorageError, BeartypeCallHintParamViolation)):
                 await storage.set_blob_metadata(TEST_CONTAINER, blob_path, {"key": 123})
 
-            with pytest.raises(BlobStorageError, match="must be strings"):
+            with pytest.raises((BlobStorageError, BeartypeCallHintParamViolation)):
                 await storage.set_blob_metadata(
                     TEST_CONTAINER, blob_path, {123: "value"}
                 )
 
-            # Test empty metadata key
+            # Test empty metadata key - this should be caught by our validation
             with pytest.raises(BlobStorageError, match="cannot be empty"):
                 await storage.set_blob_metadata(
                     TEST_CONTAINER, blob_path, {"": "value"}
                 )
 
-            # Test invalid tags types
-            with pytest.raises(BlobStorageError, match="must be strings"):
+            # Test invalid tags types - beartype catches type violations
+            with pytest.raises((BlobStorageError, BeartypeCallHintParamViolation)):
                 await storage.set_blob_tags(TEST_CONTAINER, blob_path, {"key": 123})
 
-            with pytest.raises(BlobStorageError, match="must be strings"):
+            with pytest.raises((BlobStorageError, BeartypeCallHintParamViolation)):
                 await storage.set_blob_tags(TEST_CONTAINER, blob_path, {123: "value"})
 
             # Test empty tag key

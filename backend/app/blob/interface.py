@@ -6,7 +6,7 @@ ensuring consistency across different cloud storage providers.
 """
 
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, List, Union, BinaryIO, Dict, Any
+from beartype.typing import AsyncIterator, List, Union, BinaryIO, Dict, Any
 from datetime import timedelta
 
 

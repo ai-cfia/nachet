@@ -8,6 +8,7 @@ The validation rules follow the most conservative approach - where Azure and S3
 differ, we use the stricter rule to ensure compatibility across both platforms.
 """
 
+from beartype.typing import Optional
 from .exceptions import BlobStorageError, ValidationError
 
 
@@ -317,17 +318,17 @@ def validate_metadata_key(key: str) -> str:
     return key
 
 
-def validate_metadata_value(value: str) -> str:
+def validate_metadata_value(value: Optional[str]) -> Optional[str]:
     """
     Validate metadata value.
 
     Metadata values must be valid ASCII.
 
     Args:
-        value: Metadata value to validate
+        value: Metadata value to validate (can be None)
 
     Returns:
-        Validated value
+        Validated value (or None if input was None)
 
     Raises:
         ValidationError: If the value is invalid

@@ -107,10 +107,6 @@ def create_blob_storage_client(provider: str, config: dict) -> BlobStorageInterf
         from .azure.storage import AzureBlobStorage
 
         return AzureBlobStorage(config)
-    elif provider.lower() == "minio":
-        from .minio.storage import MinioBlobStorage
-
-        return MinioBlobStorage(config)
     elif provider.lower() == "s3":
         from .s3.storage import S3BlobStorage
 
@@ -118,7 +114,7 @@ def create_blob_storage_client(provider: str, config: dict) -> BlobStorageInterf
     else:
         raise InvalidConfigurationError(
             "provider",
-            f"Unsupported provider: {provider}. Supported providers: azure, minio, s3",
+            f"Unsupported provider: {provider}. Supported providers: azure, s3",
         )
 
 

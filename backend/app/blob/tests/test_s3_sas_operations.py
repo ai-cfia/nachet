@@ -98,6 +98,7 @@ class TestBlobSASOperations:
 
         # Verify URL structure
         url = result.get("sas_url") or result.get("url")
+        assert url is not None, "URL must be present in result"
         assert TEST_CONTAINER in url
         assert TEST_BLOB_NAME in url
         assert "?" in url or "X-Amz" in url  # Presigned URL has query parameters
@@ -228,6 +229,7 @@ class TestBlobSASOperations:
 
         assert "sas_url" in result or "url" in result
         url = result.get("sas_url") or result.get("url")
+        assert url is not None, "URL must be present in result"
         assert TEST_CONTAINER in url
 
         # Cleanup if blob was created

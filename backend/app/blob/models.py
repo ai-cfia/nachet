@@ -7,7 +7,7 @@ providing validation, serialization, and type safety for all blob operations.
 
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
-from typing import Dict, List, Optional
+from beartype.typing import Dict, List, Optional
 import re
 
 
@@ -233,17 +233,13 @@ class DownloadOptions(BaseModel):
 class ListOptions(BaseModel):
     """Options for blob/container listing operations."""
 
-    prefix: Optional[str] = Field(None, description="Filter by prefix")
-    max_results: Optional[int] = Field(
-        None, gt=0, le=5000, description="Maximum results per page"
-    )
-    include_metadata: bool = Field(False, description="Include metadata in results")
-    include_tags: bool = Field(False, description="Include tags in results")
-    include_versions: bool = Field(False, description="Include blob versions")
-    include_snapshots: bool = Field(False, description="Include blob snapshots")
-    timeout: Optional[int] = Field(
-        None, gt=0, description="Operation timeout in seconds"
-    )
+    prefix: Optional[str] = None
+    max_results: Optional[int] = Field(default=None, gt=0, le=5000)
+    include_metadata: bool = False
+    include_tags: bool = False
+    include_versions: bool = False
+    include_snapshots: bool = False
+    timeout: Optional[int] = Field(default=None, gt=0)
 
 
 class BlobTierInfo(BaseModel):
