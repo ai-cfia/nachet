@@ -14,14 +14,14 @@ class SwinModelAPIError(ModelAPIError):
     pass
 
 
-def process_swin_result(img_box: dict, results: dict) -> list:
+def process_swin_result(img_box: dict, results: list) -> dict:
     """
     Args:
         img_box (dict): The image box containing the bounding boxes and labels.
-        results (dict): The results from the model containing the detected seeds.
+        results (list): The results from the model containing the detected seeds.
 
     Returns:
-        list: The updated image box with modified labels and scores.
+        dict: The updated image box with modified labels and scores.
     """
     for i, result in enumerate(results):
         img_box[0]["boxes"][i]["label"] = result[0].get("label")
@@ -35,7 +35,7 @@ def process_swin_result(img_box: dict, results: dict) -> list:
 
 
 async def request_inference_from_torch_swin(
-    model: ModelDispatchInfo, previous_result: "dict"
+    model: ModelDispatchInfo, previous_result: dict
 ):
     """
     Perform inference using the SWIN model on a list of images.
@@ -52,7 +52,11 @@ async def request_inference_from_torch_swin(
     """
     try:
         results = []
-        for img in previous_result.get("images"):
+        images = previous_result.get("images")
+        if images is None:
+            raise SwinModelAPIError("No images found in previous_result")
+
+        for img in images:
             headers = {
                 "Content-Type": model.content_type,
                 "Authorization": ("Bearer " + model.api_key),
@@ -67,7 +71,11 @@ async def request_inference_from_torch_swin(
 
         print(json.dumps(results, indent=4))  # TODO Transform into logging
 
-        return process_swin_result(previous_result.get("result_json"), results)
+        result_json = previous_result.get("result_json")
+        if result_json is None:
+            raise SwinModelAPIError("No result_json found in previous_result")
+
+        return process_swin_result(result_json, results)
     except (
         TypeError,
         IndexError,

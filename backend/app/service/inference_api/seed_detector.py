@@ -21,7 +21,7 @@ class SeedDetectorModelAPIError(ModelAPIError):
 
 
 def process_image_slicing(
-    image_bytes: bytes, detection_response: SeedDetectorAPIResponse
+    image_bytes: str | bytes, detection_response: SeedDetectorAPIResponse
 ) -> list[bytes]:
     """
     Slices the original image into cropped images based on detected bounding boxes.
@@ -30,14 +30,20 @@ def process_image_slicing(
     cropped images for each detected seed.
 
     Args:
-        image_bytes: Base64 encoded original image bytes
+        image_bytes: Base64 encoded original image (as string or bytes)
         detection_response: Validated Pydantic model containing detection boxes
 
     Returns:
         List of base64 encoded cropped images, one for each detected box
     """
+    # Handle both str and bytes input
+    if isinstance(image_bytes, str):
+        image_data = base64.b64decode(image_bytes)
+    else:
+        image_data = base64.b64decode(image_bytes)
+
     # Decode the base64 image
-    image_io_byte = io.BytesIO(base64.b64decode(image_bytes))
+    image_io_byte = io.BytesIO(image_data)
     image_io_byte.seek(0)
     image = Image.open(image_io_byte)
 
@@ -85,12 +91,14 @@ async def request_inference_from_seed_detector(
     """
     try:
         # Create and validate request using Pydantic model
+        from app.model.inference import AzureMLInputData
+
         request_data = SeedDetectorAPIRequest(
-            input_data={
-                "columns": ["image"],
-                "index": [0],
-                "data": [previous_result],
-            }
+            input_data=AzureMLInputData(
+                columns=["image"],
+                index=[0],
+                data=[previous_result],
+            )
         )
 
         headers = {

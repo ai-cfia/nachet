@@ -9,7 +9,7 @@ The colors can be returned in HEX or RGB format depending on the frontend prefer
 """
 
 import numpy as np
-from typing import TYPE_CHECKING
+from beartype.typing import TYPE_CHECKING
 
 from .color_palette import primary_colors, light_colors, mixing_palettes, shades_colors
 from .exceptions import ModelAPIError
@@ -33,7 +33,7 @@ def generator(list_length):
 
 async def process_inference_results(
     data: dict,
-    imageDims: "list[int, int]",
+    imageDims: list[int],
     area_ratio: float = 0.5,
     color_format: str = "hex",
 ) -> dict:
@@ -133,21 +133,24 @@ async def process_inference_results(
                             box["box"]["topY"] = box2["box"]["topY"]
 
         # Calculate label occurrence
-        gen = generator(i)  # Number of individual seed (boxes)
+        num_boxes = len(boxes)
+        gen = generator(num_boxes)  # Number of individual seed (boxes)
         label_occurrence = {}
         label_colors = {}
         for i, box in enumerate(boxes):
-            if i >= len(colors):
+            if colors is not None and i >= len(colors):
                 colors = colors + (shades_colors(colors[next(gen)]),)
 
             if box["label"] not in label_occurrence:
                 label_occurrence[box["label"]] = 1
-                label_colors[box["label"]] = colors[i]
-                box["color"] = colors[i]
+                if colors is not None:
+                    label_colors[box["label"]] = colors[i]
+                    box["color"] = colors[i]
             else:
                 label_occurrence[box["label"]] += 1
-                color = label_colors[box["label"]]
-                box["color"] = color
+                if box["label"] in label_colors:
+                    color = label_colors[box["label"]]
+                    box["color"] = color
 
         data[0]["labelOccurrence"] = label_occurrence
         data[0]["totalBoxes"] = sum(1 for _ in data[0]["boxes"])
@@ -276,17 +279,19 @@ async def process_enhanced_classification_result(
 
         for i, box in enumerate(processed_boxes):
             # Extend color palette if needed
-            if i >= len(colors):
+            if colors is not None and i >= len(colors):
                 colors = colors + (shades_colors(colors[next(gen)]),)
 
             # Assign color and count occurrences
             if box.label not in label_occurrence:
                 label_occurrence[box.label] = 1
-                label_colors[box.label] = colors[i]
-                box.color = colors[i]
+                if colors is not None:
+                    label_colors[box.label] = colors[i]
+                    box.color = colors[i]
             else:
                 label_occurrence[box.label] += 1
-                box.color = label_colors[box.label]
+                if box.label in label_colors:
+                    box.color = label_colors[box.label]
 
         # Return Pydantic model
         return ProcessedInferenceResult(
@@ -423,13 +428,14 @@ async def process_api_ready_classification_result(
 
         for i, box in enumerate(api_boxes):
             # Extend color palette if needed
-            if i >= len(colors):
+            if colors is not None and i >= len(colors):
                 colors = colors + (shades_colors(colors[next(gen)]),)
 
             # Count label occurrences and assign colors
             if box.label not in label_occurrence:
                 label_occurrence[box.label] = 1
-                label_colors[box.label] = colors[i]
+                if colors is not None:
+                    label_colors[box.label] = colors[i]
             else:
                 label_occurrence[box.label] += 1
 
