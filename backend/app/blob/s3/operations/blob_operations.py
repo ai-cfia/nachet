@@ -134,10 +134,10 @@ class BlobOperations:
 
         # Add tags if provided (separate operation in S3)
         if tags:
-            tag_set: list["TagTypeDef"] = [
+            tag_set: list[dict[str, str]] = [
                 {"Key": k, "Value": v} for k, v in tags.items()
             ]
-            tagging: "TaggingTypeDef" = {"TagSet": tag_set}
+            tagging: dict[str, list[dict[str, str]]] = {"TagSet": tag_set}
             self._client.put_object_tagging(Bucket=container, Key=name, Tagging=tagging)
 
         # Get object metadata to build result

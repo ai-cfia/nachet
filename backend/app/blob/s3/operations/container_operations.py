@@ -190,7 +190,7 @@ class ContainerOperations:
             if error_code == "IllegalLocationConstraintException":
                 region = self._client.meta.region_name
                 if region and region != "us-east-1":
-                    bucket_config: "CreateBucketConfigurationTypeDef" = {
+                    bucket_config: dict[str, str] = {
                         "LocationConstraint": region  # type: ignore[typeddict-item]
                     }
                     self._client.create_bucket(
@@ -205,10 +205,10 @@ class ContainerOperations:
         # Set tags if metadata provided (S3 uses tags as metadata)
         metadata = kwargs.get("metadata", {})
         if metadata:
-            tag_set: list["TagTypeDef"] = [
+            tag_set: list[dict[str, str]] = [
                 {"Key": k, "Value": v} for k, v in metadata.items()
             ]
-            tagging: "TaggingTypeDef" = {"TagSet": tag_set}
+            tagging: dict[str, list[dict[str, str]]] = {"TagSet": tag_set}
             try:
                 self._client.put_bucket_tagging(Bucket=name, Tagging=tagging)
             except ClientError as e:

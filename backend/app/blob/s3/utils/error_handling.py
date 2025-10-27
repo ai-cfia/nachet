@@ -125,7 +125,9 @@ class ErrorHandler:
         return decorator
 
     @staticmethod
-    async def check_container_exists(client: Any, container: str) -> None:  # Type: S3Client (boto3)
+    async def check_container_exists(
+        client: Any, container: str
+    ) -> None:  # Type: S3Client (boto3)
         """
         Check if a container (bucket) exists and raise appropriate error if not.
 
@@ -152,7 +154,9 @@ class ErrorHandler:
             raise ConnectionError(f"Failed to check container existence: {str(e)}")
 
     @staticmethod
-    async def check_blob_exists(client: Any, container: str, name: str) -> None:  # Type: S3Client (boto3)
+    async def check_blob_exists(
+        client: Any, container: str, name: str
+    ) -> None:  # Type: S3Client (boto3)
         """
         Check if a blob (object) exists and raise appropriate error if not.
 
