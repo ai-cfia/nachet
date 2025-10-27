@@ -5,7 +5,7 @@ This module handles container management operations including creation,
 deletion, listing, and property retrieval.
 """
 
-from typing import Dict, Any
+from beartype.typing import Dict, Any
 from azure.storage.blob import BlobServiceClient
 from azure.core.exceptions import ServiceRequestError
 
@@ -48,13 +48,14 @@ class ContainerOperations:
             if isinstance(options, dict):
                 options = ListOptions(**options)
             elif options is None:
-                options = ListOptions()
+                options = ListOptions()  # type: ignore[call-arg]
 
             containers = []
             continuation_token = None
 
             # Use Azure SDK to list containers
-            container_iter = self._client.list_containers(
+            # type: ignore comment to suppress false positive from Azure SDK type stubs
+            container_iter = self._client.list_containers(  # type: ignore[call-arg]
                 name_starts_with=options.prefix,
                 include_metadata=options.include_metadata,
             )

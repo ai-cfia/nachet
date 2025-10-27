@@ -7,7 +7,7 @@ using Pydantic models. The implementation uses a composition pattern
 with focused operation classes for better maintainability.
 """
 
-from typing import Dict, Any, List, Optional, Union, BinaryIO, AsyncIterator
+from beartype.typing import Dict, Any, List, Optional, Union, BinaryIO, AsyncIterator
 from datetime import timedelta
 
 from azure.storage.blob import BlobServiceClient
@@ -87,6 +87,9 @@ class AzureBlobStorage(BlobStorageInterface):
 
     def _initialize_operations(self):
         """Initialize operation classes with the Azure client."""
+        assert self._blob_service_client is not None, (
+            "Blob service client must be initialized"
+        )
         self._blob_ops = BlobOperations(self._blob_service_client)
         self._container_ops = ContainerOperations(self._blob_service_client)
         self._metadata_ops = MetadataOperations(self._blob_service_client)
@@ -147,7 +150,7 @@ class AzureBlobStorage(BlobStorageInterface):
         """Download a blob from storage."""
         return await self._blob_ops.download_blob(container, name, **kwargs)
 
-    async def download_blob_stream(
+    async def download_blob_stream(  # type: ignore[override]
         self, container: str, name: str, **kwargs
     ) -> AsyncIterator[bytes]:
         """Download a blob as a stream."""

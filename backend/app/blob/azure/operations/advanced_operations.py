@@ -5,7 +5,7 @@ This module handles advanced blob operations including copy and move operations
 with transaction safety and rollback capabilities.
 """
 
-from typing import Dict, Any
+from beartype.typing import Dict, Any
 from azure.storage.blob import BlobServiceClient
 from azure.core.exceptions import ServiceRequestError
 
@@ -136,28 +136,32 @@ class AdvancedOperations:
         except (ContainerNotFoundError, BlobNotFoundError) as e:
             raise e
         except ServiceRequestError as e:
-            if e.status_code == 404:
-                if "ContainerNotFound" in str(e):
+            # ServiceRequestError doesn't have status_code, check error message instead
+            error_msg = str(e)
+            if "404" in error_msg or "NotFound" in error_msg:
+                if "ContainerNotFound" in error_msg:
                     # Try to determine which container is missing
                     try:
                         await ErrorHandler.check_container_exists(
                             self._client, source_container
                         )
                         raise ContainerNotFoundError(
-                            dest_container, f"Destination container not found: {str(e)}"
+                            dest_container,
+                            {"error": f"Destination container not found: {error_msg}"},
                         )
                     except ContainerNotFoundError:
                         raise ContainerNotFoundError(
-                            source_container, f"Source container not found: {str(e)}"
+                            source_container,
+                            {"error": f"Source container not found: {error_msg}"},
                         )
                 else:
                     raise BlobNotFoundError(
                         source_container,
                         source_name,
-                        f"Source blob not found: {str(e)}",
+                        {"error": f"Source blob not found: {error_msg}"},
                     )
             else:
-                raise BlobStorageError(f"Failed to copy blob: {str(e)}")
+                raise BlobStorageError(f"Failed to copy blob: {error_msg}")
 
     @ErrorHandler.handle_service_errors("move blob")
     async def move_blob(

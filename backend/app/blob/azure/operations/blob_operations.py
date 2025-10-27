@@ -6,7 +6,7 @@ delete, existence checks, and property retrieval.
 """
 
 import base64
-from typing import Dict, Any, Union, BinaryIO, AsyncIterator
+from beartype.typing import Dict, Any, Union, BinaryIO, AsyncIterator, Optional
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.core.exceptions import ResourceNotFoundError
 
@@ -178,8 +178,9 @@ class BlobOperations:
         except ResourceNotFoundError:
             handler = ErrorHandler.handle_resource_not_found(container, name)
             await handler(self._client, ResourceNotFoundError())
+            # This line should never be reached as handler always raises
+            raise BlobNotFoundError(container, name)
 
-    @ErrorHandler.handle_service_errors("download blob stream")
     async def download_blob_stream(
         self, container: str, name: str, **kwargs
     ) -> AsyncIterator[bytes]:
@@ -227,7 +228,8 @@ class BlobOperations:
             )
 
             # Yield chunks
-            async for chunk in download_stream.chunks():
+            # download_stream.chunks() returns an iterator, not async iterator
+            for chunk in download_stream.chunks():
                 yield chunk
 
         except (ContainerNotFoundError, BlobNotFoundError):
@@ -235,6 +237,8 @@ class BlobOperations:
         except ResourceNotFoundError:
             handler = ErrorHandler.handle_resource_not_found(container, name)
             await handler(self._client, ResourceNotFoundError())
+            # This line should never be reached as handler always raises
+            raise BlobNotFoundError(container, name)
 
     @ErrorHandler.handle_service_errors("delete blob")
     async def delete_blob(self, container: str, name: str) -> bool:
@@ -277,8 +281,7 @@ class BlobOperations:
         except ContainerNotFoundError:
             raise
         except ResourceNotFoundError:
-            handler = ErrorHandler.handle_resource_not_found(container, name)
-            await handler(self._client, ResourceNotFoundError())
+            # Blob doesn't exist, consider it successfully deleted
             return False
 
     @ErrorHandler.handle_service_errors("check blob existence")
@@ -355,9 +358,11 @@ class BlobOperations:
                 last_modified=props.last_modified,
                 creation_time=getattr(props, "creation_time", None),
                 etag=props.etag,
-                content_type=props.content_settings.content_type
-                if props.content_settings
-                else "application/octet-stream",
+                content_type=(
+                    props.content_settings.content_type
+                    if props.content_settings and props.content_settings.content_type
+                    else "application/octet-stream"
+                ),
                 content_encoding=props.content_settings.content_encoding
                 if props.content_settings
                 else None,
@@ -398,6 +403,8 @@ class BlobOperations:
         except ResourceNotFoundError:
             handler = ErrorHandler.handle_resource_not_found(container, name)
             await handler(self._client, ResourceNotFoundError())
+            # This line should never be reached as handler always raises
+            raise BlobNotFoundError(container, name)
 
     @ErrorHandler.handle_service_errors("list blobs")
     async def list_blobs(self, container: str, **kwargs) -> Dict[str, Any]:
@@ -419,7 +426,7 @@ class BlobOperations:
             if isinstance(options, dict):
                 options = ListOptions(**options)
             elif options is None:
-                options = ListOptions()
+                options = ListOptions()  # type: ignore[call-arg]
 
             # Get container client
             container_client = create_container_client(self._client, container)
@@ -432,11 +439,21 @@ class BlobOperations:
             continuation_token = None
 
             # List blobs in the container
-            blob_iter = container_client.list_blobs(
+            # Build include list based on options
+            include_list = []
+            if options.include_metadata:
+                include_list.append("metadata")
+            if options.include_tags:
+                include_list.append("tags")
+            if options.include_versions:
+                include_list.append("versions")
+            if options.include_snapshots:
+                include_list.append("snapshots")
+
+            # type: ignore comment to suppress false positive from Azure SDK type stubs
+            blob_iter = container_client.list_blobs(  # type: ignore[call-arg]
                 name_starts_with=options.prefix,
-                include=["metadata", "tags"]
-                if (options.include_metadata or options.include_tags)
-                else None,
+                include=include_list if include_list else None,
             )
 
             count = 0
@@ -452,9 +469,11 @@ class BlobOperations:
                     size=blob.size,
                     last_modified=blob.last_modified,
                     etag=blob.etag,
-                    content_type=blob.content_settings.content_type
-                    if blob.content_settings
-                    else "application/octet-stream",
+                    content_type=(
+                        blob.content_settings.content_type
+                        if blob.content_settings and blob.content_settings.content_type
+                        else "application/octet-stream"
+                    ),
                     metadata=blob.metadata or {},
                     tags=getattr(blob, "tags", {}) or {},
                 )
@@ -479,7 +498,7 @@ class BlobOperations:
         # This was not implemented in the original class
         raise NotImplementedError("get_blob_url not implemented yet")
 
-    def _extract_content_md5(self, props) -> str:
+    def _extract_content_md5(self, props) -> Optional[str]:
         """
         Extract and convert content MD5 from blob properties.
 

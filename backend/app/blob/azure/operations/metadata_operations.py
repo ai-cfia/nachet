@@ -5,7 +5,7 @@ This module handles blob metadata and tags operations including setting
 and retrieving custom metadata and index tags.
 """
 
-from typing import Dict
+from beartype.typing import Dict
 from azure.storage.blob import BlobServiceClient
 from azure.core.exceptions import ServiceRequestError
 
@@ -67,17 +67,18 @@ class MetadataOperations:
         except (ContainerNotFoundError, BlobNotFoundError) as e:
             raise e
         except ServiceRequestError as e:
-            if e.status_code == 404:
-                if "ContainerNotFound" in str(e):
+            error_msg = str(e)
+            if "404" in error_msg or "NotFound" in error_msg:
+                if "ContainerNotFound" in error_msg:
                     raise ContainerNotFoundError(
-                        container, f"Container not found: {str(e)}"
+                        container, {"error": f"Container not found: {error_msg}"}
                     )
                 else:
                     raise BlobNotFoundError(
-                        container, name, f"Blob not found: {str(e)}"
+                        container, name, {"error": f"Blob not found: {error_msg}"}
                     )
             else:
-                raise BlobStorageError(f"Failed to set blob metadata: {str(e)}")
+                raise BlobStorageError(f"Failed to set blob metadata: {error_msg}")
 
     @ErrorHandler.handle_service_errors("get blob metadata")
     async def get_blob_metadata(self, container: str, name: str) -> Dict[str, str]:
@@ -117,17 +118,18 @@ class MetadataOperations:
         except (ContainerNotFoundError, BlobNotFoundError) as e:
             raise e
         except ServiceRequestError as e:
-            if e.status_code == 404:
-                if "ContainerNotFound" in str(e):
+            error_msg = str(e)
+            if "404" in error_msg or "NotFound" in error_msg:
+                if "ContainerNotFound" in error_msg:
                     raise ContainerNotFoundError(
-                        container, f"Container not found: {str(e)}"
+                        container, {"error": f"Container not found: {error_msg}"}
                     )
                 else:
                     raise BlobNotFoundError(
-                        container, name, f"Blob not found: {str(e)}"
+                        container, name, {"error": f"Blob not found: {error_msg}"}
                     )
             else:
-                raise BlobStorageError(f"Failed to get blob metadata: {str(e)}")
+                raise BlobStorageError(f"Failed to get blob metadata: {error_msg}")
 
     @ErrorHandler.handle_service_errors("set blob tags")
     async def set_blob_tags(
@@ -165,17 +167,18 @@ class MetadataOperations:
         except (ContainerNotFoundError, BlobNotFoundError) as e:
             raise e
         except ServiceRequestError as e:
-            if e.status_code == 404:
-                if "ContainerNotFound" in str(e):
+            error_msg = str(e)
+            if "404" in error_msg or "NotFound" in error_msg:
+                if "ContainerNotFound" in error_msg:
                     raise ContainerNotFoundError(
-                        container, f"Container not found: {str(e)}"
+                        container, {"error": f"Container not found: {error_msg}"}
                     )
                 else:
                     raise BlobNotFoundError(
-                        container, name, f"Blob not found: {str(e)}"
+                        container, name, {"error": f"Blob not found: {error_msg}"}
                     )
             else:
-                raise BlobStorageError(f"Failed to set blob tags: {str(e)}")
+                raise BlobStorageError(f"Failed to set blob tags: {error_msg}")
 
     @ErrorHandler.handle_service_errors("get blob tags")
     async def get_blob_tags(self, container: str, name: str) -> Dict[str, str]:
@@ -215,14 +218,15 @@ class MetadataOperations:
         except (ContainerNotFoundError, BlobNotFoundError) as e:
             raise e
         except ServiceRequestError as e:
-            if e.status_code == 404:
-                if "ContainerNotFound" in str(e):
+            error_msg = str(e)
+            if "404" in error_msg or "NotFound" in error_msg:
+                if "ContainerNotFound" in error_msg:
                     raise ContainerNotFoundError(
-                        container, f"Container not found: {str(e)}"
+                        container, {"error": f"Container not found: {error_msg}"}
                     )
                 else:
                     raise BlobNotFoundError(
-                        container, name, f"Blob not found: {str(e)}"
+                        container, name, {"error": f"Blob not found: {error_msg}"}
                     )
             else:
-                raise BlobStorageError(f"Failed to get blob tags: {str(e)}")
+                raise BlobStorageError(f"Failed to get blob tags: {error_msg}")
