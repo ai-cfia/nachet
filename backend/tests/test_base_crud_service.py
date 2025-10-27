@@ -9,6 +9,7 @@ import pytest
 from uuid import uuid4, UUID
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Type, Dict, Any
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from app.service.base_crud import BaseCRUDService, BaseCRUDDataService
 from app.exceptions import (
@@ -20,9 +21,22 @@ from app.exceptions import (
 from fastapi import HTTPException
 
 
+# Create a base class for test entities
+class Base(DeclarativeBase):
+    """Base class for test SQLAlchemy models."""
+
+    pass
+
+
 # Mock entity class for testing
-class MockEntity:
+class MockEntity(Base):
     """Mock SQLAlchemy entity for testing."""
+
+    __tablename__ = "mock_entity"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    active: Mapped[bool]
 
     def __init__(self, id: UUID, name: str, active: bool = True, **kwargs):
         self.id = id
