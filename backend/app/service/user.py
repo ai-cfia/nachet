@@ -4,7 +4,7 @@ User service using generic BaseCRUDService.
 Provides service layer for Users operations with RBAC, logging, and error handling.
 """
 
-from typing import Dict, Any, Type, TYPE_CHECKING
+from beartype.typing import Dict, Any, Type, TYPE_CHECKING
 from uuid import UUID
 import traceback
 
@@ -248,7 +248,7 @@ class UserService(BaseCRUDService[Users]):
             )
 
     @classmethod
-    async def create(cls, user_id: UUID, **kwargs) -> Dict[str, Any]:
+    async def create(cls, requester_id: UUID, **kwargs) -> Dict[str, Any]:
         """
         Create a new user (requires CFIA admin).
 
@@ -259,7 +259,7 @@ class UserService(BaseCRUDService[Users]):
         (the string before @ symbol) as part of the folder prefix.
 
         Args:
-            user_id: UUID of the requesting user
+            requester_id: UUID of the requesting user
             **kwargs: User attributes (email, organization, etc.)
 
         Returns:
@@ -277,7 +277,7 @@ class UserService(BaseCRUDService[Users]):
             # Lazy import to avoid circular dependency
             from app.service.rbac import RbacService
 
-            await RbacService.verify_user_is_cfia_admin(user_id)
+            await RbacService.verify_user_is_cfia_admin(requester_id)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -297,7 +297,7 @@ class UserService(BaseCRUDService[Users]):
                 logger = cls._get_logger()
                 logger.info(
                     f"{entity_name} created successfully",
-                    user_id=str(user_id),
+                    user_id=str(requester_id),
                     entity_id=str(user.id),
                 )
 
@@ -310,7 +310,7 @@ class UserService(BaseCRUDService[Users]):
             error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
                 error_msg,
-                user_id=str(user_id),
+                user_id=str(requester_id),
             )
             logger.debug(
                 f"Traceback for failed create {entity_name_lower}",
@@ -325,7 +325,7 @@ class UserService(BaseCRUDService[Users]):
             error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
             logger.error(
                 error_msg,
-                user_id=str(user_id),
+                user_id=str(requester_id),
             )
             logger.debug(
                 f"Traceback for failed create {entity_name_lower}",
@@ -361,6 +361,12 @@ class UserService(BaseCRUDService[Users]):
                     return True
 
                 # User not registered - check if already in pending_registration
+                # Validate that user.oid is not None before proceeding
+                if not user.oid:
+                    logger = cls._get_logger()
+                    logger.error("User oid is None, cannot check pending registration")
+                    return False
+
                 from app.datastore.pending_registration import (
                     PendingRegistrationDataService,
                 )

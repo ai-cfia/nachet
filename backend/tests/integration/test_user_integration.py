@@ -377,7 +377,7 @@ class TestUserServiceIntegrationCreate:
         """Verify create successfully creates user with required fields."""
         # Call service
         result = await UserService.create(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             email="newuser@test.com",
             organization=test_organization,
         )
@@ -402,7 +402,7 @@ class TestUserServiceIntegrationCreate:
         """Verify default folder is automatically created with username from email."""
         # Create user - default folder should be created automatically
         result = await UserService.create(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             email="nofolder@test.com",
             organization=test_organization,
         )
@@ -421,7 +421,7 @@ class TestUserServiceIntegrationCreate:
     ):
         """Verify organization_ref is eagerly loaded in response."""
         result = await UserService.create(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             email="orgref@test.com",
             organization=test_organization,
         )
@@ -442,7 +442,7 @@ class TestUserServiceIntegrationCreate:
     ):
         """Verify CFIA admin can create users."""
         result = await UserService.create(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             email="admin.created@test.com",
             organization=test_organization,
         )
@@ -460,7 +460,7 @@ class TestUserServiceIntegrationCreate:
         """Verify non-CFIA admin gets 403 Forbidden."""
         with pytest.raises(HTTPException) as exc_info:
             await UserService.create(
-                user_id=test_regular_user,
+                requester_id=test_regular_user,
                 email="unauthorized@test.com",
                 organization=test_organization,
             )
@@ -497,7 +497,7 @@ class TestUserServiceIntegrationUpdate:
 
         # Update
         result = await UserService.update(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             entity_id=user_id,
             email="updated@test.com",
         )
@@ -529,7 +529,7 @@ class TestUserServiceIntegrationUpdate:
 
         # Update only active status
         result = await UserService.update(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             entity_id=user_id,
             active=False,
         )
@@ -560,7 +560,7 @@ class TestUserServiceIntegrationUpdate:
         await integration_db_session.commit()
 
         result = await UserService.update(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             entity_id=user_id,
             email="admin.updated@test.com",
         )
@@ -590,7 +590,7 @@ class TestUserServiceIntegrationUpdate:
 
         with pytest.raises(HTTPException) as exc_info:
             await UserService.update(
-                user_id=test_regular_user,
+                requester_id=test_regular_user,
                 entity_id=user_id,
                 email="should.fail@test.com",
             )
@@ -606,7 +606,7 @@ class TestUserServiceIntegrationUpdate:
 
         with pytest.raises(HTTPException) as exc_info:
             await UserService.update(
-                user_id=test_admin_user,
+                requester_id=test_admin_user,
                 entity_id=nonexistent_id,
                 email="does.not.exist@test.com",
             )
@@ -763,7 +763,7 @@ class TestUserServiceIntegrationCrossMethod:
         """Test create → get_by_id → update → get_by_id → delete flow."""
         # Create
         create_result = await UserService.create(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             email="lifecycle@test.com",
             organization=test_organization,
         )
@@ -776,7 +776,7 @@ class TestUserServiceIntegrationCrossMethod:
 
         # Update
         update_result = await UserService.update(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             entity_id=user_id,
             email="lifecycle.updated@test.com",
         )
@@ -804,7 +804,7 @@ class TestUserServiceIntegrationCrossMethod:
         """Verify all fields are properly serialized (UUID → string, datetime → ISO)."""
         # Create user
         result = await UserService.create(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             email="serialize@test.com",
             organization=test_organization,
         )
@@ -833,7 +833,7 @@ class TestUserServiceIntegrationCrossMethod:
         """Verify default folder is automatically created using username from email."""
         # Create user with specific email
         result = await UserService.create(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             email="john.doe@inspection.gc.ca",
             organization=test_organization,
         )
@@ -872,7 +872,7 @@ class TestUserServiceIntegrationCrossMethod:
         """Verify default folder creation handles edge case of no @ in email."""
         # Create user with no email (edge case)
         result = await UserService.create(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             email="",
             organization=test_organization,
         )
