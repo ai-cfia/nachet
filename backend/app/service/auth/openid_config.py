@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from beartype.typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import jwt
 from fastapi import HTTPException, status
