@@ -6,7 +6,8 @@ to enable strict CSP without 'unsafe-inline' directives.
 """
 
 import secrets
-from typing import Optional
+from beartype.typing import Optional
+from starlette.requests import Request
 
 
 class CSPNonceManager:
@@ -78,7 +79,7 @@ class CSPNonceManager:
         return "; ".join(csp_parts) + ";"
 
     @staticmethod
-    def extract_nonce_from_request(request) -> Optional[str]:
+    def extract_nonce_from_request(request: Request) -> Optional[str]:
         """
         Extract CSP nonce from request state if it exists.
 

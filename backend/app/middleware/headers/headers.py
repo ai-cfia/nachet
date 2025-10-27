@@ -1,18 +1,25 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+from beartype.typing import Any, Awaitable, Callable
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.types import ASGIApp
+from starlette.responses import Response
 from app.middleware.headers.presets import PRESETS
 from app.middleware.headers.header_mapping import PARAM_TO_HEADER
 from app.middleware.headers.csp_nonce_manager import CSPNonceManager
+
+if TYPE_CHECKING:
+    from starlette.types import ASGIApp
 
 
 class HeadersMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: ASGIApp,
-        preset: str = None,
+        preset: str | None = None,
         use_csp_nonce: bool = True,
-        **custom_headers,
+        **custom_headers: Any,
     ):
         headers = PRESETS.get(preset, {}).copy() if preset else {}
 
@@ -29,7 +36,9 @@ class HeadersMiddleware(BaseHTTPMiddleware):
         self.use_csp_nonce = use_csp_nonce
         super().__init__(app)
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         # Generate unique nonce for this request
         nonce = CSPNonceManager.generate_nonce()
         request.state.csp_nonce = nonce

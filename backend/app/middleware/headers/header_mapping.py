@@ -1,4 +1,4 @@
-PARAM_TO_HEADER = {
+PARAM_TO_HEADER: dict[str, str] = {
     "content_security_policy": "Content-Security-Policy",
     "frame_options": "X-Frame-Options",
     "hsts": "Strict-Transport-Security",

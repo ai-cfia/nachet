@@ -1,4 +1,4 @@
-PRESETS = {
+PRESETS: dict[str, dict[str, str]] = {
     "development": {
         "Content-Security-Policy": "default-src 'self';",
         "X-Frame-Options": "DENY",
