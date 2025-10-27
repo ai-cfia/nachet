@@ -51,6 +51,7 @@ from dotenv import load_dotenv
 from app.blob import create_blob_storage_client, BlobStorageInterface
 from app.api.config import Settings
 from app.service.logs import LogService
+from app.service.constants import Bucket
 
 
 def extract_vite_hash_from_assets(source_dir: Path) -> Optional[str]:
@@ -545,7 +546,9 @@ async def main():
         return 1
 
     # Determine container name
-    container_name = args.container or settings.frontend_blob_container
+    container_name = (
+        args.container or settings.blob_container_prefix + Bucket.FRONTEND.value
+    )
     if not container_name:
         logger.error(
             "Container name not specified",
@@ -561,8 +564,8 @@ async def main():
     # Create blob storage client
     logger.info("Connecting to blob storage")
     try:
-        blob_config = settings.blob_storage_config
-        provider = blob_config.get("blob_storage_provider") or "azure"
+        blob_config = settings.s3_storage_config
+        provider = "s3"
         storage_client = create_blob_storage_client(provider, blob_config)
         logger.info("Connected to blob storage", provider=provider)
     except Exception as e:
