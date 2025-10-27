@@ -26,7 +26,7 @@ import asyncio
 from datetime import datetime
 
 if TYPE_CHECKING:
-    from app.api.config import Settings
+    pass
 
 from app.blob.exceptions import InvalidConfigurationError, ConnectionError
 from app.blob.interface import BlobStorageInterface
@@ -352,7 +352,7 @@ def reset_blob_storage():
     blob_storage_manager._initialized = False
 
 
-async def initialize_blob_storage(settings: Optional["Settings"] = None):
+async def initialize_blob_storage(settings: Optional[Any] = None):
     """
     Initialize and validate blob storage on application startup.
 
