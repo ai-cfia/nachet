@@ -2,7 +2,7 @@
 Data access layer for Picture (Image) entities.
 """
 
-from typing import Sequence
+from beartype.typing import Sequence
 from uuid import UUID
 
 from sqlalchemy.orm import selectinload

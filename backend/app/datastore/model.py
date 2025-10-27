@@ -4,7 +4,7 @@ Model data service using generic BaseCRUDDataService.
 Provides data access layer for Model operations with minimal code duplication.
 """
 
-from typing import List, Optional, Type
+from beartype.typing import List, Optional, Type
 from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload

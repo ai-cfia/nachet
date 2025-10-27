@@ -1,4 +1,4 @@
-from typing import Type, TypedDict, Optional
+from beartype.typing import Type, TypedDict, Optional
 from uuid import UUID
 from sqlalchemy import select
 from app.datastore.base_crud import BaseCRUDDataService

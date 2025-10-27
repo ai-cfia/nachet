@@ -1,4 +1,4 @@
-from typing import Type, Optional, Sequence, TypedDict
+from beartype.typing import Type, Optional, Sequence, TypedDict
 from uuid import UUID
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload

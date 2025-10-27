@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import Type, Optional
+from beartype.typing import Type, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, exists
 from sqlalchemy.orm import selectinload
