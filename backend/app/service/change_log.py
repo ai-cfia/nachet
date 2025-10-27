@@ -2,7 +2,7 @@
 Business logic layer for ChangeLog entities.
 """
 
-from typing import Any, Dict, Type
+from beartype.typing import Any, Dict, Type
 
 from app.db.model import ChangeLog
 from app.exceptions import (
