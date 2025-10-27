@@ -159,7 +159,7 @@ async def integration_db_session(init_db):
         await session.commit()
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest.fixture(scope="session")
 def test_organization() -> UUID:
     """
     Return the pre-seeded test organization UUID from db_setup_test.py.
@@ -178,7 +178,7 @@ def test_organization() -> UUID:
     return UUID(cfia_org_id)
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest.fixture(scope="session")
 def test_user() -> UUID:
     """
     Return the pre-seeded test user UUID from db_setup_test.py.
@@ -198,7 +198,7 @@ def test_user() -> UUID:
     return UUID("8ea46a6b-7d37-4fbb-a66f-775112376e16")
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest.fixture(scope="session")
 def test_admin_user() -> UUID:
     """
     Return the pre-seeded test user UUID (who has admin role).
@@ -218,7 +218,7 @@ def test_admin_user() -> UUID:
     return UUID("8ea46a6b-7d37-4fbb-a66f-775112376e16")
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest.fixture(scope="session")
 def test_regular_user() -> UUID:
     """
     Return a user UUID that does NOT have CFIA admin role.
@@ -390,7 +390,7 @@ async def cleanup_test_pictures(integration_db_session: AsyncSession):
         await integration_db_session.flush()
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest.fixture(scope="session")
 def test_org_admin_role() -> UUID:
     """
     Return the pre-seeded admin role UUID from db_setup_test.py.
@@ -407,7 +407,7 @@ def test_org_admin_role() -> UUID:
     return UUID(cfia_admin_role_id)
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest.fixture(scope="session")
 def test_org_user_role(test_organization: UUID) -> UUID:
     """
     Return the pre-seeded user role UUID from db_setup_test.py.
@@ -421,3 +421,65 @@ def test_org_user_role(test_organization: UUID) -> UUID:
     import uuid
 
     return uuid.uuid5(test_organization, "user")
+
+
+@pytest_asyncio.fixture(scope="function", autouse=False)
+async def dbos_runtime():
+    """
+    Initialize and reset DBOS runtime for testing.
+
+    This fixture sets up a DBOS instance with a test configuration,
+    resets the system database to ensure a clean state, and launches
+    the runtime. After the test completes, it destroys the test DBOS
+    instance and re-initializes the main app's DBOS instance.
+
+    IMPORTANT: This fixture should be used for tests that require DBOS
+    workflow functionality, such as @step decorators with retry logic.
+    For tests that mock DBOS steps, this fixture is not needed.
+
+    Usage:
+        @pytest.mark.asyncio
+        async def test_with_dbos(dbos_runtime):
+            # Your test code here
+            # DBOS decorators will work properly
+
+    The fixture uses SQLite by default for simplicity in testing.
+    Set TESTING_DBOS_DATABASE_URL environment variable to use PostgreSQL.
+    """
+    from dbos import DBOS, DBOSConfig
+    from beartype.typing import cast
+
+    # Destroy any existing DBOS instance
+    DBOS.destroy()
+
+    # Configure DBOS for testing
+    # Use SQLite for simplicity (can be overridden with env var)
+    test_db_url = os.getenv(
+        "TESTING_DBOS_DATABASE_URL",
+        "sqlite:///test_dbos.db",  # Default to SQLite
+    )
+
+    config: DBOSConfig = cast(
+        DBOSConfig,
+        {
+            "name": "nachet-test",
+            "system_database_url": test_db_url,
+        },
+    )
+
+    # Initialize DBOS with test configuration
+    DBOS(config=config)
+    DBOS.reset_system_database()
+    DBOS.launch()
+
+    yield
+
+    # Cleanup: destroy test DBOS instance
+    DBOS.destroy()
+
+    # Re-initialize DBOS with the main app configuration
+    # This ensures subsequent tests that use the FastAPI app still work
+    from app.main import dbos_config, app
+
+    DBOS(fastapi=app, config=dbos_config)
+    DBOS.launch()

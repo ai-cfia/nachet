@@ -424,7 +424,7 @@ class TestSeedServiceIntegrationCreate:
         """Verify CFIA admin can create new seeds and they persist to database."""
         # Call service to create seed
         result = await SeedService.create(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             name_code="CREATE-001",
             family="Brassicaceae",
             genus="Brassica",
@@ -466,7 +466,7 @@ class TestSeedServiceIntegrationCreate:
         # Should raise 403 Forbidden
         with pytest.raises(HTTPException) as exc_info:
             await SeedService.create(
-                user_id=test_regular_user,
+                requester_id=test_regular_user,
                 name_code="FORBIDDEN-001",
                 family="Testaceae",
                 genus="Test",
@@ -485,7 +485,7 @@ class TestSeedServiceIntegrationCreate:
         """Verify creating seed with all optional fields works."""
         # Create with full data including metadata
         result = await SeedService.create(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             name_code="FULL-001",
             family="Solanaceae",
             genus="Solanum",
@@ -522,7 +522,7 @@ class TestSeedServiceIntegrationCreate:
         time.sleep(0.1)  # Small delay to ensure timestamp difference
 
         result = await SeedService.create(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             name_code="TIMESTAMP-001",
             family="Testaceae",
             genus="Test",
@@ -562,7 +562,7 @@ class TestSeedServiceIntegrationCreate:
         """Verify created seed is actually persisted and can be queried."""
         # Create seed
         result = await SeedService.create(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             name_code="PERSIST-001",
             family="Fabaceae",
             genus="Pisum",
@@ -625,7 +625,7 @@ class TestSeedServiceIntegrationUpdate:
 
         # Update the seed
         result = await SeedService.update(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             entity_id=seed_id,
             family="NewFamily",
             genus="NewGenus",
@@ -645,6 +645,7 @@ class TestSeedServiceIntegrationUpdate:
             db_result = await fresh_session.execute(query)
             updated_seed = db_result.scalar_one_or_none()
 
+            assert updated_seed is not None
             assert updated_seed.family == "NewFamily"
             assert updated_seed.genus == "NewGenus"
 
@@ -676,7 +677,7 @@ class TestSeedServiceIntegrationUpdate:
         # Attempt update as regular user
         with pytest.raises(HTTPException) as exc_info:
             await SeedService.update(
-                user_id=test_regular_user,
+                requester_id=test_regular_user,
                 entity_id=seed_id,
                 family="UpdatedFamily",
             )
@@ -693,7 +694,7 @@ class TestSeedServiceIntegrationUpdate:
 
         with pytest.raises(HTTPException) as exc_info:
             await SeedService.update(
-                user_id=test_admin_user,
+                requester_id=test_admin_user,
                 entity_id=nonexistent_id,
                 family="DoesNotMatter",
             )
@@ -727,7 +728,7 @@ class TestSeedServiceIntegrationUpdate:
 
         # Update only genus
         result = await SeedService.update(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             entity_id=seed_id,
             genus="UpdatedGenus",
         )
@@ -766,7 +767,7 @@ class TestSeedServiceIntegrationUpdate:
         # Update metadata
         new_metadata = {"new": "data", "count": 123, "nested": {"key": "value"}}
         result = await SeedService.update(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             entity_id=seed_id,
             seed_metadata=new_metadata,
         )
@@ -810,7 +811,7 @@ class TestSeedServiceIntegrationUpdate:
 
         # Update seed
         result = await SeedService.update(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             entity_id=seed_id,
             genus="UpdatedGenus",
         )

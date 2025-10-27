@@ -1,6 +1,13 @@
 """Mock Azure services for testing DBOS workflows."""
 
-from typing import Dict, Any, AsyncIterator, List, Union, BinaryIO
+from beartype.typing import (
+    Dict,
+    Any,
+    AsyncIterator,
+    List,
+    Union,
+    BinaryIO,
+)
 from datetime import timedelta
 from app.blob.interface import BlobStorageInterface
 
@@ -49,9 +56,13 @@ class MockBlobStorage(BlobStorageInterface):
             raise Exception("Simulated upload failure")
 
         # Convert container to string if it's an Enum
-        container_name = str(
-            container.value if hasattr(container, "value") else container
-        )
+        # Type narrowing: if container has 'value' attribute, it's an Enum
+        container_name: str
+        if isinstance(container, str):
+            container_name = container
+        else:
+            # Handle Enum types
+            container_name = str(getattr(container, "value", container))
 
         # Convert data to bytes if needed
         if isinstance(data, str):
@@ -90,7 +101,7 @@ class MockBlobStorage(BlobStorageInterface):
             raise Exception(f"Blob not found: {key}")
         return self.uploaded_blobs[key]
 
-    async def download_blob_stream(
+    async def download_blob_stream(  # type: ignore[override]
         self, container: str, name: str, **kwargs
     ) -> AsyncIterator[bytes]:
         """Mock blob download as stream."""
@@ -107,9 +118,13 @@ class MockBlobStorage(BlobStorageInterface):
     async def get_blob_tags(self, container: str, name: str) -> Dict[str, str]:
         """Mock getting blob tags (for Defender scan results)."""
         # Convert container to string if it's an Enum
-        container_name = str(
-            container.value if hasattr(container, "value") else container
-        )
+        # Type narrowing: if container has 'value' attribute, it's an Enum
+        container_name: str
+        if isinstance(container, str):
+            container_name = container
+        else:
+            # Handle Enum types
+            container_name = str(getattr(container, "value", container))
         key = f"{container_name}/{name}"
 
         # Use custom scan result if set, otherwise use malware_detected flag

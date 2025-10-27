@@ -1,4 +1,4 @@
-from typing import Dict, Any, Type, List
+from beartype.typing import Dict, Any, Type, List, cast
 from uuid import UUID
 import re
 
@@ -59,9 +59,24 @@ class SeedService(BaseCRUDService[Seed]):
         return SeedDeletionError
 
     @classmethod
-    async def get_all(cls, user_id: UUID, **kwargs) -> Dict[str, Any]:
+    async def get_all(
+        cls,
+        requester_id: UUID,
+        offset: int = 0,
+        limit: int = 100,
+        filters: Dict[str, Any] | None = None,
+        order_by: str | None = None,
+        order_direction: str = "asc",
+    ) -> Dict[str, Any]:
         """Override to change response key from 'items' to 'seeds' for backward compatibility."""
-        result = await super().get_all(user_id, **kwargs)
+        result = await super().get_all(
+            requester_id,
+            offset=offset,
+            limit=limit,
+            filters=filters,
+            order_by=order_by,
+            order_direction=order_direction,
+        )
         result["seeds"] = result.pop("items")  # Rename key
         return result
 
@@ -84,7 +99,8 @@ class SeedService(BaseCRUDService[Seed]):
             seeds = None
             async with sessionmanager.get_session() as session:
                 seeds = await SeedDataService(session).get_seed_data()
-            return {"seeds": [seed._asdict() for seed in seeds] if seeds else []}
+            # TypedDict (SeedDataRow) is compatible with Dict[str, Any] at runtime
+            return {"seeds": cast(List[Dict[str, Any]], seeds) if seeds else []}
         except Exception as e:
             raise SeedError(f"Failed to retrieve seed data: {str(e)}") from e
 

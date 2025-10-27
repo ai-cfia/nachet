@@ -25,7 +25,7 @@ class TestRequestInferenceFromSeedDetector:
         """Test successful inference request to real seed detector API."""
         # Load the test image and convert to base64
         with open(TEST_IMAGE_PATH, "rb") as img_file:
-            image_bytes = base64.b64encode(img_file.read())
+            image_bytes = base64.b64encode(img_file.read()).decode("utf-8")
 
         # Get configuration from environment
         api_endpoint = "http://localhost:12380/score"
