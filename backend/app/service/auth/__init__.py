@@ -7,8 +7,11 @@ from .jwt_auth import get_current_user as get_current_user
 from .user import User as User
 
 __all__ = [
-    get_current_user,
-    User,
+    "get_current_user",
+    "User",
+    "B2CMultiTenantAuthorizationCodeBearer",
+    "MultiTenantAzureAuthorizationCodeBearer",
+    "SingleTenantAzureAuthorizationCodeBearer",
 ]
 
 __version__ = "5.2.0"
