@@ -31,7 +31,7 @@ import argparse
 import sys
 import os
 from uuid import UUID
-from typing import Optional
+from beartype.typing import Optional
 from dotenv import load_dotenv
 
 # Add the app directory to the path

@@ -41,7 +41,7 @@ import argparse
 import sys
 from pathlib import Path
 from datetime import datetime
-from typing import Optional
+from beartype.typing import Optional
 from dotenv import load_dotenv
 # import subprocess
 
