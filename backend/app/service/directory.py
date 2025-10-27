@@ -333,8 +333,10 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         This is a convenience method that validates the fullpath and calls the
         standard create() CRUD operation with role-based authorization.
 
+        The organization prefix is automatically prepended to the provided path.
+
         Path Validation Rules:
-        - Must start with /
+        - Must not start with / (provide relative path)
         - Can only contain alphanumeric, slash, underscore, dash, and period
         - Must end with alphanumeric character (not _, -, or .)
         - Cannot have consecutive slashes
@@ -342,7 +344,7 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
 
         Args:
             user_id: UUID of the user creating the directory
-            fullpath: Full path for the directory (e.g., /org/team/project)
+            fullpath: Relative path for the directory (e.g., "org/team/project")
             description: Optional description of the directory
 
         Returns:
@@ -351,21 +353,19 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         Raises:
             HTTPException: If user is not authorized, path is invalid, or creation fails
         """
+        # Get user's organization and role information
+        user_org_roles = await RbacService.get_user_org_roles(user_id)
+
         # Validate and parse fullpath
-        folder_name, folder_prefix = cls._validate_and_parse_fullpath(fullpath)
-
-        # Fetch required parameters: org_admin_role_id and org_user_role_id
-        user_org_id = await RbacService.get_user_organization_id(user_id)
-
-        # Get the admin role for the user's organization
-        org_admin_role_id = await RbacService.get_org_admin_role_id(user_org_id)
-        org_user_role_id = await RbacService.get_org_user_role_id(user_org_id)
+        folder_name, folder_prefix = cls._validate_and_parse_fullpath(
+            f"/{user_org_roles.org_prefix}/{fullpath}"
+        )
 
         # Use the standard create() method which handles authorization
         # Note: user_id parameter is for RBAC, must also pass it as folder field
         folder_fields = {
-            "org_admin_role_id": org_admin_role_id,
-            "org_user_role_id": org_user_role_id,
+            "org_admin_role_id": user_org_roles.org_admin_role_id,
+            "org_user_role_id": user_org_roles.org_user_role_id,
             "name": folder_name,
             "folder_prefix": folder_prefix,
             "description": description,
@@ -386,6 +386,67 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
             "message": f"Directory '{folder_name}' created successfully at {fullpath}",
         }
 
+    @staticmethod
+    async def check_folder_exists(
+        folder_id: UUID,
+        user_role_id: UUID,
+    ) -> str:
+        """
+        Check if a folder exists and belongs to the given user role.
+
+        This verifies that:
+        1. The folder exists
+        2. The folder is active
+        3. The folder belongs to the specified organization (via user_role_id)
+
+        Manages its own database session internally.
+
+        Args:
+            folder_id: UUID of the folder to check
+            user_role_id: UUID of the organization's user role
+
+        Returns:
+            The folder_prefix if folder exists
+
+        Raises:
+            FolderNotFoundError: If folder doesn't exist or doesn't belong to the user role
+        """
+        from app.db.utils import sessionmanager
+
+        try:
+            async with sessionmanager.get_session() as session:
+                data_service = DirectoryDataService(session)
+                folder_prefix = await data_service.check_folder_exists(
+                    str(folder_id), str(user_role_id)
+                )
+
+                if not folder_prefix:
+                    logger.warning(
+                        f"Folder check failed: folder_id={folder_id}, user_role_id={user_role_id}"
+                    )
+                    raise DirectoryNotFoundError(
+                        f"Folder {folder_id} not found or access denied"
+                    )
+
+                logger.debug(
+                    f"Folder exists: folder_id={folder_id}, user_role_id={user_role_id}, prefix={folder_prefix}"
+                )
+
+                return folder_prefix
+
+        except DirectoryNotFoundError:
+            raise
+        except Exception as e:
+            logger.error(
+                f"Failed to check folder existence: {str(e)}",
+                folder_id=str(folder_id),
+                user_role_id=str(user_role_id),
+                error_type=type(e).__name__,
+            )
+            raise DirectoryNotFoundError(
+                f"Failed to verify folder {folder_id}: {str(e)}"
+            )
+
     @classmethod
     async def rename_directory(
         cls, user_id: UUID, directory_id: UUID, fullpath: str
@@ -396,8 +457,10 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         This is a convenience method that validates the fullpath and calls the
         standard update() CRUD operation with role-based authorization.
 
+        The organization prefix is automatically prepended to the provided path.
+
         Path Validation Rules:
-        - Must start with /
+        - Must not start with / (provide relative path)
         - Can only contain alphanumeric, slash, underscore, dash, and period
         - Must end with alphanumeric character (not _, -, or .)
         - Cannot have consecutive slashes
@@ -407,7 +470,7 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         Args:
             user_id: UUID of the user performing the rename
             directory_id: UUID of the directory to rename
-            fullpath: New full path for the directory (e.g., /org/team/new_name)
+            fullpath: New relative path for the directory (e.g., "org/team/new_name")
 
         Returns:
             Dictionary with the directory ID and success message
@@ -415,8 +478,13 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         Raises:
             HTTPException: If user is not authorized, path is invalid, or rename fails
         """
-        # Validate and parse the new fullpath
-        folder_name, folder_prefix = cls._validate_and_parse_fullpath(fullpath)
+        # Get user's organization and role information
+        user_org_roles = await RbacService.get_user_org_roles(user_id)
+
+        # Validate and parse fullpath
+        folder_name, folder_prefix = cls._validate_and_parse_fullpath(
+            f"/{user_org_roles.org_prefix}/{fullpath}"
+        )
 
         # Use the standard update() method which handles authorization
         result = await cls.update(
