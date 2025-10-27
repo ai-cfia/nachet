@@ -23,6 +23,28 @@ class OrganizationDataService(BaseCRUDDataService[Organization]):
     # Custom methods specific to Organization
     # ==========================================
 
+    async def check_name_prefix_exists(self, folder_prefix: str) -> bool:
+        """
+        Check if the organization folder prefix already exist.
+
+        This enforces the business rule that the first 20 chars of org folder prefix must be unique.
+
+        Args:
+            folder_prefix: Organization folder prefix to check
+
+        Returns:
+            True if a matching prefix exists, False otherwise
+        """
+        # name_prefix = name.lower()[:20]
+        query = (
+            select(Organization)
+            .where(Organization.folder_prefix == folder_prefix)
+            .where(Organization.active.is_(True))
+        )
+
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none() is not None
+
     async def user_has_role(
         self, user_id: UUID, organization_id: UUID, role_name: str
     ) -> bool:
@@ -96,3 +118,61 @@ class OrganizationDataService(BaseCRUDDataService[Organization]):
         )
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
+
+    async def get_user_org_roles(
+        self, user_id: UUID
+    ) -> Optional[tuple[UUID, str, UUID, UUID]]:
+        """
+        Get organization ID, prefix, admin role ID, and user role ID in a single query.
+
+        This method performs a single database query to retrieve:
+        1. The user's organization ID
+        2. The organization's folder prefix
+        3. The organization's admin role ID (role with name='admin')
+        4. The organization's user role ID (role with name='user')
+
+        Args:
+            user_id: The user's UUID
+
+        Returns:
+            Tuple of (org_id, org_prefix, org_admin_role_id, org_user_role_id) if found, None otherwise
+        """
+        # Subquery to get organization folder prefix
+        org_prefix_subquery = (
+            select(Organization.folder_prefix)
+            .where(Organization.id == Users.organization)
+            .where(Organization.active.is_(True))
+            .scalar_subquery()
+        )
+
+        # Subquery to get admin role ID
+        admin_role_subquery = (
+            select(RbacRole.id)
+            .where(RbacRole.organization_id == Users.organization)
+            .where(RbacRole.name == "admin")
+            .where(RbacRole.active.is_(True))
+            .scalar_subquery()
+        )
+
+        # Subquery to get user role ID
+        user_role_subquery = (
+            select(RbacRole.id)
+            .where(RbacRole.organization_id == Users.organization)
+            .where(RbacRole.name == "user")
+            .where(RbacRole.active.is_(True))
+            .scalar_subquery()
+        )
+
+        query = (
+            select(
+                Users.organization,
+                org_prefix_subquery,
+                admin_role_subquery,
+                user_role_subquery,
+            )
+            .where(Users.id == user_id)
+            .where(Users.active.is_(True))
+        )
+        result = await self.session.execute(query)
+        row = result.first()
+        return (row[0], row[1], row[2], row[3]) if row else None

@@ -1,4 +1,4 @@
-from typing import List, Type
+from typing import List, Type, Optional
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
@@ -192,3 +192,25 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
         else:
             raise ValueError(f"Directory with ID {directory_id} not found or inactive.")
         return directory._asdict()["id"]
+
+    async def check_folder_exists(
+        self, folder_id: str, user_role_id: str
+    ) -> Optional[str]:
+        """
+        Check if a folder exists and belongs to the given user role.
+
+        Args:
+            folder_id: The ID of the folder to check.
+            user_role_id: The organization user role ID.
+
+        Returns:
+            The folder_prefix if folder exists and belongs to the user role, None otherwise
+        """
+        stmt = (
+            select(Folder.folder_prefix)
+            .where(Folder.id == folder_id)
+            .where(Folder.org_user_role_id == user_role_id)
+            .where(Folder.active.is_(True))
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
