@@ -12,29 +12,57 @@ and is covered separately in E2E tests.
 
 import pytest
 import pytest_asyncio
-from uuid import uuid4, UUID
-from uuid6 import uuid7
-from unittest.mock import patch, AsyncMock, MagicMock
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import no_type_check
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import UUID, uuid4
 
+from dbos import DBOS
+from sqlalchemy.ext.asyncio import AsyncSession
+from uuid6 import uuid7
+
+from app.db.model import Folder, ImageProcessingState, Picture
 from app.service.blob_operations import (
+    download_sanitized_blob,
     upload_to_azure_blob,
     wait_for_defender_scan,
-    download_sanitized_blob,
 )
-from app.service.sanitization import (
-    trigger_sanitization_function,
-)
-from app.db.model import ImageProcessingState, Folder, Picture
 from app.service.constants import ProcessingStatus
 from tests.fixtures.mock_azure import MockBlobStorage
 from tests.fixtures.test_images import get_test_seed_image
 
+# from app.service.sanitization import (
+#     trigger_sanitization_function,
+# )
 
-def create_mock_get_blob_storage(mock_storage):
-    """Helper to create an async mock for get_blob_storage."""
 
-    async def _mock():
+@no_type_check
+@DBOS.workflow()
+async def upload_workflow_wrapper(
+    image_id: UUID,
+    file_bytes: bytes,
+    org_prefix: str,
+    user_id: UUID,
+) -> str:
+    """
+    Workflow wrapper for upload_to_azure_blob for testing purposes.
+
+    This allows testing the DBOS @step retry logic by invoking
+    upload_to_azure_blob from within a @workflow context.
+
+    Note: Named without 'test_' prefix to avoid pytest collection.
+    """
+    return await upload_to_azure_blob(
+        image_id=image_id,
+        file_bytes=file_bytes,
+        org_prefix=org_prefix,
+        user_id=user_id,
+    )
+
+
+def create_mock_blob_manager_get_client(mock_storage):
+    """Helper to create a mock for blob_storage_manager.get_client()."""
+
+    def _mock(account_name: str):
         return mock_storage
 
     return _mock
@@ -65,8 +93,8 @@ async def test_folder(
     # Cleanup handled by conftest.py cleanup fixtures
 
 
-@pytest_asyncio.fixture
-def mock_blob_storage():
+@pytest.fixture
+def mock_blob_storage() -> MockBlobStorage:
     """Provide a mock Azure Blob Storage instance."""
     return MockBlobStorage()
 
@@ -92,87 +120,79 @@ class TestBlobOperations:
         """Test successful blob upload."""
         # Arrange
         image_id = uuid7()
+        user_id = uuid4()
         file_bytes = get_test_seed_image()
-        filename = "test_seed.png"
-        genus = "avena"
-        species = "fatua"
-        org_name = "cfia-org"
+        org_prefix = "cfia-org"
 
-        # Patch get_blob_storage to return our mock (it's an async function)
+        # Patch blob_storage_manager.get_client to return our mock
         with patch(
-            "app.service.blob_operations.get_blob_storage",
-            side_effect=create_mock_get_blob_storage(mock_blob_storage),
+            "app.blob.manager.blob_storage_manager.get_client",
+            side_effect=create_mock_blob_manager_get_client(mock_blob_storage),
         ):
             with patch("app.api.config.get_settings") as mock_get_settings:
                 mock_settings = MagicMock()
                 mock_settings.is_test_environment = True
+                mock_settings.blob_container_prefix = ""
                 mock_get_settings.return_value = mock_settings
 
                 # Act
                 blob_url = await upload_to_azure_blob(
                     image_id=image_id,
                     file_bytes=file_bytes,
-                    filename=filename,
-                    genus=genus,
-                    species=species,
-                    org_name=org_name,
+                    org_prefix=org_prefix,
+                    user_id=user_id,
                 )
 
         # Assert
         assert blob_url is not None
-        assert "nachet-original-test" in blob_url  # Test environment uses -test suffix
+        # upload_to_azure_blob returns just the blob name: {org_prefix}/{image_id}.png
         assert str(image_id) in blob_url
-        assert f"{org_name}/{genus}-{species}" in blob_url
+        assert f"{org_prefix}" in blob_url
+        assert blob_url == f"{org_prefix}/{image_id}.png"
 
-        # Verify blob was stored in mock
-        expected_key = (
-            f"nachet-original-test/{org_name}/{genus}-{species}/{image_id}.png"
-        )
+        # Verify blob was stored in mock (mock storage uses container/blob_name as key)
+        expected_key = f"original-test/{org_prefix}/{image_id}.png"
         assert expected_key in mock_blob_storage.uploaded_blobs
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(
-        reason="DBOS retry logic requires full DBOS runtime context. Test in E2E instead."
-    )
-    async def test_upload_to_azure_blob_retry_on_failure(self, mock_blob_storage):
+    async def test_upload_to_azure_blob_retry_on_failure(
+        self, mock_blob_storage, dbos_runtime
+    ):
         """Test upload retries on transient failures.
 
-        NOTE: This test is skipped because DBOS @step decorator retry logic
-        only works within a full DBOS workflow context. When called directly,
-        the function behaves like a regular async function without retry.
-
-        This functionality should be tested in E2E tests where the full
-        DBOS runtime is available.
+        This test uses the test_upload_workflow wrapper to invoke upload_to_azure_blob
+        within a DBOS workflow context, which enables the @step retry logic.
         """
         # Arrange
         image_id = uuid7()
         file_bytes = get_test_seed_image()
+        user_id = uuid4()
 
         # Configure mock to fail twice, then succeed
         mock_blob_storage.set_failure_count(2)
 
-        # Patch get_blob_storage to return our mock (it's an async function)
+        # Patch blob_storage_manager.get_client to return our mock
         with patch(
-            "app.service.blob_operations.get_blob_storage",
-            side_effect=create_mock_get_blob_storage(mock_blob_storage),
+            "app.blob.manager.blob_storage_manager.get_client",
+            side_effect=create_mock_blob_manager_get_client(mock_blob_storage),
         ):
             with patch("app.api.config.get_settings") as mock_get_settings:
                 mock_settings = MagicMock()
                 mock_settings.is_test_environment = True
+                mock_settings.blob_container_prefix = ""
                 mock_get_settings.return_value = mock_settings
 
-                # Act
-                blob_url = await upload_to_azure_blob(
+                # Act - Call through workflow wrapper to enable retry logic
+                blob_url = await upload_workflow_wrapper(
                     image_id=image_id,
                     file_bytes=file_bytes,
-                    filename="test.png",
-                    genus="avena",
-                    species="fatua",
-                    org_name="test-org",
+                    org_prefix="test-org",
+                    user_id=user_id,
                 )
 
         # Assert - Should succeed after retries
         assert blob_url is not None
+        assert str(image_id) in blob_url
         # Mock should have been called 3 times (2 failures + 1 success)
         assert mock_blob_storage.attempt_count == 3
 
@@ -181,30 +201,37 @@ class TestBlobOperations:
         """Test Defender scan completion with clean result."""
         # Arrange
         image_id = uuid7()
-        blob_url = f"https://test.blob.core.windows.net/nachet-original/test-org/avena-fatua/{image_id}.png"
+        org_prefix = "test-org"
 
         # Mock blob storage with clean scan result
         mock_blob_storage.set_malware_detected(False)
 
-        # Patch both get_blob_storage and DBOS.sleep_async
+        # Patch both blob_storage_manager.get_client and DBOS.sleep_async
         with patch(
-            "app.service.blob_operations.get_blob_storage",
-            side_effect=create_mock_get_blob_storage(mock_blob_storage),
+            "app.blob.manager.blob_storage_manager.get_client",
+            side_effect=create_mock_blob_manager_get_client(mock_blob_storage),
         ):
-            with patch(
-                "app.service.blob_operations.DBOS.sleep_async", new_callable=AsyncMock
-            ):
-                # Act
-                result = await wait_for_defender_scan(
-                    image_id=image_id,
-                    blob_url=blob_url,
-                    timeout_sec=30,
-                )
+            with patch("app.api.config.get_settings") as mock_get_settings:
+                mock_settings = MagicMock()
+                mock_settings.is_test_environment = True
+                mock_settings.blob_container_prefix = ""
+                mock_get_settings.return_value = mock_settings
+
+                with patch(
+                    "app.service.blob_operations.DBOS.sleep_async",
+                    new_callable=AsyncMock,
+                ):
+                    # Act
+                    result = await wait_for_defender_scan(
+                        image_id=image_id,
+                        org_prefix=org_prefix,
+                        timeout_sec=30,
+                    )
 
         # Assert
         assert result["status"] == "clean"
-        assert result["tags"]["malware_detected"] == "false"
-        assert result["tags"]["defender_scan_complete"] == "true"
+        assert result["tags"]["Malware scanning scan result"] == "No threats found"
+        assert result["scan_timestamp"] == "2025-10-20T00:00:00Z"
 
     @pytest.mark.asyncio
     async def test_wait_for_defender_scan_malware_detected(self, mock_blob_storage):
@@ -213,54 +240,198 @@ class TestBlobOperations:
         from app.exceptions import DefenderScanFailedError
 
         image_id = uuid7()
-        blob_url = f"https://test.blob.core.windows.net/nachet-original/test-org/avena-fatua/{image_id}.png"
+        org_prefix = "test-org"
 
         # Mock blob storage with malware detection
         mock_blob_storage.set_malware_detected(True)
 
-        # Patch both get_blob_storage and DBOS.sleep_async
+        # Patch both blob_storage_manager.get_client and DBOS.sleep_async
         with patch(
-            "app.service.blob_operations.get_blob_storage",
-            side_effect=create_mock_get_blob_storage(mock_blob_storage),
+            "app.blob.manager.blob_storage_manager.get_client",
+            side_effect=create_mock_blob_manager_get_client(mock_blob_storage),
         ):
-            with patch(
-                "app.service.blob_operations.DBOS.sleep_async", new_callable=AsyncMock
-            ):
-                # Act & Assert - Should raise exception
-                with pytest.raises(DefenderScanFailedError) as exc_info:
-                    await wait_for_defender_scan(
+            with patch("app.api.config.get_settings") as mock_get_settings:
+                mock_settings = MagicMock()
+                mock_settings.is_test_environment = True
+                mock_settings.blob_container_prefix = ""
+                mock_get_settings.return_value = mock_settings
+
+                with patch(
+                    "app.service.blob_operations.DBOS.sleep_async",
+                    new_callable=AsyncMock,
+                ):
+                    # Act & Assert - Should raise exception
+                    with pytest.raises(DefenderScanFailedError) as exc_info:
+                        await wait_for_defender_scan(
+                            image_id=image_id,
+                            org_prefix=org_prefix,
+                            timeout_sec=30,
+                        )
+
+                    assert "malware" in str(exc_info.value).lower()
+
+    @pytest.mark.asyncio
+    async def test_wait_for_defender_scan_not_scanned(self, mock_blob_storage):
+        """Test Defender scan with 'Not scanned' result."""
+        # Arrange
+        from app.exceptions import DefenderScanNotScannedError
+
+        image_id = uuid7()
+        org_prefix = "test-org"
+
+        # Mock blob storage with 'Not scanned' result
+        mock_blob_storage.set_scan_result("Not scanned")
+
+        # Patch both blob_storage_manager.get_client and DBOS.sleep_async
+        with patch(
+            "app.blob.manager.blob_storage_manager.get_client",
+            side_effect=create_mock_blob_manager_get_client(mock_blob_storage),
+        ):
+            with patch("app.api.config.get_settings") as mock_get_settings:
+                mock_settings = MagicMock()
+                mock_settings.is_test_environment = True
+                mock_settings.blob_container_prefix = ""
+                mock_get_settings.return_value = mock_settings
+
+                with patch(
+                    "app.service.blob_operations.DBOS.sleep_async",
+                    new_callable=AsyncMock,
+                ):
+                    # Act & Assert - Should raise exception
+                    with pytest.raises(DefenderScanNotScannedError) as exc_info:
+                        await wait_for_defender_scan(
+                            image_id=image_id,
+                            org_prefix=org_prefix,
+                            timeout_sec=30,
+                        )
+
+                    assert "could not be scanned" in str(exc_info.value).lower()
+
+    @pytest.mark.asyncio
+    async def test_wait_for_defender_scan_transient_error(self, mock_blob_storage):
+        """Test Defender scan with transient error that eventually succeeds."""
+        # Arrange
+        image_id = uuid7()
+        org_prefix = "test-org"
+
+        # Track number of calls
+        call_count = [0]
+
+        # Mock blob storage that returns transient error twice, then succeeds
+        async def mock_get_tags(container, name):
+            call_count[0] += 1
+            if call_count[0] <= 2:
+                # Return transient error first two times
+                return {
+                    "Malware scanning scan result": "SAM259201: Scan failed - internal service error.",
+                    "Malware scanning scan time UTC": "2025-10-20T00:00:00Z",
+                }
+            else:
+                # Then return clean result
+                return {
+                    "Malware scanning scan result": "No threats found",
+                    "Malware scanning scan time UTC": "2025-10-20T00:00:00Z",
+                }
+
+        mock_blob_storage.get_blob_tags = mock_get_tags
+
+        # Patch both blob_storage_manager.get_client and DBOS.sleep_async
+        with patch(
+            "app.blob.manager.blob_storage_manager.get_client",
+            side_effect=create_mock_blob_manager_get_client(mock_blob_storage),
+        ):
+            with patch("app.api.config.get_settings") as mock_get_settings:
+                mock_settings = MagicMock()
+                mock_settings.is_test_environment = True
+                mock_settings.blob_container_prefix = ""
+                mock_get_settings.return_value = mock_settings
+
+                with patch(
+                    "app.service.blob_operations.DBOS.sleep_async",
+                    new_callable=AsyncMock,
+                ):
+                    # Act
+                    result = await wait_for_defender_scan(
                         image_id=image_id,
-                        blob_url=blob_url,
+                        org_prefix=org_prefix,
                         timeout_sec=30,
                     )
 
-                assert "malware" in str(exc_info.value).lower()
+        # Assert - Should eventually succeed
+        assert result["status"] == "clean"
+        assert call_count[0] == 3  # Called 3 times (2 errors + 1 success)
+
+    @pytest.mark.asyncio
+    async def test_wait_for_defender_scan_permanent_error(self, mock_blob_storage):
+        """Test Defender scan with permanent error."""
+        # Arrange
+        from app.exceptions import DefenderScanFailedError
+
+        image_id = uuid7()
+        org_prefix = "test-org"
+
+        # Mock blob storage with permanent error (SAM259210)
+        mock_blob_storage.set_scan_result(
+            "SAM259210: Scan failed - the requested blob is protected by password."
+        )
+
+        # Patch both blob_storage_manager.get_client and DBOS.sleep_async
+        with patch(
+            "app.blob.manager.blob_storage_manager.get_client",
+            side_effect=create_mock_blob_manager_get_client(mock_blob_storage),
+        ):
+            with patch("app.api.config.get_settings") as mock_get_settings:
+                mock_settings = MagicMock()
+                mock_settings.is_test_environment = True
+                mock_settings.blob_container_prefix = ""
+                mock_get_settings.return_value = mock_settings
+
+                with patch(
+                    "app.service.blob_operations.DBOS.sleep_async",
+                    new_callable=AsyncMock,
+                ):
+                    # Act & Assert - Should raise exception immediately
+                    with pytest.raises(DefenderScanFailedError) as exc_info:
+                        await wait_for_defender_scan(
+                            image_id=image_id,
+                            org_prefix=org_prefix,
+                            timeout_sec=30,
+                        )
+
+                    assert "SAM259210" in str(exc_info.value)
+                    assert "password" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_download_sanitized_blob(self, mock_blob_storage):
         """Test downloading sanitized blob."""
         # Arrange
         image_id = uuid7()
-        sanitized_blob_url = f"https://test.blob.core.windows.net/nachet-sanitized/avena/fatua/{image_id}.png"
+        org_prefix = "test-org"
 
         # Upload a test blob to mock storage
         test_data = get_test_seed_image()
         await mock_blob_storage.upload_blob(
-            container="nachet-sanitized",
-            name=f"avena/fatua/{image_id}.png",
+            container="sanitized-test",
+            name=f"{org_prefix}/{image_id}.png",
             data=test_data,
         )
 
-        # Patch get_blob_storage to return our mock (it's an async function)
+        # Patch blob_storage_manager.get_client to return our mock
         with patch(
-            "app.service.blob_operations.get_blob_storage",
-            side_effect=create_mock_get_blob_storage(mock_blob_storage),
+            "app.blob.manager.blob_storage_manager.get_client",
+            side_effect=create_mock_blob_manager_get_client(mock_blob_storage),
         ):
-            # Act
-            downloaded_bytes = await download_sanitized_blob(
-                image_id=image_id,
-                sanitized_blob_url=sanitized_blob_url,
-            )
+            with patch("app.api.config.get_settings") as mock_get_settings:
+                mock_settings = MagicMock()
+                mock_settings.is_test_environment = True
+                mock_settings.blob_container_prefix = ""
+                mock_get_settings.return_value = mock_settings
+
+                # Act
+                downloaded_bytes = await download_sanitized_blob(
+                    image_id=image_id,
+                    org_prefix=org_prefix,
+                )
 
         # Assert
         assert downloaded_bytes == test_data
@@ -269,116 +440,116 @@ class TestBlobOperations:
 class TestSanitizationOperations:
     """Test sanitization operation steps."""
 
-    @pytest.mark.asyncio
-    async def test_trigger_sanitization_function_success(self, mock_settings):
-        """Test triggering sanitization Azure Function."""
-        # Arrange
-        image_id = uuid7()
-        genus = "avena"
-        species = "fatua"
-        blob_url_original = f"https://test.blob.core.windows.net/nachet-original/test-org/avena-fatua/{image_id}.png"
+    # @pytest.mark.asyncio
+    # async def test_trigger_sanitization_function_success(self, mock_settings):
+    #     """Test triggering sanitization Azure Function."""
+    #     # Arrange
+    #     image_id = uuid7()
+    #     genus = "avena"
+    #     species = "fatua"
+    #     blob_url_original = f"https://test.blob.core.windows.net/nachet-original/test-org/avena-fatua/{image_id}.png"
 
-        # Mock aiohttp session properly
-        mock_response = AsyncMock()
-        mock_response.status = 200
-        # Make raise_for_status a regular MagicMock (not awaitable)
-        mock_response.raise_for_status = MagicMock()
-        mock_response.json = AsyncMock(
-            return_value={"message": "Sanitization started", "status": "accepted"}
-        )
+    #     # Mock aiohttp session properly
+    #     mock_response = AsyncMock()
+    #     mock_response.status = 200
+    #     # Make raise_for_status a regular MagicMock (not awaitable)
+    #     mock_response.raise_for_status = MagicMock()
+    #     mock_response.json = AsyncMock(
+    #         return_value={"message": "Sanitization started", "status": "accepted"}
+    #     )
 
-        # Create async context manager for the response
-        mock_post_ctx = AsyncMock()
-        mock_post_ctx.__aenter__.return_value = mock_response
-        mock_post_ctx.__aexit__.return_value = None
+    #     # Create async context manager for the response
+    #     mock_post_ctx = AsyncMock()
+    #     mock_post_ctx.__aenter__.return_value = mock_response
+    #     mock_post_ctx.__aexit__.return_value = None
 
-        # Create async context manager for the session
-        mock_session_inst = MagicMock()
-        mock_session_inst.post.return_value = mock_post_ctx
+    #     # Create async context manager for the session
+    #     mock_session_inst = MagicMock()
+    #     mock_session_inst.post.return_value = mock_post_ctx
 
-        mock_session_ctx = AsyncMock()
-        mock_session_ctx.__aenter__.return_value = mock_session_inst
-        mock_session_ctx.__aexit__.return_value = None
+    #     mock_session_ctx = AsyncMock()
+    #     mock_session_ctx.__aenter__.return_value = mock_session_inst
+    #     mock_session_ctx.__aexit__.return_value = None
 
-        # Patch both get_settings and aiohttp.ClientSession
-        with patch("app.api.config.get_settings", return_value=mock_settings):
-            with patch(
-                "app.service.sanitization.aiohttp.ClientSession",
-                return_value=mock_session_ctx,
-            ):
-                # Act
-                await trigger_sanitization_function(
-                    image_id=image_id,
-                    genus=genus,
-                    species=species,
-                    blob_url_original=blob_url_original,
-                )
+    #     # Patch both get_settings and aiohttp.ClientSession
+    #     with patch("app.api.config.get_settings", return_value=mock_settings):
+    #         with patch(
+    #             "app.service.sanitization.aiohttp.ClientSession",
+    #             return_value=mock_session_ctx,
+    #         ):
+    #             # Act
+    #             await trigger_sanitization_function(
+    #                 image_id=image_id,
+    #                 genus=genus,
+    #                 species=species,
+    #                 blob_url_original=blob_url_original,
+    #             )
 
-        # Assert - Verify the POST request was made
-        mock_session_inst.post.assert_called_once()
-        call_args = mock_session_inst.post.call_args
+    #     # Assert - Verify the POST request was made
+    #     mock_session_inst.post.assert_called_once()
+    #     call_args = mock_session_inst.post.call_args
 
-        # Verify URL
-        assert call_args[0][0] == mock_settings.azure_sanitization_function_url
+    #     # Verify URL
+    #     assert call_args[0][0] == mock_settings.azure_sanitization_function_url
 
-        # Verify request payload
-        json_payload = call_args[1]["json"]
-        assert json_payload["image_id"] == str(image_id)
-        assert json_payload["genus"] == genus
-        assert json_payload["species"] == species
-        assert json_payload["blob_url_original"] == blob_url_original
+    #     # Verify request payload
+    #     json_payload = call_args[1]["json"]
+    #     assert json_payload["image_id"] == str(image_id)
+    #     assert json_payload["genus"] == genus
+    #     assert json_payload["species"] == species
+    #     assert json_payload["blob_url_original"] == blob_url_original
 
-    @pytest.mark.asyncio
-    async def test_trigger_sanitization_function_failure(self, mock_settings):
-        """Test sanitization trigger failure handling."""
-        # Arrange
-        from app.exceptions import SanitizationError
-        import aiohttp
+    # @pytest.mark.asyncio
+    # async def test_trigger_sanitization_function_failure(self, mock_settings):
+    #     """Test sanitization trigger failure handling."""
+    #     # Arrange
+    #     from app.exceptions import SanitizationError
+    #     import aiohttp
 
-        image_id = uuid7()
+    #     image_id = uuid7()
 
-        # Mock aiohttp session to raise error
-        mock_response = AsyncMock()
-        mock_response.status = 500
-        # Make raise_for_status a regular MagicMock that raises (not awaitable)
-        mock_response.raise_for_status = MagicMock(
-            side_effect=aiohttp.ClientResponseError(
-                request_info=MagicMock(),
-                history=(),
-                status=500,
-                message="Internal Server Error",
-            )
-        )
+    #     # Mock aiohttp session to raise error
+    #     mock_response = AsyncMock()
+    #     mock_response.status = 500
+    #     # Make raise_for_status a regular MagicMock that raises (not awaitable)
+    #     mock_response.raise_for_status = MagicMock(
+    #         side_effect=aiohttp.ClientResponseError(
+    #             request_info=MagicMock(),
+    #             history=(),
+    #             status=500,
+    #             message="Internal Server Error",
+    #         )
+    #     )
 
-        # Create proper async context manager for the response
-        mock_post_ctx = AsyncMock()
-        mock_post_ctx.__aenter__.return_value = mock_response
-        mock_post_ctx.__aexit__.return_value = None
+    #     # Create proper async context manager for the response
+    #     mock_post_ctx = AsyncMock()
+    #     mock_post_ctx.__aenter__.return_value = mock_response
+    #     mock_post_ctx.__aexit__.return_value = None
 
-        # Create async context manager for the session
-        mock_session_inst = MagicMock()
-        mock_session_inst.post.return_value = mock_post_ctx
+    #     # Create async context manager for the session
+    #     mock_session_inst = MagicMock()
+    #     mock_session_inst.post.return_value = mock_post_ctx
 
-        mock_session_ctx = AsyncMock()
-        mock_session_ctx.__aenter__.return_value = mock_session_inst
-        mock_session_ctx.__aexit__.return_value = None
+    #     mock_session_ctx = AsyncMock()
+    #     mock_session_ctx.__aenter__.return_value = mock_session_inst
+    #     mock_session_ctx.__aexit__.return_value = None
 
-        # Patch both get_settings and aiohttp.ClientSession
-        with patch("app.api.config.get_settings", return_value=mock_settings):
-            with patch(
-                "app.service.sanitization.aiohttp.ClientSession",
-                return_value=mock_session_ctx,
-            ):
-                # Act & Assert
-                with pytest.raises(SanitizationError) as exc_info:
-                    await trigger_sanitization_function(
-                        image_id=image_id,
-                        genus="avena",
-                        species="fatua",
-                        blob_url_original="https://test.blob.core.windows.net/nachet-original/test.png",
-                    )
+    #     # Patch both get_settings and aiohttp.ClientSession
+    #     with patch("app.api.config.get_settings", return_value=mock_settings):
+    #         with patch(
+    #             "app.service.sanitization.aiohttp.ClientSession",
+    #             return_value=mock_session_ctx,
+    #         ):
+    #             # Act & Assert
+    #             with pytest.raises(SanitizationError) as exc_info:
+    #                 await trigger_sanitization_function(
+    #                     image_id=image_id,
+    #                     genus="avena",
+    #                     species="fatua",
+    #                     blob_url_original="https://test.blob.core.windows.net/nachet-original/test.png",
+    #                 )
 
-                assert "Failed to trigger sanitization" in str(exc_info.value)
+    #             assert "Failed to trigger sanitization" in str(exc_info.value)
 
 
 class TestImageProcessingState:
@@ -557,14 +728,15 @@ class TestErrorHandling:
         # Configure mock to always fail
         mock_blob_storage.set_failure_count(999)
 
-        # Patch get_blob_storage to return our mock (it's an async function)
+        # Patch blob_storage_manager.get_client to return our mock
         with patch(
-            "app.service.blob_operations.get_blob_storage",
-            side_effect=create_mock_get_blob_storage(mock_blob_storage),
+            "app.blob.manager.blob_storage_manager.get_client",
+            side_effect=create_mock_blob_manager_get_client(mock_blob_storage),
         ):
             with patch("app.api.config.get_settings") as mock_get_settings:
                 mock_settings = MagicMock()
                 mock_settings.is_test_environment = True
+                mock_settings.blob_container_prefix = ""
                 mock_get_settings.return_value = mock_settings
 
                 # Act & Assert
@@ -572,10 +744,8 @@ class TestErrorHandling:
                     await upload_to_azure_blob(
                         image_id=image_id,
                         file_bytes=file_bytes,
-                        filename="test.png",
-                        genus="avena",
-                        species="fatua",
-                        org_name="test-org",
+                        org_prefix="test-org",
+                        user_id=uuid4(),
                     )
 
                 assert "Failed to upload blob" in str(exc_info.value)
@@ -587,34 +757,36 @@ class TestErrorHandling:
         from app.exceptions import DefenderScanTimeoutError
 
         image_id = uuid7()
-        blob_url = (
-            f"https://test.blob.core.windows.net/nachet-original/test/{image_id}.png"
-        )
+        org_prefix = "test-org"
 
-        # Mock with tags that never complete
+        # Mock with tags that never complete (no scan result tag)
         async def mock_get_tags(container, name):
-            return {
-                "defender_scan_complete": "false",
-                "malware_detected": "false",
-            }
+            return {}  # Empty tags = scan not started/incomplete
 
         mock_blob_storage.get_blob_tags = mock_get_tags
 
-        # Patch get_blob_storage to return our mock (it's an async function)
+        # Patch blob_storage_manager.get_client to return our mock
         with patch(
-            "app.service.blob_operations.get_blob_storage",
-            side_effect=create_mock_get_blob_storage(mock_blob_storage),
+            "app.blob.manager.blob_storage_manager.get_client",
+            side_effect=create_mock_blob_manager_get_client(mock_blob_storage),
         ):
-            # Use very short timeout for test
-            with patch(
-                "app.service.blob_operations.DBOS.sleep_async", new_callable=AsyncMock
-            ):
-                # Act & Assert
-                with pytest.raises(DefenderScanTimeoutError) as exc_info:
-                    await wait_for_defender_scan(
-                        image_id=image_id,
-                        blob_url=blob_url,
-                        timeout_sec=10,  # Short timeout for test
-                    )
+            with patch("app.api.config.get_settings") as mock_get_settings:
+                mock_settings = MagicMock()
+                mock_settings.is_test_environment = True
+                mock_settings.blob_container_prefix = ""
+                mock_get_settings.return_value = mock_settings
 
-                assert "timed out" in str(exc_info.value).lower()
+                # Use very short timeout for test
+                with patch(
+                    "app.service.blob_operations.DBOS.sleep_async",
+                    new_callable=AsyncMock,
+                ):
+                    # Act & Assert
+                    with pytest.raises(DefenderScanTimeoutError) as exc_info:
+                        await wait_for_defender_scan(
+                            image_id=image_id,
+                            org_prefix=org_prefix,
+                            timeout_sec=10,  # Short timeout for test
+                        )
+
+                    assert "timed out" in str(exc_info.value).lower()

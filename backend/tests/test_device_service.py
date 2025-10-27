@@ -26,6 +26,24 @@ if not os.getenv("NACHET_SCHEMA"):
     load_dotenv(".env.test.local")
 
 
+def create_mock_data_service_class(mock_data_service):
+    """
+    Create a proper mock class for data service that beartype can validate.
+
+    This is necessary because beartype expects get_data_service_class() to return
+    a class type, not a lambda function or instance.
+    """
+
+    class MockDataServiceClass:
+        def __init__(self, session):
+            self.session = session
+
+        def __getattr__(self, name):
+            return getattr(mock_data_service, name)
+
+    return MockDataServiceClass
+
+
 # ============================================================================
 # DeviceBrandService Tests
 # ============================================================================
@@ -77,8 +95,8 @@ class TestDeviceBrandServiceGetAll:
         mock_data_service = AsyncMock()
         mock_data_service.get_all = AsyncMock(return_value=([brand1, brand2], 2))
         monkeypatch.setattr(
-            "app.service.device.DeviceBrandDataService",
-            lambda session: mock_data_service,
+            "app.service.device.DeviceBrandService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
@@ -133,8 +151,8 @@ class TestDeviceBrandServiceGetById:
         mock_data_service = AsyncMock()
         mock_data_service.get_by_id = AsyncMock(return_value=brand)
         monkeypatch.setattr(
-            "app.service.device.DeviceBrandDataService",
-            lambda session: mock_data_service,
+            "app.service.device.DeviceBrandService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
@@ -174,8 +192,8 @@ class TestDeviceBrandServiceGetById:
         mock_data_service = AsyncMock()
         mock_data_service.get_by_id = AsyncMock(return_value=None)
         monkeypatch.setattr(
-            "app.service.device.DeviceBrandDataService",
-            lambda session: mock_data_service,
+            "app.service.device.DeviceBrandService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Should raise 404
@@ -225,8 +243,8 @@ class TestDeviceBrandServiceCreate:
         mock_data_service = AsyncMock()
         mock_data_service.create = AsyncMock(return_value=brand)
         monkeypatch.setattr(
-            "app.service.device.DeviceBrandDataService",
-            lambda session: mock_data_service,
+            "app.service.device.DeviceBrandService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service with kwargs
@@ -301,8 +319,8 @@ class TestDeviceBrandServiceUpdate:
         mock_data_service = AsyncMock()
         mock_data_service.update = AsyncMock(return_value=brand)
         monkeypatch.setattr(
-            "app.service.device.DeviceBrandDataService",
-            lambda session: mock_data_service,
+            "app.service.device.DeviceBrandService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service with kwargs
@@ -341,8 +359,8 @@ class TestDeviceBrandServiceUpdate:
         mock_data_service = AsyncMock()
         mock_data_service.update = AsyncMock(return_value=None)
         monkeypatch.setattr(
-            "app.service.device.DeviceBrandDataService",
-            lambda session: mock_data_service,
+            "app.service.device.DeviceBrandService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Should raise 404
@@ -384,8 +402,8 @@ class TestDeviceBrandServiceDelete:
         mock_data_service = AsyncMock()
         mock_data_service.soft_delete = AsyncMock(return_value=True)
         monkeypatch.setattr(
-            "app.service.device.DeviceBrandDataService",
-            lambda session: mock_data_service,
+            "app.service.device.DeviceBrandService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
@@ -424,8 +442,8 @@ class TestDeviceBrandServiceDelete:
         mock_data_service = AsyncMock()
         mock_data_service.soft_delete = AsyncMock(return_value=False)
         monkeypatch.setattr(
-            "app.service.device.DeviceBrandDataService",
-            lambda session: mock_data_service,
+            "app.service.device.DeviceBrandService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Should raise 404
@@ -496,8 +514,8 @@ class TestDeviceModelServiceGetAll:
         mock_data_service = AsyncMock()
         mock_data_service.get_all = AsyncMock(return_value=([model1, model2], 2))
         monkeypatch.setattr(
-            "app.service.device.DeviceModelDataService",
-            lambda session: mock_data_service,
+            "app.service.device.DeviceModelService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
@@ -560,8 +578,8 @@ class TestDeviceModelServiceGetById:
         mock_data_service = AsyncMock()
         mock_data_service.get_by_id = AsyncMock(return_value=model)
         monkeypatch.setattr(
-            "app.service.device.DeviceModelDataService",
-            lambda session: mock_data_service,
+            "app.service.device.DeviceModelService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
@@ -620,8 +638,8 @@ class TestDeviceModelServiceCreate:
         mock_data_service = AsyncMock()
         mock_data_service.create = AsyncMock(return_value=model)
         monkeypatch.setattr(
-            "app.service.device.DeviceModelDataService",
-            lambda session: mock_data_service,
+            "app.service.device.DeviceModelService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service with kwargs
@@ -689,8 +707,8 @@ class TestDeviceLensServiceGetAll:
         mock_data_service = AsyncMock()
         mock_data_service.get_all = AsyncMock(return_value=([lens1, lens2], 2))
         monkeypatch.setattr(
-            "app.service.device.DeviceLensDataService",
-            lambda session: mock_data_service,
+            "app.service.device.DeviceLensService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
@@ -746,8 +764,8 @@ class TestDeviceLensServiceCreate:
         mock_data_service = AsyncMock()
         mock_data_service.create = AsyncMock(return_value=lens)
         monkeypatch.setattr(
-            "app.service.device.DeviceLensDataService",
-            lambda session: mock_data_service,
+            "app.service.device.DeviceLensService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service with kwargs
@@ -818,8 +836,8 @@ class TestDeviceLensServiceDelete:
         mock_data_service = AsyncMock()
         mock_data_service.soft_delete = AsyncMock(return_value=True)
         monkeypatch.setattr(
-            "app.service.device.DeviceLensDataService",
-            lambda session: mock_data_service,
+            "app.service.device.DeviceLensService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service

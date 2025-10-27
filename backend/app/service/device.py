@@ -1,4 +1,4 @@
-from typing import Dict, Any, Type
+from beartype.typing import Dict, Any, Type
 from uuid import UUID
 
 from app.db.utils import sessionmanager

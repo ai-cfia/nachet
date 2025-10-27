@@ -1,6 +1,12 @@
-"""Blob storage operations as DBOS steps."""
+"""Blob storage operations as DBOS steps.
 
-from typing import Dict, Any
+IMPORTANT: DBOS decorators wrap async functions in a way that conflicts with
+beartype's automatic type checking. Use @no_type_check to exclude these functions
+from automatic beartype decoration applied by beartype_this_package().
+"""
+
+from beartype.typing import Dict, Any
+from typing import no_type_check
 from uuid import UUID
 from datetime import datetime, timezone
 
@@ -15,6 +21,10 @@ from app.exceptions import (
 )
 
 
+# @no_type_check prevents beartype_this_package() from auto-decorating this function
+# DBOS.step wraps the async function and returns a coroutine, which would fail beartype's
+# type hint validation for the declared return type
+@no_type_check
 @DBOS.step(
     retries_allowed=True, max_attempts=10, interval_seconds=5.0, backoff_rate=2.0
 )
@@ -47,7 +57,7 @@ async def upload_to_azure_blob(
     blob_name = f"{org_prefix}/{image_id}.png"
 
     try:
-        result = await storage.upload_blob(
+        _result = await storage.upload_blob(
             container=container,
             name=blob_name,
             data=file_bytes,
@@ -56,14 +66,16 @@ async def upload_to_azure_blob(
                 "date_uploaded": datetime.now(timezone.utc).isoformat(),
             },
         )
+        DBOS.logger.info(f"Blob uploaded: {_result['url']}")
 
         DBOS.logger.info(f"Uploaded to {container}/{blob_name}")
-        return result["url"]
+        return f"{blob_name}"
 
     except Exception as e:
         raise BlobUploadError(f"Failed to upload blob: {str(e)}") from e
 
 
+@no_type_check
 @DBOS.step(retries_allowed=True, max_attempts=30, interval_seconds=10.0, backoff_rate=2)
 async def wait_for_defender_scan(
     image_id: UUID,
@@ -182,6 +194,7 @@ async def wait_for_defender_scan(
     raise DefenderScanTimeoutError(f"Defender scan timed out after {timeout_sec}s")
 
 
+@no_type_check
 @DBOS.step(
     retries_allowed=True, max_attempts=10, interval_seconds=5.0, backoff_rate=2.0
 )
