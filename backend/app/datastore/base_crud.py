@@ -6,7 +6,7 @@ eliminate code duplication across service classes. All entity-specific services
 should inherit from BaseCRUDService and BaseCRUDDataService.
 """
 
-from typing import TypeVar, Generic, List, Optional, Dict, Any, Type, Protocol, cast
+from beartype.typing import TypeVar, Generic, List, Optional, Dict, Any, Type, Protocol, cast
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession

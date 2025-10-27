@@ -2,7 +2,7 @@
 Database repository layer for pipeline and model operations.
 """
 
-from typing import List, Optional, Dict, Type, TypedDict
+from beartype.typing import List, Optional, Dict, Type, TypedDict
 from sqlalchemy import select, and_
 from sqlalchemy.orm import joinedload, selectinload
 

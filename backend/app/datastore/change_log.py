@@ -2,7 +2,7 @@
 Data access layer for ChangeLog entities.
 """
 
-from typing import Sequence
+from beartype.typing import Sequence
 
 from sqlalchemy.orm import selectinload
 

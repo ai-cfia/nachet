@@ -4,7 +4,7 @@ User data service using generic BaseCRUDDataService.
 Provides data access layer for Users operations with minimal code duplication.
 """
 
-from typing import Type
+from beartype.typing import Type
 from sqlalchemy.orm import selectinload
 
 from app.db.model import Users

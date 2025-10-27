@@ -1,4 +1,4 @@
-from typing import Optional, Type, cast
+from beartype.typing import Optional, Type, cast
 from uuid import UUID
 from sqlalchemy import select
 

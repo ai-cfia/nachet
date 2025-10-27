@@ -4,7 +4,7 @@ Pending registration data service.
 Provides data access layer for temporary pending user registrations.
 """
 
-from typing import Optional
+from beartype.typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

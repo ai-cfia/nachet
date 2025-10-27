@@ -1,4 +1,4 @@
-from typing import Type
+from beartype.typing import Type
 from sqlalchemy.orm import selectinload
 
 from app.db.model import DeviceBrand, DeviceModel, DeviceLens
