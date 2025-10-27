@@ -1,6 +1,7 @@
-from fastapi import APIRouter, status, Depends, Request #, HTTPException, Header
+from fastapi import APIRouter, status, Depends, Request  # , HTTPException, Header
 from fastapi.responses import Response
-# from typing import Optional
+
+# from beartype.typing import Optional
 from uuid import UUID
 
 from app.service import (
@@ -44,7 +45,7 @@ def _get_logger():
     return _logger
 
 
-def get_client_ip(request: Request) -> str:
+def get_client_ip(request: Request) -> str | None:
     """Extract client IP address, handling reverse proxy headers."""
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
@@ -85,9 +86,10 @@ async def submit_image_for_processing(
     current_user: User = Depends(get_current_user),
 ):
     # Delegate to InferenceService (handles session, logging, business logic)
+    # user.oid is validated by get_current_user to be a valid UUID string
     return await InferenceService.submit_inference_request(
         request=req,
-        user_id=current_user.oid,
+        user_id=UUID(current_user.oid),  # type: ignore[arg-type]
     )
 
 
@@ -111,9 +113,10 @@ async def submit_image_for_simple_direct_processing(
     Returns ApiInferenceResponse with boxes and classifications.
     """
     # Delegate to InferenceService (handles session, logging, business logic)
+    # user.oid is validated by get_current_user to be a valid UUID string
     return await InferenceService.submit_direct_pipeline_inference_request_test(
         request=req,
-        user_id=current_user.oid,
+        user_id=UUID(current_user.oid),  # type: ignore[arg-type]
     )
 
 
@@ -148,9 +151,10 @@ async def get_image_processing_status(
         raise ValueError(f"Invalid image_id format: {image_id}")
 
     # Delegate to InferenceService (handles session, logging, business logic)
+    # user.oid is validated by get_current_user to be a valid UUID string
     return await InferenceService.get_inference_status(
         image_id=image_uuid,
-        user_id=current_user.oid,
+        user_id=UUID(current_user.oid),  # type: ignore[arg-type]
     )
 
 
@@ -318,8 +322,10 @@ async def get_seed_data(
 )
 @limiter.limit("10/minute")
 async def get_devices(request: Request, current_user: User = Depends(get_current_user)):
-    _get_logger().debug("get_devices endpoint called", user_id=current_user.oid)
-    devices = await DeviceService.get_all_devices(current_user.oid)
+    # user.oid is validated by get_current_user to be a valid UUID string
+    user_id = UUID(current_user.oid)  # type: ignore[arg-type]
+    _get_logger().debug("get_devices endpoint called", user_id=str(user_id))
+    devices = await DeviceService.get_all_devices(user_id)
     return devices
 
 
@@ -332,8 +338,10 @@ async def get_devices(request: Request, current_user: User = Depends(get_current
 async def get_directories(
     request: Request, current_user: User = Depends(get_current_user)
 ):
-    _get_logger().debug("get_directories endpoint called", user_id=current_user.oid)
-    directories = await DirectoryService.get_user_directories(current_user.oid)
+    # user.oid is validated by get_current_user to be a valid UUID string
+    user_id = UUID(current_user.oid)  # type: ignore[arg-type]
+    _get_logger().debug("get_directories endpoint called", user_id=str(user_id))
+    directories = await DirectoryService.get_user_directories(user_id)
     return directories
 
 
