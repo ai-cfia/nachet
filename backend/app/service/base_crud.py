@@ -59,7 +59,17 @@ Access is granted if user has ANY of the matching roles for the operation.
 """
 
 import traceback
-from typing import TypeVar, Generic, Optional, Dict, Any, Type, Protocol, cast, runtime_checkable
+from beartype.typing import (
+    TypeVar,
+    Generic,
+    Optional,
+    Dict,
+    Any,
+    Type,
+    Protocol,
+    cast,
+    runtime_checkable,
+)
 from uuid import UUID
 from sqlalchemy.orm import DeclarativeBase
 from fastapi import HTTPException, status
@@ -180,7 +190,7 @@ class BaseCRUDService(Generic[T]):
     @classmethod
     async def get_all(
         cls,
-        user_id: UUID,
+        requester_id: UUID,
         offset: int = 0,
         limit: int = 100,
         filters: Optional[Dict[str, Any]] = None,
@@ -191,7 +201,7 @@ class BaseCRUDService(Generic[T]):
         Retrieve entities with pagination, filtering, and sorting.
 
         Args:
-            user_id: UUID of the requesting user
+            requester_id: UUID of the requesting user
             offset: Number of records to skip (default: 0)
             limit: Maximum records to return (default: 100, max: 1000)
             filters: Dictionary of field_name: value pairs for filtering (optional)
@@ -220,7 +230,7 @@ class BaseCRUDService(Generic[T]):
             # Lazy import to avoid circular dependency
             from app.service.rbac import RbacService
 
-            await RbacService.get_user_organization_id(user_id)
+            await RbacService.get_user_organization_id(requester_id)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -250,15 +260,13 @@ class BaseCRUDService(Generic[T]):
         except Exception as e:
             logger = cls._get_logger()
             error_msg = f"Failed to retrieve {entity_name_plural}: {cls._sanitize_error_message(e)}"
-            logger.error(
-                error_msg,
-                user_id=str(user_id),
+            logger.bind(
+                user_id=str(requester_id),
                 offset=offset,
                 limit=limit,
-            )
-            logger.debug(
-                f"Traceback for failed retrieve {entity_name_plural}",
-                traceback=traceback.format_exc(),
+            ).error(error_msg)
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed retrieve {entity_name_plural}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -266,12 +274,12 @@ class BaseCRUDService(Generic[T]):
             )
 
     @classmethod
-    async def get_by_id(cls, user_id: UUID, entity_id: UUID) -> Dict[str, Any]:
+    async def get_by_id(cls, requester_id: UUID, entity_id: UUID) -> Dict[str, Any]:
         """
         Retrieve a single entity by ID (requires any authenticated user).
 
         Args:
-            user_id: UUID of the requesting user
+            requester_id: UUID of the requesting user
             entity_id: UUID of the entity to retrieve
 
         Returns:
@@ -289,7 +297,7 @@ class BaseCRUDService(Generic[T]):
             # Lazy import to avoid circular dependency
             from app.service.rbac import RbacService
 
-            await RbacService.get_user_organization_id(user_id)
+            await RbacService.get_user_organization_id(requester_id)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -308,23 +316,20 @@ class BaseCRUDService(Generic[T]):
         except not_found_exc as e:
             logger = cls._get_logger()
             warning_msg = f"{entity_name} not found: {cls._sanitize_error_message(e)}"
-            logger.warning(
-                warning_msg,
-                user_id=str(user_id),
+            logger.bind(
+                user_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
+            ).warning(warning_msg)
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except Exception as e:
             logger = cls._get_logger()
             error_msg = f"Failed to retrieve {entity_name_lower}: {cls._sanitize_error_message(e)}"
-            logger.error(
-                error_msg,
-                user_id=str(user_id),
+            logger.bind(
+                user_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
-            logger.debug(
-                f"Traceback for failed retrieve {entity_name_lower}",
-                traceback=traceback.format_exc(),
+            ).error(error_msg)
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed retrieve {entity_name_lower}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -332,12 +337,12 @@ class BaseCRUDService(Generic[T]):
             )
 
     @classmethod
-    async def create(cls, user_id: UUID, **kwargs) -> Dict[str, Any]:
+    async def create(cls, requester_id: UUID, **kwargs) -> Dict[str, Any]:
         """
         Create a new entity (requires CFIA admin).
 
         Args:
-            user_id: UUID of the requesting user
+            requester_id: UUID of the requesting user
             **kwargs: Entity attributes
 
         Returns:
@@ -355,7 +360,7 @@ class BaseCRUDService(Generic[T]):
             # Lazy import to avoid circular dependency
             from app.service.rbac import RbacService
 
-            await RbacService.verify_user_is_cfia_admin(user_id)
+            await RbacService.verify_user_is_cfia_admin(requester_id)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -369,11 +374,10 @@ class BaseCRUDService(Generic[T]):
                 # Type assertion: entity conforms to HasId protocol
                 # All database entities should have an id field
                 entity_with_id = cast(HasId, entity)
-                logger.info(
-                    f"{entity_name} created successfully",
-                    user_id=str(user_id),
+                logger.bind(
+                    user_id=str(requester_id),
                     entity_id=str(entity_with_id.id),
-                )
+                ).info(f"{entity_name} created successfully")
 
                 return result
 
@@ -382,13 +386,9 @@ class BaseCRUDService(Generic[T]):
         except creation_exc as e:
             logger = cls._get_logger()
             error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
-            logger.error(
-                error_msg,
-                user_id=str(user_id),
-            )
-            logger.debug(
-                f"Traceback for failed create {entity_name_lower}",
-                traceback=traceback.format_exc(),
+            logger.bind(user_id=str(requester_id)).error(error_msg)
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed create {entity_name_lower}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -396,13 +396,11 @@ class BaseCRUDService(Generic[T]):
             )
         except Exception as e:
             logger = cls._get_logger()
-            logger.error(
-                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}",
-                user_id=str(user_id),
+            logger.bind(user_id=str(requester_id)).error(
+                f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
             )
-            logger.debug(
-                f"Traceback for failed create {entity_name_lower}",
-                traceback=traceback.format_exc(),
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed create {entity_name_lower}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -410,12 +408,14 @@ class BaseCRUDService(Generic[T]):
             )
 
     @classmethod
-    async def update(cls, user_id: UUID, entity_id: UUID, **kwargs) -> Dict[str, Any]:
+    async def update(
+        cls, requester_id: UUID, entity_id: UUID, **kwargs
+    ) -> Dict[str, Any]:
         """
         Update an existing entity (requires CFIA admin).
 
         Args:
-            user_id: UUID of the requesting user
+            requester_id: UUID of the requesting user
             entity_id: UUID of the entity to update
             **kwargs: Fields to update (only non-None values)
 
@@ -436,7 +436,7 @@ class BaseCRUDService(Generic[T]):
             # Lazy import to avoid circular dependency
             from app.service.rbac import RbacService
 
-            await RbacService.verify_user_is_cfia_admin(user_id)
+            await RbacService.verify_user_is_cfia_admin(requester_id)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -450,11 +450,10 @@ class BaseCRUDService(Generic[T]):
                 await session.commit()
 
                 logger = cls._get_logger()
-                logger.info(
-                    f"{entity_name} updated successfully",
-                    user_id=str(user_id),
+                logger.bind(
+                    user_id=str(requester_id),
                     entity_id=str(entity_id),
-                )
+                ).info(f"{entity_name} updated successfully")
 
                 return result
 
@@ -465,23 +464,20 @@ class BaseCRUDService(Generic[T]):
             warning_msg = (
                 f"{entity_name} not found for update: {cls._sanitize_error_message(e)}"
             )
-            logger.warning(
-                warning_msg,
-                user_id=str(user_id),
+            logger.bind(
+                user_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
+            ).warning(warning_msg)
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except update_exc as e:
             logger = cls._get_logger()
             error_msg = f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}"
-            logger.error(
-                error_msg,
-                user_id=str(user_id),
+            logger.bind(
+                user_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
-            logger.debug(
-                f"Traceback for failed update {entity_name_lower}",
-                traceback=traceback.format_exc(),
+            ).error(error_msg)
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed update {entity_name_lower}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -490,14 +486,12 @@ class BaseCRUDService(Generic[T]):
         except Exception as e:
             logger = cls._get_logger()
             error_msg = f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}"
-            logger.error(
-                error_msg,
-                user_id=str(user_id),
+            logger.bind(
+                user_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
-            logger.debug(
-                f"Traceback for failed update {entity_name_lower}",
-                traceback=traceback.format_exc(),
+            ).error(error_msg)
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed update {entity_name_lower}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -505,12 +499,12 @@ class BaseCRUDService(Generic[T]):
             )
 
     @classmethod
-    async def delete(cls, user_id: UUID, entity_id: UUID) -> Dict[str, str]:
+    async def delete(cls, requester_id: UUID, entity_id: UUID) -> Dict[str, str]:
         """
         Soft delete an entity (requires CFIA admin).
 
         Args:
-            user_id: UUID of the requesting user
+            requester_id: UUID of the requesting user
             entity_id: UUID of the entity to delete
 
         Returns:
@@ -530,7 +524,7 @@ class BaseCRUDService(Generic[T]):
             # Lazy import to avoid circular dependency
             from app.service.rbac import RbacService
 
-            await RbacService.verify_user_is_cfia_admin(user_id)
+            await RbacService.verify_user_is_cfia_admin(requester_id)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -543,11 +537,10 @@ class BaseCRUDService(Generic[T]):
                 await session.commit()
 
                 logger = cls._get_logger()
-                logger.info(
-                    f"{entity_name} soft deleted successfully",
-                    user_id=str(user_id),
+                logger.bind(
+                    user_id=str(requester_id),
                     entity_id=str(entity_id),
-                )
+                ).info(f"{entity_name} soft deleted successfully")
 
                 return {
                     "message": f"{entity_name} soft deleted successfully",
@@ -559,23 +552,20 @@ class BaseCRUDService(Generic[T]):
         except not_found_exc as e:
             logger = cls._get_logger()
             warning_msg = f"{entity_name} not found for deletion: {cls._sanitize_error_message(e)}"
-            logger.warning(
-                warning_msg,
-                user_id=str(user_id),
+            logger.bind(
+                user_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
+            ).warning(warning_msg)
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except deletion_exc as e:
             logger = cls._get_logger()
             error_msg = f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}"
-            logger.error(
-                error_msg,
-                user_id=str(user_id),
+            logger.bind(
+                user_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
-            logger.debug(
-                f"Traceback for failed delete {entity_name_lower}",
-                traceback=traceback.format_exc(),
+            ).error(error_msg)
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed delete {entity_name_lower}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -584,14 +574,12 @@ class BaseCRUDService(Generic[T]):
         except Exception as e:
             logger = cls._get_logger()
             error_msg = f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}"
-            logger.error(
-                error_msg,
-                user_id=str(user_id),
+            logger.bind(
+                user_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
-            logger.debug(
-                f"Traceback for failed delete {entity_name_lower}",
-                traceback=traceback.format_exc(),
+            ).error(error_msg)
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed delete {entity_name_lower}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -614,12 +602,12 @@ class AuthorizationMixin(ABC, Generic[T]):
 
     @classmethod
     @abstractmethod
-    async def verify_retrieve_access(cls, user_id: UUID, entity: T) -> None:
+    async def verify_retrieve_access(cls, requester_id: UUID, entity: T) -> None:
         """
         Verify user can retrieve/view the entity.
 
         Args:
-            user_id: UUID of the requesting user
+            requester_id: UUID of the requesting user
             entity: The entity being accessed
 
         Raises:
@@ -629,12 +617,12 @@ class AuthorizationMixin(ABC, Generic[T]):
 
     @classmethod
     @abstractmethod
-    async def verify_update_access(cls, user_id: UUID, entity: T) -> None:
+    async def verify_update_access(cls, requester_id: UUID, entity: T) -> None:
         """
         Verify user can update the entity.
 
         Args:
-            user_id: UUID of the requesting user
+            requester_id: UUID of the requesting user
             entity: The entity being updated
 
         Raises:
@@ -644,12 +632,12 @@ class AuthorizationMixin(ABC, Generic[T]):
 
     @classmethod
     @abstractmethod
-    async def verify_delete_access(cls, user_id: UUID, entity: T) -> None:
+    async def verify_delete_access(cls, requester_id: UUID, entity: T) -> None:
         """
         Verify user can delete the entity.
 
         Args:
-            user_id: UUID of the requesting user
+            requester_id: UUID of the requesting user
             entity: The entity being deleted
 
         Raises:
@@ -659,14 +647,14 @@ class AuthorizationMixin(ABC, Generic[T]):
 
     @classmethod
     @abstractmethod
-    async def verify_create_access(cls, user_id: UUID, **kwargs) -> None:
+    async def verify_create_access(cls, requester_id: UUID, **kwargs) -> None:
         """
         Verify user can create entities.
 
         Must be implemented by subclasses as creation rules vary by entity type.
 
         Args:
-            user_id: UUID of the requesting user
+            requester_id: UUID of the requesting user
             **kwargs: Entity creation parameters
 
         Raises:
@@ -696,7 +684,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
     """
 
     @classmethod
-    async def verify_retrieve_access(cls, user_id: UUID, entity: T) -> None:
+    async def verify_retrieve_access(cls, requester_id: UUID, entity: T) -> None:
         """
         Verify user can retrieve/view the entity.
 
@@ -713,7 +701,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
 
         # Check access using RbacService utility
         has_access = await RbacService.verify_user_has_entity_access(
-            user_id, org_user_role_id, org_admin_role_id
+            requester_id, org_user_role_id, org_admin_role_id
         )
 
         if not has_access:
@@ -724,7 +712,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             )
 
     @classmethod
-    async def verify_update_access(cls, user_id: UUID, entity: T) -> None:
+    async def verify_update_access(cls, requester_id: UUID, entity: T) -> None:
         """
         Verify user can update the entity.
 
@@ -741,7 +729,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
 
         # Check access using RbacService utility
         has_access = await RbacService.verify_user_has_entity_access(
-            user_id, org_user_role_id, org_admin_role_id
+            requester_id, org_user_role_id, org_admin_role_id
         )
 
         if not has_access:
@@ -752,7 +740,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             )
 
     @classmethod
-    async def verify_delete_access(cls, user_id: UUID, entity: T) -> None:
+    async def verify_delete_access(cls, requester_id: UUID, entity: T) -> None:
         """
         Verify user can delete the entity.
 
@@ -769,7 +757,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
 
         # Check admin access using RbacService utility
         has_admin_access = await RbacService.verify_user_has_entity_admin_access(
-            user_id, org_admin_role_id
+            requester_id, org_admin_role_id
         )
 
         if not has_admin_access:
@@ -780,7 +768,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             )
 
     @classmethod
-    async def verify_create_access(cls, user_id: UUID, **kwargs) -> None:
+    async def verify_create_access(cls, requester_id: UUID, **kwargs) -> None:
         """
         Verify user can create entities.
 
@@ -800,7 +788,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
     # Override CRUD methods to include authorization checks
 
     @classmethod
-    async def get_by_id(cls, user_id: UUID, entity_id: UUID) -> Dict[str, Any]:
+    async def get_by_id(cls, requester_id: UUID, entity_id: UUID) -> Dict[str, Any]:
         """
         Retrieve a single entity by ID with authorization check.
 
@@ -814,7 +802,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             # Basic authentication check
             from app.service.rbac import RbacService
 
-            await RbacService.get_user_organization_id(user_id)
+            await RbacService.get_user_organization_id(requester_id)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -825,7 +813,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
                     raise not_found_exc(f"{entity_name} {entity_id} not found")
 
                 # Authorization check
-                await cls.verify_retrieve_access(user_id, entity)
+                await cls.verify_retrieve_access(requester_id, entity)
 
                 result = cls.serialize_entity(entity)
                 await session.commit()
@@ -836,23 +824,20 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
         except not_found_exc as e:
             logger = cls._get_logger()
             warning_msg = f"{entity_name} not found: {cls._sanitize_error_message(e)}"
-            logger.warning(
-                warning_msg,
-                user_id=str(user_id),
+            logger.bind(
+                requester_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
+            ).warning(warning_msg)
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except Exception as e:
             logger = cls._get_logger()
             error_msg = f"Failed to retrieve {entity_name_lower}: {cls._sanitize_error_message(e)}"
-            logger.error(
-                error_msg,
-                user_id=str(user_id),
+            logger.bind(
+                requester_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
-            logger.debug(
-                f"Traceback for failed retrieve {entity_name_lower}",
-                traceback=traceback.format_exc(),
+            ).error(error_msg)
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed retrieve {entity_name_lower}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -860,7 +845,9 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             )
 
     @classmethod
-    async def update(cls, user_id: UUID, entity_id: UUID, **kwargs) -> Dict[str, Any]:
+    async def update(
+        cls, requester_id: UUID, entity_id: UUID, **kwargs
+    ) -> Dict[str, Any]:
         """
         Update an existing entity with authorization check.
 
@@ -875,7 +862,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             # Basic authentication check
             from app.service.rbac import RbacService
 
-            await RbacService.get_user_organization_id(user_id)
+            await RbacService.get_user_organization_id(requester_id)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -887,7 +874,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
                     raise not_found_exc(f"{entity_name} {entity_id} not found")
 
                 # Authorization check
-                await cls.verify_update_access(user_id, entity)
+                await cls.verify_update_access(requester_id, entity)
 
                 # Perform update
                 updated_entity = await data_service.update(entity_id, **kwargs)
@@ -898,11 +885,10 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
                 await session.commit()
 
                 logger = cls._get_logger()
-                logger.info(
-                    f"{entity_name} updated successfully",
-                    user_id=str(user_id),
+                logger.bind(
+                    requester_id=str(requester_id),
                     entity_id=str(entity_id),
-                )
+                ).info(f"{entity_name} updated successfully")
 
                 return result
 
@@ -913,23 +899,20 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             warning_msg = (
                 f"{entity_name} not found for update: {cls._sanitize_error_message(e)}"
             )
-            logger.warning(
-                warning_msg,
-                user_id=str(user_id),
+            logger.bind(
+                requester_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
+            ).warning(warning_msg)
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except update_exc as e:
             logger = cls._get_logger()
             error_msg = f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}"
-            logger.error(
-                error_msg,
-                user_id=str(user_id),
+            logger.bind(
+                requester_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
-            logger.debug(
-                f"Traceback for failed update {entity_name_lower}",
-                traceback=traceback.format_exc(),
+            ).error(error_msg)
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed update {entity_name_lower}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -938,14 +921,12 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
         except Exception as e:
             logger = cls._get_logger()
             error_msg = f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}"
-            logger.error(
-                error_msg,
-                user_id=str(user_id),
+            logger.bind(
+                requester_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
-            logger.debug(
-                f"Traceback for failed update {entity_name_lower}",
-                traceback=traceback.format_exc(),
+            ).error(error_msg)
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed update {entity_name_lower}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -953,7 +934,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             )
 
     @classmethod
-    async def delete(cls, user_id: UUID, entity_id: UUID) -> Dict[str, str]:
+    async def delete(cls, requester_id: UUID, entity_id: UUID) -> Dict[str, str]:
         """
         Soft delete an entity with authorization check.
 
@@ -968,7 +949,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             # Basic authentication check
             from app.service.rbac import RbacService
 
-            await RbacService.get_user_organization_id(user_id)
+            await RbacService.get_user_organization_id(requester_id)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -980,7 +961,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
                     raise not_found_exc(f"{entity_name} {entity_id} not found")
 
                 # Authorization check
-                await cls.verify_delete_access(user_id, entity)
+                await cls.verify_delete_access(requester_id, entity)
 
                 # Perform soft delete
                 deleted_entity = await data_service.soft_delete(entity_id)
@@ -990,11 +971,10 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
                 await session.commit()
 
                 logger = cls._get_logger()
-                logger.info(
-                    f"{entity_name} soft deleted successfully",
-                    user_id=str(user_id),
+                logger.bind(
+                    requester_id=str(requester_id),
                     entity_id=str(entity_id),
-                )
+                ).info(f"{entity_name} soft deleted successfully")
 
                 return {
                     "message": f"{entity_name} soft deleted successfully",
@@ -1006,23 +986,20 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
         except not_found_exc as e:
             logger = cls._get_logger()
             warning_msg = f"{entity_name} not found for deletion: {cls._sanitize_error_message(e)}"
-            logger.warning(
-                warning_msg,
-                user_id=str(user_id),
+            logger.bind(
+                requester_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
+            ).warning(warning_msg)
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except deletion_exc as e:
             logger = cls._get_logger()
             error_msg = f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}"
-            logger.error(
-                error_msg,
-                user_id=str(user_id),
+            logger.bind(
+                requester_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
-            logger.debug(
-                f"Traceback for failed delete {entity_name_lower}",
-                traceback=traceback.format_exc(),
+            ).error(error_msg)
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed delete {entity_name_lower}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1031,14 +1008,12 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
         except Exception as e:
             logger = cls._get_logger()
             error_msg = f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}"
-            logger.error(
-                error_msg,
-                user_id=str(user_id),
+            logger.bind(
+                requester_id=str(requester_id),
                 entity_id=str(entity_id),
-            )
-            logger.debug(
-                f"Traceback for failed delete {entity_name_lower}",
-                traceback=traceback.format_exc(),
+            ).error(error_msg)
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed delete {entity_name_lower}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1046,7 +1021,7 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             )
 
     @classmethod
-    async def create(cls, user_id: UUID, **kwargs) -> Dict[str, Any]:
+    async def create(cls, requester_id: UUID, **kwargs) -> Dict[str, Any]:
         """
         Create a new entity with authorization check.
 
@@ -1061,10 +1036,10 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
             # Basic authentication check
             from app.service.rbac import RbacService
 
-            await RbacService.get_user_organization_id(user_id)
+            await RbacService.get_user_organization_id(requester_id)
 
             # Authorization check (must be implemented by subclass)
-            await cls.verify_create_access(user_id, **kwargs)
+            await cls.verify_create_access(requester_id, **kwargs)
 
             async with sessionmanager.get_session() as session:
                 data_service_class = cls.get_data_service_class()
@@ -1078,11 +1053,10 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
                 # Type assertion: entity conforms to HasId protocol
                 # All database entities should have an id field
                 entity_with_id = cast(HasId, entity)
-                logger.info(
-                    f"{entity_name} created successfully",
-                    user_id=str(user_id),
+                logger.bind(
+                    requester_id=str(requester_id),
                     entity_id=str(entity_with_id.id),
-                )
+                ).info(f"{entity_name} created successfully")
 
                 return result
 
@@ -1091,13 +1065,9 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
         except creation_exc as e:
             logger = cls._get_logger()
             error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
-            logger.error(
-                error_msg,
-                user_id=str(user_id),
-            )
-            logger.debug(
-                f"Traceback for failed create {entity_name_lower}",
-                traceback=traceback.format_exc(),
+            logger.bind(requester_id=str(requester_id)).error(error_msg)
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed create {entity_name_lower}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1106,13 +1076,9 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
         except Exception as e:
             logger = cls._get_logger()
             error_msg = f"Failed to create {entity_name_lower}: {cls._sanitize_error_message(e)}"
-            logger.error(
-                error_msg,
-                user_id=str(user_id),
-            )
-            logger.debug(
-                f"Traceback for failed create {entity_name_lower}",
-                traceback=traceback.format_exc(),
+            logger.bind(requester_id=str(requester_id)).error(error_msg)
+            logger.bind(traceback=traceback.format_exc()).debug(
+                f"Traceback for failed create {entity_name_lower}"
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
