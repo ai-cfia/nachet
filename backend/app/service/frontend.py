@@ -4,7 +4,7 @@ Frontend service module for serving SPA static files from Azure Blob Storage.
 
 import re
 import mimetypes
-from typing import Dict, Optional, Tuple
+from beartype.typing import Any, Dict, Optional, Tuple
 from fastapi import HTTPException, status
 from fastapi.responses import Response
 from app.blob.manager import blob_storage_manager
@@ -259,7 +259,7 @@ class FrontendService:
         return html.encode("utf-8")
 
     @classmethod
-    def get_cache_stats(cls) -> Dict[str, any]:
+    def get_cache_stats(cls) -> Dict[str, Any]:
         """
         Get cache statistics for monitoring.
 

@@ -9,7 +9,7 @@ These tests verify the complete integration of AnnotationService with:
 """
 
 import pytest
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 from app.service.annotation import AnnotationService
 from app.service.image import ImageService
@@ -56,7 +56,7 @@ class TestAnnotationServiceIntegrationBasic:
 
         # Create test picture using ImageService
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -72,8 +72,7 @@ class TestAnnotationServiceIntegrationBasic:
         # Create annotation
         raw_data = {"inference": "test_inference", "confidence": 0.95}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,  # Use _user_id parameter
-            user_id=test_admin_user,  # And user_id in kwargs
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -89,7 +88,9 @@ class TestAnnotationServiceIntegrationBasic:
         assert annotation["org_admin_role_id"] == str(test_org_admin_role)
 
         # Retrieve annotation by ID
-        retrieved = await AnnotationService.get_by_id(test_admin_user, annotation["id"])
+        retrieved = await AnnotationService.get_by_id(
+            test_admin_user, UUID(annotation["id"])
+        )
 
         # Verify retrieved annotation
         assert retrieved is not None
@@ -114,7 +115,6 @@ class TestAnnotationServiceIntegrationBasic:
         with pytest.raises(Exception):
             await AnnotationService.create(
                 invalid_user_id,
-                user_id=invalid_user_id,
                 org_admin_role_id=test_org_admin_role,
                 org_user_role_id=test_org_user_role,
                 picture_id=str(uuid4()),
@@ -128,7 +128,7 @@ class TestAnnotationServiceIntegrationBasic:
         test_admin_user,  # UUID
     ):
         """Test that non-existent annotations raise appropriate HTTP errors."""
-        nonexistent_id = str(uuid4())
+        nonexistent_id = uuid4()
 
         # Service layer converts AnnotationNotFoundError to HTTPException
         with pytest.raises(HTTPException) as exc_info:
@@ -184,7 +184,7 @@ class TestAnnotationServiceIntegrationUpdate:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -200,8 +200,7 @@ class TestAnnotationServiceIntegrationUpdate:
         # Create annotation
         original_data = {"inference": "original", "confidence": 0.7}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -212,7 +211,7 @@ class TestAnnotationServiceIntegrationUpdate:
         # Update annotation with new raw_data
         updated_data = {"inference": "updated", "confidence": 0.95}
         result = await AnnotationService.update(
-            test_admin_user, annotation["id"], raw_data=updated_data
+            test_admin_user, UUID(annotation["id"]), raw_data=updated_data
         )
 
         # Verify update
@@ -261,7 +260,7 @@ class TestAnnotationServiceIntegrationUpdate:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -281,8 +280,7 @@ class TestAnnotationServiceIntegrationUpdate:
             "boxes": [{"x": 10, "y": 10, "w": 50, "h": 50}],
         }
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -297,7 +295,7 @@ class TestAnnotationServiceIntegrationUpdate:
             "boxes": [{"x": 20, "y": 20, "w": 60, "h": 60}],
         }
         result = await AnnotationService.update(
-            test_admin_user, annotation["id"], raw_data=new_data
+            test_admin_user, UUID(annotation["id"]), raw_data=new_data
         )
 
         # Verify only raw_data changed
@@ -349,7 +347,7 @@ class TestAnnotationServiceIntegrationDelete:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -365,8 +363,7 @@ class TestAnnotationServiceIntegrationDelete:
         # Create annotation
         raw_data = {"inference": "test", "confidence": 0.95}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -374,7 +371,7 @@ class TestAnnotationServiceIntegrationDelete:
             raw_data=raw_data,
         )
 
-        annotation_id = annotation["id"]
+        annotation_id = UUID(annotation["id"])
 
         # Delete annotation
         result = await AnnotationService.delete(test_admin_user, annotation_id)
@@ -383,12 +380,17 @@ class TestAnnotationServiceIntegrationDelete:
         assert result is not None
         assert "message" in result
         assert "id" in result
-        assert result["id"] == annotation_id
+        assert result["id"] == str(annotation_id)
 
         # Verify annotation is soft deleted (active=False)
         # get_by_id filters by active=True, so should return 404
         with pytest.raises(HTTPException) as exc_info:
-            await AnnotationService.get_by_id(test_admin_user, annotation_id)
+            await AnnotationService.get_by_id(
+                test_admin_user,
+                UUID(annotation_id)
+                if isinstance(annotation_id, str)
+                else annotation_id,
+            )
         assert exc_info.value.status_code == 404
 
         # Cleanup (only picture and folder since annotation is deleted)
@@ -431,7 +433,7 @@ class TestAnnotationServiceIntegrationDelete:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -447,8 +449,7 @@ class TestAnnotationServiceIntegrationDelete:
         # Create annotation as admin user
         raw_data = {"inference": "test", "confidence": 0.95}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -456,7 +457,7 @@ class TestAnnotationServiceIntegrationDelete:
             raw_data=raw_data,
         )
 
-        annotation_id = annotation["id"]
+        annotation_id = UUID(annotation["id"])
 
         # Try to delete as regular user (non-admin)
         with pytest.raises(HTTPException) as exc_info:
@@ -507,7 +508,7 @@ class TestAnnotationServiceIntegrationGetAll:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -528,8 +529,7 @@ class TestAnnotationServiceIntegrationGetAll:
                 "confidence": 0.8 + (i * 0.05),
             }
             annotation = await AnnotationService.create(
-                _user_id=test_admin_user,
-                user_id=test_admin_user,
+                test_admin_user,
                 org_admin_role_id=test_org_admin_role,
                 org_user_role_id=test_org_user_role,
                 picture_id=picture["id"],
@@ -593,7 +593,7 @@ class TestAnnotationServiceIntegrationGetAll:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -611,8 +611,7 @@ class TestAnnotationServiceIntegrationGetAll:
         for i in range(5):
             raw_data = {"inference": f"test_{i}", "confidence": 0.8}
             annotation = await AnnotationService.create(
-                _user_id=test_admin_user,
-                user_id=test_admin_user,
+                test_admin_user,
                 org_admin_role_id=test_org_admin_role,
                 org_user_role_id=test_org_user_role,
                 picture_id=picture["id"],
@@ -673,7 +672,7 @@ class TestAnnotationServiceIntegrationRetrieve:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -689,8 +688,7 @@ class TestAnnotationServiceIntegrationRetrieve:
         # Create annotation as admin user
         raw_data = {"inference": "test", "confidence": 0.95}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -699,7 +697,9 @@ class TestAnnotationServiceIntegrationRetrieve:
         )
 
         # Retrieve as same organization user (should succeed)
-        result = await AnnotationService.get_by_id(test_admin_user, annotation["id"])
+        result = await AnnotationService.get_by_id(
+            test_admin_user, UUID(annotation["id"])
+        )
 
         # Verify result
         assert result is not None
@@ -747,7 +747,7 @@ class TestAnnotationServiceIntegrationRetrieve:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -763,8 +763,7 @@ class TestAnnotationServiceIntegrationRetrieve:
         # Create annotation
         raw_data = {"inference": "test", "confidence": 0.95}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -773,7 +772,9 @@ class TestAnnotationServiceIntegrationRetrieve:
         )
 
         # Retrieve annotation
-        result = await AnnotationService.get_by_id(test_admin_user, annotation["id"])
+        result = await AnnotationService.get_by_id(
+            test_admin_user, UUID(annotation["id"])
+        )
 
         # Verify all relationship data is present
         assert "user_email" in result

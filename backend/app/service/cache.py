@@ -5,7 +5,7 @@ Simple in-memory cache for application data to avoid repeated database queries.
 Provides three core operations: store, retrieve, and update data structures.
 """
 
-from typing import Dict, Any, Optional
+from beartype.typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 
 

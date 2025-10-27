@@ -1,4 +1,4 @@
-from typing import Dict, Any, Type
+from beartype.typing import Dict, Any, Type
 from uuid import UUID
 from loguru import logger
 
@@ -82,7 +82,7 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         return DirectoryDeletionError
 
     @classmethod
-    async def verify_create_access(cls, _user_id: UUID, **kwargs) -> None:
+    async def verify_create_access(cls, requester_id: UUID, **kwargs) -> None:
         """
         Verify user can create directories.
 
@@ -93,16 +93,16 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         for other operations.
 
         Args:
-            user_id: UUID of the requesting user
+            requester_id: UUID of the requesting user
             **kwargs: Directory creation parameters
 
         Raises:
             HTTPException: 403 if user is not CFIA admin
         """
-        await RbacService.verify_user_is_cfia_admin(_user_id)
+        await RbacService.verify_user_is_cfia_admin(requester_id)
 
     @classmethod
-    async def create(cls, user_id: UUID, **kwargs) -> Dict[str, Any]:
+    async def create(cls, requester_id: UUID, **kwargs) -> Dict[str, Any]:
         """
         Override create to handle folder-specific parameters.
 
@@ -110,14 +110,14 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         positional argument and forwards ``**kwargs`` directly to the data
         service. Folder creation sometimes needs to pass a different
         ``folder_user_id`` to indicate ownership of the folder while still using
-        the authenticated ``user_id`` for RBAC.
+        the authenticated ``requester_id`` for RBAC.
 
         This override keeps backward compatibility with existing call sites that
         pass ``user_id=`` while also supporting an optional ``folder_user_id``
         keyword which will be mapped to the model's ``user_id`` column.
 
         Args:
-            user_id: UUID of the requesting user (for RBAC checks)
+            requester_id: UUID of the requesting user (for RBAC checks)
             **kwargs: Folder fields, optionally including ``folder_user_id``
 
         Returns:
@@ -131,10 +131,10 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         if folder_user_id is not None:
             kwargs.setdefault("user_id", folder_user_id)
         elif "user_id" not in kwargs:
-            kwargs["user_id"] = user_id
+            kwargs["user_id"] = requester_id
 
         # Call parent create method with the authenticated user context.
-        return await super().create(user_id, **kwargs)
+        return await super().create(requester_id, **kwargs)
 
     # Custom methods for directory-specific operations
 
@@ -259,11 +259,7 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
 
             logger.info(f"Retrieved {len(directories)} directories for user {user_id}")
 
-            return {
-                "directories": [directory._asdict() for directory in directories]
-                if directories
-                else []
-            }
+            return {"directories": directories if directories else []}
         except HTTPException:
             raise
         except Exception as e:
@@ -293,6 +289,10 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         try:
             # Verify user authentication and get their organization
             user_org_id = await RbacService.get_user_organization_id(user_id)
+            if user_org_id is None:
+                raise DirectoryNotFoundError(
+                    f"User {user_id} is not associated with an organization"
+                )
 
             # Get the organization's user role ID
             org_user_role_id = await RbacService.get_org_user_role_id(user_org_id)
@@ -306,11 +306,7 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
                 f"Retrieved {len(directories)} directories for organization (org_id: {user_org_id})"
             )
 
-            return {
-                "directories": [directory._asdict() for directory in directories]
-                if directories
-                else []
-            }
+            return {"directories": directories if directories else []}
         except HTTPException:
             raise
         except Exception as e:

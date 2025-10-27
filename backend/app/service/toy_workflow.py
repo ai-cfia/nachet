@@ -6,12 +6,18 @@ It demonstrates:
 - A simple workflow with 2 steps
 - Durable sleep between steps
 - Event publishing for progress tracking
+
+IMPORTANT: DBOS decorators wrap async functions in a way that conflicts with
+beartype's automatic type checking. Use @no_type_check to exclude these functions
+from automatic beartype decoration applied by beartype_this_package().
 """
 
-from typing import Dict, Any
+from beartype.typing import Dict, Any
+from typing import no_type_check
 from dbos import DBOS
 
 
+@no_type_check
 @DBOS.step(retries_allowed=True, max_attempts=3)
 async def step_one(name: str) -> str:
     """
@@ -28,6 +34,7 @@ async def step_one(name: str) -> str:
     return greeting
 
 
+@no_type_check
 @DBOS.step(retries_allowed=True, max_attempts=3)
 async def step_two(greeting: str) -> str:
     """
@@ -44,6 +51,7 @@ async def step_two(greeting: str) -> str:
     return result
 
 
+@no_type_check
 @DBOS.workflow(max_recovery_attempts=5)
 async def toy_workflow(name: str) -> Dict[str, Any]:
     """

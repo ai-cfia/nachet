@@ -4,7 +4,7 @@ Annotation service using generic BaseCRUDService.
 Provides service layer for Annotation operations with RBAC, logging, and error handling.
 """
 
-from typing import Dict, Any, Type
+from beartype.typing import Dict, Any, Type
 from uuid import UUID
 
 from app.service.base_crud import AuthorizedBaseCRUDService
@@ -90,7 +90,7 @@ class AnnotationService(AuthorizedBaseCRUDService[Annotation]):
         return AnnotationDeletionError
 
     @classmethod
-    async def verify_create_access(cls, _user_id: UUID, **kwargs) -> None:
+    async def verify_create_access(cls, requester_id: UUID, **kwargs) -> None:
         """
         Verify user can create annotations.
 
@@ -101,8 +101,8 @@ class AnnotationService(AuthorizedBaseCRUDService[Annotation]):
         annotation data for ML inference results.
 
         Args:
-            _user_id: UUID of the requesting user
-            **kwargs: Additional parameters (not used for annotations)
+            requester_id: UUID of the requesting user
+            **kwargs: Additional parameters
 
         Raises:
             HTTPException: 403 if user is not authenticated or not associated with an organization
@@ -110,4 +110,32 @@ class AnnotationService(AuthorizedBaseCRUDService[Annotation]):
         from app.service.rbac import RbacService
 
         # Verify user is authenticated and associated with an organization
-        await RbacService.get_user_organization_id(_user_id)
+        await RbacService.get_user_organization_id(requester_id)
+
+    @classmethod
+    async def create(
+        cls,
+        requester_id: UUID,
+        **kwargs,
+    ):
+        """
+        Create a new annotation with user_id automatically set.
+
+        This override ensures the user_id is always set to the requester_id
+        before creating the annotation, as per the Annotation model requirements.
+
+        Args:
+            requester_id: UUID of the user creating the annotation
+            **kwargs: Additional annotation fields (picture_id, pipeline_id, raw_data, etc.)
+
+        Returns:
+            Dictionary representation of the created annotation
+
+        Raises:
+            HTTPException: If creation fails or user lacks permission
+        """
+        # Ensure user_id is set to requester_id for Annotation model
+        kwargs["user_id"] = requester_id
+
+        # Call parent create method
+        return await super().create(requester_id, **kwargs)
