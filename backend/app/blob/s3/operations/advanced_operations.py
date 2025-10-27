@@ -5,7 +5,7 @@ This module handles advanced blob operations including copy and move operations
 with transaction safety and rollback capabilities using boto3.
 """
 
-from typing import Dict, Any, TYPE_CHECKING
+from beartype.typing import Dict, Any
 from botocore.exceptions import ClientError
 
 from ..utils.error_handling import ErrorHandler
@@ -15,9 +15,6 @@ from ...exceptions import (
     ContainerNotFoundError,
     BlobNotFoundError,
 )
-
-if TYPE_CHECKING:
-    from mypy_boto3_s3.client import S3Client
 
 # Module-level logger
 _logger = None
@@ -36,7 +33,7 @@ def _get_logger():
 class AdvancedOperations:
     """Handles advanced operations for S3-compatible storage."""
 
-    def __init__(self, s3_client: "S3Client"):
+    def __init__(self, s3_client: Any):  # Type: S3Client (boto3)
         """
         Initialize advanced operations with S3 client.
 
@@ -96,7 +93,10 @@ class AdvancedOperations:
         )
 
         # Perform copy operation
-        copy_source = {"Bucket": source_container, "Key": source_name}
+        copy_source: "CopySourceTypeDef" = {
+            "Bucket": source_container,
+            "Key": source_name,
+        }
         response = self._client.copy_object(
             CopySource=copy_source,
             Bucket=dest_container,

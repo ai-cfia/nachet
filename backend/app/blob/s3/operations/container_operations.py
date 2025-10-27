@@ -5,7 +5,7 @@ This module handles container (bucket) management operations including creation,
 deletion, listing, and property retrieval using boto3.
 """
 
-from typing import Dict, Any, TYPE_CHECKING
+from beartype.typing import Dict, Any
 from botocore.exceptions import ClientError
 from datetime import datetime
 
@@ -16,9 +16,6 @@ from ...exceptions import (
     BlobStorageError,
     ContainerNotFoundError,
 )
-
-if TYPE_CHECKING:
-    from mypy_boto3_s3.client import S3Client
 
 # Lazy-loaded logger to avoid circular imports
 _logger = None
@@ -37,7 +34,7 @@ def _get_logger():
 class ContainerOperations:
     """Handles container (bucket) specific operations for S3-compatible storage."""
 
-    def __init__(self, s3_client: "S3Client"):
+    def __init__(self, s3_client: Any):  # Type: S3Client (boto3)
         """
         Initialize container operations with S3 client.
 
@@ -63,9 +60,9 @@ class ContainerOperations:
         """
         options = kwargs.get("options")
         if isinstance(options, dict):
-            options = ListOptions(**options)
+            options = ListOptions(**options)  # type: ignore[arg-type]
         elif options is None:
-            options = ListOptions()
+            options = ListOptions()  # type: ignore[call-arg]
 
         containers = []
         continuation_token = None
@@ -76,7 +73,9 @@ class ContainerOperations:
 
         count = 0
         for bucket in response.get("Buckets", []):
-            bucket_name = bucket["Name"]
+            bucket_name = bucket.get("Name")
+            if not bucket_name:
+                continue  # Skip buckets without Name
 
             # Apply prefix filter if specified
             if options.prefix and not bucket_name.startswith(options.prefix):
@@ -191,9 +190,12 @@ class ContainerOperations:
             if error_code == "IllegalLocationConstraintException":
                 region = self._client.meta.region_name
                 if region and region != "us-east-1":
+                    bucket_config: "CreateBucketConfigurationTypeDef" = {
+                        "LocationConstraint": region  # type: ignore[typeddict-item]
+                    }
                     self._client.create_bucket(
                         Bucket=name,
-                        CreateBucketConfiguration={"LocationConstraint": region},
+                        CreateBucketConfiguration=bucket_config,
                     )
                 else:
                     raise
@@ -203,11 +205,12 @@ class ContainerOperations:
         # Set tags if metadata provided (S3 uses tags as metadata)
         metadata = kwargs.get("metadata", {})
         if metadata:
-            tag_set = [{"Key": k, "Value": v} for k, v in metadata.items()]
+            tag_set: list["TagTypeDef"] = [
+                {"Key": k, "Value": v} for k, v in metadata.items()
+            ]
+            tagging: "TaggingTypeDef" = {"TagSet": tag_set}
             try:
-                self._client.put_bucket_tagging(
-                    Bucket=name, Tagging={"TagSet": tag_set}
-                )
+                self._client.put_bucket_tagging(Bucket=name, Tagging=tagging)
             except ClientError as e:
                 error_code = e.response.get("Error", {}).get("Code", "Unknown")
                 # Some S3 implementations (like Garage) don't support tagging

@@ -5,15 +5,12 @@ This module handles blob metadata and tags operations including setting
 and retrieving custom metadata and object tags using boto3.
 """
 
-from typing import Dict, TYPE_CHECKING
+from beartype.typing import Dict, Any
 
 from botocore.exceptions import ClientError
 
 from ..utils.error_handling import ErrorHandler
 from ..utils.validation import ValidationHelper
-
-if TYPE_CHECKING:
-    from mypy_boto3_s3.client import S3Client
 
 # Lazy-loaded logger to avoid circular imports
 _logger = None
@@ -32,7 +29,7 @@ def _get_logger():
 class MetadataOperations:
     """Handles metadata and tags operations for S3-compatible storage."""
 
-    def __init__(self, s3_client: "S3Client"):
+    def __init__(self, s3_client: Any):  # Type: S3Client (boto3)
         """
         Initialize metadata operations with S3 client.
 
@@ -184,11 +181,12 @@ class MetadataOperations:
         # Set object tags
         _get_logger().info("Setting blob tags", container=container, blob=name)
 
-        tag_set = [{"Key": k, "Value": v} for k, v in (tags or {}).items()]
+        tag_set: list["TagTypeDef"] = [
+            {"Key": k, "Value": v} for k, v in (tags or {}).items()
+        ]
+        tagging: "TaggingTypeDef" = {"TagSet": tag_set}
         try:
-            self._client.put_object_tagging(
-                Bucket=container, Key=name, Tagging={"TagSet": tag_set}
-            )
+            self._client.put_object_tagging(Bucket=container, Key=name, Tagging=tagging)
             _get_logger().info(
                 "Blob tags set successfully",
                 container=container,

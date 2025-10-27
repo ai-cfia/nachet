@@ -5,14 +5,11 @@ This module handles security-related operations including presigned URL generati
 for both blobs and containers with various permissions and expiry settings.
 """
 
-from typing import List, Dict, Any, TYPE_CHECKING
+from beartype.typing import List, Dict, Any
 from datetime import timedelta
 
 from ..utils.error_handling import ErrorHandler
 from ..utils.validation import ValidationHelper
-
-if TYPE_CHECKING:
-    from mypy_boto3_s3.client import S3Client
 
 # Lazy-loaded logger to avoid circular imports
 _logger = None
@@ -31,7 +28,7 @@ def _get_logger():
 class SecurityOperations:
     """Handles security operations for S3-compatible storage."""
 
-    def __init__(self, s3_client: "S3Client"):
+    def __init__(self, s3_client: Any):  # Type: S3Client (boto3)
         """
         Initialize security operations with S3 client.
 

@@ -5,14 +5,11 @@ This module handles blob tier (storage class) management operations.
 Note: Apache Ozone may not support storage classes, so operations may be no-ops.
 """
 
-from typing import TYPE_CHECKING
+from beartype.typing import cast, Any
 from botocore.exceptions import ClientError
 
 from ..utils.error_handling import ErrorHandler
 from ..utils.validation import ValidationHelper
-
-if TYPE_CHECKING:
-    from mypy_boto3_s3.client import S3Client
 
 # Lazy-loaded logger to avoid circular imports
 _logger = None
@@ -31,7 +28,7 @@ def _get_logger():
 class TierOperations:
     """Handles blob tier (storage class) operations for S3-compatible storage."""
 
-    def __init__(self, s3_client: "S3Client"):
+    def __init__(self, s3_client: Any):  # Type: S3Client (boto3)
         """
         Initialize tier operations with S3 client.
 
@@ -88,12 +85,12 @@ class TierOperations:
         try:
             # Copy object to itself with new storage class
             # This is how you change storage class in S3
-            copy_source = {"Bucket": container, "Key": name}
+            copy_source: "CopySourceTypeDef" = {"Bucket": container, "Key": name}
             self._client.copy_object(
                 CopySource=copy_source,
                 Bucket=container,
                 Key=name,
-                StorageClass=validated_tier,
+                StorageClass=cast(Any, validated_tier),  # type: ignore[arg-type]
                 MetadataDirective="COPY",  # Preserve existing metadata
             )
 
