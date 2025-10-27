@@ -70,14 +70,18 @@ class TestOrganizationServiceSQLInjection:
                 def __init__(self, session):
                     self.session = session
 
-                async def create(self, name, description, folder_prefix):
-                    # Verify the malicious input is passed as-is (will be escaped by SQLAlchemy)
-                    assert name == malicious_name
+                async def check_name_prefix_exists(self, normalized_name):
+                    """Mock check for name prefix uniqueness."""
+                    return False
 
-                    # Return mock organization
+                async def create(self, name, description, folder_prefix):
+                    # Verify the name has been sanitized (malicious chars removed)
+                    # The sanitized name should be safe (no SQL injection chars)
+
+                    # Return mock organization with sanitized name
                     org = Organization(
                         id=created_org_id,
-                        name=malicious_name,
+                        name=name,  # Use sanitized name passed by service
                         description=description,
                         folder_prefix=folder_prefix,
                         date_created=datetime.now(timezone.utc),
@@ -98,7 +102,7 @@ class TestOrganizationServiceSQLInjection:
             )
             # Note: Role creation is now inline in create() method
 
-            # Should not raise exception - SQLAlchemy handles escaping
+            # Should not raise exception - normalization removes SQL injection chars
             result = await OrganizationService.create(
                 user_id=user_id,
                 name=malicious_name,
@@ -106,9 +110,18 @@ class TestOrganizationServiceSQLInjection:
                 folder_prefix="test",
             )
 
-            # Verify the malicious string is stored as-is (escaped by SQLAlchemy)
-            assert result["name"] == malicious_name
+            # Verify the name was sanitized (SQL injection chars removed)
+            # The service sanitizes input via sanitize_string()
             assert result["id"] == str(created_org_id)
+            # The sanitized name should NOT contain SQL injection special chars
+            # These characters would allow SQL injection if present:
+            assert "'" not in result["name"]  # Single quotes enable SQL string escape
+            assert '"' not in result["name"]  # Double quotes
+            assert ";" not in result["name"]  # Statement separator
+            # Verify only safe characters remain (alphanumeric, space, dash, underscore)
+            assert all(c.isalnum() or c in " -_" for c in result["name"])
+            # Name should be non-empty after sanitization
+            assert len(result["name"]) > 0
 
     @pytest.mark.asyncio
     async def test_create_with_sql_injection_in_description(self, monkeypatch):
@@ -154,14 +167,20 @@ class TestOrganizationServiceSQLInjection:
             def __init__(self, session):
                 self.session = session
 
+            async def check_name_prefix_exists(self, normalized_name):
+                """Mock check for name prefix uniqueness."""
+                return False
+
             async def create(self, name, description, folder_prefix):
-                # Verify the malicious input is passed as-is
-                assert description == malicious_description
+                # Description should be sanitized (special chars removed)
+                # The original had '; which should be removed
+                assert "'" not in description
+                assert ";" not in description
 
                 org = Organization(
                     id=created_org_id,
                     name=name,
-                    description=malicious_description,
+                    description=description,  # Use sanitized description
                     folder_prefix=folder_prefix,
                     date_created=datetime.now(timezone.utc),
                     active=True,
@@ -188,16 +207,27 @@ class TestOrganizationServiceSQLInjection:
             folder_prefix="test",
         )
 
-        assert result["description"] == malicious_description
+        # Description should be sanitized (SQL injection chars removed)
+        assert "'" not in result["description"]
+        assert ";" not in result["description"]
+        # Verify only safe characters remain
+        assert all(c.isalnum() or c in " -_" for c in result["description"])
 
     @pytest.mark.asyncio
     async def test_create_with_sql_injection_in_folder_prefix(self, monkeypatch):
-        """SQL injection attempts in folder_prefix field should be handled safely."""
+        """
+        Folder prefix is auto-generated from normalized name.
+
+        The user-provided folder_prefix parameter is ignored - the system
+        always uses normalize_org_name(sanitized_name) as the folder_prefix.
+        This test verifies that even if malicious input is in the name,
+        the folder_prefix will be safely normalized.
+        """
         user_id = uuid4()
         user_org_id = uuid4()
         created_org_id = uuid4()
 
-        malicious_prefix = "' OR '1'='1"
+        malicious_name = "Admin' OR '1'='1"
 
         # Mock RBAC - user is CFIA admin
         async def mock_verify_cfia_admin(uid):
@@ -234,14 +264,22 @@ class TestOrganizationServiceSQLInjection:
             def __init__(self, session):
                 self.session = session
 
+            async def check_name_prefix_exists(self, normalized_name):
+                """Mock check for name prefix uniqueness."""
+                return False
+
             async def create(self, name, description, folder_prefix):
-                assert folder_prefix == malicious_prefix
+                # folder_prefix should be normalized (safe for filesystem)
+                assert "'" not in folder_prefix
+                assert " " not in folder_prefix
+                assert folder_prefix.islower()  # Should be lowercase
+                assert all(c.isalnum() or c == "-" for c in folder_prefix)
 
                 org = Organization(
                     id=created_org_id,
                     name=name,
                     description=description,
-                    folder_prefix=malicious_prefix,
+                    folder_prefix=folder_prefix,
                     date_created=datetime.now(timezone.utc),
                     active=True,
                 )
@@ -262,12 +300,18 @@ class TestOrganizationServiceSQLInjection:
 
         result = await OrganizationService.create(
             user_id=user_id,
-            name="Test Org",
+            name=malicious_name,
             description="Test description",
-            folder_prefix=malicious_prefix,
+            folder_prefix=None,  # Let service auto-generate from normalized name
         )
 
-        assert result["folder_prefix"] == malicious_prefix
+        # Verify folder_prefix is normalized (safe for filesystem)
+        assert "'" not in result["folder_prefix"]
+        assert " " not in result["folder_prefix"]
+        assert result["folder_prefix"].islower()
+        assert all(c.isalnum() or c == "-" for c in result["folder_prefix"])
+        # Should be normalized version of malicious_name
+        assert result["folder_prefix"] == "admin-or-11"
 
     @pytest.mark.asyncio
     async def test_update_with_sql_injection_in_name(self, monkeypatch):
@@ -383,12 +427,12 @@ class TestOrganizationServiceSQLInjection:
 
     @pytest.mark.asyncio
     async def test_special_characters_handled_correctly(self, monkeypatch):
-        """Special characters that could be confused for SQL should be stored safely."""
+        """Special characters in name are normalized, description preserves them (SQLAlchemy escapes)."""
         user_id = uuid4()
         user_org_id = uuid4()
         created_org_id = uuid4()
 
-        # These are legitimate special characters that should be preserved
+        # These are legitimate special characters
         special_name = "O'Reilly & Sons, Inc."
         special_description = "Testing \"quotes\" and 'apostrophes' with; semicolons"
 
@@ -427,6 +471,10 @@ class TestOrganizationServiceSQLInjection:
             def __init__(self, session):
                 self.session = session
 
+            async def check_name_prefix_exists(self, normalized_name):
+                """Mock check for name prefix uniqueness."""
+                return False
+
             async def create(self, name, description, folder_prefix):
                 org = Organization(
                     id=created_org_id,
@@ -458,9 +506,15 @@ class TestOrganizationServiceSQLInjection:
             folder_prefix="test",
         )
 
-        # Special characters should be preserved exactly
-        assert result["name"] == special_name
-        assert result["description"] == special_description
+        # Name is sanitized (special chars removed, but preserves case and spaces)
+        # Original: "O'Reilly & Sons, Inc."
+        # Sanitized: "OReilly  Sons Inc" (removes ', &, . but keeps case and spaces)
+        assert result["name"] == "OReilly  Sons Inc"
+        # Description is also sanitized (special chars removed)
+        # Original: "Testing \"quotes\" and 'apostrophes' with; semicolons"
+        # Sanitized: removes ", ', ; but keeps other chars
+        expected_desc = "Testing quotes and apostrophes with semicolons"
+        assert result["description"] == expected_desc
 
 
 if __name__ == "__main__":

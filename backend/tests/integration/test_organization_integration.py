@@ -461,6 +461,7 @@ class TestOrganizationServiceIntegrationCreate:
         # Verify response
         assert result["name"] == "New Test Organization"
         assert result["description"] == "A newly created test organization"
+        # folder_prefix uses the custom value provided
         assert result["folder_prefix"] == "new-test-org"
         assert result["active"] is True
         assert "date_created" in result
@@ -545,24 +546,186 @@ class TestOrganizationServiceIntegrationCreate:
         for role in roles:
             assert role.active is True
 
-    async def test_create_handles_optional_folder_prefix(
+    async def test_create_auto_generates_folder_prefix_from_name(
         self,
         test_admin_user: UUID,
         cleanup_test_organizations: list,
     ):
-        """Verify optional folder_prefix is handled correctly."""
+        """Verify folder_prefix is auto-generated from organization name (normalized, max 20 chars)."""
         # Create without folder_prefix
         result = await OrganizationService.create(
             user_id=test_admin_user,
-            name="No Prefix Org",
-            description="Organization without folder prefix",
+            name="Auto Generated Prefix Organization",
+            description="Organization without explicit folder prefix",
         )
 
         org_id = UUID(result["id"])
         cleanup_test_organizations.append(org_id)
 
-        # Verify
-        assert result["folder_prefix"] == "/"
+        # Verify folder_prefix is auto-generated from normalized name (truncated to 20 chars)
+        assert result["folder_prefix"] == "auto-generated-prefi"
+        assert len(result["folder_prefix"]) == 20
+
+    async def test_create_with_custom_folder_prefix(
+        self,
+        test_admin_user: UUID,
+        cleanup_test_organizations: list,
+    ):
+        """Verify user can provide custom folder_prefix."""
+        result = await OrganizationService.create(
+            user_id=test_admin_user,
+            name="Custom Prefix Organization",
+            description="Organization with custom folder prefix",
+            folder_prefix="my-custom-prefix",
+        )
+
+        org_id = UUID(result["id"])
+        cleanup_test_organizations.append(org_id)
+
+        # Verify custom prefix was used instead of normalized name
+        assert result["folder_prefix"] == "my-custom-prefix"
+        assert (
+            result["folder_prefix"] != "custom-prefix-organ"
+        )  # Would be auto-generated
+
+    async def test_create_custom_prefix_truncated_to_20_chars(
+        self,
+        test_admin_user: UUID,
+        cleanup_test_organizations: list,
+    ):
+        """Verify custom folder_prefix is truncated to 20 chars and trailing dashes are stripped."""
+        result = await OrganizationService.create(
+            user_id=test_admin_user,
+            name="Long Custom Prefix Org",
+            description="Organization with very long custom prefix",
+            folder_prefix="this-is-a-very-long-custom-folder-prefix",
+        )
+
+        org_id = UUID(result["id"])
+        cleanup_test_organizations.append(org_id)
+
+        # Verify prefix truncated to 20 chars, then trailing dashes stripped (results in 19 chars)
+        assert result["folder_prefix"] == "this-is-a-very-long"
+        assert len(result["folder_prefix"]) == 19
+        assert not result["folder_prefix"].endswith("-")
+
+    async def test_create_normalized_name_conflict_suggests_custom_prefix(
+        self,
+        integration_db_session: AsyncSession,
+        test_admin_user: UUID,
+        cleanup_test_organizations: list,
+    ):
+        """Verify that when auto-generated prefix conflicts, error suggests providing custom folder_prefix."""
+        # Create first organization
+        org1 = await OrganizationService.create(
+            user_id=test_admin_user,
+            name="Test Conflict Org",
+            description="First org",
+        )
+        cleanup_test_organizations.append(UUID(org1["id"]))
+
+        # Try to create org with same normalized name - should suggest custom prefix
+        with pytest.raises(HTTPException) as exc_info:
+            await OrganizationService.create(
+                user_id=test_admin_user,
+                name="Test Conflict Org",  # Same normalized name
+                description="Second org",
+            )
+
+        assert exc_info.value.status_code == 409
+        assert "Please provide a unique folder_prefix" in exc_info.value.detail
+
+    async def test_create_conflict_resolved_with_custom_prefix(
+        self,
+        integration_db_session: AsyncSession,
+        test_admin_user: UUID,
+        cleanup_test_organizations: list,
+    ):
+        """Verify that normalized name conflict can be resolved by providing custom folder_prefix."""
+        # Create first organization
+        org1 = await OrganizationService.create(
+            user_id=test_admin_user,
+            name="Duplicate Name Org",
+            description="First org",
+        )
+        cleanup_test_organizations.append(UUID(org1["id"]))
+        assert org1["folder_prefix"] == "duplicate-name-org"
+
+        # Create second org with same name but custom prefix - should succeed
+        org2 = await OrganizationService.create(
+            user_id=test_admin_user,
+            name="Duplicate Name Org",  # Same name
+            description="Second org",
+            folder_prefix="duplicate-name-org2",  # Custom prefix to avoid conflict
+        )
+        cleanup_test_organizations.append(UUID(org2["id"]))
+
+        # Verify both exist with different prefixes
+        assert org2["folder_prefix"] == "duplicate-name-org2"
+        assert org1["folder_prefix"] != org2["folder_prefix"]
+
+    async def test_create_custom_prefix_conflict_raises_error(
+        self,
+        integration_db_session: AsyncSession,
+        test_admin_user: UUID,
+        cleanup_test_organizations: list,
+    ):
+        """Verify that custom folder_prefix conflict raises appropriate error."""
+        # Create first organization with custom prefix
+        org1 = await OrganizationService.create(
+            user_id=test_admin_user,
+            name="First Org Name",
+            description="First org",
+            folder_prefix="shared-prefix",
+        )
+        cleanup_test_organizations.append(UUID(org1["id"]))
+
+        # Try to create second org with same custom prefix - should fail
+        with pytest.raises(HTTPException) as exc_info:
+            await OrganizationService.create(
+                user_id=test_admin_user,
+                name="Second Org Name",
+                description="Second org",
+                folder_prefix="shared-prefix",  # Same prefix
+            )
+
+        assert exc_info.value.status_code == 409
+        assert "folder_prefix conflict" in exc_info.value.detail
+        assert "Please provide a unique folder_prefix" in exc_info.value.detail
+
+    async def test_create_invalid_folder_prefix_format_raises_error(
+        self,
+        test_admin_user: UUID,
+        cleanup_test_organizations: list,
+    ):
+        """Verify that folder_prefix is normalized (lowercase, special chars removed) and then checked for uniqueness.
+
+        The system normalizes input first, then checks for conflicts. This means uppercase letters
+        and special characters don't cause validation errors - they're normalized and then checked
+        for uniqueness, which may result in 409 conflict errors if the normalized value already exists.
+        """
+        # Create first organization - this will normalize "Special-Format@123" to "special-format123"
+        org1 = await OrganizationService.create(
+            user_id=test_admin_user,
+            name="Format Normalization Test",
+            description="Test folder prefix normalization",
+            folder_prefix="Special-Format@123",  # Contains uppercase and special chars - will be normalized
+        )
+        cleanup_test_organizations.append(UUID(org1["id"]))
+
+        # Verify it was normalized (lowercase, special chars removed)
+        assert org1["folder_prefix"] == "special-format123"
+
+        # Try to create another org with same normalized value - should conflict
+        with pytest.raises(HTTPException) as exc_info:
+            await OrganizationService.create(
+                user_id=test_admin_user,
+                name="Format Normalization Test 2",
+                description="Test normalized conflict",
+                folder_prefix="special-format123",  # Same as normalized version above
+            )
+        assert exc_info.value.status_code == 409
+        assert "folder_prefix conflict" in exc_info.value.detail
 
     async def test_create_as_cfia_admin_succeeds(
         self,

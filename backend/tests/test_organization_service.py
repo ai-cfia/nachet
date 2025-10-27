@@ -307,6 +307,9 @@ class TestOrganizationServiceCreate:
         # Mock data service
         mock_data_service = AsyncMock()
         mock_data_service.create = AsyncMock(return_value=new_org)
+        mock_data_service.check_name_prefix_exists = AsyncMock(
+            return_value=False
+        )  # Name is unique
         monkeypatch.setattr(
             "app.service.organization.OrganizationDataService",
             lambda session: mock_data_service,
@@ -334,6 +337,52 @@ class TestOrganizationServiceCreate:
         assert role_names["admin"]["id"] == str(admin_role_id)
         assert role_names["user"]["id"] == str(user_role_id)
         mock_session.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_create_conflict_duplicate_name_prefix(self, monkeypatch):
+        """Should return 409 if the first 20 chars of org name already exist."""
+        from app.db.utils import sessionmanager
+
+        user_id = uuid4()
+        user_org_id = uuid4()
+
+        # Mock RbacService - user is CFIA admin
+        async def mock_verify_cfia_admin(uid):
+            return user_org_id
+
+        monkeypatch.setattr(
+            "app.service.organization.RbacService.verify_user_is_cfia_admin",
+            mock_verify_cfia_admin,
+        )
+
+        # Mock session
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
+
+        # Mock data service - name prefix already exists
+        mock_data_service = AsyncMock()
+        mock_data_service.check_name_prefix_exists = AsyncMock(
+            return_value=True
+        )  # Duplicate!
+        monkeypatch.setattr(
+            "app.service.organization.OrganizationDataService",
+            lambda session: mock_data_service,
+        )
+
+        # Should raise 409 Conflict
+        with pytest.raises(HTTPException) as exc_info:
+            await OrganizationService.create(
+                user_id,
+                name="Existing Organization Name",
+                description="This name already exists",
+                folder_prefix="existing",
+            )
+
+        assert exc_info.value.status_code == 409
+        assert "folder_prefix conflict" in exc_info.value.detail.lower()
+        assert "already exists" in exc_info.value.detail.lower()
 
     @pytest.mark.asyncio
     async def test_create_unauthorized(self, monkeypatch):
