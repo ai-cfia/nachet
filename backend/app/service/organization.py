@@ -153,7 +153,7 @@ class OrganizationService(BaseCRUDService[Organization]):
         user_id: UUID,
         name: str,
         description: str,
-        folder_prefix: Optional[str] = "/",
+        folder_prefix: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Create a new organization with automatic RBAC role creation.
@@ -163,18 +163,21 @@ class OrganizationService(BaseCRUDService[Organization]):
         - "user": User role for the organization
 
         Note: Only cfia_admin users can create organizations.
+        The folder_prefix (derived from name or user-provided) must be unique.
 
         Args:
             user_id: The requesting user's UUID (must be cfia_admin)
             name: Organization name
             description: Organization description
-            folder_prefix: Optional folder prefix for the organization
+            folder_prefix: Optional custom folder prefix (max 20 chars, lowercase alphanumeric + dashes).
+                          If not provided, auto-generated from normalized organization name.
+                          If normalized name conflicts with existing org, user must provide this.
 
         Returns:
             Dictionary containing the created organization data with role information
 
         Raises:
-            HTTPException: 403 if unauthorized, 500 on error
+            HTTPException: 403 if unauthorized, 409 if name/prefix conflict, 400 if invalid format, 500 on error
         """
         try:
             # RBAC: Only CFIA admin can create organizations
@@ -184,24 +187,43 @@ class OrganizationService(BaseCRUDService[Organization]):
                 data_service_class = cls.get_data_service_class()
                 data_service = data_service_class(session)
 
+                sanitized_name = OrganizationService.sanitize_string(name)
+                sanitized_description = OrganizationService.sanitize_string(description)
+                normalized_name = cls.normalize_org_name(sanitized_name)
+
+                # Determine folder_prefix: use custom or auto-generated
+                final_prefix = (
+                    cls.normalize_org_name(OrganizationService.sanitize_string(folder_prefix))
+                    if folder_prefix
+                    else normalized_name
+                )
+
+                # Validate: folder_prefix must be unique (check against existing orgs)
+                if await data_service.check_name_prefix_exists(final_prefix):
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"Organization normalized folder_prefix conflict: '{final_prefix}' already exists. Please provide a unique folder_prefix.",
+                    )
+
                 # Standard: Create organization
+                # Note: folder_prefix stores normalized_name or custom prefix (max 20 chars) for blob storage paths
                 organization = await data_service.create(
-                    name=name,
-                    description=description,
-                    folder_prefix=folder_prefix,
+                    name=sanitized_name,
+                    description=sanitized_description,
+                    folder_prefix=final_prefix,
                 )
 
                 # CUSTOM LOGIC: Create 2 RBAC roles for organization
                 admin_role = RbacRole(
                     organization_id=organization.id,
                     name="admin",
-                    description=f"Administrator role for {name}",
+                    description=f"Administrator role for {sanitized_name}",
                     active=True,
                 )
                 user_role = RbacRole(
                     organization_id=organization.id,
                     name="user",
-                    description=f"User role for {name}",
+                    description=f"User role for {sanitized_name}",
                     active=True,
                 )
                 session.add(admin_role)
@@ -259,7 +281,7 @@ class OrganizationService(BaseCRUDService[Organization]):
         Rules:
         - Lowercase only
         - Only alphanumeric (a-z, 0-9) and dashes allowed
-        - Maximum 10 characters
+        - Maximum 20 characters
         - Remove all other characters
         - Multiple consecutive dashes collapsed to single dash
         - Strip leading/trailing dashes
@@ -268,7 +290,7 @@ class OrganizationService(BaseCRUDService[Organization]):
             name: Raw organization name (e.g., "CFIA Organization")
 
         Returns:
-            Normalized name, max 10 chars (e.g., "cfia-org")
+            Normalized name, max 20 chars (e.g., "cfia-org")
 
         Example:
             >>> OrganizationService.normalize_org_name("CFIA Organization")
@@ -294,7 +316,37 @@ class OrganizationService(BaseCRUDService[Organization]):
         # Strip leading/trailing dashes
         name = name.strip("-")
 
-        # Truncate to 10 characters
-        name = name[:10]
+        # Truncate to 20 characters
+        name = name[:20]
+
+        # Strip trailing dashes again after truncation (may have created new trailing dash)
+        name = name.rstrip("-")
 
         return name if name else "unknown"
+
+    @staticmethod
+    def sanitize_string(input_string: str) -> str:
+        """
+        Sanitize a string by removing leading/trailing whitespace and
+        replacing multiple spaces with a single space.
+        remove all special characters except hyphens spaces and underscores.
+
+        Args:
+            input_string: The string to sanitize
+
+        Returns:
+            The sanitized string
+        """
+        import re
+
+        # Replace multiple spaces with a single space
+        sanitized = re.sub(r"\s+", " ", input_string)
+
+        # Remove all special characters except hyphens, spaces, and underscores
+        # Keep A-Z a-z 0-9 hyphen - underscore _ and space
+        sanitized = re.sub(r"[^A-Za-z0-9\-_ ]+", "", sanitized)
+
+        # Remove leading/trailing whitespace
+        sanitized = sanitized.strip()
+
+        return sanitized
