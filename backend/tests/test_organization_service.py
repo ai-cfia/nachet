@@ -18,6 +18,24 @@ if not os.getenv("NACHET_SCHEMA"):
     load_dotenv(".env.test.local")
 
 
+def create_mock_data_service_class(mock_data_service):
+    """
+    Create a proper mock class for data service that beartype can validate.
+
+    This is necessary because beartype expects get_data_service_class() to return
+    a class type, not a lambda function or instance.
+    """
+
+    class MockDataServiceClass:
+        def __init__(self, session):
+            self.session = session
+
+        def __getattr__(self, name):
+            return getattr(mock_data_service, name)
+
+    return MockDataServiceClass
+
+
 class TestOrganizationServiceGetAll:
     """Test the get_all method."""
 
@@ -91,9 +109,11 @@ class TestOrganizationServiceGetAll:
         mock_data_service = AsyncMock()
         # get_all() returns tuple (entities, total_count)
         mock_data_service.get_all = AsyncMock(return_value=([org1, org2], 2))
+
+        # Mock get_data_service_class to return a proper class type
         monkeypatch.setattr(
-            "app.service.organization.OrganizationDataService",
-            lambda session: mock_data_service,
+            "app.service.organization.OrganizationService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
@@ -189,8 +209,8 @@ class TestOrganizationServiceGetById:
         mock_data_service = AsyncMock()
         mock_data_service.get_by_id = AsyncMock(return_value=org)
         monkeypatch.setattr(
-            "app.service.organization.OrganizationDataService",
-            lambda session: mock_data_service,
+            "app.service.organization.OrganizationService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
@@ -237,8 +257,8 @@ class TestOrganizationServiceGetById:
         mock_data_service = AsyncMock()
         mock_data_service.get_by_id = AsyncMock(return_value=None)
         monkeypatch.setattr(
-            "app.service.organization.OrganizationDataService",
-            lambda session: mock_data_service,
+            "app.service.organization.OrganizationService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Should raise 404
@@ -311,8 +331,8 @@ class TestOrganizationServiceCreate:
             return_value=False
         )  # Name is unique
         monkeypatch.setattr(
-            "app.service.organization.OrganizationDataService",
-            lambda session: mock_data_service,
+            "app.service.organization.OrganizationService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
@@ -367,8 +387,8 @@ class TestOrganizationServiceCreate:
             return_value=True
         )  # Duplicate!
         monkeypatch.setattr(
-            "app.service.organization.OrganizationDataService",
-            lambda session: mock_data_service,
+            "app.service.organization.OrganizationService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Should raise 409 Conflict
@@ -454,8 +474,8 @@ class TestOrganizationServiceUpdate:
         mock_data_service = AsyncMock()
         mock_data_service.update = AsyncMock(return_value=updated_org)
         monkeypatch.setattr(
-            "app.service.organization.OrganizationDataService",
-            lambda session: mock_data_service,
+            "app.service.organization.OrganizationService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
@@ -499,8 +519,8 @@ class TestOrganizationServiceUpdate:
         mock_data_service = AsyncMock()
         mock_data_service.update = AsyncMock(return_value=None)
         monkeypatch.setattr(
-            "app.service.organization.OrganizationDataService",
-            lambda session: mock_data_service,
+            "app.service.organization.OrganizationService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Should raise 404
@@ -547,8 +567,8 @@ class TestOrganizationServiceDelete:
         mock_data_service = AsyncMock()
         mock_data_service.soft_delete = AsyncMock(return_value=deleted_org)
         monkeypatch.setattr(
-            "app.service.organization.OrganizationDataService",
-            lambda session: mock_data_service,
+            "app.service.organization.OrganizationService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Call service
@@ -587,8 +607,8 @@ class TestOrganizationServiceDelete:
         mock_data_service = AsyncMock()
         mock_data_service.soft_delete = AsyncMock(return_value=None)
         monkeypatch.setattr(
-            "app.service.organization.OrganizationDataService",
-            lambda session: mock_data_service,
+            "app.service.organization.OrganizationService.get_data_service_class",
+            lambda: create_mock_data_service_class(mock_data_service),
         )
 
         # Should raise 404

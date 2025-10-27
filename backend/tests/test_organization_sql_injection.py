@@ -8,8 +8,10 @@ and is protected by SQLAlchemy's parameterized queries.
 import pytest
 from uuid import uuid4
 from datetime import datetime, timezone
+from beartype.typing import Type
 from app.service.organization import OrganizationService
 from app.db.model import Organization
+from app.datastore.base_crud import BaseCRUDDataService
 
 
 class TestOrganizationServiceSQLInjection:
@@ -66,17 +68,25 @@ class TestOrganizationServiceSQLInjection:
                 async def refresh(self, obj, attribute_names=None):
                     pass
 
-            class MockDataService:
+            class MockDataService(BaseCRUDDataService[Organization]):
                 def __init__(self, session):
                     self.session = session
+
+                @classmethod
+                def get_model_class(cls) -> Type[Organization]:
+                    """Return the Organization model class."""
+                    return Organization
 
                 async def check_name_prefix_exists(self, normalized_name):
                     """Mock check for name prefix uniqueness."""
                     return False
 
-                async def create(self, name, description, folder_prefix):
+                async def create(self, **kwargs):
                     # Verify the name has been sanitized (malicious chars removed)
                     # The sanitized name should be safe (no SQL injection chars)
+                    name = kwargs.get("name", "")
+                    description = kwargs.get("description", "")
+                    folder_prefix = kwargs.get("folder_prefix", "")
 
                     # Return mock organization with sanitized name
                     org = Organization(
@@ -163,17 +173,26 @@ class TestOrganizationServiceSQLInjection:
             async def refresh(self, obj, attribute_names=None):
                 pass
 
-        class MockDataService:
+        class MockDataService(BaseCRUDDataService[Organization]):
             def __init__(self, session):
                 self.session = session
+
+            @classmethod
+            def get_model_class(cls) -> Type[Organization]:
+                """Return the Organization model class."""
+                return Organization
 
             async def check_name_prefix_exists(self, normalized_name):
                 """Mock check for name prefix uniqueness."""
                 return False
 
-            async def create(self, name, description, folder_prefix):
+            async def create(self, **kwargs):
                 # Description should be sanitized (special chars removed)
                 # The original had '; which should be removed
+                name = kwargs.get("name", "")
+                description = kwargs.get("description", "")
+                folder_prefix = kwargs.get("folder_prefix", "")
+
                 assert "'" not in description
                 assert ";" not in description
 
@@ -260,16 +279,25 @@ class TestOrganizationServiceSQLInjection:
             async def refresh(self, obj, attribute_names=None):
                 pass
 
-        class MockDataService:
+        class MockDataService(BaseCRUDDataService[Organization]):
             def __init__(self, session):
                 self.session = session
+
+            @classmethod
+            def get_model_class(cls) -> Type[Organization]:
+                """Return the Organization model class."""
+                return Organization
 
             async def check_name_prefix_exists(self, normalized_name):
                 """Mock check for name prefix uniqueness."""
                 return False
 
-            async def create(self, name, description, folder_prefix):
+            async def create(self, **kwargs):
                 # folder_prefix should be normalized (safe for filesystem)
+                name = kwargs.get("name", "")
+                description = kwargs.get("description", "")
+                folder_prefix = kwargs.get("folder_prefix", "")
+
                 assert "'" not in folder_prefix
                 assert " " not in folder_prefix
                 assert folder_prefix.islower()  # Should be lowercase
@@ -342,9 +370,14 @@ class TestOrganizationServiceSQLInjection:
             async def commit(self):
                 pass
 
-        class MockDataService:
+        class MockDataService(BaseCRUDDataService[Organization]):
             def __init__(self, session):
                 self.session = session
+
+            @classmethod
+            def get_model_class(cls) -> Type[Organization]:
+                """Return the Organization model class."""
+                return Organization
 
             async def update(self, entity_id, **kwargs):
                 # Extract name from kwargs
@@ -376,7 +409,7 @@ class TestOrganizationServiceSQLInjection:
         )
 
         result = await OrganizationService.update(
-            user_id=user_id,
+            requester_id=user_id,
             entity_id=organization_id,
             name=malicious_name,
         )
@@ -419,7 +452,7 @@ class TestOrganizationServiceSQLInjection:
             # We accept either DataError (from SQLAlchemy) or HTTPException(500)
             with pytest.raises((Exception)) as exc_info:
                 await OrganizationService.get_by_id(
-                    user_id=user_id,
+                    requester_id=user_id,
                     entity_id=malicious_input,  # type: ignore
                 )
             # Verify that some error was raised (validates SQL injection was blocked)
@@ -467,15 +500,24 @@ class TestOrganizationServiceSQLInjection:
             async def refresh(self, obj, attribute_names=None):
                 pass
 
-        class MockDataService:
+        class MockDataService(BaseCRUDDataService[Organization]):
             def __init__(self, session):
                 self.session = session
+
+            @classmethod
+            def get_model_class(cls) -> Type[Organization]:
+                """Return the Organization model class."""
+                return Organization
 
             async def check_name_prefix_exists(self, normalized_name):
                 """Mock check for name prefix uniqueness."""
                 return False
 
-            async def create(self, name, description, folder_prefix):
+            async def create(self, **kwargs):
+                name = kwargs.get("name", "")
+                description = kwargs.get("description", "")
+                folder_prefix = kwargs.get("folder_prefix", "")
+
                 org = Organization(
                     id=created_org_id,
                     name=name,

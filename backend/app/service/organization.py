@@ -1,4 +1,4 @@
-from typing import Dict, Any, Type, Optional
+from beartype.typing import Dict, Any, Type, Optional, cast
 from uuid import UUID
 import traceback
 import re
@@ -96,7 +96,7 @@ class OrganizationService(BaseCRUDService[Organization]):
     @classmethod
     async def get_all(
         cls,
-        user_id: UUID,
+        requester_id: UUID,
         offset: int = 0,
         limit: int = 100,
         filters: Optional[Dict[str, Any]] = None,
@@ -110,7 +110,7 @@ class OrganizationService(BaseCRUDService[Organization]):
         Override to maintain backward-compatible response format.
 
         Args:
-            user_id: The requesting user's UUID
+            requester_id: The requesting user's UUID
             offset: Number of records to skip (default: 0)
             limit: Maximum records to return (default: 100, max: 1000)
             filters: Dictionary of field_name: value pairs for filtering (optional)
@@ -124,14 +124,14 @@ class OrganizationService(BaseCRUDService[Organization]):
             HTTPException: 403 if user is not cfia_admin, 500 on database error
         """
         # RBAC: Only CFIA admin can view all organizations
-        await RbacService.verify_user_is_cfia_admin(user_id)
+        await RbacService.verify_user_is_cfia_admin(requester_id)
 
         # Call base class implementation with explicit order_by
         if not order_by:
             order_by = "name"  # Default ordering by name
 
         result = await super().get_all(
-            user_id=user_id,
+            requester_id=requester_id,
             offset=offset,
             limit=limit,
             filters=filters,
@@ -148,7 +148,7 @@ class OrganizationService(BaseCRUDService[Organization]):
     # ==========================================
 
     @classmethod
-    async def create(
+    async def create(  # type: ignore[override]
         cls,
         user_id: UUID,
         name: str,
@@ -193,13 +193,17 @@ class OrganizationService(BaseCRUDService[Organization]):
 
                 # Determine folder_prefix: use custom or auto-generated
                 final_prefix = (
-                    cls.normalize_org_name(OrganizationService.sanitize_string(folder_prefix))
+                    cls.normalize_org_name(
+                        OrganizationService.sanitize_string(folder_prefix)
+                    )
                     if folder_prefix
                     else normalized_name
                 )
 
                 # Validate: folder_prefix must be unique (check against existing orgs)
-                if await data_service.check_name_prefix_exists(final_prefix):
+                # Cast to OrganizationDataService to access custom methods
+                org_data_service = cast(OrganizationDataService, data_service)
+                if await org_data_service.check_name_prefix_exists(final_prefix):
                     raise HTTPException(
                         status_code=status.HTTP_409_CONFLICT,
                         detail=f"Organization normalized folder_prefix conflict: '{final_prefix}' already exists. Please provide a unique folder_prefix.",
