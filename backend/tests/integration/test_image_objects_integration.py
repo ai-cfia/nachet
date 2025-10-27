@@ -9,7 +9,7 @@ These tests verify the complete integration of ImageObjectsService with:
 """
 
 import pytest
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 from app.service.image_objects import ImageObjectsService
 from app.service.image import ImageService
@@ -70,7 +70,8 @@ class TestImageObjectsServiceIntegrationBasic:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            requester_id=test_admin_user,
+            user_id=test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -86,8 +87,7 @@ class TestImageObjectsServiceIntegrationBasic:
         # Create annotation (required for image object)
         raw_data = {"inference": "test", "confidence": 0.95}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -97,7 +97,7 @@ class TestImageObjectsServiceIntegrationBasic:
 
         # Create image object
         image_object = await ImageObjectsService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             user_id=test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
@@ -131,7 +131,7 @@ class TestImageObjectsServiceIntegrationBasic:
 
         # Retrieve image object by ID
         retrieved = await ImageObjectsService.get_by_id(
-            test_admin_user, image_object["id"]
+            test_admin_user, UUID(image_object["id"])
         )
 
         # Verify retrieved image object
@@ -156,7 +156,7 @@ class TestImageObjectsServiceIntegrationBasic:
 
         with pytest.raises(Exception):
             await ImageObjectsService.create(
-                _user_id=invalid_user_id,
+                invalid_user_id,
                 user_id=invalid_user_id,
                 org_admin_role_id=test_org_admin_role,
                 org_user_role_id=test_org_user_role,
@@ -178,7 +178,7 @@ class TestImageObjectsServiceIntegrationBasic:
         test_admin_user,
     ):
         """Test that non-existent image objects raise appropriate HTTP errors."""
-        nonexistent_id = str(uuid4())
+        nonexistent_id = uuid4()
 
         with pytest.raises(HTTPException) as exc_info:
             await ImageObjectsService.get_by_id(test_admin_user, nonexistent_id)
@@ -246,7 +246,8 @@ class TestImageObjectsServiceIntegrationUpdate:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            requester_id=test_admin_user,
+            user_id=test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -262,8 +263,7 @@ class TestImageObjectsServiceIntegrationUpdate:
         # Create annotation
         raw_data = {"inference": "test", "confidence": 0.95}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -273,7 +273,7 @@ class TestImageObjectsServiceIntegrationUpdate:
 
         # Create image object
         image_object = await ImageObjectsService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             user_id=test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
@@ -291,7 +291,7 @@ class TestImageObjectsServiceIntegrationUpdate:
 
         # Update image object validity
         result = await ImageObjectsService.update(
-            test_admin_user, image_object["id"], valid=False
+            test_admin_user, UUID(image_object["id"]), valid=False
         )
 
         # Verify update
@@ -353,7 +353,8 @@ class TestImageObjectsServiceIntegrationUpdate:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            requester_id=test_admin_user,
+            user_id=test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -369,8 +370,7 @@ class TestImageObjectsServiceIntegrationUpdate:
         # Create annotation
         raw_data = {"inference": "test", "confidence": 0.95}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -380,7 +380,7 @@ class TestImageObjectsServiceIntegrationUpdate:
 
         # Create image object
         image_object = await ImageObjectsService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             user_id=test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
@@ -399,7 +399,7 @@ class TestImageObjectsServiceIntegrationUpdate:
         # Update bounding box
         result = await ImageObjectsService.update(
             test_admin_user,
-            image_object["id"],
+            UUID(image_object["id"]),
             top_x_abs=15,
             top_y_abs=25,
             bot_x_abs=105,
@@ -473,7 +473,8 @@ class TestImageObjectsServiceIntegrationDelete:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            requester_id=test_admin_user,
+            user_id=test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -489,8 +490,7 @@ class TestImageObjectsServiceIntegrationDelete:
         # Create annotation
         raw_data = {"inference": "test", "confidence": 0.95}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -500,7 +500,7 @@ class TestImageObjectsServiceIntegrationDelete:
 
         # Create image object
         image_object = await ImageObjectsService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             user_id=test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
@@ -516,7 +516,7 @@ class TestImageObjectsServiceIntegrationDelete:
             top_score=0.95,
         )
 
-        object_id = image_object["id"]
+        object_id = UUID(image_object["id"])
 
         # Delete image object
         result = await ImageObjectsService.delete(test_admin_user, object_id)
@@ -525,7 +525,7 @@ class TestImageObjectsServiceIntegrationDelete:
         assert result is not None
         assert "message" in result
         assert "id" in result
-        assert result["id"] == object_id
+        assert result["id"] == str(object_id)
 
         # Verify image object is soft deleted (active=False) - can't be retrieved
         with pytest.raises(HTTPException) as exc_info:
@@ -586,7 +586,8 @@ class TestImageObjectsServiceIntegrationDelete:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            requester_id=test_admin_user,
+            user_id=test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -602,8 +603,7 @@ class TestImageObjectsServiceIntegrationDelete:
         # Create annotation
         raw_data = {"inference": "test", "confidence": 0.95}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -613,7 +613,7 @@ class TestImageObjectsServiceIntegrationDelete:
 
         # Create image object as admin
         image_object = await ImageObjectsService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             user_id=test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
@@ -629,7 +629,7 @@ class TestImageObjectsServiceIntegrationDelete:
             top_score=0.95,
         )
 
-        object_id = image_object["id"]
+        object_id = UUID(image_object["id"])
 
         # Try to delete as regular user (non-admin)
         with pytest.raises(HTTPException) as exc_info:
@@ -696,7 +696,8 @@ class TestImageObjectsServiceIntegrationGetAll:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            requester_id=test_admin_user,
+            user_id=test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -712,8 +713,7 @@ class TestImageObjectsServiceIntegrationGetAll:
         # Create annotation
         raw_data = {"inference": "test", "confidence": 0.95}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -725,7 +725,7 @@ class TestImageObjectsServiceIntegrationGetAll:
         objects = []
         for i in range(3):
             obj = await ImageObjectsService.create(
-                _user_id=test_admin_user,
+                test_admin_user,
                 user_id=test_admin_user,
                 org_admin_role_id=test_org_admin_role,
                 org_user_role_id=test_org_user_role,
@@ -811,7 +811,8 @@ class TestImageObjectsServiceIntegrationGetAll:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            requester_id=test_admin_user,
+            user_id=test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -827,8 +828,7 @@ class TestImageObjectsServiceIntegrationGetAll:
         # Create annotation
         raw_data = {"inference": "test", "confidence": 0.95}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -840,7 +840,7 @@ class TestImageObjectsServiceIntegrationGetAll:
         objects = []
         for i in range(5):
             obj = await ImageObjectsService.create(
-                _user_id=test_admin_user,
+                test_admin_user,
                 user_id=test_admin_user,
                 org_admin_role_id=test_org_admin_role,
                 org_user_role_id=test_org_user_role,
@@ -923,7 +923,8 @@ class TestImageObjectsServiceIntegrationRetrieve:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            requester_id=test_admin_user,
+            user_id=test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -939,8 +940,7 @@ class TestImageObjectsServiceIntegrationRetrieve:
         # Create annotation
         raw_data = {"inference": "test", "confidence": 0.95}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -950,7 +950,7 @@ class TestImageObjectsServiceIntegrationRetrieve:
 
         # Create image object
         image_object = await ImageObjectsService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             user_id=test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
@@ -968,7 +968,7 @@ class TestImageObjectsServiceIntegrationRetrieve:
 
         # Retrieve as org user (same user who created it)
         retrieved = await ImageObjectsService.get_by_id(
-            test_admin_user, image_object["id"]
+            test_admin_user, UUID(image_object["id"])
         )
 
         # Verify retrieval
@@ -1030,7 +1030,8 @@ class TestImageObjectsServiceIntegrationRetrieve:
 
         # Create test picture
         picture = await ImageService.create(
-            _user_id=test_admin_user,
+            requester_id=test_admin_user,
+            user_id=test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -1046,8 +1047,7 @@ class TestImageObjectsServiceIntegrationRetrieve:
         # Create annotation
         raw_data = {"inference": "test", "confidence": 0.95}
         annotation = await AnnotationService.create(
-            _user_id=test_admin_user,
-            user_id=test_admin_user,
+            test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             picture_id=picture["id"],
@@ -1057,7 +1057,7 @@ class TestImageObjectsServiceIntegrationRetrieve:
 
         # Create image object
         image_object = await ImageObjectsService.create(
-            _user_id=test_admin_user,
+            test_admin_user,
             user_id=test_admin_user,
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
@@ -1075,7 +1075,7 @@ class TestImageObjectsServiceIntegrationRetrieve:
 
         # Retrieve image object
         retrieved = await ImageObjectsService.get_by_id(
-            test_admin_user, image_object["id"]
+            test_admin_user, UUID(image_object["id"])
         )
 
         # Verify all relationships are loaded

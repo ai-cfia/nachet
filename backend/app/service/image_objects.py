@@ -2,7 +2,7 @@
 Business logic layer for Object (ImageObjects) entities.
 """
 
-from typing import Any, Dict, Type
+from beartype.typing import Any, Dict, Type
 from uuid import UUID
 
 from app.db.model import Object
@@ -125,7 +125,7 @@ class ImageObjectsService(AuthorizedBaseCRUDService[Object]):
         return ImageObjectsDeletionError
 
     @classmethod
-    async def verify_create_access(cls, _user_id: UUID, **kwargs) -> None:
+    async def verify_create_access(cls, requester_id: UUID, **kwargs) -> None:
         """
         Verify user can create image objects.
 
@@ -135,8 +135,10 @@ class ImageObjectsService(AuthorizedBaseCRUDService[Object]):
         created by any authenticated user within their organization. This matches the
         authorization pattern used for images.
 
+        This method also ensures user_id is included in kwargs for the Object model.
+
         Args:
-            _user_id: UUID of the requesting user
+            requester_id: UUID of the requesting user
             **kwargs: Image object creation parameters
 
         Raises:
@@ -145,4 +147,8 @@ class ImageObjectsService(AuthorizedBaseCRUDService[Object]):
         from app.service.rbac import RbacService
 
         # Verify user is authenticated and associated with an organization
-        await RbacService.get_user_organization_id(_user_id)
+        await RbacService.get_user_organization_id(requester_id)
+
+        # Ensure user_id is included in kwargs for Object model
+        # This is safe to do in verify_create_access as it's called before data_service.create
+        kwargs["user_id"] = requester_id

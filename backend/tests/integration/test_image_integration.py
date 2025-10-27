@@ -69,7 +69,8 @@ class TestImageServiceIntegrationCreate:
 
         # Call service
         result = await ImageService.create(
-            _user_id=test_admin_user,
+            requester_id=test_admin_user,
+            user_id=test_admin_user,
             folder_id=folder_id,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -102,7 +103,8 @@ class TestImageServiceIntegrationCreate:
 
         with pytest.raises(HTTPException) as exc_info:
             await ImageService.create(
-                _user_id=unauth_user,
+                requester_id=unauth_user,
+                user_id=unauth_user,
                 folder_id=uuid4(),
                 org_user_role_id=uuid4(),
                 org_admin_role_id=uuid4(),
