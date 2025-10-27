@@ -56,6 +56,10 @@ class Settings(BaseSettings):
 
     blob_container_prefix: str = "nachet-"
 
+    # Unified timeout settings for all blob storage providers (Azure, S3, etc.)
+    blob_storage_connection_timeout: int = 5
+    blob_storage_read_timeout: int = 10
+
     s3_access_key: str | None = None
     s3_secret_key: str | None = None
     s3_region_name: str | None = None
@@ -67,7 +71,6 @@ class Settings(BaseSettings):
     trusted_hosts: str | None = None
 
     # frontend static files settings
-    frontend_blob_container: str | None = None
     frontend_version_file: str | None = None
 
     # logging/observability settings
@@ -124,6 +127,8 @@ class Settings(BaseSettings):
             "blob_storage_endpoint_protocol": self.blob_storage_endpoint_protocol,
             "blob_storage_endpoint_suffix": self.blob_storage_endpoint_suffix,
             "blob_storage_endpoint_base": self.blob_storage_endpoint_base,
+            "connection_timeout": self.blob_storage_connection_timeout,
+            "read_timeout": self.blob_storage_read_timeout,
         }
 
     @computed_field
@@ -137,6 +142,8 @@ class Settings(BaseSettings):
             "blob_storage_endpoint_protocol": self.blob_storage_external_endpoint_protocol,
             "blob_storage_endpoint_suffix": self.blob_storage_external_endpoint_suffix,
             "blob_storage_endpoint_base": self.blob_storage_external_endpoint_base,
+            "connection_timeout": self.blob_storage_connection_timeout,
+            "read_timeout": self.blob_storage_read_timeout,
         }
 
     @computed_field
@@ -150,6 +157,8 @@ class Settings(BaseSettings):
             "s3_region_name": self.s3_region_name,
             "s3_use_ssl": self.s3_use_ssl,
             "s3_verify": self.s3_verify,
+            "s3_connect_timeout": self.blob_storage_connection_timeout,
+            "s3_read_timeout": self.blob_storage_read_timeout,
         }
 
     @computed_field
@@ -242,10 +251,10 @@ async def lifespan(app: FastAPI):
     if settings.frontend_blob_container and settings.frontend_version_file:
         print("Lifespan Initializing frontend service...")
         from app.service import FrontendService
+        from app.service.constants import Bucket
 
-        FrontendService.configure(
-            settings.frontend_blob_container, settings.frontend_version_file
-        )
+        container = settings.blob_container_prefix + Bucket.FRONTEND.value
+        FrontendService.configure(container, settings.frontend_version_file)
         await FrontendService.check_and_update_version()
         print("Lifespan Frontend service initialized successfully")
 
