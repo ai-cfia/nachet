@@ -787,7 +787,7 @@ class TestOrganizationServiceIntegrationUpdate:
 
         # Update
         result = await OrganizationService.update(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             entity_id=org_id,
             name="Updated Name",
             description="Updated description",
@@ -822,7 +822,7 @@ class TestOrganizationServiceIntegrationUpdate:
 
         # Update only name
         result = await OrganizationService.update(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             entity_id=org_id,
             name="New Name Only",
         )
@@ -870,7 +870,7 @@ class TestOrganizationServiceIntegrationUpdate:
 
         # Update organization
         await OrganizationService.update(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             entity_id=org_id,
             name="Updated Name",
         )
@@ -902,7 +902,7 @@ class TestOrganizationServiceIntegrationUpdate:
         await integration_db_session.commit()
 
         result = await OrganizationService.update(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             entity_id=org_id,
             name="Updated by CFIA Admin",
         )
@@ -931,7 +931,7 @@ class TestOrganizationServiceIntegrationUpdate:
 
         with pytest.raises(HTTPException) as exc_info:
             await OrganizationService.update(
-                user_id=test_regular_user,
+                requester_id=test_regular_user,
                 entity_id=org_id,
                 name="Should Fail",
             )
@@ -947,7 +947,7 @@ class TestOrganizationServiceIntegrationUpdate:
 
         with pytest.raises(HTTPException) as exc_info:
             await OrganizationService.update(
-                user_id=test_admin_user,
+                requester_id=test_admin_user,
                 entity_id=nonexistent_id,
                 name="Does Not Exist",
             )
@@ -1113,7 +1113,7 @@ class TestOrganizationServiceIntegrationCrossMethod:
 
         # Update
         update_result = await OrganizationService.update(
-            user_id=test_admin_user,
+            requester_id=test_admin_user,
             entity_id=org_id,
             name="Updated Lifecycle Org",
         )
