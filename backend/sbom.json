@@ -945,6 +945,54 @@
       "version": "1.40.55"
     },
     {
+      "bom-ref": "boto3-stubs==1.40.59",
+      "description": "Type annotations for boto3 1.40.59 generated with mypy-boto3-builder 8.11.0",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://youtype.github.io/boto3_stubs_docs/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/youtype/mypy_boto3_builder/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/youtype/mypy_boto3_builder"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/youtype/mypy_boto3_builder"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "boto3-stubs",
+      "properties": [
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "s3"
+        },
+        {
+          "name": "cdx:python:package:required-extra",
+          "value": "secretsmanager"
+        }
+      ],
+      "purl": "pkg:pypi/boto3-stubs@1.40.59",
+      "type": "library",
+      "version": "1.40.59"
+    },
+    {
       "bom-ref": "botocore==1.40.55",
       "description": "Low-level, data-driven core of boto 3.",
       "externalReferences": [
@@ -972,6 +1020,49 @@
       "purl": "pkg:pypi/botocore@1.40.55",
       "type": "library",
       "version": "1.40.55"
+    },
+    {
+      "bom-ref": "botocore-stubs==1.40.59",
+      "description": "Type annotations and code completion for botocore",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://youtype.github.io/mypy_boto3_builder/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issues",
+          "type": "issue-tracker",
+          "url": "https://github.com/youtype/botocore-stubs/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://github.com/youtype/botocore-stubs/releases"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/youtype/botocore-stubs"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/youtype/botocore-stubs"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "botocore-stubs",
+      "purl": "pkg:pypi/botocore-stubs@1.40.59",
+      "type": "library",
+      "version": "1.40.59"
     },
     {
       "bom-ref": "certifi==2025.7.14",
@@ -2739,6 +2830,67 @@
       "version": "6.6.4"
     },
     {
+      "bom-ref": "mypy-boto3-s3==1.40.26",
+      "description": "Type annotations for boto3 S3 1.40.26 service generated with mypy-boto3-builder 8.11.0",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://youtype.github.io/boto3_stubs_docs/mypy_boto3_s3/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/youtype/mypy_boto3_builder/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/youtype/mypy_boto3_builder"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/youtype/mypy_boto3_builder"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "mypy-boto3-s3",
+      "purl": "pkg:pypi/mypy-boto3-s3@1.40.26",
+      "type": "library",
+      "version": "1.40.26"
+    },
+    {
+      "bom-ref": "nodeenv==1.9.1",
+      "description": "Node.js virtual environment builder",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/ekalinin/nodeenv"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "name": "License :: OSI Approved :: BSD License"
+          }
+        }
+      ],
+      "name": "nodeenv",
+      "purl": "pkg:pypi/nodeenv@1.9.1",
+      "type": "library",
+      "version": "1.9.1"
+    },
+    {
       "bom-ref": "numpy==2.3.3",
       "description": "Fundamental package for array computing in Python",
       "externalReferences": [
@@ -3795,6 +3947,39 @@
       "version": "3.2.3"
     },
     {
+      "bom-ref": "pyright==1.1.407",
+      "description": "Command line wrapper for pyright",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Tracker",
+          "type": "issue-tracker",
+          "url": "https://github.com/RobertCraigie/pyright-python/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
+          "url": "https://github.com/RobertCraigie/pyright-python"
+        },
+        {
+          "comment": "from packaging metadata: Home-page",
+          "type": "website",
+          "url": "https://github.com/RobertCraigie/pyright-python"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "pyright",
+      "purl": "pkg:pypi/pyright@1.1.407",
+      "type": "library",
+      "version": "1.1.407"
+    },
+    {
       "bom-ref": "pytest==8.4.1",
       "description": "pytest: simple powerful testing with Python",
       "externalReferences": [
@@ -4806,6 +4991,49 @@
       "version": "0.19.2"
     },
     {
+      "bom-ref": "types-awscrt==0.28.2",
+      "description": "Type annotations and code completion for awscrt",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://youtype.github.io/mypy_boto3_builder/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issues",
+          "type": "issue-tracker",
+          "url": "https://github.com/youtype/types-awscrt/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://github.com/youtype/types-awscrt/releases"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/youtype/types-awscrt"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/youtype/types-awscrt"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "types-awscrt",
+      "purl": "pkg:pypi/types-awscrt@0.28.2",
+      "type": "library",
+      "version": "0.28.2"
+    },
+    {
       "bom-ref": "types-python-dateutil==2.9.0.20250708",
       "description": "Typing stubs for python-dateutil",
       "externalReferences": [
@@ -4847,6 +5075,49 @@
       "purl": "pkg:pypi/types-python-dateutil@2.9.0.20250708",
       "type": "library",
       "version": "2.9.0.20250708"
+    },
+    {
+      "bom-ref": "types-s3transfer==0.14.0",
+      "description": "Type annotations and code completion for s3transfer",
+      "externalReferences": [
+        {
+          "comment": "from packaging metadata Project-URL: Documentation",
+          "type": "documentation",
+          "url": "https://youtype.github.io/mypy_boto3_builder/"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Issues",
+          "type": "issue-tracker",
+          "url": "https://github.com/youtype/types-s3transfer/issues"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Changelog",
+          "type": "release-notes",
+          "url": "https://github.com/youtype/types-s3transfer/releases"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Repository",
+          "type": "vcs",
+          "url": "https://github.com/youtype/types-s3transfer"
+        },
+        {
+          "comment": "from packaging metadata Project-URL: Homepage",
+          "type": "website",
+          "url": "https://github.com/youtype/types-s3transfer"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "acknowledgement": "declared",
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "types-s3transfer",
+      "purl": "pkg:pypi/types-s3transfer@0.14.0",
+      "type": "library",
+      "version": "0.14.0"
     },
     {
       "bom-ref": "typing-inspection==0.4.1",
@@ -5545,6 +5816,7 @@
         "click==8.2.1",
         "coverage==7.10.6",
         "numpy==2.3.3",
+        "pyright==1.1.407",
         "pytest==8.4.1",
         "typing_extensions==4.14.1"
       ],
@@ -5559,11 +5831,28 @@
     },
     {
       "dependsOn": [
+        "boto3==1.40.55",
+        "botocore-stubs==1.40.59",
+        "mypy-boto3-s3==1.40.26",
+        "types-s3transfer==0.14.0",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "boto3-stubs==1.40.59"
+    },
+    {
+      "dependsOn": [
         "botocore==1.40.55",
         "jmespath==1.0.1",
         "s3transfer==0.14.0"
       ],
       "ref": "boto3==1.40.55"
+    },
+    {
+      "dependsOn": [
+        "botocore==1.40.55",
+        "types-awscrt==0.28.2"
+      ],
+      "ref": "botocore-stubs==1.40.59"
     },
     {
       "dependsOn": [
@@ -5887,6 +6176,15 @@
       "ref": "multidict==6.6.4"
     },
     {
+      "dependsOn": [
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "mypy-boto3-s3==1.40.26"
+    },
+    {
+      "ref": "nodeenv==1.9.1"
+    },
+    {
       "ref": "numpy==2.3.3"
     },
     {
@@ -6037,6 +6335,7 @@
       "dependsOn": [
         "PyYAML==6.0.3",
         "azure-identity==1.25.1",
+        "boto3-stubs==1.40.59",
         "boto3==1.40.55",
         "pydantic==2.11.10",
         "python-dotenv==1.1.1",
@@ -6083,6 +6382,13 @@
         "Jinja2==3.1.6"
       ],
       "ref": "pyparsing==3.2.3"
+    },
+    {
+      "dependsOn": [
+        "nodeenv==1.9.1",
+        "typing_extensions==4.14.1"
+      ],
+      "ref": "pyright==1.1.407"
     },
     {
       "dependsOn": [
@@ -6189,6 +6495,7 @@
         "azure-identity==1.25.1",
         "azure-storage-blob==12.26.0",
         "beartype==0.21.0",
+        "boto3-stubs==1.40.59",
         "boto3==1.40.55",
         "cryptography==46.0.2",
         "dbos==2.2.0",
@@ -6207,6 +6514,7 @@
         "pydantic-settings==2.10.1",
         "pydantic==2.11.10",
         "pydantic_core==2.33.2",
+        "pyright==1.1.407",
         "python-dotenv==1.1.1",
         "python-magic==0.4.27",
         "slowapi==0.1.9",
@@ -6298,7 +6606,13 @@
       "ref": "typer==0.17.3"
     },
     {
+      "ref": "types-awscrt==0.28.2"
+    },
+    {
       "ref": "types-python-dateutil==2.9.0.20250708"
+    },
+    {
+      "ref": "types-s3transfer==0.14.0"
     },
     {
       "dependsOn": [

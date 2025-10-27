@@ -59,6 +59,8 @@ dependencies = [
     "uuid6>=2024.7.10",
     "dbos[otel]>=2.2.0",
     "boto3>=1.40.55",
+    "pyright>=1.1.407",
+    "boto3-stubs[s3]>=1.40.59",
 ]
 
 [tool.nachet-db]
@@ -119,4 +121,28 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "raise AssertionError",
     "raise NotImplementedError",
+]
+
+[tool.pyright]
+include = ["app", "tests"]
+exclude = ["**/node_modules",
+    "**/__pycache__",
+    "**/alembic",
+    "app/main.py",
+]
+ignore = [".venv"]
+defineConstant = { DEBUG = true }
+stubPath = "app/stubs"
+venvPath = ".venv"
+
+reportMissingImports = "error"
+reportMissingTypeStubs = false
+
+pythonVersion = "3.13"
+pythonPlatform = "Linux"
+
+# strict = ["app"]
+executionEnvironments = [
+  { root = "tests"},
+  { root = "app" }
 ]
