@@ -181,10 +181,10 @@ class MetadataOperations:
         # Set object tags
         _get_logger().info("Setting blob tags", container=container, blob=name)
 
-        tag_set: list["TagTypeDef"] = [
+        tag_set: list[dict[str, str]] = [
             {"Key": k, "Value": v} for k, v in (tags or {}).items()
         ]
-        tagging: "TaggingTypeDef" = {"TagSet": tag_set}
+        tagging: dict[str, list[dict[str, str]]] = {"TagSet": tag_set}
         try:
             self._client.put_object_tagging(Bucket=container, Key=name, Tagging=tagging)
             _get_logger().info(

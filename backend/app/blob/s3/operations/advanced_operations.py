@@ -93,7 +93,7 @@ class AdvancedOperations:
         )
 
         # Perform copy operation
-        copy_source: "CopySourceTypeDef" = {
+        copy_source: Dict[str, str] = {
             "Bucket": source_container,
             "Key": source_name,
         }

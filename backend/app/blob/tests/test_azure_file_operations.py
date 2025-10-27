@@ -861,7 +861,11 @@ class TestFileErrorHandling(TestFileOperations):
         """Test handling of connection errors."""
         # Mock the blob operations client to raise ServiceRequestError
         # Use create_autospec to create a properly typed mock for beartype
-        with patch.object(storage._blob_ops, "_client", create_autospec(BlobServiceClient, instance=True)) as mock_client:
+        with patch.object(
+            storage._blob_ops,
+            "_client",
+            create_autospec(BlobServiceClient, instance=True),
+        ) as mock_client:
             mock_container_client = MagicMock()
             mock_client.get_container_client.return_value = mock_container_client
 
@@ -886,6 +890,7 @@ class TestFileErrorHandling(TestFileOperations):
 
         # Test with None data - beartype will catch this at the type hint level
         from beartype.roar import BeartypeCallHintParamViolation
+
         with pytest.raises((BlobStorageError, BeartypeCallHintParamViolation)):
             await storage.upload_blob(TEST_CONTAINER, blob_path, None)
 
@@ -1577,6 +1582,7 @@ class TestFileErrorHandling(TestFileOperations):
     async def test_metadata_tags_validation_errors(self, storage, sample_image_data):
         """Test validation errors for metadata and tags."""
         from beartype.roar import BeartypeCallHintParamViolation
+
         blob_path = f"validation-test/errors-{str(uuid.uuid4()).lower()}.png"
 
         try:

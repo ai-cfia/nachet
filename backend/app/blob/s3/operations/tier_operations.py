@@ -85,7 +85,7 @@ class TierOperations:
         try:
             # Copy object to itself with new storage class
             # This is how you change storage class in S3
-            copy_source: "CopySourceTypeDef" = {"Bucket": container, "Key": name}
+            copy_source: dict[str, str] = {"Bucket": container, "Key": name}
             self._client.copy_object(
                 CopySource=copy_source,
                 Bucket=container,
