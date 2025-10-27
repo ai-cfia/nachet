@@ -20,7 +20,7 @@ The manager creates and maintains a single BlobServiceClient instance and provid
 access to container and blob clients derived from it.
 """
 
-from typing import Optional, Dict, Any, AsyncGenerator, TYPE_CHECKING
+from beartype.typing import Optional, Dict, Any, AsyncGenerator, TYPE_CHECKING
 from contextlib import asynccontextmanager
 import asyncio
 from datetime import datetime
@@ -352,7 +352,7 @@ def reset_blob_storage():
     blob_storage_manager._initialized = False
 
 
-async def initialize_blob_storage(settings: "Settings" = None):
+async def initialize_blob_storage(settings: Optional["Settings"] = None):
     """
     Initialize and validate blob storage on application startup.
 
@@ -432,9 +432,11 @@ class BlobStorageHealthCheck:
                     name: configs.get("blob_storage_provider") if configs else None
                 }
             else:
-                storage_info = {
-                    k: v.get("blob_storage_provider") for k, v in configs.items()
-                }
+                storage_info = (
+                    {k: v.get("blob_storage_provider") for k, v in configs.items()}
+                    if configs
+                    else {}
+                )
 
             return {
                 "status": "healthy" if is_healthy else "unhealthy",

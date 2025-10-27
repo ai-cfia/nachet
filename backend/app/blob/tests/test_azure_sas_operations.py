@@ -199,7 +199,7 @@ class TestBlobSASOperations:
             )
 
         assert "nonexistent-container" in str(exc_info.value)
-        assert "does not exist" in str(exc_info.value)
+        assert "not found" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_generate_blob_sas_nonexistent_blob(self, storage: AzureBlobStorage):
