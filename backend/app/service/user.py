@@ -121,7 +121,7 @@ class UserService(BaseCRUDService[Users]):
             org_folder_prefix = user.organization_ref.folder_prefix or "default-org"
 
             # Construct folder prefix: organization/username
-            folder_prefix = f"{org_folder_prefix}/{username}"
+            folder_prefix = f"/{org_folder_prefix}/{username}"
 
             # Get the admin role for this organization
             stmt = select(RbacRole).where(
@@ -168,6 +168,82 @@ class UserService(BaseCRUDService[Users]):
             logger = cls._get_logger()
             logger.warning(
                 f"Failed to create default folder for user, continuing without folder: {str(folder_error)}",
+                user_id=str(user.id),
+            )
+
+    @classmethod
+    async def _assign_user_role(
+        cls, session, user: Users, role_name: str = "user"
+    ) -> None:
+        """
+        Assign a role to a user in their organization.
+
+        This is a private helper method used by register_user() to automatically
+        assign the default "user" role to newly registered users.
+
+        Args:
+            session: Active database session
+            user: User entity (must have organization set)
+            role_name: Name of the role to assign (default: "user")
+
+        Raises:
+            Exception: Logs warning but doesn't raise (role assignment is non-critical)
+        """
+        try:
+            from app.db.model import RbacRole, RbacUserRole
+
+            # Find the role for this organization
+            stmt = select(RbacRole).where(
+                RbacRole.organization_id == user.organization,
+                RbacRole.name == role_name,
+                RbacRole.active == True,  # noqa: E712
+            )
+            result = await session.execute(stmt)
+            role = result.scalar_one_or_none()
+
+            if not role:
+                logger = cls._get_logger()
+                logger.warning(
+                    f"Role '{role_name}' not found for organization",
+                    user_id=str(user.id),
+                    organization_id=str(user.organization),
+                )
+                return
+
+            # Check if user already has this role
+            stmt = select(RbacUserRole).where(
+                RbacUserRole.user_id == user.id,
+                RbacUserRole.role_id == role.id,
+            )
+            result = await session.execute(stmt)
+            existing = result.scalar_one_or_none()
+
+            if existing:
+                logger = cls._get_logger()
+                logger.info(
+                    f"User already has '{role_name}' role",
+                    user_id=str(user.id),
+                    role_id=str(role.id),
+                )
+                return
+
+            # Assign the role
+            user_role = RbacUserRole(user_id=user.id, role_id=role.id, active=True)
+            session.add(user_role)
+            await session.flush()
+
+            logger = cls._get_logger()
+            logger.info(
+                f"Assigned '{role_name}' role to user",
+                user_id=str(user.id),
+                role_id=str(role.id),
+                organization_id=str(user.organization),
+            )
+
+        except Exception as role_error:
+            logger = cls._get_logger()
+            logger.warning(
+                f"Failed to assign '{role_name}' role to user, continuing without role: {str(role_error)}",
                 user_id=str(user.id),
             )
 
@@ -334,7 +410,9 @@ class UserService(BaseCRUDService[Users]):
         This method:
         1. Verifies the admin has permission
         2. Creates a full user record with organization
-        3. Deletes the pending registration entry
+        3. Creates a default folder for the user
+        4. Assigns the default "user" role to the user
+        5. Deletes the pending registration entry
 
         Args:
             admin_user_id: UUID of the admin performing the registration
@@ -381,6 +459,9 @@ class UserService(BaseCRUDService[Users]):
 
                 # Create default folder for the new user
                 await cls._create_default_folder(session, user, email)
+
+                # Assign default "user" role to the newly registered user
+                await cls._assign_user_role(session, user, role_name="user")
 
                 # Delete from pending_registration table
                 from app.datastore.pending_registration import (
