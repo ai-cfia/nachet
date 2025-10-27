@@ -55,7 +55,8 @@ def setup_database():
 
     # Set up environment for psql commands
     env = os.environ.copy()
-    env["PGPASSWORD"] = pg_password
+    if pg_password:
+        env["PGPASSWORD"] = pg_password
 
     # Get schema version
     schema_version = get_schema_version()

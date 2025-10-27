@@ -75,12 +75,20 @@ class TestSeedServiceGetAll:
         mock_session.__aexit__ = AsyncMock(return_value=None)
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock data service
+        # Mock data service class
         mock_data_service = AsyncMock()
         mock_data_service.get_all = AsyncMock(return_value=([seed1, seed2], 2))
+
+        class MockDataServiceClass:
+            def __init__(self, session):
+                pass
+
+            async def get_all(self, **kwargs):
+                return await mock_data_service.get_all(**kwargs)
+
         monkeypatch.setattr(
-            "app.service.seed.SeedDataService",
-            lambda session: mock_data_service,
+            "app.service.seed.SeedService.get_data_service_class",
+            lambda: MockDataServiceClass,
         )
 
         # Call service
@@ -135,12 +143,20 @@ class TestSeedServiceGetById:
         mock_session.commit = AsyncMock()
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock data service
+        # Mock data service class
         mock_data_service = AsyncMock()
         mock_data_service.get_by_id = AsyncMock(return_value=seed)
+
+        class MockDataServiceClass:
+            def __init__(self, session):
+                pass
+
+            async def get_by_id(self, entity_id):
+                return await mock_data_service.get_by_id(entity_id)
+
         monkeypatch.setattr(
-            "app.service.seed.SeedDataService",
-            lambda session: mock_data_service,
+            "app.service.seed.SeedService.get_data_service_class",
+            lambda: MockDataServiceClass,
         )
 
         # Call service
@@ -175,12 +191,20 @@ class TestSeedServiceGetById:
         mock_session.__aexit__ = AsyncMock(return_value=None)
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock data service - seed not found
+        # Mock data service class - seed not found
         mock_data_service = AsyncMock()
         mock_data_service.get_by_id = AsyncMock(return_value=None)
+
+        class MockDataServiceClass:
+            def __init__(self, session):
+                pass
+
+            async def get_by_id(self, entity_id):
+                return await mock_data_service.get_by_id(entity_id)
+
         monkeypatch.setattr(
-            "app.service.seed.SeedDataService",
-            lambda session: mock_data_service,
+            "app.service.seed.SeedService.get_data_service_class",
+            lambda: MockDataServiceClass,
         )
 
         # Should raise 404
@@ -230,17 +254,25 @@ class TestSeedServiceCreate:
         mock_session.commit = AsyncMock()
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock data service
+        # Mock data service class
         mock_data_service = AsyncMock()
         mock_data_service.create = AsyncMock(return_value=seed)
+
+        class MockDataServiceClass:
+            def __init__(self, session):
+                pass
+
+            async def create(self, **kwargs):
+                return await mock_data_service.create(**kwargs)
+
         monkeypatch.setattr(
-            "app.service.seed.SeedDataService",
-            lambda session: mock_data_service,
+            "app.service.seed.SeedService.get_data_service_class",
+            lambda: MockDataServiceClass,
         )
 
         # Call service
         result = await SeedService.create(
-            user_id=user_id,
+            requester_id=user_id,
             name_code="ARATH",
             family="Brassicaceae",
             genus="Arabidopsis",
@@ -273,7 +305,7 @@ class TestSeedServiceCreate:
         # Should raise 403
         with pytest.raises(HTTPException) as exc_info:
             await SeedService.create(
-                user_id=user_id,
+                requester_id=user_id,
                 name_code="ARATH",
                 family="Brassicaceae",
                 genus="Arabidopsis",
@@ -324,12 +356,20 @@ class TestSeedServiceUpdate:
         mock_session.commit = AsyncMock()
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock data service
+        # Mock data service class
         mock_data_service = AsyncMock()
         mock_data_service.update = AsyncMock(return_value=seed)
+
+        class MockDataServiceClass:
+            def __init__(self, session):
+                pass
+
+            async def update(self, entity_id, **kwargs):
+                return await mock_data_service.update(entity_id, **kwargs)
+
         monkeypatch.setattr(
-            "app.service.seed.SeedDataService",
-            lambda session: mock_data_service,
+            "app.service.seed.SeedService.get_data_service_class",
+            lambda: MockDataServiceClass,
         )
 
         # Call service
@@ -364,12 +404,20 @@ class TestSeedServiceUpdate:
         mock_session.__aexit__ = AsyncMock(return_value=None)
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock data service
+        # Mock data service class
         mock_data_service = AsyncMock()
         mock_data_service.update = AsyncMock(return_value=None)
+
+        class MockDataServiceClass:
+            def __init__(self, session):
+                pass
+
+            async def update(self, entity_id, **kwargs):
+                return await mock_data_service.update(entity_id, **kwargs)
+
         monkeypatch.setattr(
-            "app.service.seed.SeedDataService",
-            lambda session: mock_data_service,
+            "app.service.seed.SeedService.get_data_service_class",
+            lambda: MockDataServiceClass,
         )
 
         # Should raise 404
@@ -410,12 +458,20 @@ class TestSeedServiceDelete:
         mock_session.commit = AsyncMock()
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock data service
+        # Mock data service class
         mock_data_service = AsyncMock()
         mock_data_service.soft_delete = AsyncMock(return_value=seed)
+
+        class MockDataServiceClass:
+            def __init__(self, session):
+                pass
+
+            async def soft_delete(self, entity_id):
+                return await mock_data_service.soft_delete(entity_id)
+
         monkeypatch.setattr(
-            "app.service.seed.SeedDataService",
-            lambda session: mock_data_service,
+            "app.service.seed.SeedService.get_data_service_class",
+            lambda: MockDataServiceClass,
         )
 
         # Call service
@@ -449,12 +505,20 @@ class TestSeedServiceDelete:
         mock_session.__aexit__ = AsyncMock(return_value=None)
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock data service
+        # Mock data service class
         mock_data_service = AsyncMock()
         mock_data_service.soft_delete = AsyncMock(return_value=None)
+
+        class MockDataServiceClass:
+            def __init__(self, session):
+                pass
+
+            async def soft_delete(self, entity_id):
+                return await mock_data_service.soft_delete(entity_id)
+
         monkeypatch.setattr(
-            "app.service.seed.SeedDataService",
-            lambda session: mock_data_service,
+            "app.service.seed.SeedService.get_data_service_class",
+            lambda: MockDataServiceClass,
         )
 
         # Should raise 404
@@ -496,35 +560,24 @@ class TestSeedServiceGetSeedData:
         """Test get_seed_data returns active seeds with subset of columns"""
         from app.db.utils import sessionmanager
 
-        # Mock seed data as SQLAlchemy Row objects
-        class MockRow:
-            def __init__(self, data):
-                self._data = data
-
-            def _asdict(self):
-                return self._data
-
+        # Mock seed data as dictionaries (as returned by SeedDataService.get_seed_data)
         mock_rows = [
-            MockRow(
-                {
-                    "seed_id": "seed-123",
-                    "name_code": "WHEAT-001",
-                    "family": "Poaceae",
-                    "genus": "Triticum",
-                    "species": "aestivum",
-                    "seed_metadata": {"color": "golden"},
-                }
-            ),
-            MockRow(
-                {
-                    "seed_id": "seed-456",
-                    "name_code": "CORN-001",
-                    "family": "Poaceae",
-                    "genus": "Zea",
-                    "species": "mays",
-                    "seed_metadata": {"color": "yellow"},
-                }
-            ),
+            {
+                "seed_id": "seed-123",
+                "name_code": "WHEAT-001",
+                "family": "Poaceae",
+                "genus": "Triticum",
+                "species": "aestivum",
+                "seed_metadata": {"color": "golden"},
+            },
+            {
+                "seed_id": "seed-456",
+                "name_code": "CORN-001",
+                "family": "Poaceae",
+                "genus": "Zea",
+                "species": "mays",
+                "seed_metadata": {"color": "yellow"},
+            },
         ]
 
         # Mock session
@@ -533,12 +586,20 @@ class TestSeedServiceGetSeedData:
         mock_session.__aexit__ = AsyncMock(return_value=None)
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock SeedDataService.get_seed_data
-        async def mock_get_seed_data(self):
-            return mock_rows
+        # Mock SeedDataService class
+        mock_data_service = AsyncMock()
+        mock_data_service.get_seed_data = AsyncMock(return_value=mock_rows)
+
+        class MockSeedDataService:
+            def __init__(self, session):
+                pass
+
+            async def get_seed_data(self):
+                return await mock_data_service.get_seed_data()
 
         monkeypatch.setattr(
-            "app.datastore.seed.SeedDataService.get_seed_data", mock_get_seed_data
+            "app.service.seed.SeedDataService",
+            MockSeedDataService,
         )
 
         # Call service method
@@ -571,12 +632,20 @@ class TestSeedServiceGetSeedData:
         mock_session.__aexit__ = AsyncMock(return_value=None)
         monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
 
-        # Mock empty result
-        async def mock_get_seed_data_empty(self):
-            return []
+        # Mock SeedDataService class - empty result
+        mock_data_service = AsyncMock()
+        mock_data_service.get_seed_data = AsyncMock(return_value=[])
+
+        class MockSeedDataService:
+            def __init__(self, session):
+                pass
+
+            async def get_seed_data(self):
+                return await mock_data_service.get_seed_data()
 
         monkeypatch.setattr(
-            "app.datastore.seed.SeedDataService.get_seed_data", mock_get_seed_data_empty
+            "app.service.seed.SeedDataService",
+            MockSeedDataService,
         )
 
         result = await SeedService.get_seed_data()
