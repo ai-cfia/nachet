@@ -10,7 +10,6 @@ from fastapi import HTTPException, Request
 from dotenv import load_dotenv
 
 from app.service.rbac import RbacService
-from app.service.auth import User
 
 # Load test environment
 if not os.getenv("NACHET_SCHEMA"):
@@ -25,15 +24,21 @@ class TestRbacServiceAuthorizeRequest:
         """Routes without policy in database should deny access."""
         from app.db.utils import sessionmanager
 
-        # Mock request
-        request = Mock(spec=Request)
-        request.method = "GET"
+        # Create a real Request object with proper scope
         route_mock = Mock()
         route_mock.path = "/some-unprotected-route"
-        request.scope = {"route": route_mock}
 
-        # Mock user
-        user = Mock(spec=User)
+        scope = {
+            "type": "http",
+            "method": "GET",
+            "path": "/some-unprotected-route",
+            "route": route_mock,
+            "headers": [],
+        }
+        request = Request(scope)
+
+        # Mock user - create a real User-like object with required attributes
+        user = Mock()
         user.oid = str(uuid4())
 
         # Mock sessionmanager and RbacDataService
@@ -60,15 +65,21 @@ class TestRbacServiceAuthorizeRequest:
         """Routes with database policy should allow access when user has permission."""
         from app.db.utils import sessionmanager
 
-        # Mock request for a route with policy
-        request = Mock(spec=Request)
-        request.method = "GET"
+        # Create a real Request object with proper scope
         route_mock = Mock()
         route_mock.path = "/health"
-        request.scope = {"route": route_mock}
 
-        # Mock user
-        user = Mock(spec=User)
+        scope = {
+            "type": "http",
+            "method": "GET",
+            "path": "/health",
+            "route": route_mock,
+            "headers": [],
+        }
+        request = Request(scope)
+
+        # Mock user - create a real User-like object with required attributes
+        user = Mock()
         user.oid = str(uuid4())
 
         # Mock sessionmanager and RbacDataService
@@ -91,15 +102,21 @@ class TestRbacServiceAuthorizeRequest:
         """User without route permission should get 403."""
         from app.db.utils import sessionmanager
 
-        # Mock request for protected route
-        request = Mock(spec=Request)
-        request.method = "GET"
+        # Create a real Request object with proper scope
         route_mock = Mock()
         route_mock.path = "/pipelines"
-        request.scope = {"route": route_mock}
 
-        # Mock user
-        user = Mock(spec=User)
+        scope = {
+            "type": "http",
+            "method": "GET",
+            "path": "/pipelines",
+            "route": route_mock,
+            "headers": [],
+        }
+        request = Request(scope)
+
+        # Mock user - create a real User-like object with required attributes
+        user = Mock()
         user.oid = str(uuid4())
 
         # Mock sessionmanager and RbacDataService
@@ -126,15 +143,21 @@ class TestRbacServiceAuthorizeRequest:
         """User with route permission should be allowed access."""
         from app.db.utils import sessionmanager
 
-        # Mock request for protected route
-        request = Mock(spec=Request)
-        request.method = "GET"
+        # Create a real Request object with proper scope
         route_mock = Mock()
         route_mock.path = "/pipelines"
-        request.scope = {"route": route_mock}
 
-        # Mock user
-        user = Mock(spec=User)
+        scope = {
+            "type": "http",
+            "method": "GET",
+            "path": "/pipelines",
+            "route": route_mock,
+            "headers": [],
+        }
+        request = Request(scope)
+
+        # Mock user - create a real User-like object with required attributes
+        user = Mock()
         user.oid = str(uuid4())
 
         # Mock sessionmanager and RbacDataService
@@ -155,13 +178,17 @@ class TestRbacServiceAuthorizeRequest:
     @pytest.mark.asyncio
     async def test_authorize_request_no_route_in_scope(self):
         """Request without route in scope should not raise exception."""
-        # Mock request without route
-        request = Mock(spec=Request)
-        request.method = "GET"
-        request.scope = {}  # No route
+        # Create a real Request object without route in scope
+        scope = {
+            "type": "http",
+            "method": "GET",
+            "path": "/",
+            "headers": [],
+        }
+        request = Request(scope)
 
-        # Mock user
-        user = Mock(spec=User)
+        # Mock user - create a real User-like object with required attributes
+        user = Mock()
         user.oid = str(uuid4())
 
         # Should not raise exception
