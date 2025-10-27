@@ -10,6 +10,7 @@ from fastapi.responses import Response
 from app.blob.manager import blob_storage_manager
 from app.blob.exceptions import BlobNotFoundError
 from app.service.logs import LogService
+from app.service.constants import BlobAccount
 
 
 class FrontendService:
@@ -57,7 +58,7 @@ class FrontendService:
             HTTPException: If version file cannot be read
         """
         try:
-            storage = blob_storage_manager.get_client()
+            storage = blob_storage_manager.get_client(BlobAccount.ONPREM.value)
             content = await storage.download_blob(
                 cls._container_name, cls._version_file
             )
@@ -155,7 +156,7 @@ class FrontendService:
 
         try:
             # Fetch from blob storage
-            storage = blob_storage_manager.get_client()
+            storage = blob_storage_manager.get_client(BlobAccount.ONPREM.value)
             content = await storage.download_blob(cls._container_name, normalized_path)
 
             # Determine content type
