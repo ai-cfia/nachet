@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from contextlib import contextmanager
-from typing import (
+from beartype.typing import (
     TYPE_CHECKING,
     Any,
     Optional,
