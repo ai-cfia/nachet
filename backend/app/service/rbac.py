@@ -1,5 +1,6 @@
 from uuid import UUID
 from typing import Optional, Type, Dict, Any
+from dataclasses import dataclass
 from fastapi import HTTPException, status, Request
 from sqlalchemy import select
 from app.db.utils import sessionmanager
@@ -42,6 +43,24 @@ from app.exceptions import (
     RbacUserRoleUpdateError,
     RbacUserRoleDeletionError,
 )
+
+
+@dataclass
+class UserOrgRoles:
+    """
+    Container for user's organization and role information.
+
+    Attributes:
+        org_id: Organization UUID
+        org_prefix: Organization folder prefix (e.g., "/cfia/")
+        org_admin_role_id: Admin role UUID for the organization
+        org_user_role_id: User role UUID for the organization
+    """
+
+    org_id: UUID
+    org_prefix: str
+    org_admin_role_id: UUID
+    org_user_role_id: UUID
 
 
 class RbacService:
@@ -120,6 +139,47 @@ class RbacService:
                 )
 
             return org_admin_role.id
+
+    @staticmethod
+    async def get_user_org_roles(user_id: UUID) -> UserOrgRoles:
+        """
+        Get organization ID, prefix, admin role ID, and user role ID in a single database call.
+
+        This is an optimized method that retrieves all four values with one query,
+        reducing database round-trips.
+
+        Args:
+            user_id: The user's UUID
+
+        Returns:
+            UserOrgRoles dataclass containing:
+                - org_id: Organization UUID
+                - org_prefix: Organization folder prefix
+                - org_admin_role_id: Admin role UUID
+                - org_user_role_id: User role UUID
+
+        Raises:
+            HTTPException: 403 if user not associated with an organization
+            HTTPException: 500 if organization roles not found
+        """
+        from app.datastore import OrganizationDataService
+
+        async with sessionmanager.get_session() as session:
+            result = await OrganizationDataService(session).get_user_org_roles(user_id)
+
+            if not result:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="User not associated with an organization or organization roles not found",
+                )
+
+            org_id, org_prefix, org_admin_role_id, org_user_role_id = result
+            return UserOrgRoles(
+                org_id=org_id,
+                org_prefix=org_prefix,
+                org_admin_role_id=org_admin_role_id,
+                org_user_role_id=org_user_role_id,
+            )
 
     @staticmethod
     async def get_org_user_role_id(organization_id: UUID) -> UUID:
