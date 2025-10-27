@@ -121,3 +121,10 @@ jobs:
         continue-on-error: true
         with:
           sarif_file: ${{ steps.scan.outputs.sarif }}
+
+  pyright-check:
+    name: Python Type Check
+    uses: ./.github/workflows/pyright-check.yml
+    secrets: inherit
+    with:
+      working-directory: backend
