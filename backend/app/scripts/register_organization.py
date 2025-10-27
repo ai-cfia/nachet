@@ -6,23 +6,24 @@ This script allows CFIA administrators to create new organizations from the comm
 
 Usage:
     # List all organizations
-    python register_organization.py --list
+    uv run app/scripts/register_organization.py --list
 
     # Create a new organization
-    python register_organization.py --create \
+    uv run app/scripts/register_organization.py --create \
         --name "Organization Name" \
         --description "Organization Description" \
         --folder-prefix "org-prefix" \
         --admin <admin_user_id>
 
     # Show help
-    python register_organization.py --help
+    uv run app/scripts/register_organization.py --help
 
 Requirements:
     - Must have access to the database
     - Must provide a valid CFIA admin user ID
-    - Organization name must be unique
-    - Folder prefix should be lowercase, alphanumeric with hyphens
+    - Organization folder prefixes must be unique (normalized from name)
+    - Folder prefix must be lowercase alphanumeric with hyphens only (max 20 chars, no underscores)
+    - If folder prefix not provided, it will be auto-generated from the organization name
 """
 
 import asyncio
@@ -121,12 +122,12 @@ async def create_organization(
 
     # Validate folder prefix format
     if folder_prefix:
-        if not folder_prefix.replace("-", "").replace("_", "").isalnum():
+        if not folder_prefix.replace("-", "").isalnum():
             print(
                 f"\n❌ ERROR: Folder prefix '{folder_prefix}' contains invalid characters."
             )
             print(
-                "   Folder prefix should only contain lowercase letters, numbers, hyphens, and underscores."
+                "   Folder prefix should only contain lowercase letters, numbers, and hyphens."
             )
             return False
         if folder_prefix != folder_prefix.lower():
@@ -134,6 +135,12 @@ async def create_organization(
                 f"\n⚠️  WARNING: Folder prefix will be converted to lowercase: '{folder_prefix.lower()}'"
             )
             folder_prefix = folder_prefix.lower()
+        if len(folder_prefix) > 20:
+            print(
+                f"\n❌ ERROR: Folder prefix '{folder_prefix}' is too long ({len(folder_prefix)} chars)."
+            )
+            print("   Folder prefix must be 20 characters or less.")
+            return False
 
     print("\n📋 Organization Details:")
     print(f"   Name: {name}")
@@ -211,7 +218,7 @@ Examples:
     --folder-prefix "cfia" \\
     --admin <admin_user_id>
 
-  # Create organization without folder prefix (will use default)
+  # Create organization without folder prefix (will be auto-generated from name)
   python register_organization.py --create \\
     --name "Test Lab" \\
     --description "Testing laboratory" \\
@@ -219,8 +226,9 @@ Examples:
 
 Notes:
   - The admin user must be a CFIA admin with proper permissions
-  - Organization names must be unique
-  - Folder prefixes should be lowercase with hyphens (e.g., "my-org")
+  - Organization folder prefixes must be unique (normalized from the name)
+  - Folder prefixes are lowercase alphanumeric with hyphens only, max 20 chars (e.g., "my-org")
+  - If folder prefix not provided, it will be auto-generated from the organization name
   - Two RBAC roles are automatically created: "admin" and "user"
         """,
     )
@@ -244,7 +252,7 @@ Notes:
     parser.add_argument(
         "--folder-prefix",
         metavar="PREFIX",
-        help="Folder prefix for the organization (optional, lowercase recommended)",
+        help="Folder prefix for the organization (optional, auto-generated from name if not provided; lowercase alphanumeric + hyphens only, max 20 chars)",
     )
 
     parser.add_argument(
