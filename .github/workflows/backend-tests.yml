@@ -67,6 +67,76 @@ jobs:
           uv sync --dev
         working-directory: backend
 
+      - name: Start Garage S3 storage
+        run: |
+          # Create temporary directories for Garage
+          mkdir -p /tmp/garage-meta /tmp/garage-data
+
+          # Create Garage configuration file
+          cat > /tmp/garage.toml <<EOF
+          metadata_dir = "/tmp/meta"
+          data_dir = "/tmp/data"
+          db_engine = "sqlite"
+          replication_factor = 1
+          rpc_bind_addr = "[::]:12441"
+          rpc_public_addr = "127.0.0.1:12441"
+          rpc_secret = "1799bccfd7411eddcf9ebd316bc1f5287ad12a68094e1c6ac6abde7e6feae1ec"
+
+          [s3_api]
+          s3_region = "garage"
+          api_bind_addr = "[::]:12440"
+          root_domain = ".s3.garage.localhost"
+
+          [admin]
+          api_bind_addr = "[::]:12443"
+          admin_token = "ae8cb8e63d9afaf30c2b6b43f8d1c1073e9308d9194e04036bf2f94bbc4bfe89"
+          metrics_token = "1a4c97d447ac7fa10a456e93212e4a9ee90524144d70bcd93d15c0b9fb6bb089"
+          EOF
+
+          # Start Garage container
+          docker run -d \
+            --name garage \
+            --network ${{ job.container.network }} \
+            -e RUST_LOG=garage=debug \
+            -p 12440:12440 \
+            -p 12441:12441 \
+            -p 12443:12443 \
+            -v /tmp/garage.toml:/etc/garage.toml \
+            -v /tmp/garage-meta:/tmp/meta \
+            -v /tmp/garage-data:/tmp/data \
+            dxflrs/garage:v2.1.0
+
+      - name: Wait for Garage to be ready
+        run: |
+          timeout 30 bash -c 'until docker exec garage /garage status 2>/dev/null | grep -q "HEALTHY"; do sleep 2; done'
+
+      - name: Initialize Garage cluster
+        id: garage_init
+        run: |
+          # Get node ID
+          NODE_ID=$(docker exec garage /garage status | grep "NO ROLE ASSIGNED" | awk '{print $1}')
+          echo "Node ID: $NODE_ID"
+
+          # Assign zone and capacity
+          docker exec garage /garage layout assign -z dc1 -c 1G $NODE_ID
+
+          # Apply layout
+          docker exec garage /garage layout apply --version 1
+
+          # Create access key
+          KEY_OUTPUT=$(docker exec garage /garage key create nachet-ci-test-key)
+          echo "$KEY_OUTPUT"
+
+          # Extract credentials
+          ACCESS_KEY=$(echo "$KEY_OUTPUT" | grep "Key ID:" | awk '{print $3}')
+          SECRET_KEY=$(echo "$KEY_OUTPUT" | grep "Secret key:" | awk '{print $3}')
+
+          echo "ACCESS_KEY=$ACCESS_KEY" >> $GITHUB_OUTPUT
+          echo "SECRET_KEY=$SECRET_KEY" >> $GITHUB_OUTPUT
+
+          # Allow create-bucket permission
+          docker exec garage /garage key allow --create-bucket nachet-ci-test-key
+
       - name: Install Azurite
         run: npm install -g azurite
 
