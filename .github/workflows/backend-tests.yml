@@ -91,6 +91,7 @@ jobs:
           NACHET_SCHEMA: "${{ secrets.NACHET_SCHEMA }}"
           CFIA_ORGANIZATION_ID: ${{ secrets.CFIA_ORGANIZATION_ID }}
           CFIA_ADMIN_ROLE_ID: ${{ secrets.CFIA_ADMIN_ROLE_ID }}
+          CFIA_USER_ROLE_ID: ${{ secrets.CFIA_USER_ROLE_ID }}
 
       - name: Start backend server
         working-directory: backend
@@ -139,6 +140,21 @@ jobs:
           BLOB_STORAGE_ENDPOINT_BASE: ${{ secrets.BLOB_STORAGE_ENDPOINT_BASE }}
           CORS_ALLOW_ORIGINS: "http://localhost:5174,http://127.0.0.1:5174"
           TRUSTED_HOSTS: "localhost,127.0.0.1"
+          CFIA_ORGANIZATION_ID: ${{ secrets.CFIA_ORGANIZATION_ID }}
+          CFIA_ADMIN_ROLE_ID: ${{ secrets.CFIA_ADMIN_ROLE_ID }}
+          CFIA_USER_ROLE_ID: ${{ secrets.CFIA_USER_ROLE_ID }}
+          BLOB_STORAGE_EXTERNAL_NAME: ${{ secrets.BLOB_STORAGE_NAME }}
+          BLOB_STORAGE_EXTERNAL_KEY: ${{ secrets.BLOB_STORAGE_KEY }}
+          BLOB_STORAGE_EXTERNAL_ENDPOINT_PROTOCOL: ${{ secrets.BLOB_STORAGE_ENDPOINT_PROTOCOL }}
+          BLOB_STORAGE_EXTERNAL_ENDPOINT_SUFFIX: ${{ secrets.BLOB_STORAGE_ENDPOINT_SUFFIX }}
+          BLOB_STORAGE_EXTERNAL_ENDPOINT_BASE: ${{ secrets.BLOB_STORAGE_ENDPOINT_BASE }}
+          BLOB_CONTAINER_PREFIX: "nachet-ci-test-"
+          S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+          S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+          S3_REGION_NAME: "garage"
+          S3_USE_SSL: "false"
+          S3_VERIFY: "false"
+          S3_ENDPOINT_URL: "http://127.0.0.1:12440"
 
       - name: Checkout OSHP validator
         uses: actions/checkout@v5
