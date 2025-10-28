@@ -54,8 +54,8 @@ class TestS3Connectivity:
 
         print("\n" + "=" * 60)
         print("S3 Configuration:")
-        print(f"  Endpoint URL: {config['s3_endpoint_url']}")
-        print(f"  Region: {config['s3_region_name']}")
+        print("  Endpoint URL: (redacted)")
+        print("  Region: (redacted)")
         print(f"  Access Key ID: {'*' * 16}... (redacted)")
         print(f"  Use SSL: {config['s3_use_ssl']}")
         print("=" * 60)
