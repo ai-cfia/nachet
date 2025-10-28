@@ -15,7 +15,9 @@ dbos_config = DBOSConfig(
     # system_database_engine=None,
     enable_otlp=True,
     log_level=app.settings.log_level.upper(),
-    otlp_logs_endpoints=[app.settings.dbos_exporter_endpoint],
+    otlp_logs_endpoints=[
+        app.settings.dbos_exporter_endpoint if app.settings.otel_enabled else None
+    ],
     # otlp_traces_endpoints=["http://localhost:4318/v1/traces"]
     run_admin_server=True,
     admin_port=3001,
