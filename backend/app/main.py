@@ -13,11 +13,11 @@ dbos_config = DBOSConfig(
     system_database_url=app.settings.db_conn_info["url"],
     application_database_uri=app.settings.db_conn_info["url"],
     # system_database_engine=None,
-    enable_otlp=True,
+    enable_otlp=app.settings.otel_enabled,
     log_level=app.settings.log_level.upper(),
-    otlp_logs_endpoints=[
-        app.settings.dbos_exporter_endpoint if app.settings.otel_enabled else None
-    ],
+    otlp_logs_endpoints=(
+        [app.settings.dbos_exporter_endpoint] if app.settings.otel_enabled else []
+    ),
     # otlp_traces_endpoints=["http://localhost:4318/v1/traces"]
     run_admin_server=True,
     admin_port=3001,
