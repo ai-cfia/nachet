@@ -14,7 +14,7 @@ from automatic beartype decoration applied by beartype_this_package().
 from beartype.typing import Dict, Any, Optional
 from typing import no_type_check
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -80,9 +80,10 @@ image_processing_queue = Queue(
 @DBOS.workflow(max_recovery_attempts=5)
 async def process_image_pipeline(
     image_id: UUID,
-    file_bytes: bytes,
+    file_bytes: bytes | None,
     user_id: UUID,
     org_prefix: str,
+    skip_preprocessing: bool = False,
 ) -> Dict[str, Any]:
     """
     Main image processing workflow (MVP).
@@ -92,9 +93,10 @@ async def process_image_pipeline(
 
     Args:
         image_id: UUID v7 of the image
-        file_bytes: Raw image bytes
+        file_bytes: Raw image bytes (None for duplicates)
         user_id: Submitting user UUID
         org_prefix: Organization prefix (normalized, max 10 chars)
+        skip_preprocessing: If True, skip upload/scan/sanitize (for duplicate images)
 
     Returns:
         Dict containing processing results and blob URLs
@@ -103,21 +105,38 @@ async def process_image_pipeline(
         Various exceptions for different failure modes (defender, sanitization)
     """
     try:
-        DBOS.logger.info(f"Starting image processing pipeline for {image_id}")
+        DBOS.logger.info(
+            f"Starting image processing pipeline for {image_id} (skip_preprocessing={skip_preprocessing})"
+        )
+
+        # For duplicates that skip preprocessing, return immediately
+        if skip_preprocessing:
+            DBOS.logger.info(f"[{image_id}] Skipping preprocessing for duplicate image")
+            return {
+                "image_id": str(image_id),
+                "status": "ready_for_inference",
+                "skip_preprocessing": True,
+            }
 
         # Publish initial progress event
         await DBOS.set_event_async("processing_status", "started")
         await DBOS.set_event_async(
-            "timestamps", {"started": datetime.utcnow().isoformat()}
+            "timestamps", {"started": datetime.now(timezone.utc).isoformat()}
         )
 
-        # Step 1: Upload to Azure Blob Storage (nachet-original)
-        DBOS.logger.info(f"[{image_id}] Step 1: Uploading to nachet-original")
+        # Step 1: Upload to Azure Blob Storage (nachet-original on EXTERNAL)
+        # Must upload to EXTERNAL account for Azure Defender malware scanning
+        from app.service.constants import BlobAccount
+
+        DBOS.logger.info(
+            f"[{image_id}] Step 1: Uploading to nachet-original on EXTERNAL storage"
+        )
         blob_url_original = await upload_to_azure_blob(
             image_id=image_id,
             file_bytes=file_bytes,
             org_prefix=org_prefix,
             user_id=user_id,
+            blob_account=BlobAccount.EXTERNAL,
         )
         await DBOS.set_event_async("upload_complete", True)
         await DBOS.set_event_async("processing_status", "uploaded")
@@ -163,7 +182,7 @@ async def process_image_pipeline(
             "timestamps",
             {
                 **all_events.get("timestamps", {}),
-                "completed": datetime.utcnow().isoformat(),
+                "completed": datetime.now(timezone.utc).isoformat(),
             },
         )
 
@@ -186,7 +205,7 @@ async def process_image_pipeline(
             {
                 "error": str(e),
                 "error_type": type(e).__name__,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             },
         )
 
@@ -254,32 +273,34 @@ class InferenceService:
 
         # validate size (max 10MB)
         if len(image_base64) > MAX_BASE64_LENGTH:
-            raise ImageProcessingError("Image size exceeds maximum limit of 10MB")
+            raise InvalidImageError("Image size exceeds maximum limit of 10MB")
 
-        if len(image_base64.strip()) < 2049:
-            raise ImageProcessingError("Image size is too small or empty")
-
+        # Strip data URL prefix if present before further validation
         if image_base64.startswith("data:"):
-            # Strip data URL prefix to get just the base64 string
             image_base64 = image_base64.split(",", 1)[1]
+
+        # Check minimum size (but be lenient - very small images will fail dimension check anyway)
+        if len(image_base64.strip()) < 100:
+            raise InvalidImageError("Image size is too small or empty")
+
         # Decode base64 to binary
         image_bytes = base64.b64decode(image_base64)
 
         # Validate image type using magic bytes (more reliable than mimetypes on base64)
         mime_type = magic.from_buffer(image_bytes, mime=True)
         if not mime_type.startswith("image/png"):
-            raise ImageProcessingError("Uploaded file is not a valid PNG image")
+            raise InvalidImageError("Uploaded file is not a valid PNG image")
 
         # validate dimensions
         header = image_bytes[:24]
         width = int.from_bytes(header[16:20], "big")
         height = int.from_bytes(header[20:24], "big")
         if width < 384 or height < 384:
-            raise ImageProcessingError(
+            raise InvalidImageError(
                 "Image dimensions are too small, minimum is 384x384 pixels"
             )
         if width > 1920 and height > 1080:
-            raise ImageProcessingError(
+            raise InvalidImageError(
                 "Image dimensions are too large, maximum is 1920x1080 pixels"
             )
 
@@ -438,55 +459,83 @@ class InferenceService:
 
             image_id = uuid7() if not info.duplicate_uuid else info.duplicate_uuid
 
-            _picture_data = await ImageService.create(
-                requester_id=user_id,
-                id=image_id,
-                active=True,
-                folder_id=folder_id,
-                org_user_role_id=user_org_roles.org_user_role_id,
-                org_admin_role_id=user_org_roles.org_admin_role_id,
-                name=image_id,  # from the parsed image info
-                width=info.width,
-                height=info.height,
-                format=info.mime_type,  # Changed from info.format to info.mime_type
-                size_on_disk_original=info.size_bytes,
-                sha256=info.sha256_hash,
-            )
+            # Only create Picture if it's not a duplicate
+            if not info.duplicate_uuid:
+                # Construct blob URL using org_prefix and image_id
+                blob_url_original = f"{user_org_roles.org_prefix}/{image_id}.png"
+
+                _picture_data = await ImageService.create(
+                    requester_id=user_id,
+                    id=image_id,
+                    active=True,
+                    folder_id=folder_id,
+                    org_user_role_id=user_org_roles.org_user_role_id,
+                    org_admin_role_id=user_org_roles.org_admin_role_id,
+                    name=image_id,  # from the parsed image info
+                    width=info.width,
+                    height=info.height,
+                    format=info.mime_type,  # Changed from info.format to info.mime_type
+                    size_on_disk_original=info.size_bytes,
+                    sha256=info.sha256_hash,
+                    blob_url_original=blob_url_original,
+                )
+            else:
+                logger.info(
+                    f"Duplicate image detected: {image_id}",
+                    user_id=str(user_id),
+                    sha256=info.sha256_hash,
+                )
 
             # Start workflow in background using DBOS queue
+            # For duplicates, skip preprocessing but still allow inference
             # Queue handles rate limiting and concurrency
             workflow_handle = await image_processing_queue.enqueue_async(
                 process_image_pipeline,
                 image_id=image_id,
-                file_bytes=info.image_bytes,
+                file_bytes=info.image_bytes
+                if not info.duplicate_uuid
+                else None,  # No file bytes for duplicates
                 user_id=user_id,
                 org_prefix=user_org_roles.org_prefix,
+                skip_preprocessing=bool(
+                    info.duplicate_uuid
+                ),  # Skip preprocessing for duplicates
             )
             workflow_id = workflow_handle.get_workflow_id()
 
-            _processing_state = await InferenceService.create_processing_state(
-                picture_id=image_id,
-                status=ProcessingStatus.PENDING,
-                created_at=datetime.utcnow(),
-                progress_percentage=5,
-                workflow_id=workflow_id,
-            )
+            # Only create processing state for new images, not duplicates
+            if not info.duplicate_uuid:
+                _processing_state = await InferenceService.create_processing_state(
+                    picture_id=image_id,
+                    status=ProcessingStatus.PENDING,
+                    created_at=datetime.now(timezone.utc),
+                    progress_percentage=5,
+                    workflow_id=workflow_id,
+                )
 
-            DBOS.logger.info(
-                f"Image {image_id} submitted for processing. Workflow: {workflow_id}"
-            )
+                DBOS.logger.info(
+                    f"Image {image_id} submitted for processing. Workflow: {workflow_id}"
+                )
 
-            logger.info(
-                f"Image submitted for processing: {image_id}",
-                user_id=str(user_id),
-                workflow_id=workflow_id,
-            )
+                logger.info(
+                    f"Image submitted for processing: {image_id}",
+                    user_id=str(user_id),
+                    workflow_id=workflow_id,
+                )
+            else:
+                logger.info(
+                    f"Duplicate image submitted for inference (skipping preprocessing): {image_id}",
+                    user_id=str(user_id),
+                    workflow_id=workflow_id,
+                )
 
             return ImageSubmissionResponse(
                 image_id=str(image_id),
                 workflow_id=workflow_id,
                 status=ProcessingStatus.PENDING,
-                message="Image submitted for processing",
+                message="Image submitted for processing"
+                if not info.duplicate_uuid
+                else "Duplicate image submitted (preprocessing skipped)",
             )
 
         except (ValueError, InvalidImageError, FolderNotFoundError):
@@ -666,129 +715,132 @@ class InferenceService:
         except Exception as e:
             raise ImageProcessingError(f"Failed to get status: {str(e)}") from e
 
-    # @staticmethod
-    # async def cancel_processing(
-    #     session: AsyncSession,
-    #     image_id: UUID,
-    #     user_id: UUID,
-    # ) -> Dict[str, Any]:
-    #     """
-    #     Cancel an in-progress image processing workflow.
+    @staticmethod
+    async def cancel_processing(
+        session: AsyncSession,
+        image_id: UUID,
+        user_id: UUID,
+    ) -> Dict[str, Any]:
+        """
+        Cancel an in-progress image processing workflow.
 
-    #     Args:
-    #         session: Database session
-    #         image_id: Image UUID
-    #         user_id: Requesting user UUID (for authorization)
+        Args:
+            session: Database session
+            image_id: Image UUID
+            user_id: Requesting user UUID (for authorization)
 
-    #     Returns:
-    #         Dict with cancellation status
+        Returns:
+            Dict with cancellation status
 
-    #     Raises:
-    #         ImageProcessingError: If cancellation fails
-    #     """
-    #     try:
-    #         # Get processing state
-    #         result = await session.execute(
-    #             select(ImageProcessingState).where(
-    #                 ImageProcessingState.picture_id == image_id
-    #             )
-    #         )
-    #         processing_state = result.scalar_one_or_none()
+        Raises:
+            ImageProcessingError: If cancellation fails
+        """
+        try:
+            # Get processing state
+            result = await session.execute(
+                select(ImageProcessingState).where(
+                    ImageProcessingState.picture_id == image_id
+                )
+            )
+            processing_state = result.scalar_one_or_none()
 
-    #         if not processing_state:
-    #             raise ImageProcessingError(
-    #                 f"No processing state found for image {image_id}"
-    #             )
+            if not processing_state:
+                raise ImageProcessingError(
+                    f"No processing state found for image {image_id}"
+                )
 
-    #         workflow_id = processing_state.workflow_id
+            workflow_id = processing_state.workflow_id
 
-    #         # Cancel the workflow in DBOS
-    #         if workflow_id:
-    #             DBOS.cancel_workflow(workflow_id)
+            # Cancel the workflow in DBOS
+            if workflow_id:
+                DBOS.cancel_workflow(workflow_id)
 
-    #         # Update processing state
-    #         processing_state.status = ProcessingStatus.CANCELLED
+            # Update processing state
+            processing_state.status = ProcessingStatus.CANCELLED
 
-    #         await session.commit()
+            await session.commit()
 
-    #         DBOS.logger.info(
-    #             f"Image processing workflow {workflow_id} cancelled by user {user_id}"
-    #         )
+            DBOS.logger.info(
+                f"Image processing workflow {workflow_id} cancelled by user {user_id}"
+            )
 
-    #         return {
-    #             "image_id": str(image_id),
-    #             "status": ProcessingStatus.CANCELLED,
-    #             "message": "Processing cancelled successfully",
-    #         }
+            return {
+                "image_id": str(image_id),
+                "status": ProcessingStatus.CANCELLED,
+                "message": "Processing cancelled successfully",
+            }
 
-    #     except Exception as e:
-    #         raise ImageProcessingError(f"Failed to cancel processing: {str(e)}") from e
+        except Exception as e:
+            raise ImageProcessingError(f"Failed to cancel processing: {str(e)}") from e
 
-    # @staticmethod
-    # async def retry_failed_processing(
-    #     session: AsyncSession,
-    #     image_id: UUID,
-    #     user_id: UUID,
-    # ) -> Dict[str, Any]:
-    #     """
-    #     Retry a failed image processing workflow.
+    @staticmethod
+    async def retry_failed_processing(
+        session: AsyncSession,
+        image_id: UUID,
+        user_id: UUID,
+    ) -> Dict[str, Any]:
+        """
+        Retry a failed image processing workflow.
 
-    #     Args:
-    #         session: Database session
-    #         image_id: Image UUID
-    #         user_id: Requesting user UUID (for authorization)
+        Args:
+            session: Database session
+            image_id: Image UUID
+            user_id: Requesting user UUID (for authorization)
 
-    #     Returns:
-    #         Dict with retry status
+        Returns:
+            Dict with retry status
 
-    #     Raises:
-    #         ImageProcessingError: If retry fails
-    #     """
-    #     try:
-    #         # Get processing state
-    #         result = await session.execute(
-    #             select(ImageProcessingState).where(
-    #                 ImageProcessingState.picture_id == image_id
-    #             )
-    #         )
-    #         processing_state = result.scalar_one_or_none()
+        Raises:
+            ImageProcessingError: If retry fails
+        """
+        try:
+            # Get processing state
+            result = await session.execute(
+                select(ImageProcessingState).where(
+                    ImageProcessingState.picture_id == image_id
+                )
+            )
+            processing_state = result.scalar_one_or_none()
 
-    #         if not processing_state:
-    #             raise ImageProcessingError(
-    #                 f"No processing state found for image {image_id}"
-    #             )
+            if not processing_state:
+                raise ImageProcessingError(
+                    f"No processing state found for image {image_id}"
+                )
 
-    #         if processing_state.status != ProcessingStatus.FAILED:
-    #             raise ImageProcessingError(
-    #                 f"Cannot retry processing in status {processing_state.status}"
-    #             )
+            if processing_state.status != ProcessingStatus.FAILED:
+                raise ImageProcessingError(
+                    f"Cannot retry processing in status {processing_state.status}"
+                )
 
-    #         workflow_id = processing_state.workflow_id
+            workflow_id = processing_state.workflow_id
 
-    #         # Resume the workflow from last completed step
-    #         DBOS.resume_workflow(workflow_id)
+            if workflow_id is None:
+                raise ImageProcessingError(f"No workflow ID found for image {image_id}")
 
-    #         # Update processing state
-    #         processing_state.retry_count += 1
-    #         processing_state.last_retry_at = datetime.utcnow()
-    #         processing_state.error_message = None
-    #         processing_state.error_details = None
+            # Resume the workflow from last completed step
+            DBOS.resume_workflow(workflow_id)
 
-    #         await session.commit()
+            # Update processing state
+            processing_state.retry_count += 1
+            processing_state.last_retry_at = datetime.now(timezone.utc)
+            processing_state.error_message = None
+            processing_state.error_details = None
 
-    #         DBOS.logger.info(
-    #             f"Image processing workflow {workflow_id} resumed by user {user_id}"
-    #         )
+            await session.commit()
 
-    #         return {
-    #             "image_id": str(image_id),
-    #             "workflow_id": workflow_id,
-    #             "status": "retrying",
-    #             "message": "Processing resumed successfully",
-    #         }
+            DBOS.logger.info(
+                f"Image processing workflow {workflow_id} resumed by user {user_id}"
+            )
 
-    #     except Exception as e:
-    #         raise ImageProcessingError(f"Failed to retry processing: {str(e)}") from e
+            return {
+                "image_id": str(image_id),
+                "workflow_id": workflow_id,
+                "status": "retrying",
+                "message": "Processing resumed successfully",
+            }
+
+        except Exception as e:
+            raise ImageProcessingError(f"Failed to retry processing: {str(e)}") from e
 
     @staticmethod
     def calculate_progress_percentage(status: ProcessingStatus) -> int:

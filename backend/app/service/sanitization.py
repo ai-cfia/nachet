@@ -7,6 +7,7 @@ from automatic beartype decoration applied by beartype_this_package().
 
 from uuid import UUID
 from typing import no_type_check
+from datetime import datetime, timezone
 # import aiohttp
 
 from dbos import DBOS
@@ -117,7 +118,7 @@ from app.exceptions import SanitizationError
 
 
 @no_type_check
-@DBOS.step(retries_allowed=True, max_attempts=3, interval_seconds=2.0)
+@DBOS.step(retries_allowed=False)
 async def trigger_sanitization_function_local(
     image_id: UUID,
     org_prefix: str,
@@ -138,7 +139,6 @@ async def trigger_sanitization_function_local(
     from app.blob.manager import blob_storage_manager
     from PIL import Image
     from io import BytesIO
-    from datetime import datetime
 
     settings = get_settings()
     sanitized_storage = blob_storage_manager.get_client(BlobAccount.ONPREM.value)
@@ -194,7 +194,7 @@ async def trigger_sanitization_function_local(
             data=sanitized_bytes,
             metadata={
                 "original_image_id": str(image_id),
-                "date_sanitized": datetime.utcnow().isoformat(),
+                "date_sanitized": datetime.now(timezone.utc).isoformat(),
             },
         )
         DBOS.logger.info(f"Sanitized image uploaded: {_result['url']}")
