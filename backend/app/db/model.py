@@ -792,6 +792,9 @@ class DeviceModel(Base):
     device_brand_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("device_brand.id"), nullable=False
     )
+    date_created: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=func.current_timestamp()
+    )
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
@@ -809,6 +812,9 @@ class DeviceLens(Base):
     device_brand_id: Mapped[UUID] = mapped_column(
         UUID, ForeignKey("device_brand.id"), nullable=False
     )
+    date_created: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=func.current_timestamp()
+    )
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
@@ -824,6 +830,9 @@ class DeviceBrand(Base):
 
     id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    date_created: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=func.current_timestamp()
+    )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
 
