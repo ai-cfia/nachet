@@ -51,7 +51,9 @@ class TestCreateProcessingState:
         mock_context_manager.__aenter__.return_value = mock_session
         mock_context_manager.__aexit__.return_value = None
 
-        with patch("app.service.inference.sessionmanager") as mock_sessionmanager:
+        with patch(
+            "app.service.inference.state_management.sessionmanager"
+        ) as mock_sessionmanager:
             mock_sessionmanager.get_session.return_value = mock_context_manager
 
             # Act
@@ -99,7 +101,9 @@ class TestCreateProcessingState:
         mock_context_manager.__aenter__.return_value = mock_session
         mock_context_manager.__aexit__.return_value = None
 
-        with patch("app.service.inference.sessionmanager") as mock_sessionmanager:
+        with patch(
+            "app.service.inference.state_management.sessionmanager"
+        ) as mock_sessionmanager:
             mock_sessionmanager.get_session.return_value = mock_context_manager
 
             # Act
@@ -138,7 +142,9 @@ class TestCreateProcessingState:
         mock_context_manager.__aenter__.return_value = mock_session
         mock_context_manager.__aexit__.return_value = None
 
-        with patch("app.service.inference.sessionmanager") as mock_sessionmanager:
+        with patch(
+            "app.service.inference.state_management.sessionmanager"
+        ) as mock_sessionmanager:
             mock_sessionmanager.get_session.return_value = mock_context_manager
 
             # Act
@@ -179,7 +185,9 @@ class TestCreateProcessingState:
         mock_context_manager.__aenter__.return_value = mock_session
         mock_context_manager.__aexit__.return_value = None
 
-        with patch("app.service.inference.sessionmanager") as mock_sessionmanager:
+        with patch(
+            "app.service.inference.state_management.sessionmanager"
+        ) as mock_sessionmanager:
             mock_sessionmanager.get_session.return_value = mock_context_manager
 
             # Act & Assert - should raise ImageProcessingError wrapping the original exception
@@ -218,7 +226,9 @@ class TestCreateProcessingState:
         mock_context_manager.__aenter__.return_value = mock_session
         mock_context_manager.__aexit__.return_value = None
 
-        with patch("app.service.inference.sessionmanager") as mock_sessionmanager:
+        with patch(
+            "app.service.inference.state_management.sessionmanager"
+        ) as mock_sessionmanager:
             mock_sessionmanager.get_session.return_value = mock_context_manager
 
             # Act

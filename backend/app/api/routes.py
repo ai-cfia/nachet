@@ -124,44 +124,6 @@ async def submit_image_for_simple_direct_processing(
 
 
 @router.get(
-    "/inf/{image_id}/status",
-    status_code=status.HTTP_200_OK,
-    name="Get Image Processing Status [AUTH REQUIRED]",
-)
-@limiter.limit("60/minute")
-async def get_image_processing_status(
-    request: Request,
-    image_id: str,
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Get the current processing status of an image.
-
-    Returns detailed status information including:
-    - Current processing stage (upload, scan, sanitize)
-    - Progress percentage (0-100)
-    - Timestamps for each stage
-    - Blob URLs when available
-    - Error information if failed
-
-    Frontend should poll this endpoint (with exponential backoff)
-    until status is "completed" or "failed".
-    """
-    # Validate UUID format
-    try:
-        image_uuid = UUID(image_id)
-    except ValueError:
-        raise ValueError(f"Invalid image_id format: {image_id}")
-
-    # Delegate to InferenceService (handles session, logging, business logic)
-    # user.oid is validated by get_current_user to be a valid UUID string
-    return await InferenceService.get_inference_status(
-        image_id=image_uuid,
-        user_id=UUID(current_user.oid),  # type: ignore[arg-type]
-    )
-
-
-@router.get(
     "/workflow/{workflow_id}/status",
     status_code=status.HTTP_200_OK,
     name="Get Workflow Status [AUTH REQUIRED]",
@@ -203,6 +165,60 @@ async def get_workflow_status(
 
     # Delegate to InferenceService (handles DB queries, authorization, DBOS status)
     return await InferenceService.get_workflow_status(
+        workflow_id=workflow_id.strip(),
+        user_id=UUID(current_user.oid),  # type: ignore[arg-type]
+    )
+
+
+@router.get(
+    "/workflow/{workflow_id}/results",
+    status_code=status.HTTP_200_OK,
+    response_model=ApiInferenceResponse,
+    name="Get Workflow Results [AUTH REQUIRED]",
+)
+@limiter.limit("60/minute")
+async def get_workflow_results(
+    request: Request,
+    workflow_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get inference results for a completed workflow.
+
+    Returns formatted inference results including bounding boxes, classifications,
+    and model metadata when the workflow has completed successfully.
+
+    Authorization: User must own the workflow OR be a CFIA admin.
+
+    Args:
+        workflow_id: Parent workflow ID returned by POST /inf
+
+    Returns:
+        ApiInferenceResponse with:
+        - filename: Image filename
+        - imageId: Image UUID
+        - inference_id: Annotation UUID (equals workflow_id)
+        - boxes: List of detected objects with classifications
+        - labelOccurrence: Count of each label
+        - totalBoxes: Total number of detected boxes
+        - models: Model metadata used for inference
+
+    Raises:
+        404: If workflow not found or results not ready
+        403: If user not authorized to access workflow
+        500: If results retrieval fails
+
+    Use cases:
+    - Frontend polls /workflow/{id}/status until overall_status == "completed"
+    - Frontend then calls this endpoint to get formatted results
+    - Results are stored in Annotation table with id == parent workflow_id
+    """
+    # Validate workflow_id is not empty
+    if not workflow_id or not workflow_id.strip():
+        raise ValueError("workflow_id cannot be empty")
+
+    # Delegate to InferenceService (handles DB queries, authorization, result formatting)
+    return await InferenceService.get_workflow_results(
         workflow_id=workflow_id.strip(),
         user_id=UUID(current_user.oid),  # type: ignore[arg-type]
     )
