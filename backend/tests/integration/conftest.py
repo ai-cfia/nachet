@@ -423,6 +423,75 @@ def test_org_user_role(test_organization: UUID) -> UUID:
     return uuid.uuid5(test_organization, "user")
 
 
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def init_blob_storage():
+    """
+    Initialize BlobStorageManager for integration tests.
+
+    This fixture runs once per test session and initializes the blob storage
+    manager with the test configuration from environment variables.
+
+    The fixture automatically initializes all three storage accounts:
+    - 'cloud': Primary Azure Blob Storage
+    - 'external': External Azure Blob Storage
+    - 'onprem': S3-compatible storage (Azurite for testing)
+
+    It also creates the necessary test containers:
+    - nachet-local-test-original: For original uploaded images
+    - nachet-local-test-sanitized: For sanitized images
+
+    Requirements:
+    - Azurite container running: docker compose up -d nachet-blob
+    - Environment variables in .env.test.local
+    """
+    from app.blob.manager import blob_storage_manager
+    from app.api.config import get_settings
+
+    # Get test settings
+    settings = get_settings()
+
+    # Build storage configs for all three accounts
+    storage_configs = {
+        "cloud": ("azure", settings.blob_storage_config),
+        "external": ("azure", settings.blob_storage_external_config),
+        "onprem": ("s3", settings.s3_storage_config),
+    }
+
+    # Initialize the BlobStorageManager
+    await blob_storage_manager.init_multiple(storage_configs)
+
+    # Create test containers if they don't exist
+    onprem_storage = blob_storage_manager.get_client("onprem")
+    bucket_prefix = settings.blob_container_prefix
+    from app.service.constants import Bucket
+
+    test_containers = [
+        bucket_prefix
+        + Bucket.get_original_container(is_test=settings.is_test_environment),
+        bucket_prefix
+        + Bucket.get_sanitized_container(is_test=settings.is_test_environment),
+    ]
+
+    for container_name in test_containers:
+        try:
+            # Check if container exists
+            result = await onprem_storage.list_containers()
+            containers = result.get("containers", [])
+            container_names = [c["name"] for c in containers]
+
+            if container_name not in container_names:
+                # Create container
+                await onprem_storage.create_container(container_name)
+                print(f"Created test container: {container_name}")
+        except Exception as e:
+            print(f"Warning: Could not create container {container_name}: {e}")
+
+    yield
+
+    # Cleanup: close the blob storage manager
+    await blob_storage_manager.close()
+
+
 @pytest_asyncio.fixture(scope="function", autouse=False)
 async def dbos_runtime():
     """
@@ -457,6 +526,7 @@ async def dbos_runtime():
     test_db_url = os.getenv(
         "TESTING_DBOS_DATABASE_URL",
         "sqlite:///test_dbos.db",  # Default to SQLite
+        # "sqlite:///:memory:",  # Use in-memory SQLite for faster tests
     )
 
     config: DBOSConfig = cast(
