@@ -107,7 +107,8 @@ class TestInferenceServiceUrlToBinary:
         mock_image_service.check_sha256_exists = AsyncMock(return_value=None)
 
         with patch(
-            "app.service.inference.ImageDataService", return_value=mock_image_service
+            "app.service.inference.image_validation.ImageDataService",
+            return_value=mock_image_service,
         ):
             result = await InferenceService._preprocess_image(
                 test_image_base64, mock_user_role_id
@@ -136,7 +137,8 @@ class TestInferenceServiceUrlToBinary:
         mock_image_service.check_sha256_exists = AsyncMock(return_value=None)
 
         with patch(
-            "app.service.inference.ImageDataService", return_value=mock_image_service
+            "app.service.inference.image_validation.ImageDataService",
+            return_value=mock_image_service,
         ):
             result = await InferenceService._preprocess_image(
                 test_image_base64_with_data_url, mock_user_role_id
@@ -214,7 +216,8 @@ class TestInferenceServiceUrlToBinary:
         mock_image_service.check_sha256_exists = AsyncMock(return_value=None)
 
         with patch(
-            "app.service.inference.ImageDataService", return_value=mock_image_service
+            "app.service.inference.image_validation.ImageDataService",
+            return_value=mock_image_service,
         ):
             result = await InferenceService._preprocess_image(
                 minimum_image_base64, mock_user_role_id
@@ -340,7 +343,8 @@ class TestInferenceServiceUrlToBinary:
         mock_image_service.check_sha256_exists = AsyncMock(return_value=None)
 
         with patch(
-            "app.service.inference.ImageDataService", return_value=mock_image_service
+            "app.service.inference.image_validation.ImageDataService",
+            return_value=mock_image_service,
         ):
             result = await InferenceService._preprocess_image(
                 data_url, mock_user_role_id
@@ -378,7 +382,8 @@ class TestInferenceServiceGetHash:
         mock_image_service.check_sha256_exists = AsyncMock(return_value=None)
 
         with patch(
-            "app.service.inference.ImageDataService", return_value=mock_image_service
+            "app.service.inference.image_validation.ImageDataService",
+            return_value=mock_image_service,
         ):
             result = await InferenceService._preprocess_image(
                 test_image_base64, mock_user_role_id
@@ -412,7 +417,8 @@ class TestInferenceServiceGetHash:
         mock_image_service.check_sha256_exists = AsyncMock(return_value=existing_uuid)
 
         with patch(
-            "app.service.inference.ImageDataService", return_value=mock_image_service
+            "app.service.inference.image_validation.ImageDataService",
+            return_value=mock_image_service,
         ):
             result = await InferenceService._preprocess_image(
                 test_image_base64, mock_user_role_id
@@ -443,7 +449,8 @@ class TestInferenceServiceGetHash:
         mock_image_service.check_sha256_exists = AsyncMock(return_value=None)
 
         with patch(
-            "app.service.inference.ImageDataService", return_value=mock_image_service
+            "app.service.inference.image_validation.ImageDataService",
+            return_value=mock_image_service,
         ):
             result1 = await InferenceService._preprocess_image(
                 test_image_base64, mock_user_role_id
@@ -478,7 +485,8 @@ class TestInferenceServiceGetHash:
         mock_image_service.check_sha256_exists = AsyncMock(return_value=None)
 
         with patch(
-            "app.service.inference.ImageDataService", return_value=mock_image_service
+            "app.service.inference.image_validation.ImageDataService",
+            return_value=mock_image_service,
         ):
             result1 = await InferenceService._preprocess_image(
                 test_image_base64, mock_user_role_id
@@ -526,7 +534,8 @@ class TestInferenceServiceGetHash:
         )
 
         with patch(
-            "app.service.inference.ImageDataService", return_value=mock_image_service
+            "app.service.inference.image_validation.ImageDataService",
+            return_value=mock_image_service,
         ):
             with pytest.raises(ImageProcessingError) as exc_info:
                 await InferenceService._preprocess_image(
@@ -558,7 +567,8 @@ class TestInferenceServiceGetHash:
         mock_image_service.check_sha256_exists = AsyncMock(return_value=None)
 
         with patch(
-            "app.service.inference.ImageDataService", return_value=mock_image_service
+            "app.service.inference.image_validation.ImageDataService",
+            return_value=mock_image_service,
         ):
             result = await InferenceService._preprocess_image(
                 test_image_base64, mock_user_role_id
@@ -599,7 +609,8 @@ class TestInferenceServiceIntegration:
         mock_image_service.check_sha256_exists = AsyncMock(return_value=None)
 
         with patch(
-            "app.service.inference.ImageDataService", return_value=mock_image_service
+            "app.service.inference.image_validation.ImageDataService",
+            return_value=mock_image_service,
         ):
             result = await InferenceService._preprocess_image(
                 test_image_base64_with_data_url, mock_user_role_id
@@ -636,7 +647,8 @@ class TestInferenceServiceIntegration:
         mock_image_service.check_sha256_exists = AsyncMock(return_value=existing_uuid)
 
         with patch(
-            "app.service.inference.ImageDataService", return_value=mock_image_service
+            "app.service.inference.image_validation.ImageDataService",
+            return_value=mock_image_service,
         ):
             result = await InferenceService._preprocess_image(
                 test_image_base64, mock_user_role_id
