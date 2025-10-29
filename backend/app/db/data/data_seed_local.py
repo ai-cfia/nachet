@@ -232,8 +232,63 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
             active=True,
         )
 
-        session.add_all([swin_15_model, swin_27_model, seed_detector_model])
-    _get_logger().info("Models added")
+        # Local versions of models for testing (deployment_platform='local', 127.0.0.1)
+        swin_15_model_local = Model(
+            id=uuid.UUID("a1b2c3d4-e5f6-4a5b-8c7d-9e0f1a2b3c4d"),
+            deployment_platform="local",
+            name="swin-15e-spp-local",
+            endpoint_name="swin-15-spp-local-endpoint",
+            task_id=2,
+            date_model_training=datetime(2025, 3, 4, 5, 44, 8, 393911),
+            api_url="http://127.0.0.1:12390/score",
+            api_key="gAAAAABnURjjQOZBtbUwSzIEoSYXF5TBldPMeajnzg",
+            created_by="Test User",
+            version="0.0.1",
+            description="15spp-e local test endpoint",
+            active=True,
+        )
+
+        swin_27_model_local = Model(
+            id=uuid.UUID("b2c3d4e5-f6a7-4b5c-8d7e-9f0a1b2c3d4e"),
+            deployment_platform="local",
+            name="swin-27-spp-local",
+            endpoint_name="swin-27-spp-local-endpoint",
+            task_id=2,
+            date_model_training=datetime(2025, 3, 4, 5, 44, 8, 393911),
+            api_url="http://127.0.0.1:12360/predictions/27spp_120250130",
+            api_key="gAAAAABnURjjQOZBtbUwSzIEoSYXF5TBldPMeajnzg",
+            created_by="Test User",
+            version="0.0.1",
+            description="27spp local test endpoint",
+            active=True,
+        )
+
+        seed_detector_model_local = Model(
+            id=uuid.UUID("c3d4e5f6-a7b8-4c5d-8e7f-9a0b1c2d3e4f"),
+            deployment_platform="local",
+            name="seed-detector-rcnn-1-local",
+            endpoint_name="seed-detector-local",
+            task_id=1,
+            date_model_training=datetime(2024, 11, 13, 7, 40, 25, 867369),
+            api_url="http://127.0.0.1:12380/score",
+            api_key="gAAAAABnURjjQOZBtbUwSzIEoSYXF5TBldPMeajnzg",
+            created_by="Test User",
+            version="0.0.1",
+            description="Local test detector endpoint",
+            active=True,
+        )
+
+        session.add_all(
+            [
+                swin_15_model,
+                swin_27_model,
+                seed_detector_model,
+                swin_15_model_local,
+                swin_27_model_local,
+                seed_detector_model_local,
+            ]
+        )
+    _get_logger().info("Models added (including local test models)")
 
     async with async_session.begin() as session:
         # Create pipeline
@@ -331,6 +386,98 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         session.add(pipeline)
     _get_logger().info("Pipeline added")
 
+    # Local test pipelines using 127.0.0.1 endpoints
+    async with async_session.begin() as session:
+        from datetime import date
+
+        pipeline_local_27spp = Pipeline(
+            id=uuid.UUID("d4e5f6a7-b8c9-4d5e-8f7a-9b0c1d2e3f4a"),
+            name="27 spp RCNN SWIN (Local)",
+            active=True,
+            created_by="Test User",
+            creation_date=date(2025, 1, 30),
+            description="Local test pipeline - 27spp with detector and two classifiers",
+            job_name="",
+            version="1",
+            dataset="",
+            identifiable=[],
+            metrics=[],
+            default=False,
+            data={
+                "models": [
+                    "seed-detector-rcnn-1-local",
+                    "swin-27-spp-local",
+                    "swin-15e-spp-local",
+                ],
+                "created_by": "Test User",
+                "creation_date": "2025-01-30",
+                "description": "Local test pipeline - 27spp",
+                "job_name": "",
+                "version": "1",
+                "dataset": "",
+            },
+        )
+        session.add(pipeline_local_27spp)
+    _get_logger().info("Local test pipeline added (27spp)")
+
+    async with async_session.begin() as session:
+        from datetime import date
+
+        pipeline_local_15spp = Pipeline(
+            id=uuid.UUID("e5f6a7b8-c9d0-4e5f-8a7b-9c0d1e2f3a4b"),
+            name="15 spp RCNN SWIN (Local)",
+            active=True,
+            created_by="Test User",
+            creation_date=date(2025, 1, 30),
+            description="Local test pipeline - 15spp with detector and classifier",
+            job_name="",
+            version="1",
+            dataset="",
+            identifiable=[],
+            metrics=[],
+            default=False,
+            data={
+                "models": ["seed-detector-rcnn-1-local", "swin-15e-spp-local"],
+                "created_by": "Test User",
+                "creation_date": "2025-01-30",
+                "description": "Local test pipeline - 15spp",
+                "job_name": "",
+                "version": "1",
+                "dataset": "",
+            },
+        )
+        session.add(pipeline_local_15spp)
+    _get_logger().info("Local test pipeline added (15spp)")
+
+    async with async_session.begin() as session:
+        from datetime import date
+
+        pipeline_local_27spp_single = Pipeline(
+            id=uuid.UUID("f6a7b8c9-d0e1-4f5a-8b7c-9d0e1f2a3b4c"),
+            name="27 spp RCNN SWIN Single (Local)",
+            active=True,
+            created_by="Test User",
+            creation_date=date(2025, 1, 30),
+            description="Local test pipeline - 27spp with detector only",
+            job_name="",
+            version="1",
+            dataset="",
+            identifiable=[],
+            metrics=[],
+            default=False,
+            data={
+                "models": ["seed-detector-rcnn-1-local", "swin-27-spp-local"],
+                "created_by": "Test User",
+                "creation_date": "2025-01-30",
+                "description": "Local test pipeline - 27spp single",
+                "job_name": "",
+                "version": "1",
+                "dataset": "",
+            },
+        )
+        session.add(pipeline_local_27spp_single)
+    _get_logger().info("Local test pipeline added (27spp single)")
+
     # Add pipeline default
     async with async_session.begin() as session:
         pipeline_default = PipelineDefault(
@@ -409,6 +556,78 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
             active=True,
         )
 
+        # Local pipeline models (27spp with 3 steps)
+        pipeline_model_local_1 = PipelineModel(
+            id=uuid.UUID("a7b8c9d0-e1f2-4a5b-8c7d-9e0f1a2b3c4d"),
+            pipeline_id=uuid.UUID("d4e5f6a7-b8c9-4d5e-8f7a-9b0c1d2e3f4a"),
+            model_id=uuid.UUID(
+                "c3d4e5f6-a7b8-4c5d-8e7f-9a0b1c2d3e4f"
+            ),  # detector-local
+            step=1,
+            request_function="rcnn_seed_detector",
+            active=True,
+        )
+
+        pipeline_model_local_2 = PipelineModel(
+            id=uuid.UUID("b8c9d0e1-f2a3-4b5c-8d7e-9f0a1b2c3d4e"),
+            pipeline_id=uuid.UUID("d4e5f6a7-b8c9-4d5e-8f7a-9b0c1d2e3f4a"),
+            model_id=uuid.UUID("b2c3d4e5-f6a7-4b5c-8d7e-9f0a1b2c3d4e"),  # swin-27-local
+            step=2,
+            request_function="ensemble_a",
+            active=True,
+        )
+
+        pipeline_model_local_3 = PipelineModel(
+            id=uuid.UUID("c9d0e1f2-a3b4-4c5d-8e7f-9a0b1c2d3e4f"),
+            pipeline_id=uuid.UUID("d4e5f6a7-b8c9-4d5e-8f7a-9b0c1d2e3f4a"),
+            model_id=uuid.UUID("a1b2c3d4-e5f6-4a5b-8c7d-9e0f1a2b3c4d"),  # swin-15-local
+            step=3,
+            request_function="ensemble_b",
+            active=True,
+        )
+
+        # Local pipeline models (15spp with 2 steps)
+        pipeline_model_local_4 = PipelineModel(
+            id=uuid.UUID("d0e1f2a3-b4c5-4d5e-8f7a-9b0c1d2e3f4a"),
+            pipeline_id=uuid.UUID("e5f6a7b8-c9d0-4e5f-8a7b-9c0d1e2f3a4b"),
+            model_id=uuid.UUID(
+                "c3d4e5f6-a7b8-4c5d-8e7f-9a0b1c2d3e4f"
+            ),  # detector-local
+            step=1,
+            request_function="rcnn_seed_detector",
+            active=True,
+        )
+
+        pipeline_model_local_5 = PipelineModel(
+            id=uuid.UUID("e1f2a3b4-c5d6-4e5f-8a7b-9c0d1e2f3a4b"),
+            pipeline_id=uuid.UUID("e5f6a7b8-c9d0-4e5f-8a7b-9c0d1e2f3a4b"),
+            model_id=uuid.UUID("a1b2c3d4-e5f6-4a5b-8c7d-9e0f1a2b3c4d"),  # swin-15-local
+            step=2,
+            request_function="swin_classifier",
+            active=True,
+        )
+
+        # Local pipeline models (27spp single with 2 steps)
+        pipeline_model_local_6 = PipelineModel(
+            id=uuid.UUID("f2a3b4c5-d6e7-4f5a-8b7c-9d0e1f2a3b4c"),
+            pipeline_id=uuid.UUID("f6a7b8c9-d0e1-4f5a-8b7c-9d0e1f2a3b4c"),
+            model_id=uuid.UUID(
+                "c3d4e5f6-a7b8-4c5d-8e7f-9a0b1c2d3e4f"
+            ),  # detector-local
+            step=1,
+            request_function="rcnn_seed_detector",
+            active=True,
+        )
+
+        pipeline_model_local_7 = PipelineModel(
+            id=uuid.UUID("a3b4c5d6-e7f8-4a5b-8c7d-9e0f1a2b3c4d"),
+            pipeline_id=uuid.UUID("f6a7b8c9-d0e1-4f5a-8b7c-9d0e1f2a3b4c"),
+            model_id=uuid.UUID("b2c3d4e5-f6a7-4b5c-8d7e-9f0a1b2c3d4e"),  # swin-27-local
+            step=2,
+            request_function="swin_classifier",
+            active=True,
+        )
+
         session.add_all(
             [
                 pipeline_model_1,
@@ -418,9 +637,16 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
                 pipeline_model_5,
                 pipeline_model_6,
                 pipeline_model_7,
+                pipeline_model_local_1,
+                pipeline_model_local_2,
+                pipeline_model_local_3,
+                pipeline_model_local_4,
+                pipeline_model_local_5,
+                pipeline_model_local_6,
+                pipeline_model_local_7,
             ]
         )
-    _get_logger().info("Pipeline models added")
+    _get_logger().info("Pipeline models added (including local test pipeline models)")
 
     async with async_session.begin() as session:
         # Create organization first (required for foreign key references)
