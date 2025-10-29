@@ -81,11 +81,33 @@ def test_image_base64():
     return f"data:image/png;base64,{base64_str}"
 
 
+@pytest_asyncio.fixture
+async def test_pipeline_id(
+    integration_db_session: AsyncSession,
+    test_user: UUID,
+):
+    """
+    Get a local test pipeline ID from the database.
+
+    Uses the "15 spp RCNN SWIN (Local)" pipeline which has 2 steps:
+    - Step 1: seed-detector-rcnn-1-local (http://127.0.0.1:12380/score)
+    - Step 2: swin-15e-spp-local (http://127.0.0.1:12390/score)
+
+    This pipeline uses local endpoints for integration testing with mock ML servers.
+    """
+    # Return the local 15spp pipeline ID (2 steps: detector + classifier)
+    local_pipeline_id = UUID("e5f6a7b8-c9d0-4e5f-8a7b-9c0d1e2f3a4b")
+
+    yield local_pipeline_id
+
+
 @pytest.fixture()
-def test_inference_request(test_folder: UUID, test_image_base64: str):
+def test_inference_request(
+    test_folder: UUID, test_image_base64: str, test_pipeline_id: UUID
+):
     """Create valid InferenceRequest for testing."""
     return InferenceRequest(
-        pipeline_id="test-pipeline",
+        pipeline_id=str(test_pipeline_id),
         folder_name="Test Submission Folder",
         folder_id=str(test_folder),
         imageDims=[638, 559],  # Dimensions of test seed image
@@ -259,13 +281,14 @@ class TestSubmitInferenceRequestValidation:
         self,
         test_user: UUID,
         test_image_base64: str,
+        test_pipeline_id: UUID,
     ):
         """Test submission with non-existent folder raises error."""
         # Arrange
         fake_folder_id = str(uuid4())
 
         request = InferenceRequest(
-            pipeline_id="test-pipeline",
+            pipeline_id=str(test_pipeline_id),
             folder_name="Fake Folder",
             folder_id=fake_folder_id,
             imageDims=[640, 480],
@@ -290,6 +313,7 @@ class TestSubmitInferenceRequestValidation:
         self,
         test_user: UUID,
         test_folder: UUID,
+        test_pipeline_id: UUID,
     ):
         """Test submission with >10MB image raises InvalidImageError."""
         # Arrange - create a large base64 string (>10MB)
@@ -297,7 +321,7 @@ class TestSubmitInferenceRequestValidation:
         large_base64 = base64.b64encode(large_data).decode("utf-8")
 
         request = InferenceRequest(
-            pipeline_id="test-pipeline",
+            pipeline_id=str(test_pipeline_id),
             folder_name="Test Folder",
             folder_id=str(test_folder),
             imageDims=[640, 480],
@@ -319,6 +343,7 @@ class TestSubmitInferenceRequestValidation:
         self,
         test_user: UUID,
         test_folder: UUID,
+        test_pipeline_id: UUID,
     ):
         """Test submission with <384x384 image raises InvalidImageError."""
         # Arrange - create a small PNG image (but large enough to pass base64 size check)
@@ -333,7 +358,7 @@ class TestSubmitInferenceRequestValidation:
         small_base64 = base64.b64encode(small_bytes).decode("utf-8")
 
         request = InferenceRequest(
-            pipeline_id="test-pipeline",
+            pipeline_id=str(test_pipeline_id),
             folder_name="Test Folder",
             folder_id=str(test_folder),
             imageDims=[383, 383],
@@ -357,6 +382,7 @@ class TestSubmitInferenceRequestValidation:
         self,
         test_user: UUID,
         test_folder: UUID,
+        test_pipeline_id: UUID,
     ):
         """Test submission with JPEG image raises InvalidImageError."""
         # Arrange - create a JPEG image
@@ -370,7 +396,7 @@ class TestSubmitInferenceRequestValidation:
         jpeg_base64 = base64.b64encode(jpeg_bytes).decode("utf-8")
 
         request = InferenceRequest(
-            pipeline_id="test-pipeline",
+            pipeline_id=str(test_pipeline_id),
             folder_name="Test Folder",
             folder_id=str(test_folder),
             imageDims=[640, 480],
@@ -395,13 +421,14 @@ class TestSubmitInferenceRequestValidation:
         self,
         test_user: UUID,
         test_folder: UUID,
+        test_pipeline_id: UUID,
     ):
         """Test submission with corrupted base64 raises InvalidImageError."""
         # Arrange - corrupted base64
         corrupted_base64 = "data:image/png;base64,NOT_VALID_BASE64!!!"
 
         request = InferenceRequest(
-            pipeline_id="test-pipeline",
+            pipeline_id=str(test_pipeline_id),
             folder_name="Test Folder",
             folder_id=str(test_folder),
             imageDims=[640, 480],
@@ -469,6 +496,7 @@ class TestSubmitInferenceRequestRbac:
         test_regular_user: UUID,  # Different user without access
         test_folder: UUID,
         test_image_base64: str,
+        test_pipeline_id: UUID,
     ):
         """
         Test submission to folder from different organization is denied.
@@ -477,7 +505,7 @@ class TestSubmitInferenceRequestRbac:
         """
         # Arrange
         request = InferenceRequest(
-            pipeline_id="test-pipeline",
+            pipeline_id=str(test_pipeline_id),
             folder_name="Test Folder",
             folder_id=str(test_folder),
             imageDims=[638, 559],

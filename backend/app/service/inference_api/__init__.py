@@ -1,11 +1,13 @@
 from dataclasses import dataclass
-from beartype.typing import TYPE_CHECKING
+from beartype.typing import Any
 
-if TYPE_CHECKING:
-    from app.model.inference import (
-        SeedDetectorAPIResponse,
-        EnhancedClassificationResult,
-    )
+# Import Pydantic models for type annotations
+# Note: Imported at module level (not TYPE_CHECKING) because beartype needs
+# to resolve forward references at runtime
+from app.model.inference import (
+    SeedDetectorAPIResponse,
+    EnhancedClassificationResult,
+)
 
 
 @dataclass
@@ -82,7 +84,7 @@ from .torch_ensemble import (
 class InferenceDispatchService:
     @staticmethod
     def dispatch(
-        model: dict[str, str],
+        model: dict[str, Any],
         previous_result: str
         | ModelInferenceDetectorResult
         | ModelInferenceClassifierResult,
