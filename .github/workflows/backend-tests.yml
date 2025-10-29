@@ -382,9 +382,13 @@ jobs:
           - ./e2e/mocks/nachet-27spp-classifier:/home/wiremock/mappings
 
     steps:
-      - name: Chown user
+      - name: Workspace chown
+        working-directory: ${{ github.workspace }}
         run: |
-          sudo chown -R $USER:$USER $GITHUB_WORKSPACE
+          if [ -d "$GITHUB_WORKSPACE" ]; then
+            sudo chown -R $USER:$USER $GITHUB_WORKSPACE || true
+            sudo chmod -R u+w $GITHUB_WORKSPACE || true
+          fi
 
       - name: Checkout code
         uses: actions/checkout@v5
