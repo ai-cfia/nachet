@@ -6,7 +6,7 @@ Provides three core operations: store, retrieve, and update data structures.
 """
 
 from beartype.typing import Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 class CacheService:
@@ -48,7 +48,7 @@ class CacheService:
         if ttl_seconds is None:
             ttl_seconds = cls.DEFAULT_TTL_SECONDS
 
-        expires_at = datetime.utcnow() + timedelta(seconds=ttl_seconds)
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
 
         cls._cache[namespace] = {"data": data, "expires_at": expires_at}
 
@@ -71,7 +71,7 @@ class CacheService:
         cache_entry = cls._cache[namespace]
 
         # Check if expired
-        if datetime.utcnow() > cache_entry["expires_at"]:
+        if datetime.now(timezone.utc) > cache_entry["expires_at"]:
             # Auto-cleanup expired entry
             del cls._cache[namespace]
             return None

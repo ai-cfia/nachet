@@ -75,8 +75,86 @@ async def upload_to_azure_blob(
         raise BlobUploadError(f"Failed to upload blob: {str(e)}") from e
 
 
+def _process_defender_scan_result(
+    scan_result: str, scan_timestamp: str, tags: Dict[str, Any]
+) -> Dict[str, Any] | None:
+    """
+    Process Defender scan result and return status or raise appropriate exception.
+
+    This is a pure function for easy unit testing.
+
+    Args:
+        scan_result: The scan result from Defender tags
+        scan_timestamp: The scan timestamp from Defender tags
+        tags: Full tags dictionary
+
+    Returns:
+        Dict with status, tags, and scan_timestamp for success cases,
+        or None to indicate should continue polling (transient/unknown errors)
+
+    Raises:
+        DefenderScanFailedError: Malware detected or permanent scan error
+        DefenderScanNotScannedError: Blob couldn't be scanned
+    """
+    # Success states
+    if scan_result == "No threats found":
+        return {
+            "status": "clean",
+            "tags": tags,
+            "scan_timestamp": scan_timestamp,
+        }
+    elif scan_result == "Malicious":
+        raise DefenderScanFailedError(
+            f"Malware detected in image. Scan time: {scan_timestamp}"
+        )
+    # Not scanned - blob couldn't be scanned (no charge)
+    elif scan_result == "Not scanned":
+        raise DefenderScanNotScannedError(
+            "Blob could not be scanned due to unsupported type or encryption. "
+            f"Scan time: {scan_timestamp}"
+        )
+    # Error states - check for SAM error codes
+    elif scan_result.startswith("SAM"):
+        # Parse error code
+        error_code = scan_result.split(":")[0] if ":" in scan_result else scan_result
+
+        # Transient errors that should retry (no charge)
+        if error_code in [
+            "SAM259201",
+            "SAM259207",
+            "SAM259213",
+            "SAM259215",
+            "SAM259221",
+        ]:
+            # Return None to indicate should continue polling
+            return None
+        # Permanent errors that should fail immediately
+        else:
+            raise DefenderScanFailedError(
+                f"Defender scan failed with error: {scan_result}. Scan time: {scan_timestamp}"
+            )
+    # Unknown scan result - return None to continue polling
+    else:
+        return None
+
+
 @no_type_check
-@DBOS.step(retries_allowed=True, max_attempts=30, interval_seconds=10.0, backoff_rate=2)
+@DBOS.step()
+async def check_defender_scan_tags(
+    storage,
+    container: str,
+    blob_name: str,
+) -> Dict[str, Any]:
+    """
+    Step to check Defender scan tags on a blob.
+
+    This is a step so it can be called from the wait_for_defender_scan workflow.
+    """
+    return await storage.get_blob_tags(container, blob_name)
+
+
+@no_type_check
+@DBOS.workflow()
 async def wait_for_defender_scan(
     image_id: UUID,
     org_prefix: str,
@@ -123,7 +201,7 @@ async def wait_for_defender_scan(
 
     for attempt in range(max_attempts):
         try:
-            tags = await storage.get_blob_tags(container, blob_name)
+            tags = await check_defender_scan_tags(storage, container, blob_name)
 
             # Check if scan has completed using Azure Defender standard tag
             scan_result = tags.get("Malware scanning scan result")
@@ -131,56 +209,24 @@ async def wait_for_defender_scan(
             if scan_result is not None:
                 scan_timestamp = tags.get("Malware scanning scan time UTC")
 
-                # Success states
-                if scan_result == "No threats found":
-                    return {
-                        "status": "clean",
-                        "tags": tags,
-                        "scan_timestamp": scan_timestamp,
-                    }
-                elif scan_result == "Malicious":
-                    raise DefenderScanFailedError(
-                        f"Malware detected in image. Scan time: {scan_timestamp}"
-                    )
+                # Process the scan result using the helper function
+                result = _process_defender_scan_result(
+                    scan_result, scan_timestamp, tags
+                )
 
-                # Not scanned - blob couldn't be scanned (no charge)
-                elif scan_result == "Not scanned":
-                    raise DefenderScanNotScannedError(
-                        "Blob could not be scanned due to unsupported type or encryption. "
-                        f"Scan time: {scan_timestamp}"
-                    )
-
-                # Error states - check for SAM error codes
-                elif scan_result.startswith("SAM"):
-                    # Parse error code and message
-                    error_code = (
-                        scan_result.split(":")[0] if ":" in scan_result else scan_result
-                    )
-
-                    # Transient errors that should retry (no charge)
-                    if error_code in [
-                        "SAM259201",
-                        "SAM259207",
-                        "SAM259213",
-                        "SAM259215",
-                        "SAM259221",
-                    ]:
+                if result is not None:
+                    # Success case - return the result
+                    return result
+                else:
+                    # Transient error or unknown result - log and continue polling
+                    if scan_result.startswith("SAM"):
                         DBOS.logger.warning(
                             f"Transient Defender scan error (attempt {attempt}): {scan_result}"
                         )
-                        # Continue polling for these transient errors
-
-                    # Permanent errors that should fail immediately
                     else:
-                        raise DefenderScanFailedError(
-                            f"Defender scan failed with error: {scan_result}. Scan time: {scan_timestamp}"
+                        DBOS.logger.warning(
+                            f"Unexpected Defender scan result: {scan_result}"
                         )
-
-                # Unknown scan result
-                else:
-                    DBOS.logger.warning(
-                        f"Unexpected Defender scan result: {scan_result}"
-                    )
 
         except (DefenderScanFailedError, DefenderScanNotScannedError):
             # Re-raise defender-specific errors immediately
@@ -188,7 +234,7 @@ async def wait_for_defender_scan(
         except Exception as e:
             DBOS.logger.warning(f"Defender scan check attempt {attempt}: {str(e)}")
 
-        # Durable sleep - survives crashes!
+        # Durable sleep - survives crashes! (now valid since this is a workflow)
         await DBOS.sleep_async(5)
 
     raise DefenderScanTimeoutError(f"Defender scan timed out after {timeout_sec}s")
