@@ -121,7 +121,7 @@ simultaneously.
  > "Top N accuracy — Top N accuracy is when you measure how often your predicted
  > class falls in the top N values of your softmax distribution." [Nagda, R.
  (2019-11-08) *Evaluating models using the Top N accuracy metrics*.
- Medium](https://medium.com/nanonets/evaluating-models-using-the-top-n-accuracy-metrics-c0355b36f91b)
+ Medium](https://medium.com/nanonets/evaluating-models-using-the-top-n-accuracy-metrics-c0355b36f91b) <!-- markdown-link-check-disable-line -->
 
 ### Bounding Boxes
 
