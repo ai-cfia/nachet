@@ -1,7 +1,6 @@
 import inspect
-import logging
 from collections.abc import Awaitable, Callable
-from beartype.typing import TYPE_CHECKING, Any, Optional
+from beartype.typing import Any, Optional
 
 import jwt
 from fastapi.exceptions import HTTPException
@@ -30,14 +29,22 @@ from .exceptions import (
     UnauthorizedHttp,
     UnauthorizedWebSocket,
 )
-from .openid_config import OpenIdConfig
+from .openid_config import AllowedPublicKeys, OpenIdConfig
 from .user import User
 from .utils import get_unverified_claims, get_unverified_header, is_guest
 
-if TYPE_CHECKING:  # pragma: no cover
-    from jwt.algorithms import AllowedPublicKeys
+# Use application logger instead of fastapi_azure_auth logger
+_logger = None
 
-log = logging.getLogger("fastapi_azure_auth")
+
+def _get_logger():
+    """Lazy load logger to avoid circular imports"""
+    global _logger
+    if _logger is None:
+        from app.service.logs import LogService
+
+        _logger = LogService.get_logger()
+    return _logger
 
 
 class AzureAuthorizationCodeBearerBase(SecurityBase):
@@ -173,15 +180,15 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
             access_token = await self.extract_access_token(request)
             try:
                 if access_token is None:
+                    _get_logger().warning("No access token provided in request")
                     raise InvalidRequest("No access token provided", request=request)
                 # Extract header information of the token.
                 header: dict[str, Any] = get_unverified_header(access_token)
                 claims: dict[str, Any] = get_unverified_claims(access_token)
             except Exception as error:
-                log.warning(
-                    "Malformed token received. %s. Error: %s",
-                    access_token,
-                    error,
+                token_length = len(access_token) if access_token else 0
+                _get_logger().warning(
+                    f"Malformed token received. Token length: {token_length}. Error: {error}",
                     exc_info=True,
                 )
                 raise Unauthorized(
@@ -192,36 +199,60 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
                 ) from error
 
             user_is_guest: bool = is_guest(claims=claims)
+            _get_logger().debug(
+                f"User is_guest: {user_is_guest}, allow_guest_users: {self.allow_guest_users}"
+            )
             if not self.allow_guest_users and user_is_guest:
-                log.info("User denied, is a guest user", claims)
+                _get_logger().info(f"User denied, is a guest user. Claims: {claims}")
                 raise Forbidden(detail="Guest users not allowed", request=request)
 
+            _get_logger().debug(f"Security scopes required: {security_scopes.scopes}")
             for scope in security_scopes.scopes:
                 token_scope_string = claims.get("scp", "")
-                log.debug("Scopes: %s", token_scope_string)
+                _get_logger().debug(
+                    f"Checking scope '{scope}' in token scopes: {token_scope_string}"
+                )
                 if not isinstance(token_scope_string, str):
+                    _get_logger().warning(
+                        f"Token contains invalid formatted scopes: {type(token_scope_string)}"
+                    )
                     raise Forbidden(
                         "Token contains invalid formatted scopes", request=request
                     )
 
                 token_scopes = token_scope_string.split(" ")
                 if scope not in token_scopes:
+                    _get_logger().warning(
+                        f"Required scope '{scope}' missing from token scopes: {token_scopes}"
+                    )
                     raise Forbidden("Required scope missing", request=request)
             # Load new config if old
             await self.openid_config.load_config()
+            _get_logger().debug(
+                f"OpenID configuration loaded, issuer: {self.openid_config.issuer}"
+            )
 
             if self.multi_tenant and self.validate_iss and self.iss_callable:
-                iss = await self.iss_callable(tid=claims.get("tid"))
+                tid = claims.get("tid")
+                iss = await self.iss_callable(tid=tid)
             else:
                 iss = self.openid_config.issuer
+            _get_logger().debug(f"Using issuer for validation: {iss}")
 
             # Use the `kid` from the header to find a matching signing key to use
+            kid = header.get("kid", "")
+            _get_logger().debug(f"Looking for signing key with kid: {kid}")
+            _get_logger().debug(
+                f"Available signing keys: {list(self.openid_config.signing_keys.keys())}"
+            )
             try:
-                if key := self.openid_config.signing_keys.get(header.get("kid", "")):
+                if key := self.openid_config.signing_keys.get(kid):
+                    _get_logger().debug(f"Found matching signing key for kid: {kid}")
                     # We require and validate all fields in an Azure Entra ID token
                     required_claims = ["exp", "aud", "iat", "nbf", "sub"]
                     if self.validate_iss:
                         required_claims.append("iss")
+                    _get_logger().debug(f"Required claims: {required_claims}")
 
                     options = {
                         "verify_signature": True,
@@ -232,9 +263,16 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
                         "verify_iss": self.validate_iss,
                         "require": required_claims,
                     }
+                    _get_logger().debug(f"Validation options: {options}")
+                    _get_logger().debug(
+                        f"Validating token with audience: {self.app_client_id}"
+                    )
                     # Validate token
                     token = self.validate(
                         access_token=access_token, iss=iss, key=key, options=options
+                    )
+                    _get_logger().debug(
+                        "Token validated successfully, creating User object"
                     )
                     # Attach the user to the request. Can be accessed through `request.state.user`
                     user: User = User(
@@ -246,7 +284,14 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
                         }
                     )
                     request.state.user = user
+                    _get_logger().info(
+                        f"User authenticated successfully: oid={user.oid}"
+                    )
                     return user
+                else:
+                    _get_logger().warning(
+                        f"No matching signing key found for kid: {kid}"
+                    )
             except (
                 InvalidAudienceError,
                 InvalidIssuerError,
@@ -254,27 +299,37 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
                 ImmatureSignatureError,
                 MissingRequiredClaimError,
             ) as error:
-                log.info("Token contains invalid claims. %s", error)
+                _get_logger().info(f"Token contains invalid claims. {error}")
                 raise Unauthorized(
                     detail="Token contains invalid claims", request=request
                 ) from error
             except ExpiredSignatureError as error:
-                log.info("Token signature has expired. %s", error)
+                _get_logger().info(f"Token signature has expired. {error}")
                 raise Unauthorized(
                     detail="Token signature has expired", request=request
                 ) from error
             except InvalidTokenError as error:
-                log.warning("Invalid token. Error: %s", error, exc_info=True)
+                _get_logger().warning(f"Invalid token. Error: {error}", exc_info=True)
                 raise Unauthorized(
                     detail="Unable to validate token", request=request
                 ) from error
             except Exception as error:
                 # Extra failsafe in case of a bug in a future version of the jwt library
-                log.exception("Unable to process jwt token. Uncaught error: %s", error)
+                error_type = type(error).__name__
+                _get_logger().exception(
+                    f"Unable to process jwt token. Uncaught error type: {error_type}, error: {error}"
+                )
+                available_keys = list(self.openid_config.signing_keys.keys())
+                _get_logger().error(
+                    f"Token validation context - kid: {kid}, available keys: {available_keys}, issuer: {iss}, audience: {self.app_client_id}"
+                )
                 raise Unauthorized(
                     detail="Unable to process token", request=request
                 ) from error
-            log.warning("Unable to verify token. No signing keys found")
+            available_keys = list(self.openid_config.signing_keys.keys())
+            _get_logger().warning(
+                f"Unable to verify token. No signing keys found. Requested kid: {kid}, Available keys: {available_keys}"
+            )
             raise Unauthorized(
                 detail="Unable to verify token, no signing keys found", request=request
             )
@@ -307,7 +362,7 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
     def validate(
         self,
         access_token: str,
-        key: "AllowedPublicKeys",
+        key: AllowedPublicKeys,
         iss: str,
         options: dict[str, Any],
     ) -> dict[str, Any]:

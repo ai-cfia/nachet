@@ -1,15 +1,35 @@
-import logging
 from datetime import datetime, timedelta
-from beartype.typing import TYPE_CHECKING, Any, Dict, List, Optional
+from beartype.typing import Any, Dict, List, Optional, Union, TypeAlias
 
 import jwt
 from fastapi import HTTPException, status
 from httpx import AsyncClient
 
-if TYPE_CHECKING:  # pragma: no cover
-    from jwt.algorithms import AllowedPublicKeys
+# Import the actual public key types from cryptography
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PublicKey
 
-log = logging.getLogger("fastapi_azure_auth")
+# AllowedPublicKeys type alias matching jwt.algorithms definition
+# This is the same as: RSAPublicKey | EllipticCurvePublicKey | Ed25519PublicKey | Ed448PublicKey
+AllowedPublicKeys: TypeAlias = Union[
+    RSAPublicKey, EllipticCurvePublicKey, Ed25519PublicKey, Ed448PublicKey
+]
+
+
+# Use application logger instead of fastapi_azure_auth logger
+_logger = None
+
+
+def _get_logger():
+    """Lazy load logger to avoid circular imports"""
+    global _logger
+    if _logger is None:
+        from app.service.logs import LogService
+
+        _logger = LogService.get_logger()
+    return _logger
 
 
 class OpenIdConfig:
@@ -27,7 +47,7 @@ class OpenIdConfig:
         self.config_url = config_url
 
         self.authorization_endpoint: str
-        self.signing_keys: dict[str, "AllowedPublicKeys"]
+        self.signing_keys: dict[str, AllowedPublicKeys]
         self.token_endpoint: str
         self.issuer: str
 
@@ -38,13 +58,12 @@ class OpenIdConfig:
         refresh_time = datetime.now() - timedelta(hours=24)
         if not self._config_timestamp or self._config_timestamp < refresh_time:
             try:
-                log.debug("Loading Azure Entra ID OpenID configuration.")
+                _get_logger().debug("Loading Azure Entra ID OpenID configuration.")
                 await self._load_openid_config()
                 self._config_timestamp = datetime.now()
             except Exception as error:
-                log.exception(
-                    "Unable to fetch OpenID configuration from Azure Entra ID. Error: %s",
-                    error,
+                _get_logger().exception(
+                    f"Unable to fetch OpenID configuration from Azure Entra ID. Error: {error}"
                 )
                 # We can't fetch an up to date openid-config, so authentication will not work.
                 if self._config_timestamp:
@@ -59,10 +78,12 @@ class OpenIdConfig:
                         f"Unable to fetch provider information. {error}"
                     ) from error
 
-            log.info("fastapi-azure-auth loaded settings from Azure Entra ID.")
-            log.info("authorization endpoint: %s", self.authorization_endpoint)
-            log.info("token endpoint:         %s", self.token_endpoint)
-            log.info("issuer:                 %s", self.issuer)
+            _get_logger().info(
+                "fastapi-azure-auth loaded settings from Azure Entra ID."
+            )
+            _get_logger().debug(f"authorization endpoint: {self.authorization_endpoint}")
+            _get_logger().debug(f"token endpoint:         {self.token_endpoint}")
+            _get_logger().debug(f"issuer:                 {self.issuer}")
 
     async def _load_openid_config(self) -> None:
         """
@@ -78,7 +99,7 @@ class OpenIdConfig:
             config_url += f"?appid={self.app_id}"
 
         async with AsyncClient(timeout=10) as client:
-            log.info("Fetching OpenID Connect config from %s", config_url)
+            _get_logger().debug(f"Fetching OpenID Connect config from {config_url}")
             openid_response = await client.get(config_url)
             openid_response.raise_for_status()
             openid_cfg = openid_response.json()
@@ -88,7 +109,7 @@ class OpenIdConfig:
             self.issuer = openid_cfg["issuer"]
 
             jwks_uri = openid_cfg["jwks_uri"]
-            log.info("Fetching jwks from %s", jwks_uri)
+            _get_logger().debug(f"Fetching jwks from {jwks_uri}")
             jwks_response = await client.get(jwks_uri)
             jwks_response.raise_for_status()
             self._load_keys(jwks_response.json()["keys"])
@@ -102,7 +123,7 @@ class OpenIdConfig:
             if (
                 key.get("use") == "sig"
             ):  # Only care about keys that are used for signatures, not encryption
-                log.debug("Loading public key from certificate: %s", key)
+                _get_logger().debug(f"Loading public key from certificate: {key}")
                 cert_obj = jwt.PyJWK(key, "RS256")
                 if (
                     kid := key.get("kid")
