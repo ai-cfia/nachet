@@ -983,6 +983,9 @@ class InferenceService:
             ValueError: If pipeline not found in cache
         """
         from app.service.logs import LogService
+        from app.service.rbac import RbacService
+
+        await RbacService.verify_user_is_cfia_admin(user_id)  # type: ignore[arg-type]
 
         logger = LogService.get_logger()
 

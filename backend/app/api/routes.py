@@ -97,7 +97,7 @@ async def submit_image_for_processing(
     "/inf-direct",
     status_code=status.HTTP_200_OK,
     response_model=ApiInferenceResponse,
-    name="Submit Image for Direct Processing [AUTH REQUIRED]",
+    name="Submit Image for Direct Processing [CFIA ADMIN ONLY]",
 )
 @limiter.limit("10/minute")
 async def submit_image_for_simple_direct_processing(
@@ -111,7 +111,10 @@ async def submit_image_for_simple_direct_processing(
     Direct to the model endpoint and returns the classification result.
 
     Returns ApiInferenceResponse with boxes and classifications.
+
+    Access: CFIA admin only
     """
+
     # Delegate to InferenceService (handles session, logging, business logic)
     # user.oid is validated by get_current_user to be a valid UUID string
     return await InferenceService.submit_direct_pipeline_inference_request_test(
