@@ -482,13 +482,13 @@ class Picture(Base):
 
 class ImageProcessingState(Base):
     """
-    Tracks the state of image processing pipeline (upload → scan → sanitize)
-    and inference workflow state.
+    Tracks the state of image processing pipeline (upload → scan → sanitize).
 
     Separate from Picture model to maintain clean separation of concerns
     and allow independent state management.
 
-    Now includes inference workflow tracking to monitor ML model execution.
+    Note: Inference workflow state is tracked in InferenceRequestState table
+    to support multiple inference runs per image.
     """
 
     __tablename__ = "image_processing_state"
@@ -510,26 +510,33 @@ class ImageProcessingState(Base):
         comment="pending|uploaded|defender_scanning|defender_scanned|sanitizing|sanitized|completed|failed|cancelled",
     )
 
+    # Ownership tracking (for authorization)
+    user_id: Mapped[UUID] = mapped_column(
+        UUID,
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+        comment="User who initiated the workflow",
+    )
+    org_user_role_id: Mapped[UUID] = mapped_column(
+        UUID,
+        ForeignKey("rbac_role.id"),
+        nullable=False,
+        comment="User's role in their organization",
+    )
+    org_admin_role_id: Mapped[UUID] = mapped_column(
+        UUID,
+        ForeignKey("rbac_role.id"),
+        nullable=False,
+        comment="Admin role for cross-org access (CFIA admins)",
+    )
+
     # DBOS workflow tracking
     workflow_id: Mapped[Optional[str]] = mapped_column(
         String(255),
         nullable=True,
         index=True,
         comment="DBOS workflow UUID for image processing workflow (upload/scan/sanitize)",
-    )
-
-    # Inference workflow tracking
-    inference_workflow_id: Mapped[Optional[str]] = mapped_column(
-        String(255),
-        nullable=True,
-        index=True,
-        comment="DBOS workflow UUID for inference workflow (ML model execution)",
-    )
-    inference_status: Mapped[Optional[str]] = mapped_column(
-        String(50),
-        nullable=True,
-        index=True,
-        comment="started|image_downloaded|pipeline_loaded|running_models|completed|failed",
     )
 
     # Stage timestamps (MVP: upload → scan → sanitize only)
@@ -551,14 +558,6 @@ class ImageProcessingState(Base):
     )
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     failed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-
-    # Inference timestamps
-    inference_started_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), comment="When inference workflow started"
-    )
-    inference_completed_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), comment="When inference workflow completed"
-    )
 
     # Azure Defender scan results
     defender_scan_result: Mapped[Optional[dict]] = mapped_column(
@@ -598,8 +597,7 @@ class ImageProcessingState(Base):
         Index("idx_processing_state_status", "status"),
         Index("idx_processing_state_workflow", "workflow_id"),
         Index("idx_processing_state_created", "created_at"),
-        Index("idx_processing_state_inference_workflow", "inference_workflow_id"),
-        Index("idx_processing_state_inference_status", "inference_status"),
+        Index("idx_processing_state_user", "user_id"),
     )
 
 
@@ -625,6 +623,27 @@ class InferenceRequestState(Base):
         ForeignKey("pipeline.id"),
         nullable=False,
         comment="Pipeline used for inference",
+    )
+
+    # Ownership tracking (for authorization)
+    user_id: Mapped[UUID] = mapped_column(
+        UUID,
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+        comment="User who initiated the inference request",
+    )
+    org_user_role_id: Mapped[UUID] = mapped_column(
+        UUID,
+        ForeignKey("rbac_role.id"),
+        nullable=False,
+        comment="User's role in their organization",
+    )
+    org_admin_role_id: Mapped[UUID] = mapped_column(
+        UUID,
+        ForeignKey("rbac_role.id"),
+        nullable=False,
+        comment="Admin role for cross-org access (CFIA admins)",
     )
 
     # DBOS workflow tracking
@@ -659,6 +678,13 @@ class InferenceRequestState(Base):
     # Relationship back to Picture
     picture: Mapped["Picture"] = relationship("Picture")
     pipeline: Mapped["Pipeline"] = relationship("Pipeline")
+
+    # Indexes for common queries
+    __table_args__ = (
+        Index("idx_inference_request_state_user", "user_id"),
+        Index("idx_inference_request_state_workflow", "workflow_id"),
+        Index("idx_inference_request_state_picture", "picture_id"),
+    )
 
 
 class Annotation(Base):
