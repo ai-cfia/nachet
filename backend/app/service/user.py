@@ -4,7 +4,7 @@ User service using generic BaseCRUDService.
 Provides service layer for Users operations with RBAC, logging, and error handling.
 """
 
-from beartype.typing import Dict, Any, Type, TYPE_CHECKING
+from beartype.typing import Dict, Any, Type, Protocol, Optional
 from uuid import UUID
 import traceback
 
@@ -21,8 +21,13 @@ from app.exceptions import (
     UserDeletionError,
 )
 
-if TYPE_CHECKING:
-    from app.service.auth import User
+
+class UserProtocol(Protocol):
+    """Protocol defining the interface for User objects from JWT tokens."""
+
+    oid: Optional[str]
+    email: Optional[str]
+    preferred_username: Optional[str]
 
 
 class UserService(BaseCRUDService[Users]):
@@ -337,7 +342,7 @@ class UserService(BaseCRUDService[Users]):
             )
 
     @classmethod
-    async def check_user_registration(cls, user: "User") -> bool:
+    async def check_user_registration(cls, user: UserProtocol) -> bool:
         """
         Check if a user is registered in the system.
 
