@@ -532,8 +532,9 @@ async def dbos_runtime():
             # Your test code here
             # DBOS decorators will work properly
 
-    The fixture uses SQLite by default for simplicity in testing.
-    Set TESTING_DBOS_DATABASE_URL environment variable to use PostgreSQL.
+    The fixture uses PostgreSQL by default (recommended by DBOS for production-like testing).
+    The database URL is automatically constructed from DB_* environment variables.
+    Set TESTING_DBOS_DATABASE_URL environment variable to override.
     """
     from dbos import DBOS, DBOSConfig
     from beartype.typing import cast
@@ -542,11 +543,23 @@ async def dbos_runtime():
     DBOS.destroy()
 
     # Configure DBOS for testing
-    # Use SQLite for simplicity (can be overridden with env var)
+    # Use PostgreSQL by default (same DB as application, recommended by DBOS)
+    # Build URL from environment variables
+    db_user = os.getenv("DB_USER", "nachetuser")
+    db_password = os.getenv("DB_PASSWORD", "nachetpass")
+    db_host = os.getenv("DB_HOST", "localhost")
+    db_port = os.getenv("DB_PORT", "12432")
+    db_name = "dbosdb"
+
+    # DBOS system database URL - stores workflow and step state
+    # Uses PostgreSQL for production-like testing (recommended by DBOS)
+    default_dbos_url = (
+        f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    )
+
     test_db_url = os.getenv(
         "TESTING_DBOS_DATABASE_URL",
-        "sqlite:///test_dbos.db",  # Default to SQLite
-        # "sqlite:///:memory:",  # Use in-memory SQLite for faster tests
+        default_dbos_url,  # Default to PostgreSQL (recommended)
     )
 
     config: DBOSConfig = cast(
