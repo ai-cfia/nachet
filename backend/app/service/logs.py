@@ -136,25 +136,52 @@ class LogService:
         # Build base format
         base = "{time:YYYY-MM-DD HH:mm:ss} | {level} | {extra[service]} | {extra[correlation_id]}"
 
-        # Add request details if available
+        # Known fields that are already handled in the base format or below
+        known_fields = {
+            "correlation_id",
+            "session_id",
+            "user_id",
+            "service",
+            "service_name",
+        }
+
+        # Add request-specific details (shown before message for HTTP logs)
         extra_info = []
         if "method" in record["extra"] and "path" in record["extra"]:
             extra_info.append(f"{record['extra']['method']} {record['extra']['path']}")
+            known_fields.update(["method", "path"])
 
         if "remote_addr" in record["extra"] and record["extra"]["remote_addr"]:
             extra_info.append(f"from {record['extra']['remote_addr']}")
+            known_fields.add("remote_addr")
 
         if "status_code" in record["extra"]:
             extra_info.append(f"status={record['extra']['status_code']}")
+            known_fields.add("status_code")
 
         if "duration_ms" in record["extra"]:
             extra_info.append(f"{record['extra']['duration_ms']}ms")
+            known_fields.add("duration_ms")
 
-        # Combine everything with message at the end
+        # Collect ALL other extra fields that aren't in known_fields
+        additional_fields = []
+        for key, value in record["extra"].items():
+            if key not in known_fields:
+                # Format the extra field as key=value
+                additional_fields.append(f"{key}={value}")
+
+        # Combine: base | request_info | message | extra_fields
+        parts = [base]
+
         if extra_info:
-            return base + " | " + " ".join(extra_info) + " | {message}\n"
-        else:
-            return base + " | {message}\n"
+            parts.append(" | " + " ".join(extra_info))
+
+        parts.append(" | {message}")
+
+        if additional_fields:
+            parts.append(" | " + " ".join(additional_fields))
+
+        return "".join(parts) + "\n"
 
     @classmethod
     def setup_console_only_logging(cls, log_level: str = "INFO"):
