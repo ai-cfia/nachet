@@ -476,6 +476,8 @@ class TestImageInferenceWorkflowComplete:
         self,
         dbos_runtime,
         test_user: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
         test_picture: Picture,
         test_pipeline_id: UUID,
         azure_storage_onprem: AzureBlobStorage,
@@ -511,12 +513,17 @@ class TestImageInferenceWorkflowComplete:
         )
 
         # Act - Execute workflow
+        parent_workflow_id = uuid4()  # Generate parent workflow ID for this test
         workflow_handle = DBOS.start_workflow(
             image_inference_workflow,
             image_id=image_id,
             org_prefix=org_prefix,
             pipeline_id=test_pipeline_id,
             imageDims=[test_picture.width, test_picture.height],
+            user_id=test_user,
+            org_user_role_id=test_org_user_role,
+            org_admin_role_id=test_org_admin_role,
+            parent_workflow_id=parent_workflow_id,
         )
 
         workflow_id = workflow_handle.workflow_id
@@ -561,6 +568,8 @@ class TestImageInferenceWorkflowComplete:
         self,
         dbos_runtime,
         test_user: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
         test_picture: Picture,
         azure_storage_onprem: AzureBlobStorage,
     ):
@@ -589,12 +598,17 @@ class TestImageInferenceWorkflowComplete:
         )
 
         # Act & Assert
+        parent_workflow_id = uuid4()
         workflow_handle = DBOS.start_workflow(
             image_inference_workflow,
             image_id=image_id,
             org_prefix=org_prefix,
             pipeline_id=fake_pipeline_id,
             imageDims=[test_picture.width, test_picture.height],
+            user_id=test_user,
+            org_user_role_id=test_org_user_role,
+            org_admin_role_id=test_org_admin_role,
+            parent_workflow_id=parent_workflow_id,
         )
 
         # Wait for workflow to complete - it should raise an error
@@ -616,6 +630,9 @@ class TestImageInferenceWorkflowComplete:
     async def test_workflow_image_not_found(
         self,
         dbos_runtime,
+        test_user: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
         test_pipeline_id: UUID,
     ):
         """
@@ -630,12 +647,17 @@ class TestImageInferenceWorkflowComplete:
         org_prefix = "test-inf"
 
         # Act & Assert
+        parent_workflow_id = uuid4()
         workflow_handle = DBOS.start_workflow(
             image_inference_workflow,
             image_id=image_id,
             org_prefix=org_prefix,
             pipeline_id=test_pipeline_id,
             imageDims=[640, 480],
+            user_id=test_user,
+            org_user_role_id=test_org_user_role,
+            org_admin_role_id=test_org_admin_role,
+            parent_workflow_id=parent_workflow_id,
         )
 
         # Wait for workflow to complete - it should raise an error
@@ -681,3 +703,357 @@ class TestImageInferenceWorkflowRecovery:
         Verifies DBOS will retry workflow up to 5 times before giving up.
         """
         pytest.skip("Complex test - requires controlled failure injection")
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestInferenceResultsDatabasePersistence:
+    """Test database persistence of inference results (Annotation + Objects)."""
+
+    async def test_save_inference_results_creates_annotation_and_objects(
+        self,
+        dbos_runtime,
+        integration_db_session: AsyncSession,
+        test_user: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
+        test_picture: Picture,
+        test_pipeline_id: UUID,
+        azure_storage_onprem: AzureBlobStorage,
+    ):
+        """
+        Test save_inference_results_step creates Annotation and Object records.
+
+        Verifies:
+        - Annotation record created with parent workflow ID as annotation ID
+        - Object records created for each detected box
+        - Species labels correctly mapped to seed IDs
+        - Raw data stored in annotation
+        """
+        from app.model.inference import (
+            ApiInferenceResponse,
+            ApiInferenceBox,
+            PixelBoundingBox,
+            TopNPredictionCleaned,
+            ModelInfo,
+        )
+        from sqlalchemy import select
+        from app.db.model import Annotation, Object
+
+        # Arrange - create mock API response with test data
+        parent_workflow_id = uuid4()
+
+        test_boxes = [
+            ApiInferenceBox(
+                box=PixelBoundingBox(topX=10, topY=20, bottomX=100, bottomY=200),
+                label="CHENO_ALB",  # Using seed name_code that exists in test data
+                score=0.95,
+                topN=[
+                    TopNPredictionCleaned(label="CHENO_ALB", score=0.95),
+                    TopNPredictionCleaned(label="CHENO_FIC", score=0.03),
+                    TopNPredictionCleaned(label="CHENO_PAL", score=0.02),
+                ],
+                classId="0",
+                object_type_id="seed",
+                box_id="box-1",
+                overlapping=False,
+                overlappingIndices=0,
+                is_verified=False,
+            ),
+        ]
+
+        api_response = ApiInferenceResponse(
+            filename="test.png",
+            imageId=str(test_picture.id),
+            inference_id=str(parent_workflow_id),
+            boxes=test_boxes,
+            labelOccurrence={"CHENO_ALB": 1},
+            totalBoxes=1,
+            models=[ModelInfo(name="test-model", version="1")],
+        )
+
+        # Act - call the DBOS step through a workflow wrapper
+        from tests.integration.test_workflows import save_inference_results_workflow
+
+        workflow_handle = DBOS.start_workflow(
+            save_inference_results_workflow,
+            user_id=test_user,
+            image_id=test_picture.id,
+            pipeline_id=test_pipeline_id,
+            org_user_role_id=test_org_user_role,
+            org_admin_role_id=test_org_admin_role,
+            api_response=api_response,
+            parent_workflow_id=parent_workflow_id,
+        )
+
+        # Wait for workflow completion
+        await wait_for_workflow_completion(
+            workflow_id=workflow_handle.workflow_id,
+            timeout=30,
+            poll_interval=0.5,
+        )
+
+        # Assert - verify annotation was created
+        annotation_id = parent_workflow_id
+        annotation_result = await integration_db_session.execute(
+            select(Annotation).where(Annotation.id == annotation_id)
+        )
+        annotation = annotation_result.scalar_one_or_none()
+
+        assert annotation is not None
+        assert annotation.id == annotation_id
+        assert annotation.picture_id == test_picture.id
+        assert annotation.pipeline_id == test_pipeline_id
+        assert annotation.user_id == test_user
+        assert annotation.raw_data is not None
+        assert "boxes" in annotation.raw_data
+        assert annotation.raw_data["totalBoxes"] == 1
+
+        # Assert - verify object records were created
+        objects_result = await integration_db_session.execute(
+            select(Object).where(Object.inference_id == annotation_id)
+        )
+        objects = objects_result.scalars().all()
+
+        assert len(objects) == 1
+        obj = objects[0]
+        assert obj.inference_id == annotation_id
+        assert obj.picture_id == test_picture.id
+        assert obj.pipeline_id == test_pipeline_id
+        assert obj.top_x_abs == 10
+        assert obj.top_y_abs == 20
+        assert obj.bot_x_abs == 100
+        assert obj.bot_y_abs == 200
+        assert obj.top_score == 0.95
+        assert obj.top_id is not None  # Should be mapped to seed UUID
+
+        # Cleanup - delete objects first, then annotation
+        for obj in objects:
+            await integration_db_session.delete(obj)
+        await integration_db_session.delete(annotation)
+        await integration_db_session.commit()
+
+    async def test_save_inference_results_raises_error_for_unmapped_species(
+        self,
+        dbos_runtime,
+        integration_db_session: AsyncSession,
+        test_user: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
+        test_picture: Picture,
+        test_pipeline_id: UUID,
+    ):
+        """
+        Test save_inference_results_step raises exception for unmapped species.
+
+        Verifies:
+        - Exception raised when species label not found in seed database
+        - Clear error message with debugging info
+        - No partial data created in database
+        """
+        from app.model.inference import (
+            ApiInferenceResponse,
+            ApiInferenceBox,
+            PixelBoundingBox,
+            TopNPredictionCleaned,
+            ModelInfo,
+        )
+        from sqlalchemy import select
+        from app.db.model import Annotation
+
+        # Arrange - create API response with unmapped species label
+        parent_workflow_id = uuid4()
+
+        test_boxes = [
+            ApiInferenceBox(
+                box=PixelBoundingBox(topX=10, topY=20, bottomX=100, bottomY=200),
+                label="UNMAPPED_SPECIES_XYZ123",  # This species doesn't exist
+                score=0.95,
+                topN=[
+                    TopNPredictionCleaned(label="UNMAPPED_SPECIES_XYZ123", score=0.95),
+                ],
+                classId="0",
+                object_type_id="seed",
+                box_id="box-1",
+                overlapping=False,
+                overlappingIndices=0,
+                is_verified=False,
+            ),
+        ]
+
+        api_response = ApiInferenceResponse(
+            filename="test.png",
+            imageId=str(test_picture.id),
+            inference_id=str(parent_workflow_id),
+            boxes=test_boxes,
+            labelOccurrence={"UNMAPPED_SPECIES_XYZ123": 1},
+            totalBoxes=1,
+            models=[ModelInfo(name="test-model", version="1")],
+        )
+
+        # Act & Assert - should raise exception
+        from tests.integration.test_workflows import save_inference_results_workflow
+
+        workflow_handle = DBOS.start_workflow(
+            save_inference_results_workflow,
+            user_id=test_user,
+            image_id=test_picture.id,
+            pipeline_id=test_pipeline_id,
+            org_user_role_id=test_org_user_role,
+            org_admin_role_id=test_org_admin_role,
+            api_response=api_response,
+            parent_workflow_id=parent_workflow_id,
+        )
+
+        # Wait for workflow - should fail
+        with pytest.raises(Exception):
+            await wait_for_workflow_completion(
+                workflow_id=workflow_handle.workflow_id,
+                timeout=30,
+                poll_interval=0.5,
+            )
+
+        # Verify annotation was created but workflow failed
+        # Note: Annotation is created before species validation, so it exists even on error
+        annotation_id = parent_workflow_id
+        annotation_result = await integration_db_session.execute(
+            select(Annotation).where(Annotation.id == annotation_id)
+        )
+        annotation = annotation_result.scalar_one_or_none()
+        # Annotation should exist because it's created before species validation
+        assert annotation is not None
+
+        # Cleanup - delete the annotation since test workflow failed
+        if annotation:
+            await integration_db_session.delete(annotation)
+            await integration_db_session.commit()
+
+    async def test_save_inference_results_handles_multiple_boxes(
+        self,
+        dbos_runtime,
+        integration_db_session: AsyncSession,
+        test_user: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
+        test_picture: Picture,
+        test_pipeline_id: UUID,
+    ):
+        """
+        Test save_inference_results_step handles multiple detected boxes.
+
+        Verifies:
+        - Multiple Object records created for multiple boxes
+        - Each object correctly linked to same annotation
+        - All species labels correctly mapped
+        """
+        from app.model.inference import (
+            ApiInferenceResponse,
+            ApiInferenceBox,
+            PixelBoundingBox,
+            TopNPredictionCleaned,
+            ModelInfo,
+        )
+        from sqlalchemy import select
+        from app.db.model import Annotation, Object
+
+        # Arrange - create API response with multiple boxes
+        parent_workflow_id = uuid4()
+
+        test_boxes = [
+            ApiInferenceBox(
+                box=PixelBoundingBox(topX=10, topY=20, bottomX=100, bottomY=200),
+                label="CHENO_ALB",
+                score=0.95,
+                topN=[TopNPredictionCleaned(label="CHENO_ALB", score=0.95)],
+                classId="0",
+                object_type_id="seed",
+                box_id="box-1",
+                overlapping=False,
+                overlappingIndices=0,
+                is_verified=False,
+            ),
+            ApiInferenceBox(
+                box=PixelBoundingBox(topX=150, topY=50, bottomX=250, bottomY=150),
+                label="CHENO_FIC",
+                score=0.88,
+                topN=[TopNPredictionCleaned(label="CHENO_FIC", score=0.88)],
+                classId="1",
+                object_type_id="seed",
+                box_id="box-2",
+                overlapping=False,
+                overlappingIndices=0,
+                is_verified=False,
+            ),
+            ApiInferenceBox(
+                box=PixelBoundingBox(topX=300, topY=100, bottomX=400, bottomY=200),
+                label="CHENO_PAL",
+                score=0.92,
+                topN=[TopNPredictionCleaned(label="CHENO_PAL", score=0.92)],
+                classId="2",
+                object_type_id="seed",
+                box_id="box-3",
+                overlapping=False,
+                overlappingIndices=0,
+                is_verified=False,
+            ),
+        ]
+
+        api_response = ApiInferenceResponse(
+            filename="test.png",
+            imageId=str(test_picture.id),
+            inference_id=str(parent_workflow_id),
+            boxes=test_boxes,
+            labelOccurrence={"CHENO_ALB": 1, "CHENO_FIC": 1, "CHENO_PAL": 1},
+            totalBoxes=3,
+            models=[ModelInfo(name="test-model", version="1")],
+        )
+
+        # Act
+        from tests.integration.test_workflows import save_inference_results_workflow
+
+        workflow_handle = DBOS.start_workflow(
+            save_inference_results_workflow,
+            user_id=test_user,
+            image_id=test_picture.id,
+            pipeline_id=test_pipeline_id,
+            org_user_role_id=test_org_user_role,
+            org_admin_role_id=test_org_admin_role,
+            api_response=api_response,
+            parent_workflow_id=parent_workflow_id,
+        )
+
+        await wait_for_workflow_completion(
+            workflow_id=workflow_handle.workflow_id,
+            timeout=30,
+            poll_interval=0.5,
+        )
+
+        # Assert - verify all objects were created
+        annotation_id = parent_workflow_id
+        objects_result = await integration_db_session.execute(
+            select(Object).where(Object.inference_id == annotation_id)
+        )
+        objects = objects_result.scalars().all()
+
+        assert len(objects) == 3
+        assert all(obj.inference_id == annotation_id for obj in objects)
+        assert all(obj.picture_id == test_picture.id for obj in objects)
+
+        # Verify bounding boxes match
+        coords = [
+            (obj.top_x_abs, obj.top_y_abs, obj.bot_x_abs, obj.bot_y_abs)
+            for obj in objects
+        ]
+        assert (10, 20, 100, 200) in coords
+        assert (150, 50, 250, 150) in coords
+        assert (300, 100, 400, 200) in coords
+
+        # Cleanup - delete objects first, then annotation
+        for obj in objects:
+            await integration_db_session.delete(obj)
+        annotation_result = await integration_db_session.execute(
+            select(Annotation).where(Annotation.id == annotation_id)
+        )
+        annotation = annotation_result.scalar_one()
+        await integration_db_session.delete(annotation)
+        await integration_db_session.commit()

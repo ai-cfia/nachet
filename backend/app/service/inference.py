@@ -31,6 +31,9 @@ from app.service import (
     RbacService,
     ImageService,
 )
+from app.service.annotation import AnnotationService
+from app.service.image_objects import ImageObjectsService
+from app.service.seed import SeedService
 from app.service.constants import MAX_BASE64_LENGTH
 from app.exceptions import (
     ImageProcessingError,
@@ -44,7 +47,7 @@ from app.service.inference_api import (
     process_api_ready_classification_result,
 )
 from app.datastore.image import ImageDataService
-from app.db.model import ImageProcessingState
+from app.db.model import ImageProcessingState, InferenceRequestState
 from app.service.constants import ProcessingStatus
 from app.service.blob_operations import (
     upload_to_azure_blob,
@@ -133,6 +136,58 @@ image_processing_queue = Queue(
 # - @no_type_check required due to DBOS decorator conflicts with beartype
 #
 # ============================================================================
+
+
+@no_type_check
+@DBOS.step()
+async def create_inference_request_state_step(
+    picture_id: UUID,
+    pipeline_id: UUID,
+    user_id: UUID,
+    org_user_role_id: UUID,
+    org_admin_role_id: UUID,
+    workflow_id: str,
+    image_dims: list[int],
+) -> dict[str, Any]:
+    """
+    DBOS Step: Create InferenceRequestState record for tracking.
+
+    This is a nondeterministic operation because it writes to the database.
+    DBOS will record the result and replay it on workflow recovery.
+
+    Args:
+        picture_id: UUID of the picture
+        pipeline_id: UUID of the pipeline
+        user_id: User who initiated the request
+        org_user_role_id: User's organization role
+        org_admin_role_id: Admin role for cross-org access
+        workflow_id: DBOS workflow ID for this inference workflow
+        image_dims: Image dimensions [width, height]
+
+    Returns:
+        Dict with inference_request_state_id
+    """
+    request_payload = {
+        "picture_id": str(picture_id),
+        "pipeline_id": str(pipeline_id),
+        "image_dims": image_dims,
+        "workflow_id": workflow_id,
+    }
+
+    state = await InferenceService.create_inference_request_state(
+        picture_id=picture_id,
+        pipeline_id=pipeline_id,
+        user_id=user_id,
+        org_user_role_id=org_user_role_id,
+        org_admin_role_id=org_admin_role_id,
+        workflow_id=workflow_id,
+        request_payload=request_payload,
+    )
+
+    return {
+        "inference_request_state_id": str(state.id),
+        "status": state.status,
+    }
 
 
 @no_type_check
@@ -291,6 +346,197 @@ async def execute_inference_step(
     return {"base64_result": step_result}
 
 
+@no_type_check
+@DBOS.step()
+async def save_inference_results_step(
+    user_id: UUID,
+    image_id: UUID,
+    pipeline_id: UUID,
+    org_user_role_id: UUID,
+    org_admin_role_id: UUID,
+    api_response: ApiInferenceResponse,
+    parent_workflow_id: UUID,
+) -> dict[str, Any]:
+    """
+    DBOS Step: Save inference results to database (Annotation + Objects).
+
+    This is a nondeterministic operation because it writes to database.
+    DBOS will record the result and replay it on workflow recovery.
+
+    Args:
+        user_id: User who submitted the inference request
+        image_id: UUID of the image
+        pipeline_id: UUID of the pipeline used
+        org_user_role_id: Organization user role ID for RBAC
+        org_admin_role_id: Organization admin role ID for RBAC
+        api_response: Complete API response with boxes and metadata
+        parent_workflow_id: Parent workflow ID (used as annotation ID)
+
+    Returns:
+        dict with annotation_id and list of created object_ids
+
+    Raises:
+        Exception: If species label not found in seed database (critical error)
+        ImageProcessingError: If database operations fail
+    """
+    from app.service.logs import LogService
+
+    logger = LogService.get_logger()
+
+    try:
+        # Step 1: Get seed lookup cache with both name_code and species name mappings
+        seed_data = await SeedService.get_seed_data()
+        seed_lookup: dict[str, UUID] = {}
+
+        for seed in seed_data["seeds"]:
+            seed_id = (
+                seed["seed_id"]
+                if isinstance(seed["seed_id"], UUID)
+                else UUID(seed["seed_id"])
+            )
+            # Map by name_code (e.g., "AMBRO_PSI")
+            seed_lookup[seed["name_code"]] = seed_id
+
+            # Also map by full species name for ML models that return full names
+            # Format: "Genus species" (e.g., "Ambrosia psilostachya")
+            genus = seed.get("genus", "").strip()
+            species = seed.get("species", "").strip()
+            if genus and species:
+                full_species_name = f"{genus} {species}"
+                seed_lookup[full_species_name] = seed_id
+
+        logger.debug(
+            f"Loaded {len(seed_data['seeds'])} seeds with {len(seed_lookup)} lookup keys (name_code + species names)",
+            image_id=str(image_id),
+        )
+
+        # Step 2: Create Annotation record with parent workflow ID as annotation ID
+        annotation_id = parent_workflow_id
+        raw_data = api_response.model_dump()
+
+        annotation = await AnnotationService.create(
+            requester_id=user_id,
+            id=annotation_id,  # Use parent workflow ID as annotation ID
+            org_admin_role_id=org_admin_role_id,
+            org_user_role_id=org_user_role_id,
+            picture_id=image_id,
+            pipeline_id=pipeline_id,
+            raw_data=raw_data,
+        )
+
+        logger.info(
+            f"Created annotation record with ID {annotation_id}",
+            image_id=str(image_id),
+            annotation_id=str(annotation_id),
+        )
+
+        # Step 3: Create Object records for each detected box
+        created_object_ids = []
+
+        for box in api_response.boxes:
+            # Map species label to seed ID
+            # The label format is typically like "Avena fatua" or "0 Avena fatua"
+            label = box.label.strip()
+
+            # Try to find seed by name_code
+            top_id = seed_lookup.get(label)
+
+            if top_id is None:
+                # Critical error - species not found in database
+                error_msg = (
+                    f"CRITICAL: Species label '{label}' not found in seed database. "
+                    f"Available seeds: {list(seed_lookup.keys())[:10]}... "
+                    f"This must be fixed immediately."
+                )
+                logger.error(
+                    error_msg,
+                    image_id=str(image_id),
+                    label=label,
+                    available_seed_count=len(seed_lookup),
+                )
+                raise Exception(error_msg)
+
+            # Get top-N predictions
+            top_id_2 = None
+            top_score_2 = None
+            top_id_3 = None
+            top_score_3 = None
+
+            if len(box.topN) > 1:
+                second_label = box.topN[1].label.strip()
+                top_id_2 = seed_lookup.get(second_label)
+                if top_id_2 is None:
+                    logger.error(
+                        f"CRITICAL: Species label '{second_label}' (2nd prediction) not found in seed database",
+                        image_id=str(image_id),
+                        label=second_label,
+                    )
+                    raise Exception(
+                        f"CRITICAL: Species label '{second_label}' not found in seed database"
+                    )
+                top_score_2 = box.topN[1].score
+
+            if len(box.topN) > 2:
+                third_label = box.topN[2].label.strip()
+                top_id_3 = seed_lookup.get(third_label)
+                if top_id_3 is None:
+                    logger.error(
+                        f"CRITICAL: Species label '{third_label}' (3rd prediction) not found in seed database",
+                        image_id=str(image_id),
+                        label=third_label,
+                    )
+                    raise Exception(
+                        f"CRITICAL: Species label '{third_label}' not found in seed database"
+                    )
+                top_score_3 = box.topN[2].score
+
+            # Create Object record
+            image_object = await ImageObjectsService.create(
+                requester_id=user_id,
+                user_id=user_id,
+                org_admin_role_id=org_admin_role_id,
+                org_user_role_id=org_user_role_id,
+                inference_id=annotation_id,
+                picture_id=image_id,
+                pipeline_id=pipeline_id,
+                valid=True,
+                top_x_abs=box.box.topX,
+                top_y_abs=box.box.topY,
+                bot_x_abs=box.box.bottomX,
+                bot_y_abs=box.box.bottomY,
+                top_id=top_id,
+                top_score=box.score,
+                top_id_2=top_id_2,
+                top_score_2=top_score_2,
+                top_id_3=top_id_3,
+                top_score_3=top_score_3,
+            )
+
+            created_object_ids.append(image_object["id"])
+
+        logger.info(
+            f"Created {len(created_object_ids)} object records for annotation {annotation_id}",
+            image_id=str(image_id),
+            annotation_id=str(annotation_id),
+            object_count=len(created_object_ids),
+        )
+
+        return {
+            "annotation_id": str(annotation["id"]),
+            "object_ids": created_object_ids,
+            "object_count": len(created_object_ids),
+        }
+
+    except Exception as e:
+        logger.error(
+            f"Failed to save inference results to database: {str(e)}",
+            image_id=str(image_id),
+            parent_workflow_id=parent_workflow_id,
+            error_type=type(e).__name__,
+        )
+        raise
+
+
 # ============================================================================
 # DBOS Workflow for Inference
 # ============================================================================
@@ -303,6 +549,10 @@ async def image_inference_workflow(
     org_prefix: str,
     pipeline_id: UUID,
     imageDims: list[int],
+    user_id: UUID,
+    org_user_role_id: UUID,
+    org_admin_role_id: UUID,
+    parent_workflow_id: UUID,
 ) -> ApiInferenceResponse:
     """
     Main image inference workflow.
@@ -312,8 +562,13 @@ async def image_inference_workflow(
 
     Args:
         image_id: UUID v7 of the image
-        user_id: Submitting user UUID
         org_prefix: Organization prefix (normalized, max 10 chars)
+        pipeline_id: UUID of the pipeline to execute
+        imageDims: Image dimensions [width, height]
+        user_id: Submitting user UUID
+        org_user_role_id: Organization user role ID for RBAC
+        org_admin_role_id: Organization admin role ID for RBAC
+        parent_workflow_id: Parent workflow ID (for annotation tracking)
 
     Returns:
         ApiInferenceResponse containing inference results
@@ -337,6 +592,22 @@ async def image_inference_workflow(
         await DBOS.set_event_async("inference_status", "started")
         await DBOS.set_event_async(
             "inference_timestamps", {"started": datetime.now(timezone.utc).isoformat()}
+        )
+
+        # DBOS Step 0: Create InferenceRequestState record for tracking
+        DBOS.logger.info(f"[{image_id}] Step 0: Creating inference request state")
+        _inference_state = await create_inference_request_state_step(
+            picture_id=image_id,
+            pipeline_id=pipeline_id,
+            user_id=user_id,
+            org_user_role_id=org_user_role_id,
+            org_admin_role_id=org_admin_role_id,
+            workflow_id=DBOS.workflow_id,
+            image_dims=imageDims,
+        )
+        logger.info(
+            "Created inference request state",
+            inference_request_state_id=_inference_state["inference_request_state_id"],
         )
 
         # DBOS Step 1: Download image from sanitized blob storage and encode to base64
@@ -418,11 +689,41 @@ async def image_inference_workflow(
         )
 
         # Build model info list from pipeline steps
-
         models = [
             ModelInfo(name=step["model_name"], version=step.get("version", "1"))
             for step in pipeline_steps
         ]
+
+        # Build complete API response
+        api_response = ApiInferenceResponse(
+            filename=api_result.filename,
+            imageId=str(image_id),
+            inference_id=str(
+                parent_workflow_id
+            ),  # Use parent workflow ID as inference ID
+            boxes=api_result.boxes,
+            labelOccurrence=api_result.labelOccurrence,
+            totalBoxes=api_result.totalBoxes,
+            models=models,
+        )
+
+        # DBOS Step: Save annotation and object records to database
+        DBOS.logger.info(f"[{image_id}] Saving inference results to database")
+        save_result = await save_inference_results_step(
+            user_id=user_id,
+            image_id=image_id,
+            pipeline_id=pipeline_id,
+            org_user_role_id=org_user_role_id,
+            org_admin_role_id=org_admin_role_id,
+            api_response=api_response,
+            parent_workflow_id=parent_workflow_id,
+        )
+
+        logger.info(
+            f"Saved inference results to database: {save_result['object_count']} objects",
+            annotation_id=save_result["annotation_id"],
+            object_count=save_result["object_count"],
+        )
 
         # Publish completion events
         await DBOS.set_event_async("inference_status", "completed")
@@ -437,16 +738,8 @@ async def image_inference_workflow(
                 },
             )
 
-        # Return validated API response using Pydantic model
-        return ApiInferenceResponse(
-            filename=api_result.filename,
-            imageId="direct-inference",  # No DB storage for direct inference
-            inference_id="direct-inference",  # No DB storage for direct inference
-            boxes=api_result.boxes,
-            labelOccurrence=api_result.labelOccurrence,
-            totalBoxes=api_result.totalBoxes,
-            models=models,
-        )
+        # Return validated API response
+        return api_response
 
     except Exception as e:
         # Publish error events for all exceptions
@@ -488,6 +781,8 @@ async def image_processing_and_inference_workflow(
     org_prefix: str,
     pipeline_id: UUID,
     imageDims: list[int],
+    org_user_role_id: UUID,
+    org_admin_role_id: UUID,
     skip_preprocessing: bool = False,
 ) -> Dict[str, Any]:
     """
@@ -505,8 +800,11 @@ async def image_processing_and_inference_workflow(
         file_bytes: Raw image bytes (None for duplicates)
         user_id: Submitting user UUID
         org_prefix: Organization prefix (normalized, max 10 chars)
+        pipeline_id: UUID of the pipeline to execute
+        imageDims: Image dimensions [width, height]
+        org_user_role_id: Organization user role ID for RBAC
+        org_admin_role_id: Organization admin role ID for RBAC
         skip_preprocessing: If True, skip upload/scan/sanitize (for duplicate images)
-        inference_request: InferenceRequest for ML inference (required)
 
     Returns:
         Dict containing processing results, blob URLs, and inference results
@@ -554,6 +852,10 @@ async def image_processing_and_inference_workflow(
                 org_prefix=org_prefix,
                 pipeline_id=pipeline_id,
                 imageDims=imageDims,
+                user_id=user_id,
+                org_user_role_id=org_user_role_id,
+                org_admin_role_id=org_admin_role_id,
+                parent_workflow_id=DBOS.workflow_id,  # Pass parent workflow ID
             )
 
             # Publish inference workflow ID
@@ -832,16 +1134,22 @@ class InferenceService:
     @staticmethod
     async def create_processing_state(
         picture_id: UUID,
+        user_id: UUID,
+        org_user_role_id: UUID,
+        org_admin_role_id: UUID,
         status: ProcessingStatus,
         created_at: datetime,
         progress_percentage: int = 0,
         workflow_id: Optional[str] = None,
     ) -> ImageProcessingState:
         """
-        Create a new ImageProcessingState record.
+        Create a new ImageProcessingState record with ownership tracking.
 
         Args:
             picture_id: UUID of the picture being processed
+            user_id: User who initiated the workflow
+            org_user_role_id: User's role in their organization
+            org_admin_role_id: Admin role for cross-org access
             status: Initial processing status
             created_at: Timestamp when processing state was created
             progress_percentage: Initial progress percentage (default 0)
@@ -857,6 +1165,9 @@ class InferenceService:
             async with sessionmanager.get_session() as session:
                 processing_state = ImageProcessingState(
                     picture_id=picture_id,
+                    user_id=user_id,
+                    org_user_role_id=org_user_role_id,
+                    org_admin_role_id=org_admin_role_id,
                     status=status,
                     created_at=created_at,
                     progress_percentage=progress_percentage,
@@ -869,6 +1180,338 @@ class InferenceService:
         except Exception as e:
             raise ImageProcessingError(
                 f"Failed to create processing state: {str(e)}"
+            ) from e
+
+    @staticmethod
+    async def create_inference_request_state(
+        picture_id: UUID,
+        pipeline_id: UUID,
+        user_id: UUID,
+        org_user_role_id: UUID,
+        org_admin_role_id: UUID,
+        workflow_id: str,
+        request_payload: dict,
+    ) -> InferenceRequestState:
+        """
+        Create a new InferenceRequestState record for inference workflow tracking.
+
+        Args:
+            picture_id: UUID of the picture being processed
+            pipeline_id: UUID of the pipeline being used
+            user_id: User who initiated the inference request
+            org_user_role_id: User's role in their organization
+            org_admin_role_id: Admin role for cross-org access
+            workflow_id: DBOS workflow ID for tracking
+            request_payload: Payload sent for inference request
+
+        Returns:
+            InferenceRequestState: Created inference request state record
+
+        Raises:
+            ImageProcessingError: If creation fails
+        """
+        try:
+            async with sessionmanager.get_session() as session:
+                inference_state = InferenceRequestState(
+                    picture_id=picture_id,
+                    pipeline_id=pipeline_id,
+                    user_id=user_id,
+                    org_user_role_id=org_user_role_id,
+                    org_admin_role_id=org_admin_role_id,
+                    workflow_id=workflow_id,
+                    request_payload=request_payload,
+                    status="pending",
+                )
+                session.add(inference_state)
+                await session.commit()
+                await session.refresh(inference_state)
+                return inference_state
+        except Exception as e:
+            raise ImageProcessingError(
+                f"Failed to create inference request state: {str(e)}"
+            ) from e
+
+    @staticmethod
+    async def get_workflow_status(
+        workflow_id: str,
+        user_id: UUID,
+    ) -> dict[str, Any]:
+        """
+        Get comprehensive workflow status with authorization check.
+
+        Accepts any workflow_id (parent, processing child, or inference child)
+        and returns status for all related workflows.
+
+        Authorization: User must own the workflow OR be a CFIA admin.
+
+        Args:
+            workflow_id: DBOS workflow UUID (parent, processing, or inference)
+            user_id: User requesting the status
+
+        Returns:
+            Dict containing:
+            - workflow_id: The queried workflow ID
+            - workflow_type: "parent"|"processing"|"inference"
+            - image_id: Associated picture UUID
+            - overall_status: High-level status
+            - parent_workflow: Parent workflow details
+            - processing_workflow: Processing child workflow details (if exists)
+            - inference_workflow: Inference child workflow details (if exists)
+            - authorization: Authorization metadata
+
+        Raises:
+            HTTPException: 404 if workflow not found, 403 if unauthorized
+            ImageProcessingError: If query fails
+        """
+        from fastapi import HTTPException, status
+        from sqlalchemy import select
+        from app.service.logs import LogService
+
+        logger = LogService.get_logger()
+
+        try:
+            async with sessionmanager.get_session() as session:
+                # Step 1: Find which state table contains this workflow_id
+                # Check ImageProcessingState (parent workflow only)
+                processing_result = await session.execute(
+                    select(ImageProcessingState).where(
+                        ImageProcessingState.workflow_id == workflow_id
+                    )
+                )
+                processing_state = processing_result.scalar_one_or_none()
+
+                # Check InferenceRequestState (inference child workflow)
+                inference_result = await session.execute(
+                    select(InferenceRequestState).where(
+                        InferenceRequestState.workflow_id == workflow_id
+                    )
+                )
+                inference_state = inference_result.scalar_one_or_none()
+
+                # If not found in either table, return 404
+                if not processing_state and not inference_state:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Workflow {workflow_id} not found",
+                    )
+
+                # Step 2: Determine workflow type and get all related state records
+                if inference_state:
+                    # Queried by inference workflow ID
+                    workflow_type = "inference"
+                    image_id = inference_state.picture_id
+                    auth_user_id = inference_state.user_id
+                    auth_org_admin_role_id = inference_state.org_admin_role_id
+
+                    # Get parent processing state using picture_id
+                    if not processing_state:
+                        proc_result = await session.execute(
+                            select(ImageProcessingState).where(
+                                ImageProcessingState.picture_id == image_id
+                            )
+                        )
+                        processing_state = proc_result.scalar_one_or_none()
+
+                elif processing_state and processing_state.workflow_id == workflow_id:
+                    # Queried by parent workflow ID
+                    workflow_type = "parent"
+                    image_id = processing_state.picture_id
+                    auth_user_id = processing_state.user_id
+                    auth_org_admin_role_id = processing_state.org_admin_role_id
+
+                    # Get all inference states for this picture
+                    # Note: There can be multiple inference runs per image
+                    if not inference_state:
+                        inf_result = await session.execute(
+                            select(InferenceRequestState).where(
+                                InferenceRequestState.picture_id == image_id
+                            )
+                        )
+                        # Get all inference states, return the most recent one for now
+                        inference_states = inf_result.scalars().all()
+                        if inference_states:
+                            # Sort by created_at descending, get most recent
+                            inference_state = sorted(
+                                inference_states,
+                                key=lambda x: x.created_at,
+                                reverse=True,
+                            )[0]
+
+                else:
+                    # Should not reach here - already checked that one of the states exists
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Unexpected state: no processing state found",
+                    )
+
+                # Step 3: Authorization check
+                user_org_roles = await RbacService.get_user_org_roles(user_id)
+                is_owner = auth_user_id == user_id
+
+                # TODO: Get CFIA admin role ID from config/env
+                # For now, check if user's admin role matches the workflow's admin role
+                is_cfia_admin = (
+                    user_org_roles.org_admin_role_id == auth_org_admin_role_id
+                )
+
+                if not (is_owner or is_cfia_admin):
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Not authorized to access this workflow",
+                    )
+
+                # Step 4: Build comprehensive status response
+                response: dict[str, Any] = {
+                    "workflow_id": workflow_id,
+                    "workflow_type": workflow_type,
+                    "image_id": str(image_id),
+                    "authorization": {
+                        "user_id": str(user_id),
+                        "is_owner": is_owner,
+                        "is_cfia_admin": is_cfia_admin,
+                    },
+                }
+
+                # Add parent/processing workflow status
+                if processing_state:
+                    response["parent_workflow"] = {
+                        "workflow_id": processing_state.workflow_id,
+                        "status": processing_state.status,
+                        "progress_percentage": processing_state.progress_percentage,
+                        "created_at": (
+                            processing_state.created_at.isoformat()
+                            if processing_state.created_at
+                            else None
+                        ),
+                        "completed_at": (
+                            processing_state.completed_at.isoformat()
+                            if processing_state.completed_at
+                            else None
+                        ),
+                        "failed_at": (
+                            processing_state.failed_at.isoformat()
+                            if processing_state.failed_at
+                            else None
+                        ),
+                        "error_message": processing_state.error_message,
+                        "malware_detected": processing_state.malware_detected,
+                    }
+
+                    # Add processing stages
+                    response["processing_workflow"] = {
+                        "status": processing_state.status,
+                        "stages": {
+                            "uploaded": processing_state.uploaded_at is not None,
+                            "defender_scanning": processing_state.defender_scan_started_at
+                            is not None,
+                            "defender_scanned": processing_state.defender_scan_completed_at
+                            is not None,
+                            "sanitizing": processing_state.sanitization_started_at
+                            is not None,
+                            "sanitized": processing_state.sanitization_completed_at
+                            is not None,
+                        },
+                        "timestamps": {
+                            "uploaded_at": (
+                                processing_state.uploaded_at.isoformat()
+                                if processing_state.uploaded_at
+                                else None
+                            ),
+                            "defender_scan_started_at": (
+                                processing_state.defender_scan_started_at.isoformat()
+                                if processing_state.defender_scan_started_at
+                                else None
+                            ),
+                            "defender_scan_completed_at": (
+                                processing_state.defender_scan_completed_at.isoformat()
+                                if processing_state.defender_scan_completed_at
+                                else None
+                            ),
+                            "sanitization_started_at": (
+                                processing_state.sanitization_started_at.isoformat()
+                                if processing_state.sanitization_started_at
+                                else None
+                            ),
+                            "sanitization_completed_at": (
+                                processing_state.sanitization_completed_at.isoformat()
+                                if processing_state.sanitization_completed_at
+                                else None
+                            ),
+                        },
+                        "defender_scan_result": processing_state.defender_scan_result,
+                        "blob_urls": {
+                            "original": processing_state.blob_url_original,
+                            "sanitized": processing_state.blob_url_sanitized,
+                        },
+                    }
+
+                # Add inference workflow status
+                if inference_state:
+                    response["inference_workflow"] = {
+                        "workflow_id": inference_state.workflow_id,
+                        "status": inference_state.status,
+                        "pipeline_id": str(inference_state.pipeline_id),
+                        "created_at": (
+                            inference_state.created_at.isoformat()
+                            if inference_state.created_at
+                            else None
+                        ),
+                        "started_at": (
+                            inference_state.started_at.isoformat()
+                            if inference_state.started_at
+                            else None
+                        ),
+                        "completed_at": (
+                            inference_state.completed_at.isoformat()
+                            if inference_state.completed_at
+                            else None
+                        ),
+                        "failed_at": (
+                            inference_state.failed_at.isoformat()
+                            if inference_state.failed_at
+                            else None
+                        ),
+                        "error_message": inference_state.error_message,
+                        "request_payload": inference_state.request_payload,
+                    }
+
+                # Determine overall status
+                if processing_state:
+                    if processing_state.status == "failed":
+                        response["overall_status"] = "failed"
+                    elif processing_state.status == "completed" and (
+                        not inference_state or inference_state.status == "completed"
+                    ):
+                        response["overall_status"] = "completed"
+                    elif inference_state and inference_state.status == "failed":
+                        response["overall_status"] = "failed"
+                    else:
+                        response["overall_status"] = "in_progress"
+                else:
+                    response["overall_status"] = (
+                        inference_state.status if inference_state else "unknown"
+                    )
+
+                logger.info(
+                    "Retrieved workflow status",
+                    workflow_id=workflow_id,
+                    workflow_type=workflow_type,
+                    user_id=str(user_id),
+                    overall_status=response["overall_status"],
+                )
+
+                return response
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(
+                f"Failed to get workflow status: {str(e)}",
+                workflow_id=workflow_id,
+                user_id=str(user_id),
+            )
+            raise ImageProcessingError(
+                f"Failed to get workflow status: {str(e)}"
             ) from e
 
     @staticmethod
@@ -1001,6 +1644,8 @@ class InferenceService:
                 org_prefix=user_org_roles.org_prefix,
                 pipeline_id=pipeline_id,
                 imageDims=[info.width, info.height],
+                org_user_role_id=user_org_roles.org_user_role_id,
+                org_admin_role_id=user_org_roles.org_admin_role_id,
                 skip_preprocessing=bool(
                     info.duplicate_uuid
                 ),  # Skip preprocessing for duplicates
@@ -1011,6 +1656,9 @@ class InferenceService:
             if not info.duplicate_uuid:
                 _processing_state = await InferenceService.create_processing_state(
                     picture_id=image_id,
+                    user_id=user_id,
+                    org_user_role_id=user_org_roles.org_user_role_id,
+                    org_admin_role_id=user_org_roles.org_admin_role_id,
                     status=ProcessingStatus.PENDING,
                     created_at=datetime.now(timezone.utc),
                     progress_percentage=5,

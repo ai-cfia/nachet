@@ -161,6 +161,53 @@ async def get_image_processing_status(
     )
 
 
+@router.get(
+    "/workflow/{workflow_id}/status",
+    status_code=status.HTTP_200_OK,
+    name="Get Workflow Status [AUTH REQUIRED]",
+)
+@limiter.limit("60/minute")
+async def get_workflow_status(
+    request: Request,
+    workflow_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get comprehensive workflow status by workflow ID.
+
+    Accepts any workflow_id (parent, processing, or inference child)
+    and returns status for all related workflows.
+
+    Authorization: User must own the workflow OR be a CFIA admin.
+
+    Returns detailed status information including:
+    - Workflow type (parent/processing/inference)
+    - Associated image ID
+    - Overall status (pending/in_progress/completed/failed)
+    - Parent workflow status and progress
+    - Processing workflow stages and timestamps
+    - Inference workflow status and details
+    - Authorization metadata
+
+    Use cases:
+    - Frontend receives workflow_id from POST /inf submission
+    - Frontend polls this endpoint to check progress
+    - Can query by any related workflow ID (parent or child)
+
+    Returns:
+        Dict with comprehensive workflow status across all related workflows
+    """
+    # Validate workflow_id is not empty
+    if not workflow_id or not workflow_id.strip():
+        raise ValueError("workflow_id cannot be empty")
+
+    # Delegate to InferenceService (handles DB queries, authorization, DBOS status)
+    return await InferenceService.get_workflow_status(
+        workflow_id=workflow_id.strip(),
+        user_id=UUID(current_user.oid),  # type: ignore[arg-type]
+    )
+
+
 # Sanitization Callback Endpoint
 # @router.post(
 #     "/callbacks/sanitization-complete",

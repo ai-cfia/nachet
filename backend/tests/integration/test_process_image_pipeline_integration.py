@@ -558,6 +558,9 @@ class TestProcessImagePipelineWorkflow:
         # Create ImageProcessingState
         state = ImageProcessingState(
             picture_id=image_id,
+            user_id=test_picture.user_id,
+            org_user_role_id=test_picture.org_user_role_id,
+            org_admin_role_id=test_picture.org_admin_role_id,
             status=ProcessingStatus.PENDING.value,
             workflow_id=None,
             progress_percentage=0,
