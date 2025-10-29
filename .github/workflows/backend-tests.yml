@@ -362,6 +362,24 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+      nachet-detector:
+        image: wiremock/wiremock:3.13.1
+        ports:
+          - 12380:8080
+        volumes:
+          - ./e2e/mocks/nachet-detector:/home/wiremock/mappings
+      nachet-15spp-classifier:
+        image: wiremock/wiremock:3.13.1
+        ports:
+          - 12390:8080
+        volumes:
+          - ./e2e/mocks/nachet-15spp-classifier:/home/wiremock/mappings
+      nachet-27spp-classifier:
+        image: wiremock/wiremock:3.13.1
+        ports:
+          - 12360:8080
+        volumes:
+          - ./e2e/mocks/nachet-27spp-classifier:/home/wiremock/mappings
 
     steps:
       - name: Checkout code
