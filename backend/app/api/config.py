@@ -249,13 +249,20 @@ async def lifespan(app: FastAPI):
     print("Lifespan Blob storage initialized successfully")
 
     # Initialize frontend service
-    if settings.frontend_blob_container and settings.frontend_version_file:
+    if settings.blob_container_prefix or settings.frontend_version_file:
         print("Lifespan Initializing frontend service...")
         from app.service import FrontendService
         from app.service.constants import Bucket
 
-        container = settings.blob_container_prefix + Bucket.FRONTEND.value
-        FrontendService.configure(container, settings.frontend_version_file)
+        container = (
+            (settings.blob_container_prefix + Bucket.FRONTEND.value)
+            if settings.blob_container_prefix
+            else None
+        )
+        version_file = (
+            settings.frontend_version_file if settings.frontend_version_file else None
+        )
+        FrontendService.configure(container, version_file)
         await FrontendService.check_and_update_version()
         print("Lifespan Frontend service initialized successfully")
 

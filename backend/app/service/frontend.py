@@ -35,7 +35,7 @@ class FrontendService:
         return cls._logger
 
     @classmethod
-    def configure(cls, container_name: str, version_file: str):
+    def configure(cls, container_name: str | None, version_file: str | None):
         """
         Configure the frontend service with container and version file names.
 
@@ -43,8 +43,8 @@ class FrontendService:
             container_name: Blob storage container name for frontend files
             version_file: Path to version file in blob storage
         """
-        cls._container_name = container_name
-        cls._version_file = version_file
+        cls._container_name = container_name if container_name else cls._container_name
+        cls._version_file = version_file if version_file else cls._version_file
 
     @classmethod
     async def get_version(cls) -> str:
