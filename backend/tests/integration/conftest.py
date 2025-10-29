@@ -433,15 +433,16 @@ async def init_blob_storage():
 
     The fixture automatically initializes all three storage accounts:
     - 'cloud': Primary Azure Blob Storage
-    - 'external': External Azure Blob Storage
-    - 'onprem': S3-compatible storage (Azurite for testing)
+    - 'external': External Azure Blob Storage (Azurite in CI)
+    - 'onprem': S3-compatible storage (Garage/S3 for testing)
 
-    It also creates the necessary test containers:
-    - nachet-local-test-original: For original uploaded images
-    - nachet-local-test-sanitized: For sanitized images
+    It also creates the necessary test containers for both external and onprem storage:
+    - nachet-ci-test-original (or nachet-local-test-original): For original uploaded images
+    - nachet-ci-test-sanitized (or nachet-local-test-sanitized): For sanitized images
 
     Requirements:
     - Azurite container running: docker compose up -d nachet-blob
+    - Garage S3 container running (for onprem storage)
     - Environment variables in .env.test.local
     """
     from app.blob.manager import blob_storage_manager
@@ -462,6 +463,7 @@ async def init_blob_storage():
 
     # Create test containers if they don't exist
     onprem_storage = blob_storage_manager.get_client("onprem")
+    external_storage = blob_storage_manager.get_client("external")
     bucket_prefix = settings.blob_container_prefix
     from app.service.constants import Bucket
 
@@ -472,6 +474,7 @@ async def init_blob_storage():
         + Bucket.get_sanitized_container(is_test=settings.is_test_environment),
     ]
 
+    # Create containers for ONPREM storage (S3/Garage)
     for container_name in test_containers:
         try:
             # Check if container exists
@@ -482,9 +485,26 @@ async def init_blob_storage():
             if container_name not in container_names:
                 # Create container
                 await onprem_storage.create_container(container_name)
-                print(f"Created test container: {container_name}")
+                print(f"Created test container (onprem): {container_name}")
         except Exception as e:
-            print(f"Warning: Could not create container {container_name}: {e}")
+            print(f"Warning: Could not create container (onprem) {container_name}: {e}")
+
+    # Create containers for EXTERNAL storage (Azurite)
+    for container_name in test_containers:
+        try:
+            # Check if container exists
+            result = await external_storage.list_containers()
+            containers = result.get("containers", [])
+            container_names = [c["name"] for c in containers]
+
+            if container_name not in container_names:
+                # Create container
+                await external_storage.create_container(container_name)
+                print(f"Created test container (external): {container_name}")
+        except Exception as e:
+            print(
+                f"Warning: Could not create container (external) {container_name}: {e}"
+            )
 
     yield
 
