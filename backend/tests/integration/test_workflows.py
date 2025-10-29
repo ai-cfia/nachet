@@ -110,3 +110,28 @@ async def execute_inference_step_workflow(
         step_config=step_config,
         previous_result=previous_result,
     )
+
+
+@no_type_check
+@DBOS.workflow()
+async def save_inference_results_workflow(
+    user_id: UUID,
+    image_id: UUID,
+    pipeline_id: UUID,
+    org_user_role_id: UUID,
+    org_admin_role_id: UUID,
+    api_response: Any,  # ApiInferenceResponse
+    parent_workflow_id: str,
+) -> Dict[str, Any]:
+    """Workflow wrapper for testing save_inference_results_step."""
+    from app.service.inference import save_inference_results_step
+
+    return await save_inference_results_step(
+        user_id=user_id,
+        image_id=image_id,
+        pipeline_id=pipeline_id,
+        org_user_role_id=org_user_role_id,
+        org_admin_role_id=org_admin_role_id,
+        api_response=api_response,
+        parent_workflow_id=parent_workflow_id,
+    )

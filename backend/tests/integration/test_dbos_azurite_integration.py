@@ -364,6 +364,9 @@ class TestAzuriteImageProcessingWorkflow:
         # Create processing state
         processing_state = ImageProcessingState(
             picture_id=image_id,
+            user_id=test_user,
+            org_user_role_id=test_org_user_role,
+            org_admin_role_id=test_org_admin_role,
             status=ProcessingStatus.PENDING,
             progress_percentage=0,
             created_at=datetime.now(timezone.utc),
@@ -446,6 +449,9 @@ class TestAzuriteImageProcessingWorkflow:
         # Create processing state
         processing_state = ImageProcessingState(
             picture_id=image_id,
+            user_id=test_user,
+            org_user_role_id=test_org_user_role,
+            org_admin_role_id=test_org_admin_role,
             status=ProcessingStatus.PENDING,
             progress_percentage=0,
             created_at=datetime.now(timezone.utc),

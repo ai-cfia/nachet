@@ -22,6 +22,9 @@ class TestCreateProcessingState:
         """Test successful creation of ImageProcessingState."""
         # Arrange
         picture_id = uuid7()
+        user_id = uuid7()
+        org_user_role_id = uuid7()
+        org_admin_role_id = uuid7()
         workflow_id = "test-workflow-123"
         status = ProcessingStatus.PENDING
         created_at = datetime.now(timezone.utc)
@@ -29,6 +32,9 @@ class TestCreateProcessingState:
         # Create a real ImageProcessingState instance that will be returned
         _expected_state = ImageProcessingState(
             picture_id=picture_id,
+            user_id=user_id,
+            org_user_role_id=org_user_role_id,
+            org_admin_role_id=org_admin_role_id,
             status=status,
             created_at=created_at,
             progress_percentage=0,
@@ -51,6 +57,9 @@ class TestCreateProcessingState:
             # Act
             result = await InferenceService.create_processing_state(
                 picture_id=picture_id,
+                user_id=user_id,
+                org_user_role_id=org_user_role_id,
+                org_admin_role_id=org_admin_role_id,
                 status=status,
                 created_at=created_at,
                 workflow_id=workflow_id,
@@ -73,6 +82,9 @@ class TestCreateProcessingState:
         """Test creating processing state with custom progress."""
         # Arrange
         picture_id = uuid7()
+        user_id = uuid7()
+        org_user_role_id = uuid7()
+        org_admin_role_id = uuid7()
         workflow_id = "test-workflow-456"
         status = ProcessingStatus.UPLOADED
         created_at = datetime.now(timezone.utc)
@@ -93,6 +105,9 @@ class TestCreateProcessingState:
             # Act
             result = await InferenceService.create_processing_state(
                 picture_id=picture_id,
+                user_id=user_id,
+                org_user_role_id=org_user_role_id,
+                org_admin_role_id=org_admin_role_id,
                 status=status,
                 created_at=created_at,
                 workflow_id=workflow_id,
@@ -108,6 +123,9 @@ class TestCreateProcessingState:
         """Test creating processing state without workflow_id (optional)."""
         # Arrange
         picture_id = uuid7()
+        user_id = uuid7()
+        org_user_role_id = uuid7()
+        org_admin_role_id = uuid7()
         status = ProcessingStatus.PENDING
         created_at = datetime.now(timezone.utc)
 
@@ -126,6 +144,9 @@ class TestCreateProcessingState:
             # Act
             result = await InferenceService.create_processing_state(
                 picture_id=picture_id,
+                user_id=user_id,
+                org_user_role_id=org_user_role_id,
+                org_admin_role_id=org_admin_role_id,
                 status=status,
                 created_at=created_at,
                 workflow_id=None,
@@ -141,6 +162,9 @@ class TestCreateProcessingState:
         """Test that database errors are properly raised."""
         # Arrange
         picture_id = uuid7()
+        user_id = uuid7()
+        org_user_role_id = uuid7()
+        org_admin_role_id = uuid7()
         workflow_id = "test-workflow-789"
         status = ProcessingStatus.PENDING
         created_at = datetime.now(timezone.utc)
@@ -162,6 +186,9 @@ class TestCreateProcessingState:
             with pytest.raises(Exception) as exc_info:
                 await InferenceService.create_processing_state(
                     picture_id=picture_id,
+                    user_id=user_id,
+                    org_user_role_id=org_user_role_id,
+                    org_admin_role_id=org_admin_role_id,
                     status=status,
                     created_at=created_at,
                     workflow_id=workflow_id,
@@ -175,6 +202,9 @@ class TestCreateProcessingState:
         """Test that status parameter is respected."""
         # Arrange
         picture_id = uuid7()
+        user_id = uuid7()
+        org_user_role_id = uuid7()
+        org_admin_role_id = uuid7()
         workflow_id = "test-workflow-status"
         status = ProcessingStatus.UPLOADED  # Different status
         created_at = datetime.now(timezone.utc)
@@ -194,6 +224,9 @@ class TestCreateProcessingState:
             # Act
             result = await InferenceService.create_processing_state(
                 picture_id=picture_id,
+                user_id=user_id,
+                org_user_role_id=org_user_role_id,
+                org_admin_role_id=org_admin_role_id,
                 status=status,
                 created_at=created_at,
                 workflow_id=workflow_id,
