@@ -3,6 +3,7 @@ Pipeline service module.
 """
 
 from beartype.typing import List, Dict, Any, Optional, Type
+from uuid import UUID
 from fastapi import HTTPException
 from app.db.utils import sessionmanager
 from app.datastore import PipelineDataService
@@ -336,6 +337,46 @@ class PipelineService(BaseCRUDService[Pipeline]):
         if not cache_data:
             return []
         return list(cache_data.get("by_name", {}).keys())
+
+    @classmethod
+    async def pipeline_exists(cls, pipeline_id: str, requester_id: UUID) -> UUID:
+        """
+        Validate that a pipeline exists and is active, with RBAC authorization.
+
+        Converts string pipeline_id to UUID and verifies the pipeline exists
+        in the database using inherited get_by_id() method with RBAC checks.
+
+        Args:
+            pipeline_id: Pipeline UUID as string
+            requester_id: UUID of requesting user (for RBAC authorization)
+
+        Returns:
+            UUID: Validated pipeline UUID
+
+        Raises:
+            ValueError: If pipeline_id is not a valid UUID format
+            PipelineNotFoundError: If pipeline not found or not active
+        """
+        # Validate UUID format - raises ValueError if invalid
+        try:
+            pipeline_uuid = UUID(pipeline_id)
+        except ValueError as e:
+            cls._get_logger().warning(
+                f"Invalid pipeline_id format: {pipeline_id}",
+                requester_id=str(requester_id),
+            )
+            raise ValueError(f"Invalid pipeline_id format: {pipeline_id}") from e
+
+        # Use inherited get_by_id() with RBAC to verify pipeline exists and is active
+        # This raises PipelineNotFoundError if not found or inactive
+        pipeline_data = await cls.get_by_id(
+            entity_id=pipeline_uuid,
+            requester_id=requester_id,
+        )
+
+        # Extract UUID from serialized data and return
+        # The inherited get_by_id() returns serialized dict with "id" field as string
+        return UUID(pipeline_data["id"])
 
     @classmethod
     async def refresh_cache(cls) -> Dict[str, Any]:

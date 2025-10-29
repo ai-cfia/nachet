@@ -81,7 +81,9 @@ class OpenIdConfig:
             _get_logger().info(
                 "fastapi-azure-auth loaded settings from Azure Entra ID."
             )
-            _get_logger().debug(f"authorization endpoint: {self.authorization_endpoint}")
+            _get_logger().debug(
+                f"authorization endpoint: {self.authorization_endpoint}"
+            )
             _get_logger().debug(f"token endpoint:         {self.token_endpoint}")
             _get_logger().debug(f"issuer:                 {self.issuer}")
 

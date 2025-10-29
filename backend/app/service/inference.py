@@ -36,6 +36,7 @@ from app.exceptions import (
     ImageProcessingError,
     InvalidImageError,
     FolderNotFoundError,
+    PipelineNotFoundError,
 )
 from app.db.utils import sessionmanager
 from app.service.inference_api import (
@@ -72,8 +73,243 @@ image_processing_queue = Queue(
 
 
 # ============================================================================
+# DBOS Workflow for Inference
+# ============================================================================
+
+
+@no_type_check
+@DBOS.workflow(max_recovery_attempts=5)
+async def image_inference_workflow(
+    image_id: UUID,
+    org_prefix: str,
+    pipeline_id: UUID,
+    imageDims: list[int],
+) -> ApiInferenceResponse:
+    """
+    Main image inference workflow.
+
+    This workflow is durable - it will resume from the last completed step
+    if interrupted by a crash or restart.
+
+    Args:
+        image_id: UUID v7 of the image
+        user_id: Submitting user UUID
+        org_prefix: Organization prefix (normalized, max 10 chars)
+
+    Returns:
+        ApiInferenceResponse containing inference results
+
+    Raises:
+        ImageProcessingError: If inference fails
+    """
+    import base64
+    from app.service.logs import LogService
+    from app.service.blob_operations import download_sanitized_blob
+
+    logger = LogService.get_logger()
+
+    logger.debug(
+        "Processing direct pipeline inference request",
+        pipeline_id=pipeline_id,
+    )
+
+    try:
+        # Retrieve image from sanitized blob storage
+        image_bytes = await download_sanitized_blob(org_prefix, image_id)
+        image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+        if not image_base64:
+            raise ImageProcessingError("Image not found")
+
+        # Get pipeline steps from cache
+        pipeline_steps = await PipelineService.get_pipeline_steps(pipeline_id)
+
+        if not pipeline_steps:
+            error_msg = f"Pipeline '{pipeline_id}' not found in cache"
+            logger.error(
+                error_msg,
+                pipeline_id=pipeline_id,
+                available_pipelines=PipelineService.get_cached_pipeline_names(),
+            )
+            raise ValueError(error_msg)
+
+        logger.info(
+            f"Found pipeline with {len(pipeline_steps)} steps",
+            pipeline_id=pipeline_id,
+            steps=[s["model_name"] for s in pipeline_steps],
+        )
+
+        # Execute pipeline steps sequentially
+        from app.service.inference_api import (
+            ModelInferenceDetectorResult,
+            ModelInferenceClassifierResult,
+        )
+
+        previous_result: (
+            str | ModelInferenceDetectorResult | ModelInferenceClassifierResult
+        ) = image_base64
+
+        for step_idx, step in enumerate(pipeline_steps, start=1):
+            logger.debug(
+                f"Executing pipeline step {step_idx}/{len(pipeline_steps)}",
+                step=step["step"],
+                model_name=step["model_name"],
+                request_function=step["request_function"],
+            )
+
+            # Dispatch to inference service
+            step_result = await InferenceDispatchService.dispatch(
+                model=step,
+                previous_result=previous_result,
+            )
+
+            # Update previous_result for next step
+            # Type guard: dispatch returns only valid result types
+            if not isinstance(
+                step_result,
+                (str, ModelInferenceDetectorResult, ModelInferenceClassifierResult),
+            ):
+                raise ValueError(
+                    f"Pipeline step returned unexpected type: {type(step_result)}"
+                )
+            previous_result = step_result
+
+            logger.debug(
+                f"Completed pipeline step {step_idx}/{len(pipeline_steps)}",
+                model_name=step["model_name"],
+            )
+
+        # The last result should be the classification result
+        # Type check: ensure the last step returned a classification result
+        from app.service.inference_api import ModelInferenceClassifierResult
+
+        if not isinstance(previous_result, ModelInferenceClassifierResult):
+            raise ValueError(
+                f"Pipeline did not return classification result. Got: {type(previous_result)}"
+            )
+
+        classification_result = previous_result
+
+        logger.info(
+            "Direct pipeline inference request processed successfully",
+            pipeline_id=pipeline_id,
+            steps_executed=len(pipeline_steps),
+        )
+
+        # Process the classification result to add overlapping, colors, and label occurrence
+        # Returns API-ready result with normalized coordinates
+        api_result = await process_api_ready_classification_result(
+            result=classification_result.result,
+            imageDims=imageDims,
+        )
+
+        # Build model info list from pipeline steps
+        from app.model.inference import ModelInfo
+
+        models = [
+            ModelInfo(name=step["model_name"], version=step.get("version", "1"))
+            for step in pipeline_steps
+        ]
+
+        # Return validated API response using Pydantic model
+        return ApiInferenceResponse(
+            filename=api_result.filename,
+            imageId="direct-inference",  # No DB storage for direct inference
+            inference_id="direct-inference",  # No DB storage for direct inference
+            boxes=api_result.boxes,
+            labelOccurrence=api_result.labelOccurrence,
+            totalBoxes=api_result.totalBoxes,
+            models=models,
+        )
+
+    except ValueError:
+        raise
+    except Exception as e:
+        logger.error(
+            f"Failed to submit direct pipeline inference: {str(e)}",
+            pipeline_id=pipeline_id,
+            error_type=type(e).__name__,
+        )
+        raise ImageProcessingError(
+            f"Failed to submit direct pipeline inference: {str(e)}"
+        ) from e
+
+
+# ============================================================================
 # DBOS Workflow for Image Processing Pipeline
 # ============================================================================
+
+
+@no_type_check
+@DBOS.workflow(max_recovery_attempts=5)
+async def process_and_infer_workflow(
+    image_id: UUID,
+    file_bytes: bytes | None,
+    user_id: UUID,
+    org_prefix: str,
+    pipeline_id: UUID,
+    imageDims: list[int],
+    skip_preprocessing: bool = False,
+) -> Dict[str, Any]:
+    """
+    Parent workflow that orchestrates image processing and inference.
+
+    This workflow is durable - it will resume from the last completed step
+    if interrupted by a crash or restart.
+
+    Steps:
+    1. Run process_image_pipeline (upload → scan → sanitize)
+    2. Run image_inference_workflow (ML inference)
+
+    Args:
+        image_id: UUID v7 of the image
+        file_bytes: Raw image bytes (None for duplicates)
+        user_id: Submitting user UUID
+        org_prefix: Organization prefix (normalized, max 10 chars)
+        skip_preprocessing: If True, skip upload/scan/sanitize (for duplicate images)
+        inference_request: InferenceRequest for ML inference (required)
+
+    Returns:
+        Dict containing processing results, blob URLs, and inference results
+
+    Raises:
+        Various exceptions for different failure modes (defender, sanitization, inference)
+    """
+    try:
+        DBOS.logger.info(
+            f"Starting parent workflow for {image_id} (skip_preprocessing={skip_preprocessing})"
+        )
+
+        # Step 1: Process image (upload → scan → sanitize)
+        processing_result = None
+        if not skip_preprocessing:
+            processing_result = await process_image_pipeline(
+                image_id=image_id,
+                file_bytes=file_bytes,
+                user_id=user_id,
+                org_prefix=org_prefix,
+            )
+
+        DBOS.logger.info(f"[{image_id}] Processing complete, starting inference")
+
+        # Step 2: Run inference on the processed image (if pipeline_id provided)
+        inference_result = None
+        if pipeline_id:
+            inference_result = await image_inference_workflow(
+                image_id=image_id,
+                org_prefix=org_prefix,
+                pipeline_id=pipeline_id,
+                imageDims=imageDims,
+            )
+            DBOS.logger.info(f"[{image_id}] Inference complete")
+
+        return {
+            "processing_result": processing_result,
+            "inference_result": inference_result,
+        }
+
+    except Exception as e:
+        DBOS.logger.error(f"[{image_id}] Parent workflow failed: {str(e)}")
+        raise
 
 
 @no_type_check
@@ -83,7 +319,6 @@ async def process_image_pipeline(
     file_bytes: bytes | None,
     user_id: UUID,
     org_prefix: str,
-    skip_preprocessing: bool = False,
 ) -> Dict[str, Any]:
     """
     Main image processing workflow (MVP).
@@ -105,18 +340,7 @@ async def process_image_pipeline(
         Various exceptions for different failure modes (defender, sanitization)
     """
     try:
-        DBOS.logger.info(
-            f"Starting image processing pipeline for {image_id} (skip_preprocessing={skip_preprocessing})"
-        )
-
-        # For duplicates that skip preprocessing, return immediately
-        if skip_preprocessing:
-            DBOS.logger.info(f"[{image_id}] Skipping preprocessing for duplicate image")
-            return {
-                "image_id": str(image_id),
-                "status": "ready_for_inference",
-                "skip_preprocessing": True,
-            }
+        DBOS.logger.info(f"Starting image processing pipeline for {image_id})")
 
         # Publish initial progress event
         await DBOS.set_event_async("processing_status", "started")
@@ -387,8 +611,8 @@ class InferenceService:
 
         Request body matches legacy API format:
         {
-            "pipeline_id": "pipeline-name",
-            "folder_id": "folder-identifier",
+            "pipeline_id": "pipeline uuid",
+            "folder_id": "folder uuid",
             "imageDims": [1920, 1080],
             "image": "data:image/png;base64,...",
             "area_ratio": 0.5,
@@ -452,6 +676,11 @@ class InferenceService:
                 user_role_id=user_org_roles.org_user_role_id,
             )
 
+            # Verify the pipeline exists
+            pipeline_id = await PipelineService.pipeline_exists(
+                request.pipeline_id, user_id
+            )
+
             # Validate and preprocess the image
             info = await InferenceService._preprocess_image(
                 image_base64=request.image, user_role_id=user_org_roles.org_user_role_id
@@ -490,13 +719,15 @@ class InferenceService:
             # For duplicates, skip preprocessing but still allow inference
             # Queue handles rate limiting and concurrency
             workflow_handle = await image_processing_queue.enqueue_async(
-                process_image_pipeline,
+                process_and_infer_workflow,
                 image_id=image_id,
                 file_bytes=info.image_bytes
                 if not info.duplicate_uuid
                 else None,  # No file bytes for duplicates
                 user_id=user_id,
                 org_prefix=user_org_roles.org_prefix,
+                pipeline_id=pipeline_id,
+                imageDims=[info.width, info.height],
                 skip_preprocessing=bool(
                     info.duplicate_uuid
                 ),  # Skip preprocessing for duplicates
@@ -538,7 +769,12 @@ class InferenceService:
                 else "Duplicate image submitted (preprocessing skipped)",
             )
 
-        except (ValueError, InvalidImageError, FolderNotFoundError):
+        except (
+            ValueError,
+            InvalidImageError,
+            FolderNotFoundError,
+            PipelineNotFoundError,
+        ):
             raise
         except Exception as e:
             logger.error(
