@@ -1,5 +1,5 @@
 """
-Integration tests for process_image_pipeline workflow.
+Integration tests for image_processing_workflow.
 
 These tests use real database, real Azurite, and real DBOS workflows to test
 the complete image processing pipeline with no mocks.
@@ -25,7 +25,7 @@ from uuid import uuid4, UUID
 from uuid6 import uuid7
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.service.inference import process_image_pipeline
+from app.service.inference import image_processing_workflow
 from app.service.blob_operations import (
     upload_to_azure_blob,
 )
@@ -174,7 +174,7 @@ async def test_picture(
 @pytest.mark.integration
 @pytest.mark.asyncio
 class TestProcessImagePipelineWorkflow:
-    """Full workflow integration tests for process_image_pipeline."""
+    """Full workflow integration tests for image_processing_workflow."""
 
     async def test_workflow_upload_step_success(
         self,
@@ -567,7 +567,7 @@ class TestProcessImagePipelineWorkflow:
 
         # Act - Execute workflow
         workflow_handle = DBOS.start_workflow(
-            process_image_pipeline,
+            image_processing_workflow,
             image_id=image_id,
             file_bytes=file_bytes,
             user_id=test_user,
@@ -654,7 +654,7 @@ class TestProcessImagePipelineWorkflow:
 @pytest.mark.integration
 @pytest.mark.asyncio
 class TestProcessImagePipelineErrors:
-    """Error handling tests for process_image_pipeline."""
+    """Error handling tests for image_processing_workflow."""
 
     async def test_workflow_defender_timeout(
         self,

@@ -446,7 +446,7 @@ The service layer (`app/service/image_processing.py`) provides:
 
 ```python
 @DBOS.workflow()  # Orchestrator
-async def process_image_pipeline():
+async def image_processing_workflow():
     await upload_to_azure_blob()  # @DBOS.step with retries
     await wait_for_defender_scan()  # @DBOS.step with durable sleep
     await trigger_sanitization_function()  # @DBOS.step with retries

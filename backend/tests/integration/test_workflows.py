@@ -62,3 +62,51 @@ async def trigger_sanitization_workflow(
         image_id=image_id,
         org_prefix=org_prefix,
     )
+
+
+# ============================================================================
+# Inference Workflow Wrappers
+# ============================================================================
+
+
+@no_type_check
+@DBOS.workflow()
+async def download_image_workflow(
+    org_prefix: str,
+    image_id: UUID,
+) -> str:
+    """Workflow wrapper for testing download_image_from_blob_step."""
+    from app.service.inference import download_image_from_blob_step
+
+    return await download_image_from_blob_step(
+        org_prefix=org_prefix,
+        image_id=image_id,
+    )
+
+
+@no_type_check
+@DBOS.workflow()
+async def get_pipeline_configuration_workflow(
+    pipeline_id: UUID,
+) -> list[Dict[str, Any]]:
+    """Workflow wrapper for testing get_pipeline_configuration_step."""
+    from app.service.inference import get_pipeline_configuration_step
+
+    return await get_pipeline_configuration_step(
+        pipeline_id=pipeline_id,
+    )
+
+
+@no_type_check
+@DBOS.workflow()
+async def execute_inference_step_workflow(
+    step_config: Dict[str, Any],
+    previous_result: str | Dict[str, Any],
+) -> Dict[str, Any]:
+    """Workflow wrapper for testing execute_inference_step."""
+    from app.service.inference import execute_inference_step
+
+    return await execute_inference_step(
+        step_config=step_config,
+        previous_result=previous_result,
+    )

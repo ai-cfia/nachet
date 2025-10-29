@@ -9,17 +9,38 @@ The colors can be returned in HEX or RGB format depending on the frontend prefer
 """
 
 import numpy as np
-from beartype.typing import TYPE_CHECKING
+from beartype.typing import TYPE_CHECKING, Protocol, Any
 
 from .color_palette import primary_colors, light_colors, mixing_palettes, shades_colors
 from .exceptions import ModelAPIError
 
 if TYPE_CHECKING:
-    from app.model.inference import (
-        EnhancedClassificationResult,
-        ProcessedInferenceResult,
-        ApiReadyInferenceResult,
-    )
+    pass
+
+
+# Protocol classes for runtime type checking
+# These allow beartype to perform runtime validation without importing the actual Pydantic models
+class EnhancedClassificationResult(Protocol):
+    """Protocol for enhanced classification result."""
+
+    boxes: list[Any]
+    filename: str
+
+
+class ProcessedInferenceResult(Protocol):
+    """Protocol for processed inference result."""
+
+    boxes: list[Any]
+    filename: str
+
+
+class ApiReadyInferenceResult(Protocol):
+    """Protocol for API-ready inference result."""
+
+    boxes: list[Any]
+    filename: str
+    labelOccurrence: dict[str, int]
+    totalBoxes: int
 
 
 class ProcessInferenceResultsModelAPIError(ModelAPIError):

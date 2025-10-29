@@ -73,6 +73,225 @@ image_processing_queue = Queue(
 
 
 # ============================================================================
+# DBOS Steps for Inference Workflow
+# ============================================================================
+#
+# WORKFLOW ARCHITECTURE:
+# ----------------------
+# The image_inference_workflow is broken down into DBOS steps to ensure
+# durability and proper recovery. Each step handles a nondeterministic
+# operation that accesses external services.
+#
+# EXECUTION FLOW:
+# ---------------
+# 1. download_image_from_blob_step(org_prefix, image_id)
+#    → Downloads image from Azure Blob Storage
+#    → Returns: bytes
+#
+# 2. [WORKFLOW] base64 encoding (deterministic)
+#    → Encodes image bytes to base64 string
+#
+# 3. get_pipeline_configuration_step(pipeline_id)
+#    → Retrieves pipeline steps from cache/database
+#    → Returns: list[dict[str, str]]
+#
+# 4. FOR EACH pipeline step:
+#    execute_inference_step(step_config, previous_result)
+#    → Calls external ML inference endpoint
+#    → Returns: dict[str, Any] (serialized inference result)
+#    → Each iteration is a separate DBOS step for durability
+#
+# 5. [WORKFLOW] Reconstruct ModelInferenceClassifierResult (deterministic)
+#    → Converts dict back to typed object
+#
+# 6. [WORKFLOW] process_api_ready_classification_result(...) (deterministic)
+#    → Pure computation: overlapping detection, color assignment, etc.
+#    → Remains in workflow as it's deterministic
+#
+# 7. [WORKFLOW] Build final API response (deterministic)
+#
+# ERROR HANDLING:
+# ---------------
+# - Exceptions in steps: Propagate to workflow, DBOS handles retries
+# - Workflow-level try/catch: Wraps all operations for final error handling
+# - max_recovery_attempts=5: DBOS will retry workflow up to 5 times
+# - Each step records its result - on recovery, completed steps are replayed
+#   from recorded results, not re-executed
+#
+# WHY STEPS ARE NEEDED:
+# ---------------------
+# - download_image_from_blob_step: Accesses Azure Blob Storage (external service)
+# - get_pipeline_configuration_step: Accesses database/cache (external data store)
+# - execute_inference_step: Calls ML model HTTP endpoints (external API)
+# - process_api_ready_classification_result: NOT a step (deterministic computation)
+#
+# DBOS CONSTRAINTS:
+# -----------------
+# - Steps cannot call, start, or enqueue workflows
+# - Steps can call other steps, but they become part of the same step execution
+# - Workflow can call steps and other workflows
+# - @no_type_check required due to DBOS decorator conflicts with beartype
+#
+# ============================================================================
+
+
+@no_type_check
+@DBOS.step()
+async def download_image_from_blob_step(
+    org_prefix: str,
+    image_id: UUID,
+) -> str:
+    """
+    DBOS Step: Download sanitized image from Azure Blob Storage.
+
+    This is a nondeterministic operation because it accesses an external service.
+    DBOS will record the result and replay it on workflow recovery.
+
+    Args:
+        org_prefix: Organization prefix for blob path
+        image_id: UUID of the image to download
+
+    Returns:
+        str: Base64-encoded string of the raw image data
+
+    Raises:
+        BlobDownloadError: If download fails
+    """
+    import base64
+    from app.service.blob_operations import download_sanitized_blob
+
+    image_bytes = await download_sanitized_blob(image_id, org_prefix)
+    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+
+    if not image_base64:
+        raise ImageProcessingError("Image not found")
+
+    return image_base64
+
+
+@no_type_check
+@DBOS.step()
+async def get_pipeline_configuration_step(
+    pipeline_id: UUID,
+) -> list[dict[str, Any]]:
+    """
+    DBOS Step: Retrieve pipeline configuration from cache/database.
+
+    This is a nondeterministic operation because it accesses an external data store.
+    DBOS will record the result and replay it on workflow recovery.
+
+    Args:
+        pipeline_id: UUID of the pipeline
+
+    Returns:
+        list[dict[str, Any]]: Pipeline steps configuration
+
+    Raises:
+        ValueError: If pipeline not found
+    """
+    pipeline_steps = await PipelineService.get_pipeline_steps(str(pipeline_id))
+
+    if not pipeline_steps:
+        from app.service.logs import LogService
+
+        logger = LogService.get_logger()
+        error_msg = f"Pipeline '{pipeline_id}' not found in cache"
+        logger.error(
+            error_msg,
+            pipeline_id=pipeline_id,
+            available_pipelines=PipelineService.get_cached_pipeline_names(),
+        )
+        raise ValueError(error_msg)
+
+    return pipeline_steps
+
+
+@no_type_check
+@DBOS.step()
+async def execute_inference_step(
+    step_config: dict[str, Any],
+    previous_result: str | dict[str, Any],
+) -> dict[str, Any]:
+    """
+    DBOS Step: Execute a single inference step by calling external ML model endpoint.
+
+    This is a nondeterministic operation because it calls an external API.
+    DBOS will record the result and replay it on workflow recovery.
+
+    Args:
+        step_config: Model configuration dict with endpoint, api_key, etc.
+        previous_result: Result from previous step (base64 string or inference result dict)
+
+    Returns:
+        dict[str, Any]: Inference result from the model
+
+    Raises:
+        ValueError: If inference returns unexpected type
+    """
+    from app.service.inference_api import (
+        ModelInferenceDetectorResult,
+        ModelInferenceClassifierResult,
+    )
+
+    # Reconstruct typed objects from dict if needed
+    if isinstance(previous_result, dict):
+        # Determine type based on dict structure and reconstruct
+        if "images" in previous_result and "result" in previous_result:
+            # Check if result field has boxes (detector) or filename (classifier)
+            result_field = previous_result.get("result")
+            if isinstance(result_field, dict):
+                if "boxes" in result_field and "filename" not in result_field:
+                    # This is a detector result - reconstruct SeedDetectorAPIResponse
+                    from app.model.inference import (
+                        SeedDetectorAPIResponse as SeedDetectorAPIResponseModel,
+                    )
+
+                    result_obj = SeedDetectorAPIResponseModel(**result_field)
+                    previous_result = ModelInferenceDetectorResult(
+                        result=result_obj, images=previous_result["images"]
+                    )
+                elif "filename" in result_field and "boxes" in result_field:
+                    # This is a classifier result - reconstruct EnhancedClassificationResult
+                    from app.model.inference import (
+                        EnhancedClassificationResult as EnhancedClassificationResultModel,
+                    )
+
+                    result_obj = EnhancedClassificationResultModel(**result_field)
+                    previous_result = ModelInferenceClassifierResult(
+                        result=result_obj, images=previous_result.get("images")
+                    )
+            # else: result field is already a Pydantic model instance, use as-is
+            elif hasattr(result_field, "boxes"):
+                # Already a proper object, reconstruct the wrapper dataclass
+                previous_result = (
+                    ModelInferenceDetectorResult(**previous_result)
+                    if not hasattr(result_field, "filename")
+                    else ModelInferenceClassifierResult(**previous_result)
+                )
+
+    # Dispatch to inference service
+    step_result = await InferenceDispatchService.dispatch(
+        model=step_config,
+        previous_result=previous_result,
+    )
+
+    # Type guard: dispatch returns only valid result types
+    if not isinstance(
+        step_result,
+        (str, ModelInferenceDetectorResult, ModelInferenceClassifierResult),
+    ):
+        raise ValueError(f"Pipeline step returned unexpected type: {type(step_result)}")
+
+    # Convert to dict for DBOS serialization
+    if isinstance(
+        step_result, (ModelInferenceDetectorResult, ModelInferenceClassifierResult)
+    ):
+        return step_result.__dict__
+
+    return {"base64_result": step_result}
+
+
+# ============================================================================
 # DBOS Workflow for Inference
 # ============================================================================
 
@@ -102,9 +321,9 @@ async def image_inference_workflow(
     Raises:
         ImageProcessingError: If inference fails
     """
-    import base64
     from app.service.logs import LogService
-    from app.service.blob_operations import download_sanitized_blob
+    from app.service.inference_api import ModelInferenceClassifierResult
+    from app.model.inference import ModelInfo
 
     logger = LogService.get_logger()
 
@@ -114,23 +333,21 @@ async def image_inference_workflow(
     )
 
     try:
-        # Retrieve image from sanitized blob storage
-        image_bytes = await download_sanitized_blob(org_prefix, image_id)
-        image_base64 = base64.b64encode(image_bytes).decode("utf-8")
-        if not image_base64:
-            raise ImageProcessingError("Image not found")
+        # Publish initial inference events
+        await DBOS.set_event_async("inference_status", "started")
+        await DBOS.set_event_async(
+            "inference_timestamps", {"started": datetime.now(timezone.utc).isoformat()}
+        )
 
-        # Get pipeline steps from cache
-        pipeline_steps = await PipelineService.get_pipeline_steps(pipeline_id)
+        # DBOS Step 1: Download image from sanitized blob storage and encode to base64
+        DBOS.logger.info(f"[{image_id}] Step 1: Downloading image from blob storage")
+        image_base64 = await download_image_from_blob_step(org_prefix, image_id)
+        await DBOS.set_event_async("inference_status", "image_downloaded")
 
-        if not pipeline_steps:
-            error_msg = f"Pipeline '{pipeline_id}' not found in cache"
-            logger.error(
-                error_msg,
-                pipeline_id=pipeline_id,
-                available_pipelines=PipelineService.get_cached_pipeline_names(),
-            )
-            raise ValueError(error_msg)
+        # DBOS Step 2: Get pipeline configuration
+        DBOS.logger.info(f"[{image_id}] Step 2: Retrieving pipeline configuration")
+        pipeline_steps = await get_pipeline_configuration_step(pipeline_id)
+        await DBOS.set_event_async("inference_status", "pipeline_loaded")
 
         logger.info(
             f"Found pipeline with {len(pipeline_steps)} steps",
@@ -138,15 +355,11 @@ async def image_inference_workflow(
             steps=[s["model_name"] for s in pipeline_steps],
         )
 
-        # Execute pipeline steps sequentially
-        from app.service.inference_api import (
-            ModelInferenceDetectorResult,
-            ModelInferenceClassifierResult,
-        )
+        # Execute pipeline steps sequentially - each as a separate DBOS step
+        await DBOS.set_event_async("inference_status", "running_models")
+        await DBOS.set_event_async("inference_model_progress", {})
 
-        previous_result: (
-            str | ModelInferenceDetectorResult | ModelInferenceClassifierResult
-        ) = image_base64
+        previous_result: str | dict[str, Any] = image_base64
 
         for step_idx, step in enumerate(pipeline_steps, start=1):
             logger.debug(
@@ -156,38 +369,40 @@ async def image_inference_workflow(
                 request_function=step["request_function"],
             )
 
-            # Dispatch to inference service
-            step_result = await InferenceDispatchService.dispatch(
-                model=step,
+            # DBOS Step 3+: Execute each inference step
+            DBOS.logger.info(
+                f"[{image_id}] Step {step_idx + 2}: Executing inference with {step['model_name']}"
+            )
+            step_result_dict = await execute_inference_step(
+                step_config=step,
                 previous_result=previous_result,
             )
 
             # Update previous_result for next step
-            # Type guard: dispatch returns only valid result types
-            if not isinstance(
-                step_result,
-                (str, ModelInferenceDetectorResult, ModelInferenceClassifierResult),
-            ):
-                raise ValueError(
-                    f"Pipeline step returned unexpected type: {type(step_result)}"
-                )
-            previous_result = step_result
+            previous_result = step_result_dict
+
+            # Track model completion
+            workflow_id = DBOS.workflow_id
+            if workflow_id:
+                all_events = await DBOS.get_all_events_async(workflow_id)
+                model_progress = all_events.get("inference_model_progress", {})
+                model_progress[step["model_name"]] = True
+                await DBOS.set_event_async("inference_model_progress", model_progress)
 
             logger.debug(
                 f"Completed pipeline step {step_idx}/{len(pipeline_steps)}",
                 model_name=step["model_name"],
             )
 
+        # Reconstruct final classification result from dict
         # The last result should be the classification result
-        # Type check: ensure the last step returned a classification result
-        from app.service.inference_api import ModelInferenceClassifierResult
-
-        if not isinstance(previous_result, ModelInferenceClassifierResult):
+        if "base64_result" in previous_result:
             raise ValueError(
-                f"Pipeline did not return classification result. Got: {type(previous_result)}"
+                "Pipeline did not return classification result. Got base64 string instead."
             )
 
-        classification_result = previous_result
+        # Reconstruct ModelInferenceClassifierResult from dict
+        classification_result = ModelInferenceClassifierResult(**previous_result)
 
         logger.info(
             "Direct pipeline inference request processed successfully",
@@ -195,20 +410,32 @@ async def image_inference_workflow(
             steps_executed=len(pipeline_steps),
         )
 
-        # Process the classification result to add overlapping, colors, and label occurrence
-        # Returns API-ready result with normalized coordinates
+        # Deterministic operation: process the classification result
+        # This remains in workflow as it's pure computation
         api_result = await process_api_ready_classification_result(
             result=classification_result.result,
             imageDims=imageDims,
         )
 
         # Build model info list from pipeline steps
-        from app.model.inference import ModelInfo
 
         models = [
             ModelInfo(name=step["model_name"], version=step.get("version", "1"))
             for step in pipeline_steps
         ]
+
+        # Publish completion events
+        await DBOS.set_event_async("inference_status", "completed")
+        workflow_id = DBOS.workflow_id
+        if workflow_id:
+            all_events = await DBOS.get_all_events_async(workflow_id)
+            await DBOS.set_event_async(
+                "inference_timestamps",
+                {
+                    **all_events.get("inference_timestamps", {}),
+                    "completed": datetime.now(timezone.utc).isoformat(),
+                },
+            )
 
         # Return validated API response using Pydantic model
         return ApiInferenceResponse(
@@ -221,14 +448,27 @@ async def image_inference_workflow(
             models=models,
         )
 
-    except ValueError:
-        raise
     except Exception as e:
+        # Publish error events for all exceptions
+        await DBOS.set_event_async("inference_status", "failed")
+        await DBOS.set_event_async(
+            "inference_error_details",
+            {
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
         logger.error(
             f"Failed to submit direct pipeline inference: {str(e)}",
             pipeline_id=pipeline_id,
             error_type=type(e).__name__,
         )
+
+        # Re-raise ValueError as-is, convert others to ImageProcessingError
+        if isinstance(e, ValueError):
+            raise
         raise ImageProcessingError(
             f"Failed to submit direct pipeline inference: {str(e)}"
         ) from e
@@ -241,7 +481,7 @@ async def image_inference_workflow(
 
 @no_type_check
 @DBOS.workflow(max_recovery_attempts=5)
-async def process_and_infer_workflow(
+async def image_processing_and_inference_workflow(
     image_id: UUID,
     file_bytes: bytes | None,
     user_id: UUID,
@@ -257,7 +497,7 @@ async def process_and_infer_workflow(
     if interrupted by a crash or restart.
 
     Steps:
-    1. Run process_image_pipeline (upload → scan → sanitize)
+    1. Run image_processing_workflow (upload → scan → sanitize)
     2. Run image_inference_workflow (ML inference)
 
     Args:
@@ -279,32 +519,65 @@ async def process_and_infer_workflow(
             f"Starting parent workflow for {image_id} (skip_preprocessing={skip_preprocessing})"
         )
 
+        # Track workflow IDs
+        processing_workflow_id = None
+        inference_workflow_id = None
+
         # Step 1: Process image (upload → scan → sanitize)
         processing_result = None
         if not skip_preprocessing:
-            processing_result = await process_image_pipeline(
+            # Get the child workflow ID before executing
+            processing_workflow_id = (
+                DBOS.workflow_id
+            )  # This will be set by DBOS when child runs
+
+            processing_result = await image_processing_workflow(
                 image_id=image_id,
                 file_bytes=file_bytes,
                 user_id=user_id,
                 org_prefix=org_prefix,
             )
 
+            # Publish processing workflow ID
+            await DBOS.set_event_async("processing_workflow_id", processing_workflow_id)
+
         DBOS.logger.info(f"[{image_id}] Processing complete, starting inference")
 
         # Step 2: Run inference on the processed image (if pipeline_id provided)
         inference_result = None
         if pipeline_id:
+            # Get the child workflow ID before executing
+            inference_workflow_id = DBOS.workflow_id
+
             inference_result = await image_inference_workflow(
                 image_id=image_id,
                 org_prefix=org_prefix,
                 pipeline_id=pipeline_id,
                 imageDims=imageDims,
             )
+
+            # Publish inference workflow ID
+            await DBOS.set_event_async("inference_workflow_id", inference_workflow_id)
             DBOS.logger.info(f"[{image_id}] Inference complete")
+
+        # Publish both workflow IDs together for easy retrieval
+        await DBOS.set_event_async(
+            "workflow_ids",
+            {
+                "parent_workflow_id": DBOS.workflow_id,
+                "processing_workflow_id": processing_workflow_id,
+                "inference_workflow_id": inference_workflow_id,
+            },
+        )
 
         return {
             "processing_result": processing_result,
             "inference_result": inference_result,
+            "workflow_ids": {
+                "parent": DBOS.workflow_id,
+                "processing": processing_workflow_id,
+                "inference": inference_workflow_id,
+            },
         }
 
     except Exception as e:
@@ -314,7 +587,7 @@ async def process_and_infer_workflow(
 
 @no_type_check
 @DBOS.workflow(max_recovery_attempts=5)
-async def process_image_pipeline(
+async def image_processing_workflow(
     image_id: UUID,
     file_bytes: bytes | None,
     user_id: UUID,
@@ -719,7 +992,7 @@ class InferenceService:
             # For duplicates, skip preprocessing but still allow inference
             # Queue handles rate limiting and concurrency
             workflow_handle = await image_processing_queue.enqueue_async(
-                process_and_infer_workflow,
+                image_processing_and_inference_workflow,
                 image_id=image_id,
                 file_bytes=info.image_bytes
                 if not info.duplicate_uuid

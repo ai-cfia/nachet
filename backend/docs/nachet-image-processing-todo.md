@@ -73,8 +73,10 @@ After review, DBOS is **already integrated** in the project (added Oct 18, 2025)
 ## Phase 2: DBOS Workflow & Steps
 
 - [x] **Task 3:** Create main workflow in `app/service/image_pipeline.py`
-  - [x] Implement `process_image_pipeline()` workflow (upload → scan → sanitize)
-  - [x] Add DBOS event publishing for progress tracking
+  - [x] Implement `image_processing_workflow()` workflow (upload → scan → sanitize)
+  - [x] Implement `image_inference_workflow()` workflow (ML model execution)
+  - [x] Implement `image_processing_and_inference_workflow()` parent orchestrator
+  - [x] Add DBOS event publishing for progress tracking (both processing and inference)
   - [x] Use `@DBOS.workflow()` decorator with max_recovery_attempts
 
 - [x] **Task 4-6:** Create blob operation steps in `app/service/blob_operations.py`
