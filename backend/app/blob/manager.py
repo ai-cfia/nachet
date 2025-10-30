@@ -364,6 +364,8 @@ async def initialize_blob_storage(settings: Optional[Any] = None):
     - 'external': External Azure Blob Storage
     - 'onprem': S3-compatible storage (Apache Ozone)
 
+    Also ensures required containers exist for the environment.
+
     Args:
         settings: Settings instance containing blob storage connection info.
     """
@@ -392,7 +394,79 @@ async def initialize_blob_storage(settings: Optional[Any] = None):
             "One or more blob storage accounts failed health check during initialization"
         )
 
+    # Ensure required containers exist
+    await _ensure_required_containers(settings)
+
     _get_logger().info("=" * 60)
+
+
+async def _ensure_required_containers(settings: Any):
+    """
+    Ensure required blob storage containers exist, creating them if needed.
+
+    Storage account mapping:
+    - original images: external storage (Azurite/Azure)
+    - sanitized images: onprem storage (S3/Garage)
+
+    Args:
+        settings: Settings instance with container prefix and environment info
+    """
+    from app.service.constants import Bucket
+
+    _get_logger().info("Verifying required blob storage containers...")
+
+    # Determine container names based on environment
+    bucket_prefix = settings.blob_container_prefix or ""
+    is_test = settings.is_test_environment
+
+    original_container = bucket_prefix + Bucket.get_original_container(is_test=is_test)
+    sanitized_container = bucket_prefix + Bucket.get_sanitized_container(
+        is_test=is_test
+    )
+
+    # Create original container on EXTERNAL storage (Azurite/Azure)
+    external_storage = blob_storage_manager.get_client("external")
+    try:
+        result = await external_storage.list_containers()
+        containers = result.get("containers", [])
+        container_names = [c["name"] for c in containers]
+
+        if original_container not in container_names:
+            await external_storage.create_container(original_container)
+            _get_logger().info(
+                f"Created required container (external): {original_container}"
+            )
+        else:
+            _get_logger().debug(
+                f"Container already exists (external): {original_container}"
+            )
+    except Exception as e:
+        _get_logger().warning(
+            f"Could not verify/create container (external) {original_container}: {e}"
+        )
+
+    # Create sanitized container on ONPREM storage (S3/Garage)
+    onprem_storage = blob_storage_manager.get_client("onprem")
+    try:
+        result = await onprem_storage.list_containers()
+        containers = result.get("containers", [])
+        container_names = [c["name"] for c in containers]
+
+        if sanitized_container not in container_names:
+            await onprem_storage.create_container(sanitized_container)
+            _get_logger().info(
+                f"Created required container (onprem): {sanitized_container}"
+            )
+        else:
+            _get_logger().debug(
+                f"Container already exists (onprem): {sanitized_container}"
+            )
+    except Exception as e:
+        _get_logger().warning(
+            f"Could not verify/create container (onprem) {sanitized_container}: {e}"
+        )
+
+    _get_logger().info("Required blob storage containers verified")
 
 
 class BlobStorageHealthCheck:
