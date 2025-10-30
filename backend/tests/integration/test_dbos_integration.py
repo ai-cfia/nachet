@@ -111,6 +111,8 @@ def mock_settings():
     return mock
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestBlobOperations:
     """Test individual blob operation steps."""
 
@@ -231,6 +233,8 @@ class TestBlobOperations:
         assert downloaded_bytes == test_data
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestSanitizationOperations:
     """Test sanitization operation steps."""
 
@@ -346,6 +350,8 @@ class TestSanitizationOperations:
     #             assert "Failed to trigger sanitization" in str(exc_info.value)
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestImageProcessingState:
     """Test ImageProcessingState model integration."""
 
@@ -383,7 +389,9 @@ class TestImageProcessingState:
         await integration_db_session.commit()
 
         # Now create the processing state
+        workflow_id = f"test-workflow-{uuid7()}"
         processing_state = ImageProcessingState(
+            workflow_id=workflow_id,
             picture_id=image_id,
             user_id=test_user,
             org_user_role_id=test_org_user_role,
@@ -442,7 +450,9 @@ class TestImageProcessingState:
         await integration_db_session.commit()
 
         # Now create the processing state
+        workflow_id = f"test-workflow-{uuid7()}"
         processing_state = ImageProcessingState(
+            workflow_id=workflow_id,
             picture_id=image_id,
             user_id=test_user,
             org_user_role_id=test_org_user_role,
@@ -513,6 +523,8 @@ class TestImageProcessingState:
         await integration_db_session.commit()
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestErrorHandling:
     """Test error handling and recovery scenarios."""
 

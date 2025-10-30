@@ -272,7 +272,7 @@ class TestProcessImagePipelineWorkflow:
         tags = await azure_storage.get_blob_tags(
             get_test_container_names()["original"], blob_path
         )
-        assert tags.get("Malware scanning scan result") == "No threats found"
+        assert tags.get("Malware Scanning scan result") == "No threats found"
 
         # Act - start the workflow directly (it's now a workflow, not a step)
         from app.service.blob_operations import wait_for_defender_scan
@@ -555,19 +555,6 @@ class TestProcessImagePipelineWorkflow:
         org_prefix = "test-wf"
         file_bytes = get_test_seed_image()
 
-        # Create ImageProcessingState
-        state = ImageProcessingState(
-            picture_id=image_id,
-            user_id=test_picture.user_id,
-            org_user_role_id=test_picture.org_user_role_id,
-            org_admin_role_id=test_picture.org_admin_role_id,
-            status=ProcessingStatus.PENDING.value,
-            workflow_id=None,
-            progress_percentage=0,
-        )
-        integration_db_session.add(state)
-        await integration_db_session.commit()
-
         # Act - Execute workflow
         workflow_handle = DBOS.start_workflow(
             image_processing_workflow,
@@ -578,6 +565,19 @@ class TestProcessImagePipelineWorkflow:
         )
 
         workflow_id = workflow_handle.workflow_id
+
+        # Create ImageProcessingState with the actual workflow_id
+        state = ImageProcessingState(
+            workflow_id=workflow_id,
+            picture_id=image_id,
+            user_id=test_picture.user_id,
+            org_user_role_id=test_picture.org_user_role_id,
+            org_admin_role_id=test_picture.org_admin_role_id,
+            status=ProcessingStatus.PENDING.value,
+            progress_percentage=0,
+        )
+        integration_db_session.add(state)
+        await integration_db_session.commit()
 
         # Mock Defender scan result after upload completes
         # Workflow uploads to EXTERNAL storage, where Defender scanning occurs

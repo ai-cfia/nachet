@@ -110,7 +110,7 @@ class TestInferenceServiceUrlToBinary:
             "app.service.inference.image_validation.ImageDataService",
             return_value=mock_image_service,
         ):
-            result = await InferenceService._preprocess_image(
+            result = await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                 test_image_base64, mock_user_role_id
             )
 
@@ -140,7 +140,7 @@ class TestInferenceServiceUrlToBinary:
             "app.service.inference.image_validation.ImageDataService",
             return_value=mock_image_service,
         ):
-            result = await InferenceService._preprocess_image(
+            result = await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                 test_image_base64_with_data_url, mock_user_role_id
             )
 
@@ -157,7 +157,9 @@ class TestInferenceServiceUrlToBinary:
         mock_user_role_id = uuid4()
 
         with pytest.raises(ImageProcessingError) as exc_info:
-            await InferenceService._preprocess_image(large_base64, mock_user_role_id)
+            await InferenceService._preprocess_image(  # type: ignore[attr-defined]
+                large_base64, mock_user_role_id
+            )
 
         assert "Image size exceeds maximum limit of 10MB" in str(exc_info.value)
 
@@ -169,7 +171,9 @@ class TestInferenceServiceUrlToBinary:
 
         # This is a valid 1x1 PNG but too small
         with pytest.raises(ImageProcessingError) as exc_info:
-            await InferenceService._preprocess_image(small_base64, mock_user_role_id)
+            await InferenceService._preprocess_image(  # type: ignore[attr-defined]
+                small_base64, mock_user_role_id
+            )
 
         assert "Image size is too small or empty" in str(exc_info.value)
 
@@ -180,7 +184,9 @@ class TestInferenceServiceUrlToBinary:
         mock_user_role_id = uuid4()
 
         with pytest.raises(Exception):  # base64.b64decode will raise
-            await InferenceService._preprocess_image(invalid_base64, mock_user_role_id)
+            await InferenceService._preprocess_image(  # type: ignore[attr-defined]
+                invalid_base64, mock_user_role_id
+            )
 
     @pytest.mark.asyncio
     async def test_dimensions_too_small(self, small_png_bytes, monkeypatch):
@@ -193,7 +199,9 @@ class TestInferenceServiceUrlToBinary:
         mock_user_role_id = uuid4()
 
         with pytest.raises(ImageProcessingError) as exc_info:
-            await InferenceService._preprocess_image(small_base64, mock_user_role_id)
+            await InferenceService._preprocess_image(  # type: ignore[attr-defined]
+                small_base64, mock_user_role_id
+            )
 
         assert "Image dimensions are too small" in str(exc_info.value)
 
@@ -219,7 +227,7 @@ class TestInferenceServiceUrlToBinary:
             "app.service.inference.image_validation.ImageDataService",
             return_value=mock_image_service,
         ):
-            result = await InferenceService._preprocess_image(
+            result = await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                 minimum_image_base64, mock_user_role_id
             )
 
@@ -261,7 +269,9 @@ class TestInferenceServiceUrlToBinary:
 
         # Note: May fail at mimetypes check first
         with pytest.raises(ImageProcessingError) as exc_info:
-            await InferenceService._preprocess_image(large_base64, mock_user_role_id)
+            await InferenceService._preprocess_image(  # type: ignore[attr-defined]
+                large_base64, mock_user_role_id
+            )
 
         error_msg = str(exc_info.value)
         assert (
@@ -278,7 +288,9 @@ class TestInferenceServiceUrlToBinary:
         mock_user_role_id = uuid4()
 
         with pytest.raises(ImageProcessingError) as exc_info:
-            await InferenceService._preprocess_image(jpeg_base64, mock_user_role_id)
+            await InferenceService._preprocess_image(  # type: ignore[attr-defined]
+                jpeg_base64, mock_user_role_id
+            )
 
         assert "not a valid PNG image" in str(exc_info.value)
 
@@ -291,7 +303,7 @@ class TestInferenceServiceUrlToBinary:
         mock_user_role_id = uuid4()
 
         with pytest.raises(ImageProcessingError):
-            await InferenceService._preprocess_image(
+            await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                 corrupted_base64, mock_user_role_id
             )
 
@@ -301,7 +313,9 @@ class TestInferenceServiceUrlToBinary:
         mock_user_role_id = uuid4()
 
         with pytest.raises(ImageProcessingError) as exc_info:
-            await InferenceService._preprocess_image("", mock_user_role_id)
+            await InferenceService._preprocess_image(  # type: ignore[attr-defined]
+                "", mock_user_role_id
+            )
 
         assert "Image size is too small or empty" in str(exc_info.value)
 
@@ -311,7 +325,9 @@ class TestInferenceServiceUrlToBinary:
         mock_user_role_id = uuid4()
 
         with pytest.raises(ImageProcessingError) as exc_info:
-            await InferenceService._preprocess_image("   \n\t   ", mock_user_role_id)
+            await InferenceService._preprocess_image(  # type: ignore[attr-defined]
+                "   \n\t   ", mock_user_role_id
+            )
 
         assert "Image size is too small or empty" in str(exc_info.value)
 
@@ -346,7 +362,7 @@ class TestInferenceServiceUrlToBinary:
             "app.service.inference.image_validation.ImageDataService",
             return_value=mock_image_service,
         ):
-            result = await InferenceService._preprocess_image(
+            result = await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                 data_url, mock_user_role_id
             )
 
@@ -385,7 +401,7 @@ class TestInferenceServiceGetHash:
             "app.service.inference.image_validation.ImageDataService",
             return_value=mock_image_service,
         ):
-            result = await InferenceService._preprocess_image(
+            result = await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                 test_image_base64, mock_user_role_id
             )
 
@@ -420,7 +436,7 @@ class TestInferenceServiceGetHash:
             "app.service.inference.image_validation.ImageDataService",
             return_value=mock_image_service,
         ):
-            result = await InferenceService._preprocess_image(
+            result = await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                 test_image_base64, mock_user_role_id
             )
 
@@ -452,10 +468,10 @@ class TestInferenceServiceGetHash:
             "app.service.inference.image_validation.ImageDataService",
             return_value=mock_image_service,
         ):
-            result1 = await InferenceService._preprocess_image(
+            result1 = await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                 test_image_base64, mock_user_role_id
             )
-            result2 = await InferenceService._preprocess_image(
+            result2 = await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                 test_image_base64, mock_user_role_id
             )
 
@@ -488,13 +504,13 @@ class TestInferenceServiceGetHash:
             "app.service.inference.image_validation.ImageDataService",
             return_value=mock_image_service,
         ):
-            result1 = await InferenceService._preprocess_image(
+            result1 = await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                 test_image_base64, mock_user_role_id
             )
             # This will fail validation, but we're testing hash computation
             # For this test, we can't really test modified bytes since validation will fail
             # Let's just verify that the same image produces same hash
-            result2 = await InferenceService._preprocess_image(
+            result2 = await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                 test_image_base64, mock_user_role_id
             )
 
@@ -510,7 +526,9 @@ class TestInferenceServiceGetHash:
 
         # Empty bytes should fail validation before hash computation
         with pytest.raises(ImageProcessingError) as exc_info:
-            await InferenceService._preprocess_image(empty_base64, mock_user_role_id)
+            await InferenceService._preprocess_image(  # type: ignore[attr-defined]
+                empty_base64, mock_user_role_id
+            )
 
         assert "Image size is too small or empty" in str(exc_info.value)
 
@@ -538,7 +556,7 @@ class TestInferenceServiceGetHash:
             return_value=mock_image_service,
         ):
             with pytest.raises(ImageProcessingError) as exc_info:
-                await InferenceService._preprocess_image(
+                await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                     test_image_base64, mock_user_role_id
                 )
 
@@ -570,7 +588,7 @@ class TestInferenceServiceGetHash:
             "app.service.inference.image_validation.ImageDataService",
             return_value=mock_image_service,
         ):
-            result = await InferenceService._preprocess_image(
+            result = await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                 test_image_base64, mock_user_role_id
             )
 
@@ -612,7 +630,7 @@ class TestInferenceServiceIntegration:
             "app.service.inference.image_validation.ImageDataService",
             return_value=mock_image_service,
         ):
-            result = await InferenceService._preprocess_image(
+            result = await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                 test_image_base64_with_data_url, mock_user_role_id
             )
 
@@ -650,7 +668,7 @@ class TestInferenceServiceIntegration:
             "app.service.inference.image_validation.ImageDataService",
             return_value=mock_image_service,
         ):
-            result = await InferenceService._preprocess_image(
+            result = await InferenceService._preprocess_image(  # type: ignore[attr-defined]
                 test_image_base64, mock_user_role_id
             )
 

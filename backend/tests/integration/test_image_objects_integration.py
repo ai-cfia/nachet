@@ -19,6 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestImageObjectsServiceIntegrationBasic:
     """Basic integration tests for ImageObjectsService."""
 
@@ -195,6 +197,8 @@ class TestImageObjectsServiceIntegrationBasic:
         assert exc_info.value.status_code == 404
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestImageObjectsServiceIntegrationUpdate:
     """Integration tests for ImageObjectsService.update method."""
 
@@ -422,6 +426,8 @@ class TestImageObjectsServiceIntegrationUpdate:
         cleanup_test_pictures.append(folder_id)
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestImageObjectsServiceIntegrationDelete:
     """Integration tests for ImageObjectsService.delete method."""
 
@@ -645,6 +651,8 @@ class TestImageObjectsServiceIntegrationDelete:
         cleanup_test_pictures.append(folder_id)
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestImageObjectsServiceIntegrationGetAll:
     """Integration tests for ImageObjectsService.get_all method."""
 
@@ -872,6 +880,8 @@ class TestImageObjectsServiceIntegrationGetAll:
         cleanup_test_pictures.append(folder_id)
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestImageObjectsServiceIntegrationRetrieve:
     """Integration tests for ImageObjectsService retrieve operations."""
 
