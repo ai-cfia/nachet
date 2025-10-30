@@ -5,6 +5,8 @@ This module provides a unified interface for managing blob storage operations
 across different cloud storage providers, with built-in validation using Pydantic.
 """
 
+from __future__ import annotations
+
 from .exceptions import (
     BlobStorageError,
     BlobNotFoundError,

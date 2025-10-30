@@ -20,6 +20,8 @@ The manager creates and maintains a single BlobServiceClient instance and provid
 access to container and blob clients derived from it.
 """
 
+from __future__ import annotations
+
 from beartype.typing import Optional, Dict, Any, AsyncGenerator, TYPE_CHECKING
 from contextlib import asynccontextmanager
 import asyncio
@@ -28,8 +30,8 @@ from datetime import datetime
 if TYPE_CHECKING:
     pass
 
-from app.blob.exceptions import InvalidConfigurationError, ConnectionError
-from app.blob.interface import BlobStorageInterface
+from .exceptions import InvalidConfigurationError, ConnectionError
+from .interface import BlobStorageInterface
 
 # Module-level logger
 _logger = None
@@ -43,6 +45,39 @@ def _get_logger():
 
         _logger = LogService.get_logger()
     return _logger
+
+
+def _create_blob_storage_client(
+    provider: str, config: Dict[str, Any]
+) -> BlobStorageInterface:
+    """
+    Internal factory function to create a blob storage client.
+
+    This avoids circular imports by duplicating the factory logic locally.
+
+    Args:
+        provider: Storage provider name (e.g., 'azure', 's3')
+        config: Provider-specific configuration
+
+    Returns:
+        BlobStorageInterface implementation
+
+    Raises:
+        InvalidConfigurationError: If provider is not supported
+    """
+    if provider.lower() == "azure":
+        from .azure.storage import AzureBlobStorage
+
+        return AzureBlobStorage(config)
+    elif provider.lower() == "s3":
+        from .s3.storage import S3BlobStorage
+
+        return S3BlobStorage(config)
+    else:
+        raise InvalidConfigurationError(
+            "provider",
+            f"Unsupported provider: {provider}. Supported providers: azure, s3",
+        )
 
 
 class BlobStorageManager:
@@ -82,11 +117,9 @@ class BlobStorageManager:
         """
         async with self._lock:
             try:
-                from app.blob import create_blob_storage_client
-
                 for name, (provider, config) in storage_configs.items():
                     # Create a client for each storage account
-                    client = create_blob_storage_client(provider, config)
+                    client = _create_blob_storage_client(provider, config)
 
                     # Test the client works
                     await client.list_containers()
@@ -229,8 +262,6 @@ class BlobStorageManager:
             storages_to_refresh = [name] if name else list(self._clients.keys())
 
             try:
-                from app.blob import create_blob_storage_client
-
                 for storage_name in storages_to_refresh:
                     if storage_name not in self._configs:
                         raise RuntimeError(
@@ -240,7 +271,7 @@ class BlobStorageManager:
                     # Recreate the client using the factory function
                     provider = self._providers[storage_name]
                     config = self._configs[storage_name]
-                    self._clients[storage_name] = create_blob_storage_client(
+                    self._clients[storage_name] = _create_blob_storage_client(
                         provider, config
                     )
 
