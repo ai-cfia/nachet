@@ -472,10 +472,9 @@ class Picture(Base):
         "RbacRole",
         foreign_keys=[org_user_role_id],
     )
-    processing_state: Mapped[Optional["ImageProcessingState"]] = relationship(
+    processing_states: Mapped[List["ImageProcessingState"]] = relationship(
         "ImageProcessingState",
         back_populates="picture",
-        uselist=False,
         cascade="all, delete-orphan",
     )
 
@@ -493,11 +492,19 @@ class ImageProcessingState(Base):
 
     __tablename__ = "image_processing_state"
 
-    # Primary key - matches Picture.id
+    # Primary key - DBOS workflow ID (unique per workflow run)
+    workflow_id: Mapped[str] = mapped_column(
+        String(255),
+        primary_key=True,
+        comment="DBOS workflow UUID for image processing workflow (upload/scan/sanitize)",
+    )
+
+    # Reference to Picture being processed (multiple workflows can process same picture)
     picture_id: Mapped[UUID] = mapped_column(
         UUID,
         ForeignKey("picture.id", ondelete="CASCADE"),
-        primary_key=True,
+        nullable=False,
+        index=True,
         comment="Reference to Picture being processed",
     )
 
@@ -529,14 +536,6 @@ class ImageProcessingState(Base):
         ForeignKey("rbac_role.id"),
         nullable=False,
         comment="Admin role for cross-org access (CFIA admins)",
-    )
-
-    # DBOS workflow tracking
-    workflow_id: Mapped[Optional[str]] = mapped_column(
-        String(255),
-        nullable=True,
-        index=True,
-        comment="DBOS workflow UUID for image processing workflow (upload/scan/sanitize)",
     )
 
     # Stage timestamps (MVP: upload → scan → sanitize only)
@@ -589,13 +588,13 @@ class ImageProcessingState(Base):
 
     # Relationship back to Picture
     picture: Mapped["Picture"] = relationship(
-        "Picture", back_populates="processing_state"
+        "Picture", back_populates="processing_states"
     )
 
     # Indexes for common queries
     __table_args__ = (
+        Index("idx_processing_state_picture", "picture_id"),
         Index("idx_processing_state_status", "status"),
-        Index("idx_processing_state_workflow", "workflow_id"),
         Index("idx_processing_state_created", "created_at"),
         Index("idx_processing_state_user", "user_id"),
     )
