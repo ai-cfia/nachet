@@ -203,11 +203,21 @@ async def wait_for_defender_scan(
         try:
             tags = await check_defender_scan_tags(storage, container, blob_name)
 
+            # Log all tags for debugging
+            DBOS.logger.debug(
+                f"[{image_id}] Defender scan tags retrieved (attempt {attempt}): {tags}"
+            )
+
             # Check if scan has completed using Azure Defender standard tag
-            scan_result = tags.get("Malware scanning scan result")
+            # Note: Azure uses "Scanning" with capital S
+            scan_result = tags.get("Malware Scanning scan result")
 
             if scan_result is not None:
-                scan_timestamp = tags.get("Malware scanning scan time UTC")
+                scan_timestamp = tags.get("Malware Scanning scan time UTC")
+
+                DBOS.logger.debug(
+                    f"[{image_id}] Defender scan result: {scan_result}, timestamp: {scan_timestamp}"
+                )
 
                 # Process the scan result using the helper function
                 result = _process_defender_scan_result(
@@ -216,23 +226,33 @@ async def wait_for_defender_scan(
 
                 if result is not None:
                     # Success case - return the result
+                    DBOS.logger.debug(
+                        f"[{image_id}] Defender scan completed successfully: {result['status']}"
+                    )
                     return result
                 else:
                     # Transient error or unknown result - log and continue polling
                     if scan_result.startswith("SAM"):
                         DBOS.logger.warning(
-                            f"Transient Defender scan error (attempt {attempt}): {scan_result}"
+                            f"[{image_id}] Transient Defender scan error (attempt {attempt}): {scan_result}"
                         )
                     else:
                         DBOS.logger.warning(
-                            f"Unexpected Defender scan result: {scan_result}"
+                            f"[{image_id}] Unexpected Defender scan result: {scan_result}"
                         )
+            else:
+                DBOS.logger.debug(
+                    f"[{image_id}] Defender scan not yet complete (attempt {attempt}), tags: {tags}"
+                )
 
         except (DefenderScanFailedError, DefenderScanNotScannedError):
             # Re-raise defender-specific errors immediately
             raise
         except Exception as e:
-            DBOS.logger.warning(f"Defender scan check attempt {attempt}: {str(e)}")
+            DBOS.logger.error(
+                f"[{image_id}] Defender scan check attempt {attempt} failed: {str(e)}",
+                exc_info=True,
+            )
 
         # Durable sleep - survives crashes! (now valid since this is a workflow)
         await DBOS.sleep_async(5)
