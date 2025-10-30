@@ -8,14 +8,14 @@ Queues handle concurrency limits, rate limiting, and partitioning.
 from dbos import Queue
 
 
-# Image processing queue with concurrency and rate limits
+# Image processing queue with sequential processing (FIFO)
 image_processing_queue = Queue(
     name="image-processing",
-    concurrency=10,  # Max 10 concurrent workflows globally
+    concurrency=10,  # Process one workflow at a time globally
     limiter={
         "limit": 50,  # Max 50 workflow starts
         "period": 60,  # Per 60 seconds
     },
-    worker_concurrency=5,  # Max 5 concurrent per worker process
-    partition_queue=True,  # Enable partitioning by org_id
+    worker_concurrency=10,  # Process one workflow at a time per worker
+    partition_queue=False,  # Disable partitioning - process in submission order
 )

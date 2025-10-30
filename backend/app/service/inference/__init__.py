@@ -75,6 +75,10 @@ from app.service.inference.workflow_management import (
 from app.service.inference.state_management import (
     create_processing_state,
     create_inference_request_state,
+    update_processing_state_step,
+    update_inference_state_step,
+    mark_processing_failed_step,
+    mark_inference_failed_step,
 )
 
 # Export image validation
@@ -120,6 +124,7 @@ class InferenceService:
 
     @staticmethod
     async def create_processing_state(
+        workflow_id: str,
         picture_id: UUID,
         user_id: UUID,
         org_user_role_id: UUID,
@@ -127,10 +132,10 @@ class InferenceService:
         status,
         created_at,
         progress_percentage: int = 0,
-        workflow_id: str | None = None,
     ):
         """Create a new ImageProcessingState record with ownership tracking."""
         return await create_processing_state(
+            workflow_id=workflow_id,
             picture_id=picture_id,
             user_id=user_id,
             org_user_role_id=org_user_role_id,
@@ -138,7 +143,6 @@ class InferenceService:
             status=status,
             created_at=created_at,
             progress_percentage=progress_percentage,
-            workflow_id=workflow_id,
         )
 
     @staticmethod
@@ -253,6 +257,10 @@ __all__ = [
     # State management
     "create_processing_state",
     "create_inference_request_state",
+    "update_processing_state_step",
+    "update_inference_state_step",
+    "mark_processing_failed_step",
+    "mark_inference_failed_step",
     # Image validation
     "preprocess_image",
     "PreprocessedImageData",

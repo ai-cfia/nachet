@@ -37,6 +37,12 @@ from app.service.blob_operations import (
     wait_for_defender_scan,
 )
 from app.service.sanitization import trigger_sanitization_function_local
+from app.service.inference.state_management import (
+    update_processing_state_step,
+    update_inference_state_step,
+    mark_processing_failed_step,
+    mark_inference_failed_step,
+)
 
 
 # ============================================================================
@@ -160,9 +166,7 @@ async def get_pipeline_configuration_step(
         logger = LogService.get_logger()
         error_msg = f"Pipeline '{pipeline_id}' not found in cache"
         logger.error(
-            error_msg,
-            pipeline_id=pipeline_id,
-            available_pipelines=PipelineService.get_cached_pipeline_names(),
+            f"{error_msg} (available_pipelines={PipelineService.get_cached_pipeline_names()})"
         )
         raise ValueError(error_msg)
 
@@ -358,10 +362,7 @@ async def save_inference_results_step(
                     f"This must be fixed immediately."
                 )
                 logger.error(
-                    error_msg,
-                    image_id=str(image_id),
-                    label=label,
-                    available_seed_count=len(seed_lookup),
+                    f"{error_msg} (image_id={image_id}, label={label}, available_seed_count={len(seed_lookup)})"
                 )
                 raise Exception(error_msg)
 
@@ -376,9 +377,7 @@ async def save_inference_results_step(
                 top_id_2 = seed_lookup.get(second_label)
                 if top_id_2 is None:
                     logger.error(
-                        f"CRITICAL: Species label '{second_label}' (2nd prediction) not found in seed database",
-                        image_id=str(image_id),
-                        label=second_label,
+                        f"CRITICAL: Species label '{second_label}' (2nd prediction) not found in seed database (image_id={image_id}, label={second_label})"
                     )
                     raise Exception(
                         f"CRITICAL: Species label '{second_label}' not found in seed database"
@@ -390,9 +389,7 @@ async def save_inference_results_step(
                 top_id_3 = seed_lookup.get(third_label)
                 if top_id_3 is None:
                     logger.error(
-                        f"CRITICAL: Species label '{third_label}' (3rd prediction) not found in seed database",
-                        image_id=str(image_id),
-                        label=third_label,
+                        f"CRITICAL: Species label '{third_label}' (3rd prediction) not found in seed database (image_id={image_id}, label={third_label})"
                     )
                     raise Exception(
                         f"CRITICAL: Species label '{third_label}' not found in seed database"
@@ -438,10 +435,7 @@ async def save_inference_results_step(
 
     except Exception as e:
         logger.error(
-            f"Failed to save inference results to database: {str(e)}",
-            image_id=str(image_id),
-            parent_workflow_id=parent_workflow_id,
-            error_type=type(e).__name__,
+            f"Failed to save inference results to database for image_id={image_id}, parent_workflow_id={parent_workflow_id}: {str(e)} (error_type={type(e).__name__})"
         )
         raise
 
@@ -499,6 +493,9 @@ async def image_inference_workflow(
         pipeline_id=pipeline_id,
     )
 
+    # Initialize inference_state_id to None for error handling
+    inference_state_id = None
+
     try:
         # Publish initial inference events
         await DBOS.set_event_async("inference_status", "started")
@@ -517,9 +514,17 @@ async def image_inference_workflow(
             workflow_id=DBOS.workflow_id,
             image_dims=imageDims,
         )
+        inference_state_id = UUID(_inference_state["inference_request_state_id"])
         logger.info(
             "Created inference request state",
-            inference_request_state_id=_inference_state["inference_request_state_id"],
+            inference_request_state_id=str(inference_state_id),
+        )
+
+        # Update inference state before starting inference
+        await update_inference_state_step(
+            inference_request_state_id=inference_state_id,
+            status="in_progress",
+            started_at=datetime.now(timezone.utc),
         )
 
         # DBOS Step 1: Download image from sanitized blob storage and encode to base64
@@ -637,6 +642,14 @@ async def image_inference_workflow(
             object_count=save_result["object_count"],
         )
 
+        # Update inference state after successful completion
+        await update_inference_state_step(
+            inference_request_state_id=inference_state_id,
+            status="completed",
+            completed_at=datetime.now(timezone.utc),
+            response_payload=api_response.model_dump(),
+        )
+
         # Publish completion events
         await DBOS.set_event_async("inference_status", "completed")
         workflow_id = DBOS.workflow_id
@@ -654,6 +667,13 @@ async def image_inference_workflow(
         return api_response
 
     except Exception as e:
+        # Update inference state on error (only if state was created)
+        if inference_state_id is not None:
+            await mark_inference_failed_step(
+                inference_request_state_id=inference_state_id,
+                error_message=str(e),
+            )
+
         # Publish error events for all exceptions
         await DBOS.set_event_async("inference_status", "failed")
         await DBOS.set_event_async(
@@ -666,9 +686,7 @@ async def image_inference_workflow(
         )
 
         logger.error(
-            f"Failed to submit direct pipeline inference: {str(e)}",
-            pipeline_id=pipeline_id,
-            error_type=type(e).__name__,
+            f"Failed to submit direct pipeline inference for pipeline_id={pipeline_id}: {str(e)} (error_type={type(e).__name__})"
         )
 
         # Re-raise ValueError as-is, convert others to ImageProcessingError
@@ -677,6 +695,131 @@ async def image_inference_workflow(
         raise ImageProcessingError(
             f"Failed to submit direct pipeline inference: {str(e)}"
         ) from e
+
+
+# ============================================================================
+# DBOS Step for Updating Picture Table
+# ============================================================================
+
+
+@no_type_check
+@DBOS.step()
+async def update_picture_blob_url_step(
+    picture_id: UUID,
+    blob_url_sanitized: str,
+) -> dict[str, Any]:
+    """
+    DBOS Step: Update Picture table with sanitized blob URL.
+
+    This maintains compatibility with legacy code that reads from Picture table.
+
+    Args:
+        picture_id: UUID of the picture
+        blob_url_sanitized: URL to sanitized blob
+
+    Returns:
+        Dict with updated picture info
+    """
+    from app.db.utils import sessionmanager
+    from app.db.model import Picture
+    from sqlalchemy import select
+
+    async with sessionmanager.get_session() as session:
+        stmt = select(Picture).where(Picture.id == picture_id)
+        result = await session.execute(stmt)
+        picture = result.scalar_one_or_none()
+
+        if picture:
+            picture.blob_url_sanitized = blob_url_sanitized
+            await session.commit()
+            await session.refresh(picture)
+
+            return {
+                "picture_id": str(picture.id),
+                "blob_url_sanitized": picture.blob_url_sanitized,
+            }
+        else:
+            return {"error": f"Picture not found: {picture_id}"}
+
+
+# ============================================================================
+# DBOS Workflow for Waiting on Sanitization (handles duplicate race condition)
+# ============================================================================
+
+
+@no_type_check
+@DBOS.step()
+async def check_sanitization_status(image_id: UUID) -> dict[str, Any]:
+    """
+    Step to check if image sanitization is complete.
+
+    Returns dict with:
+    - sanitized: bool (True if sanitized blob exists)
+    - blob_url_sanitized: str or None
+    """
+    from app.db.utils import sessionmanager
+    from app.db.model import Picture
+    from sqlalchemy import select
+
+    async with sessionmanager.get_session() as session:
+        stmt = select(Picture.blob_url_sanitized).where(Picture.id == image_id)
+        result = await session.execute(stmt)
+        blob_url = result.scalar_one_or_none()
+
+        return {
+            "sanitized": blob_url is not None,
+            "blob_url_sanitized": blob_url,
+        }
+
+
+@no_type_check
+@DBOS.workflow()
+async def wait_for_sanitization_workflow(
+    image_id: UUID,
+    timeout_sec: int = 300,
+) -> dict[str, Any]:
+    """
+    Wait for image sanitization to complete (for duplicate images).
+
+    This workflow handles the race condition where a duplicate image is submitted
+    while the original upload is still being processed (upload → scan → sanitize).
+
+    Polls the Picture table for blob_url_sanitized field every 5 seconds.
+    Once sanitized, allows inference workflow to proceed.
+
+    Args:
+        image_id: UUID of the image (from duplicate detection)
+        timeout_sec: Maximum time to wait (default 300s = 5 minutes)
+
+    Returns:
+        Dict with blob_url_sanitized
+
+    Raises:
+        ImageProcessingError: If sanitization doesn't complete within timeout
+    """
+    max_attempts = timeout_sec // 5  # Poll every 5 seconds
+
+    for attempt in range(max_attempts):
+        status = await check_sanitization_status(image_id)
+
+        if status["sanitized"]:
+            DBOS.logger.info(
+                f"[{image_id}] Sanitization complete (attempt {attempt}): {status['blob_url_sanitized']}"
+            )
+            return status
+
+        DBOS.logger.info(
+            f"[{image_id}] Waiting for sanitization (attempt {attempt}/{max_attempts})"
+        )
+
+        # Durable sleep - survives crashes!
+        await DBOS.sleep_async(5)
+
+    # Timeout - sanitization didn't complete
+    raise ImageProcessingError(
+        f"Sanitization timeout: Image {image_id} not sanitized after {timeout_sec}s. "
+        "The original upload may have failed."
+    )
 
 
 # ============================================================================
@@ -750,6 +893,16 @@ async def image_processing_and_inference_workflow(
 
             # Publish processing workflow ID
             await DBOS.set_event_async("processing_workflow_id", processing_workflow_id)
+        else:
+            # For duplicates, wait for sanitization to complete before inference
+            # This handles race condition where duplicate submitted while first upload still processing
+            DBOS.logger.info(
+                f"[{image_id}] Duplicate image - waiting for sanitization to complete"
+            )
+            await wait_for_sanitization_workflow(image_id)
+            DBOS.logger.info(
+                f"[{image_id}] Sanitization complete, proceeding to inference"
+            )
 
         DBOS.logger.info(f"[{image_id}] Processing complete, starting inference")
 
@@ -850,9 +1003,27 @@ async def image_processing_workflow(
         await DBOS.set_event_async("processing_status", "uploaded")
         await DBOS.set_event_async("blob_url_original", blob_url_original)
 
+        # Update processing state after upload
+        await update_processing_state_step(
+            workflow_id=DBOS.workflow_id,
+            status="uploaded",
+            uploaded_at=datetime.now(timezone.utc),
+            blob_url_original=blob_url_original,
+            progress_percentage=25,
+        )
+
         # Step 2: Wait for Azure Defender scan
         DBOS.logger.info(f"[{image_id}] Step 2: Waiting for Defender scan")
         await DBOS.set_event_async("processing_status", "defender_scanning")
+
+        # Update processing state before defender scan
+        await update_processing_state_step(
+            workflow_id=DBOS.workflow_id,
+            status="defender_scanning",
+            defender_scan_started_at=datetime.now(timezone.utc),
+            progress_percentage=40,
+        )
+
         defender_result = await wait_for_defender_scan(
             image_id=image_id,
             org_prefix=org_prefix,
@@ -862,12 +1033,46 @@ async def image_processing_workflow(
         await DBOS.set_event_async("processing_status", "defender_scanned")
         await DBOS.set_event_async("defender_result", defender_result)
 
+        # Update processing state after defender scan
+        await update_processing_state_step(
+            workflow_id=DBOS.workflow_id,
+            status="defender_scanned",
+            defender_scan_completed_at=datetime.now(timezone.utc),
+            defender_scan_result=defender_result,
+            malware_detected=defender_result.get("status") == "malicious",
+            progress_percentage=50,
+        )
+
         # Step 3: Trigger sanitization Azure Function
         DBOS.logger.info(f"[{image_id}] Step 3: Triggering sanitization function")
         await DBOS.set_event_async("processing_status", "sanitizing")
+
+        # Update processing state before sanitization
+        await update_processing_state_step(
+            workflow_id=DBOS.workflow_id,
+            status="sanitizing",
+            sanitization_started_at=datetime.now(timezone.utc),
+            progress_percentage=75,
+        )
+
         blob_url_sanitized = await trigger_sanitization_function_local(
             image_id=image_id,
             org_prefix=org_prefix,
+        )
+
+        # Update Picture table with sanitized blob URL (for legacy compatibility)
+        await update_picture_blob_url_step(
+            picture_id=image_id,
+            blob_url_sanitized=f"{org_prefix}/{image_id}.png",
+        )
+
+        # Update processing state after sanitization
+        await update_processing_state_step(
+            workflow_id=DBOS.workflow_id,
+            status="sanitized",
+            sanitization_completed_at=datetime.now(timezone.utc),
+            blob_url_sanitized=blob_url_sanitized,
+            progress_percentage=90,
         )
 
         # Publish completion
@@ -884,6 +1089,14 @@ async def image_processing_workflow(
             },
         )
 
+        # Update processing state on completion
+        await update_processing_state_step(
+            workflow_id=DBOS.workflow_id,
+            status="completed",
+            completed_at=datetime.now(timezone.utc),
+            progress_percentage=100,
+        )
+
         DBOS.logger.info(f"[{image_id}] Pipeline completed successfully")
 
         return {
@@ -895,6 +1108,25 @@ async def image_processing_workflow(
 
     except Exception as e:
         DBOS.logger.error(f"[{image_id}] Pipeline failed: {str(e)}")
+
+        # Check if this is a malware detection error
+        from app.exceptions import DefenderScanFailedError
+
+        malware_detected = None
+        defender_scan_result = None
+
+        if isinstance(e, DefenderScanFailedError) and "Malware detected" in str(e):
+            malware_detected = True
+            defender_scan_result = {"status": "malicious", "scan_result": "Malicious"}
+
+        # Update processing state on error
+        await mark_processing_failed_step(
+            workflow_id=DBOS.workflow_id,
+            error_message=str(e),
+            error_details={"error_type": type(e).__name__},
+            malware_detected=malware_detected,
+            defender_scan_result=defender_scan_result,
+        )
 
         # Publish error event
         await DBOS.set_event_async("processing_status", "failed")
