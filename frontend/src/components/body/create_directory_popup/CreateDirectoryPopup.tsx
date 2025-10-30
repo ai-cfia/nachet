@@ -16,12 +16,14 @@ import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
 import { createAzureStorageDir } from "@common/api";
 import { directoryNameSchema } from "@common/validation";
+import { AzureStorageDirectoryItem } from "@common/types";
 
 interface params {
   setCreateDirectoryOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  handeDirChange: (dir: string) => void;
-  curDir: string;
-  setCurDir: React.Dispatch<React.SetStateAction<string>>;
+  curDir: AzureStorageDirectoryItem | null;
+  setCurDir: React.Dispatch<
+    React.SetStateAction<AzureStorageDirectoryItem | null>
+  >;
   setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
   apiScopeClaim: string;
 }
@@ -29,13 +31,12 @@ interface params {
 const CreateFolder: React.FC<params> = (props) => {
   const {
     setCreateDirectoryOpen,
-    curDir,
-    handeDirChange,
     setCurDir,
     setReadAzureStorage,
     apiScopeClaim,
   } = props;
   const backendURL = useBackendUrl();
+  const [folderNameInput, setFolderNameInput] = useState<string>("");
   const [validationError, setValidationError] = useState<string>("");
   const { instance: msalInstance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
@@ -52,7 +53,7 @@ const CreateFolder: React.FC<params> = (props) => {
     }
 
     // Validate directory name
-    const validationResult = directoryNameSchema.safeParse(curDir);
+    const validationResult = directoryNameSchema.safeParse(folderNameInput);
     if (!validationResult.success) {
       setValidationError(validationResult.error.issues[0].message);
       return;
@@ -66,13 +67,13 @@ const CreateFolder: React.FC<params> = (props) => {
         // makes a post request to the backend to create a new directory in azure storage
         return createAzureStorageDir({
           backendUrl: backendURL,
-          folderName: curDir,
+          folderName: folderNameInput,
           accessToken,
         });
       })
       .then(() => {
         setCreateDirectoryOpen(false);
-        setCurDir("General");
+        setCurDir(null);
         setReadAzureStorage((prev) => !prev);
       })
       .catch((error) => {
@@ -83,7 +84,7 @@ const CreateFolder: React.FC<params> = (props) => {
 
   const handleClose = (): void => {
     setCreateDirectoryOpen(false);
-    handeDirChange("General");
+    setFolderNameInput("");
     setValidationError("");
   };
 
@@ -91,7 +92,7 @@ const CreateFolder: React.FC<params> = (props) => {
     event: React.ChangeEvent<HTMLInputElement>,
   ): void => {
     const value = event.target.value;
-    handeDirChange(value);
+    setFolderNameInput(value);
 
     // Clear validation error when user starts typing
     if (validationError) {
@@ -150,7 +151,7 @@ const CreateFolder: React.FC<params> = (props) => {
             fullWidth
             InputLabelProps={{ shrink: true }}
             onChange={handleInputChange}
-            value={curDir}
+            value={folderNameInput}
             error={!!validationError}
             helperText={validationError}
             sx={{ fontSize: "1.2vh" }}

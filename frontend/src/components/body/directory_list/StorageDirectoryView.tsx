@@ -18,7 +18,7 @@ import { AzureStorageDirectoryItem } from "@common/types";
 
 interface params {
   azureStorageDir: AzureStorageDirectoryItem[];
-  curDir: string;
+  curDir: AzureStorageDirectoryItem | null;
   handleSelect: (folder: string) => void;
   handleDelete: (folder: string) => void;
   handleCreateDirectory: () => void;
@@ -100,7 +100,7 @@ const StorageDirectoryView: React.FC<params> = (props) => {
                   key={index}
                   sx={{
                     backgroundColor:
-                      item.folderId === curDir
+                      curDir?.folderId === item.folderId
                         ? "#F5F5F5"
                         : colours.CFIA_Background_White,
                     "&:hover": {

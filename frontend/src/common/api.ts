@@ -269,14 +269,68 @@ export const inferenceRequest = async ({
   imageObject,
   curDir,
   accessToken,
-  container_uuid,
+  folder_id,
 }: {
   backendUrl: string;
   selectedModel: string;
   imageObject: Images;
   curDir: string;
   accessToken: string;
-  container_uuid: string;
+  folder_id: string;
+}): Promise<ApiInferenceData> => {
+  if (backendUrl === "" || backendUrl == null) {
+    throw new ValueError("Backend URL is null or empty");
+  }
+  if (selectedModel === "" || selectedModel == null) {
+    throw new ValueError("Model is null or empty");
+  }
+  if (imageObject.src === "" || imageObject.src == null) {
+    throw new ValueError("Image is null or empty");
+  }
+  if (curDir === "" || curDir == null) {
+    throw new ValueError("Directory is null or empty");
+  }
+  if (accessToken === "" || accessToken == null) {
+    throw new ValueError("Access token is null or empty");
+  }
+  const request = {
+    method: "post",
+    url: `${backendUrl}/inf`,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    data: {
+      pipeline_id: selectedModel,
+      folder_name: curDir,
+      folder_id: folder_id,
+      imageDims: imageObject.imageDims,
+      image: imageObject.src,
+    },
+  };
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(
+    ApiInferenceDataSchema,
+    response,
+    "inferenceRequest",
+  );
+};
+
+export const inferenceDirectRequest = async ({
+  backendUrl,
+  selectedModel,
+  imageObject,
+  curDir,
+  accessToken,
+  folder_id,
+}: {
+  backendUrl: string;
+  selectedModel: string;
+  imageObject: Images;
+  curDir: string;
+  accessToken: string;
+  folder_id: string;
 }): Promise<ApiInferenceData> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -303,10 +357,10 @@ export const inferenceRequest = async ({
     },
     data: {
       pipeline_id: selectedModel,
-      image: imageObject.src,
-      imageDims: imageObject.imageDims,
       folder_name: curDir,
-      container_name: container_uuid,
+      folder_id: folder_id,
+      imageDims: imageObject.imageDims,
+      image: imageObject.src,
     },
   };
   const response = await handleAxios<unknown>(request);

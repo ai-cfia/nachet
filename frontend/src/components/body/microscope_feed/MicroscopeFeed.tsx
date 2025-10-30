@@ -57,6 +57,7 @@ interface MicroscopeFeedProps {
   imageCache: Images[];
   setImageCache: React.Dispatch<React.SetStateAction<Images[]>>;
   handleInference: () => void;
+  handleDirectInference: () => void;
   imageIndex: number;
   isWebcamActive: boolean;
   isLoading: boolean;
@@ -138,6 +139,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     imageCache,
     setImageCache,
     handleInference,
+    handleDirectInference,
     imageIndex,
     isWebcamActive,
     isLoading,
@@ -520,6 +522,14 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
           disabled={isWebcamActive || imageCache.length == 0} // Disable when the webcam is active
           onClick={() => {
             handleInference();
+          }}
+        />
+        <ButtonMicroscopeFeed
+          label="D"
+          icon={<CropFreeIcon color="inherit" style={iconStyle} />}
+          disabled={isWebcamActive || imageCache.length == 0} // Disable when the webcam is active
+          onClick={() => {
+            handleDirectInference();
           }}
         />
         <ButtonMicroscopeFeed
