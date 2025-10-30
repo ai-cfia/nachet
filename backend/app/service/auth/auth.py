@@ -209,9 +209,9 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
             _get_logger().debug(f"Security scopes required: {security_scopes.scopes}")
             for scope in security_scopes.scopes:
                 token_scope_string = claims.get("scp", "")
-                _get_logger().debug(
-                    f"Checking scope '{scope}' in token scopes: {token_scope_string}"
-                )
+                # _get_logger().debug(
+                #     f"Checking scope '{scope}' in token scopes: {token_scope_string}"
+                # )
                 if not isinstance(token_scope_string, str):
                     _get_logger().warning(
                         f"Token contains invalid formatted scopes: {type(token_scope_string)}"
@@ -228,9 +228,9 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
                     raise Forbidden("Required scope missing", request=request)
             # Load new config if old
             await self.openid_config.load_config()
-            _get_logger().debug(
-                f"OpenID configuration loaded, issuer: {self.openid_config.issuer}"
-            )
+            # _get_logger().debug(
+            #     f"OpenID configuration loaded, issuer: {self.openid_config.issuer}"
+            # )
 
             if self.multi_tenant and self.validate_iss and self.iss_callable:
                 tid = claims.get("tid")
@@ -241,18 +241,18 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
 
             # Use the `kid` from the header to find a matching signing key to use
             kid = header.get("kid", "")
-            _get_logger().debug(f"Looking for signing key with kid: {kid}")
-            _get_logger().debug(
-                f"Available signing keys: {list(self.openid_config.signing_keys.keys())}"
-            )
+            # _get_logger().debug(f"Looking for signing key with kid: {kid}")
+            # _get_logger().debug(
+            #     f"Available signing keys: {list(self.openid_config.signing_keys.keys())}"
+            # )
             try:
                 if key := self.openid_config.signing_keys.get(kid):
-                    _get_logger().debug(f"Found matching signing key for kid: {kid}")
+                    # _get_logger().debug(f"Found matching signing key for kid: {kid}")
                     # We require and validate all fields in an Azure Entra ID token
                     required_claims = ["exp", "aud", "iat", "nbf", "sub"]
                     if self.validate_iss:
                         required_claims.append("iss")
-                    _get_logger().debug(f"Required claims: {required_claims}")
+                    # _get_logger().debug(f"Required claims: {required_claims}")
 
                     options = {
                         "verify_signature": True,
@@ -263,17 +263,17 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
                         "verify_iss": self.validate_iss,
                         "require": required_claims,
                     }
-                    _get_logger().debug(f"Validation options: {options}")
-                    _get_logger().debug(
-                        f"Validating token with audience: {self.app_client_id}"
-                    )
+                    # _get_logger().debug(f"Validation options: {options}")
+                    # _get_logger().debug(
+                    #     f"Validating token with audience: {self.app_client_id}"
+                    # )
                     # Validate token
                     token = self.validate(
                         access_token=access_token, iss=iss, key=key, options=options
                     )
-                    _get_logger().debug(
-                        "Token validated successfully, creating User object"
-                    )
+                    # _get_logger().debug(
+                    #     "Token validated successfully, creating User object"
+                    # )
                     # Attach the user to the request. Can be accessed through `request.state.user`
                     user: User = User(
                         **{
