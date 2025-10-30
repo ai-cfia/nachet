@@ -221,12 +221,24 @@ async def get_workflow_status(
                             if processing_state.sanitization_completed_at
                             else None
                         ),
+                        "completed_at": (
+                            processing_state.completed_at.isoformat()
+                            if processing_state.completed_at
+                            else None
+                        ),
+                        "failed_at": (
+                            processing_state.failed_at.isoformat()
+                            if processing_state.failed_at
+                            else None
+                        ),
                     },
                     "defender_scan_result": processing_state.defender_scan_result,
                     "blob_urls": {
                         "original": processing_state.blob_url_original,
                         "sanitized": processing_state.blob_url_sanitized,
                     },
+                    "error_message": processing_state.error_message,
+                    "error_details": processing_state.error_details,
                 }
 
             # Add inference workflow status

@@ -165,9 +165,30 @@ async def submit_inference_request(
         )
         workflow_id = workflow_handle.get_workflow_id()
 
-        # Only create processing state for new images, not duplicates
-        if not info.duplicate_uuid:
+        # Create processing state for all workflows (needed for status tracking)
+        # For duplicates, mark as completed since preprocessing was skipped
+        if info.duplicate_uuid:
+            # Duplicate image - processing already done, skip to inference
             _processing_state = await create_processing_state(
+                workflow_id=workflow_id,
+                picture_id=image_id,
+                user_id=user_id,
+                org_user_role_id=user_org_roles.org_user_role_id,
+                org_admin_role_id=user_org_roles.org_admin_role_id,
+                status=ProcessingStatus.COMPLETED,  # Already processed
+                created_at=datetime.now(timezone.utc),
+                progress_percentage=100,  # Processing complete (skipped)
+            )
+
+            logger.info(
+                f"Duplicate image submitted for inference (skipping preprocessing): {image_id}",
+                user_id=str(user_id),
+                workflow_id=workflow_id,
+            )
+        else:
+            # New image - start processing workflow
+            _processing_state = await create_processing_state(
+                workflow_id=workflow_id,
                 picture_id=image_id,
                 user_id=user_id,
                 org_user_role_id=user_org_roles.org_user_role_id,
@@ -175,7 +196,6 @@ async def submit_inference_request(
                 status=ProcessingStatus.PENDING,
                 created_at=datetime.now(timezone.utc),
                 progress_percentage=5,
-                workflow_id=workflow_id,
             )
 
             DBOS.logger.info(
@@ -184,12 +204,6 @@ async def submit_inference_request(
 
             logger.info(
                 f"Image submitted for processing: {image_id}",
-                user_id=str(user_id),
-                workflow_id=workflow_id,
-            )
-        else:
-            logger.info(
-                f"Duplicate image submitted for inference (skipping preprocessing): {image_id}",
                 user_id=str(user_id),
                 workflow_id=workflow_id,
             )
@@ -212,9 +226,7 @@ async def submit_inference_request(
         raise
     except Exception as e:
         logger.error(
-            f"Failed to submit inference: {str(e)}",
-            user_id=str(user_id),
-            error_type=type(e).__name__,
+            f"Failed to submit inference for user_id={user_id}: {str(e)} (error_type={type(e).__name__})"
         )
         raise ImageProcessingError(f"Failed to submit inference: {str(e)}") from e
 
@@ -257,9 +269,6 @@ async def get_inference_status(
             )
     except Exception as e:
         logger.error(
-            f"Failed to get status for image {image_id}: {str(e)}",
-            user_id=str(user_id),
-            image_id=str(image_id),
-            error_type=type(e).__name__,
+            f"Failed to get status for image {image_id} for user_id={user_id}: {str(e)} (error_type={type(e).__name__})"
         )
         raise ImageProcessingError(f"Failed to get inference status: {str(e)}") from e
