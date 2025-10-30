@@ -366,20 +366,14 @@ jobs:
         image: wiremock/wiremock:3.13.1
         ports:
           - 5001:8080
-        volumes:
-          - ./e2e/mocks/nachet-15spp-classifier:/home/wiremock/mappings
       nachet-27spp-classifier:
         image: wiremock/wiremock:3.13.1
         ports:
           - 5002:8080
-        volumes:
-          - ./e2e/mocks/nachet-27spp-classifier:/home/wiremock/mappings
       nachet-detector:
         image: wiremock/wiremock:3.13.1
         ports:
           - 5003:8080
-        volumes:
-          - ./e2e/mocks/nachet-detector:/home/wiremock/mappings
 
     steps:
       - name: Workspace chown
@@ -392,6 +386,22 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v5
+
+      - name: Copy WireMock mock files to containers
+        working-directory: ${{ github.workspace }}
+        run: |
+          # Copy mock files to WireMock containers
+          docker cp ./e2e/mocks/nachet-15spp-classifier/. $(docker ps -qf "ancestor=wiremock/wiremock:3.13.1" -f "publish=5001"):/home/wiremock/mappings/
+          docker cp ./e2e/mocks/nachet-27spp-classifier/. $(docker ps -qf "ancestor=wiremock/wiremock:3.13.1" -f "publish=5002"):/home/wiremock/mappings/
+          docker cp ./e2e/mocks/nachet-detector/. $(docker ps -qf "ancestor=wiremock/wiremock:3.13.1" -f "publish=5003"):/home/wiremock/mappings/
+
+          # Verify files were copied
+          echo "Files in nachet-15spp-classifier:"
+          docker exec $(docker ps -qf "ancestor=wiremock/wiremock:3.13.1" -f "publish=5001") ls -la /home/wiremock/mappings/
+          echo "Files in nachet-27spp-classifier:"
+          docker exec $(docker ps -qf "ancestor=wiremock/wiremock:3.13.1" -f "publish=5002") ls -la /home/wiremock/mappings/
+          echo "Files in nachet-detector:"
+          docker exec $(docker ps -qf "ancestor=wiremock/wiremock:3.13.1" -f "publish=5003") ls -la /home/wiremock/mappings/
 
       - name: Set up Python
         uses: actions/setup-python@v6
