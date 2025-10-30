@@ -117,17 +117,18 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             # Log error
             duration = time.time() - request.state.request_start_time
 
-            self.logger.error(
-                f"Request failed: {str(error)}",
-                error_type=type(error).__name__,
-                error_message=str(error),
-                correlation_id=correlation_id,
-                path=request.url.path,
-                method=request.method,
-                remote_addr=request.client.host if request.client else None,
-                session_id=session_id,
-                duration_ms=round(duration * 1000, 2),
+            # Avoid double-formatting by not using kwargs with f-string
+            error_msg = (
+                f"Request failed: {str(error)} "
+                f"(error_type={type(error).__name__}, "
+                f"correlation_id={correlation_id}, "
+                f"path={request.url.path}, "
+                f"method={request.method}, "
+                f"remote_addr={request.client.host if request.client else None}, "
+                f"session_id={session_id}, "
+                f"duration_ms={round(duration * 1000, 2)})"
             )
+            self.logger.error(error_msg)
 
             # Re-raise to let FastAPI's exception handlers deal with it
             raise
