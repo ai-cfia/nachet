@@ -380,6 +380,119 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
         session.add(pipeline_local_15spp)
     _get_logger().info("Local test pipeline added (15spp)")
 
+    # CI versions of models for testing (deployment_platform='ci', container names with unique ports)
+    async with async_session.begin() as session:
+        swin_15_model_ci = Model(
+            id=uuid.UUID("a1b2c3d4-e5f6-4a5b-8c7d-9e0f1a2b3c5d"),
+            deployment_platform="ci",
+            name="swin-15e-spp-ci",
+            endpoint_name="swin-15-spp-ci-endpoint",
+            task_id=2,
+            date_model_training=datetime(2025, 3, 4, 5, 44, 8, 393911),
+            api_url="http://nachet-15spp-classifier:5001/score",
+            api_key="gAAAAABnURjjQOZBtbUwSzIEoSYXF5TBldPMeajnzg",
+            created_by="Test User",
+            version="0.0.1",
+            description="15spp-e CI test endpoint",
+            active=True,
+        )
+
+        swin_27_model_ci = Model(
+            id=uuid.UUID("b2c3d4e5-f6a7-4b5c-8d7e-9f0a1b2c3d5e"),
+            deployment_platform="ci",
+            name="swin-27-spp-ci",
+            endpoint_name="swin-27-spp-ci-endpoint",
+            task_id=2,
+            date_model_training=datetime(2025, 3, 4, 5, 44, 8, 393911),
+            api_url="http://nachet-27spp-classifier:5002/predictions/27spp_120250130",
+            api_key="gAAAAABnURjjQOZBtbUwSzIEoSYXF5TBldPMeajnzg",
+            created_by="Test User",
+            version="0.0.1",
+            description="27spp CI test endpoint",
+            active=True,
+        )
+
+        seed_detector_model_ci = Model(
+            id=uuid.UUID("c3d4e5f6-a7b8-4c5d-8e7f-9a0b1c2d3e5f"),
+            deployment_platform="ci",
+            name="seed-detector-rcnn-1-ci",
+            endpoint_name="seed-detector-ci",
+            task_id=1,
+            date_model_training=datetime(2024, 11, 13, 7, 40, 25, 867369),
+            api_url="http://nachet-detector:5003/score",
+            api_key="gAAAAABnURjjQOZBtbUwSzIEoSYXF5TBldPMeajnzg",
+            created_by="Test User",
+            version="0.0.1",
+            description="CI test detector endpoint",
+            active=True,
+        )
+
+        session.add_all([swin_15_model_ci, swin_27_model_ci, seed_detector_model_ci])
+    _get_logger().info("Models added (CI test models)")
+
+    # CI test pipelines using container names with unique ports
+    async with async_session.begin() as session:
+        from datetime import date
+
+        pipeline_ci_27spp = Pipeline(
+            id=uuid.UUID("d4e5f6a7-b8c9-4d5e-8f7a-9b0c1d2e3f5a"),
+            name="27 spp RCNN SWIN (CI)",
+            active=True,
+            created_by="Test User",
+            creation_date=date(2025, 1, 30),
+            description="CI test pipeline - 27spp with detector and two classifiers",
+            job_name="",
+            version="1",
+            dataset="",
+            identifiable=[],
+            metrics=[],
+            default=False,
+            data={
+                "models": [
+                    "seed-detector-rcnn-1-ci",
+                    "swin-27-spp-ci",
+                    "swin-15e-spp-ci",
+                ],
+                "created_by": "Test User",
+                "creation_date": "2025-01-30",
+                "description": "CI test pipeline - 27spp",
+                "job_name": "",
+                "version": "1",
+                "dataset": "",
+            },
+        )
+        session.add(pipeline_ci_27spp)
+    _get_logger().info("CI test pipeline added (27spp)")
+
+    async with async_session.begin() as session:
+        from datetime import date
+
+        pipeline_ci_15spp = Pipeline(
+            id=uuid.UUID("e5f6a7b8-c9d0-4e5f-8a7b-9c0d1e2f3a5b"),
+            name="15 spp RCNN SWIN (CI)",
+            active=True,
+            created_by="Test User",
+            creation_date=date(2025, 1, 30),
+            description="CI test pipeline - 15spp with detector and classifier",
+            job_name="",
+            version="1",
+            dataset="",
+            identifiable=[],
+            metrics=[],
+            default=False,
+            data={
+                "models": ["seed-detector-rcnn-1-ci", "swin-15e-spp-ci"],
+                "created_by": "Test User",
+                "creation_date": "2025-01-30",
+                "description": "CI test pipeline - 15spp",
+                "job_name": "",
+                "version": "1",
+                "dataset": "",
+            },
+        )
+        session.add(pipeline_ci_15spp)
+    _get_logger().info("CI test pipeline added (15spp)")
+
     async with async_session.begin() as session:
         from datetime import date
 
@@ -556,6 +669,63 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
             active=True,
         )
 
+        # CI pipeline models (27spp with 3 steps)
+        pipeline_model_ci_1 = PipelineModel(
+            id=uuid.UUID("a7b8c9d0-e1f2-4a5b-8c7d-9e0f1a2b3c5d"),
+            pipeline_id=uuid.UUID(
+                "d4e5f6a7-b8c9-4d5e-8f7a-9b0c1d2e3f5a"
+            ),  # CI 27spp pipeline
+            model_id=uuid.UUID("c3d4e5f6-a7b8-4c5d-8e7f-9a0b1c2d3e5f"),  # detector-ci
+            step=1,
+            request_function="rcnn_seed_detector",
+            active=True,
+        )
+
+        pipeline_model_ci_2 = PipelineModel(
+            id=uuid.UUID("b8c9d0e1-f2a3-4b5c-8d7e-9f0a1b2c3d5e"),
+            pipeline_id=uuid.UUID(
+                "d4e5f6a7-b8c9-4d5e-8f7a-9b0c1d2e3f5a"
+            ),  # CI 27spp pipeline
+            model_id=uuid.UUID("b2c3d4e5-f6a7-4b5c-8d7e-9f0a1b2c3d5e"),  # swin-27-ci
+            step=2,
+            request_function="ensemble_a",
+            active=True,
+        )
+
+        pipeline_model_ci_3 = PipelineModel(
+            id=uuid.UUID("c9d0e1f2-a3b4-4c5d-8e7f-9a0b1c2d3e5f"),
+            pipeline_id=uuid.UUID(
+                "d4e5f6a7-b8c9-4d5e-8f7a-9b0c1d2e3f5a"
+            ),  # CI 27spp pipeline
+            model_id=uuid.UUID("a1b2c3d4-e5f6-4a5b-8c7d-9e0f1a2b3c5d"),  # swin-15-ci
+            step=3,
+            request_function="ensemble_b",
+            active=True,
+        )
+
+        # CI pipeline models (15spp with 2 steps)
+        pipeline_model_ci_4 = PipelineModel(
+            id=uuid.UUID("d0e1f2a3-b4c5-4d5e-8f7a-9b0c1d2e3f5a"),
+            pipeline_id=uuid.UUID(
+                "e5f6a7b8-c9d0-4e5f-8a7b-9c0d1e2f3a5b"
+            ),  # CI 15spp pipeline
+            model_id=uuid.UUID("c3d4e5f6-a7b8-4c5d-8e7f-9a0b1c2d3e5f"),  # detector-ci
+            step=1,
+            request_function="rcnn_seed_detector",
+            active=True,
+        )
+
+        pipeline_model_ci_5 = PipelineModel(
+            id=uuid.UUID("e1f2a3b4-c5d6-4e5f-8a7b-9c0d1e2f3a5b"),
+            pipeline_id=uuid.UUID(
+                "e5f6a7b8-c9d0-4e5f-8a7b-9c0d1e2f3a5b"
+            ),  # CI 15spp pipeline
+            model_id=uuid.UUID("a1b2c3d4-e5f6-4a5b-8c7d-9e0f1a2b3c5d"),  # swin-15-ci
+            step=2,
+            request_function="swin_classifier",
+            active=True,
+        )
+
         session.add_all(
             [
                 pipeline_model_1,
@@ -572,9 +742,16 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
                 pipeline_model_local_5,
                 pipeline_model_local_6,
                 pipeline_model_local_7,
+                pipeline_model_ci_1,
+                pipeline_model_ci_2,
+                pipeline_model_ci_3,
+                pipeline_model_ci_4,
+                pipeline_model_ci_5,
             ]
         )
-    _get_logger().info("Pipeline models added (including local test pipeline models)")
+    _get_logger().info(
+        "Pipeline models added (including local and CI test pipeline models)"
+    )
 
     async with async_session.begin() as session:
         # Create organization first (required for foreign key references)
