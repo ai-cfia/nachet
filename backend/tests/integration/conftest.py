@@ -549,7 +549,7 @@ async def dbos_runtime():
     db_password = os.getenv("DB_PASSWORD", "nachetpass")
     db_host = os.getenv("DB_HOST", "localhost")
     db_port = os.getenv("DB_PORT", "12432")
-    db_name = "dbosdb" # os.getenv("DB_NAME", "nachetdb")
+    db_name = "dbosdb"  # os.getenv("DB_NAME", "nachetdb")
 
     # DBOS system database URL - stores workflow and step state
     # Uses PostgreSQL for production-like testing (recommended by DBOS)
