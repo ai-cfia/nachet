@@ -515,9 +515,66 @@ jobs:
           CFIA_ORGANIZATION_ID: ${{ secrets.CFIA_ORGANIZATION_ID }}
           CFIA_ADMIN_ROLE_ID: ${{ secrets.CFIA_ADMIN_ROLE_ID }}
 
-      - name: Run tests
+      - name: Run unit tests
         run: |
-          uv run pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
+          uv run pytest tests/ -vv -s -x --tb=long --cov=. --cov-report=xml --cov-report=term-missing  -m "not integration"
+        env:
+          # NACHET_AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
+          # NACHET_STORAGE_URL_TESTING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
+          # NACHET_STORAGE_URL: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
+          # NACHET_DB_URL: "postgresql://${{ secrets.PG_USER }}:${{ secrets.PG_PASS }}@127.0.0.1:5432/${{ secrets.PG_DB }}"
+          # NACHET_DATA: "https://raw.githubusercontent.com/ai-cfia/nachet-data/main/"
+          # NACHET_MAX_CONTENT_LENGTH: "200"
+          # NACHET_BLOB_PIPELINE_NAME: sg-nachet-pipeline-dev
+          # NACHET_BLOB_PIPELINE_VERSION: 0.1.3
+          # NACHET_BLOB_PIPELINE_DECRYPTION_KEY: ${{ secrets.NACHET_BLOB_PIPELINE_DECRYPTION_KEY }}
+          # NACHET_BLOB_ACCOUNT: ${{ secrets.NACHET_BLOB_ACCOUNT }}
+          # NACHET_BLOB_ACCOUNT_TESTING: ${{ secrets.NACHET_BLOB_ACCOUNT }}
+          # NACHET_BLOB_KEY: ${{ secrets.NACHET_BLOB_KEY }}
+          # NACHET_BLOB_KEY_TESTING: ${{ secrets.NACHET_BLOB_KEY }}
+          # NACHET_VALID_EXTENSION: '["jpeg", "jpg", "png", "gif", "bmp", "tiff", "webp"]'
+          # NACHET_VALID_DIMENSION: '{"width": 1920, "height": 1080}'
+          # DEV_USER_EMAIL: ${{ secrets.DEV_USER_EMAIL }}
+          # NACHET_FRONTEND_PUBLIC_URL: "https://nachet.inspection.alpha.canada.ca"
+          # NACHET_FRONTEND_DEV_URL: "http://localhost:5173"
+          BACKEND_DEV_PORT: ${{ secrets.BACKEND_DEV_PORT }}
+          ALEMBIC_MIGRATION_LOG_LEVEL: ${{ secrets.ALEMBIC_MIGRATION_LOG_LEVEL }}
+          SQLALCHEMY_MIGRATION_LOG_LEVEL: ${{ secrets.SQLALCHEMY_MIGRATION_LOG_LEVEL }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          TESTING: "false"
+          DEBUG: ${{ secrets.DEBUG }}
+          NACHET_SCHEMA: "${{ secrets.NACHET_SCHEMA }}"
+          BLOB_STORAGE_PROVIDER: ${{ secrets.BLOB_STORAGE_PROVIDER }}
+          BLOB_STORAGE_NAME: ${{ secrets.BLOB_STORAGE_NAME }}
+          BLOB_STORAGE_KEY: ${{ secrets.BLOB_STORAGE_KEY }}
+          BLOB_STORAGE_ENDPOINT_PROTOCOL: ${{ secrets.BLOB_STORAGE_ENDPOINT_PROTOCOL }}
+          BLOB_STORAGE_ENDPOINT_SUFFIX: ${{ secrets.BLOB_STORAGE_ENDPOINT_SUFFIX }}
+          BLOB_STORAGE_ENDPOINT_BASE: ${{ secrets.BLOB_STORAGE_ENDPOINT_BASE }}
+          CORS_ALLOW_ORIGINS: "http://localhost:5174,http://127.0.0.1:5174"
+          CFIA_ORGANIZATION_ID: ${{ secrets.CFIA_ORGANIZATION_ID }}
+          CFIA_ADMIN_ROLE_ID: ${{ secrets.CFIA_ADMIN_ROLE_ID }}
+          CFIA_USER_ROLE_ID: ${{ secrets.CFIA_USER_ROLE_ID }}
+          BLOB_STORAGE_EXTERNAL_NAME: ${{ secrets.BLOB_STORAGE_NAME }}
+          BLOB_STORAGE_EXTERNAL_KEY: ${{ secrets.BLOB_STORAGE_KEY }}
+          BLOB_STORAGE_EXTERNAL_ENDPOINT_PROTOCOL: ${{ secrets.BLOB_STORAGE_ENDPOINT_PROTOCOL }}
+          BLOB_STORAGE_EXTERNAL_ENDPOINT_SUFFIX: ${{ secrets.BLOB_STORAGE_ENDPOINT_SUFFIX }}
+          BLOB_STORAGE_EXTERNAL_ENDPOINT_BASE: ${{ secrets.BLOB_STORAGE_ENDPOINT_BASE }}
+          BLOB_CONTAINER_PREFIX: "nachet-ci-test-"
+          S3_ACCESS_KEY: ${{ steps.garage_init.outputs.ACCESS_KEY }}
+          S3_SECRET_KEY: ${{ steps.garage_init.outputs.SECRET_KEY }}
+          S3_REGION_NAME: "garage"
+          S3_USE_SSL: "false"
+          S3_VERIFY: "false"
+          S3_ENDPOINT_URL: "http://127.0.0.1:12440"
+          NACHET_ENV: "ci"
+
+      - name: Run integration tests
+        run: |
+          uv run pytest tests/ -vv -s -x --tb=long --cov=. --cov-report=xml --cov-report=term-missing  -m "integration"
         env:
           # NACHET_AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
           # NACHET_STORAGE_URL_TESTING: ${{ secrets.NACHET_AZURE_STORAGE_CONNECTION_STRING }}
