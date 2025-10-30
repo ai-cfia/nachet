@@ -18,6 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestAnnotationServiceIntegrationBasic:
     """Basic integration tests for AnnotationService."""
 
@@ -146,6 +148,8 @@ class TestAnnotationServiceIntegrationBasic:
         assert exc_info.value.status_code == 404
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestAnnotationServiceIntegrationUpdate:
     """Integration tests for AnnotationService.update method."""
 
@@ -309,6 +313,8 @@ class TestAnnotationServiceIntegrationUpdate:
         cleanup_test_pictures.append(folder_id)
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestAnnotationServiceIntegrationDelete:
     """Integration tests for AnnotationService.delete method."""
 
@@ -470,6 +476,8 @@ class TestAnnotationServiceIntegrationDelete:
         cleanup_test_pictures.append(folder_id)
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestAnnotationServiceIntegrationGetAll:
     """Integration tests for AnnotationService.get_all method."""
 
@@ -634,6 +642,8 @@ class TestAnnotationServiceIntegrationGetAll:
         cleanup_test_pictures.append(folder_id)
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestAnnotationServiceIntegrationRetrieve:
     """Integration tests for AnnotationService.get_by_id method."""
 

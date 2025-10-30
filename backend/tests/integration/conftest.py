@@ -584,5 +584,9 @@ async def dbos_runtime():
     # This ensures subsequent tests that use the FastAPI app still work
     from app.main import dbos_config, app
 
+    # Note: You may see a warning about duplicate function registration
+    # (_dbos_debouncer_workflow) during re-initialization. This is expected
+    # and harmless - it's an internal DBOS function that gets re-registered
+    # when we switch between test and main app configurations.
     DBOS(fastapi=app, config=dbos_config)
     DBOS.launch()

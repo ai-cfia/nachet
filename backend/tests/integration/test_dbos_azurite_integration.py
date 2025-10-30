@@ -97,6 +97,8 @@ async def azure_storage():
         pass  # Cleanup is best-effort
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestAzuriteBlobOperations:
     """Test blob operations with real Azurite storage."""
 
@@ -324,6 +326,8 @@ class TestAzuriteBlobOperations:
         assert exists_after is False
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
 class TestAzuriteImageProcessingWorkflow:
     """Test complete image processing workflow with Azurite."""
 
@@ -362,7 +366,9 @@ class TestAzuriteImageProcessingWorkflow:
         await integration_db_session.commit()
 
         # Create processing state
+        workflow_id = f"test-workflow-{uuid7()}"
         processing_state = ImageProcessingState(
+            workflow_id=workflow_id,
             picture_id=image_id,
             user_id=test_user,
             org_user_role_id=test_org_user_role,
@@ -447,7 +453,9 @@ class TestAzuriteImageProcessingWorkflow:
         await integration_db_session.commit()
 
         # Create processing state
+        workflow_id = f"test-workflow-{uuid7()}"
         processing_state = ImageProcessingState(
+            workflow_id=workflow_id,
             picture_id=image_id,
             user_id=test_user,
             org_user_role_id=test_org_user_role,

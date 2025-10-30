@@ -165,6 +165,7 @@ async def mock_defender_tags_in_azurite(
     container: str,
     blob_name: str,
     scan_result: str = "No threats found",
+    upload_placeholder: bool = True,
 ) -> None:
     """
     Set Azure Defender scan result tags on blob in Azurite.
@@ -178,12 +179,32 @@ async def mock_defender_tags_in_azurite(
         blob_name: Blob path
         scan_result: Scan result value (default "No threats found")
             Valid values: "No threats found", "Malicious", "Not scanned", "SAM*"
+        upload_placeholder: If True, uploads a placeholder blob if it doesn't exist (default True)
     """
     from datetime import datetime, timezone
 
+    # Check if blob exists; if not, upload a placeholder
+    if upload_placeholder:
+        try:
+            # Try to check if blob exists by attempting to get its properties
+            from app.blob.exceptions import BlobNotFoundError
+
+            try:
+                await storage.download_blob(container, blob_name)
+            except BlobNotFoundError:
+                # Blob doesn't exist, upload a placeholder
+                placeholder_data = b"placeholder for defender scan tags"
+                await storage.upload_blob(container, blob_name, placeholder_data)
+        except Exception:
+            # If any other error, try to upload placeholder anyway
+            placeholder_data = b"placeholder for defender scan tags"
+            await storage.upload_blob(container, blob_name, placeholder_data)
+
     tags = {
-        "Malware scanning scan result": scan_result,
-        "Malware scanning scan time UTC": datetime.now(timezone.utc).isoformat(),
+        "Malware Scanning scan result": scan_result,  # Capital 'S' to match Azure Defender format
+        "Malware Scanning scan time UTC": datetime.now(
+            timezone.utc
+        ).isoformat(),  # Capital 'S' to match Azure Defender format
     }
 
     try:
