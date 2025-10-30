@@ -197,6 +197,7 @@ nachet/backend/app/db$ uv run pytest tests/ -v --tb=short --cov=. --cov-report=x
 
 # run tests
 nachet/backend$ uv run pytest tests/ -v --tb=short
+nachet/backend$ uv run pytest tests/ -v --tb=short -m "not integration" && uv run pytest tests/ -v --tb=short -m "integration"
 nachet/backend$ deactivate
 
 # lint
