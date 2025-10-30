@@ -81,11 +81,11 @@ class OpenIdConfig:
             _get_logger().info(
                 "fastapi-azure-auth loaded settings from Azure Entra ID."
             )
-            _get_logger().debug(
-                f"authorization endpoint: {self.authorization_endpoint}"
-            )
-            _get_logger().debug(f"token endpoint:         {self.token_endpoint}")
-            _get_logger().debug(f"issuer:                 {self.issuer}")
+            # _get_logger().debug(
+            #     f"authorization endpoint: {self.authorization_endpoint}"
+            # )
+            # _get_logger().debug(f"token endpoint:         {self.token_endpoint}")
+            # _get_logger().debug(f"issuer:                 {self.issuer}")
 
     async def _load_openid_config(self) -> None:
         """
@@ -101,7 +101,7 @@ class OpenIdConfig:
             config_url += f"?appid={self.app_id}"
 
         async with AsyncClient(timeout=10) as client:
-            _get_logger().debug(f"Fetching OpenID Connect config from {config_url}")
+            # _get_logger().debug(f"Fetching OpenID Connect config from {config_url}")
             openid_response = await client.get(config_url)
             openid_response.raise_for_status()
             openid_cfg = openid_response.json()
@@ -111,7 +111,7 @@ class OpenIdConfig:
             self.issuer = openid_cfg["issuer"]
 
             jwks_uri = openid_cfg["jwks_uri"]
-            _get_logger().debug(f"Fetching jwks from {jwks_uri}")
+            # _get_logger().debug(f"Fetching jwks from {jwks_uri}")
             jwks_response = await client.get(jwks_uri)
             jwks_response.raise_for_status()
             self._load_keys(jwks_response.json()["keys"])
@@ -125,7 +125,7 @@ class OpenIdConfig:
             if (
                 key.get("use") == "sig"
             ):  # Only care about keys that are used for signatures, not encryption
-                _get_logger().debug(f"Loading public key from certificate: {key}")
+                # _get_logger().debug(f"Loading public key from certificate: {key}")
                 cert_obj = jwt.PyJWK(key, "RS256")
                 if (
                     kid := key.get("kid")
