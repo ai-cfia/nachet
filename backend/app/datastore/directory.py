@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from beartype.typing import Type, Optional, TypedDict
 from uuid import UUID
 from sqlalchemy import select, func
@@ -119,7 +121,7 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
             .group_by(Folder.id, Folder.name, Folder.folder_prefix, Folder.description)
         )
         # print(stmt.compile(dialect=postgresql.dialect()))
-        result = await self.session.execute(stmt)
+        result = await self.session.execute(stmt)  # type: ignore[attr-defined]
         return [row._asdict() for row in result.all()]  # type: ignore[misc]
 
     async def get_org_directories_count(
@@ -153,7 +155,7 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
                 Folder.description,
             )
         )
-        result = await self.session.execute(stmt)
+        result = await self.session.execute(stmt)  # type: ignore[attr-defined]
         return [row._asdict() for row in result.all()]  # type: ignore[misc]
 
     async def create_directory(
@@ -188,8 +190,8 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
             description=description,
             active=True,
         )
-        self.session.add(new_directory)
-        await self.session.flush()  # Ensure the new directory gets an ID
+        self.session.add(new_directory)  # type: ignore[attr-defined]
+        await self.session.flush()  # type: ignore[attr-defined]  # Ensure the new directory gets an ID
         return str(new_directory.id)
 
     async def rename_directory(self, directory_id: str, new_name: str) -> str:
@@ -208,13 +210,13 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
             .where(Folder.id == directory_id)
             .where(Folder.active.is_(True))
         )
-        result = await self.session.execute(stmt)
+        result = await self.session.execute(stmt)  # type: ignore[attr-defined]
         directory = result.scalar_one_or_none()
 
         if directory:
             directory.name = new_name
-            self.session.add(directory)
-            await self.session.flush()  # Ensure changes are applied
+            self.session.add(directory)  # type: ignore[attr-defined]
+            await self.session.flush()  # type: ignore[attr-defined]  # Ensure changes are applied
         else:
             raise ValueError(f"Directory with ID {directory_id} not found or inactive.")
         return str(directory.id)
@@ -238,5 +240,5 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
             .where(Folder.org_user_role_id == user_role_id)
             .where(Folder.active.is_(True))
         )
-        result = await self.session.execute(stmt)
+        result = await self.session.execute(stmt)  # type: ignore[attr-defined]
         return result.scalar_one_or_none()

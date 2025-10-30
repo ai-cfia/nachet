@@ -6,6 +6,8 @@ eliminate code duplication across service classes. All entity-specific services
 should inherit from BaseCRUDService and BaseCRUDDataService.
 """
 
+from __future__ import annotations
+
 from beartype.typing import (
     TypeVar,
     Generic,
@@ -45,6 +47,8 @@ class BaseCRUDDataService(Generic[T]):
     Type parameter T should be a SQLAlchemy ORM model class.
     Subclasses must override get_model_class() to specify the entity type.
     """
+
+    session: AsyncSession
 
     def __init__(self, session: AsyncSession):
         self.session = session
