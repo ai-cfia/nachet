@@ -379,7 +379,7 @@ describe("inferenceRequest", () => {
     });
 
     const backendUrl = "http://localhost:8080";
-    const containerUuid = "container-uuid";
+    const folderId = "folder-uuid-123";
     const curDir = "test-directory";
     const selectedModel = "swin-transformer";
 
@@ -389,7 +389,7 @@ describe("inferenceRequest", () => {
       imageObject: mockImageObject,
       curDir,
       accessToken: "valid-token",
-      container_uuid: containerUuid,
+      folder_id: folderId,
     });
 
     expect(result).toEqual(mockInferenceData);
@@ -405,10 +405,10 @@ describe("inferenceRequest", () => {
       },
       data: {
         pipeline_id: selectedModel,
-        image: mockImageObject.src,
-        imageDims: mockImageObject.imageDims,
         folder_name: curDir,
-        container_name: containerUuid,
+        folder_id: folderId,
+        imageDims: mockImageObject.imageDims,
+        image: mockImageObject.src,
       },
       withCredentials: true,
     });
@@ -422,7 +422,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "token",
-        container_uuid: "container",
+        folder_id: "folder-id",
       }),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
   });
@@ -435,7 +435,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "token",
-        container_uuid: "container",
+        folder_id: "folder-id",
       }),
     ).rejects.toThrow(new ValueError("Model is null or empty"));
   });
@@ -449,7 +449,7 @@ describe("inferenceRequest", () => {
         imageObject: emptyImageObject,
         curDir: "dir",
         accessToken: "token",
-        container_uuid: "container",
+        folder_id: "folder-id",
       }),
     ).rejects.toThrow(new ValueError("Image is null or empty"));
   });
@@ -462,7 +462,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "",
         accessToken: "token",
-        container_uuid: "container",
+        folder_id: "folder-id",
       }),
     ).rejects.toThrow(new ValueError("Directory is null or empty"));
   });
@@ -475,7 +475,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "",
-        container_uuid: "container",
+        folder_id: "folder-id",
       }),
     ).rejects.toThrow(new ValueError("Access token is null or empty"));
   });
@@ -497,7 +497,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "token",
-        container_uuid: "container",
+        folder_id: "folder-id",
       }),
     ).rejects.toThrow(new AzureAPIError("Model not available"));
     console.error = consoleError;
@@ -520,7 +520,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "token",
-        container_uuid: "container",
+        folder_id: "folder-id",
       }),
     ).rejects.toThrow(new AzureAPIError("Invalid image format"));
     console.error = consoleError;
@@ -540,7 +540,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "token",
-        container_uuid: "container",
+        folder_id: "folder-id",
       }),
     ).rejects.toThrow(new AzureAPIError("Network timeout"));
     console.error = consoleError;

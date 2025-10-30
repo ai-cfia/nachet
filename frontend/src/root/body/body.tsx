@@ -41,6 +41,7 @@ import {
   nextCacheIndex,
   fetchModelMetadata,
   inferenceRequest,
+  inferenceDirectRequest,
   readAzureStorageDir,
   checkUserRegistration,
   // requestUUID,
@@ -82,7 +83,7 @@ const Body: React.FC<params> = (props) => {
   const [activeDeviceId, setActiveDeviceId] = useState<string | undefined>(
     undefined,
   );
-  const [curDir, setCurDir] = useState<string>("General");
+  const [curDir, setCurDir] = useState<AzureStorageDirectoryItem | null>(null);
   const [readAzureStorage, setReadAzureStorage] = useState<boolean>(false);
   const [azureStorageDir, setAzureStorageDir] = useState<
     AzureStorageDirectoryItem[]
@@ -185,12 +186,11 @@ const Body: React.FC<params> = (props) => {
     setImageIndex(0);
   };
 
-  const handleDirChange = (dir: string): void => {
-    // sets the current directory for azure storage
-    setCurDir(dir.replace(/\s/g, "-"));
+  const handleDirChange = (dir: AzureStorageDirectoryItem | null): void => {
+    setCurDir(dir);
   };
 
-  const handleInferenceRequest = (): void => {
+  const handleDirectInference = (): void => {
     // makes a post request to the backend to get inference data for the current image
     if (!isAuthenticated) {
       alert("You must be signed in to perform inference");
@@ -200,21 +200,29 @@ const Body: React.FC<params> = (props) => {
       alert("Authentication in progress, please wait");
       return;
     }
-    if (curDir !== "") {
+    if (!curDir) {
+      alert("Please select a directory");
+      return;
+    }
+    if (curDir) {
       const imageObject = imageCache.find((item) => item.index === imageIndex);
       if (imageObject === undefined) {
         return;
       }
+
+      const folder_id = curDir.folderId;
+      const folder_name = curDir.folderName;
+
       setIsLoading(true);
       acquireAccessToken(msalInstance, [apiScopeClaim])
         .then((accessToken) => {
-          return inferenceRequest({
+          return inferenceDirectRequest({
             backendUrl,
             selectedModel,
             imageObject,
-            curDir,
+            curDir: folder_name,
             accessToken,
-            container_uuid: uuid,
+            folder_id: folder_id,
           });
         })
         .then((response) => {
@@ -229,8 +237,56 @@ const Body: React.FC<params> = (props) => {
         .finally(() => {
           setIsLoading(false);
         });
-    } else {
+    }
+  };
+
+  const handleInferenceRequest = (): void => {
+    // makes a post request to the backend to get inference data for the current image
+    if (!isAuthenticated) {
+      alert("You must be signed in to perform inference");
+      return;
+    }
+    if (inProgress !== InteractionStatus.None) {
+      alert("Authentication in progress, please wait");
+      return;
+    }
+    if (!curDir) {
       alert("Please select a directory");
+      return;
+    }
+    if (curDir) {
+      const imageObject = imageCache.find((item) => item.index === imageIndex);
+      if (imageObject === undefined) {
+        return;
+      }
+
+      const folder_id = curDir.folderId;
+      const folder_name = curDir.folderName;
+
+      setIsLoading(true);
+      acquireAccessToken(msalInstance, [apiScopeClaim])
+        .then((accessToken) => {
+          return inferenceRequest({
+            backendUrl,
+            selectedModel,
+            imageObject,
+            curDir: folder_name,
+            accessToken,
+            folder_id: folder_id,
+          });
+        })
+        .then((response) => {
+          setReadAzureStorage(!readAzureStorage);
+          setImageCache(loadResultsToCache(response, imageCache, imageIndex));
+          setModelDisplayName(selectedModel);
+        })
+        .catch((error) => {
+          alert("Error fetching inference data, see console for details");
+          console.error(error);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     }
   };
 
@@ -497,7 +553,6 @@ const Body: React.FC<params> = (props) => {
       {createDirectoryOpen && (
         <CreateDirectoryPopup
           setCreateDirectoryOpen={setCreateDirectoryOpen}
-          handeDirChange={handleDirChange}
           curDir={curDir}
           setCurDir={setCurDir}
           setReadAzureStorage={setReadAzureStorage}
@@ -608,6 +663,7 @@ const Body: React.FC<params> = (props) => {
               canvasRef={canvasRef}
               setSaveOpen={setSaveOpen}
               handleInference={handleInferenceRequest}
+              handleDirectInference={handleDirectInference}
               setSwitchModelOpen={setModelInfoPopupOpen}
               selectedModel={selectedModel}
               metadata={metadata}

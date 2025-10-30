@@ -28,7 +28,13 @@ describe("StorageDirectoryContainer", () => {
         pictureCount: 3,
       },
     ],
-    curDir: "testDir",
+    curDir: {
+      folderId: "testDirID",
+      folderName: "testDir",
+      folderPrefix: "testDir",
+      description: "Test current directory",
+      pictureCount: 0,
+    },
     setCurDir: vi.fn(),
     setCreateDirectoryOpen: vi.fn(),
     setDelDirectoryOpen: vi.fn(),
@@ -64,7 +70,7 @@ describe("StorageDirectoryContainer", () => {
       const deleteButton = getByTestId("delete-icon" + i);
       fireEvent.click(deleteButton);
       expect(mockProps.handleDirChange).toHaveBeenCalledWith(
-        "testDir" + i + "ID",
+        mockProps.azureStorageDir[i - 1],
       );
       expect(mockProps.setDelDirectoryOpen).toHaveBeenCalledWith(true);
     }
@@ -82,7 +88,7 @@ describe("StorageDirectoryContainer", () => {
       const folderElement = getByTestId("folder-icon" + i);
       fireEvent.click(folderElement);
       expect(mockProps.handleDirChange).toHaveBeenCalledWith(
-        "testDir" + i + "ID",
+        mockProps.azureStorageDir[i - 1],
       );
     }
   });
@@ -94,6 +100,6 @@ describe("StorageDirectoryContainer", () => {
     const createDirectoryButton = getByTestId("CreateNewFolderIcon");
     fireEvent.click(createDirectoryButton);
     expect(mockProps.setCreateDirectoryOpen).toHaveBeenCalledWith(true);
-    expect(mockProps.setCurDir).toHaveBeenCalledWith("");
+    expect(mockProps.setCurDir).toHaveBeenCalledWith(null);
   });
 });

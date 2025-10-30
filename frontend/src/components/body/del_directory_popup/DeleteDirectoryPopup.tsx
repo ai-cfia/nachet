@@ -14,11 +14,14 @@ import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
 import { deleteAzureStorageDir } from "@common/api";
+import { AzureStorageDirectoryItem } from "@common/types";
 
 interface params {
   setDelDirectoryOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  curDir: string;
-  setCurDir: React.Dispatch<React.SetStateAction<string>>;
+  curDir: AzureStorageDirectoryItem | null;
+  setCurDir: React.Dispatch<
+    React.SetStateAction<AzureStorageDirectoryItem | null>
+  >;
   setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
   apiScopeClaim: string;
 }
@@ -46,17 +49,22 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
       return;
     }
 
+    if (!curDir) {
+      alert("No directory selected to delete");
+      return;
+    }
+
     acquireAccessToken(msalInstance, [apiScopeClaim])
       .then((accessToken) => {
         // makes a post request to the backend to delete a directory in azure storage
         return deleteAzureStorageDir({
           backendUrl: backendURL,
-          folderName: curDir,
+          folderName: curDir.folderName,
           accessToken,
         });
       })
       .then(() => {
-        setCurDir("General");
+        setCurDir(null);
         setReadAzureStorage((prev) => !prev);
       })
       .catch((error) => {
@@ -128,7 +136,7 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
               marginBottom: "2vh",
             }}
           >
-            Are you sure you want to delete {curDir}?
+            Are you sure you want to delete {curDir?.folderName}?
           </Typography>
           <Box
             sx={{
