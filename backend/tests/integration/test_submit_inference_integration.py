@@ -87,18 +87,20 @@ async def test_pipeline_id(
     test_user: UUID,
 ):
     """
-    Get a local test pipeline ID from the database.
+    Get the appropriate test pipeline ID based on NACHET_ENV.
 
-    Uses the "15 spp RCNN SWIN (Local)" pipeline which has 2 steps:
-    - Step 1: seed-detector-rcnn-1-local (http://127.0.0.1:12380/score)
-    - Step 2: swin-15e-spp-local (http://127.0.0.1:12390/score)
+    - NACHET_ENV="local": Uses "15 spp RCNN SWIN (Local)" pipeline
+      - Step 1: seed-detector-rcnn-1-local (http://127.0.0.1:12380/score)
+      - Step 2: swin-15e-spp-local (http://127.0.0.1:12390/score)
 
-    This pipeline uses local endpoints for integration testing with mock ML servers.
+    - NACHET_ENV="ci"/"test": Uses "15 spp RCNN SWIN" pipeline
+      - Step 1: seed-detector-rcnn-1 (http://nachet-detector:5001/score)
+      - Step 2: swin-15e-spp (http://nachet-15spp-classifier:5001/score)
     """
-    # Return the local 15spp pipeline ID (2 steps: detector + classifier)
-    local_pipeline_id = UUID("e5f6a7b8-c9d0-4e5f-8a7b-9c0d1e2f3a4b")
+    from tests.integration.pipeline_config import get_pipeline_id_for_test
 
-    yield local_pipeline_id
+    pipeline_id = get_pipeline_id_for_test(species_count=15)
+    yield pipeline_id
 
 
 @pytest.fixture()

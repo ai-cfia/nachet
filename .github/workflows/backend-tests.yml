@@ -362,24 +362,24 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-      nachet-detector:
-        image: wiremock/wiremock:3.13.1
-        ports:
-          - 12380:8080
-        volumes:
-          - ./e2e/mocks/nachet-detector:/home/wiremock/mappings
       nachet-15spp-classifier:
         image: wiremock/wiremock:3.13.1
         ports:
-          - 12390:8080
+          - 5001:8080
         volumes:
           - ./e2e/mocks/nachet-15spp-classifier:/home/wiremock/mappings
       nachet-27spp-classifier:
         image: wiremock/wiremock:3.13.1
         ports:
-          - 12360:8080
+          - 5002:8080
         volumes:
           - ./e2e/mocks/nachet-27spp-classifier:/home/wiremock/mappings
+      nachet-detector:
+        image: wiremock/wiremock:3.13.1
+        ports:
+          - 5003:8080
+        volumes:
+          - ./e2e/mocks/nachet-detector:/home/wiremock/mappings
 
     steps:
       - name: Workspace chown
@@ -525,7 +525,6 @@ jobs:
           # NACHET_VALID_EXTENSION: '["jpeg", "jpg", "png", "gif", "bmp", "tiff", "webp"]'
           # NACHET_VALID_DIMENSION: '{"width": 1920, "height": 1080}'
           # DEV_USER_EMAIL: ${{ secrets.DEV_USER_EMAIL }}
-          # NACHET_ENV: "local"
           # NACHET_FRONTEND_PUBLIC_URL: "https://nachet.inspection.alpha.canada.ca"
           # NACHET_FRONTEND_DEV_URL: "http://localhost:5173"
           BACKEND_DEV_PORT: ${{ secrets.BACKEND_DEV_PORT }}
@@ -561,6 +560,7 @@ jobs:
           S3_USE_SSL: "false"
           S3_VERIFY: "false"
           S3_ENDPOINT_URL: "http://127.0.0.1:12440"
+          NACHET_ENV: "ci"
 
       # - name: Upload coverage to Codecov
       #   if: success()

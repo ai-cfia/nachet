@@ -239,10 +239,14 @@ class TestWorkflowResults:
     @pytest_asyncio.fixture
     async def test_pipeline_id(self) -> UUID:
         """
-        Get test pipeline ID for inference requests.
-        Uses the "15 spp RCNN SWIN (Local)" pipeline which has 2 steps.
+        Get the appropriate test pipeline ID based on NACHET_ENV.
+
+        - NACHET_ENV="local": Uses "15 spp RCNN SWIN (Local)" pipeline
+        - NACHET_ENV="ci"/"test": Uses "15 spp RCNN SWIN" pipeline
         """
-        return UUID("e5f6a7b8-c9d0-4e5f-8a7b-9c0d1e2f3a4b")
+        from tests.integration.pipeline_config import get_pipeline_id_for_test
+
+        return get_pipeline_id_for_test(species_count=15)
 
     @pytest_asyncio.fixture
     async def test_picture_1(
