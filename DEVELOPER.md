@@ -185,6 +185,8 @@ nachet/backend/app/db$ export $(grep -v '^#' ../../.env.local | xargs)
 nachet/backend/app/db$ uv run db_setup_local.py
 nachet/backend/app/db$ export $(grep -v '^#' ../../.env.test.local | xargs)
 nachet/backend/app/db$ uv run db_setup_test.py
+nachet/backend/app/db$ export $(grep -v '^#' ../../.env.test.local | xargs) && uv run alembic upgrade head
+nachet/backend/app/db$ export $(grep -v '^#' ../../.env.local | xargs) && uv run alembic upgrade head
 
 # run all db tests with coverage
 nachet/backend/app/db$ uv run pytest tests/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
