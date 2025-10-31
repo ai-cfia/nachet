@@ -296,6 +296,23 @@ const Body: React.FC<params> = (props) => {
       selectedModel,
       curDir,
       images: imageCache,
+      workflowStore: {
+        addWorkflow,
+        updateWorkflowStatus: (workflowId, status, error, queuePosition) => {
+          const workflow = useWorkflowStore.getState().getWorkflow(workflowId);
+          if (workflow) {
+            useWorkflowStore
+              .getState()
+              .updateWorkflowStatus(
+                workflowId,
+                status as any,
+                error,
+                queuePosition,
+              );
+          }
+        },
+        removeWorkflow,
+      },
       onComplete: (workflowId, imageIndex, results) => {
         console.log(
           `[Workflow] Workflow ${workflowId} completed for image ${imageIndex}`,
@@ -305,10 +322,10 @@ const Body: React.FC<params> = (props) => {
         setReadAzureStorage(!readAzureStorage);
         setModelDisplayName(selectedModel);
 
-        // Add workflow to store for display/tracking
-        addWorkflow(workflowId, results.imageId, imageIndex);
-        // Remove it immediately (just for display purposes, no polling)
-        removeWorkflow(workflowId);
+        // Remove workflow from store after completion
+        setTimeout(() => {
+          removeWorkflow(workflowId);
+        }, 1000); // Keep for 1 second to show "completed" status
       },
       onError: (workflowId, imageIndex, error) => {
         console.error(
