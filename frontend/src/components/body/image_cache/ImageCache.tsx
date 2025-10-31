@@ -13,20 +13,16 @@ import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ImageIcon from "@mui/icons-material/Image";
 import { colours } from "../../../styles/colours";
+import { useImageStore } from "@stores/useImageStore";
 
-interface params {
-  savedImages: any[];
-  setImageIndex: React.Dispatch<React.SetStateAction<number>>;
-  removeImage: (index: number) => void;
-  clearImageCache: () => void;
-  imageIndex: number;
-  windowSize: {
-    width: number;
-    height: number;
-  };
-}
-
-const ImageCache: React.FC<params> = (props) => {
+const ImageCache: React.FC = () => {
+  const {
+    images: savedImages,
+    currentIndex: imageIndex,
+    setCurrentIndex: setImageIndex,
+    removeImage,
+    clearImages: clearImageCache,
+  } = useImageStore();
   return (
     <Box
       sx={{
@@ -54,7 +50,7 @@ const ImageCache: React.FC<params> = (props) => {
           <IconButton
             sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
             onClick={() => {
-              props.clearImageCache();
+              clearImageCache();
             }}
           >
             <DeleteIcon
@@ -87,12 +83,12 @@ const ImageCache: React.FC<params> = (props) => {
       >
         <Table sx={{ borderBottom: 0 }}>
           <TableBody sx={{ borderBottom: 0 }}>
-            {props.savedImages.map((item: any, i) => (
+            {savedImages.map((item: any, i) => (
               <TableRow
                 key={i}
                 sx={{
                   backgroundColor:
-                    item.index === props.imageIndex
+                    item.index === imageIndex
                       ? "#F5F5F5"
                       : colours.CFIA_Background_White,
                   "&:hover": {
@@ -116,7 +112,7 @@ const ImageCache: React.FC<params> = (props) => {
                   }}
                   align="left"
                   onClick={() => {
-                    props.setImageIndex(item.index);
+                    setImageIndex(item.index);
                   }}
                 >
                   <div
@@ -155,7 +151,7 @@ const ImageCache: React.FC<params> = (props) => {
                 >
                   <IconButton
                     onClick={() => {
-                      props.removeImage(item.index);
+                      removeImage(item.index);
                     }}
                     sx={{ padding: 0 }}
                   >

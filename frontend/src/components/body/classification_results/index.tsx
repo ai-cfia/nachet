@@ -17,11 +17,10 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import CropFreeIcon from "@mui/icons-material/CropFree";
 import LabelIcon from "@mui/icons-material/Label";
 import Typography from "@mui/material/Typography";
+import { useImageStore } from "@stores/useImageStore";
 
 interface params {
-  savedImages: any[];
   imageSrc: string;
-  imageIndex: number;
   selectedLabel: string;
   setSelectedLabel: React.Dispatch<React.SetStateAction<string>>;
   labelOccurrences: any;
@@ -35,6 +34,7 @@ interface params {
 }
 
 const ClassificationResults: React.FC<params> = (props) => {
+  const { images: savedImages, currentIndex: imageIndex } = useImageStore();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   const handleSelect = (key: string): void => {
@@ -305,11 +305,8 @@ const ClassificationResults: React.FC<params> = (props) => {
               ))}
 
             {!props.switchTable &&
-              props.savedImages.map((object: any, objectIndex: number) => {
-                if (
-                  object.index === props.imageIndex &&
-                  object.annotated === true
-                ) {
+              savedImages.map((object: any, objectIndex: number) => {
+                if (object.index === imageIndex && object.annotated === true) {
                   return object.classifications.map(
                     (prediction: any, classificationIndex: number) => {
                       const rowId = `${objectIndex}-${classificationIndex}`;
