@@ -1115,6 +1115,10 @@ describe("sendNegativeFeedback", () => {
         boxId: "box-1",
         box: { topX: 10, topY: 10, bottomX: 50, bottomY: 50 },
         comment: "This is not the correct classification",
+        family: "Poaceae",
+        genus: "Avena",
+        species: "fatua",
+        name_code: "AVEFA",
       },
     ],
   };
@@ -1180,6 +1184,10 @@ describe("sendFeedbackNewBox", () => {
         boxId: "box-new",
         box: { topX: 15, topY: 15, bottomX: 55, bottomY: 55 },
         comment: "Found an additional seed that was missed",
+        family: "Brassicaceae",
+        genus: "Sinapis",
+        species: "arvensis",
+        name_code: "SINAR",
       },
     ],
   };

@@ -1,5 +1,5 @@
 // root\body\index.tsx
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import type Webcam from "react-webcam";
 import { Box } from "@mui/material";
 import { colours } from "../../styles/colours";
@@ -49,6 +49,7 @@ import {
   AzureStorageDirectoryItem,
   AzureStorageDirectoryItemApi,
   ModelMetadata,
+  BoxCSS,
 } from "@common/types";
 // import Cookies from "js-cookie";
 
@@ -90,6 +91,8 @@ const Body: React.FC<params> = (props) => {
   const [selectedLabel, setSelectedLabel] = useState<string>("all");
   const [saveIndividualImage, setSaveIndividualImage] = useState<string>("0");
   const [switchTable, setSwitchTable] = useState<boolean>(true);
+  const [freeformBox, setFreeformBox] = useState<BoxCSS | null>(null);
+  const [freeformDragEnabled, setFreeformDragEnabled] = useState<boolean>(true);
   const webcamRef = useRef<Webcam>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isWebcamActive, setIsWebcamActive] = useState(true); // This state determines the visibility of the webcam
@@ -353,6 +356,14 @@ const Body: React.FC<params> = (props) => {
     setImageId,
   ]);
 
+  const handleFreeformBoxChange = useCallback(
+    (box: BoxCSS | null, dragEnabled: boolean) => {
+      setFreeformBox(box);
+      setFreeformDragEnabled(dragEnabled);
+    },
+    [],
+  );
+
   useEffect(() => {
     const imageData = imageCache.find((img) => img.index === imageIndex);
     if (imageData === undefined) {
@@ -369,6 +380,8 @@ const Body: React.FC<params> = (props) => {
       labelOccurrences,
       switchTable,
       showInference,
+      freeformBox,
+      freeformDragEnabled,
     );
   }, [
     selectedLabel,
@@ -379,6 +392,8 @@ const Body: React.FC<params> = (props) => {
     imageIndex,
     isWebcamActive,
     showInference,
+    freeformBox,
+    freeformDragEnabled,
   ]);
 
   useEffect(() => {
@@ -761,6 +776,7 @@ const Body: React.FC<params> = (props) => {
                 setIsWebcamActive(!isWebcamActive);
               }}
               toggleShowInference={(state: boolean) => setShowInference(state)}
+              onFreeformBoxChange={handleFreeformBoxChange}
               backendUrl={backendUrl}
               uuid={uuid}
               apiScopeClaim={apiScopeClaim}

@@ -33,8 +33,6 @@ const drawBoxLabel = (
   const labelIndex = getInferenceLabelIndex(prediction, labelOccurrences);
   const scorePercentage = (score * 100).toFixed(0);
   const boxMidX = (bottomX - topX) / 2 + topX;
-  const labelBgWidth = 90;
-  const labelBgHeight = 25;
   // check to see if label is cut off by the canvas edge, if so, move it to the bottom of the bounding box
   const xValue = boxMidX;
   let yValue = topY - 8;
@@ -43,6 +41,8 @@ const drawBoxLabel = (
   }
   ctx.beginPath();
   // Commented out white rectangle background for label text
+  // const labelBgWidth = 90;
+  // const labelBgHeight = 25;
   // ctx.fillStyle = "white";
   // ctx.fillRect(
   //   boxMidX - labelBgWidth / 2,
@@ -50,7 +50,6 @@ const drawBoxLabel = (
   //   labelBgWidth,
   //   labelBgHeight - 2,
   // );
-  //ctx.fillRect(topX, topY - 30, 90, 30);
   // draw label index
   ctx.font = "bold 2.5vh Arial";
   ctx.fillStyle = "black";
@@ -143,6 +142,60 @@ const drawBoxes = (
   ctx.closePath();
 };
 
+const drawFreeformBox = (
+  box: { top: number; left: number; minWidth: number; minHeight: number },
+  dragEnabled: boolean,
+  ctx: CanvasRenderingContext2D,
+): void => {
+  const boxX = box.left;
+  const boxY = box.top;
+  const boxWidth = box.minWidth;
+  const boxHeight = box.minHeight;
+
+  console.log("Drawing freeform box:", {
+    boxX,
+    boxY,
+    boxWidth,
+    boxHeight,
+    dragEnabled,
+    canvasWidth: ctx.canvas.width,
+    canvasHeight: ctx.canvas.height,
+  });
+
+  // Draw green rectangle border
+  ctx.strokeStyle = "green";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+  console.log(
+    "After strokeRect - strokeStyle:",
+    ctx.strokeStyle,
+    "lineWidth:",
+    ctx.lineWidth,
+  );
+
+  // Draw resize handles if resize is enabled (not in drag mode)
+  if (!dragEnabled) {
+    const HANDLE_SIZE = 10;
+    ctx.fillStyle = "green";
+    const handles = [
+      { x: boxX, y: boxY }, // top-left
+      { x: boxX + boxWidth, y: boxY }, // top-right
+      { x: boxX + boxWidth, y: boxY + boxHeight }, // bottom-right
+      { x: boxX, y: boxY + boxHeight }, // bottom-left
+    ];
+
+    handles.forEach((handle) => {
+      ctx.fillRect(
+        handle.x - HANDLE_SIZE / 2,
+        handle.y - HANDLE_SIZE / 2,
+        HANDLE_SIZE,
+        HANDLE_SIZE,
+      );
+    });
+  }
+};
+
 export const drawImage = async (
   canvas: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
@@ -184,6 +237,13 @@ export const loadToCanvas = async (
   labelOccurrences: any,
   switchTable: boolean,
   showInference: boolean,
+  freeformBox?: {
+    top: number;
+    left: number;
+    minWidth: number;
+    minHeight: number;
+  } | null,
+  dragEnabled?: boolean,
 ): Promise<void> => {
   // loads the current image to the canvas and draws the bounding boxes and labels,
   // should update whenever a change is made to the image cache or the score threshold and the selected label is changed
@@ -210,6 +270,56 @@ export const loadToCanvas = async (
       canvas,
       ctx,
     );
+  }
+  // Draw freeform box if provided
+  console.log(
+    "loadToCanvas - freeformBox:",
+    freeformBox,
+    "dragEnabled:",
+    dragEnabled,
+  );
+  if (freeformBox) {
+    // The scaledFeedbackBox is in display coordinates (scaled with offsets for objectFit: contain)
+    // We need to reverse the scaling that was applied by getScaledBounds
+    const containerWidth = canvas.getBoundingClientRect().width;
+    const containerHeight = canvas.getBoundingClientRect().height;
+    const imageWidth = canvas.width;
+    const imageHeight = canvas.height;
+
+    // Calculate the same scale factor used in getScaledBounds
+    const scaleFactorWidth = containerWidth / imageWidth;
+    const scaleFactorHeight = containerHeight / imageHeight;
+    const scaleFactor = Math.min(scaleFactorWidth, scaleFactorHeight);
+
+    // Calculate offsets for objectFit: contain
+    const displayedWidth = imageWidth * scaleFactor;
+    const displayedHeight = imageHeight * scaleFactor;
+    const offsetX = (containerWidth - displayedWidth) / 2;
+    const offsetY = (containerHeight - displayedHeight) / 2;
+
+    console.log("Unscaling freeform box:", {
+      containerWidth,
+      containerHeight,
+      imageWidth,
+      imageHeight,
+      scaleFactor,
+      offsetX,
+      offsetY,
+      displayedWidth,
+      displayedHeight,
+    });
+
+    // Reverse the transformation: remove offset, then divide by scale factor
+    const unscaledBox = {
+      left: (freeformBox.left - offsetX) / scaleFactor,
+      top: (freeformBox.top - offsetY) / scaleFactor,
+      minWidth: freeformBox.minWidth / scaleFactor,
+      minHeight: freeformBox.minHeight / scaleFactor,
+    };
+
+    console.log("Unscaled box for canvas:", unscaledBox);
+
+    drawFreeformBox(unscaledBox, dragEnabled ?? true, ctx);
   }
 };
 

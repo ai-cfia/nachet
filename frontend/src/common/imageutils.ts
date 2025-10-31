@@ -100,6 +100,28 @@ export const getScaledBounds = (
   const scaleFactorHeight = containerHeight / itemHeight;
   const scaleFactor = Math.min(scaleFactorWidth, scaleFactorHeight);
 
+  // Validate scale factor
+  if (
+    !isFinite(scaleFactor) ||
+    scaleFactor === 0 ||
+    isNaN(scaleFactor) ||
+    itemWidth === 0 ||
+    itemHeight === 0
+  ) {
+    console.error("Invalid scale factor or dimensions!", {
+      scaleFactor,
+      itemWidth,
+      itemHeight,
+    });
+    // Return box at 0,0 as fallback
+    return {
+      scaledWidth: 0,
+      scaledHeight: 0,
+      scaledTopX: 0,
+      scaledTopY: 0,
+    };
+  }
+
   // Calculate the actual displayed dimensions of the image
   const displayedWidth = itemWidth * scaleFactor;
   const displayedHeight = itemHeight * scaleFactor;
@@ -114,12 +136,14 @@ export const getScaledBounds = (
   const scaledTopX = box.topX * scaleFactor + offsetX;
   const scaledTopY = box.topY * scaleFactor + offsetY;
 
-  return {
+  const result = {
     scaledWidth,
     scaledHeight,
     scaledTopX,
     scaledTopY,
   };
+
+  return result;
 };
 
 export const getUnscaledCoordinates = (
@@ -134,6 +158,28 @@ export const getUnscaledCoordinates = (
   const scaleFactorHeight = containerHeight / itemHeight;
   const scaleFactor = Math.min(scaleFactorWidth, scaleFactorHeight);
 
+  // Validate scale factor
+  if (
+    !isFinite(scaleFactor) ||
+    scaleFactor === 0 ||
+    isNaN(scaleFactor) ||
+    itemWidth === 0 ||
+    itemHeight === 0
+  ) {
+    console.error("Invalid scale factor or dimensions!", {
+      scaleFactor,
+      itemWidth,
+      itemHeight,
+    });
+    // Return original box coordinates as fallback
+    return {
+      topX: box.left,
+      topY: box.top,
+      bottomX: box.left + box.minWidth,
+      bottomY: box.top + box.minHeight,
+    };
+  }
+
   // Calculate the actual displayed dimensions and offsets
   const displayedWidth = itemWidth * scaleFactor;
   const displayedHeight = itemHeight * scaleFactor;
@@ -146,10 +192,13 @@ export const getUnscaledCoordinates = (
   const bottomX = (box.left + box.minWidth - offsetX) / scaleFactor;
   const bottomY = (box.top + box.minHeight - offsetY) / scaleFactor;
 
-  return {
-    topX,
-    topY,
-    bottomX,
-    bottomY,
+  // Clamp to reasonable bounds (>= 0)
+  const result = {
+    topX: Math.max(0, topX),
+    topY: Math.max(0, topY),
+    bottomX: Math.max(0, bottomX),
+    bottomY: Math.max(0, bottomY),
   };
+
+  return result;
 };

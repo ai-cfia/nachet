@@ -27,3 +27,30 @@ body {
 code {
   font-family: Arial;
 }
+
+/* Toolbar button styling */
+.freeform-toolbar-button {
+  border-radius: 0;
+  max-height: 25px;
+  max-width: 25px;
+}
+
+.freeform-toolbar-button-blue {
+  color: blue;
+}
+
+.freeform-toolbar-button-green {
+  color: green;
+  margin-right: 10px;
+  margin-left: 10px;
+}
+
+.freeform-toolbar-button-grey {
+  color: grey;
+  margin-right: 10px;
+  margin-left: 10px;
+}
+
+.freeform-toolbar-button-red {
+  color: red;
+}
