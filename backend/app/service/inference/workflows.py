@@ -889,6 +889,7 @@ async def image_processing_and_inference_workflow(
                 file_bytes=file_bytes,
                 user_id=user_id,
                 org_prefix=org_prefix,
+                parent_workflow_id=DBOS.workflow_id,
             )
 
             # Publish processing workflow ID
@@ -959,6 +960,7 @@ async def image_processing_workflow(
     file_bytes: bytes | None,
     user_id: UUID,
     org_prefix: str,
+    parent_workflow_id: str,
 ) -> Dict[str, Any]:
     """
     Main image processing workflow (MVP).
@@ -971,6 +973,7 @@ async def image_processing_workflow(
         file_bytes: Raw image bytes (None for duplicates)
         user_id: Submitting user UUID
         org_prefix: Organization prefix (normalized, max 10 chars)
+        parent_workflow_id: Parent workflow ID for state tracking
 
     Returns:
         Dict containing processing results and blob URLs
@@ -1005,7 +1008,7 @@ async def image_processing_workflow(
 
         # Update processing state after upload
         await update_processing_state_step(
-            workflow_id=DBOS.workflow_id,
+            workflow_id=parent_workflow_id,
             status="uploaded",
             uploaded_at=datetime.now(timezone.utc),
             blob_url_original=blob_url_original,
@@ -1018,7 +1021,7 @@ async def image_processing_workflow(
 
         # Update processing state before defender scan
         await update_processing_state_step(
-            workflow_id=DBOS.workflow_id,
+            workflow_id=parent_workflow_id,
             status="defender_scanning",
             defender_scan_started_at=datetime.now(timezone.utc),
             progress_percentage=40,
@@ -1035,7 +1038,7 @@ async def image_processing_workflow(
 
         # Update processing state after defender scan
         await update_processing_state_step(
-            workflow_id=DBOS.workflow_id,
+            workflow_id=parent_workflow_id,
             status="defender_scanned",
             defender_scan_completed_at=datetime.now(timezone.utc),
             defender_scan_result=defender_result,
@@ -1049,7 +1052,7 @@ async def image_processing_workflow(
 
         # Update processing state before sanitization
         await update_processing_state_step(
-            workflow_id=DBOS.workflow_id,
+            workflow_id=parent_workflow_id,
             status="sanitizing",
             sanitization_started_at=datetime.now(timezone.utc),
             progress_percentage=75,
@@ -1068,7 +1071,7 @@ async def image_processing_workflow(
 
         # Update processing state after sanitization
         await update_processing_state_step(
-            workflow_id=DBOS.workflow_id,
+            workflow_id=parent_workflow_id,
             status="sanitized",
             sanitization_completed_at=datetime.now(timezone.utc),
             blob_url_sanitized=blob_url_sanitized,
@@ -1091,7 +1094,7 @@ async def image_processing_workflow(
 
         # Update processing state on completion
         await update_processing_state_step(
-            workflow_id=DBOS.workflow_id,
+            workflow_id=parent_workflow_id,
             status="completed",
             completed_at=datetime.now(timezone.utc),
             progress_percentage=100,
@@ -1121,7 +1124,7 @@ async def image_processing_workflow(
 
         # Update processing state on error
         await mark_processing_failed_step(
-            workflow_id=DBOS.workflow_id,
+            workflow_id=parent_workflow_id,
             error_message=str(e),
             error_details={"error_type": type(e).__name__},
             malware_detected=malware_detected,

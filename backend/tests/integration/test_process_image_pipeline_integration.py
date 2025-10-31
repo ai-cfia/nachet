@@ -556,15 +556,21 @@ class TestProcessImagePipelineWorkflow:
         file_bytes = get_test_seed_image()
 
         # Act - Execute workflow
+        from uuid6 import uuid7
+
+        test_workflow_id = str(uuid7())
+
         workflow_handle = DBOS.start_workflow(
             image_processing_workflow,
             image_id=image_id,
             file_bytes=file_bytes,
             user_id=test_user,
             org_prefix=org_prefix,
+            parent_workflow_id=test_workflow_id,
         )
 
-        workflow_id = workflow_handle.workflow_id
+        actual_workflow_id = workflow_handle.workflow_id
+        workflow_id = test_workflow_id
 
         # Create ImageProcessingState with the actual workflow_id
         state = ImageProcessingState(
@@ -603,10 +609,10 @@ class TestProcessImagePipelineWorkflow:
                 scan_result="No threats found",
             )
 
-        # Wait for workflow completion
+        # Wait for workflow completion (use actual child workflow ID)
         try:
             workflow_result = await wait_for_workflow_completion(
-                workflow_id=workflow_id,
+                workflow_id=actual_workflow_id,
                 timeout=60,
                 poll_interval=2.0,
             )
