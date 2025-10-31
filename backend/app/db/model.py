@@ -383,6 +383,9 @@ class Users(Base):
     change_logs: Mapped[List["ChangeLog"]] = relationship(
         "ChangeLog", back_populates="user"
     )
+    batch_upload_sessions: Mapped[List["BatchUploadSession"]] = relationship(
+        "BatchUploadSession", back_populates="user"
+    )
 
 
 class Folder(Base):
@@ -410,6 +413,9 @@ class Folder(Base):
     # Relationships
     user: Mapped["Users"] = relationship("Users", back_populates="folders")
     pictures: Mapped[List["Picture"]] = relationship("Picture", back_populates="folder")
+    batch_upload_sessions: Mapped[List["BatchUploadSession"]] = relationship(
+        "BatchUploadSession", back_populates="folder"
+    )
     org_admin_role: Mapped["RbacRole"] = relationship(
         "RbacRole",
         foreign_keys=[org_admin_role_id],
@@ -418,6 +424,34 @@ class Folder(Base):
     org_user_role: Mapped["RbacRole"] = relationship(
         "RbacRole",
         foreign_keys=[org_user_role_id],
+    )
+
+
+class BatchUploadSession(Base):
+    __tablename__ = "batch_upload_session"
+
+    id: Mapped[UUID] = mapped_column(UUID, primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(UUID, ForeignKey("users.id"), nullable=False)
+    folder_id: Mapped[UUID] = mapped_column(
+        UUID, ForeignKey("folder.id"), nullable=False
+    )
+    file_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    uploaded_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    duplicate_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    date_created: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=func.current_timestamp()
+    )
+
+    # Relationships
+    user: Mapped["Users"] = relationship(
+        "Users", back_populates="batch_upload_sessions"
+    )
+    folder: Mapped["Folder"] = relationship(
+        "Folder", back_populates="batch_upload_sessions"
     )
 
 
