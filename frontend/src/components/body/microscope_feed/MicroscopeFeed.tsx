@@ -611,8 +611,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
               sx={{
                 height: "100%",
                 width: "100%",
-                objectFit: "fit",
-                objectPosition: "cover",
+                objectFit: "contain",
               }}
             />
             {!isLoading && (
