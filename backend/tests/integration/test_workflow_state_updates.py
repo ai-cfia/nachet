@@ -207,21 +207,29 @@ class TestImageProcessingWorkflowStateUpdates:
         containers = get_test_container_names()
 
         # Act - Execute workflow
+        # In tests, we pass workflow_id as parent_workflow_id since we create state with that ID
+        # Generate a test workflow ID first
+        from uuid6 import uuid7
+
+        test_workflow_id = str(uuid7())
+
         workflow_handle = DBOS.start_workflow(
             image_processing_workflow,
             image_id=image_id,
             file_bytes=file_bytes,
             user_id=test_user,
             org_prefix=org_prefix,
+            parent_workflow_id=test_workflow_id,
         )
-        workflow_id = workflow_handle.get_workflow_id()
+        actual_workflow_id = workflow_handle.get_workflow_id()  # Child workflow ID
+        workflow_id = test_workflow_id  # Parent workflow ID used for state tracking
 
         # Create processing state immediately after workflow start
         from app.service.constants import ProcessingStatus
         import asyncio
 
         processing_state = ImageProcessingState(
-            workflow_id=workflow_id,
+            workflow_id=workflow_id,  # Use parent workflow ID
             picture_id=image_id,
             user_id=test_user,
             org_user_role_id=test_org_user_role,
@@ -252,8 +260,8 @@ class TestImageProcessingWorkflowStateUpdates:
             upload_placeholder=False,  # Blob already exists from workflow
         )
 
-        # Wait for workflow completion
-        await wait_for_workflow_completion(workflow_id, timeout=60)
+        # Wait for workflow completion (use actual child workflow ID)
+        await wait_for_workflow_completion(actual_workflow_id, timeout=60)
 
         # Expire all cached objects to force fresh database query
         integration_db_session.expire_all()
@@ -327,14 +335,20 @@ class TestImageProcessingWorkflowStateUpdates:
         containers = get_test_container_names()
 
         # Act
+        from uuid6 import uuid7
+
+        test_workflow_id = str(uuid7())
+
         workflow_handle = DBOS.start_workflow(
             image_processing_workflow,
             image_id=image_id,
             file_bytes=file_bytes,
             user_id=test_user,
             org_prefix=org_prefix,
+            parent_workflow_id=test_workflow_id,
         )
-        workflow_id = workflow_handle.get_workflow_id()
+        actual_workflow_id = workflow_handle.get_workflow_id()
+        workflow_id = test_workflow_id
 
         # Create processing state immediately after workflow start
         from app.service.constants import ProcessingStatus
@@ -372,7 +386,7 @@ class TestImageProcessingWorkflowStateUpdates:
             upload_placeholder=False,  # Blob already exists from workflow
         )
 
-        await wait_for_workflow_completion(workflow_id, timeout=60)
+        await wait_for_workflow_completion(actual_workflow_id, timeout=60)
 
         # Expire all cached objects to force fresh database query
         integration_db_session.expire_all()
@@ -409,14 +423,20 @@ class TestImageProcessingWorkflowStateUpdates:
         containers = get_test_container_names()
 
         # Act
+        from uuid6 import uuid7
+
+        test_workflow_id = str(uuid7())
+
         workflow_handle = DBOS.start_workflow(
             image_processing_workflow,
             image_id=image_id,
             file_bytes=file_bytes,
             user_id=test_user,
             org_prefix=org_prefix,
+            parent_workflow_id=test_workflow_id,
         )
-        workflow_id = workflow_handle.get_workflow_id()
+        actual_workflow_id = workflow_handle.get_workflow_id()
+        workflow_id = test_workflow_id
 
         # Create processing state immediately after workflow start
         from app.service.constants import ProcessingStatus
@@ -456,7 +476,7 @@ class TestImageProcessingWorkflowStateUpdates:
 
         # Wait for workflow (may fail due to malware, but state should be updated)
         try:
-            await wait_for_workflow_completion(workflow_id, timeout=60)
+            await wait_for_workflow_completion(actual_workflow_id, timeout=60)
         except Exception:
             pass  # Workflow might fail due to malware detection
 
@@ -674,14 +694,20 @@ class TestWorkflowStateErrorHandling:
         containers = get_test_container_names()
 
         # Act
+        from uuid6 import uuid7
+
+        test_workflow_id = str(uuid7())
+
         workflow_handle = DBOS.start_workflow(
             image_processing_workflow,
             image_id=image_id,
             file_bytes=file_bytes,
             user_id=test_user,
             org_prefix=org_prefix,
+            parent_workflow_id=test_workflow_id,
         )
-        workflow_id = workflow_handle.get_workflow_id()
+        actual_workflow_id = workflow_handle.get_workflow_id()
+        workflow_id = test_workflow_id
 
         # Create processing state immediately after workflow start
         from app.service.constants import ProcessingStatus
@@ -721,7 +747,7 @@ class TestWorkflowStateErrorHandling:
 
         # Wait for workflow to fail
         try:
-            await wait_for_workflow_completion(workflow_id, timeout=60)
+            await wait_for_workflow_completion(actual_workflow_id, timeout=60)
         except Exception:
             pass  # Expected to fail
 
