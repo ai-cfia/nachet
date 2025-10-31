@@ -94,12 +94,26 @@ export const getScaledBounds = (
   scaledTopX: number;
   scaledTopY: number;
 } => {
+  // Calculate scale factor for objectFit: "contain" behavior
+  // Use the smaller ratio to ensure the entire image fits
   const scaleFactorWidth = containerWidth / itemWidth;
   const scaleFactorHeight = containerHeight / itemHeight;
-  const scaledWidth = (box.bottomX - box.topX) * scaleFactorWidth;
-  const scaledHeight = (box.bottomY - box.topY) * scaleFactorHeight;
-  const scaledTopX = box.topX * scaleFactorWidth;
-  const scaledTopY = box.topY * scaleFactorHeight;
+  const scaleFactor = Math.min(scaleFactorWidth, scaleFactorHeight);
+
+  // Calculate the actual displayed dimensions of the image
+  const displayedWidth = itemWidth * scaleFactor;
+  const displayedHeight = itemHeight * scaleFactor;
+
+  // Calculate offsets for centering (letterboxing/pillarboxing)
+  const offsetX = (containerWidth - displayedWidth) / 2;
+  const offsetY = (containerHeight - displayedHeight) / 2;
+
+  // Apply the same scale factor to both dimensions and add centering offset
+  const scaledWidth = (box.bottomX - box.topX) * scaleFactor;
+  const scaledHeight = (box.bottomY - box.topY) * scaleFactor;
+  const scaledTopX = box.topX * scaleFactor + offsetX;
+  const scaledTopY = box.topY * scaleFactor + offsetY;
+
   return {
     scaledWidth,
     scaledHeight,
@@ -115,12 +129,23 @@ export const getUnscaledCoordinates = (
   itemHeight: number,
   box: BoxCSS,
 ): BoxCoordinates => {
-  const scaleFactorWidth = itemWidth / containerWidth;
-  const scaleFactorHeight = itemHeight / containerHeight;
-  const topX = box.left * scaleFactorWidth;
-  const topY = box.top * scaleFactorHeight;
-  const bottomX = (box.left + box.minWidth) * scaleFactorWidth;
-  const bottomY = (box.top + box.minHeight) * scaleFactorHeight;
+  // Calculate scale factor for objectFit: "contain" behavior (reverse of getScaledBounds)
+  const scaleFactorWidth = containerWidth / itemWidth;
+  const scaleFactorHeight = containerHeight / itemHeight;
+  const scaleFactor = Math.min(scaleFactorWidth, scaleFactorHeight);
+
+  // Calculate the actual displayed dimensions and offsets
+  const displayedWidth = itemWidth * scaleFactor;
+  const displayedHeight = itemHeight * scaleFactor;
+  const offsetX = (containerWidth - displayedWidth) / 2;
+  const offsetY = (containerHeight - displayedHeight) / 2;
+
+  // Remove offset first, then unscale
+  const topX = (box.left - offsetX) / scaleFactor;
+  const topY = (box.top - offsetY) / scaleFactor;
+  const bottomX = (box.left + box.minWidth - offsetX) / scaleFactor;
+  const bottomY = (box.top + box.minHeight - offsetY) / scaleFactor;
+
   return {
     topX,
     topY,

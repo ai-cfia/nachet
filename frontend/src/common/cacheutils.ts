@@ -42,13 +42,14 @@ const drawBoxLabel = (
     yValue = bottomY + 23;
   }
   ctx.beginPath();
-  ctx.fillStyle = "white";
-  ctx.fillRect(
-    boxMidX - labelBgWidth / 2,
-    topY - labelBgHeight,
-    labelBgWidth,
-    labelBgHeight - 2,
-  );
+  // Commented out white rectangle background for label text
+  // ctx.fillStyle = "white";
+  // ctx.fillRect(
+  //   boxMidX - labelBgWidth / 2,
+  //   topY - labelBgHeight,
+  //   labelBgWidth,
+  //   labelBgHeight - 2,
+  // );
   //ctx.fillRect(topX, topY - 30, 90, 30);
   // draw label index
   ctx.font = "bold 2.5vh Arial";
