@@ -20,6 +20,7 @@ interface ImageState {
   setCurrentIndex: (index: number) => void;
   getCurrentImage: () => Images | undefined;
   getImageIndexByImageId: (imageId: string) => number | undefined;
+  setImageId: (imageIndex: number, imageId: string) => void;
 }
 
 export const useImageStore = create<ImageState>()((set, get) => ({
@@ -102,5 +103,13 @@ export const useImageStore = create<ImageState>()((set, get) => ({
       (img) => img.imageId?.toString() === imageId.toString(),
     );
     return image?.index;
+  },
+
+  setImageId: (imageIndex: number, imageId: string) => {
+    const state = get();
+    const newImages = state.images.map((img) =>
+      img.index === imageIndex ? { ...img, imageId } : img,
+    );
+    set({ images: newImages });
   },
 }));

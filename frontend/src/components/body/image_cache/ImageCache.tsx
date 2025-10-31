@@ -119,7 +119,7 @@ const ImageCache: React.FC = () => {
                       paddingTop: "0.5vh",
                       paddingBottom: "0.5vh",
                       paddingLeft: "0.8vh",
-                      width: "11vw",
+                      // width: "11vw",
                       maxWidth: "11vw",
                       textOverflow: "break-word",
                       color: colours.CFIA_Font_Black,
@@ -148,7 +148,7 @@ const ImageCache: React.FC = () => {
                         }}
                       />
                       <span style={{ textAlign: "right" }}>
-                        Capture {item.index}
+                        {item.imageId ? item.imageId : `Capture ${item.index}`}
                       </span>
                       {isProcessing && (
                         <CircularProgress

@@ -1296,7 +1296,7 @@ describe("renderBoxesToContainer", () => {
     expect(captureLabel.style.position).toBe("absolute");
     expect(captureLabel.style.left).toBe("10px");
     expect(captureLabel.style.bottom).toBe("15px");
-    expect(captureLabel.style.color).toBe("rgb(78, 228, 78)"); // Browser converts hex to rgb
+    expect(captureLabel.style.color).toBe("red");
     expect(captureLabel.style.fontWeight).toBe("bold");
   });
 

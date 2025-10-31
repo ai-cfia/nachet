@@ -130,10 +130,14 @@ const drawBoxes = (
 
   // capture label in bottom left
   ctx.beginPath();
-  ctx.font = "bold 0.9vw Arial";
+  ctx.font = "bold 16px Arial";
   ctx.textAlign = "left";
-  ctx.fillStyle = "#4ee44e";
-  ctx.fillText(`Capture ${imageData.index}`, 10, canvas.height - 15);
+  ctx.fillStyle = "red";
+  ctx.fillText(
+    `${imageData.imageId ? imageData.imageId : `Capture ${imageData.index}`}`,
+    10,
+    canvas.height - 15,
+  );
   ctx.stroke();
   ctx.closePath();
 };
@@ -578,12 +582,12 @@ export const renderBoxesToContainer = (
   captureLabel.style.position = "absolute";
   captureLabel.style.left = "10px";
   captureLabel.style.bottom = "15px";
-  captureLabel.style.color = "#4ee44e";
+  captureLabel.style.color = "red";
   captureLabel.style.fontSize = "14px";
   captureLabel.style.fontWeight = "bold";
   captureLabel.style.pointerEvents = "none";
   captureLabel.className = "capture-label";
   captureLabel.setAttribute("data-testid", "capture-label");
-  captureLabel.textContent = `Capture ${imageData.index}`;
+  captureLabel.textContent = `${imageData.imageId ? imageData.imageId : `Capture ${imageData.index}`}`;
   container.appendChild(captureLabel);
 };
