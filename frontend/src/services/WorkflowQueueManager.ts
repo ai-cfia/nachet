@@ -10,6 +10,7 @@ interface QueueItem {
   imageIndex: number;
   imageId: string;
   tempId: string;
+  queuePosition: number;
 }
 
 interface ActiveWorkflow {
@@ -20,12 +21,29 @@ interface ActiveWorkflow {
   initialDelay: ReturnType<typeof setTimeout> | null;
 }
 
+interface WorkflowStore {
+  addWorkflow: (
+    workflowId: string,
+    imageId: string,
+    imageIndex: number,
+    queuePosition?: number,
+  ) => void;
+  updateWorkflowStatus: (
+    workflowId: string,
+    status: string,
+    error?: string | null,
+    queuePosition?: number,
+  ) => void;
+  removeWorkflow: (workflowId: string) => void;
+}
+
 interface WorkflowQueueManagerConfig {
   backendUrl: string;
   accessToken: string;
   selectedModel: string;
   curDir: { folderId: string; folderName: string };
   images: Images[];
+  workflowStore: WorkflowStore;
   onComplete: (
     workflowId: string,
     imageIndex: number,
@@ -59,13 +77,36 @@ export class WorkflowQueueManager {
    * Add workflow to queue and start processing if idle
    */
   enqueue(imageIndex: number, imageId: string): void {
+    if (!this.config) {
+      errorLogger.logError(
+        "[QueueManager] No configuration set",
+        new Error("Queue manager not configured"),
+        { imageIndex, imageId },
+      );
+      return;
+    }
+
     const tempId = `temp-${Date.now()}-${Math.random()}`;
+    const queuePosition = this.queue.length + 1;
 
-    this.queue.push({ imageIndex, imageId, tempId });
+    this.queue.push({ imageIndex, imageId, tempId, queuePosition });
 
-    console.log(
-      `[QueueManager] Enqueued workflow for image ${imageIndex}. Queue size: ${this.queue.length}`,
+    // Add to workflow store with "queued" status
+    this.config.workflowStore.addWorkflow(
+      tempId,
+      imageId,
+      imageIndex,
+      queuePosition,
     );
+    this.config.workflowStore.updateWorkflowStatus(
+      tempId,
+      "queued",
+      null,
+      queuePosition,
+    );
+
+    // Update queue positions for all items
+    this.updateQueuePositions();
 
     // Start processing if not already active
     if (!this.currentWorkflow && !this.isProcessing) {
@@ -74,37 +115,29 @@ export class WorkflowQueueManager {
   }
 
   /**
+   * Update queue positions for all queued items
+   */
+  private updateQueuePositions(): void {
+    this.queue.forEach((item, index) => {
+      item.queuePosition = index + 1;
+    });
+  }
+
+  /**
    * Process next queued workflow
    */
   private async processNext(): Promise<void> {
-    if (!this.config) {
-      console.warn("[QueueManager] No configuration set, cannot process queue");
-      return;
-    }
-
-    if (this.isProcessing) {
-      console.log("[QueueManager] Already processing, skipping");
-      return;
-    }
-
-    if (this.currentWorkflow) {
-      console.log(
-        "[QueueManager] Workflow already active, waiting for completion",
-      );
-      return;
-    }
-
-    if (this.queue.length === 0) {
-      console.log("[QueueManager] Queue empty, nothing to process");
+    if (
+      !this.config ||
+      this.isProcessing ||
+      this.currentWorkflow ||
+      this.queue.length === 0
+    ) {
       return;
     }
 
     this.isProcessing = true;
     const item = this.queue.shift()!;
-
-    console.log(
-      `[QueueManager] Processing workflow for image ${item.imageIndex}`,
-    );
 
     try {
       // Find image data
@@ -113,8 +146,10 @@ export class WorkflowQueueManager {
       );
 
       if (!image) {
-        console.error(
+        errorLogger.logError(
           `[QueueManager] Image not found for index ${item.imageIndex}`,
+          new Error("Image not found"),
+          { imageIndex: item.imageIndex, imageId: item.imageId },
         );
         this.isProcessing = false;
         this.config.onError(
@@ -122,16 +157,11 @@ export class WorkflowQueueManager {
           item.imageIndex,
           new Error("Image not found"),
         );
-        // Continue with next item
         this.processNext();
         return;
       }
 
       // Submit to backend
-      console.log(
-        `[QueueManager] Submitting /inf request for image ${item.imageIndex}`,
-      );
-
       const response = await inferenceRequest({
         backendUrl: this.config.backendUrl,
         selectedModel: this.config.selectedModel,
@@ -141,7 +171,15 @@ export class WorkflowQueueManager {
         folder_id: this.config.curDir.folderId,
       });
 
-      console.log(`[QueueManager] Workflow submitted: ${response.workflow_id}`);
+      // Remove temp workflow from store
+      this.config.workflowStore.removeWorkflow(item.tempId);
+
+      // Add real workflow with "pending" status
+      this.config.workflowStore.addWorkflow(
+        response.workflow_id,
+        item.imageId,
+        item.imageIndex,
+      );
 
       // Set as current active workflow
       this.currentWorkflow = {
@@ -154,16 +192,35 @@ export class WorkflowQueueManager {
 
       this.isProcessing = false;
 
+      // Update queue positions for remaining items
+      this.updateQueuePositions();
+
       // Start polling after initial delay
       this.startPolling(response.workflow_id);
     } catch (error) {
-      console.error("[QueueManager] Error submitting workflow:", error);
+      errorLogger.logError(
+        "[QueueManager] Error submitting workflow",
+        error as Error,
+        { imageIndex: item.imageIndex, imageId: item.imageId },
+      );
       this.isProcessing = false;
+
+      // Update workflow status to failed
+      this.config.workflowStore.updateWorkflowStatus(
+        item.tempId,
+        "failed",
+        error instanceof Error ? error.message : "Unknown error",
+      );
+
       this.config.onError(
         item.tempId,
         item.imageIndex,
         error instanceof Error ? error : new Error("Unknown error"),
       );
+
+      // Update queue positions
+      this.updateQueuePositions();
+
       // Continue with next item
       this.processNext();
     }
@@ -177,15 +234,8 @@ export class WorkflowQueueManager {
       !this.currentWorkflow ||
       this.currentWorkflow.workflowId !== workflowId
     ) {
-      console.warn(
-        `[QueueManager] Cannot start polling for ${workflowId}, not current workflow`,
-      );
       return;
     }
-
-    console.log(
-      `[QueueManager] Starting polling for ${workflowId} after ${INITIAL_DELAY_MS}ms delay`,
-    );
 
     // Wait before first poll
     const initialDelay = setTimeout(() => {
@@ -217,30 +267,26 @@ export class WorkflowQueueManager {
    * Poll workflow status once
    */
   private async pollWorkflow(workflowId: string): Promise<void> {
-    if (!this.config) {
-      return;
-    }
-
     if (
+      !this.config ||
       !this.currentWorkflow ||
       this.currentWorkflow.workflowId !== workflowId
     ) {
-      console.warn(
-        `[QueueManager] Polling called for ${workflowId} but it's not current workflow`,
-      );
       return;
     }
 
     try {
-      console.log(`[QueueManager] Polling status for ${workflowId}`);
-
       const statusResponse = await getWorkflowStatus({
         backendUrl: this.config.backendUrl,
         workflowId,
         accessToken: this.config.accessToken,
       });
 
-      console.log(`[QueueManager] Status: ${statusResponse.overall_status}`);
+      // Update workflow status in store
+      this.config.workflowStore.updateWorkflowStatus(
+        workflowId,
+        statusResponse.overall_status,
+      );
 
       // Check for terminal states
       if (statusResponse.overall_status === "completed") {
@@ -250,11 +296,9 @@ export class WorkflowQueueManager {
       }
       // Otherwise continue polling (pending/processing states)
     } catch (error) {
-      errorLogger.logError(
-        `Failed to poll workflow ${workflowId}`,
-        error as Error,
-        { workflowId },
-      );
+      errorLogger.logError(`Failed to poll workflow status`, error as Error, {
+        workflowId,
+      });
       // Don't fail the workflow on polling errors, will retry on next interval
     }
   }
@@ -263,18 +307,13 @@ export class WorkflowQueueManager {
    * Handle workflow completion
    */
   private async handleCompletion(workflowId: string): Promise<void> {
-    if (!this.config) {
-      return;
-    }
-
     if (
+      !this.config ||
       !this.currentWorkflow ||
       this.currentWorkflow.workflowId !== workflowId
     ) {
       return;
     }
-
-    console.log(`[QueueManager] Workflow completed: ${workflowId}`);
 
     const { imageIndex } = this.currentWorkflow;
 
@@ -283,15 +322,11 @@ export class WorkflowQueueManager {
 
     try {
       // Fetch results
-      console.log(`[QueueManager] Fetching results for ${workflowId}`);
-
       const results = await getWorkflowResults({
         backendUrl: this.config.backendUrl,
         workflowId,
         accessToken: this.config.accessToken,
       });
-
-      console.log(`[QueueManager] Results fetched successfully`);
 
       // Clear current workflow BEFORE calling callback
       this.currentWorkflow = null;
@@ -302,11 +337,10 @@ export class WorkflowQueueManager {
       // Process next item in queue
       this.processNext();
     } catch (error) {
-      errorLogger.logError(
-        `Failed to fetch results for ${workflowId}`,
-        error as Error,
-        { workflowId },
-      );
+      errorLogger.logError(`Failed to fetch workflow results`, error as Error, {
+        workflowId,
+        imageIndex,
+      });
 
       // Clear current workflow
       this.currentWorkflow = null;
@@ -349,10 +383,6 @@ export class WorkflowQueueManager {
       statusResponse.processing_workflow?.error_message ||
       "Workflow processing failed";
 
-    console.log(
-      `[QueueManager] Workflow failed: ${workflowId} - ${errorMessage}`,
-    );
-
     // Stop polling
     this.stopPolling();
 
@@ -383,10 +413,6 @@ export class WorkflowQueueManager {
       clearTimeout(this.currentWorkflow.initialDelay);
       this.currentWorkflow.initialDelay = null;
     }
-
-    console.log(
-      `[QueueManager] Stopped polling for ${this.currentWorkflow.workflowId}`,
-    );
   }
 
   /**
@@ -404,7 +430,6 @@ export class WorkflowQueueManager {
    * Clear queue and stop all polling (cleanup)
    */
   clear(): void {
-    console.log("[QueueManager] Clearing queue");
     this.stopPolling();
     this.queue = [];
     this.currentWorkflow = null;

@@ -14,6 +14,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ImageIcon from "@mui/icons-material/Image";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { colours } from "../../../styles/colours";
 import { useImageStore } from "@stores/useImageStore";
 import { useWorkflowStore } from "@stores/useWorkflowStore";
@@ -94,6 +95,7 @@ const ImageCache: React.FC = () => {
                 workflow?.status === "processing" ||
                 workflow?.status === "pending";
               const isQueued = workflow?.status === "queued";
+              const hasResults = item.boxes && item.boxes.length > 0;
 
               return (
                 <TableRow
@@ -167,6 +169,15 @@ const ImageCache: React.FC = () => {
                             },
                           }}
                           title={`Queue position ${workflow.queuePosition}`}
+                        />
+                      )}
+                      {hasResults && !isProcessing && !isQueued && (
+                        <CheckCircleIcon
+                          sx={{
+                            color: "#4caf50",
+                            fontSize: "1.6vh",
+                          }}
+                          titleAccess="Results available"
                         />
                       )}
                     </div>

@@ -12,11 +12,13 @@ interface WorkflowState {
     workflowId: string,
     imageId: string,
     imageIndex: number,
+    queuePosition?: number,
   ) => void;
   updateWorkflowStatus: (
     workflowId: string,
     status: WorkflowStatus,
     error?: string | null,
+    queuePosition?: number,
   ) => void;
   removeWorkflow: (workflowId: string) => void;
   getWorkflow: (workflowId: string) => WorkflowInfo | undefined;
@@ -27,7 +29,12 @@ interface WorkflowState {
 export const useWorkflowStore = create<WorkflowState>()((set, get) => ({
   workflows: new Map<string, WorkflowInfo>(),
 
-  addWorkflow: (workflowId: string, imageId: string, imageIndex: number) => {
+  addWorkflow: (
+    workflowId: string,
+    imageId: string,
+    imageIndex: number,
+    queuePosition?: number,
+  ) => {
     const now = Date.now();
     const newWorkflow: WorkflowInfo = {
       workflow_id: workflowId,
@@ -37,6 +44,7 @@ export const useWorkflowStore = create<WorkflowState>()((set, get) => ({
       started_at: now,
       last_checked_at: now,
       error: null,
+      queuePosition,
     };
 
     set((state) => {
@@ -50,6 +58,7 @@ export const useWorkflowStore = create<WorkflowState>()((set, get) => ({
     workflowId: string,
     status: WorkflowStatus,
     error: string | null = null,
+    queuePosition?: number,
   ) => {
     set((state) => {
       const workflow = state.workflows.get(workflowId);
@@ -60,6 +69,8 @@ export const useWorkflowStore = create<WorkflowState>()((set, get) => ({
         status,
         last_checked_at: Date.now(),
         error,
+        queuePosition:
+          queuePosition !== undefined ? queuePosition : workflow.queuePosition,
       };
 
       const newMap = new Map(state.workflows);
