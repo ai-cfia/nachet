@@ -15,9 +15,12 @@ const Footer: React.FC = () => {
   );
 
   // Derive isGuest from accountInfo
+  // acct === 0 means member account, acct !== 0 means guest account
   const isGuest = (() => {
-    const idTokenClaims = accountInfo?.idTokenClaims;
-    const acctClaim = idTokenClaims?.acct as number | undefined;
+    const idTokenClaims = accountInfo?.idTokenClaims as
+      | { acct?: number }
+      | undefined;
+    const acctClaim = idTokenClaims?.acct;
     return acctClaim !== 0;
   })();
 
