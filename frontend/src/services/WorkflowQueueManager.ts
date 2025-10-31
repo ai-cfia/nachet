@@ -44,6 +44,7 @@ interface WorkflowQueueManagerConfig {
   curDir: { folderId: string; folderName: string };
   images: Images[];
   workflowStore: WorkflowStore;
+  setImageId: (imageIndex: number, imageId: string) => void;
   onComplete: (
     workflowId: string,
     imageIndex: number,
@@ -171,13 +172,16 @@ export class WorkflowQueueManager {
         folder_id: this.config.curDir.folderId,
       });
 
+      // Store the image_id in the image store
+      this.config.setImageId(item.imageIndex, response.image_id);
+
       // Remove temp workflow from store
       this.config.workflowStore.removeWorkflow(item.tempId);
 
       // Add real workflow with "pending" status
       this.config.workflowStore.addWorkflow(
         response.workflow_id,
-        item.imageId,
+        response.image_id,
         item.imageIndex,
       );
 

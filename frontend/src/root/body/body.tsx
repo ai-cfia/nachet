@@ -116,6 +116,7 @@ const Body: React.FC<params> = (props) => {
     currentIndex: imageIndex,
     addCapturedImage,
     loadInferenceResults,
+    setImageId,
   } = useImageStore();
 
   // Derive imageSrc, imageTiff, and labelOccurrences from store
@@ -313,6 +314,7 @@ const Body: React.FC<params> = (props) => {
         },
         removeWorkflow,
       },
+      setImageId,
       onComplete: (workflowId, imageIndex, results) => {
         console.log(
           `[Workflow] Workflow ${workflowId} completed for image ${imageIndex}`,
@@ -348,6 +350,7 @@ const Body: React.FC<params> = (props) => {
     setModelDisplayName,
     addWorkflow,
     removeWorkflow,
+    setImageId,
   ]);
 
   useEffect(() => {
