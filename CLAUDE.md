@@ -254,6 +254,9 @@ curl http://localhost:8080/health
 # Check workflow status
 curl http://localhost:8080/workflow/{workflow_id}/status
 
+# auto format frontend code
+cd frontend && npm run format
+
 # Verify frontend build
 cd frontend && npm run build
 
