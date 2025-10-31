@@ -10,7 +10,7 @@ import UploadFileIcon from "@mui/icons-material/UploadFile";
 import DownloadIcon from "@mui/icons-material/Download";
 import CropFreeIcon from "@mui/icons-material/CropFree";
 import DonutSmallIcon from "@mui/icons-material/DonutSmall";
-import FormatShapesOutlinedIcon from "@mui/icons-material/FormatShapesOutlined";
+// import FormatShapesOutlinedIcon from "@mui/icons-material/FormatShapesOutlined";
 import InfoIcon from "@mui/icons-material/Info";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { colours } from "@styles/colours";
@@ -31,7 +31,7 @@ import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
 import { getUnscaledCoordinates } from "@common/imageutils";
-import { FreeformBox, NegativeFeedbackForm } from "../feedback_form";
+import { NegativeFeedbackForm } from "../feedback_form";
 import ApiAction from "../api_action";
 import ScaledInferenceBox from "../scaled_inference_box";
 import { useDeviceStore } from "@stores/useDeviceStore";
@@ -56,6 +56,7 @@ interface MicroscopeFeedProps {
   isWebcamActive: boolean;
   isLoading: boolean;
   onCaptureClick: () => void;
+  onFreeformBoxChange?: (box: BoxCSS | null, dragEnabled: boolean) => void;
   windowSize: {
     width: number;
     height: number;
@@ -131,6 +132,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     selectedModel,
     metadata,
     handleInference,
+    onFreeformBoxChange,
     handleDirectInference,
     isWebcamActive,
     isLoading,
@@ -158,14 +160,14 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     return model?.model_name || selectedModel;
   }, [metadata, selectedModel]);
 
-  const defaultBoxPosition: BoxCSS = {
-    minWidth: 100,
-    minHeight: 100,
-    maxWidth: 100,
-    maxHeight: 100,
-    left: width / 2 - 50,
-    top: height / 2 - 50,
-  };
+  // const defaultBoxPosition: BoxCSS = {
+  //   minWidth: 100,
+  //   minHeight: 100,
+  //   maxWidth: 100,
+  //   maxHeight: 100,
+  //   left: width / 2 - 50,
+  //   top: height / 2 - 50,
+  // };
 
   const [imageData, setImageData] = useState<Images | null>(null);
   const [feedbackMode, setFeedbackMode] = useState<boolean>(false);
@@ -179,6 +181,17 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
   const [apiSuccess, setApiSuccess] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [apiResultDismissed, setApiResultDismissed] = useState<boolean>(true);
+  const [boxDragEnabled, setBoxDragEnabled] = useState<boolean>(true);
+  const [boxChangesSaved, setBoxChangesSaved] = useState<boolean>(true);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isResizing, setIsResizing] = useState<boolean>(false);
+  const [resizeHandle, setResizeHandle] = useState<string>("none");
+  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
+  const [boxStart, setBoxStart] = useState<BoxCSS | null>(null);
+  const [canvasCursor, setCanvasCursor] = useState<string>("default");
 
   const { instance: msalInstance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
@@ -194,6 +207,50 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
       id: index,
     }));
   }, [speciesData]);
+
+  // Notify parent when freeform box or drag state changes
+  useEffect(() => {
+    if (onFreeformBoxChange && feedbackMode) {
+      onFreeformBoxChange(scaledFeedbackBox, boxDragEnabled);
+    } else if (onFreeformBoxChange && !feedbackMode) {
+      onFreeformBoxChange(null, true);
+    }
+  }, [scaledFeedbackBox, boxDragEnabled, feedbackMode, onFreeformBoxChange]);
+
+  // Update inferenceForRevision box coordinates when scaledFeedbackBox changes
+  useEffect(() => {
+    if (
+      feedbackMode &&
+      scaledFeedbackBox &&
+      inferenceForRevision &&
+      imageData
+    ) {
+      const unscaledBox = getUnscaledCoordinates(
+        width,
+        height,
+        imageData.imageDims[0],
+        imageData.imageDims[1],
+        scaledFeedbackBox,
+      );
+
+      setInferenceForRevision({
+        ...inferenceForRevision,
+        boxes: [
+          {
+            ...inferenceForRevision.boxes[0],
+            box: unscaledBox,
+          },
+        ],
+      });
+    }
+  }, [
+    scaledFeedbackBox,
+    feedbackMode,
+    imageData,
+    width,
+    height,
+    inferenceForRevision,
+  ]);
 
   const iconStyle = {
     fontSize: "1.7vh",
@@ -329,10 +386,10 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     });
   };
 
-  const handleAnnotate = () => {
-    setIsNewAnnotation(true);
-    enterFeedbackMode(imageIndex, defaultBoxPosition);
-  };
+  // const handleAnnotate = () => {
+  //   setIsNewAnnotation(true);
+  //   enterFeedbackMode(imageIndex, defaultBoxPosition);
+  // };
 
   const exitFeedbackMode = () => {
     toggleShowInference(true);
@@ -344,6 +401,247 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     setApiSuccess(false);
     setApiResultDismissed(true);
     setApiError(null);
+    setIsDragging(false);
+    setIsResizing(false);
+  };
+
+  const getResizeHandle = (
+    mouseX: number,
+    mouseY: number,
+    box: BoxCSS,
+  ): string => {
+    if (boxDragEnabled || !box) return "none";
+
+    const HANDLE_SIZE = 10;
+    const boxX = box.left;
+    const boxY = box.top;
+    const boxWidth = box.minWidth;
+    const boxHeight = box.minHeight;
+
+    // Check corners first
+    if (
+      Math.abs(mouseX - boxX) < HANDLE_SIZE &&
+      Math.abs(mouseY - boxY) < HANDLE_SIZE
+    )
+      return "top-left";
+    if (
+      Math.abs(mouseX - (boxX + boxWidth)) < HANDLE_SIZE &&
+      Math.abs(mouseY - boxY) < HANDLE_SIZE
+    )
+      return "top-right";
+    if (
+      Math.abs(mouseX - (boxX + boxWidth)) < HANDLE_SIZE &&
+      Math.abs(mouseY - (boxY + boxHeight)) < HANDLE_SIZE
+    )
+      return "bottom-right";
+    if (
+      Math.abs(mouseX - boxX) < HANDLE_SIZE &&
+      Math.abs(mouseY - (boxY + boxHeight)) < HANDLE_SIZE
+    )
+      return "bottom-left";
+
+    // Check edges
+    if (
+      mouseX >= boxX &&
+      mouseX <= boxX + boxWidth &&
+      Math.abs(mouseY - boxY) < HANDLE_SIZE
+    )
+      return "top";
+    if (
+      mouseX >= boxX &&
+      mouseX <= boxX + boxWidth &&
+      Math.abs(mouseY - (boxY + boxHeight)) < HANDLE_SIZE
+    )
+      return "bottom";
+    if (
+      mouseY >= boxY &&
+      mouseY <= boxY + boxHeight &&
+      Math.abs(mouseX - boxX) < HANDLE_SIZE
+    )
+      return "left";
+    if (
+      mouseY >= boxY &&
+      mouseY <= boxY + boxHeight &&
+      Math.abs(mouseX - (boxX + boxWidth)) < HANDLE_SIZE
+    )
+      return "right";
+
+    return "none";
+  };
+
+  const isInsideBox = (
+    mouseX: number,
+    mouseY: number,
+    box: BoxCSS,
+  ): boolean => {
+    if (!box) return false;
+    return (
+      mouseX >= box.left &&
+      mouseX <= box.left + box.minWidth &&
+      mouseY >= box.top &&
+      mouseY <= box.top + box.minHeight
+    );
+  };
+
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!feedbackMode || !scaledFeedbackBox) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    console.log("Mouse down:", {
+      mouseX,
+      mouseY,
+      box: scaledFeedbackBox,
+      boxDragEnabled,
+    });
+
+    const handle = getResizeHandle(mouseX, mouseY, scaledFeedbackBox);
+    const inside = isInsideBox(mouseX, mouseY, scaledFeedbackBox);
+
+    console.log("Handle:", handle, "Inside:", inside);
+
+    if (handle !== "none") {
+      console.log("Starting resize");
+      setIsResizing(true);
+      setResizeHandle(handle);
+      setDragStart({ x: mouseX, y: mouseY });
+      setBoxStart(scaledFeedbackBox);
+      setBoxChangesSaved(false);
+    } else if (inside && boxDragEnabled) {
+      console.log("Starting drag");
+      setIsDragging(true);
+      setDragStart({ x: mouseX, y: mouseY });
+      setBoxStart(scaledFeedbackBox);
+      setBoxChangesSaved(false);
+    }
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!feedbackMode || !scaledFeedbackBox) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    if (isDragging && boxStart) {
+      const deltaX = mouseX - dragStart.x;
+      const deltaY = mouseY - dragStart.y;
+      const displayWidth = rect.width;
+      const displayHeight = rect.height;
+
+      const newLeft = Math.max(
+        0,
+        Math.min(displayWidth - boxStart.minWidth, boxStart.left + deltaX),
+      );
+      const newTop = Math.max(
+        0,
+        Math.min(displayHeight - boxStart.minHeight, boxStart.top + deltaY),
+      );
+
+      console.log("Dragging:", { deltaX, deltaY, newLeft, newTop });
+
+      setScaledFeedbackBox({
+        ...boxStart,
+        left: newLeft,
+        top: newTop,
+      });
+    } else if (isResizing && boxStart) {
+      const deltaX = mouseX - dragStart.x;
+      const deltaY = mouseY - dragStart.y;
+
+      let newLeft = boxStart.left;
+      let newTop = boxStart.top;
+      let newWidth = boxStart.minWidth;
+      let newHeight = boxStart.minHeight;
+
+      switch (resizeHandle) {
+        case "top-left":
+          newLeft = boxStart.left + deltaX;
+          newTop = boxStart.top + deltaY;
+          newWidth = boxStart.minWidth - deltaX;
+          newHeight = boxStart.minHeight - deltaY;
+          break;
+        case "top-right":
+          newTop = boxStart.top + deltaY;
+          newWidth = boxStart.minWidth + deltaX;
+          newHeight = boxStart.minHeight - deltaY;
+          break;
+        case "bottom-right":
+          newWidth = boxStart.minWidth + deltaX;
+          newHeight = boxStart.minHeight + deltaY;
+          break;
+        case "bottom-left":
+          newLeft = boxStart.left + deltaX;
+          newWidth = boxStart.minWidth - deltaX;
+          newHeight = boxStart.minHeight + deltaY;
+          break;
+        case "top":
+          newTop = boxStart.top + deltaY;
+          newHeight = boxStart.minHeight - deltaY;
+          break;
+        case "bottom":
+          newHeight = boxStart.minHeight + deltaY;
+          break;
+        case "left":
+          newLeft = boxStart.left + deltaX;
+          newWidth = boxStart.minWidth - deltaX;
+          break;
+        case "right":
+          newWidth = boxStart.minWidth + deltaX;
+          break;
+      }
+
+      // Enforce minimum size
+      if (newWidth >= 20 && newHeight >= 20) {
+        setScaledFeedbackBox({
+          ...boxStart,
+          left: newLeft,
+          top: newTop,
+          minWidth: newWidth,
+          minHeight: newHeight,
+          maxWidth: newWidth,
+          maxHeight: newHeight,
+        });
+      }
+    } else {
+      // Update cursor based on hover position
+      const handle = getResizeHandle(mouseX, mouseY, scaledFeedbackBox);
+      if (handle !== "none") {
+        const cursors: Record<string, string> = {
+          none: "default",
+          top: "ns-resize",
+          right: "ew-resize",
+          bottom: "ns-resize",
+          left: "ew-resize",
+          "top-right": "nesw-resize",
+          "bottom-right": "nwse-resize",
+          "bottom-left": "nesw-resize",
+          "top-left": "nwse-resize",
+        };
+        setCanvasCursor(cursors[handle] || "default");
+      } else if (
+        isInsideBox(mouseX, mouseY, scaledFeedbackBox) &&
+        boxDragEnabled
+      ) {
+        setCanvasCursor("move");
+      } else {
+        setCanvasCursor("default");
+      }
+    }
+  };
+
+  const handleCanvasMouseUp = () => {
+    setIsDragging(false);
+    setIsResizing(false);
+    setResizeHandle("none");
   };
 
   const enterFeedbackMode = (index: number, boxPosition: BoxCSS) => {
@@ -371,10 +669,19 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
             boxId: "",
             box: unscaledBox,
             comment: "",
+            family: "",
+            genus: "",
+            species: "",
+            name_code: "",
           },
         ],
       });
     } else {
+      // Find matching species data for the existing box
+      const matchingSeed = classList.find(
+        (seed) => seed.seed_id === imageData.boxes[index].classId,
+      );
+
       setInferenceForRevision({
         userId: uuid,
         inferenceId: imageData.boxes[index].inferenceId,
@@ -390,6 +697,10 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
               bottomY: imageData.boxes[index].bottomY,
             },
             comment: "",
+            family: matchingSeed?.family || "",
+            genus: matchingSeed?.genus || "",
+            species: matchingSeed?.species || "",
+            name_code: matchingSeed?.name_code || "",
           },
         ],
       });
@@ -523,19 +834,19 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
         <ButtonMicroscopeFeed
           label="D"
           icon={<CropFreeIcon color="inherit" style={iconStyle} />}
-          disabled={isWebcamActive || imageCache.length == 0} // Disable when the webcam is active
+          disabled={isWebcamActive || imageCache.length == 0} // Disable when the webcam is active or guest user
           onClick={() => {
             handleDirectInference();
           }}
         />
-        <ButtonMicroscopeFeed
+        {/* <ButtonMicroscopeFeed
           label="ANNOTATE"
           icon={<FormatShapesOutlinedIcon color="inherit" style={iconStyle} />}
           disabled={isWebcamActive || imageCache.length == 0} // Disable when the webcam is active
           onClick={() => {
             handleAnnotate();
           }}
-        />
+        /> */}
       </Box>
       <div
         style={{
@@ -570,22 +881,21 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
         ) : // </Overlay>
         null}
         {feedbackMode && scaledFeedbackBox && inferenceForRevision && (
-          <>
-            <NegativeFeedbackForm
-              inference={inferenceForRevision}
-              position={scaledFeedbackBox}
-              classList={classList}
-              onCancel={exitFeedbackMode}
-              onSubmit={submitNegativeFeedback}
-              isNewAnnotation={isNewAnnotation}
-              classListLoading={classListLoading}
-            />
-            <FreeformBox
-              position={scaledFeedbackBox}
-              onCancel={exitFeedbackMode}
-              onSubmit={handleFreeformSubmit}
-            />
-          </>
+          <NegativeFeedbackForm
+            inference={inferenceForRevision}
+            classList={classList}
+            onCancel={exitFeedbackMode}
+            onSubmit={submitNegativeFeedback}
+            isNewAnnotation={isNewAnnotation}
+            classListLoading={classListLoading}
+            dragEnabled={boxDragEnabled}
+            onToggleDragResize={() => setBoxDragEnabled(!boxDragEnabled)}
+            onSaveBox={() => {
+              handleFreeformSubmit(scaledFeedbackBox);
+              setBoxChangesSaved(true);
+            }}
+            boxChangesSaved={boxChangesSaved}
+          />
         )}
         {isWebcamActive ? (
           <Webcam
@@ -608,10 +918,15 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
             <Box
               component="canvas"
               ref={canvasRef}
+              onMouseDown={handleCanvasMouseDown}
+              onMouseMove={handleCanvasMouseMove}
+              onMouseUp={handleCanvasMouseUp}
+              onMouseLeave={handleCanvasMouseUp}
               sx={{
                 height: "100%",
                 width: "100%",
                 objectFit: "contain",
+                cursor: canvasCursor,
               }}
             />
             {!isLoading && (
@@ -622,6 +937,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
                   position: "absolute",
                   top: 0,
                   left: 0,
+                  pointerEvents: feedbackMode ? "none" : "auto",
                 }}
               >
                 {imageData !== null &&

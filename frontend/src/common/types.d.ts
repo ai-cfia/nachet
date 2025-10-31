@@ -76,6 +76,10 @@ export interface FeedbackDataNegative extends FeedbackData {
     boxId: string;
     box: BoxCoordinates;
     comment: string;
+    family: string;
+    genus: string;
+    species: string;
+    name_code: string;
   }>;
 }
 

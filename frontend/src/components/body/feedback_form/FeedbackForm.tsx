@@ -6,11 +6,9 @@ import {
   Button,
   Autocomplete,
   TextField,
-  createFilterOptions,
   Select,
   MenuItem,
   SelectChangeEvent,
-  FilterOptionsState,
   Paper,
   TableContainer,
   Table,
@@ -19,14 +17,16 @@ import {
   TableCell,
   TableHead,
   Typography,
+  Modal,
 } from "@mui/material";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
-import { SyntheticEvent, useMemo, useState } from "react";
-import { BoxCSS, SpeciesData, FeedbackDataNegative } from "@common/types";
-import Draggable from "react-draggable";
+import OpenWithOutlinedIcon from "@mui/icons-material/OpenWithOutlined";
+import SaveIcon from "@mui/icons-material/Save";
+import OpenInFullOutlinedIcon from "@mui/icons-material/OpenInFullOutlined";
+import { useMemo, useState } from "react";
+import { SpeciesData, FeedbackDataNegative } from "@common/types";
 import LoadingIndicator from "../loading_indicator";
-import { classLabelSchema } from "@common/validation";
 
 interface SimpleFeedbackFormProps {
   anchorEl: HTMLButtonElement | null;
@@ -103,12 +103,15 @@ export const SimpleFeedbackForm = (props: SimpleFeedbackFormProps) => {
 
 interface NegativeFeedbackFormProps {
   inference: FeedbackDataNegative;
-  position: BoxCSS;
   classList: SpeciesData[];
   onCancel: () => void;
   onSubmit: (feedbackDataNegative: FeedbackDataNegative) => void;
   isNewAnnotation: boolean;
   classListLoading: boolean;
+  dragEnabled: boolean;
+  onToggleDragResize: () => void;
+  onSaveBox: () => void;
+  boxChangesSaved: boolean;
 }
 
 export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
@@ -125,131 +128,106 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
   }, []);
   /* Section stub convert to prop or use state when backend defined */
 
-  const defaultClass = useMemo(() => {
-    return {
-      id: -1,
-      seed_id: "",
-      name_code: "",
-      family: "",
-      genus: "",
-      species: "",
-      label: "",
-    };
-  }, []);
-
   const formWidth = "300px";
 
   const {
     inference,
-    position,
     classList,
     onCancel,
     onSubmit,
     isNewAnnotation,
     classListLoading,
+    dragEnabled,
+    onToggleDragResize,
+    onSaveBox,
+    boxChangesSaved,
   } = props;
 
-  // Derive initial selected class from inference
-  const initialSelectedClass = useMemo(() => {
-    if (inference != null) {
-      return (
-        classList.find((item) => {
-          return item.seed_id === inference.boxes[0].classId;
-        }) ?? defaultClass
-      );
-    }
-    return defaultClass;
-  }, [classList, defaultClass, inference]);
-
-  const [selectedClass, setSelectedClass] =
-    useState<SpeciesData>(initialSelectedClass);
+  // Initialize taxonomic fields from inference
+  const [family, setFamily] = useState<string>(
+    inference?.boxes[0]?.family || "",
+  );
+  const [genus, setGenus] = useState<string>(inference?.boxes[0]?.genus || "");
+  const [species, setSpecies] = useState<string>(
+    inference?.boxes[0]?.species || "",
+  );
+  const [nameCode, setNameCode] = useState<string>(
+    inference?.boxes[0]?.name_code || "",
+  );
   const [comment, setComment] = useState<string>(
     isNewAnnotation ? reasons[0] : reasons[1],
   );
-  const [classError, setClassError] = useState<string>("");
 
-  const filter = createFilterOptions<SpeciesData>();
+  // Error states
+  const [familyError, setFamilyError] = useState<string>("");
+  const [genusError, setGenusError] = useState<string>("");
+  const [speciesError, setSpeciesError] = useState<string>("");
+  const [nameCodeError, setNameCodeError] = useState<string>("");
 
-  const filteredClassList = (
-    options: SpeciesData[],
-    params: FilterOptionsState<SpeciesData>,
-  ): SpeciesData[] => {
-    const { inputValue } = params;
-    if (inputValue === "") {
-      return options;
-    }
-    const filtered = filter(options, params);
+  // Get unique values for each taxonomic field (cascading filters)
+  const availableFamilies = useMemo(() => {
+    return Array.from(new Set(classList.map((seed) => seed.family))).sort();
+  }, [classList]);
 
-    // Suggest the creation of a new value
-    const isExisting = options.some((option) => inputValue === option.label);
-    if (inputValue !== "" && !isExisting) {
-      filtered.push({
-        ...defaultClass,
-        label: `"${inputValue}"`,
-      });
-    }
+  const availableGenera = useMemo(() => {
+    const filtered = classList.filter(
+      (seed) => !family || seed.family === family,
+    );
+    return Array.from(new Set(filtered.map((seed) => seed.genus))).sort();
+  }, [classList, family]);
 
-    return filtered;
-  };
+  const availableSpecies = useMemo(() => {
+    const filtered = classList.filter(
+      (seed) =>
+        (!family || seed.family === family) && (!genus || seed.genus === genus),
+    );
+    return Array.from(new Set(filtered.map((seed) => seed.species))).sort();
+  }, [classList, family, genus]);
 
-  const getClassLabel = (option: string | SpeciesData): string => {
-    return typeof option === "string" ? option : option.label || "";
-  };
-
-  const handleClassChange = (
-    event: SyntheticEvent<Element, Event>,
-    newValue: string | SpeciesData | null,
-  ) => {
-    event.preventDefault();
-
-    // Clear previous error
-    setClassError("");
-
-    if (newValue == null) {
-      setSelectedClass(defaultClass);
-    } else if (typeof newValue === "string") {
-      // Validate custom class label
-      const validation = classLabelSchema.safeParse(newValue);
-      if (!validation.success) {
-        setClassError(validation.error.issues[0].message);
-        return;
-      }
-
-      setSelectedClass({
-        ...defaultClass,
-        label: newValue,
-      });
-    } else {
-      setSelectedClass(newValue);
-    }
-  };
+  const availableNameCodes = useMemo(() => {
+    const filtered = classList.filter(
+      (seed) =>
+        (!family || seed.family === family) &&
+        (!genus || seed.genus === genus) &&
+        (!species || seed.species === species),
+    );
+    return Array.from(new Set(filtered.map((seed) => seed.name_code))).sort();
+  }, [classList, family, genus, species]);
 
   const handleCommentChange = (event: SelectChangeEvent<string>) => {
     const newComment = event.target.value;
     setComment(newComment);
 
-    // Clear selected class when "No Seed" is selected
+    // Clear taxonomic fields when "No Seed" is selected
     if (newComment === "No Seed") {
-      setSelectedClass({
-        id: -1,
-        seed_id: "",
-        name_code: "",
-        family: "",
-        genus: "",
-        species: "",
-        label: "",
-      });
+      setFamily("");
+      setGenus("");
+      setSpecies("");
+      setNameCode("");
     }
   };
 
   const handleSubmit = () => {
+    // Find the matching seed_id based on taxonomic fields
+    const matchingSeed = classList.find(
+      (seed) =>
+        seed.family === family &&
+        seed.genus === genus &&
+        seed.species === species &&
+        seed.name_code === nameCode,
+    );
+
     onSubmit({
       ...inference,
       boxes: [
         {
           ...inference.boxes[0],
-          classId: selectedClass.seed_id,
-          label: selectedClass.label || "",
+          classId: matchingSeed?.seed_id || "",
+          label: matchingSeed?.label || "",
+          family: family,
+          genus: genus,
+          species: species,
+          name_code: nameCode,
           comment: comment,
         },
       ],
@@ -261,26 +239,31 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
   };
 
   return (
-    <Draggable
-      defaultPosition={{
-        x: position.left - parseInt(formWidth.slice(0, -2)) - 10,
-        y: position.top,
+    <Modal
+      open={true}
+      onClose={handleCancel}
+      hideBackdrop={true}
+      sx={{
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "flex-end",
+        pointerEvents: "none",
       }}
-      bounds="parent"
-      disabled={false}
     >
       <Box
         sx={{
-          id: "negative-feedback",
           position: "absolute",
-          zIndex: 500,
+          top: "50%",
+          right: "250px",
+          transform: "translateY(-50%)",
           backgroundColor: "white",
           border: "2px solid black",
           padding: "10px",
           minWidth: formWidth,
-          minHeight: "5px",
           borderRadius: "10px",
-          justifyContent: "center",
+          maxHeight: "90vh",
+          overflow: "auto",
+          pointerEvents: "auto",
         }}
       >
         <FormControl size="small" sx={{ width: "100%", alignItems: "center" }}>
@@ -290,6 +273,36 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
           >
             Feedback
           </Typography>
+
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "row",
+              justifyContent: "center",
+              alignItems: "center",
+              marginBottom: "10px",
+              border: "1px solid lightgrey",
+              borderRadius: "5%",
+            }}
+          >
+            <IconButton
+              className="freeform-toolbar-button freeform-toolbar-button-blue"
+              onClick={onToggleDragResize}
+            >
+              {dragEnabled ? (
+                <OpenWithOutlinedIcon />
+              ) : (
+                <OpenInFullOutlinedIcon />
+              )}
+            </IconButton>
+
+            <IconButton
+              className={`freeform-toolbar-button ${boxChangesSaved ? "freeform-toolbar-button-green" : "freeform-toolbar-button-grey"}`}
+              onClick={onSaveBox}
+            >
+              <SaveIcon />
+            </IconButton>
+          </Box>
 
           <>
             <TableContainer component={Paper} sx={{ maxWidth: "fit-content" }}>
@@ -308,25 +321,37 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
                   <TableRow>
                     <TableCell>TopX</TableCell>
                     <TableCell sx={{ textAlign: "right" }}>
-                      {inference.boxes[0].box.topX.toFixed(2)}
+                      {typeof inference.boxes[0].box.topX === "number" &&
+                      isFinite(inference.boxes[0].box.topX)
+                        ? inference.boxes[0].box.topX.toFixed(2)
+                        : "N/A"}
                     </TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell>TopY</TableCell>
                     <TableCell sx={{ textAlign: "right" }}>
-                      {inference.boxes[0].box.topY.toFixed(2)}
+                      {typeof inference.boxes[0].box.topY === "number" &&
+                      isFinite(inference.boxes[0].box.topY)
+                        ? inference.boxes[0].box.topY.toFixed(2)
+                        : "N/A"}
                     </TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell>BottomX</TableCell>
                     <TableCell sx={{ textAlign: "right" }}>
-                      {inference.boxes[0].box.bottomX.toFixed(2)}
+                      {typeof inference.boxes[0].box.bottomX === "number" &&
+                      isFinite(inference.boxes[0].box.bottomX)
+                        ? inference.boxes[0].box.bottomX.toFixed(2)
+                        : "N/A"}
                     </TableCell>
                   </TableRow>
                   <TableRow>
                     <TableCell>BottomY</TableCell>
                     <TableCell sx={{ textAlign: "right" }}>
-                      {inference.boxes[0].box.bottomY.toFixed(2)}
+                      {typeof inference.boxes[0].box.bottomY === "number" &&
+                      isFinite(inference.boxes[0].box.bottomY)
+                        ? inference.boxes[0].box.bottomY.toFixed(2)
+                        : "N/A"}
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -335,35 +360,99 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
             {classListLoading ? (
               <LoadingIndicator />
             ) : (
-              <Autocomplete
-                id="feedback-class"
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Class"
-                    error={!!classError}
-                    helperText={classError}
-                  />
-                )}
-                options={classList}
-                value={selectedClass}
-                onChange={handleClassChange}
-                isOptionEqualToValue={(option, value) =>
-                  option.label === value.label
-                }
-                filterOptions={filteredClassList}
-                disablePortal
-                selectOnFocus
-                clearOnBlur
-                handleHomeEndKeys
-                freeSolo={comment === "Wrong Seed not in List"}
-                getOptionLabel={getClassLabel}
-                sx={{
-                  marginTop: "20px",
-                  width: "100%",
-                }}
-                disabled={comment === "No Seed"}
-              />
+              <>
+                <Autocomplete
+                  id="feedback-family"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Family"
+                      error={!!familyError}
+                      helperText={familyError}
+                    />
+                  )}
+                  options={availableFamilies}
+                  value={family}
+                  onChange={(_event, newValue) => {
+                    setFamily(newValue || "");
+                    if (familyError) setFamilyError("");
+                  }}
+                  sx={{
+                    marginTop: "20px",
+                    width: "100%",
+                  }}
+                  disabled={comment === "No Seed"}
+                />
+
+                <Autocomplete
+                  id="feedback-genus"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Genus"
+                      error={!!genusError}
+                      helperText={genusError}
+                    />
+                  )}
+                  options={availableGenera}
+                  value={genus}
+                  onChange={(_event, newValue) => {
+                    setGenus(newValue || "");
+                    if (genusError) setGenusError("");
+                  }}
+                  sx={{
+                    marginTop: "10px",
+                    width: "100%",
+                  }}
+                  disabled={comment === "No Seed"}
+                />
+
+                <Autocomplete
+                  id="feedback-species"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Species"
+                      error={!!speciesError}
+                      helperText={speciesError}
+                    />
+                  )}
+                  options={availableSpecies}
+                  value={species}
+                  onChange={(_event, newValue) => {
+                    setSpecies(newValue || "");
+                    if (speciesError) setSpeciesError("");
+                  }}
+                  sx={{
+                    marginTop: "10px",
+                    width: "100%",
+                  }}
+                  disabled={comment === "No Seed"}
+                />
+
+                <Autocomplete
+                  id="feedback-name-code"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Name Code"
+                      error={!!nameCodeError}
+                      helperText={nameCodeError}
+                    />
+                  )}
+                  options={availableNameCodes}
+                  value={nameCode}
+                  onChange={(_event, newValue) => {
+                    setNameCode(newValue || "");
+                    if (nameCodeError) setNameCodeError("");
+                  }}
+                  sx={{
+                    marginTop: "10px",
+                    width: "100%",
+                  }}
+                  disabled={comment === "No Seed"}
+                />
+              </>
             )}
 
             <Select
@@ -429,6 +518,6 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
           </Box>
         </FormControl>
       </Box>
-    </Draggable>
+    </Modal>
   );
 };
