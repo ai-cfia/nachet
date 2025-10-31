@@ -821,9 +821,9 @@ export const WorkflowStatusResponseSchema = z.object({
   workflow_type: z.string(),
   image_id: z.string(),
   overall_status: z.string(),
-  parent_workflow: ParentWorkflowStatusSchema.nullable(),
-  processing_workflow: ProcessingWorkflowStatusSchema.nullable(),
-  inference_workflow: InferenceWorkflowStatusSchema.nullable(),
+  parent_workflow: ParentWorkflowStatusSchema.nullable().optional(),
+  processing_workflow: ProcessingWorkflowStatusSchema.nullable().optional(),
+  inference_workflow: InferenceWorkflowStatusSchema.nullable().optional(),
   authorization: z.object({
     user_id: z.string(),
     is_owner: z.boolean(),

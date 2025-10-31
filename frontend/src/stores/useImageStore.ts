@@ -19,6 +19,7 @@ interface ImageState {
   setImages: (images: Images[]) => void;
   setCurrentIndex: (index: number) => void;
   getCurrentImage: () => Images | undefined;
+  getImageIndexByImageId: (imageId: string) => number | undefined;
 }
 
 export const useImageStore = create<ImageState>()((set, get) => ({
@@ -93,5 +94,13 @@ export const useImageStore = create<ImageState>()((set, get) => ({
   getCurrentImage: () => {
     const state = get();
     return state.images.find((img) => img.index === state.currentIndex);
+  },
+
+  getImageIndexByImageId: (imageId: string | number) => {
+    const state = get();
+    const image = state.images.find(
+      (img) => img.imageId?.toString() === imageId.toString(),
+    );
+    return image?.index;
   },
 }));

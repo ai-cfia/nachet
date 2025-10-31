@@ -8,12 +8,15 @@ import {
   IconButton,
   Box,
   CardHeader,
+  CircularProgress,
+  Chip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ImageIcon from "@mui/icons-material/Image";
 import { colours } from "../../../styles/colours";
 import { useImageStore } from "@stores/useImageStore";
+import { useWorkflowStore } from "@stores/useWorkflowStore";
 
 const ImageCache: React.FC = () => {
   const {
@@ -23,6 +26,8 @@ const ImageCache: React.FC = () => {
     removeImage,
     clearImages: clearImageCache,
   } = useImageStore();
+
+  const { getWorkflowByImageIndex } = useWorkflowStore();
   return (
     <Box
       sx={{
@@ -83,92 +88,121 @@ const ImageCache: React.FC = () => {
       >
         <Table sx={{ borderBottom: 0 }}>
           <TableBody sx={{ borderBottom: 0 }}>
-            {savedImages.map((item: any, i) => (
-              <TableRow
-                key={i}
-                sx={{
-                  backgroundColor:
-                    item.index === imageIndex
-                      ? "#F5F5F5"
-                      : colours.CFIA_Background_White,
-                  "&:hover": {
-                    backgroundColor: "#F5F5F5",
-                    transition: "0.1s ease-in-out all",
-                  },
-                }}
-              >
-                <TableCell
+            {savedImages.map((item: any, i) => {
+              const workflow = getWorkflowByImageIndex(item.index);
+              const isProcessing =
+                workflow?.status === "processing" ||
+                workflow?.status === "pending";
+              const isQueued = workflow?.status === "queued";
+
+              return (
+                <TableRow
+                  key={i}
                   sx={{
-                    cursor: "pointer",
-                    paddingRight: 0,
-                    fontSize: "1.1vh",
-                    paddingTop: "0.5vh",
-                    paddingBottom: "0.5vh",
-                    paddingLeft: "0.8vh",
-                    width: "11vw",
-                    maxWidth: "11vw",
-                    textOverflow: "break-word",
-                    color: colours.CFIA_Font_Black,
-                  }}
-                  align="left"
-                  onClick={() => {
-                    setImageIndex(item.index);
+                    backgroundColor:
+                      item.index === imageIndex
+                        ? "#F5F5F5"
+                        : colours.CFIA_Background_White,
+                    "&:hover": {
+                      backgroundColor: "#F5F5F5",
+                      transition: "0.1s ease-in-out all",
+                    },
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      flexWrap: "wrap",
+                  <TableCell
+                    sx={{
+                      cursor: "pointer",
+                      paddingRight: 0,
+                      fontSize: "1.1vh",
+                      paddingTop: "0.5vh",
+                      paddingBottom: "0.5vh",
+                      paddingLeft: "0.8vh",
+                      width: "11vw",
+                      maxWidth: "11vw",
+                      textOverflow: "break-word",
+                      color: colours.CFIA_Font_Black,
                     }}
-                  >
-                    <ImageIcon
-                      style={{
-                        color: colours.CFIA_Background_Blue,
-                        fontSize: "1.8vh",
-                        marginTop: 0,
-                        marginBottom: 0,
-                        paddingTop: 0,
-                        paddingBottom: 0,
-                        paddingRight: "0.3vw",
-                      }}
-                    />
-                    <span style={{ textAlign: "right" }}>
-                      Capture {item.index}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell
-                  align="right"
-                  sx={{
-                    cursor: "pointer",
-                    paddingLeft: 0,
-                    fontSize: "1.0vh",
-                    paddingTop: "0.5vh",
-                    paddingBottom: "0.5vh",
-                    paddingRight: "0.8vh",
-                  }}
-                >
-                  <IconButton
+                    align="left"
                     onClick={() => {
-                      removeImage(item.index);
+                      setImageIndex(item.index);
                     }}
-                    sx={{ padding: 0 }}
                   >
-                    <CloseIcon
+                    <div
                       style={{
-                        color: colours.CFIA_Background_Blue,
-                        fontSize: "1.8vh",
-                        marginTop: 0,
-                        marginBottom: 0,
-                        paddingTop: 0,
-                        paddingBottom: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: "0.3vw",
                       }}
-                    />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
+                    >
+                      <ImageIcon
+                        style={{
+                          color: colours.CFIA_Background_Blue,
+                          fontSize: "1.8vh",
+                          marginTop: 0,
+                          marginBottom: 0,
+                          paddingTop: 0,
+                          paddingBottom: 0,
+                        }}
+                      />
+                      <span style={{ textAlign: "right" }}>
+                        Capture {item.index}
+                      </span>
+                      {isProcessing && (
+                        <CircularProgress
+                          size={14}
+                          sx={{ ml: 0.5 }}
+                          title="Processing..."
+                        />
+                      )}
+                      {isQueued && (
+                        <Chip
+                          label={`#${workflow.queuePosition}`}
+                          size="small"
+                          sx={{
+                            height: "16px",
+                            fontSize: "0.7em",
+                            "& .MuiChip-label": {
+                              padding: "0 6px",
+                            },
+                          }}
+                          title={`Queue position ${workflow.queuePosition}`}
+                        />
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{
+                      cursor: "pointer",
+                      paddingLeft: 0,
+                      fontSize: "1.0vh",
+                      paddingTop: "0.5vh",
+                      paddingBottom: "0.5vh",
+                      paddingRight: "0.8vh",
+                    }}
+                  >
+                    <IconButton
+                      onClick={() => {
+                        removeImage(item.index);
+                      }}
+                      sx={{ padding: 0 }}
+                    >
+                      <CloseIcon
+                        style={{
+                          color: colours.CFIA_Background_Blue,
+                          fontSize: "1.8vh",
+                          marginTop: 0,
+                          marginBottom: 0,
+                          paddingTop: 0,
+                          paddingBottom: 0,
+                        }}
+                      />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>

@@ -272,11 +272,21 @@ export interface WorkflowStatusResponse {
   };
 }
 
+export type WorkflowStatus =
+  | "queued" // Waiting in queue (not yet submitted to backend)
+  | "pending" // Submitted to backend, waiting to process
+  | "processing" // Active processing
+  | "completed" // Successfully completed
+  | "failed" // Error occurred
+  | "cancelled"; // User cancelled (future)
+
 export interface WorkflowInfo {
   workflow_id: string;
   image_id: string;
-  status: string;
+  imageIndex: number; // Track which image this workflow belongs to
+  status: WorkflowStatus;
   started_at: number;
   last_checked_at: number;
   error: string | null;
+  queuePosition?: number; // Position in queue (for queued items)
 }
