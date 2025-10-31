@@ -27,7 +27,7 @@ import {
 } from "@common/types";
 import { sendNegativeFeedback, sendPositiveFeedback } from "@common";
 import { useSpeciesData } from "@hooks";
-import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { useMsal, useIsAuthenticated, useAccount } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
 import { getUnscaledCoordinates } from "@common/imageutils";
@@ -195,10 +195,21 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
 
   const { instance: msalInstance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
+  const accountInfo = useAccount();
   const { speciesData, isLoading: classListLoading } = useSpeciesData(
     backendUrl,
     apiScopeClaim,
   );
+
+  // Derive isGuest from accountInfo
+  // acct === 0 means member account, acct !== 0 means guest account
+  const isGuest = (() => {
+    const idTokenClaims = accountInfo?.idTokenClaims as
+      | { acct?: number }
+      | undefined;
+    const acctClaim = idTokenClaims?.acct;
+    return acctClaim !== 0;
+  })();
 
   const classList: SpeciesData[] = useMemo(() => {
     if (!speciesData?.seeds) return [];
@@ -831,14 +842,16 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
             handleInference();
           }}
         />
-        <ButtonMicroscopeFeed
-          label="D"
-          icon={<CropFreeIcon color="inherit" style={iconStyle} />}
-          disabled={isWebcamActive || imageCache.length == 0} // Disable when the webcam is active or guest user
-          onClick={() => {
-            handleDirectInference();
-          }}
-        />
+        {!isGuest && (
+          <ButtonMicroscopeFeed
+            label="D"
+            icon={<CropFreeIcon color="inherit" style={iconStyle} />}
+            disabled={isWebcamActive || imageCache.length == 0} // Disable when the webcam is active
+            onClick={() => {
+              handleDirectInference();
+            }}
+          />
+        )}
         {/* <ButtonMicroscopeFeed
           label="ANNOTATE"
           icon={<FormatShapesOutlinedIcon color="inherit" style={iconStyle} />}
