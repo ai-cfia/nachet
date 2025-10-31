@@ -25,11 +25,7 @@ import {
   Images,
   ModelMetadata,
 } from "@common/types";
-import {
-  sendNegativeFeedback,
-  sendPositiveFeedback,
-  loadResultsToCache,
-} from "@common";
+import { sendNegativeFeedback, sendPositiveFeedback } from "@common";
 import { useSpeciesData } from "@hooks";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
@@ -39,6 +35,7 @@ import { FreeformBox, NegativeFeedbackForm } from "../feedback_form";
 import ApiAction from "../api_action";
 import ScaledInferenceBox from "../scaled_inference_box";
 import { useDeviceStore } from "@stores/useDeviceStore";
+import { useImageStore } from "@stores/useImageStore";
 
 interface MicroscopeFeedProps {
   webcamRef: React.RefObject<Webcam | null>;
@@ -54,11 +51,8 @@ interface MicroscopeFeedProps {
   setSwitchModelOpen: React.Dispatch<React.SetStateAction<boolean>>;
   selectedModel: string;
   metadata: ModelMetadata[];
-  imageCache: Images[];
-  setImageCache: React.Dispatch<React.SetStateAction<Images[]>>;
   handleInference: () => void;
   handleDirectInference: () => void;
-  imageIndex: number;
   isWebcamActive: boolean;
   isLoading: boolean;
   onCaptureClick: () => void;
@@ -136,11 +130,8 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     setSwitchModelOpen,
     selectedModel,
     metadata,
-    imageCache,
-    setImageCache,
     handleInference,
     handleDirectInference,
-    imageIndex,
     isWebcamActive,
     isLoading,
     onCaptureClick,
@@ -152,6 +143,11 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
   } = props;
 
   const { isDeviceInfoSet } = useDeviceStore();
+  const {
+    images: imageCache,
+    currentIndex: imageIndex,
+    loadInferenceResults,
+  } = useImageStore();
 
   const width = windowSize.width * 0.575;
   const height = windowSize.height * 0.605;
@@ -258,7 +254,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
         accessToken,
       });
       console.log("Positive Feedback submitted successfully");
-      setImageCache(loadResultsToCache(response, imageCache, imageIndex));
+      loadInferenceResults(response, imageIndex);
       setApiSuccess(true);
     } catch (error) {
       console.error("Error submitting feedback: ", error);
@@ -300,7 +296,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
         accessToken,
       });
       console.log("Negative Feedback submitted successfully");
-      setImageCache(loadResultsToCache(response, imageCache, imageIndex));
+      loadInferenceResults(response, imageIndex);
       setApiSuccess(true);
     } catch (error) {
       console.error("Error submitting feedback: ", error);

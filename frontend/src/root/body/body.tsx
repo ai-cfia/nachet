@@ -23,6 +23,7 @@ import {
 import { useBackendUrl, useDecoderTiff, useDeviceData } from "@hooks";
 import { useWorkflowPolling } from "@hooks/useWorkflowPolling";
 import { useWorkflowStore } from "../../stores/useWorkflowStore";
+import { useImageStore } from "../../stores/useImageStore";
 import {
   InteractionRequiredAuthError,
   InteractionStatus,
@@ -37,10 +38,7 @@ import {
 import { acquireAccessToken } from "@common/auth";
 import {
   getLabelOccurrence,
-  loadCaptureToCache,
-  loadResultsToCache,
   loadToCanvas,
-  nextCacheIndex,
   fetchModelMetadata,
   inferenceRequest,
   inferenceDirectRequest,
@@ -51,7 +49,6 @@ import {
 import {
   AzureStorageDirectoryItem,
   AzureStorageDirectoryItemApi,
-  Images,
   ModelMetadata,
 } from "@common/types";
 // import Cookies from "js-cookie";
@@ -70,7 +67,6 @@ interface params {
 const Body: React.FC<params> = (props) => {
   const defaultImageSrc =
     "https://ai-cfia.github.io/nachet-frontend/placeholder-image.jpg";
-  const [imageIndex, setImageIndex] = useState<number>(0);
   const [imageFormat, setImageFormat] = useState<string>("image/png");
   const [imageLabel, setImageLabel] = useState<string>("");
   const [saveOpen, setSaveOpen] = useState(false);
@@ -80,7 +76,6 @@ const Body: React.FC<params> = (props) => {
   const [switchDeviceOpen, setSwitchDeviceOpen] = useState(false);
   const [deviceInfoOpen, setDeviceInfoOpen] = useState(false);
   const [createDirectoryOpen, setCreateDirectoryOpen] = useState(false);
-  const [imageCache, setImageCache] = useState<Images[]>([]);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [activeDeviceId, setActiveDeviceId] = useState<string | undefined>(
     undefined,
@@ -113,7 +108,15 @@ const Body: React.FC<params> = (props) => {
   // Workflow store actions
   const addWorkflow = useWorkflowStore((state) => state.addWorkflow);
 
-  // Derive imageSrc, imageTiff, and labelOccurrences from imageCache and imageIndex
+  // Image store
+  const {
+    images: imageCache,
+    currentIndex: imageIndex,
+    addCapturedImage,
+    loadInferenceResults,
+  } = useImageStore();
+
+  // Derive imageSrc, imageTiff, and labelOccurrences from store
   const currentImageData = useMemo(() => {
     return imageCache.find((img) => img.index === imageIndex);
   }, [imageCache, imageIndex]);
@@ -170,29 +173,12 @@ const Body: React.FC<params> = (props) => {
     if (src === null || src === undefined) {
       return;
     }
-    pushImageToCache(src);
+    addCapturedImage(src);
   };
 
   const pushImageToCache = (src: string): void => {
-    // loads image to cache when image is uploaded
-    const nextIndex = nextCacheIndex(imageIndex, imageCache);
-    loadCaptureToCache(src, imageCache, nextIndex).then((newCache) => {
-      setImageCache(newCache);
-      setImageIndex(nextIndex);
-    });
-  };
-
-  const removeFromCache = (index: number): void => {
-    // removes image from cache based on given index value when delete button is pressed
-    const newCache = imageCache.filter((item) => item.index !== index);
-    setImageCache(newCache);
-    setImageIndex(nextCacheIndex(imageIndex, newCache));
-  };
-
-  const clearCache = (): void => {
-    // clears image cache when clear button is pressed
-    setImageCache([]);
-    setImageIndex(0);
+    // loads image to cache when image is uploaded (called from UploadPopup)
+    addCapturedImage(src);
   };
 
   const handleDirChange = (dir: AzureStorageDirectoryItem | null): void => {
@@ -236,7 +222,7 @@ const Body: React.FC<params> = (props) => {
         })
         .then((response) => {
           setReadAzureStorage(!readAzureStorage);
-          setImageCache(loadResultsToCache(response, imageCache, imageIndex));
+          loadInferenceResults(response, imageIndex);
           setModelDisplayName(selectedModel);
         })
         .catch((error) => {
@@ -320,7 +306,7 @@ const Body: React.FC<params> = (props) => {
     onComplete: (results) => {
       // Update image cache with inference results
       setReadAzureStorage(!readAzureStorage);
-      setImageCache(loadResultsToCache(results, imageCache, imageIndex));
+      loadInferenceResults(results, imageIndex);
       setModelDisplayName(selectedModel);
 
       // Clear loading state and current workflow
@@ -608,8 +594,6 @@ const Body: React.FC<params> = (props) => {
       )}
       {saveOpen && (
         <SaveCapturePopup
-          imageCache={imageCache}
-          imageSrc={imageSrc}
           setSaveOpen={setSaveOpen}
           imageFormat={imageFormat}
           imageLabel={imageLabel}
@@ -714,9 +698,6 @@ const Body: React.FC<params> = (props) => {
               setSwitchModelOpen={setModelInfoPopupOpen}
               selectedModel={selectedModel}
               metadata={metadata}
-              imageCache={imageCache}
-              setImageCache={setImageCache}
-              imageIndex={imageIndex}
               setBatchUploadOpen={setBatchUploadOpen}
               setUploadOpen={setUploadOpen}
               isWebcamActive={isWebcamActive}
@@ -751,19 +732,10 @@ const Body: React.FC<params> = (props) => {
               setDelDirectoryOpen={setDelDirectoryOpen}
               setCurDir={setCurDir}
             />
-            <ImageCache
-              removeImage={removeFromCache}
-              savedImages={imageCache}
-              setImageIndex={setImageIndex}
-              windowSize={props.windowSize}
-              clearImageCache={clearCache}
-              imageIndex={imageIndex}
-            />
+            <ImageCache />
             <ClassificationResults
-              savedImages={imageCache}
               imageSrc={imageSrc}
               windowSize={props.windowSize}
-              imageIndex={imageIndex}
               selectedLabel={selectedLabel}
               setSelectedLabel={setSelectedLabel}
               labelOccurrences={labelOccurrences}

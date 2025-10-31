@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Box,
   Dialog,
@@ -17,12 +17,10 @@ import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
 import { saveAs } from "file-saver";
 import JSZip from "jszip";
-import { Images } from "@common/types";
 import { imageLabelSchema, imageFormatSchema } from "@common/validation";
+import { useImageStore } from "@stores/useImageStore";
 
 interface params {
-  imageSrc: string;
-  imageCache: Images[];
   setSaveOpen?: React.Dispatch<React.SetStateAction<boolean>>;
   imageFormat?: string;
   imageLabel?: string;
@@ -33,7 +31,14 @@ interface params {
 }
 
 const SavePopup: React.FC<params> = (props) => {
+  const { images: imageCache, getCurrentImage } = useImageStore();
   const [labelError, setLabelError] = useState<string>("");
+
+  // Get imageSrc from current image in store
+  const imageSrc = useMemo(() => {
+    const currentImage = getCurrentImage();
+    return currentImage?.src ?? "";
+  }, [getCurrentImage]);
 
   const saveImage = (): void => {
     // Validate image label if saving individual image
@@ -51,21 +56,18 @@ const SavePopup: React.FC<params> = (props) => {
     // saves image to local storage or compresses the entire cache into a zip file which is then saved to local storage
     (async () => {
       // save individual image
-      if (props.saveIndividualImage === "0" && props.imageCache.length > 0) {
+      if (props.saveIndividualImage === "0" && imageCache.length > 0) {
         saveAs(
-          props.imageSrc,
+          imageSrc,
           `${props.imageLabel}-${new Date().getFullYear()}-${
             new Date().getMonth() + 1
           }-${new Date().getDate()}.${props.imageFormat?.split("/")[1]}`,
         );
         props.setSaveOpen?.(false);
-      } else if (
-        props.saveIndividualImage === "1" &&
-        props.imageCache.length > 0
-      ) {
+      } else if (props.saveIndividualImage === "1" && imageCache.length > 0) {
         // compress all images from cache to zip file and download
         const zip = new JSZip();
-        props.imageCache.forEach((image) => {
+        imageCache.forEach((image) => {
           const base64Data = image.src.replace(/^data:image\/\w+;base64,/, "");
           zip.file(
             `Capture-${image.index}-${new Date().getFullYear()}-${
