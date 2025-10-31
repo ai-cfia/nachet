@@ -21,9 +21,9 @@ import {
   RegistrationStatusPopup,
 } from "@components/body";
 import { useBackendUrl, useDecoderTiff, useDeviceData } from "@hooks";
-import { useWorkflowPolling } from "@hooks/useWorkflowPolling";
 import { useWorkflowStore } from "../../stores/useWorkflowStore";
 import { useImageStore } from "../../stores/useImageStore";
+import { WorkflowQueueManager } from "../../services/WorkflowQueueManager";
 import {
   InteractionRequiredAuthError,
   InteractionStatus,
@@ -40,7 +40,6 @@ import {
   getLabelOccurrence,
   loadToCanvas,
   fetchModelMetadata,
-  inferenceRequest,
   inferenceDirectRequest,
   readAzureStorageDir,
   checkUserRegistration,
@@ -100,13 +99,16 @@ const Body: React.FC<params> = (props) => {
   const [registrationCheckComplete, setRegistrationCheckComplete] =
     useState(false);
   const [registrationModalOpen, setRegistrationModalOpen] = useState(false);
-  const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(
-    null,
-  );
   const [accessToken, setAccessToken] = useState<string>("");
 
+  // Queue manager (singleton, persists across renders)
+  const queueManagerRef = useRef<WorkflowQueueManager>(
+    new WorkflowQueueManager(),
+  );
+
   // Workflow store actions
-  const addWorkflow = useWorkflowStore((state) => state.addWorkflow);
+  const { addWorkflow, removeWorkflow, getWorkflowByImageIndex } =
+    useWorkflowStore();
 
   // Image store
   const {
@@ -249,79 +251,87 @@ const Body: React.FC<params> = (props) => {
       alert("Please select a directory");
       return;
     }
-    if (curDir) {
-      const imageObject = imageCache.find((item) => item.index === imageIndex);
-      if (imageObject === undefined) {
-        return;
-      }
 
-      const folder_id = curDir.folderId;
-      const folder_name = curDir.folderName;
-
-      setIsLoading(true);
-      acquireAccessToken(msalInstance, [apiScopeClaim])
-        .then((token) => {
-          setAccessToken(token);
-          return inferenceRequest({
-            backendUrl,
-            selectedModel,
-            imageObject,
-            curDir: folder_name,
-            accessToken: token,
-            folder_id: folder_id,
-          });
-        })
-        .then((response) => {
-          // Response now contains workflow_id and image_id instead of inference results
-          const { workflow_id, image_id } = response;
-
-          console.log(
-            "[Workflow] Image submitted successfully:",
-            `workflow_id=${workflow_id}`,
-            `image_id=${image_id}`,
-          );
-
-          // Add workflow to store for tracking
-          addWorkflow(workflow_id, image_id);
-
-          // Set current workflow for polling
-          setCurrentWorkflowId(workflow_id);
-
-          // Note: Loading state will be cleared when polling completes
-        })
-        .catch((error) => {
-          alert("Error submitting inference request, see console for details");
-          console.error(error);
-          setIsLoading(false);
-        });
+    const imageObject = imageCache.find((item) => item.index === imageIndex);
+    if (imageObject === undefined) {
+      return;
     }
+
+    // Check if workflow already exists for this image
+    const existingWorkflow = getWorkflowByImageIndex(imageIndex);
+    if (existingWorkflow) {
+      console.log(`[Workflow] Image ${imageIndex} already has active workflow`);
+      return;
+    }
+
+    // Get queue status
+    const queueStatus = queueManagerRef.current.getStatus();
+    const MAX_TOTAL = 11; // 1 active + 10 queued
+    const totalCount =
+      queueStatus.queueSize + (queueStatus.hasActiveWorkflow ? 1 : 0);
+
+    if (totalCount >= MAX_TOTAL) {
+      alert("Queue is full (10 items max). Please wait for some to complete.");
+      return;
+    }
+
+    // Enqueue the request - manager will process it
+    const imageId = imageObject.imageId?.toString() || "";
+    queueManagerRef.current.enqueue(imageIndex, imageId);
+
+    console.log(
+      `[Workflow] Request enqueued for image ${imageIndex}. Queue size: ${queueStatus.queueSize + 1}`,
+    );
   };
 
-  // Workflow polling - handles results when workflow completes
-  useWorkflowPolling({
-    workflowId: currentWorkflowId || "",
+  // Configure queue manager when dependencies change
+  useEffect(() => {
+    if (!curDir || !accessToken || !isAuthenticated) {
+      return;
+    }
+
+    queueManagerRef.current.configure({
+      backendUrl,
+      accessToken,
+      selectedModel,
+      curDir,
+      images: imageCache,
+      onComplete: (workflowId, imageIndex, results) => {
+        console.log(
+          `[Workflow] Workflow ${workflowId} completed for image ${imageIndex}`,
+        );
+        // Apply results to the correct image
+        loadInferenceResults(results, imageIndex);
+        setReadAzureStorage(!readAzureStorage);
+        setModelDisplayName(selectedModel);
+
+        // Add workflow to store for display/tracking
+        addWorkflow(workflowId, results.imageId, imageIndex);
+        // Remove it immediately (just for display purposes, no polling)
+        removeWorkflow(workflowId);
+      },
+      onError: (workflowId, imageIndex, error) => {
+        console.error(
+          `[Workflow] Workflow ${workflowId} failed for image ${imageIndex}:`,
+          error,
+        );
+        alert("Error processing inference, see console for details");
+      },
+    });
+  }, [
     backendUrl,
     accessToken,
-    enabled: currentWorkflowId !== null && accessToken !== "",
-    onComplete: (results) => {
-      // Update image cache with inference results
-      setReadAzureStorage(!readAzureStorage);
-      loadInferenceResults(results, imageIndex);
-      setModelDisplayName(selectedModel);
-
-      // Clear loading state and current workflow
-      setIsLoading(false);
-      setCurrentWorkflowId(null);
-    },
-    onError: (error) => {
-      alert("Error processing inference, see console for details");
-      console.error(error);
-
-      // Clear loading state and current workflow
-      setIsLoading(false);
-      setCurrentWorkflowId(null);
-    },
-  });
+    selectedModel,
+    curDir,
+    imageCache,
+    isAuthenticated,
+    readAzureStorage,
+    loadInferenceResults,
+    setReadAzureStorage,
+    setModelDisplayName,
+    addWorkflow,
+    removeWorkflow,
+  ]);
 
   useEffect(() => {
     const imageData = imageCache.find((img) => img.index === imageIndex);
@@ -393,6 +403,32 @@ const Body: React.FC<params> = (props) => {
       );
     };
   }, [activeDeviceId]);
+
+  // Clear queue manager on unmount
+  useEffect(() => {
+    const manager = queueManagerRef.current;
+    return () => {
+      manager.clear();
+    };
+  }, []);
+
+  // Acquire and store access token when authenticated
+  useEffect(() => {
+    if (!isAuthenticated || inProgress !== InteractionStatus.None) {
+      return;
+    }
+
+    const getToken = async () => {
+      try {
+        const token = await acquireAccessToken(msalInstance, [apiScopeClaim]);
+        setAccessToken(token);
+      } catch (error) {
+        console.error("Failed to acquire access token:", error);
+      }
+    };
+
+    getToken();
+  }, [isAuthenticated, inProgress, msalInstance, apiScopeClaim]);
 
   useEffect(() => {
     if (!isAuthenticated) {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { getWorkflowStatus, getWorkflowResults } from "@common/index";
 import { useWorkflowStore } from "../stores/useWorkflowStore";
-import { ApiInferenceData } from "@common/types";
+import { ApiInferenceData, WorkflowStatus } from "@common/types";
 import { errorLogger } from "../logging";
 
 const POLLING_INTERVAL_MS = 10000; // 10 seconds
@@ -83,7 +83,10 @@ export const useWorkflowPolling = ({
       );
 
       // Update the store with the current status
-      updateWorkflowStatus(workflowId, statusResponse.overall_status);
+      updateWorkflowStatus(
+        workflowId,
+        statusResponse.overall_status as WorkflowStatus,
+      );
 
       // Check if workflow has reached a terminal state (completed or failed)
       if (!isTerminalState(statusResponse.overall_status)) {
