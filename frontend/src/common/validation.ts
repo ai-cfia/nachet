@@ -617,7 +617,7 @@ export const InferenceBoxApiSchema = z.object({
   box: BoxCoordinatesSchema,
   overlapping: z.boolean(),
   overlappingIndices: z.number(),
-  is_verified: z.boolean().optional(),
+  is_verified: z.boolean().default(false),
 });
 
 // Direct Inference Box schema (simplified for /inf-direct endpoint)
@@ -752,6 +752,85 @@ export const ApiDevicesResponseSchema = z.object({
   devices: z.array(DeviceBrandSchema),
 });
 
+// Workflow tracking schemas
+export const ImageSubmissionResponseSchema = z.object({
+  image_id: z.string(),
+  workflow_id: z.string(),
+  status: z.string(),
+  message: z.string(),
+});
+
+export const ParentWorkflowStatusSchema = z.object({
+  workflow_id: z.string(),
+  status: z.string(),
+  progress_percentage: z.number(),
+  created_at: z.string().nullable(),
+  completed_at: z.string().nullable(),
+  failed_at: z.string().nullable(),
+  error_message: z.string().nullable(),
+  malware_detected: z.boolean().nullable(),
+});
+
+export const ProcessingWorkflowStatusSchema = z.object({
+  status: z.string(),
+  stages: z.object({
+    uploaded: z.boolean(),
+    defender_scanning: z.boolean(),
+    defender_scanned: z.boolean(),
+    sanitizing: z.boolean(),
+    sanitized: z.boolean(),
+  }),
+  timestamps: z.object({
+    uploaded_at: z.string().nullable(),
+    defender_scan_started_at: z.string().nullable(),
+    defender_scan_completed_at: z.string().nullable(),
+    sanitization_started_at: z.string().nullable(),
+    sanitization_completed_at: z.string().nullable(),
+    completed_at: z.string().nullable(),
+    failed_at: z.string().nullable(),
+  }),
+  defender_scan_result: z
+    .object({
+      status: z.string(),
+      tags: z.record(z.string(), z.any()),
+      scan_timestamp: z.string(),
+    })
+    .nullable(),
+  blob_urls: z.object({
+    original: z.string().nullable(),
+    sanitized: z.string().nullable(),
+  }),
+  error_message: z.string().nullable(),
+  error_details: z.any().nullable(),
+});
+
+export const InferenceWorkflowStatusSchema = z.object({
+  workflow_id: z.string(),
+  status: z.string(),
+  pipeline_id: z.string(),
+  created_at: z.string().nullable(),
+  started_at: z.string().nullable(),
+  completed_at: z.string().nullable(),
+  failed_at: z.string().nullable(),
+  error_message: z.string().nullable(),
+  request_payload: z.any(),
+});
+
+export const WorkflowStatusResponseSchema = z.object({
+  workflow_id: z.string(),
+  workflow_type: z.string(),
+  image_id: z.string(),
+  overall_status: z.string(),
+  parent_workflow: ParentWorkflowStatusSchema.nullable(),
+  processing_workflow: ProcessingWorkflowStatusSchema.nullable(),
+  inference_workflow: InferenceWorkflowStatusSchema.nullable(),
+  authorization: z.object({
+    user_id: z.string(),
+    is_owner: z.boolean(),
+    is_cfia_admin: z.boolean(),
+  }),
+});
+
 // Generic validation function for API responses
 export function validateApiResponse<T>(
   schema: z.ZodSchema<T>,
@@ -788,3 +867,9 @@ export type ApiDevicesResponse = z.infer<typeof ApiDevicesResponseSchema>;
 export type DeviceBrand = z.infer<typeof DeviceBrandSchema>;
 export type DeviceModel = z.infer<typeof DeviceModelSchema>;
 export type DeviceLens = z.infer<typeof DeviceLensSchema>;
+export type ImageSubmissionResponse = z.infer<
+  typeof ImageSubmissionResponseSchema
+>;
+export type WorkflowStatusResponse = z.infer<
+  typeof WorkflowStatusResponseSchema
+>;

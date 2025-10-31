@@ -16375,8 +16375,8 @@
     {
       "type": "library",
       "name": "electron-to-chromium",
-      "version": "1.5.243",
-      "bom-ref": "nachet-frontend@0.18.0|electron-to-chromium@1.5.243",
+      "version": "1.5.244",
+      "bom-ref": "nachet-frontend@0.18.0|electron-to-chromium@1.5.244",
       "licenses": [
         {
           "license": {
@@ -16385,15 +16385,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/electron-to-chromium@1.5.243",
+      "purl": "pkg:npm/electron-to-chromium@1.5.244",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.243.tgz",
+          "url": "https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.244.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "642a61c455b74354d585c812f5b95fbadd4f5fc96eb158b64af5d08261049cae130a61352611f62648c937e0cdb74a492707c1ae2e4044e067cf66ff0be614f6"
+              "content": "3acce904def1657e2f58c3c9c01f6296590dff39c0f0cdfa190a90c62e8c372f5ac56c6139f27265926d48b402a4414b1cfdb12b7dc1896c7d688b8811754273"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -26402,8 +26402,8 @@
     {
       "type": "library",
       "name": "node-abi",
-      "version": "3.79.0",
-      "bom-ref": "nachet-frontend@0.18.0|node-abi@3.79.0",
+      "version": "3.80.0",
+      "bom-ref": "nachet-frontend@0.18.0|node-abi@3.80.0",
       "scope": "optional",
       "licenses": [
         {
@@ -26413,15 +26413,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/node-abi@3.79.0",
+      "purl": "pkg:npm/node-abi@3.80.0",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/node-abi/-/node-abi-3.79.0.tgz",
+          "url": "https://registry.npmjs.org/node-abi/-/node-abi-3.80.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "3ebff929d050186f138ab7644b4a8ddc1f9fddea3ccd339f650580c47a09aa8a4ccf6feebd19c6f92e1f5aeffa019c4a7a2d823f6a7fa6c750e47142d80a7904"
+              "content": "2f23ee649708f47570cd72b518fc56373aebfafafc1e9ff752a9665b1c61f29e7853565b7253aa6d2a20f655876825fe7416a21a2ea7fe1217fa62aeef81a63c"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -26442,7 +26442,7 @@
           "type": "library",
           "name": "semver",
           "version": "7.7.3",
-          "bom-ref": "nachet-frontend@0.18.0|node-abi@3.79.0|semver@7.7.3",
+          "bom-ref": "nachet-frontend@0.18.0|node-abi@3.80.0|semver@7.7.3",
           "scope": "optional",
           "licenses": [
             {
@@ -33872,26 +33872,26 @@
     {
       "type": "library",
       "name": "tar",
-      "version": "7.5.1",
-      "bom-ref": "nachet-frontend@0.18.0|tar@7.5.1",
+      "version": "7.5.2",
+      "bom-ref": "nachet-frontend@0.18.0|tar@7.5.2",
       "scope": "optional",
       "licenses": [
         {
           "license": {
-            "id": "ISC",
+            "id": "BlueOak-1.0.0",
             "acknowledgement": "declared"
           }
         }
       ],
-      "purl": "pkg:npm/tar@7.5.1",
+      "purl": "pkg:npm/tar@7.5.2",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/tar/-/tar-7.5.1.tgz",
+          "url": "https://registry.npmjs.org/tar/-/tar-7.5.2.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "9e51a9c5ffa1bf4bfb1a45812b657db2981a72d18ea74aaf7d647150c8ea1f2cebb774a0c04e3c0c8bff161a8f1c960b1e9816d68a6ade71116f3e409eaee7d6"
+              "content": "ecdcb1ad313802787c926f22132ee8d1060fb3ed092814e3e596aa1e0e81dfd7ab2e0d2a6173770628ed4a1c1bb0d4af43e2cdef9f8a57e0b8411fdfe86c27a6"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -33912,7 +33912,7 @@
           "type": "library",
           "name": "yallist",
           "version": "5.0.0",
-          "bom-ref": "nachet-frontend@0.18.0|tar@7.5.1|yallist@5.0.0",
+          "bom-ref": "nachet-frontend@0.18.0|tar@7.5.2|yallist@5.0.0",
           "scope": "optional",
           "licenses": [
             {
@@ -39551,7 +39551,7 @@
       "dependsOn": [
         "nachet-frontend@0.18.0|baseline-browser-mapping@2.8.21",
         "nachet-frontend@0.18.0|caniuse-lite@1.0.30001751",
-        "nachet-frontend@0.18.0|electron-to-chromium@1.5.243",
+        "nachet-frontend@0.18.0|electron-to-chromium@1.5.244",
         "nachet-frontend@0.18.0|node-releases@2.0.27",
         "nachet-frontend@0.18.0|update-browserslist-db@1.1.4"
       ]
@@ -39579,7 +39579,7 @@
         "nachet-frontend@0.18.0|minipass@7.1.2",
         "nachet-frontend@0.18.0|p-map@7.0.3",
         "nachet-frontend@0.18.0|ssri@12.0.0",
-        "nachet-frontend@0.18.0|tar@7.5.1",
+        "nachet-frontend@0.18.0|tar@7.5.2",
         "nachet-frontend@0.18.0|unique-filename@4.0.0"
       ]
     },
@@ -39973,7 +39973,7 @@
       "ref": "nachet-frontend@0.18.0|ee-first@1.1.1"
     },
     {
-      "ref": "nachet-frontend@0.18.0|electron-to-chromium@1.5.243"
+      "ref": "nachet-frontend@0.18.0|electron-to-chromium@1.5.244"
     },
     {
       "ref": "nachet-frontend@0.18.0|emoji-regex@9.2.2"
@@ -41583,13 +41583,13 @@
       "ref": "nachet-frontend@0.18.0|negotiator@1.0.0"
     },
     {
-      "ref": "nachet-frontend@0.18.0|node-abi@3.79.0",
+      "ref": "nachet-frontend@0.18.0|node-abi@3.80.0",
       "dependsOn": [
-        "nachet-frontend@0.18.0|node-abi@3.79.0|semver@7.7.3"
+        "nachet-frontend@0.18.0|node-abi@3.80.0|semver@7.7.3"
       ]
     },
     {
-      "ref": "nachet-frontend@0.18.0|node-abi@3.79.0|semver@7.7.3"
+      "ref": "nachet-frontend@0.18.0|node-abi@3.80.0|semver@7.7.3"
     },
     {
       "ref": "nachet-frontend@0.18.0|node-domexception@1.0.0"
@@ -41613,7 +41613,7 @@
         "nachet-frontend@0.18.0|node-gyp@11.5.0|which@5.0.0",
         "nachet-frontend@0.18.0|nopt@8.1.0",
         "nachet-frontend@0.18.0|proc-log@5.0.0",
-        "nachet-frontend@0.18.0|tar@7.5.1",
+        "nachet-frontend@0.18.0|tar@7.5.2",
         "nachet-frontend@0.18.0|tinyglobby@0.2.15"
       ]
     },
@@ -41880,7 +41880,7 @@
         "nachet-frontend@0.18.0|minimist@1.2.8",
         "nachet-frontend@0.18.0|mkdirp-classic@0.5.3",
         "nachet-frontend@0.18.0|napi-build-utils@2.0.0",
-        "nachet-frontend@0.18.0|node-abi@3.79.0",
+        "nachet-frontend@0.18.0|node-abi@3.80.0",
         "nachet-frontend@0.18.0|pump@3.0.3",
         "nachet-frontend@0.18.0|rc@1.2.8",
         "nachet-frontend@0.18.0|simple-get@4.0.1",
@@ -42767,17 +42767,17 @@
       ]
     },
     {
-      "ref": "nachet-frontend@0.18.0|tar@7.5.1",
+      "ref": "nachet-frontend@0.18.0|tar@7.5.2",
       "dependsOn": [
         "nachet-frontend@0.18.0|@isaacs/fs-minipass@4.0.1",
         "nachet-frontend@0.18.0|chownr@3.0.0",
         "nachet-frontend@0.18.0|minipass@7.1.2",
         "nachet-frontend@0.18.0|minizlib@3.1.0",
-        "nachet-frontend@0.18.0|tar@7.5.1|yallist@5.0.0"
+        "nachet-frontend@0.18.0|tar@7.5.2|yallist@5.0.0"
       ]
     },
     {
-      "ref": "nachet-frontend@0.18.0|tar@7.5.1|yallist@5.0.0"
+      "ref": "nachet-frontend@0.18.0|tar@7.5.2|yallist@5.0.0"
     },
     {
       "ref": "nachet-frontend@0.18.0|tinybench@2.9.0"

@@ -21,6 +21,8 @@ import {
   RegistrationStatusPopup,
 } from "@components/body";
 import { useBackendUrl, useDecoderTiff, useDeviceData } from "@hooks";
+import { useWorkflowPolling } from "@hooks/useWorkflowPolling";
+import { useWorkflowStore } from "../../stores/useWorkflowStore";
 import {
   InteractionRequiredAuthError,
   InteractionStatus,
@@ -103,6 +105,13 @@ const Body: React.FC<params> = (props) => {
   const [registrationCheckComplete, setRegistrationCheckComplete] =
     useState(false);
   const [registrationModalOpen, setRegistrationModalOpen] = useState(false);
+  const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(
+    null,
+  );
+  const [accessToken, setAccessToken] = useState<string>("");
+
+  // Workflow store actions
+  const addWorkflow = useWorkflowStore((state) => state.addWorkflow);
 
   // Derive imageSrc, imageTiff, and labelOccurrences from imageCache and imageIndex
   const currentImageData = useMemo(() => {
@@ -265,30 +274,68 @@ const Body: React.FC<params> = (props) => {
 
       setIsLoading(true);
       acquireAccessToken(msalInstance, [apiScopeClaim])
-        .then((accessToken) => {
+        .then((token) => {
+          setAccessToken(token);
           return inferenceRequest({
             backendUrl,
             selectedModel,
             imageObject,
             curDir: folder_name,
-            accessToken,
+            accessToken: token,
             folder_id: folder_id,
           });
         })
         .then((response) => {
-          setReadAzureStorage(!readAzureStorage);
-          setImageCache(loadResultsToCache(response, imageCache, imageIndex));
-          setModelDisplayName(selectedModel);
+          // Response now contains workflow_id and image_id instead of inference results
+          const { workflow_id, image_id } = response;
+
+          console.log(
+            "[Workflow] Image submitted successfully:",
+            `workflow_id=${workflow_id}`,
+            `image_id=${image_id}`,
+          );
+
+          // Add workflow to store for tracking
+          addWorkflow(workflow_id, image_id);
+
+          // Set current workflow for polling
+          setCurrentWorkflowId(workflow_id);
+
+          // Note: Loading state will be cleared when polling completes
         })
         .catch((error) => {
-          alert("Error fetching inference data, see console for details");
+          alert("Error submitting inference request, see console for details");
           console.error(error);
-        })
-        .finally(() => {
           setIsLoading(false);
         });
     }
   };
+
+  // Workflow polling - handles results when workflow completes
+  useWorkflowPolling({
+    workflowId: currentWorkflowId || "",
+    backendUrl,
+    accessToken,
+    enabled: currentWorkflowId !== null && accessToken !== "",
+    onComplete: (results) => {
+      // Update image cache with inference results
+      setReadAzureStorage(!readAzureStorage);
+      setImageCache(loadResultsToCache(results, imageCache, imageIndex));
+      setModelDisplayName(selectedModel);
+
+      // Clear loading state and current workflow
+      setIsLoading(false);
+      setCurrentWorkflowId(null);
+    },
+    onError: (error) => {
+      alert("Error processing inference, see console for details");
+      console.error(error);
+
+      // Clear loading state and current workflow
+      setIsLoading(false);
+      setCurrentWorkflowId(null);
+    },
+  });
 
   useEffect(() => {
     const imageData = imageCache.find((img) => img.index === imageIndex);
