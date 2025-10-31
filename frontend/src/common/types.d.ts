@@ -194,3 +194,89 @@ export interface ApiDeviceBrand {
 export interface ApiDevicesResponse {
   devices: ApiDeviceBrand[];
 }
+
+// Workflow tracking types
+export interface ImageSubmissionResponse {
+  image_id: string;
+  workflow_id: string;
+  status: string;
+  message: string;
+}
+
+export interface ParentWorkflowStatus {
+  workflow_id: string;
+  status: string;
+  progress_percentage: number;
+  created_at: string | null;
+  completed_at: string | null;
+  failed_at: string | null;
+  error_message: string | null;
+  malware_detected: boolean | null;
+}
+
+export interface ProcessingWorkflowStatus {
+  status: string;
+  stages: {
+    uploaded: boolean;
+    defender_scanning: boolean;
+    defender_scanned: boolean;
+    sanitizing: boolean;
+    sanitized: boolean;
+  };
+  timestamps: {
+    uploaded_at: string | null;
+    defender_scan_started_at: string | null;
+    defender_scan_completed_at: string | null;
+    sanitization_started_at: string | null;
+    sanitization_completed_at: string | null;
+    completed_at: string | null;
+    failed_at: string | null;
+  };
+  defender_scan_result: {
+    status: string;
+    tags: Record<string, any>;
+    scan_timestamp: string;
+  } | null;
+  blob_urls: {
+    original: string | null;
+    sanitized: string | null;
+  };
+  error_message: string | null;
+  error_details: any | null;
+}
+
+export interface InferenceWorkflowStatus {
+  workflow_id: string;
+  status: string;
+  pipeline_id: string;
+  created_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  failed_at: string | null;
+  error_message: string | null;
+  request_payload: any;
+}
+
+export interface WorkflowStatusResponse {
+  workflow_id: string;
+  workflow_type: string;
+  image_id: string;
+  overall_status: string;
+  parent_workflow: ParentWorkflowStatus | null;
+  processing_workflow: ProcessingWorkflowStatus | null;
+  inference_workflow: InferenceWorkflowStatus | null;
+  authorization: {
+    user_id: string;
+    is_owner: boolean;
+    is_cfia_admin: boolean;
+  };
+}
+
+export interface WorkflowInfo {
+  workflow_id: string;
+  image_id: string;
+  status: string;
+  started_at: number;
+  last_checked_at: number;
+  error: string | null;
+}

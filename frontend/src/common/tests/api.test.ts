@@ -363,19 +363,16 @@ describe("inferenceRequest", () => {
   };
 
   it("should return inference data on success", async () => {
-    const mockInferenceData = {
-      filename: "test.jpg",
-      imageId: "img-123",
-      inference_id: "inf-456",
-      boxes: [],
-      labelOccurrence: { seed_name: 0 },
-      totalBoxes: 0,
-      models: [{ name: "test-model", version: "1" }],
+    const mockSubmissionResponse = {
+      image_id: "img-123",
+      workflow_id: "wf-456",
+      status: "pending",
+      message: "Image submitted for processing",
     };
     mockedAxios.mockResolvedValue({
       ok: true,
       status: 200,
-      data: mockInferenceData,
+      data: mockSubmissionResponse,
     });
 
     const backendUrl = "http://localhost:8080";
@@ -392,10 +389,10 @@ describe("inferenceRequest", () => {
       folder_id: folderId,
     });
 
-    expect(result).toEqual(mockInferenceData);
+    expect(result).toEqual(mockSubmissionResponse);
     expect(mockedAxios).toHaveBeenCalledWith({
       method: "post",
-      url: `${backendUrl}/inf-direct`,
+      url: `${backendUrl}/inf`,
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",

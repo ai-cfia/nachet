@@ -24,6 +24,10 @@ import {
   ModelMetadataSchema,
   ApiSpeciesDataSchema,
   ApiDevicesResponseSchema,
+  ImageSubmissionResponseSchema,
+  WorkflowStatusResponseSchema,
+  ImageSubmissionResponse,
+  WorkflowStatusResponse,
 } from "./validation";
 import { errorLogger } from "../logging";
 
@@ -277,7 +281,7 @@ export const inferenceRequest = async ({
   curDir: string;
   accessToken: string;
   folder_id: string;
-}): Promise<ApiInferenceData> => {
+}): Promise<ImageSubmissionResponse> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
   }
@@ -311,7 +315,7 @@ export const inferenceRequest = async ({
   };
   const response = await handleAxios<unknown>(request);
   return validateApiResponse(
-    ApiInferenceDataSchema,
+    ImageSubmissionResponseSchema,
     response,
     "inferenceRequest",
   );
@@ -430,6 +434,78 @@ export const fetchDevices = async ({
     ApiDevicesResponseSchema,
     response,
     "fetchDevices",
+  );
+};
+
+export const getWorkflowStatus = async ({
+  backendUrl,
+  workflowId,
+  accessToken,
+}: {
+  backendUrl: string;
+  workflowId: string;
+  accessToken: string;
+}): Promise<WorkflowStatusResponse> => {
+  if (backendUrl === "" || backendUrl == null) {
+    throw new ValueError("Backend URL is null or empty");
+  }
+  if (workflowId === "" || workflowId == null) {
+    throw new ValueError("Workflow ID is null or empty");
+  }
+  if (accessToken === "" || accessToken == null) {
+    throw new ValueError("Access token is null or empty");
+  }
+  const request = {
+    method: "get",
+    url: `${backendUrl}/workflow/${workflowId}/status`,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    data: {},
+  };
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(
+    WorkflowStatusResponseSchema,
+    response,
+    "getWorkflowStatus",
+  );
+};
+
+export const getWorkflowResults = async ({
+  backendUrl,
+  workflowId,
+  accessToken,
+}: {
+  backendUrl: string;
+  workflowId: string;
+  accessToken: string;
+}): Promise<ApiInferenceData> => {
+  if (backendUrl === "" || backendUrl == null) {
+    throw new ValueError("Backend URL is null or empty");
+  }
+  if (workflowId === "" || workflowId == null) {
+    throw new ValueError("Workflow ID is null or empty");
+  }
+  if (accessToken === "" || accessToken == null) {
+    throw new ValueError("Access token is null or empty");
+  }
+  const request = {
+    method: "get",
+    url: `${backendUrl}/workflow/${workflowId}/results`,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    data: {},
+  };
+  const response = await handleAxios<unknown>(request);
+  return validateApiResponse(
+    ApiInferenceDataSchema,
+    response,
+    "getWorkflowResults",
   );
 };
 
