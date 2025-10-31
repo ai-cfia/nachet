@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends, Request  # , HTTPException, Header
+from fastapi import APIRouter, status, Depends, Request, HTTPException  # , Header
 from fastapi.responses import Response
 
 # from beartype.typing import Optional
@@ -22,6 +22,12 @@ from app.model.inference import (
     # SanitizationCallbackRequest,
     ApiInferenceResponse,
 )
+from app.model.batch_upload import (
+    BatchUploadInitRequest,
+    BatchUploadInitResponse,
+    BatchUploadImageRequest,
+)
+from app.service.batch_upload import BatchUploadService
 # from app.exceptions import ImageProcessingError
 # from app.api.test_dbos import router as test_dbos_router
 
@@ -487,6 +493,143 @@ async def serve_frontend_root(request: Request):
     csp_nonce = getattr(request.state, "csp_nonce", None)
     content, content_type = await FrontendService.get_file("index.html", csp_nonce)
     return Response(content=content, media_type=content_type)
+
+
+# Batch Upload Endpoints
+@router.post(
+    "/new-batch-import",
+    status_code=status.HTTP_200_OK,
+    response_model=BatchUploadInitResponse,
+    name="Initialize Batch Upload [AUTH REQUIRED]",
+)
+@limiter.limit("10/minute")
+async def initialize_batch_upload(
+    request: Request,
+    req: BatchUploadInitRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Initialize batch upload session.
+
+    Creates a database-backed session for batch uploading images to an existing folder.
+    Sessions expire after 24 hours and support up to 1000 files.
+
+    Security:
+    - Requires authentication (Bearer token)
+    - Rate limited to 10 requests/minute
+    - Validates folder exists and belongs to user
+
+    Request:
+        - folder_id: UUID of existing folder (MUST exist before batch upload)
+        - file_count: Number of images to upload (max 1000)
+
+    Response:
+        - session_id: UUID for subsequent uploads (valid for 24 hours)
+
+    Workflow:
+    1. Validate user has org roles
+    2. Validate folder exists and belongs to user
+    3. Validate file_count <= 1000
+    4. Create database session with 24-hour TTL
+    5. Return session_id
+
+    Constraints:
+    - Maximum 1000 files per session
+    - Session expires after 24 hours
+    - Folder must exist before session creation
+    - Folder must belong to authenticated user
+    """
+    result = await BatchUploadService.initialize_batch_session(
+        user_id=UUID(current_user.oid),
+        folder_id=UUID(req.folder_id),
+        file_count=req.file_count,
+    )
+    return BatchUploadInitResponse(**result)
+
+
+@router.post(
+    "/upload-picture",
+    status_code=status.HTTP_200_OK,
+    name="Upload Picture in Batch [AUTH REQUIRED]",
+)
+@limiter.limit("60/minute")
+async def upload_picture_in_batch(
+    request: Request,
+    req: BatchUploadImageRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Upload single picture in batch - ASYNC WORKFLOW with duplicate detection.
+
+    Returns immediately with workflow_id. Frontend must poll
+    GET /workflow/{workflow_id}/status for completion.
+
+    Workflow steps (background):
+    1. Upload to EXTERNAL storage (nachet-original)
+    2. Azure Defender malware scan
+    3. Sanitization function
+    4. Store in INTERNAL storage (nachet-sanitized)
+
+    Security:
+    - Requires authentication (Bearer token)
+    - Rate limited to 60 requests/minute
+    - Validates session ownership, expiration, and active status
+    - Validates seed exists
+    - Reuses existing DBOS workflow (Defender + sanitization)
+
+    Request:
+        - session_id: From /new-batch-import (must be active and not expired)
+        - seed_id: UUID of existing seed record (validated before upload)
+        - tray_code: Sample tray identifier (A-E)
+        - sample_id: Becomes picture.name field
+        - device_*_id, magnification: Device metadata
+        - image: Base64 data URL
+
+    Response (Success):
+        - workflow_id: Poll /workflow/{id}/status
+        - picture_id: Image UUID
+
+    Response (Duplicate):
+        - 400 BAD_REQUEST with existing picture_id
+        - Both uploaded_count and duplicate_count incremented
+        - No workflow enqueued
+
+    Response (Session Expired):
+        - 400 BAD_REQUEST "Session expired (24-hour limit exceeded)"
+
+    Response (Invalid Seed):
+        - 400 BAD_REQUEST "Seed not found: {seed_id}"
+
+    Duplicate Handling:
+    - Detects duplicates via SHA256 hash collision
+    - Increments session uploaded_count and duplicate_count
+    - Returns error with existing picture_id
+    - Does NOT create new picture or enqueue workflow
+
+    Session Completion:
+    - When uploaded_count >= file_count, session marked inactive
+    - Both successful uploads and duplicates count toward file_count
+
+    Note: FRONTEND MODIFICATION REQUIRED for async polling.
+    See BATCH_UPLOAD_IMPLEMENTATION_PLAN.md for details.
+    """
+    result = await BatchUploadService.upload_picture_batch(
+        request=req,
+        user=current_user,
+    )
+
+    if not result["success"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result["error"],
+        )
+
+    # Return workflow_id for async tracking
+    # Frontend will need to be updated to handle this
+    return {
+        "workflow_id": result["workflow_id"],
+        "picture_id": result["picture_id"],
+    }
 
 
 # This is placed at the end to avoid catching other routes
