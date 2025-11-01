@@ -24,17 +24,8 @@ import { useBackendUrl, useDecoderTiff, useDeviceData } from "@hooks";
 import { useWorkflowStore } from "../../stores/useWorkflowStore";
 import { useImageStore } from "../../stores/useImageStore";
 import { WorkflowQueueManager } from "../../services/WorkflowQueueManager";
-import {
-  InteractionRequiredAuthError,
-  InteractionStatus,
-  InteractionType,
-} from "@azure/msal-browser";
-import {
-  useMsal,
-  useIsAuthenticated,
-  useMsalAuthentication,
-  useAccount,
-} from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
+import { useMsal, useIsAuthenticated, useAccount } from "@azure/msal-react";
 import { acquireAccessToken } from "@common/auth";
 import {
   getLabelOccurrence,
@@ -76,6 +67,9 @@ const Body: React.FC<params> = (props) => {
   const [switchDeviceOpen, setSwitchDeviceOpen] = useState(false);
   const [deviceInfoOpen, setDeviceInfoOpen] = useState(false);
   const [createDirectoryOpen, setCreateDirectoryOpen] = useState(false);
+  const [editDirectoryOpen, setEditDirectoryOpen] = useState(false);
+  const [editingFolder, setEditingFolder] =
+    useState<AzureStorageDirectoryItem | null>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [activeDeviceId, setActiveDeviceId] = useState<string | undefined>(
     undefined,
@@ -102,7 +96,6 @@ const Body: React.FC<params> = (props) => {
   const [registrationCheckComplete, setRegistrationCheckComplete] =
     useState(false);
   const [registrationModalOpen, setRegistrationModalOpen] = useState(false);
-  const [accessToken, setAccessToken] = useState<string>("");
 
   // Queue manager (singleton, persists across renders)
   const queueManagerRef = useRef<WorkflowQueueManager>(
@@ -155,23 +148,12 @@ const Body: React.FC<params> = (props) => {
     return !isAuthenticated && inProgress === InteractionStatus.None;
   }, [isAuthenticated, inProgress]);
 
-  const authRequest = useMemo(() => {
-    return {
-      scopes: [apiScopeClaim ?? ""],
-    };
-  }, [apiScopeClaim]);
-
-  const { login, error } = useMsalAuthentication(
-    InteractionType.Silent,
-    authRequest,
-  );
-
+  // Set active account if available
   useEffect(() => {
-    if (error instanceof InteractionRequiredAuthError) {
-      login(InteractionType.Redirect, authRequest);
+    if (accounts.length > 0 && !msalInstance.getActiveAccount()) {
+      msalInstance.setActiveAccount(accounts[0]);
     }
-    msalInstance.setActiveAccount(accounts[0]);
-  }, [accounts, authRequest, error, login, msalInstance]);
+  }, [accounts, msalInstance]);
 
   const captureFeed = (): void => {
     // takes screenshot of webcam feed and loads it to cache when capture button is pressed
@@ -290,13 +272,16 @@ const Body: React.FC<params> = (props) => {
 
   // Configure queue manager when dependencies change
   useEffect(() => {
-    if (!curDir || !accessToken || !isAuthenticated) {
+    if (!curDir || !isAuthenticated) {
       return;
     }
 
+    const scopes = apiScopeClaim ? [apiScopeClaim] : [];
+
     queueManagerRef.current.configure({
       backendUrl,
-      accessToken,
+      msalInstance,
+      scopes,
       selectedModel,
       curDir,
       images: imageCache,
@@ -342,7 +327,8 @@ const Body: React.FC<params> = (props) => {
     });
   }, [
     backendUrl,
-    accessToken,
+    msalInstance,
+    apiScopeClaim,
     selectedModel,
     curDir,
     imageCache,
@@ -447,24 +433,6 @@ const Body: React.FC<params> = (props) => {
     };
   }, []);
 
-  // Acquire and store access token when authenticated
-  useEffect(() => {
-    if (!isAuthenticated || inProgress !== InteractionStatus.None) {
-      return;
-    }
-
-    const getToken = async () => {
-      try {
-        const token = await acquireAccessToken(msalInstance, [apiScopeClaim]);
-        setAccessToken(token);
-      } catch (error) {
-        console.error("Failed to acquire access token:", error);
-      }
-    };
-
-    getToken();
-  }, [isAuthenticated, inProgress, msalInstance, apiScopeClaim]);
-
   useEffect(() => {
     if (!isAuthenticated) {
       return;
@@ -549,6 +517,7 @@ const Body: React.FC<params> = (props) => {
             folderPrefix: item.folder_prefix,
             description: item.description,
             pictureCount: item.picture_count,
+            isDefaultFolder: item.is_default_folder,
           });
         });
         setAzureStorageDir(directories);
@@ -567,7 +536,34 @@ const Body: React.FC<params> = (props) => {
     isAuthenticated,
     inProgress,
     registrationCheckComplete,
+    readAzureStorage,
   ]);
+
+  // Auto-select user's default directory after directories are loaded
+  useEffect(() => {
+    if (!azureStorageDir || azureStorageDir.length === 0) {
+      return;
+    }
+
+    // Don't override if user has already selected a folder
+    if (curDir !== null) {
+      return;
+    }
+
+    // Extract username from email and convert to lowercase
+    const userEmail = accounts[0]?.username || "";
+    const username = userEmail.split("@")[0].toLowerCase();
+
+    // Find matching folder
+    const defaultFolder = azureStorageDir.find(
+      (folder) => folder.folderName.toLowerCase() === username,
+    );
+
+    if (defaultFolder) {
+      setCurDir(defaultFolder);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [azureStorageDir, accounts]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -615,10 +611,10 @@ const Body: React.FC<params> = (props) => {
         justifyContent: "center",
         zIndex: 0,
         maxWidth: "100%",
-        padding: "0px 1.5vw",
+        padding: "0px 1vw",
         position: "relative",
-        marginTop: "6.5vh",
-        marginBottom: "10vh",
+        marginTop: "1vh",
+        marginBottom: "1vh",
       }}
     >
       {authPopupOpen && (
@@ -661,6 +657,22 @@ const Body: React.FC<params> = (props) => {
           setCurDir={setCurDir}
           setReadAzureStorage={setReadAzureStorage}
           apiScopeClaim={apiScopeClaim}
+          mode="create"
+        />
+      )}
+      {editDirectoryOpen && editingFolder && (
+        <CreateDirectoryPopup
+          setCreateDirectoryOpen={setEditDirectoryOpen}
+          curDir={curDir}
+          setCurDir={setCurDir}
+          setReadAzureStorage={setReadAzureStorage}
+          apiScopeClaim={apiScopeClaim}
+          mode="edit"
+          initialData={{
+            folderId: editingFolder.folderId,
+            folderName: editingFolder.folderName,
+            description: editingFolder.description || "",
+          }}
         />
       )}
       {saveOpen && (
@@ -721,7 +733,7 @@ const Body: React.FC<params> = (props) => {
           alignItems: "center",
           width: "100%",
           maxWidth: "100%",
-          minHeight: "100%",
+          minHeight: "80vh",
         }}
       >
         <Box
@@ -730,14 +742,14 @@ const Body: React.FC<params> = (props) => {
             color: colours.CFIA_Font_Black,
             display: "flex",
             flexDirection: "row",
-            justifyContent: "center",
+            justifyContent: "flex-start",
             alignItems: "center",
             minWidth: "100%",
             maxWidth: "100%",
-            minHeight: "100%",
+            minHeight: "80vh",
             position: "relative",
             zIndex: 0,
-            padding: "0px 0px 0px 0px",
+            padding: "0px 0px 0px 1vw",
           }}
         >
           <Box
@@ -746,9 +758,9 @@ const Body: React.FC<params> = (props) => {
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              width: "60%",
-              maxWidth: "60%",
-              minHeight: "100%",
+              // width: "60%",
+              // maxWidth: "60%",
+              minHeight: "80vh",
               zIndex: 0,
               position: "relative",
             }}
@@ -787,13 +799,14 @@ const Body: React.FC<params> = (props) => {
               display: "flex",
               flexDirection: "column",
               alignItems: "start",
-              justifyContent: "start",
-              width: "19%",
-              maxWidth: "19%",
-              height: "100%",
+              justifyContent: "space-between",
+              minWidth: "23vw",
+              maxWidth: "23vw",
+              minHeight: "80vh",
               maxHeight: "100%",
               zIndex: 0,
               position: "relative",
+              paddingLeft: "1vw",
             }}
           >
             <StorageDirectory
@@ -801,6 +814,8 @@ const Body: React.FC<params> = (props) => {
               curDir={curDir}
               handleDirChange={handleDirChange}
               setCreateDirectoryOpen={setCreateDirectoryOpen}
+              setEditDirectoryOpen={setEditDirectoryOpen}
+              setEditingFolder={setEditingFolder}
               setDelDirectoryOpen={setDelDirectoryOpen}
               setCurDir={setCurDir}
             />

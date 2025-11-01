@@ -37,6 +37,8 @@ describe("StorageDirectoryContainer", () => {
     },
     setCurDir: vi.fn(),
     setCreateDirectoryOpen: vi.fn(),
+    setEditDirectoryOpen: vi.fn(),
+    setEditingFolder: vi.fn(),
     setDelDirectoryOpen: vi.fn(),
     handleDirChange: vi.fn(),
   };

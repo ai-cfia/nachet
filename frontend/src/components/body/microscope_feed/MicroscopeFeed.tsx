@@ -151,8 +151,8 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     loadInferenceResults,
   } = useImageStore();
 
-  const width = windowSize.width * 0.575;
-  const height = windowSize.height * 0.605;
+  const width = windowSize.width * 0.73; // Match 73vw container width
+  const height = windowSize.height * 0.75; // Match 75vh container height
 
   // Find the model name from metadata based on selectedModel (pipeline_id)
   const selectedModelName = useMemo(() => {
@@ -202,12 +202,16 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
   );
 
   // Derive isGuest from accountInfo
-  // acct === 0 means member account, acct !== 0 means guest account
+  // acct === 0 means member account, acct !== 0 or undefined means guest account
+  // Defensive: treat missing/undefined acct as guest (hide D button)
   const isGuest = (() => {
     const idTokenClaims = accountInfo?.idTokenClaims as
       | { acct?: number }
       | undefined;
     const acctClaim = idTokenClaims?.acct;
+
+    // Only acct === 0 means member (show D button)
+    // Everything else (undefined, null, non-zero) means guest (hide D button)
     return acctClaim !== 0;
   })();
 
@@ -741,8 +745,8 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
   return (
     <Box
       sx={{
-        width: width,
-        minHeight: "100%",
+        minWidth: "73vw",
+        minHeight: "80vh",
         border: `0.01vh solid LightGrey`,
         borderRadius: "0.4vh",
       }}
@@ -864,8 +868,8 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
       <div
         style={{
           position: "relative",
-          width: width,
-          height,
+          width: "73vw",
+          height: "75vh",
           borderTop: `0.01vh solid LightGrey`,
         }}
       >
