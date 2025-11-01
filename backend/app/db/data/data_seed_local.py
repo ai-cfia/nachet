@@ -73,7 +73,7 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
     async with async_session.begin() as session:
         # Tagarno brand
         tagarno_brand = DeviceBrand(
-            id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+            id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
             name="Tagarno",
             description="Tagarno microscope devices",
             active=True,
@@ -83,50 +83,50 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         # Tagarno models
         tagarno_models = [
             DeviceModel(
-                id=uuid.UUID("22222222-2222-2222-2222-222222222221"),
-                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                id=uuid.UUID("6594c207-6035-40ba-afb5-00636a620dc4"),
+                device_brand_id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
                 name="Prestige",
                 description="Tagarno Prestige microscope model",
                 active=True,
             ),
             DeviceModel(
-                id=uuid.UUID("22222222-2222-2222-2222-222222222222"),
-                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                id=uuid.UUID("4beef959-ea62-46b1-a096-499ef103b3d4"),
+                device_brand_id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
                 name="T50",
                 description="Tagarno T50 microscope model",
                 active=True,
             ),
             DeviceModel(
-                id=uuid.UUID("22222222-2222-2222-2222-222222222223"),
-                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                id=uuid.UUID("dceb1272-e0f2-4ad3-9d36-41062f08132c"),
+                device_brand_id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
                 name="Trend",
                 description="Tagarno Trend microscope model",
                 active=True,
             ),
             DeviceModel(
-                id=uuid.UUID("22222222-2222-2222-2222-222222222224"),
-                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                id=uuid.UUID("ba7ec916-e712-4e72-a516-53127f4fb9ba"),
+                device_brand_id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
                 name="Front",
                 description="Tagarno Front microscope model",
                 active=True,
             ),
             DeviceModel(
-                id=uuid.UUID("22222222-2222-2222-2222-222222222225"),
-                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                id=uuid.UUID("afb48840-f0bb-415c-af89-385dd066a01c"),
+                device_brand_id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
                 name="Move",
                 description="Tagarno Move microscope model",
                 active=True,
             ),
             DeviceModel(
-                id=uuid.UUID("22222222-2222-2222-2222-222222222226"),
-                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                id=uuid.UUID("36d0581c-304e-424d-9d2c-81872d654cb3"),
+                device_brand_id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
                 name="Zap",
                 description="Tagarno Zap microscope model",
                 active=True,
             ),
             DeviceModel(
-                id=uuid.UUID("22222222-2222-2222-2222-222222222227"),
-                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                id=uuid.UUID("e2a1c904-059a-4d6f-9004-95ef08938bf8"),
+                device_brand_id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
                 name="Zip",
                 description="Tagarno Zip microscope model",
                 active=True,
@@ -137,29 +137,29 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         # Tagarno lenses
         tagarno_lenses = [
             DeviceLens(
-                id=uuid.UUID("33333333-3333-3333-3333-333333333331"),
-                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                id=uuid.UUID("77e29a37-b151-4c3e-b9b1-43b66d2650fc"),
+                device_brand_id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
                 name="+3",
                 description="Tagarno +3 magnification lens",
                 active=True,
             ),
             DeviceLens(
-                id=uuid.UUID("33333333-3333-3333-3333-333333333332"),
-                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                id=uuid.UUID("65c29a99-7b99-4973-bd49-141a15c0bae2"),
+                device_brand_id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
                 name="+4",
                 description="Tagarno +4 magnification lens",
                 active=True,
             ),
             DeviceLens(
-                id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
-                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                id=uuid.UUID("0ec5fdd4-080d-4b69-b7b8-cc709cce7984"),
+                device_brand_id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
                 name="+5",
                 description="Tagarno +5 magnification lens",
                 active=True,
             ),
             DeviceLens(
-                id=uuid.UUID("33333333-3333-3333-3333-333333333334"),
-                device_brand_id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+                id=uuid.UUID("6c210d6a-df8b-4ee9-bf7a-a03fe51810ef"),
+                device_brand_id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
                 name="+10",
                 description="Tagarno +10 magnification lens",
                 active=True,
@@ -666,19 +666,19 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         # Add RBAC permissions
 
         read_permission = RbacPermission(
-            id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+            id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
             name="read",
             description="Read access permission",
             active=True,
         )
         write_permission = RbacPermission(
-            id=uuid.UUID("22222222-2222-2222-2222-222222222222"),
+            id=uuid.UUID("0e85cdaf-5577-48a0-b874-ed349d13ea1a"),
             name="write",
             description="Write access permission",
             active=True,
         )
         admin_permission = RbacPermission(
-            id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
+            id=uuid.UUID("3b05d100-0aa4-4ab1-8ba5-ee6d72fd3cfd"),
             name="admin",
             description="Administrative access permission",
             active=True,
@@ -688,19 +688,19 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         # Add RBAC resources
 
         pictures_resource = RbacResource(
-            id=uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            id=uuid.UUID("5184f45f-c8ee-46df-a3c1-106401fd5c8c"),
             name="pictures",
             description="Picture management resource",
             active=True,
         )
         models_resource = RbacResource(
-            id=uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+            id=uuid.UUID("fe0bcdf3-d9c9-4d1b-8e1f-5b8c44e4a562"),
             name="models",
             description="Model management resource",
             active=True,
         )
         users_resource = RbacResource(
-            id=uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            id=uuid.UUID("e5ae5211-3f24-4bd8-b078-62ff96717cf0"),
             name="users",
             description="User management resource",
             active=True,
@@ -712,20 +712,20 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         # Use admin role ID from environment for CFIA org
         admin_pictures = RbacRolePermissionResource(
             role_id=cfia_admin_role_id,
-            permission_id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
-            resource_id=uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            permission_id=uuid.UUID("3b05d100-0aa4-4ab1-8ba5-ee6d72fd3cfd"),
+            resource_id=uuid.UUID("5184f45f-c8ee-46df-a3c1-106401fd5c8c"),
             active=True,
         )
         admin_models = RbacRolePermissionResource(
             role_id=cfia_admin_role_id,
-            permission_id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
-            resource_id=uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+            permission_id=uuid.UUID("3b05d100-0aa4-4ab1-8ba5-ee6d72fd3cfd"),
+            resource_id=uuid.UUID("fe0bcdf3-d9c9-4d1b-8e1f-5b8c44e4a562"),
             active=True,
         )
         admin_users = RbacRolePermissionResource(
             role_id=cfia_admin_role_id,
-            permission_id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
-            resource_id=uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            permission_id=uuid.UUID("3b05d100-0aa4-4ab1-8ba5-ee6d72fd3cfd"),
+            resource_id=uuid.UUID("e5ae5211-3f24-4bd8-b078-62ff96717cf0"),
             active=True,
         )
         session.add_all([admin_pictures, admin_models, admin_users])
