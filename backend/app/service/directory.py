@@ -1,4 +1,4 @@
-from beartype.typing import Dict, Any, Type
+from beartype.typing import Dict, Any, Type, cast
 from uuid import UUID
 from loguru import logger
 
@@ -28,6 +28,7 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
     - DELETE operations:
       Folder creator (user_id matches) OR org_admin_role_id OR CFIA admin
       EXCEPTION: Cannot delete a user's default folder if the user is still active
+      EXCEPTION: Cannot delete a folder containing active pictures
     - CREATE operations: Any user belonging to an organization (see verify_create_access)
 
     System Invariants:
@@ -35,7 +36,8 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
     - Only active directories are returned by default
     - Default folders cannot be deleted while the associated user is active
     - Default folders cannot be updated while the associated user is active
-    - Users can delete folders they created (unless it's a default folder for an active user)
+    - Folders containing active pictures cannot be deleted
+    - Users can delete folders they created (unless constraints prevent it)
     """
 
     @classmethod
@@ -116,16 +118,19 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         2. User is org admin for the folder's organization, OR
         3. User is CFIA admin
         4. CANNOT delete a user's default folder if that user is still active
+        5. CANNOT delete a folder containing active pictures
 
         This allows users to delete their own folders while preventing deletion
-        of default folders which would break user workflows.
+        of default folders which would break user workflows and preventing accidental
+        deletion of folders containing active pictures.
 
         Args:
             requester_id: UUID of the requesting user
             entity: The Folder entity to delete
 
         Raises:
-            HTTPException: 403 if access denied or folder is a default folder for active user
+            HTTPException: 403 if access denied, folder is a default folder for active user,
+                          or folder contains active pictures
         """
         from app.db.utils import sessionmanager
         from app.db.model import Users
@@ -166,6 +171,47 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
                     detail="Cannot delete folder: it is the default folder for an active user. "
                     "Deactivate the user first or change their default folder.",
                 )
+
+        # Additional check: Prevent deletion if folder contains active pictures
+        has_active_pictures = await cls._has_active_pictures(cast(UUID, entity.id))
+        if has_active_pictures:
+            logger.warning(
+                f"Attempted to delete folder {entity.id} containing active pictures"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot delete folder: it contains active picture(s). "
+                "Please delete or move all pictures before deleting the folder.",
+            )
+
+    @staticmethod
+    async def _has_active_pictures(folder_id: UUID) -> bool:
+        """
+        Check if a folder contains any active pictures.
+
+        This method performs an efficient existence check to determine if at least
+        one active picture exists in the folder without counting all pictures.
+
+        Args:
+            folder_id: UUID of the folder to check
+
+        Returns:
+            True if the folder contains at least one active picture, False otherwise
+        """
+        from app.db.utils import sessionmanager
+        from app.db.model import Picture
+        from sqlalchemy import select
+
+        async with sessionmanager.get_session() as session:
+            stmt = (
+                select(Picture.id)
+                .where(Picture.folder_id == folder_id)
+                .where(Picture.active.is_(True))
+                .limit(1)
+            )
+            result = await session.execute(stmt)
+            first_picture = result.scalar_one_or_none()
+            return first_picture is not None
 
     @classmethod
     async def verify_update_access(cls, requester_id: UUID, entity: Folder) -> None:
