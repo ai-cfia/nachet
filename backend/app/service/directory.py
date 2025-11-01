@@ -24,13 +24,18 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
       Users with folder's org_user_role_id OR org_admin_role_id OR CFIA admin
     - UPDATE operations:
       Users with folder's org_user_role_id OR org_admin_role_id OR CFIA admin
+      EXCEPTION: Cannot update a user's default folder if the user is still active
     - DELETE operations:
-      Users with folder's org_admin_role_id OR CFIA admin (admin-only)
-    - CREATE operations: CFIA admin only (see verify_create_access)
+      Folder creator (user_id matches) OR org_admin_role_id OR CFIA admin
+      EXCEPTION: Cannot delete a user's default folder if the user is still active
+    - CREATE operations: Any user belonging to an organization (see verify_create_access)
 
     System Invariants:
     - Deletion is soft delete (sets active=False) to maintain referential integrity
     - Only active directories are returned by default
+    - Default folders cannot be deleted while the associated user is active
+    - Default folders cannot be updated while the associated user is active
+    - Users can delete folders they created (unless it's a default folder for an active user)
     """
 
     @classmethod
@@ -82,24 +87,134 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         return DirectoryDeletionError
 
     @classmethod
-    async def verify_create_access(cls, requester_id: UUID, **kwargs) -> None:
+    async def verify_create_access(cls, requester_id: UUID, **_kwargs) -> None:
         """
         Verify user can create directories.
 
-        Authorization: CFIA admin only
+        Authorization: Any user belonging to an organization
 
-        This ensures only CFIA admins can create directories, maintaining
-        the current authorization model while enabling role-based access
-        for other operations.
+        Users can create directories within their organization. This allows
+        all organization members to create folders for their work.
 
         Args:
             requester_id: UUID of the requesting user
-            **kwargs: Directory creation parameters
 
         Raises:
-            HTTPException: 403 if user is not CFIA admin
+            HTTPException: 403 if user does not belong to an organization
         """
-        await RbacService.verify_user_is_cfia_admin(requester_id)
+        # Verify user has organization membership by getting their org roles
+        # This will raise an exception if the user doesn't have proper org access
+        await RbacService.get_user_org_roles(requester_id)
+
+    @classmethod
+    async def verify_delete_access(cls, requester_id: UUID, entity: Folder) -> None:
+        """
+        Verify user can delete the folder.
+
+        Authorization Rules:
+        1. User created the folder (user_id matches), OR
+        2. User is org admin for the folder's organization, OR
+        3. User is CFIA admin
+        4. CANNOT delete a user's default folder if that user is still active
+
+        This allows users to delete their own folders while preventing deletion
+        of default folders which would break user workflows.
+
+        Args:
+            requester_id: UUID of the requesting user
+            entity: The Folder entity to delete
+
+        Raises:
+            HTTPException: 403 if access denied or folder is a default folder for active user
+        """
+        from app.db.utils import sessionmanager
+        from app.db.model import Users
+        from sqlalchemy import select
+        from fastapi import status
+
+        # Check if user created this folder
+        is_creator = entity.user_id == requester_id
+
+        # If not the creator, check admin access (org admin or CFIA admin)
+        if not is_creator:
+            try:
+                await super().verify_delete_access(requester_id, entity)
+            except HTTPException:
+                # User is neither creator nor admin
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied to delete folder - must be folder creator, organization admin, or CFIA admin",
+                )
+
+        # Additional check: Prevent deletion of default folders for active users
+        async with sessionmanager.get_session() as session:
+            # Check if this folder is set as default_folder_id for any active user
+            stmt = (
+                select(Users)
+                .where(Users.default_folder_id == entity.id)
+                .where(Users.active.is_(True))
+            )
+            result = await session.execute(stmt)
+            user_with_default_folder = result.scalar_one_or_none()
+
+            if user_with_default_folder:
+                logger.warning(
+                    f"Attempted to delete default folder {entity.id} for active user {user_with_default_folder.id}"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Cannot delete folder: it is the default folder for an active user. "
+                    "Deactivate the user first or change their default folder.",
+                )
+
+    @classmethod
+    async def verify_update_access(cls, requester_id: UUID, entity: Folder) -> None:
+        """
+        Verify user can update the folder.
+
+        Authorization Rules:
+        1. User must have org_user_role_id OR org_admin_role_id OR be CFIA admin (base class check)
+        2. CANNOT update a user's default folder if that user is still active
+
+        This prevents accidental modifications to default folders which could break
+        user workflows. Default folders can only be updated after the user is
+        deactivated.
+
+        Args:
+            requester_id: UUID of the requesting user
+            entity: The Folder entity to update
+
+        Raises:
+            HTTPException: 403 if access denied or folder is a default folder for active user
+        """
+        from app.db.utils import sessionmanager
+        from app.db.model import Users
+        from sqlalchemy import select
+        from fastapi import status
+
+        # First, perform standard authorization check
+        await super().verify_update_access(requester_id, entity)
+
+        # Additional check: Prevent updates to default folders for active users
+        async with sessionmanager.get_session() as session:
+            # Check if this folder is set as default_folder_id for any active user
+            stmt = (
+                select(Users)
+                .where(Users.default_folder_id == entity.id)
+                .where(Users.active.is_(True))
+            )
+            result = await session.execute(stmt)
+            user_with_default_folder = result.scalar_one_or_none()
+
+            if user_with_default_folder:
+                logger.warning(
+                    f"Attempted to update default folder {entity.id} for active user {user_with_default_folder.id}"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Cannot update folder: it is the default folder for an active user. "
+                    "Deactivate the user first or change their default folder.",
+                )
 
     @classmethod
     async def create(cls, requester_id: UUID, **kwargs) -> Dict[str, Any]:
@@ -380,6 +495,168 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
         return {
             "id": result["id"],
             "message": f"Directory '{folder_name}' created successfully at {fullpath}",
+        }
+
+    @classmethod
+    async def get_or_create_folder(
+        cls,
+        user_id: UUID,
+        normalized_path: str,
+        description: str = "",
+    ) -> Dict[str, Any]:
+        """
+        Get or create a folder using the get-or-create pattern (idempotent).
+
+        This method checks if a folder exists at the given path. If it exists,
+        returns the existing folder_id. If not, creates a new folder and returns
+        the new folder_id.
+
+        The organization prefix is automatically prepended to the normalized_path.
+
+        Authorization: Any user belonging to an organization
+
+        Args:
+            user_id: UUID of the user creating/retrieving the folder
+            normalized_path: Relative path (e.g., "avena-fatua" or "mycology/avena-fatua")
+            description: Optional description for the folder (defaults to empty string)
+
+        Returns:
+            Dictionary with folder_id
+
+        Raises:
+            HTTPException: If user is not authorized, path is invalid, or operation fails
+
+        Example:
+            normalized_path="avena-fatua" -> fullpath="/cfia/avena-fatua"
+            folder_name="avena-fatua", folder_prefix="/cfia/"
+        """
+        from app.db.utils import sessionmanager
+
+        # Get user's organization and role information
+        user_org_roles = await RbacService.get_user_org_roles(user_id)
+
+        # Validate and parse fullpath (prepend org prefix)
+        fullpath = f"/{user_org_roles.org_prefix}/{normalized_path}"
+        folder_name, folder_prefix = cls._validate_and_parse_fullpath(fullpath)
+
+        # Check if folder exists
+        async with sessionmanager.get_session() as session:
+            data_service = DirectoryDataService(session)
+            existing_folder_id = await data_service.find_folder_by_path(
+                str(user_org_roles.org_user_role_id),
+                folder_name,
+                folder_prefix,
+            )
+
+            if existing_folder_id:
+                logger.info(
+                    f"Folder already exists: '{folder_name}' at '{folder_prefix}' (ID: {existing_folder_id})"
+                )
+                return {"folder_id": str(existing_folder_id)}
+
+        # Folder doesn't exist, create it
+        logger.info(
+            f"Folder not found, creating: '{folder_name}' at '{folder_prefix}' for user {user_id}"
+        )
+
+        # Use create_directory which handles authorization
+        result = await cls.create_directory(
+            user_id=user_id,
+            fullpath=normalized_path,
+            description=description,
+        )
+
+        return {"folder_id": result["id"]}
+
+    @classmethod
+    async def update_folder(
+        cls,
+        user_id: UUID,
+        folder_id: UUID,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> Dict[str, Any]:
+        """
+        Update a folder's name and/or description.
+
+        Authorization: Same as AuthorizedBaseCRUDService.update() - users with folder's
+        org_user_role_id OR org_admin_role_id OR CFIA admin
+
+        Validation:
+        - Cannot update default folders (blocked in verify_update_access)
+        - If name is provided, validates it doesn't conflict with existing folders
+        - Name must follow path validation rules
+
+        Args:
+            user_id: UUID of the user performing the update
+            folder_id: UUID of the folder to update
+            name: Optional new folder name (just the name, not the full path)
+            description: Optional new description
+
+        Returns:
+            Dictionary with updated folder id and success message
+
+        Raises:
+            HTTPException: If folder is default folder, name conflicts, or validation fails
+            DirectoryNotFoundError: If folder doesn't exist
+            DirectoryUpdateError: If update operation fails
+        """
+        from app.db.utils import sessionmanager
+
+        if name is None and description is None:
+            raise HTTPException(
+                status_code=400,
+                detail="At least one field (name or description) must be provided for update",
+            )
+
+        # Get user's organization and role information
+        user_org_roles = await RbacService.get_user_org_roles(user_id)
+
+        # Fetch the folder entity to verify it exists and check permissions
+        folder_entity = await cls.get_by_id(user_id, folder_id)
+
+        # Build update parameters
+        update_params = {}
+
+        # If name is being updated, validate it
+        if name is not None:
+            # Validate the new name follows path rules
+            # We'll use the existing folder's prefix with the new name
+            new_fullpath = f"{folder_entity['folder_prefix']}{name}"
+            new_name, new_prefix = cls._validate_and_parse_fullpath(new_fullpath)
+
+            # Check if a folder with this name already exists at the same prefix
+            async with sessionmanager.get_session() as session:
+                data_service = DirectoryDataService(session)
+                existing_folder_id = await data_service.find_folder_by_path(
+                    str(user_org_roles.org_user_role_id),
+                    new_name,
+                    new_prefix,
+                )
+
+                if existing_folder_id and str(existing_folder_id) != str(folder_id):
+                    logger.warning(
+                        f"Attempted to rename folder {folder_id} to '{new_name}' but name already exists (ID: {existing_folder_id})"
+                    )
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"A folder with the name '{new_name}' already exists at this location. "
+                        "Please choose a different name.",
+                    )
+
+            update_params["name"] = new_name
+
+        # Add description to update if provided
+        if description is not None:
+            update_params["description"] = description
+
+        # Perform the update using base class method (includes authorization check)
+        await cls.update(user_id, folder_id, **update_params)
+
+        logger.info(f"Folder {folder_id} updated successfully by user {user_id}")
+        return {
+            "id": str(folder_id),
+            "message": "Folder updated successfully",
         }
 
     @staticmethod

@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
-from app.db.model import Folder, Picture
+from app.db.model import Folder, Picture, Users
 from app.datastore.base_crud import BaseCRUDDataService
 
 
@@ -17,6 +17,7 @@ class UserDirectoryRow(TypedDict):
     folder_prefix: str
     description: str
     picture_count: int
+    is_default_folder: bool
 
 
 class OrgDirectoryRow(TypedDict):
@@ -101,12 +102,22 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
     async def get_user_directories_count(self, user_id: str) -> list[UserDirectoryRow]:
         """
         Retrieve all directories for a given user and number of pictures from the database.
+        Includes is_default_folder flag to indicate if folder is a default folder for any active user.
 
         Args:
             user_id: The ID of the user whose directories are to be fetched.
         Returns:
             List of dictionaries with directory data and picture counts
         """
+        # Subquery to check if folder is default for any active user
+        is_default_subquery = (
+            select(Users.id)
+            .where(Users.default_folder_id == Folder.id)
+            .where(Users.active.is_(True))
+            .limit(1)
+            .scalar_subquery()
+        )
+
         stmt = (
             select(
                 Folder.id,
@@ -114,6 +125,7 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
                 Folder.folder_prefix,
                 Folder.description,
                 func.count(Picture.id).label("picture_count"),
+                (is_default_subquery.is_not(None)).label("is_default_folder"),
             )
             .join(Picture, isouter=True)
             .where(Folder.user_id == user_id)
@@ -242,3 +254,28 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
         )
         result = await self.session.execute(stmt)  # type: ignore[attr-defined]
         return result.scalar_one_or_none()
+
+    async def find_folder_by_path(
+        self, org_user_role_id: str, folder_name: str, folder_prefix: str
+    ) -> Optional[UUID]:
+        """
+        Find a folder by its path components (org_user_role_id, name, folder_prefix).
+
+        Args:
+            org_user_role_id: The organization user role ID.
+            folder_name: The name of the folder (e.g., "avena-fatua").
+            folder_prefix: The folder prefix (e.g., "/cfia/mycology/").
+
+        Returns:
+            The folder ID (UUID) if found, None otherwise.
+        """
+        stmt = (
+            select(Folder.id)
+            .where(Folder.org_user_role_id == org_user_role_id)
+            .where(Folder.name == folder_name)
+            .where(Folder.folder_prefix == folder_prefix)
+            .where(Folder.active.is_(True))
+        )
+        result = await self.session.execute(stmt)  # type: ignore[attr-defined]
+        folder_id = result.scalar_one_or_none()
+        return folder_id  # type: ignore[return-value]
