@@ -108,6 +108,7 @@ nachet/
 - **UUID-based**: All entities use UUIDs for secure multi-tenant isolation
 - **Workflow tracking**: Primary key `workflow_id` for state management tables
 - **Schema versioning**: Managed with Alembic migration system
+- schema definition in `backend/app/db/model.py` and migrations in `backend/app/db/alembic/versions/`
 
 ### ML Pipeline Architecture
 
