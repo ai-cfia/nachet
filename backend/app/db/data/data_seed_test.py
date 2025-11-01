@@ -771,19 +771,19 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
         # Add RBAC permissions
 
         read_permission = RbacPermission(
-            id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
+            id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
             name="read",
             description="Read access permission",
             active=True,
         )
         write_permission = RbacPermission(
-            id=uuid.UUID("22222222-2222-2222-2222-222222222222"),
+            id=uuid.UUID("98895d13-ca9e-4ee7-8e2c-41f872292fd7"),
             name="write",
             description="Write access permission",
             active=True,
         )
         admin_permission = RbacPermission(
-            id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
+            id=uuid.UUID("c410cbbc-5926-4f07-9a21-5cc27a7938fb"),
             name="admin",
             description="Administrative access permission",
             active=True,
@@ -793,19 +793,19 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
         # Add RBAC resources
 
         pictures_resource = RbacResource(
-            id=uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            id=uuid.UUID("5e0a326a-e253-49ba-a2ed-b0936162e0ae"),
             name="pictures",
             description="Picture management resource",
             active=True,
         )
         models_resource = RbacResource(
-            id=uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+            id=uuid.UUID("a54d6a3d-6db6-4e45-84c3-2f41e101fa66"),
             name="models",
             description="Model management resource",
             active=True,
         )
         users_resource = RbacResource(
-            id=uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            id=uuid.UUID("4d84a128-e651-4cc7-ad7a-2dd816a98a9a"),
             name="users",
             description="User management resource",
             active=True,
@@ -817,20 +817,20 @@ async def seed_test_data(sessionmanager: SessionManager) -> None:
         # Use the CFIA admin role ID from environment
         admin_pictures = RbacRolePermissionResource(
             role_id=cfia_admin_role_id,
-            permission_id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
-            resource_id=uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+            permission_id=uuid.UUID("c410cbbc-5926-4f07-9a21-5cc27a7938fb"),
+            resource_id=uuid.UUID("5e0a326a-e253-49ba-a2ed-b0936162e0ae"),
             active=True,
         )
         admin_models = RbacRolePermissionResource(
             role_id=cfia_admin_role_id,
-            permission_id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
-            resource_id=uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+            permission_id=uuid.UUID("c410cbbc-5926-4f07-9a21-5cc27a7938fb"),
+            resource_id=uuid.UUID("a54d6a3d-6db6-4e45-84c3-2f41e101fa66"),
             active=True,
         )
         admin_users = RbacRolePermissionResource(
             role_id=cfia_admin_role_id,
-            permission_id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
-            resource_id=uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            permission_id=uuid.UUID("c410cbbc-5926-4f07-9a21-5cc27a7938fb"),
+            resource_id=uuid.UUID("4d84a128-e651-4cc7-ad7a-2dd816a98a9a"),
             active=True,
         )
         session.add_all([admin_pictures, admin_models, admin_users])
