@@ -12,6 +12,7 @@ import {
 import { colours } from "../../../styles/colours";
 import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import CloseIcon from "@mui/icons-material/Close";
+import EditIcon from "@mui/icons-material/Edit";
 import FolderIcon from "@mui/icons-material/Folder";
 import FilterIcon from "@mui/icons-material/Filter";
 import { AzureStorageDirectoryItem } from "@common/types";
@@ -21,6 +22,7 @@ interface params {
   curDir: AzureStorageDirectoryItem | null;
   handleSelect: (folder: string) => void;
   handleDelete: (folder: string) => void;
+  handleEdit: (folder: string) => void;
   handleCreateDirectory: () => void;
 }
 
@@ -30,6 +32,7 @@ const StorageDirectoryView: React.FC<params> = (props) => {
     curDir,
     handleSelect,
     handleDelete,
+    handleEdit,
     handleCreateDirectory,
   } = props;
   return (
@@ -118,8 +121,8 @@ const StorageDirectoryView: React.FC<params> = (props) => {
                       paddingTop: "0.5vh",
                       paddingBottom: "0.5vh",
                       paddingLeft: "0.8vh",
-                      width: "10vw",
-                      maxWidth: "10vw",
+                      width: "75%",
+                      maxWidth: "75%",
                       textOverflow: "break-word",
                       color: colours.CFIA_Font_Black,
                     }}
@@ -156,7 +159,7 @@ const StorageDirectoryView: React.FC<params> = (props) => {
                       fontSize: "1.15vh",
                       paddingTop: "0.5vh",
                       paddingBottom: "0.5vh",
-                      paddingLeft: "0.8vh",
+                      paddingLeft: "10px",
                       color: colours.CFIA_Font_Black,
                     }}
                     onClick={() => {
@@ -192,11 +195,45 @@ const StorageDirectoryView: React.FC<params> = (props) => {
                     align="right"
                     sx={{
                       cursor: "pointer",
-                      paddingLeft: 0,
+                      paddingLeft: "10px",
                       fontSize: "1.0vh",
                       paddingTop: "0.5vh",
                       paddingBottom: "0.5vh",
-                      paddingRight: "0.8vh",
+                    }}
+                  >
+                    <IconButton
+                      onClick={() => {
+                        handleEdit(item.folderId);
+                      }}
+                      sx={{ padding: 0 }}
+                      disabled={item.isDefaultFolder === true}
+                      data-testid={"edit-icon" + (index + 1)}
+                    >
+                      <EditIcon
+                        style={{
+                          color:
+                            item.isDefaultFolder === true
+                              ? colours.CFIA_Font_Gray
+                              : colours.CFIA_Background_Blue,
+                          fontSize: "1.8vh",
+                          marginTop: 0,
+                          marginBottom: 0,
+                          paddingTop: 0,
+                          paddingBottom: 0,
+                          paddingLeft: "20px",
+                        }}
+                      />
+                    </IconButton>
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{
+                      cursor: "pointer",
+                      fontSize: "1.0vh",
+                      paddingTop: "0.5vh",
+                      paddingBottom: "0.5vh",
+                      paddingRight: "10px",
+                      paddingLeft: "10px",
                     }}
                   >
                     <IconButton

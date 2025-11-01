@@ -722,15 +722,13 @@ describe("batchUploadInit", () => {
     });
 
     const backendUrl = "http://localhost:8080";
-    const folderName = "test-folder";
-    const containerUuid = "container-uuid";
+    const folderId = "folder-uuid";
     const nbPictures = 5;
 
     const result = await batchUploadInit({
       backendUrl,
       accessToken: "valid-token",
-      folderName,
-      containerUuid,
+      folderId,
       fileCount: nbPictures,
     });
 
@@ -746,8 +744,7 @@ describe("batchUploadInit", () => {
         "X-Session-ID": "test-session-id",
       },
       data: {
-        folder_name: folderName,
-        container_name: containerUuid,
+        folder_id: folderId,
         file_count: nbPictures,
       },
       withCredentials: true,
@@ -759,34 +756,28 @@ describe("batchUploadInit", () => {
       batchUploadInit({
         backendUrl: "http://localhost:8080",
         accessToken: "valid-token",
-        folderName: "folder",
-        containerUuid: "container",
+        folderId: "folder-uuid",
         fileCount: 0,
       }),
     ).rejects.toThrow(new ValueError("Number of pictures is null or empty"));
   });
 
-  it("should throw ValueError for empty container UUID", async () => {
+  it("should throw ValueError for empty folder ID", async () => {
     await expect(
       batchUploadInit({
         backendUrl: "http://localhost:8080",
         accessToken: "valid-token",
-        folderName: "folder",
-        containerUuid: "",
+        folderId: "",
         fileCount: 5,
       }),
-    ).rejects.toThrow(new ValueError("Container UUID is null or empty"));
+    ).rejects.toThrow(new ValueError("Folder ID is null or empty"));
   });
 });
 
 describe("batchUploadImage", () => {
   const mockBatchUploadData = {
-    containerName: "test-container",
-    uuid: "user-uuid",
-    family: "Poaceae",
-    genus: "Triticum",
-    species: "aestivum",
-    nameCode: "TRIAE",
+    sessionId: "session-456",
+    seedId: "seed-uuid-123",
     trayCode: "A",
     sampleId: "SAMPLE-123",
     deviceBrandId: "550e8400-e29b-41d4-a716-446655440000",
@@ -794,14 +785,16 @@ describe("batchUploadImage", () => {
     deviceLensId: "550e8400-e29b-41d4-a716-446655440002",
     magnification: 10.5,
     imageDataUrl: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ",
-    sessionId: "session-456",
   };
 
   it("should upload image successfully", async () => {
     mockedAxios.mockResolvedValue({
       ok: true,
       status: 200,
-      data: true,
+      data: {
+        picture_id: "picture-uuid-789",
+        workflow_id: "workflow-uuid-456",
+      },
     });
 
     const backendUrl = "http://localhost:8080";
@@ -811,7 +804,8 @@ describe("batchUploadImage", () => {
       accessToken: "valid-token",
     });
 
-    expect(result).toBe(true);
+    expect(result.picture_id).toBe("picture-uuid-789");
+    expect(result.workflow_id).toBe("workflow-uuid-456");
     expect(mockedAxios).toHaveBeenCalledWith({
       method: "post",
       url: `${backendUrl}/upload-picture`,
@@ -823,19 +817,14 @@ describe("batchUploadImage", () => {
         "X-Session-ID": "test-session-id",
       },
       data: {
-        container_name: mockBatchUploadData.containerName,
-        user_id: mockBatchUploadData.uuid,
-        family: mockBatchUploadData.family,
-        genus: mockBatchUploadData.genus,
-        species: mockBatchUploadData.species,
-        name_code: mockBatchUploadData.nameCode,
+        session_id: mockBatchUploadData.sessionId,
+        seed_id: mockBatchUploadData.seedId,
         tray_code: mockBatchUploadData.trayCode,
         sample_id: mockBatchUploadData.sampleId,
         device_brand_id: mockBatchUploadData.deviceBrandId,
         device_model_id: mockBatchUploadData.deviceModelId,
         device_lens_id: mockBatchUploadData.deviceLensId,
         magnification: mockBatchUploadData.magnification,
-        session_id: mockBatchUploadData.sessionId,
         image: mockBatchUploadData.imageDataUrl,
       },
       withCredentials: true,
@@ -874,70 +863,15 @@ describe("batchUploadImage", () => {
     ).rejects.toThrow(new ValueError("Image is null or empty"));
   });
 
-  it("should throw ValueError for empty container name", async () => {
-    const invalidData = { ...mockBatchUploadData, containerName: "" };
+  it("should throw ValueError for empty seed ID", async () => {
+    const invalidData = { ...mockBatchUploadData, seedId: "" };
     await expect(
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: invalidData,
         accessToken: "valid-token",
       }),
-    ).rejects.toThrow(new ValueError("Container name is null or empty"));
-  });
-
-  it("should throw ValueError for empty UUID", async () => {
-    const invalidData = { ...mockBatchUploadData, uuid: "" };
-    await expect(
-      batchUploadImage({
-        backendUrl: "http://localhost:8080",
-        data: invalidData,
-        accessToken: "valid-token",
-      }),
-    ).rejects.toThrow(new ValueError("UUID is null or empty"));
-  });
-
-  it("should throw ValueError for empty family", async () => {
-    const invalidData = { ...mockBatchUploadData, family: "" };
-    await expect(
-      batchUploadImage({
-        backendUrl: "http://localhost:8080",
-        data: invalidData,
-        accessToken: "valid-token",
-      }),
-    ).rejects.toThrow(new ValueError("Family is null or empty"));
-  });
-
-  it("should throw ValueError for empty genus", async () => {
-    const invalidData = { ...mockBatchUploadData, genus: "" };
-    await expect(
-      batchUploadImage({
-        backendUrl: "http://localhost:8080",
-        data: invalidData,
-        accessToken: "valid-token",
-      }),
-    ).rejects.toThrow(new ValueError("Genus is null or empty"));
-  });
-
-  it("should throw ValueError for empty species", async () => {
-    const invalidData = { ...mockBatchUploadData, species: "" };
-    await expect(
-      batchUploadImage({
-        backendUrl: "http://localhost:8080",
-        data: invalidData,
-        accessToken: "valid-token",
-      }),
-    ).rejects.toThrow(new ValueError("Species is null or empty"));
-  });
-
-  it("should throw ValueError for empty name code", async () => {
-    const invalidData = { ...mockBatchUploadData, nameCode: "" };
-    await expect(
-      batchUploadImage({
-        backendUrl: "http://localhost:8080",
-        data: invalidData,
-        accessToken: "valid-token",
-      }),
-    ).rejects.toThrow(new ValueError("Name code is null or empty"));
+    ).rejects.toThrow(new ValueError("Seed ID is null or empty"));
   });
 
   it("should throw ValueError for zero magnification", async () => {

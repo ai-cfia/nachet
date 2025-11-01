@@ -1,91 +1,82 @@
-import {
-  inferenceRequest,
-  getWorkflowStatus,
-  getWorkflowResults,
-} from "@common";
-import type { Images, ApiInferenceData } from "@common/types";
+import { getWorkflowStatus, getWorkflowResults } from "@common";
+import { batchUploadImage } from "@common/api";
+import type { BatchUploadMetadata, WorkflowStatus } from "@common/types";
 import { errorLogger } from "../logging";
 import { acquireAccessToken } from "../common/auth";
 import type { IPublicClientApplication } from "@azure/msal-browser";
 
 interface QueueItem {
-  imageIndex: number;
-  imageId: string;
+  file: File;
+  metadata: Omit<BatchUploadMetadata, "imageDataUrl">;
   tempId: string;
   queuePosition: number;
 }
 
 interface ActiveWorkflow {
   workflowId: string;
-  imageIndex: number;
-  imageId: string;
+  file: File;
+  fileName: string;
   pollingInterval: ReturnType<typeof setInterval> | null;
   initialDelay: ReturnType<typeof setTimeout> | null;
 }
 
-interface WorkflowStore {
-  addWorkflow: (
+interface UploadStore {
+  addUpload: (workflowId: string, file: File, queuePosition?: number) => void;
+  updateUploadStatus: (
     workflowId: string,
-    imageId: string,
-    imageIndex: number,
-    queuePosition?: number,
-  ) => void;
-  updateWorkflowStatus: (
-    workflowId: string,
-    status: string,
+    status: WorkflowStatus,
     error?: string | null,
     queuePosition?: number,
   ) => void;
-  removeWorkflow: (workflowId: string) => void;
+  setUploadResult: (workflowId: string, resultData: unknown) => void;
+  removeUpload: (workflowId: string) => void;
 }
 
-interface WorkflowQueueManagerConfig {
+interface BatchUploadQueueManagerConfig {
   backendUrl: string;
   msalInstance: IPublicClientApplication;
   scopes: string[];
-  selectedModel: string;
-  curDir: { folderId: string; folderName: string };
-  images: Images[];
-  workflowStore: WorkflowStore;
-  setImageId: (imageIndex: number, imageId: string) => void;
-  onComplete: (
-    workflowId: string,
-    imageIndex: number,
-    results: ApiInferenceData,
-  ) => void;
-  onError: (workflowId: string, imageIndex: number, error: Error) => void;
+  uploadStore: UploadStore;
+  onComplete: (workflowId: string, file: File, results: unknown) => void;
+  onError: (workflowId: string, file: File, error: Error) => void;
 }
 
 const POLLING_INTERVAL_MS = 10000; // 10 seconds
 const INITIAL_DELAY_MS = 20000; // 20 seconds
+const DELAY_AFTER_FAILURE_MS = 10000; // 10 seconds after failures
+const DELAY_AFTER_COMPLETION_MS = 10000; // 10 seconds after success
 
 /**
- * Non-reactive workflow queue manager.
- * Processes workflows one at a time in sequential order.
+ * Non-reactive batch upload queue manager.
+ * Processes file uploads one at a time in sequential order.
  * No React hooks, no useEffect, purely imperative.
+ * Follows the same pattern as WorkflowQueueManager.
  */
-export class WorkflowQueueManager {
+export class BatchUploadQueueManager {
   private queue: QueueItem[] = [];
   private currentWorkflow: ActiveWorkflow | null = null;
-  private config: WorkflowQueueManagerConfig | null = null;
+  private config: BatchUploadQueueManagerConfig | null = null;
   private isProcessing = false;
 
   /**
    * Update configuration (called when props change)
    */
-  configure(config: WorkflowQueueManagerConfig): void {
+  configure(config: BatchUploadQueueManagerConfig): void {
     this.config = config;
   }
 
   /**
-   * Add workflow to queue and start processing if idle
+   * Add file upload to queue and start processing if idle
    */
-  enqueue(imageIndex: number, imageId: string): void {
+  enqueue(
+    file: File,
+    metadata: Omit<BatchUploadMetadata, "imageDataUrl">,
+  ): void {
     if (!this.config) {
       errorLogger.logError(
-        "[QueueManager] No configuration set",
+        "[BatchUploadQueueManager] No configuration set",
         new Error("Queue manager not configured"),
-        { imageIndex, imageId },
+        { fileName: file.name },
       );
       return;
     }
@@ -93,16 +84,11 @@ export class WorkflowQueueManager {
     const tempId = `temp-${Date.now()}-${Math.random()}`;
     const queuePosition = this.queue.length + 1;
 
-    this.queue.push({ imageIndex, imageId, tempId, queuePosition });
+    this.queue.push({ file, metadata, tempId, queuePosition });
 
-    // Add to workflow store with "queued" status
-    this.config.workflowStore.addWorkflow(
-      tempId,
-      imageId,
-      imageIndex,
-      queuePosition,
-    );
-    this.config.workflowStore.updateWorkflowStatus(
+    // Add to upload store with "queued" status
+    this.config.uploadStore.addUpload(tempId, file, queuePosition);
+    this.config.uploadStore.updateUploadStatus(
       tempId,
       "queued",
       null,
@@ -128,7 +114,7 @@ export class WorkflowQueueManager {
   }
 
   /**
-   * Process next queued workflow
+   * Process next queued upload
    */
   private async processNext(): Promise<void> {
     if (
@@ -144,61 +130,41 @@ export class WorkflowQueueManager {
     const item = this.queue.shift()!;
 
     try {
-      // Find image data
-      const image = this.config.images.find(
-        (img) => img.index === item.imageIndex,
-      );
-
-      if (!image) {
-        errorLogger.logError(
-          `[QueueManager] Image not found for index ${item.imageIndex}`,
-          new Error("Image not found"),
-          { imageIndex: item.imageIndex, imageId: item.imageId },
-        );
-        this.isProcessing = false;
-        this.config.onError(
-          item.tempId,
-          item.imageIndex,
-          new Error("Image not found"),
-        );
-        this.processNext();
-        return;
-      }
-
       // Acquire fresh access token
       const accessToken = await acquireAccessToken(
         this.config.msalInstance,
         this.config.scopes,
       );
 
+      // Convert file to base64 data URL
+      const imageDataUrl = await this.fileToDataUrl(item.file);
+
       // Submit to backend
-      const response = await inferenceRequest({
+      const response = await batchUploadImage({
         backendUrl: this.config.backendUrl,
-        selectedModel: this.config.selectedModel,
-        imageObject: image as Images,
-        curDir: this.config.curDir.folderName,
         accessToken,
-        folder_id: this.config.curDir.folderId,
+        data: {
+          ...item.metadata,
+          imageDataUrl,
+        },
       });
 
-      // Store the image_id in the image store
-      this.config.setImageId(item.imageIndex, response.image_id);
+      // Check if upload returned workflow ID
+      if (!response.workflow_id) {
+        throw new Error("Upload failed - no workflow ID returned");
+      }
 
       // Remove temp workflow from store
-      this.config.workflowStore.removeWorkflow(item.tempId);
+      this.config.uploadStore.removeUpload(item.tempId);
 
       // Add real workflow with "pending" status
-      this.config.workflowStore.addWorkflow(
-        response.workflow_id,
-        response.image_id,
-        item.imageIndex,
-      );
+      this.config.uploadStore.addUpload(response.workflow_id, item.file);
 
       // Set as current active workflow
       this.currentWorkflow = {
         workflowId: response.workflow_id,
-        imageIndex: item.imageIndex,
-        imageId: item.imageId,
+        file: item.file,
+        fileName: item.file.name,
         pollingInterval: null,
         initialDelay: null,
       };
@@ -212,14 +178,14 @@ export class WorkflowQueueManager {
       this.startPolling(response.workflow_id);
     } catch (error) {
       errorLogger.logError(
-        "[QueueManager] Error submitting workflow",
+        "[BatchUploadQueueManager] Error submitting upload",
         error as Error,
-        { imageIndex: item.imageIndex, imageId: item.imageId },
+        { fileName: item.file.name },
       );
       this.isProcessing = false;
 
-      // Update workflow status to failed
-      this.config.workflowStore.updateWorkflowStatus(
+      // Update upload status to failed
+      this.config.uploadStore.updateUploadStatus(
         item.tempId,
         "failed",
         error instanceof Error ? error.message : "Unknown error",
@@ -227,16 +193,38 @@ export class WorkflowQueueManager {
 
       this.config.onError(
         item.tempId,
-        item.imageIndex,
+        item.file,
         error instanceof Error ? error : new Error("Unknown error"),
       );
 
       // Update queue positions
       this.updateQueuePositions();
 
-      // Continue with next item
-      this.processNext();
+      // Continue with next item after delay (prevent spamming on failures)
+      setTimeout(() => {
+        this.processNext();
+      }, DELAY_AFTER_FAILURE_MS);
     }
+  }
+
+  /**
+   * Convert File to base64 data URL
+   */
+  private fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          resolve(reader.result);
+        } else {
+          reject(new Error("Failed to convert file to data URL"));
+        }
+      };
+      reader.onerror = () => {
+        reject(new Error("File read error"));
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   /**
@@ -301,10 +289,10 @@ export class WorkflowQueueManager {
         accessToken,
       });
 
-      // Update workflow status in store
-      this.config.workflowStore.updateWorkflowStatus(
+      // Update upload status in store
+      this.config.uploadStore.updateUploadStatus(
         workflowId,
-        statusResponse.overall_status,
+        statusResponse.overall_status as WorkflowStatus,
       );
 
       // Check for terminal states
@@ -315,9 +303,13 @@ export class WorkflowQueueManager {
       }
       // Otherwise continue polling (pending/processing states)
     } catch (error) {
-      errorLogger.logError(`Failed to poll workflow status`, error as Error, {
-        workflowId,
-      });
+      errorLogger.logError(
+        `[BatchUploadQueueManager] Failed to poll workflow status`,
+        error as Error,
+        {
+          workflowId,
+        },
+      );
       // Don't fail the workflow on polling errors, will retry on next interval
     }
   }
@@ -334,7 +326,7 @@ export class WorkflowQueueManager {
       return;
     }
 
-    const { imageIndex } = this.currentWorkflow;
+    const { file } = this.currentWorkflow;
 
     // Stop polling
     this.stopPolling();
@@ -353,19 +345,28 @@ export class WorkflowQueueManager {
         accessToken,
       });
 
+      // Store results in upload store
+      this.config.uploadStore.setUploadResult(workflowId, results);
+
       // Clear current workflow BEFORE calling callback
       this.currentWorkflow = null;
 
       // Call completion callback
-      this.config.onComplete(workflowId, imageIndex, results);
+      this.config.onComplete(workflowId, file, results);
 
-      // Process next item in queue
-      this.processNext();
+      // Process next item in queue after brief delay
+      setTimeout(() => {
+        this.processNext();
+      }, DELAY_AFTER_COMPLETION_MS);
     } catch (error) {
-      errorLogger.logError(`Failed to fetch workflow results`, error as Error, {
-        workflowId,
-        imageIndex,
-      });
+      errorLogger.logError(
+        `[BatchUploadQueueManager] Failed to fetch workflow results`,
+        error as Error,
+        {
+          workflowId,
+          fileName: file.name,
+        },
+      );
 
       // Clear current workflow
       this.currentWorkflow = null;
@@ -373,12 +374,14 @@ export class WorkflowQueueManager {
       // Call error callback
       this.config.onError(
         workflowId,
-        imageIndex,
+        file,
         error instanceof Error ? error : new Error("Failed to fetch results"),
       );
 
-      // Process next item
-      this.processNext();
+      // Process next item after delay (prevent spamming on failures)
+      setTimeout(() => {
+        this.processNext();
+      }, DELAY_AFTER_FAILURE_MS);
     }
   }
 
@@ -400,7 +403,7 @@ export class WorkflowQueueManager {
       return;
     }
 
-    const { imageIndex } = this.currentWorkflow;
+    const { file } = this.currentWorkflow;
 
     const errorMessage =
       statusResponse.parent_workflow?.error_message ||
@@ -415,10 +418,12 @@ export class WorkflowQueueManager {
     this.currentWorkflow = null;
 
     // Call error callback
-    this.config.onError(workflowId, imageIndex, new Error(errorMessage));
+    this.config.onError(workflowId, file, new Error(errorMessage));
 
-    // Process next item
-    this.processNext();
+    // Process next item after delay (prevent spamming on failures)
+    setTimeout(() => {
+      this.processNext();
+    }, DELAY_AFTER_FAILURE_MS);
   }
 
   /**
@@ -448,6 +453,7 @@ export class WorkflowQueueManager {
       queueSize: this.queue.length,
       hasActiveWorkflow: this.currentWorkflow !== null,
       activeWorkflowId: this.currentWorkflow?.workflowId || null,
+      activeFileName: this.currentWorkflow?.fileName || null,
     };
   }
 

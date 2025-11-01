@@ -29,13 +29,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { batchUploadImage, batchUploadInit } from "@common/api";
+import { batchUploadInit, createOrGetFolder } from "@common/api";
 import { validateImageFile } from "@common";
 import { BatchUploadMetadata } from "@common/types";
 import { useSpeciesData, useDeviceData } from "@hooks";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
+import { getSeedIdByTaxonomy } from "../../../utils/seedLookup";
 import {
   folderNameSchema,
   magnificationSchema,
@@ -44,9 +45,11 @@ import {
   sampleIdSchema,
   deviceIdValidationSchema,
   fileListSchema,
+  safeUserInputSchema,
 } from "@common/validation";
-import { useDeviceStore } from "@stores/useDeviceStore";
 import { DeviceSelectionFields } from "@components/common/DeviceSelectionFields";
+import { BatchUploadQueueManager } from "../../../services/BatchUploadQueueManager";
+import { useBatchUploadStore } from "@stores/useBatchUploadStore";
 
 interface params {
   setBatchUploadOpen: Dispatch<SetStateAction<boolean>>;
@@ -57,18 +60,45 @@ interface params {
 }
 
 const BatchUploadPopup = (props: params) => {
-  const { setBatchUploadOpen, containerName, uuid, backendUrl, apiScopeClaim } =
-    props;
+  const { setBatchUploadOpen, backendUrl, apiScopeClaim } = props;
 
   const [files, setFiles] = useState<FileList | null>(null);
   const [fileCount, setFileCount] = useState<number>(0);
-  const [fileStatus, setFileStatus] = useState<boolean[]>([]);
   const [uploading, setUploading] = useState<boolean>(false);
-  const [uploadTotalProgress, setUploadTotalProgress] = useState<number>(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Queue manager singleton - persists across renders
+  const queueManagerRef = useRef<BatchUploadQueueManager>(
+    new BatchUploadQueueManager(),
+  );
+
+  // Batch upload store for global state persistence
+  const {
+    currentSession,
+    uploads,
+    createSession,
+    addUpload,
+    updateUploadStatus,
+    setUploadResult,
+    removeUpload,
+  } = useBatchUploadStore();
+
+  // Computed status from Zustand store
   const uploadSuccess = useMemo(() => {
-    return fileStatus.length > 0 && fileStatus.every((status) => status);
-  }, [fileStatus]);
+    if (!currentSession) return false;
+    return (
+      currentSession.status === "completed" && currentSession.failedFiles === 0
+    );
+  }, [currentSession]);
+
+  const uploadProgress = useMemo(() => {
+    if (!currentSession || currentSession.totalFiles === 0) return 0;
+    return (
+      ((currentSession.completedFiles + currentSession.failedFiles) /
+        currentSession.totalFiles) *
+      100
+    );
+  }, [currentSession]);
 
   const [folderName, setFolderName] = useState<string>("");
   const [family, setFamily] = useState<string>("");
@@ -81,7 +111,6 @@ const BatchUploadPopup = (props: params) => {
   const [deviceModelId, setDeviceModelId] = useState<string>("");
   const [deviceLensId, setDeviceLensId] = useState<string>("");
   const [magnification, setMagnification] = useState<number>(0);
-  const [sessionId, setSessionId] = useState<string>("");
 
   // Track if user has manually edited folder name
   const folderNameManuallyEdited = useRef<boolean>(false);
@@ -99,12 +128,18 @@ const BatchUploadPopup = (props: params) => {
   const [deviceLensError, setDeviceLensError] = useState<string>("");
   const [magnificationError, setMagnificationError] = useState<string>("");
   const [filesError, setFilesError] = useState<string>("");
+  const [folderDescriptionError, setFolderDescriptionError] =
+    useState<string>("");
 
   const { speciesData } = useSpeciesData(backendUrl, apiScopeClaim);
   const { devicesData } = useDeviceData(backendUrl, apiScopeClaim);
-  const { deviceSelection } = useDeviceStore();
   const { instance: msalInstance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
+
+  // Folder creation state
+  const [folderDescription, setFolderDescription] = useState<string>("");
+  const [createdFolderId, setCreatedFolderId] = useState<string>("");
+  const [creatingFolder, setCreatingFolder] = useState<boolean>(false);
 
   // Get unique values for each taxonomic field
   const availableFamilies = useMemo(() => {
@@ -164,6 +199,65 @@ const BatchUploadPopup = (props: params) => {
     return "";
   }, [genus, species]);
 
+  // Computed normalized folder name
+  const normalizedFolderName = useMemo(() => {
+    return folderName
+      .toLowerCase()
+      .replace(/[^a-z0-9/._-]/g, "-")
+      .replace(/^\/+|\/+$/g, ""); // Remove leading/trailing slashes
+  }, [folderName]);
+
+  // Handle folder creation
+  const handleCreateFolder = async () => {
+    if (!folderName) {
+      setFolderNameError("Folder name is required");
+      return;
+    }
+
+    if (inProgress !== InteractionStatus.None || !isAuthenticated) {
+      console.warn("Authentication in progress or user not authenticated");
+      return;
+    }
+
+    // Validate description using safeUserInputSchema (same as CreateDirectoryPopup)
+    const descriptionValidationResult =
+      safeUserInputSchema.safeParse(folderDescription);
+    if (!descriptionValidationResult.success) {
+      setFolderDescriptionError(
+        descriptionValidationResult.error.issues[0].message,
+      );
+      return;
+    }
+
+    setCreatingFolder(true);
+    setUploadError(null);
+    setFolderDescriptionError("");
+
+    try {
+      const accessToken = await acquireAccessToken(msalInstance, [
+        apiScopeClaim,
+      ]);
+      const result = await createOrGetFolder({
+        backendUrl,
+        accessToken,
+        normalizedPath: normalizedFolderName,
+        description: descriptionValidationResult.data,
+      });
+
+      setCreatedFolderId(result.folder_id);
+      console.log(`Folder created/retrieved: ${result.folder_id}`);
+    } catch (error) {
+      console.error("Folder creation failed:", error);
+      setUploadError(
+        error instanceof Error
+          ? error.message
+          : "Failed to create folder. Please try again.",
+      );
+    } finally {
+      setCreatingFolder(false);
+    }
+  };
+
   // Auto-populate other fields when name_code is selected (most specific)
   const handleNameCodeChange = (value: string) => {
     setNameCode(value);
@@ -198,21 +292,9 @@ const BatchUploadPopup = (props: params) => {
     }
   };
 
-  // Initialize device selections from Zustand store (read-only, don't persist back)
-  // We intentionally set state directly in this effect as we're synchronizing with external Zustand store
-  useEffect(() => {
-    if (deviceSelection) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setDeviceBrandId(deviceSelection.selectedBrandId);
-      setDeviceModelId(deviceSelection.selectedModelId);
-      setDeviceLensId(deviceSelection.selectedLensId);
-    }
-  }, [deviceSelection]);
-
   // Auto-prefill folder name when both genus and species are set (only if not manually edited)
   useEffect(() => {
     if (suggestedFolderName && !folderNameManuallyEdited.current) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFolderName(suggestedFolderName);
     }
   }, [suggestedFolderName]);
@@ -249,34 +331,35 @@ const BatchUploadPopup = (props: params) => {
       setFilesError("");
       setFiles(selectedFiles);
       setFileCount(selectedFiles.length);
-      setFileStatus(new Array(selectedFiles.length).fill(false));
     }
   };
 
   const resetUpload = (): void => {
     setUploading(false);
-    setUploadTotalProgress(0);
     setUploadError(null);
   };
 
   const resetForm = (): void => {
     setFolderName("");
+    setFolderDescription("");
     setFamily("");
     setGenus("");
     setSpecies("");
     setNameCode("");
     setTrayCode("");
     setSampleId("");
-    // Reset device fields to persisted values from store
-    setDeviceBrandId(deviceSelection.selectedBrandId);
-    setDeviceModelId(deviceSelection.selectedModelId);
-    setDeviceLensId(deviceSelection.selectedLensId);
+    // Reset device fields to empty strings
+    setDeviceBrandId("");
+    setDeviceModelId("");
+    setDeviceLensId("");
     setMagnification(0);
     setFiles(null);
     setFileCount(0);
-    setFileStatus([]);
-    setSessionId("");
     folderNameManuallyEdited.current = false;
+    // Reset folder creation state
+    setCreatedFolderId("");
+    setFolderNameError("");
+    setFolderDescriptionError("");
   };
 
   const handleUpload = (): void => {
@@ -288,6 +371,7 @@ const BatchUploadPopup = (props: params) => {
     // Clear previous errors
     setUploadError(null);
     setFolderNameError("");
+    setFolderDescriptionError("");
     setFamilyError("");
     setGenusError("");
     setSpeciesError("");
@@ -350,26 +434,46 @@ const BatchUploadPopup = (props: params) => {
     }
 
     // Validate device brand
+    console.log("DEBUG: deviceBrandId value:", deviceBrandId);
+    console.log("DEBUG: deviceBrandId type:", typeof deviceBrandId);
+    console.log("DEBUG: deviceBrandId length:", deviceBrandId?.length);
+
+    if (!deviceBrandId || deviceBrandId === "") {
+      setDeviceBrandError("Please select a device brand");
+      return;
+    }
     const deviceBrandValidation =
       deviceIdValidationSchema.safeParse(deviceBrandId);
     if (!deviceBrandValidation.success) {
-      setDeviceBrandError(deviceBrandValidation.error.issues[0].message);
+      console.log(
+        "DEBUG: deviceBrandValidation error:",
+        deviceBrandValidation.error,
+      );
+      setDeviceBrandError("Please select a valid device brand");
       return;
     }
 
     // Validate device model
+    if (!deviceModelId || deviceModelId === "") {
+      setDeviceModelError("Please select a device model");
+      return;
+    }
     const deviceModelValidation =
       deviceIdValidationSchema.safeParse(deviceModelId);
     if (!deviceModelValidation.success) {
-      setDeviceModelError(deviceModelValidation.error.issues[0].message);
+      setDeviceModelError("Please select a valid device model");
       return;
     }
 
     // Validate device lens
+    if (!deviceLensId || deviceLensId === "") {
+      setDeviceLensError("Please select a device lens");
+      return;
+    }
     const deviceLensValidation =
       deviceIdValidationSchema.safeParse(deviceLensId);
     if (!deviceLensValidation.success) {
-      setDeviceLensError(deviceLensValidation.error.issues[0].message);
+      setDeviceLensError("Please select a valid device lens");
       return;
     }
 
@@ -400,153 +504,118 @@ const BatchUploadPopup = (props: params) => {
     resetUpload();
     setUploading(true);
 
+    // Validate folder creation (Phase 5.5)
+    if (!createdFolderId) {
+      setUploadError(
+        "Please create a folder first by clicking 'Create Folder' button",
+      );
+      setUploading(false);
+      return;
+    }
+
+    // Get seed_id from taxonomy
+    let seedId: string;
+    try {
+      seedId = getSeedIdByTaxonomy({
+        family,
+        genus,
+        species,
+        nameCode,
+      });
+    } catch (error) {
+      setUploadError(
+        error instanceof Error
+          ? error.message
+          : "Failed to lookup seed ID from taxonomy",
+      );
+      setUploading(false);
+      return;
+    }
+
+    // Initialize batch upload session
     acquireAccessToken(msalInstance, [apiScopeClaim])
       .then((accessToken) => {
         return batchUploadInit({
           backendUrl,
           accessToken,
-          folderName,
-          containerUuid: containerName,
+          folderId: createdFolderId,
           fileCount,
-        });
+        }).then((response) => ({
+          accessToken,
+          sessionId: response.session_id,
+        }));
       })
-      .then((response) => {
-        setSessionId(response.session_id);
+      .then(({ sessionId }) => {
+        // Create session in Zustand store
+        createSession(sessionId, fileCount);
+
+        const scopes = apiScopeClaim ? [apiScopeClaim] : [];
+
+        // Configure queue manager
+        queueManagerRef.current.configure({
+          backendUrl,
+          msalInstance,
+          scopes,
+          uploadStore: {
+            addUpload,
+            updateUploadStatus,
+            setUploadResult,
+            removeUpload,
+          },
+          onComplete: (_workflowId, file, results) => {
+            console.log(`Upload completed: ${file.name}`, results);
+          },
+          onError: (_workflowId, file, error) => {
+            console.error(`Upload failed: ${file.name}`, error);
+          },
+        });
+
+        // Enqueue all files
+        if (files) {
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const metadata: Omit<BatchUploadMetadata, "imageDataUrl"> = {
+              sessionId,
+              seedId,
+              trayCode,
+              sampleId,
+              deviceBrandId,
+              deviceModelId,
+              deviceLensId,
+              magnification,
+            };
+            queueManagerRef.current.enqueue(file, metadata);
+          }
+        }
       })
       .catch((error) => {
         setUploadError(error.toString());
+        setUploading(false);
       });
   };
 
   const handleClose = (): void => {
-    // setUploadError(null);
+    // Note: Queue manager continues running even after modal closes
+    // This allows uploads to complete in the background
+    // The Zustand store persists the state, so progress can be resumed
     resetUpload();
     resetForm();
     setBatchUploadOpen(false);
   };
 
+  // Cleanup on unmount
   useEffect(() => {
-    if (sessionId === "" || files == null) {
-      return;
-    }
-    if (files == null || files.length === 0) {
-      return;
-    }
-    if (!uploading) {
-      return;
-    }
-
-    const uploadImage = (file: File): Promise<boolean> => {
-      return new Promise((resolve, reject) => {
-        if (file == null) {
-          reject("No file selected");
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const imageDataUrl = reader.result;
-          if (typeof imageDataUrl !== "string") {
-            reject("Invalid file type");
-            return;
-          }
-          const data: BatchUploadMetadata = {
-            containerName: containerName,
-            uuid: uuid,
-            family: family,
-            genus: genus,
-            species: species,
-            nameCode: nameCode,
-            trayCode: trayCode,
-            sampleId: sampleId,
-            deviceBrandId: deviceBrandId,
-            deviceModelId: deviceModelId,
-            deviceLensId: deviceLensId,
-            magnification: magnification,
-            imageDataUrl: imageDataUrl,
-            sessionId: sessionId,
-          };
-
-          acquireAccessToken(msalInstance, [apiScopeClaim])
-            .then((accessToken) => {
-              return batchUploadImage({
-                backendUrl: backendUrl,
-                data: data,
-                accessToken: accessToken,
-              });
-            })
-            .then((response) => {
-              if (response) {
-                console.log("Successfully uploaded image: ", file.name);
-              }
-              resolve(true);
-            })
-            .catch((error) => {
-              console.error("Error uploading image: ", file.name);
-              reject(error);
-            });
-        };
-        reader.readAsDataURL(file);
-      });
+    const queueManager = queueManagerRef.current;
+    return () => {
+      queueManager.clear();
     };
-
-    const batchUpload = async () => {
-      const uploadPromises: Promise<boolean>[] = [];
-      fileStatus.map((status, index) => {
-        if (!status) {
-          const promise = uploadImage(files[index])
-            .then((response) => {
-              if (response) {
-                setFileStatus((prev) => {
-                  const newStatus = [...prev];
-                  newStatus[index] = response;
-                  return newStatus;
-                });
-                setUploadTotalProgress((prev) => prev + 1);
-              }
-              return Promise.resolve(true);
-            })
-            .catch((error) => {
-              console.error(error);
-              return Promise.resolve(false);
-            });
-
-          uploadPromises.push(promise);
-        }
-        return Promise.resolve(true);
-      });
-
-      await Promise.all(uploadPromises);
-
-      resetUpload();
-    };
-
-    batchUpload();
-  }, [
-    apiScopeClaim,
-    backendUrl,
-    containerName,
-    family,
-    genus,
-    species,
-    nameCode,
-    trayCode,
-    sampleId,
-    deviceBrandId,
-    deviceModelId,
-    deviceLensId,
-    magnification,
-    fileStatus,
-    files,
-    msalInstance,
-    sessionId,
-    uploading,
-    uuid,
-  ]);
+  }, []);
 
   return (
     <Dialog
       open={true}
       onClose={handleClose}
-      maxWidth="sm"
+      maxWidth="lg"
       fullWidth
       slotProps={{
         paper: {
@@ -557,379 +626,479 @@ const BatchUploadPopup = (props: params) => {
         },
       }}
     >
-      <DialogContent>
+      <DialogContent sx={{ height: "80vh", padding: "16px" }}>
+        {/* Header */}
         <Box
           sx={{
             display: "flex",
-            flexDirection: "column",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "2vh",
           }}
         >
-          <Box
+          <Typography
+            variant="h6"
             sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "2vh",
+              fontWeight: 600,
+              fontSize: "2vh",
+              color: colours.CFIA_Font_Black,
             }}
           >
-            <Typography
-              variant="h6"
-              sx={{
-                fontWeight: 600,
-                fontSize: "2vh",
-                color: colours.CFIA_Font_Black,
-              }}
-            >
-              Batch Upload Images
-            </Typography>
-            <IconButton onClick={handleClose} size="small">
-              <CloseIcon />
-            </IconButton>
-          </Box>
-          <FormControl
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              alignItems: "center",
-              width: "100%",
-            }}
-          >
-            {uploadError && <p style={{ color: "red" }}>{uploadError}</p>}
-            {uploading && (
-              <Stack spacing={1} sx={{ width: "100%", marginBottom: "20px" }}>
-                <LinearProgress
-                  variant="determinate"
-                  value={(uploadTotalProgress / fileCount) * 100}
-                  sx={{ width: "100%", height: "10px" }}
-                />
-                <LinearProgress
-                  variant="indeterminate"
-                  sx={{ width: "100%", height: "10px" }}
-                />
-              </Stack>
-            )}
+            Batch Upload Images
+          </Typography>
+          <IconButton onClick={handleClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
 
-            <Autocomplete
-              id="input-family"
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Family"
-                  error={!!familyError}
-                  helperText={familyError}
-                />
-              )}
-              options={availableFamilies}
-              value={family}
-              onChange={(_event, newValue) => {
-                setFamily(newValue || "");
-                if (familyError) setFamilyError("");
-              }}
-              sx={{
-                marginTop: "10px",
-                width: "100%",
-              }}
-              disabled={uploading}
-            />
-
-            <Autocomplete
-              id="input-genus"
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Genus"
-                  error={!!genusError}
-                  helperText={genusError}
-                />
-              )}
-              options={availableGenera}
-              value={genus}
-              onChange={(_event, newValue) => {
-                setGenus(newValue || "");
-                if (genusError) setGenusError("");
-              }}
-              sx={{
-                marginTop: "10px",
-                width: "100%",
-              }}
-              disabled={uploading}
-            />
-
-            <Autocomplete
-              id="input-species"
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Species"
-                  error={!!speciesError}
-                  helperText={speciesError}
-                />
-              )}
-              options={availableSpecies}
-              value={species}
-              onChange={(_event, newValue) => {
-                handleSpeciesChange(newValue || "");
-                if (speciesError) setSpeciesError("");
-              }}
-              sx={{
-                marginTop: "10px",
-                width: "100%",
-              }}
-              disabled={uploading}
-            />
-
-            <Autocomplete
-              id="input-name-code"
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Name Code"
-                  error={!!nameCodeError}
-                  helperText={nameCodeError}
-                />
-              )}
-              options={availableNameCodes}
-              value={nameCode}
-              onChange={(_event, newValue) => {
-                handleNameCodeChange(newValue || "");
-                if (nameCodeError) setNameCodeError("");
-              }}
-              sx={{
-                marginTop: "10px",
-                width: "100%",
-              }}
-              disabled={uploading}
-            />
-
-            <TextField
-              id="input-tray-code"
-              label="Tray Code"
-              variant="outlined"
-              select
-              value={trayCode}
-              onChange={(e) => {
-                setTrayCode(e.target.value);
-                if (trayCodeError) setTrayCodeError("");
-              }}
-              sx={{
-                marginTop: "10px",
-                width: "100%",
-              }}
-              error={!!trayCodeError}
-              helperText={trayCodeError}
-              disabled={uploading}
-            >
-              <MenuItem value="">
-                <em>Select Tray Code</em>
-              </MenuItem>
-              <MenuItem value="A">A</MenuItem>
-              <MenuItem value="B">B</MenuItem>
-              <MenuItem value="C">C</MenuItem>
-              <MenuItem value="D">D</MenuItem>
-              <MenuItem value="E">E</MenuItem>
-            </TextField>
-
-            <TextField
-              id="input-magnification"
-              label="Magnification"
-              variant="outlined"
-              type="number"
-              value={magnification > 0 ? magnification : ""}
-              onChange={(e) => {
-                setMagnification(parseFloat(e.target.value) || 0);
-                if (magnificationError) setMagnificationError("");
-              }}
-              sx={{
-                marginTop: "10px",
-                width: "100%",
-              }}
-              slotProps={{
-                htmlInput: {
-                  min: 0.1,
-                  max: 1000,
-                  step: 0.1,
-                  style: { textAlign: "center" },
-                },
-              }}
-              error={!!magnificationError}
-              helperText={magnificationError}
-              disabled={uploading}
-            />
-
-            <TextField
-              id="input-sample-id"
-              label="Sample ID"
-              variant="outlined"
-              value={sampleId}
-              onChange={(e) => {
-                setSampleId(e.target.value);
-                if (sampleIdError) setSampleIdError("");
-              }}
-              sx={{
-                marginTop: "10px",
-                width: "100%",
-              }}
-              error={!!sampleIdError}
-              helperText={sampleIdError}
-              disabled={uploading}
-            />
-
-            <DeviceSelectionFields
-              selectedBrandId={deviceBrandId}
-              selectedModelId={deviceModelId}
-              selectedLensId={deviceLensId}
-              onBrandChange={setDeviceBrandId}
-              onModelChange={setDeviceModelId}
-              onLensChange={setDeviceLensId}
-              devicesData={devicesData}
-              disabled={uploading}
-              brandError={deviceBrandError}
-              modelError={deviceModelError}
-              lensError={deviceLensError}
-            />
-
-            <TextField
-              id="input-folder-name"
-              label="Folder Name"
-              variant="outlined"
-              value={folderName}
-              onChange={(e) => {
-                setFolderName(e.target.value);
-                folderNameManuallyEdited.current = true;
-                if (folderNameError) setFolderNameError("");
-              }}
-              sx={{
-                marginTop: "10px",
-                width: "100%",
-              }}
-              error={!!folderNameError}
-              helperText={folderNameError}
-              disabled={uploading}
-            />
-
-            <Button
-              variant="contained"
-              component="label"
-              sx={{
-                marginTop: "10px",
-                width: "fit-content",
-              }}
-              disabled={uploading}
-            >
-              Select Files
-              <input
-                type="file"
-                multiple
-                accept="image/png"
-                onChange={handleFilesSelected}
-                hidden
-              />
-            </Button>
-            {filesError && (
-              <Typography
-                variant="caption"
-                color="error"
-                sx={{ marginTop: "5px", fontSize: "0.75rem" }}
-              >
-                {filesError}
-              </Typography>
-            )}
-            {/* scrollable list of file names */}
-            {files && fileCount > 0 && (
-              <Box
-                sx={{
-                  width: "100%",
-                  height: "fit-content",
-                  maxHeight: "200px",
-                  overflow: "auto",
-                  marginTop: "10px",
-                  border: "1px solid lightgrey",
-                  borderRadius: "5px",
-                  padding: "5px",
-                }}
-              >
-                <List
-                  dense={true}
-                  subheader={
-                    <ListSubheader component="div" id="nested-list-subheader">
-                      Transfer Status
-                    </ListSubheader>
-                  }
-                >
-                  {fileStatus.map((value, index) => {
-                    return (
-                      <ListItem key={index}>
-                        {value ? (
-                          <CheckCircleOutlinedIcon
-                            sx={{
-                              color: "green",
-                              marginRight: "10px",
-                            }}
-                          />
-                        ) : (
-                          <CancelOutlinedIcon
-                            sx={{
-                              color: "red",
-                              marginRight: "10px",
-                            }}
-                          />
-                        )}
-                        <ListItemText
-                          primary={files[index].name}
-                          secondary={null}
-                          sx={{
-                            whiteSpace: "nowrap",
-                            userSelect: "none",
-                          }}
-                        />
-                      </ListItem>
-                    );
-                  })}
-                </List>
-              </Box>
-            )}
-
+        {/* 2-Column Layout */}
+        <Box sx={{ display: "flex", gap: 2, height: "calc(100% - 60px)" }}>
+          {/* LEFT COLUMN - Form Fields */}
+          <Box sx={{ flex: 1 }}>
             <Box
               sx={{
+                height: "100%",
+                overflowY: "auto",
+                paddingRight: "8px",
                 display: "flex",
-                flexDirection: "row",
-                justifyContent: "space-evenly",
-                alignItems: "center",
-                marginTop: "20px",
+                flexDirection: "column",
               }}
             >
-              {!uploading && !uploadSuccess && (
+              <FormControl
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  width: "100%",
+                  gap: "10px",
+                }}
+              >
+                {uploadError && <p style={{ color: "red" }}>{uploadError}</p>}
+                {uploading && currentSession && (
+                  <Stack spacing={1} sx={{ width: "100%" }}>
+                    <LinearProgress
+                      variant="determinate"
+                      value={uploadProgress}
+                      sx={{ width: "100%", height: "10px" }}
+                    />
+                    <Typography variant="caption" sx={{ textAlign: "center" }}>
+                      {currentSession.completedFiles} of{" "}
+                      {currentSession.totalFiles} completed
+                      {currentSession.failedFiles > 0 &&
+                        ` (${currentSession.failedFiles} failed)`}
+                    </Typography>
+                    <LinearProgress
+                      variant="indeterminate"
+                      sx={{ width: "100%", height: "10px" }}
+                    />
+                  </Stack>
+                )}
+
+                <Autocomplete
+                  id="input-family"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Family"
+                      error={!!familyError}
+                      helperText={familyError}
+                    />
+                  )}
+                  options={availableFamilies}
+                  value={family}
+                  onChange={(_event, newValue) => {
+                    setFamily(newValue || "");
+                    if (familyError) setFamilyError("");
+                  }}
+                  sx={{
+                    width: "100%",
+                  }}
+                  disabled={uploading}
+                />
+
+                <Autocomplete
+                  id="input-genus"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Genus"
+                      error={!!genusError}
+                      helperText={genusError}
+                    />
+                  )}
+                  options={availableGenera}
+                  value={genus}
+                  onChange={(_event, newValue) => {
+                    setGenus(newValue || "");
+                    if (genusError) setGenusError("");
+                  }}
+                  sx={{
+                    width: "100%",
+                  }}
+                  disabled={uploading}
+                />
+
+                <Autocomplete
+                  id="input-species"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Species"
+                      error={!!speciesError}
+                      helperText={speciesError}
+                    />
+                  )}
+                  options={availableSpecies}
+                  value={species}
+                  onChange={(_event, newValue) => {
+                    handleSpeciesChange(newValue || "");
+                    if (speciesError) setSpeciesError("");
+                  }}
+                  sx={{
+                    width: "100%",
+                  }}
+                  disabled={uploading}
+                />
+
+                <Autocomplete
+                  id="input-name-code"
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Name Code"
+                      error={!!nameCodeError}
+                      helperText={nameCodeError}
+                    />
+                  )}
+                  options={availableNameCodes}
+                  value={nameCode}
+                  onChange={(_event, newValue) => {
+                    handleNameCodeChange(newValue || "");
+                    if (nameCodeError) setNameCodeError("");
+                  }}
+                  sx={{
+                    width: "100%",
+                  }}
+                  disabled={uploading}
+                />
+
+                <TextField
+                  id="input-tray-code"
+                  label="Tray Code"
+                  variant="outlined"
+                  select
+                  value={trayCode}
+                  onChange={(e) => {
+                    setTrayCode(e.target.value);
+                    if (trayCodeError) setTrayCodeError("");
+                  }}
+                  sx={{
+                    width: "100%",
+                  }}
+                  error={!!trayCodeError}
+                  helperText={trayCodeError}
+                  disabled={uploading}
+                >
+                  <MenuItem value="">
+                    <em>Select Tray Code</em>
+                  </MenuItem>
+                  <MenuItem value="A">A</MenuItem>
+                  <MenuItem value="B">B</MenuItem>
+                  <MenuItem value="C">C</MenuItem>
+                  <MenuItem value="D">D</MenuItem>
+                  <MenuItem value="E">E</MenuItem>
+                </TextField>
+
+                <TextField
+                  id="input-magnification"
+                  label="Magnification"
+                  variant="outlined"
+                  type="number"
+                  value={magnification > 0 ? magnification : ""}
+                  onChange={(e) => {
+                    setMagnification(parseFloat(e.target.value) || 0);
+                    if (magnificationError) setMagnificationError("");
+                  }}
+                  sx={{
+                    width: "100%",
+                  }}
+                  slotProps={{
+                    htmlInput: {
+                      min: 0.1,
+                      max: 1000,
+                      step: 0.1,
+                      style: { textAlign: "center" },
+                    },
+                  }}
+                  error={!!magnificationError}
+                  helperText={magnificationError}
+                  disabled={uploading}
+                />
+
+                <TextField
+                  id="input-sample-id"
+                  label="Sample ID"
+                  variant="outlined"
+                  value={sampleId}
+                  onChange={(e) => {
+                    setSampleId(e.target.value);
+                    if (sampleIdError) setSampleIdError("");
+                  }}
+                  sx={{
+                    width: "100%",
+                  }}
+                  error={!!sampleIdError}
+                  helperText={sampleIdError}
+                  disabled={uploading}
+                />
+
+                <DeviceSelectionFields
+                  selectedBrandId={deviceBrandId}
+                  selectedModelId={deviceModelId}
+                  selectedLensId={deviceLensId}
+                  onBrandChange={setDeviceBrandId}
+                  onModelChange={setDeviceModelId}
+                  onLensChange={setDeviceLensId}
+                  devicesData={devicesData}
+                  disabled={uploading}
+                  brandError={deviceBrandError}
+                  modelError={deviceModelError}
+                  lensError={deviceLensError}
+                />
+
+                <TextField
+                  id="input-folder-name"
+                  label="Folder Name"
+                  variant="outlined"
+                  value={folderName}
+                  onChange={(e) => {
+                    setFolderName(e.target.value);
+                    folderNameManuallyEdited.current = true;
+                    if (folderNameError) setFolderNameError("");
+                    // Reset created folder ID when folder name changes
+                    if (createdFolderId) setCreatedFolderId("");
+                  }}
+                  sx={{
+                    width: "100%",
+                  }}
+                  error={!!folderNameError}
+                  helperText={
+                    folderNameError ||
+                    "Folder will be created at root level. Use letters, numbers, hyphens, and underscores."
+                  }
+                  disabled={uploading || creatingFolder}
+                  placeholder="e.g., avena-fatua or mycology-samples"
+                />
+
+                <TextField
+                  id="input-folder-description"
+                  label="Description (Optional)"
+                  variant="outlined"
+                  value={folderDescription}
+                  onChange={(e) => {
+                    setFolderDescription(e.target.value);
+                    if (folderDescriptionError) setFolderDescriptionError("");
+                  }}
+                  sx={{
+                    width: "100%",
+                  }}
+                  multiline
+                  rows={2}
+                  error={!!folderDescriptionError}
+                  helperText={
+                    folderDescriptionError ||
+                    "Optional description for this directory (max 500 characters)"
+                  }
+                  disabled={uploading || creatingFolder}
+                  placeholder="e.g., Sample collection from field trial 2025"
+                />
+
+                {/* Create Folder Button */}
+                <Button
+                  variant="contained"
+                  onClick={handleCreateFolder}
+                  disabled={
+                    uploading ||
+                    creatingFolder ||
+                    !folderName ||
+                    !!createdFolderId
+                  }
+                  sx={{
+                    width: "100%",
+                    backgroundColor: createdFolderId ? "#4caf50" : undefined,
+                  }}
+                >
+                  {creatingFolder
+                    ? "Creating..."
+                    : createdFolderId
+                      ? "Folder Created"
+                      : "Create Folder"}
+                </Button>
+              </FormControl>
+            </Box>
+          </Box>
+
+          {/* RIGHT COLUMN - File Selection and List */}
+          <Box sx={{ flex: 1, width: "97%" }}>
+            <Box
+              sx={{
+                height: "100%",
+                overflowY: "auto",
+                paddingLeft: "8px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}
+            >
+              <Button
+                variant="contained"
+                component="label"
+                sx={{
+                  width: "fit-content",
+                  alignSelf: "center",
+                }}
+                disabled={uploading || !createdFolderId}
+              >
+                Select Files
+                <input
+                  type="file"
+                  multiple
+                  accept="image/png"
+                  onChange={handleFilesSelected}
+                  hidden
+                />
+              </Button>
+
+              {filesError && (
+                <Typography
+                  variant="caption"
+                  color="error"
+                  sx={{ fontSize: "0.75rem", alignSelf: "center" }}
+                >
+                  {filesError}
+                </Typography>
+              )}
+
+              {/* scrollable list of file names with upload status */}
+              {files && fileCount > 0 && (
+                <Box
+                  sx={{
+                    width: "100%",
+                    flex: 1,
+                    overflow: "auto",
+                    border: "1px solid lightgrey",
+                    borderRadius: "5px",
+                    padding: "5px",
+                  }}
+                >
+                  <List
+                    dense={true}
+                    subheader={
+                      <ListSubheader component="div" id="nested-list-subheader">
+                        Upload Status
+                      </ListSubheader>
+                    }
+                  >
+                    {Array.from({ length: fileCount }).map((_, index) => {
+                      const file = files[index];
+                      // Find upload info from Zustand store by matching file name
+                      const uploadInfo = Array.from(uploads.values()).find(
+                        (u) => u.fileName === file.name,
+                      );
+                      const status = uploadInfo?.status || "pending";
+
+                      return (
+                        <ListItem key={index}>
+                          {status === "completed" ? (
+                            <CheckCircleOutlinedIcon
+                              sx={{
+                                color: "green",
+                                marginRight: "10px",
+                              }}
+                            />
+                          ) : status === "failed" ? (
+                            <CancelOutlinedIcon
+                              sx={{
+                                color: "red",
+                                marginRight: "10px",
+                              }}
+                            />
+                          ) : (
+                            <CancelOutlinedIcon
+                              sx={{
+                                color: "grey",
+                                marginRight: "10px",
+                              }}
+                            />
+                          )}
+                          <ListItemText
+                            primary={file.name}
+                            secondary={
+                              uploadInfo?.error
+                                ? `Error: ${uploadInfo.error}`
+                                : status === "queued"
+                                  ? `Queued (${uploadInfo?.queuePosition ?? ""})`
+                                  : status === "processing"
+                                    ? "Processing..."
+                                    : status === "completed"
+                                      ? "Completed"
+                                      : status === "failed"
+                                        ? "Failed"
+                                        : "Pending"
+                            }
+                            sx={{
+                              whiteSpace: "nowrap",
+                              userSelect: "none",
+                            }}
+                          />
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                </Box>
+              )}
+
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "row",
+                  justifyContent: "space-evenly",
+                  alignItems: "center",
+                  marginTop: "auto",
+                  paddingTop: "20px",
+                }}
+              >
+                {!uploading && !uploadSuccess && (
+                  <Button
+                    sx={{
+                      backgroundColor: "green",
+                      color: "white",
+                      "&:hover": {
+                        backgroundColor: "green",
+                        opacity: 0.6,
+                      },
+                      marginRight: "10px",
+                    }}
+                    onClick={handleUpload}
+                  >
+                    Upload
+                  </Button>
+                )}
                 <Button
                   sx={{
-                    backgroundColor: "green",
+                    backgroundColor: "red",
                     color: "white",
                     "&:hover": {
-                      backgroundColor: "green",
-                      opacity: 0.6,
+                      backgroundColor: "red",
+                      opacity: 0.5,
                     },
-                    marginRight: "10px",
                   }}
-                  onClick={handleUpload}
+                  onClick={handleClose}
                 >
-                  Upload
+                  {uploadSuccess ? "Close" : "Cancel"}
                 </Button>
-              )}
-              <Button
-                sx={{
-                  backgroundColor: "red",
-                  color: "white",
-                  "&:hover": {
-                    backgroundColor: "red",
-                    opacity: 0.5,
-                  },
-                }}
-                onClick={handleClose}
-              >
-                {uploadSuccess ? "Close" : "Cancel"}
-              </Button>
+              </Box>
             </Box>
-          </FormControl>
+          </Box>
         </Box>
       </DialogContent>
     </Dialog>

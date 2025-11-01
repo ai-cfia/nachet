@@ -14,8 +14,8 @@ import { useBackendUrl } from "@hooks";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
-import { createAzureStorageDir } from "@common/api";
-import { directoryNameSchema } from "@common/validation";
+import { createOrGetFolder, updateFolder } from "@common/api";
+import { normalizedPathSchema, safeUserInputSchema } from "@common/validation";
 import { AzureStorageDirectoryItem } from "@common/types";
 
 interface params {
@@ -26,6 +26,12 @@ interface params {
   >;
   setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
   apiScopeClaim: string;
+  mode: "create" | "edit";
+  initialData?: {
+    folderId: string;
+    folderName: string;
+    description: string;
+  };
 }
 
 const CreateFolder: React.FC<params> = (props) => {
@@ -34,10 +40,18 @@ const CreateFolder: React.FC<params> = (props) => {
     setCurDir,
     setReadAzureStorage,
     apiScopeClaim,
+    mode,
+    initialData,
   } = props;
   const backendURL = useBackendUrl();
-  const [folderNameInput, setFolderNameInput] = useState<string>("");
+  const [folderNameInput, setFolderNameInput] = useState<string>(
+    mode === "edit" && initialData ? initialData.folderName : "",
+  );
+  const [descriptionInput, setDescriptionInput] = useState<string>(
+    mode === "edit" && initialData ? initialData.description || "" : "",
+  );
   const [validationError, setValidationError] = useState<string>("");
+  const [descriptionError, setDescriptionError] = useState<string>("");
   const { instance: msalInstance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
 
@@ -52,32 +66,65 @@ const CreateFolder: React.FC<params> = (props) => {
       return;
     }
 
-    // Validate directory name
-    const validationResult = directoryNameSchema.safeParse(folderNameInput);
-    if (!validationResult.success) {
-      setValidationError(validationResult.error.issues[0].message);
+    // Normalize folder name (lowercase, replace invalid chars with hyphens)
+    const normalizedPath = folderNameInput
+      .toLowerCase()
+      .replace(/[^a-z0-9/._-]/g, "-")
+      .replace(/^\/+|\/+$/g, ""); // Remove leading/trailing slashes
+
+    // Validate normalized path
+    const pathValidationResult = normalizedPathSchema.safeParse(normalizedPath);
+    if (!pathValidationResult.success) {
+      setValidationError(pathValidationResult.error.issues[0].message);
+      return;
+    }
+
+    // Sanitize description using XSS protection schema
+    const descriptionValidationResult =
+      safeUserInputSchema.safeParse(descriptionInput);
+    if (!descriptionValidationResult.success) {
+      setDescriptionError(descriptionValidationResult.error.issues[0].message);
       return;
     }
 
     // Clear any previous validation errors
     setValidationError("");
+    setDescriptionError("");
+
+    const sanitizedDescription = descriptionValidationResult.data;
 
     acquireAccessToken(msalInstance, [apiScopeClaim])
-      .then((accessToken) => {
-        // makes a post request to the backend to create a new directory in azure storage
-        return createAzureStorageDir({
-          backendUrl: backendURL,
-          folderName: folderNameInput,
-          accessToken,
-        });
-      })
-      .then(() => {
+      .then(async (accessToken) => {
+        if (mode === "create") {
+          // Create directory at root level using new API
+          const result = await createOrGetFolder({
+            backendUrl: backendURL,
+            accessToken,
+            normalizedPath,
+            description: sanitizedDescription,
+          });
+          console.log(`Folder created/retrieved: ${result.folder_id}`);
+        } else {
+          // Edit mode - update existing folder
+          if (!initialData) {
+            throw new Error("Initial data required for edit mode");
+          }
+          const result = await updateFolder({
+            backendUrl: backendURL,
+            accessToken,
+            folderId: initialData.folderId,
+            name: normalizedPath,
+            description: sanitizedDescription,
+          });
+          console.log(`Folder updated: ${result.id}`);
+        }
         setCreateDirectoryOpen(false);
         setCurDir(null);
         setReadAzureStorage((prev) => !prev);
       })
       .catch((error) => {
-        alert("Error creating directory, see console for more details");
+        const action = mode === "create" ? "creating" : "updating";
+        alert(`Error ${action} directory, see console for more details`);
         console.error(error);
       });
   };
@@ -85,7 +132,9 @@ const CreateFolder: React.FC<params> = (props) => {
   const handleClose = (): void => {
     setCreateDirectoryOpen(false);
     setFolderNameInput("");
+    setDescriptionInput("");
     setValidationError("");
+    setDescriptionError("");
   };
 
   const handleInputChange = (
@@ -138,7 +187,7 @@ const CreateFolder: React.FC<params> = (props) => {
                 color: colours.CFIA_Font_Black,
               }}
             >
-              Create New Directory
+              {mode === "create" ? "Create New Directory" : "Edit Directory"}
             </Typography>
             <IconButton onClick={handleClose} size="small">
               <CloseIcon />
@@ -153,9 +202,37 @@ const CreateFolder: React.FC<params> = (props) => {
             onChange={handleInputChange}
             value={folderNameInput}
             error={!!validationError}
-            helperText={validationError}
+            helperText={
+              validationError ||
+              "Directory will be created at root level. Use letters, numbers, hyphens, and underscores."
+            }
             sx={{ fontSize: "1.2vh" }}
             size="small"
+            placeholder="e.g., avena-fatua or mycology-samples"
+          />
+          <TextField
+            id="input-description"
+            label="Description (Optional)"
+            variant="outlined"
+            fullWidth
+            multiline
+            rows={3}
+            InputLabelProps={{ shrink: true }}
+            value={descriptionInput}
+            onChange={(e) => {
+              setDescriptionInput(e.target.value);
+              if (descriptionError) {
+                setDescriptionError("");
+              }
+            }}
+            error={!!descriptionError}
+            helperText={
+              descriptionError ||
+              "Optional description for this directory (max 500 characters)"
+            }
+            sx={{ fontSize: "1.2vh", marginTop: "2vh" }}
+            size="small"
+            placeholder="e.g., Sample collection from field trial 2025"
           />
           <Box
             sx={{
@@ -192,7 +269,7 @@ const CreateFolder: React.FC<params> = (props) => {
                 handleCreateDirectory();
               }}
             >
-              Create
+              {mode === "create" ? "Create" : "Update"}
             </Button>
             <Button
               variant="outlined"

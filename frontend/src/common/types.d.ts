@@ -117,12 +117,8 @@ export interface ModelMetadata {
 }
 
 export interface BatchUploadMetadata {
-  containerName: string;
-  uuid: string;
-  family: string;
-  genus: string;
-  species: string;
-  nameCode: string;
+  sessionId: string;
+  seedId: string;
   trayCode: string; // A | B | C | D | E
   sampleId: string;
   deviceBrandId: string;
@@ -130,7 +126,39 @@ export interface BatchUploadMetadata {
   deviceLensId: string;
   magnification: number;
   imageDataUrl: string;
-  sessionId: string;
+}
+
+export interface BatchUploadImageResponse {
+  workflow_id: string;
+  picture_id: string;
+}
+
+export interface BatchUploadInitRequest {
+  folder_id: string;
+  file_count: number;
+}
+
+export interface BatchUploadInitResponse {
+  session_id: string;
+}
+
+export interface CreateOrGetFolderRequest {
+  normalized_path: string;
+  description?: string;
+}
+
+export interface CreateOrGetFolderResponse {
+  folder_id: string;
+}
+
+export interface UpdateFolderRequest {
+  name?: string;
+  description?: string;
+}
+
+export interface UpdateFolderResponse {
+  id: string;
+  message: string;
 }
 
 interface DirectoryPicture {
@@ -145,6 +173,7 @@ interface AzureStorageDirectoryItem {
   folderPrefix: string;
   description: string | null;
   pictureCount: number;
+  isDefaultFolder?: boolean;
 }
 
 interface AzureStorageDirectoryItemApi {
@@ -153,6 +182,7 @@ interface AzureStorageDirectoryItemApi {
   folder_prefix: string;
   description: string | null;
   picture_count: number;
+  is_default_folder?: boolean;
   // pictures: DirectoryPictureApi[];
 }
 //   folder_name: string;

@@ -78,6 +78,21 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
                 />
               }
             />
+            {/* Catch-all route for OAuth callbacks and other paths */}
+            <Route
+              path="*"
+              element={
+                <Body
+                  windowSize={windowSize}
+                  creativeCommonsPopupOpen={creativeCommonsPopupOpen}
+                  setCreativeCommonsPopupOpen={setCreativeCommonsPopupOpen}
+                  handleCreativeCommonsAgreement={
+                    handleCreativeCommonsAgreement
+                  }
+                  apiScopeClaim={apiScopeClaim}
+                />
+              }
+            />
           </Routes>
           <Footer />
         </Fragment>

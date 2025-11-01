@@ -831,6 +831,61 @@ export const WorkflowStatusResponseSchema = z.object({
   }),
 });
 
+export const BatchUploadImageResponseSchema = z.object({
+  workflow_id: z.string(),
+  picture_id: z.string(),
+});
+
+export const BatchUploadInitResponseSchema = z.object({
+  session_id: z.string(),
+});
+
+/**
+ * Validates folder normalized path according to backend rules.
+ *
+ * Rules:
+ * - Allowed characters: alphanumeric, slash, underscore, dash, period
+ * - Must end with alphanumeric character (not _, -, or .)
+ * - Cannot contain consecutive slashes
+ * - Cannot start or end with slash (relative path)
+ *
+ * Pattern: ^[a-zA-Z0-9/_.\-]+[a-zA-Z0-9]$
+ * Examples:
+ *   Valid: "avena-fatua", "mycology/avena-fatua", "my_project-v1.0"
+ *   Invalid: "/avena-fatua" (starts with /), "avena-fatua/" (ends with /),
+ *            "avena//fatua" (consecutive slashes), "avena-" (ends with dash)
+ */
+export const normalizedPathSchema = z
+  .string()
+  .min(1, "Path cannot be empty")
+  .regex(
+    /^[a-zA-Z0-9/_.-]+[a-zA-Z0-9]$/,
+    "Path can only contain alphanumeric, /, _, -, . and must end with alphanumeric",
+  )
+  .refine((path) => !path.startsWith("/"), {
+    message: "Path cannot start with /",
+  })
+  .refine((path) => !path.endsWith("/"), {
+    message: "Path cannot end with /",
+  })
+  .refine((path) => !path.includes("//"), {
+    message: "Path cannot contain consecutive slashes",
+  });
+
+export const CreateOrGetFolderResponseSchema = z.object({
+  folder_id: z.string().uuid(),
+});
+
+export const UpdateFolderRequestSchema = z.object({
+  name: z.string().optional(),
+  description: z.string().optional(),
+});
+
+export const UpdateFolderResponseSchema = z.object({
+  id: z.string().uuid(),
+  message: z.string(),
+});
+
 // Generic validation function for API responses
 export function validateApiResponse<T>(
   schema: z.ZodSchema<T>,

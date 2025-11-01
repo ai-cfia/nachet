@@ -13,7 +13,7 @@ import { useBackendUrl } from "@hooks";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
-import { deleteAzureStorageDir } from "@common/api";
+import { deleteFolder } from "@common/api";
 import { AzureStorageDirectoryItem } from "@common/types";
 
 interface params {
@@ -56,14 +56,15 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
 
     acquireAccessToken(msalInstance, [apiScopeClaim])
       .then((accessToken) => {
-        // makes a post request to the backend to delete a directory in azure storage
-        return deleteAzureStorageDir({
+        // Delete folder using the new DELETE /folders/{folder_id} endpoint
+        return deleteFolder({
           backendUrl: backendURL,
-          folderName: curDir.folderName,
+          folderId: curDir.folderId,
           accessToken,
         });
       })
-      .then(() => {
+      .then((result) => {
+        console.log(`Folder deleted: ${result.id}`);
         setCurDir(null);
         setReadAzureStorage((prev) => !prev);
       })

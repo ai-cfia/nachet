@@ -11,7 +11,12 @@ import { CacheProvider } from "@emotion/react";
 import { createEmotionCache } from "./common/emotionCache";
 import { ErrorBoundary } from "@components/body/index.ts";
 import { errorLogger } from "./logging";
-import { acquireAccessToken } from "./common/auth";
+import {
+  acquireAccessToken,
+  shouldTriggerRedirect,
+  resetAuthRedirectFlag,
+} from "./common/auth";
+import { initializeApi, resetRedirectFlag } from "./common/api";
 
 const msalConfig: Configuration = {
   auth: {
@@ -19,11 +24,11 @@ const msalConfig: Configuration = {
     authority:
       import.meta.env.VITE_AZURE_AUTHORITY ||
       "https://login.microsoftonline.com/common", // Tenant/Authority URL
-    redirectUri: window.location.origin, // Always use current origin for redirect
-    // mainWindowRedirectUri: window.location.origin,
+    redirectUri: window.location.origin + window.location.pathname, // Include pathname for HashRouter compatibility
     postLogoutRedirectUri:
       import.meta.env.VITE_AZURE_POST_LOGOUT_REDIRECT_URI ||
       window.location.origin, // Post logout redirect URI
+    navigateToLoginRequestUrl: true, // Navigate back to the page that initiated login
   },
   cache: {
     cacheLocation: "sessionStorage",
@@ -71,32 +76,93 @@ const apiScopeClaim =
 
 console.log("Azure API Scope Claim: ", apiScopeClaim);
 
-// Set up token provider for error logger
-errorLogger.setTokenProvider(async () => {
-  try {
+// Initialize MSAL and handle redirect promise before rendering app
+// This is critical for processing OAuth callbacks from Azure AD
+msalInstance
+  .initialize()
+  .then(() => {
+    return msalInstance.handleRedirectPromise();
+  })
+  .then((response) => {
+    if (response) {
+      // Set the active account after successful redirect
+      msalInstance.setActiveAccount(response.account);
+      // Reset redirect flags to allow future redirects if needed
+      resetRedirectFlag(); // For axios interceptor
+      resetAuthRedirectFlag(); // For auth.ts
+    } else {
+      // Check if we have any cached accounts
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length > 0) {
+        msalInstance.setActiveAccount(accounts[0]);
+      }
+    }
+
+    // Initialize axios interceptor for authentication
     const scopes = apiScopeClaim ? [apiScopeClaim] : [];
-    const token = await acquireAccessToken(msalInstance, scopes);
-    return token;
-  } catch (error) {
-    // If token acquisition fails, return null (logs will be sent without auth)
-    console.warn("Failed to acquire token for error logger:", error);
-    return null;
-  }
-});
+    initializeApi(msalInstance, scopes);
 
-// Create Emotion cache with CSP nonce support
-const emotionCache = createEmotionCache();
+    // Set up token provider for error logger
+    errorLogger.setTokenProvider(async () => {
+      try {
+        const token = await acquireAccessToken(msalInstance, scopes);
+        return token;
+      } catch (error) {
+        // Check if error requires redirect
+        if (shouldTriggerRedirect(error)) {
+          console.error(
+            "Error logger: Token acquisition failed. Redirecting to login...",
+          );
+          // Trigger redirect authentication
+          const activeAccount = msalInstance.getActiveAccount();
+          const accounts = msalInstance.getAllAccounts();
+          if (activeAccount || accounts.length > 0) {
+            await msalInstance.acquireTokenRedirect({
+              scopes,
+              account: activeAccount || accounts[0],
+            });
+          }
+        }
+        // If token acquisition fails, return null (logs will be sent without auth)
+        console.warn("Failed to acquire token for error logger:", error);
+        return null;
+      }
+    });
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <CacheProvider value={emotionCache}>
-      <ErrorBoundary>
-        <App
-          msalInstance={msalInstance}
-          basename={basename}
-          apiScopeClaim={apiScopeClaim}
-        />
-      </ErrorBoundary>
-    </CacheProvider>
-  </React.StrictMode>,
-);
+    // Create Emotion cache with CSP nonce support
+    const emotionCache = createEmotionCache();
+
+    // Render app after MSAL is initialized
+    ReactDOM.createRoot(document.getElementById("root")!).render(
+      <React.StrictMode>
+        <CacheProvider value={emotionCache}>
+          <ErrorBoundary>
+            <App
+              msalInstance={msalInstance}
+              basename={basename}
+              apiScopeClaim={apiScopeClaim}
+            />
+          </ErrorBoundary>
+        </CacheProvider>
+      </React.StrictMode>,
+    );
+  })
+  .catch((error) => {
+    console.error("Error initializing MSAL:", error);
+
+    // Still render the app even if there's an error, so user can see auth popup
+    const emotionCache = createEmotionCache();
+    ReactDOM.createRoot(document.getElementById("root")!).render(
+      <React.StrictMode>
+        <CacheProvider value={emotionCache}>
+          <ErrorBoundary>
+            <App
+              msalInstance={msalInstance}
+              basename={basename}
+              apiScopeClaim={apiScopeClaim}
+            />
+          </ErrorBoundary>
+        </CacheProvider>
+      </React.StrictMode>,
+    );
+  });
