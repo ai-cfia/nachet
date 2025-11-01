@@ -9,9 +9,18 @@ Access Control tested (AuthorizedBaseCRUDService):
   Users with folder's org_user_role_id OR org_admin_role_id OR CFIA admin
 - UPDATE operations:
   Users with folder's org_user_role_id OR org_admin_role_id OR CFIA admin
+  EXCEPTION: Cannot update a user's default folder if the user is still active
 - DELETE operations:
-  Users with folder's org_admin_role_id OR CFIA admin (admin-only)
-- CREATE operations: CFIA admin only
+  Folder creator (user_id matches) OR org_admin_role_id OR CFIA admin
+  EXCEPTION: Cannot delete a user's default folder if the user is still active
+- CREATE operations: Any user belonging to an organization
+
+Default Folder Protection (UPDATE and DELETE operations):
+- Blocks updates to default folders for active users (even for admins)
+- Blocks deletion of default folders for active users (even for admins and creators)
+- Allows updates/deletion of default folders for inactive users
+- Always allows updates/deletion of non-default folders (normal case)
+- Users can delete folders they created (unless it's a default folder for an active user)
 
 These integration tests cover the authorization edge cases that are difficult
 to mock properly due to the complex authorization flow in AuthorizedBaseCRUDService.
@@ -64,11 +73,11 @@ class TestDirectoryServiceIntegrationCreate:
         assert "message" in result
         assert "created successfully" in result["message"]
 
-    async def test_create_unauthorized_non_admin(
+    async def test_create_unauthorized_user_without_org(
         self,
         test_regular_user: UUID,
     ):
-        """Non-admin users should get 403."""
+        """Users without organization membership should get 403."""
         with pytest.raises(HTTPException) as exc_info:
             await DirectoryService.create_directory(
                 user_id=test_regular_user,
@@ -191,22 +200,36 @@ class TestDirectoryServiceIntegrationDelete:
 
         assert exc_info.value.status_code == 404
 
-    async def test_delete_unauthorized_non_admin(
+    async def test_delete_unauthorized_non_creator_non_admin(
         self,
         integration_db_session: AsyncSession,
-        test_regular_user: UUID,
         test_admin_user: UUID,
         test_organization: UUID,
         test_org_admin_role: UUID,
         test_org_user_role: UUID,
         cleanup_test_folders: list,
     ):
-        """Non-admin users should get 403 when deleting."""
+        """Non-admin users should get 403 when deleting folders they didn't create."""
+        from app.db.model import Users
+
+        # Create a second user (non-admin)
+        second_user_id = uuid4()
+        second_user = Users(
+            id=second_user_id,
+            email="second.user@test.com",
+            organization=test_organization,
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(second_user)
+        await integration_db_session.commit()
+
         # Create directory as admin first
         folder_id = uuid4()
         directory = Folder(
             id=folder_id,
-            user_id=test_admin_user,
+            user_id=test_admin_user,  # Created by admin
             org_admin_role_id=test_org_admin_role,
             org_user_role_id=test_org_user_role,
             name="Test Directory",
@@ -220,11 +243,255 @@ class TestDirectoryServiceIntegrationDelete:
         cleanup_test_folders.append(folder_id)
         await integration_db_session.commit()
 
-        # Try to delete as non-admin user (should fail)
+        # Try to delete as second user who didn't create it (should fail)
         with pytest.raises(HTTPException) as exc_info:
-            await DirectoryService.delete(test_regular_user, folder_id)
+            await DirectoryService.delete(second_user_id, folder_id)
 
         assert exc_info.value.status_code == 403
+        assert "folder creator" in exc_info.value.detail.lower()
+
+        # Note: No need to cleanup second_user - it doesn't interfere with other tests
+        # and will be cleaned up at session end
+
+    async def test_delete_success_as_creator(
+        self,
+        integration_db_session: AsyncSession,
+        test_organization: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
+        cleanup_test_folders: list,
+    ):
+        """Users should be able to delete folders they created."""
+        from app.db.model import Users
+
+        # Create a regular user
+        creator_user_id = uuid4()
+        creator_user = Users(
+            id=creator_user_id,
+            email="creator.user@test.com",
+            organization=test_organization,
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(creator_user)
+        await integration_db_session.commit()
+
+        # Create directory as creator user
+        folder_id = uuid4()
+        directory = Folder(
+            id=folder_id,
+            user_id=creator_user_id,  # Created by creator user
+            org_admin_role_id=test_org_admin_role,
+            org_user_role_id=test_org_user_role,
+            name="Test Directory",
+            folder_prefix="/test/",
+            description="Test folder created by user",
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(directory)
+        cleanup_test_folders.append(folder_id)
+        await integration_db_session.commit()
+
+        # Delete as creator (should succeed)
+        result = await DirectoryService.delete(creator_user_id, folder_id)
+
+        # Verify success
+        assert result["message"]
+        assert "successfully" in result["message"].lower()
+        assert result["id"] == str(folder_id)
+
+        # Note: No need to cleanup creator_user - it doesn't interfere with other tests
+        # and will be cleaned up at session end
+
+    async def test_delete_default_folder_for_active_user_blocked(
+        self,
+        integration_db_session: AsyncSession,
+        test_admin_user: UUID,
+        test_organization: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
+        cleanup_test_folders: list,
+    ):
+        """Should block deletion of default folder if user is active (even for admin)."""
+        from app.db.model import Users
+
+        # Create a test user with a default folder
+        user_id = uuid4()
+        folder_id = uuid4()
+
+        # Create the folder first
+        directory = Folder(
+            id=folder_id,
+            user_id=test_admin_user,
+            org_admin_role_id=test_org_admin_role,
+            org_user_role_id=test_org_user_role,
+            name="Default Folder",
+            folder_prefix="/cfia/",
+            description="User's default folder",
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(directory)
+        cleanup_test_folders.append(folder_id)
+
+        # Create a user with this folder as default
+        user = Users(
+            id=user_id,
+            email="testuser@example.com",
+            organization=test_organization,
+            default_folder_id=folder_id,
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(user)
+        await integration_db_session.commit()
+
+        # Try to delete the default folder (should fail)
+        with pytest.raises(HTTPException) as exc_info:
+            await DirectoryService.delete(test_admin_user, folder_id)
+
+        # Verify 403 with appropriate message
+        assert exc_info.value.status_code == 403
+        assert "default folder" in str(exc_info.value.detail).lower()
+        assert "active user" in str(exc_info.value.detail).lower()
+
+        # Cleanup: remove the test user
+        await integration_db_session.delete(user)
+        await integration_db_session.commit()
+
+    async def test_delete_default_folder_for_inactive_user_allowed(
+        self,
+        integration_db_session: AsyncSession,
+        test_admin_user: UUID,
+        test_organization: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
+        cleanup_test_folders: list,
+    ):
+        """Should allow deletion of default folder if user is inactive."""
+        from app.db.model import Users
+
+        # Create a test user (inactive) with a default folder
+        user_id = uuid4()
+        folder_id = uuid4()
+
+        # Create the folder first
+        directory = Folder(
+            id=folder_id,
+            user_id=test_admin_user,
+            org_admin_role_id=test_org_admin_role,
+            org_user_role_id=test_org_user_role,
+            name="Default Folder",
+            folder_prefix="/cfia/",
+            description="Inactive user's default folder",
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(directory)
+        cleanup_test_folders.append(folder_id)
+
+        # Create an INACTIVE user with this folder as default
+        user = Users(
+            id=user_id,
+            email="inactiveuser@example.com",
+            organization=test_organization,
+            default_folder_id=folder_id,
+            active=False,  # User is deactivated
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(user)
+        await integration_db_session.commit()
+
+        # Try to delete the default folder (should succeed since user is inactive)
+        result = await DirectoryService.delete(test_admin_user, folder_id)
+
+        # Verify success
+        assert "message" in result
+        assert "deleted successfully" in result["message"]
+
+        # Cleanup: remove the test user
+        await integration_db_session.delete(user)
+        await integration_db_session.commit()
+
+    async def test_delete_non_default_folder_always_allowed(
+        self,
+        integration_db_session: AsyncSession,
+        test_admin_user: UUID,
+        test_organization: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
+        cleanup_test_folders: list,
+    ):
+        """Should allow deletion of non-default folders (normal case)."""
+        from app.db.model import Users
+
+        # Create a test user with a different default folder
+        user_id = uuid4()
+        default_folder_id = uuid4()
+        other_folder_id = uuid4()
+
+        # Create default folder
+        default_folder = Folder(
+            id=default_folder_id,
+            user_id=test_admin_user,
+            org_admin_role_id=test_org_admin_role,
+            org_user_role_id=test_org_user_role,
+            name="Default Folder",
+            folder_prefix="/cfia/",
+            description="User's default folder",
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(default_folder)
+        cleanup_test_folders.append(default_folder_id)
+
+        # Create another folder (not default)
+        other_folder = Folder(
+            id=other_folder_id,
+            user_id=test_admin_user,
+            org_admin_role_id=test_org_admin_role,
+            org_user_role_id=test_org_user_role,
+            name="Other Folder",
+            folder_prefix="/cfia/",
+            description="Some other folder",
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(other_folder)
+        cleanup_test_folders.append(other_folder_id)
+
+        # Create a user with default_folder_id set to the first folder
+        user = Users(
+            id=user_id,
+            email="testuser2@example.com",
+            organization=test_organization,
+            default_folder_id=default_folder_id,  # NOT other_folder_id
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(user)
+        await integration_db_session.commit()
+
+        # Try to delete the OTHER folder (not the default) - should succeed
+        result = await DirectoryService.delete(test_admin_user, other_folder_id)
+
+        # Verify success
+        assert "message" in result
+        assert "deleted successfully" in result["message"]
+
+        # Cleanup: remove the test user
+        await integration_db_session.delete(user)
+        await integration_db_session.commit()
 
 
 @pytest.mark.integration
@@ -635,6 +902,272 @@ class TestDirectoryServiceIntegrationRenameDirectory:
                 user_id=test_admin_user,
                 directory_id=nonexistent_id,
                 fullpath="org/renamed_project",
+            )
+
+        assert exc_info.value.status_code == 404
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+class TestDirectoryServiceIntegrationUpdateFolder:
+    """Integration tests for DirectoryService.update_folder method."""
+
+    async def test_update_folder_name_and_description_success(
+        self,
+        integration_db_session: AsyncSession,
+        test_admin_user: UUID,
+        test_organization: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
+        cleanup_test_folders: list,
+    ):
+        """Should successfully update both folder name and description."""
+        # Create folder first
+        folder_id = uuid4()
+        directory = Folder(
+            id=folder_id,
+            user_id=test_admin_user,
+            org_admin_role_id=test_org_admin_role,
+            org_user_role_id=test_org_user_role,
+            name="original-name",
+            folder_prefix="/cfia/",
+            description="Original description",
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(directory)
+        cleanup_test_folders.append(folder_id)
+        await integration_db_session.commit()
+
+        # Update folder name and description
+        result = await DirectoryService.update_folder(
+            user_id=test_admin_user,
+            folder_id=folder_id,
+            name="updated-name",
+            description="Updated description text",
+        )
+
+        # Verify response
+        assert result["id"] == str(folder_id)
+        assert result["message"] == "Folder updated successfully"
+
+        # Verify database changes
+        updated_folder = await DirectoryService.get_by_id(test_admin_user, folder_id)
+        assert updated_folder["name"] == "updated-name"
+        assert updated_folder["description"] == "Updated description text"
+        assert updated_folder["folder_prefix"] == "/cfia/"  # Prefix unchanged
+
+    async def test_update_folder_description_only(
+        self,
+        integration_db_session: AsyncSession,
+        test_admin_user: UUID,
+        test_organization: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
+        cleanup_test_folders: list,
+    ):
+        """Should successfully update only description, leaving name unchanged."""
+        # Create folder
+        folder_id = uuid4()
+        directory = Folder(
+            id=folder_id,
+            user_id=test_admin_user,
+            org_admin_role_id=test_org_admin_role,
+            org_user_role_id=test_org_user_role,
+            name="folder-name",
+            folder_prefix="/cfia/",
+            description="Original description",
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(directory)
+        cleanup_test_folders.append(folder_id)
+        await integration_db_session.commit()
+
+        # Update only description
+        result = await DirectoryService.update_folder(
+            user_id=test_admin_user,
+            folder_id=folder_id,
+            description="New description only",
+        )
+
+        # Verify
+        assert result["id"] == str(folder_id)
+        updated_folder = await DirectoryService.get_by_id(test_admin_user, folder_id)
+        assert updated_folder["name"] == "folder-name"  # Name unchanged
+        assert updated_folder["description"] == "New description only"
+
+    async def test_update_folder_name_conflict_error(
+        self,
+        integration_db_session: AsyncSession,
+        test_admin_user: UUID,
+        test_organization: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
+        cleanup_test_folders: list,
+    ):
+        """Should reject update when new name conflicts with existing folder."""
+        # Create two folders with different names
+        folder1_id = uuid4()
+        folder1 = Folder(
+            id=folder1_id,
+            user_id=test_admin_user,
+            org_admin_role_id=test_org_admin_role,
+            org_user_role_id=test_org_user_role,
+            name="existing-folder",
+            folder_prefix="/cfia/",
+            description="First folder",
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        folder2_id = uuid4()
+        folder2 = Folder(
+            id=folder2_id,
+            user_id=test_admin_user,
+            org_admin_role_id=test_org_admin_role,
+            org_user_role_id=test_org_user_role,
+            name="folder-to-rename",
+            folder_prefix="/cfia/",
+            description="Second folder",
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(folder1)
+        integration_db_session.add(folder2)
+        cleanup_test_folders.extend([folder1_id, folder2_id])
+        await integration_db_session.commit()
+
+        # Try to rename folder2 to folder1's name (should fail)
+        with pytest.raises(HTTPException) as exc_info:
+            await DirectoryService.update_folder(
+                user_id=test_admin_user,
+                folder_id=folder2_id,
+                name="existing-folder",
+            )
+
+        # Verify error
+        assert exc_info.value.status_code == 400
+        assert "already exists" in exc_info.value.detail
+
+    async def test_update_folder_default_folder_blocked(
+        self,
+        integration_db_session: AsyncSession,
+        test_admin_user: UUID,
+        test_organization: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
+        cleanup_test_folders: list,
+    ):
+        """Should block updates to default folders for active users."""
+        from app.db.model import Users
+
+        # Create a test user with a default folder
+        user_id = uuid4()
+        folder_id = uuid4()
+
+        # Create the folder first
+        directory = Folder(
+            id=folder_id,
+            user_id=test_admin_user,
+            org_admin_role_id=test_org_admin_role,
+            org_user_role_id=test_org_user_role,
+            name="default-folder",
+            folder_prefix="/cfia/",
+            description="Default folder",
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(directory)
+        cleanup_test_folders.append(folder_id)
+
+        # Create a user with this folder as default
+        user = Users(
+            id=user_id,
+            email="testuser_update@example.com",
+            organization=test_organization,
+            default_folder_id=folder_id,
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(user)
+        await integration_db_session.commit()
+
+        # Try to update the default folder (should fail with 403)
+        with pytest.raises(HTTPException) as exc_info:
+            await DirectoryService.update_folder(
+                user_id=test_admin_user,
+                folder_id=folder_id,
+                name="new-name",
+                description="New description",
+            )
+
+        # Verify error
+        assert exc_info.value.status_code == 403
+        assert "default folder" in exc_info.value.detail.lower()
+        assert "active user" in exc_info.value.detail.lower()
+
+        # Cleanup: remove the test user
+        await integration_db_session.delete(user)
+        await integration_db_session.commit()
+
+    async def test_update_folder_no_fields_provided_error(
+        self,
+        integration_db_session: AsyncSession,
+        test_admin_user: UUID,
+        test_organization: UUID,
+        test_org_admin_role: UUID,
+        test_org_user_role: UUID,
+        cleanup_test_folders: list,
+    ):
+        """Should reject update when neither name nor description is provided."""
+        # Create folder
+        folder_id = uuid4()
+        directory = Folder(
+            id=folder_id,
+            user_id=test_admin_user,
+            org_admin_role_id=test_org_admin_role,
+            org_user_role_id=test_org_user_role,
+            name="test-folder",
+            folder_prefix="/cfia/",
+            description="Test description",
+            active=True,
+            date_created=datetime.now(timezone.utc),
+            date_updated=datetime.now(timezone.utc),
+        )
+        integration_db_session.add(directory)
+        cleanup_test_folders.append(folder_id)
+        await integration_db_session.commit()
+
+        # Try to update with no fields (should fail)
+        with pytest.raises(HTTPException) as exc_info:
+            await DirectoryService.update_folder(
+                user_id=test_admin_user,
+                folder_id=folder_id,
+            )
+
+        # Verify error
+        assert exc_info.value.status_code == 400
+        assert "at least one field" in exc_info.value.detail.lower()
+
+    async def test_update_folder_not_found(
+        self,
+        test_admin_user: UUID,
+    ):
+        """Should handle folder not found error."""
+        nonexistent_id = uuid4()
+
+        # Should raise 404 HTTPException
+        with pytest.raises(HTTPException) as exc_info:
+            await DirectoryService.update_folder(
+                user_id=test_admin_user,
+                folder_id=nonexistent_id,
+                name="new-name",
             )
 
         assert exc_info.value.status_code == 404

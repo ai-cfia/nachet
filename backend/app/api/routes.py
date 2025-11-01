@@ -27,6 +27,7 @@ from app.model.batch_upload import (
     BatchUploadInitResponse,
     BatchUploadImageRequest,
 )
+from app.model.directory import CreateOrGetFolderRequest, UpdateFolderRequest
 from app.service.batch_upload import BatchUploadService
 # from app.exceptions import ImageProcessingError
 # from app.api.test_dbos import router as test_dbos_router
@@ -415,6 +416,137 @@ async def get_directories(
     _get_logger().debug("get_directories endpoint called", user_id=str(user_id))
     directories = await DirectoryService.get_user_directories(user_id)
     return directories
+
+
+@router.post(
+    "/folders",
+    status_code=status.HTTP_200_OK,
+    name="Create or Get Folder [AUTH REQUIRED]",
+)
+@limiter.limit("10/minute")
+async def create_or_get_folder(
+    request: Request,
+    req: CreateOrGetFolderRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get or create a folder using the get-or-create pattern (idempotent).
+
+    This endpoint checks if a folder exists at the given normalized_path.
+    If it exists, returns the existing folder_id. If not, creates a new folder
+    and returns the new folder_id.
+
+    Authorization: Any user belonging to an organization
+
+    Request:
+        normalized_path: Relative path (e.g., "avena-fatua" or "mycology/avena-fatua")
+        description: Optional description for the folder (defaults to empty string)
+
+    Response:
+        folder_id: UUID of the existing or newly created folder
+    """
+    user_id = UUID(current_user.oid)  # type: ignore[arg-type]
+    _get_logger().debug(
+        "create_or_get_folder endpoint called",
+        user_id=str(user_id),
+        normalized_path=req.normalized_path,
+        description=req.description,
+    )
+    result = await DirectoryService.get_or_create_folder(
+        user_id=user_id,
+        normalized_path=req.normalized_path,
+        description=req.description,
+    )
+    return result
+
+
+@router.put(
+    "/folders/{folder_id}",
+    status_code=status.HTTP_200_OK,
+    name="Update Folder [AUTH REQUIRED]",
+)
+@limiter.limit("10/minute")
+async def update_folder(
+    request: Request,
+    folder_id: str,
+    req: UpdateFolderRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Update a folder's name and/or description.
+
+    Authorization: Users with folder's org_user_role_id OR org_admin_role_id OR CFIA admin
+    Restrictions: Cannot update default folders for active users
+
+    Request:
+        name: Optional new folder name (just the name, not the full path)
+        description: Optional new description
+
+    Response:
+        id: UUID of the updated folder
+        message: Success message
+
+    Raises:
+        400: If no fields provided or name conflicts with existing folder
+        403: If user lacks permission or folder is a default folder
+        404: If folder not found
+    """
+    from uuid import UUID
+
+    user_id = UUID(current_user.oid)  # type: ignore[arg-type]
+    folder_uuid = UUID(folder_id)
+    _get_logger().debug(
+        "update_folder endpoint called",
+        user_id=str(user_id),
+        folder_id=folder_id,
+        name=req.name,
+        description=req.description,
+    )
+    result = await DirectoryService.update_folder(
+        user_id=user_id,
+        folder_id=folder_uuid,
+        name=req.name,
+        description=req.description,
+    )
+    return result
+
+
+@router.delete(
+    "/folders/{folder_id}",
+    status_code=status.HTTP_200_OK,
+    name="Delete Folder [AUTH REQUIRED]",
+)
+@limiter.limit("10/minute")
+async def delete_folder(
+    request: Request,
+    folder_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Delete (soft delete) a folder.
+
+    Authorization: Folder creator (user_id matches) OR org admin OR CFIA admin
+    Restrictions: Cannot delete default folders for active users
+
+    Response:
+        id: UUID of the deleted folder
+        message: Success message
+
+    Raises:
+        403: If user lacks permission or folder is a default folder for active user
+        404: If folder not found
+    """
+    from uuid import UUID
+
+    user_id = UUID(current_user.oid)  # type: ignore[arg-type]
+    folder_uuid = UUID(folder_id)
+    _get_logger().debug(
+        "delete_folder endpoint called",
+        user_id=str(user_id),
+        folder_id=folder_id,
+    )
+    result = await DirectoryService.delete(user_id, folder_uuid)
+    return result
 
 
 @router.get(
