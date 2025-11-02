@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
-import { FormControl, InputLabel, MenuItem, Select } from "@mui/material";
+import { Box, FormControl, InputLabel, MenuItem, Select } from "@mui/material";
 import { ApiDevicesResponse } from "@common/types";
+import { useTranslation } from "react-i18next";
 
 interface DeviceSelectionFieldsProps {
   selectedBrandId: string;
@@ -29,6 +30,7 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
   modelError,
   lensError,
 }) => {
+  const { t } = useTranslation("popups");
   // Get the selected brand object
   const selectedBrand = useMemo(() => {
     if (!devicesData || !selectedBrandId) return null;
@@ -55,23 +57,27 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
   };
 
   return (
-    <>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px",
+        width: "100%",
+      }}
+    >
       {/* Brand Dropdown */}
-      <FormControl
-        fullWidth
-        sx={{ marginTop: "10px" }}
-        disabled={disabled}
-        error={!!brandError}
-      >
-        <InputLabel id="device-brand-label">Device Brand</InputLabel>
+      <FormControl fullWidth disabled={disabled} error={!!brandError}>
+        <InputLabel id="device-brand-label">
+          {t("deviceInfo.deviceBrandLabel")}
+        </InputLabel>
         <Select
           labelId="device-brand-label"
           value={selectedBrandId}
           onChange={(e) => handleBrandChange(e.target.value)}
-          label="Device Brand"
+          label={t("deviceInfo.deviceBrandLabel")}
         >
           <MenuItem value="">
-            <em>Select a brand</em>
+            <em>{t("deviceInfo.selectBrand")}</em>
           </MenuItem>
           {devicesData?.devices.map((brand) => (
             <MenuItem key={brand.id} value={brand.id}>
@@ -96,19 +102,20 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
       {/* Model Dropdown */}
       <FormControl
         fullWidth
-        sx={{ marginTop: "10px" }}
         disabled={!selectedBrandId || disabled}
         error={!!modelError}
       >
-        <InputLabel id="device-model-label">Device Model</InputLabel>
+        <InputLabel id="device-model-label">
+          {t("deviceInfo.deviceModelLabel")}
+        </InputLabel>
         <Select
           labelId="device-model-label"
           value={selectedModelId}
           onChange={(e) => onModelChange(e.target.value)}
-          label="Device Model"
+          label={t("deviceInfo.deviceModelLabel")}
         >
           <MenuItem value="">
-            <em>Select a model</em>
+            <em>{t("deviceInfo.selectModel")}</em>
           </MenuItem>
           {availableModels.map((model) => (
             <MenuItem key={model.id} value={model.id}>
@@ -133,19 +140,20 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
       {/* Lens Dropdown */}
       <FormControl
         fullWidth
-        sx={{ marginTop: "10px" }}
         disabled={!selectedBrandId || disabled}
         error={!!lensError}
       >
-        <InputLabel id="device-lens-label">Device Lens</InputLabel>
+        <InputLabel id="device-lens-label">
+          {t("deviceInfo.deviceLensLabel")}
+        </InputLabel>
         <Select
           labelId="device-lens-label"
           value={selectedLensId}
           onChange={(e) => onLensChange(e.target.value)}
-          label="Device Lens"
+          label={t("deviceInfo.deviceLensLabel")}
         >
           <MenuItem value="">
-            <em>Select a lens</em>
+            <em>{t("deviceInfo.selectLens")}</em>
           </MenuItem>
           {availableLenses.map((lens) => (
             <MenuItem key={lens.id} value={lens.id}>
@@ -166,6 +174,6 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
           </div>
         )}
       </FormControl>
-    </>
+    </Box>
   );
 };
