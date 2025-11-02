@@ -28,12 +28,12 @@ import {
   useWebcamDevices,
   useModelMetadata,
 } from "@hooks";
-import { useWorkflowStore } from "../../stores/useWorkflowStore";
-import { useImageStore } from "../../stores/useImageStore";
-import { useModalStore } from "../../stores/useModalStore";
-import { useFolderStore } from "../../stores/useFolderStore";
-import { useDirectoryModalStore } from "../../stores/useDirectoryModalStore";
-import { useModelStore } from "../../stores/useModelStore";
+import { useWorkflowStore } from "@stores/useWorkflowStore";
+import { useImageStore } from "@stores/useImageStore";
+import { useModalStore } from "@stores/useModalStore";
+import { useFolderStore } from "@stores/useFolderStore";
+import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";
+import { useModelStore } from "@stores/useModelStore";
 import { WorkflowQueueManager } from "../../services/WorkflowQueueManager";
 import { InteractionStatus } from "@azure/msal-browser";
 import { useMsal, useIsAuthenticated, useAccount } from "@azure/msal-react";

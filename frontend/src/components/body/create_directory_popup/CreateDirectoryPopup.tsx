@@ -18,8 +18,8 @@ import { normalizedPathSchema, safeUserInputSchema } from "@common/validation";
 import { getZodErrorKey } from "@common/zodErrorMap";
 import { useTranslation } from "react-i18next";
 import { FolderFieldsGroup } from "../folder_fields_group/FolderFieldsGroup";
-import { useDirectoryModalStore } from "../../../stores/useDirectoryModalStore";
-import { useFolderStore } from "../../../stores/useFolderStore";
+import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";
+import { useFolderStore } from "@stores/useFolderStore";
 
 interface params {
   setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;

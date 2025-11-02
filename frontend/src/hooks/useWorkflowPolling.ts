@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { getWorkflowStatus, getWorkflowResults } from "@common/index";
-import { useWorkflowStore } from "../stores/useWorkflowStore";
+import { useWorkflowStore } from "@stores/useWorkflowStore";
 import { ApiInferenceData, WorkflowStatus } from "@common/types";
 import { errorLogger } from "../logging";
 

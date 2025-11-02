@@ -5,7 +5,7 @@
  * It uses cached seed data from useSpeciesStore (already populated by useSpeciesData hook).
  */
 
-import { useSpeciesStore } from "../stores/useSpeciesStore";
+import { useSpeciesStore } from "@stores/useSpeciesStore";
 import { SpeciesData } from "../common/types";
 
 export interface SeedTaxonomy {

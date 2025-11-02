@@ -1,6 +1,6 @@
 import { AzureStorageDirectoryItem } from "@common/types";
-import { useFolderStore } from "../../../stores/useFolderStore";
-import { useDirectoryModalStore } from "../../../stores/useDirectoryModalStore";
+import { useFolderStore } from "@stores/useFolderStore";
+import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";
 import StorageDirectoryView from "./StorageDirectoryView";
 
 export interface params {

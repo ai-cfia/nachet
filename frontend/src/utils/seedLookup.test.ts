@@ -4,11 +4,11 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { getSeedIdByTaxonomy, seedExists, getAllSeeds } from "./seedLookup";
-import { useSpeciesStore } from "../stores/useSpeciesStore";
+import { useSpeciesStore } from "@stores/useSpeciesStore";
 import type { SpeciesData, ApiSpeciesData } from "../common/types";
 
 // Mock the useSpeciesStore module
-vi.mock("../stores/useSpeciesStore", () => ({
+vi.mock("@stores/useSpeciesStore", () => ({
   useSpeciesStore: {
     getState: vi.fn(),
   },
