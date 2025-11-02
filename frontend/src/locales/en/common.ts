@@ -16,6 +16,7 @@ const common = {
     choose: "Choose",
     upload: "Upload",
     download: "Download",
+    dismiss: "Dismiss",
   },
   status: {
     loading: "Loading...",
