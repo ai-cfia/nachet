@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import { useTranslation } from "react-i18next";
 import { colours } from "../../../styles/colours";
 
 interface params {
@@ -18,6 +19,7 @@ interface params {
 
 const RegistrationStatusPopup: React.FC<params> = (props) => {
   const { userOid, setPopupOpen } = props;
+  const { t } = useTranslation("popups");
   const [copied, setCopied] = React.useState(false);
 
   const handleClose = (): void => {
@@ -72,7 +74,7 @@ const RegistrationStatusPopup: React.FC<params> = (props) => {
                 color: colours.CFIA_Font_Black,
               }}
             >
-              Account Registration Required
+              {t("registrationStatus.title")}
             </Typography>
             <IconButton onClick={handleClose} size="small">
               <CloseIcon />
@@ -98,8 +100,7 @@ const RegistrationStatusPopup: React.FC<params> = (props) => {
                 marginBottom: "1.5vh",
               }}
             >
-              Your account is not yet registered in the system. Please contact
-              your system administrator to request access.
+              {t("registrationStatus.message")}
             </Typography>
             <Typography
               variant="body2"
@@ -111,7 +112,7 @@ const RegistrationStatusPopup: React.FC<params> = (props) => {
                 marginBottom: "0.5vh",
               }}
             >
-              Provide the following user ID to your administrator:
+              {t("registrationStatus.instruction")}
             </Typography>
             <Box
               sx={{
@@ -146,7 +147,7 @@ const RegistrationStatusPopup: React.FC<params> = (props) => {
                     backgroundColor: "#E0E0E0",
                   },
                 }}
-                title="Copy to clipboard"
+                title={t("registrationStatus.copyTooltip")}
               >
                 <ContentCopyIcon sx={{ fontSize: "1.5vh" }} />
               </IconButton>
@@ -162,7 +163,7 @@ const RegistrationStatusPopup: React.FC<params> = (props) => {
                   marginBottom: "1vh",
                 }}
               >
-                Copied to clipboard!
+                {t("registrationStatus.copiedMessage")}
               </Typography>
             )}
           </Box>
@@ -198,7 +199,7 @@ const RegistrationStatusPopup: React.FC<params> = (props) => {
               }}
               onClick={handleClose}
             >
-              Close
+              {t("registrationStatus.closeButton")}
             </Button>
           </Box>
         </Box>
