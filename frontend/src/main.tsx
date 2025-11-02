@@ -17,6 +17,8 @@ import {
   resetAuthRedirectFlag,
 } from "./common/auth";
 import { initializeApi, resetRedirectFlag } from "./common/api";
+import "./i18n";
+import "./locales/types"; // Import TypeScript type definitions for i18n
 
 const msalConfig: Configuration = {
   auth: {

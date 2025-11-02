@@ -23,7 +23,6 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
       const existingAgreement = Cookies.get("creative-commons-agreement");
       return existingAgreement === undefined || existingAgreement === "false";
     });
-  const [switchLanguage, setSwitchLanguage] = useState<boolean>(false);
 
   const handleCreativeCommonsAgreement = (agree: boolean): void => {
     // set a cookie to remember the users choice for 10 years (user choice should be stored in authentication database in the future)
@@ -58,11 +57,7 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
       <MsalProvider instance={msalInstance}>
         <Fragment>
           <Navbar windowSize={windowSize} apiScopeClaim={apiScopeClaim} />
-          <Appbar
-            windowSize={windowSize}
-            setSwitchLanguage={setSwitchLanguage}
-            switchLanguage={switchLanguage}
-          />
+          <Appbar windowSize={windowSize} />
           <Routes>
             <Route
               path="/"
