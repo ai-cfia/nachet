@@ -1,26 +1,42 @@
 // src/components/body/model_popup/SwitchModel.test.tsx
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import SwitchModel from "./ModelPopup";
 import testData from "../../../static_data/static_model_data.json";
+import { useModalStore } from "@stores/useModalStore";
+import { useModelStore } from "@stores/useModelStore";
+
+// Mock the stores
+vi.mock("@stores/useModalStore");
+vi.mock("@stores/useModelStore");
 
 describe("SwitchModel Component", () => {
-  it("populates the grid with test data", async () => {
-    // Mock the props
-    const mockSetSwitchModelOpen = vi.fn();
-    const mockSetSelectedModel = vi.fn();
+  let mockSetSelectedModel: ReturnType<typeof vi.fn>;
 
-    // Render the component with test data
-    render(
-      <SwitchModel
-        setSwitchModelOpen={mockSetSwitchModelOpen}
-        switchModelOpen={true}
-        selectedModel=""
-        setSelectedModel={mockSetSelectedModel}
-        realData={[]} // Since we're testing, realData will not be used
-      />,
-    );
+  beforeEach(() => {
+    mockSetSelectedModel = vi.fn();
+
+    // Setup modal store mock
+    vi.mocked(useModalStore).mockReturnValue({
+      closeModelInfoPopup: vi.fn(),
+      // Add other required store properties as needed
+    } as any);
+
+    // Setup model store mock
+    vi.mocked(useModelStore).mockReturnValue({
+      selectedModel: "",
+      metadata: [],
+      isLoading: false,
+      setSelectedModel: mockSetSelectedModel,
+      setMetadata: vi.fn(),
+      setLoading: vi.fn(),
+    });
+  });
+
+  it("populates the grid with test data", async () => {
+    // Render the component
+    render(<SwitchModel />);
 
     // Check if the model names from testData are displayed
     testData.forEach((data) => {
