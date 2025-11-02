@@ -43,7 +43,7 @@ curl -X POST http://localhost:8080/api/logs \
 
 ```javascript
 // In browser console after starting frontend
-errorLogger.logError('Test error', new Error('Test'));
+errorLogger.logError("Test error", new Error("Test"));
 // Check Network tab for POST to /api/logs
 // Check correlation ID in headers
 ```

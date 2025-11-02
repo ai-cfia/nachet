@@ -417,35 +417,35 @@ npm run test:coverage
 
 ### Build Verification Results
 
-**Date:** _____________
-**Tester:** _____________
+**Date:** ******\_******
+**Tester:** ******\_******
 
-| Test | Status | Notes |
-|------|--------|-------|
-| Prettier format | [ ] Pass [ ] Fail | |
-| ESLint | [ ] Pass [ ] Fail | |
-| TypeScript build | [ ] Pass [ ] Fail | |
-| Vite build | [ ] Pass [ ] Fail | |
+| Test             | Status            | Notes |
+| ---------------- | ----------------- | ----- |
+| Prettier format  | [ ] Pass [ ] Fail |       |
+| ESLint           | [ ] Pass [ ] Fail |       |
+| TypeScript build | [ ] Pass [ ] Fail |       |
+| Vite build       | [ ] Pass [ ] Fail |       |
 
 ---
 
 ### Manual Test Results Summary
 
-**Date:** _____________
-**Tester:** _____________
-**Browser:** _____________
+**Date:** ******\_******
+**Tester:** ******\_******
+**Browser:** ******\_******
 **Language Tested:** [ ] EN [ ] FR [ ] Both
 
-| Category | Tests Passed | Tests Failed | Notes |
-|----------|--------------|--------------|-------|
-| Error Notifications (A) | ___/12 | | |
-| Warning Toasts (B) | ___/7 | | |
-| Info/Success (C) | ___/2 | | |
-| Badge Behavior (D) | ___/5 | | |
-| Internationalization (E) | ___/7 | | |
-| Accessibility (F) | ___/7 | | |
-| Edge Cases (G) | ___/10 | | |
-| **TOTAL** | ___/50 | | |
+| Category                 | Tests Passed | Tests Failed | Notes |
+| ------------------------ | ------------ | ------------ | ----- |
+| Error Notifications (A)  | \_\_\_/12    |              |       |
+| Warning Toasts (B)       | \_\_\_/7     |              |       |
+| Info/Success (C)         | \_\_\_/2     |              |       |
+| Badge Behavior (D)       | \_\_\_/5     |              |       |
+| Internationalization (E) | \_\_\_/7     |              |       |
+| Accessibility (F)        | \_\_\_/7     |              |       |
+| Edge Cases (G)           | \_\_\_/10    |              |       |
+| **TOTAL**                | \_\_\_/50    |              |       |
 
 ---
 
@@ -453,23 +453,23 @@ npm run test:coverage
 
 **Issue 1:**
 
-- **Test:** _______________
+- **Test:** ******\_\_\_******
 - **Severity:** [ ] Critical [ ] Major [ ] Minor
-- **Description:** _______________
-- **Steps to Reproduce:** _______________
-- **Expected:** _______________
-- **Actual:** _______________
+- **Description:** ******\_\_\_******
+- **Steps to Reproduce:** ******\_\_\_******
+- **Expected:** ******\_\_\_******
+- **Actual:** ******\_\_\_******
 
 **Issue 2:**
 
-- **Test:** _______________
+- **Test:** ******\_\_\_******
 - **Severity:** [ ] Critical [ ] Major [ ] Minor
-- **Description:** _______________
-- **Steps to Reproduce:** _______________
-- **Expected:** _______________
-- **Actual:** _______________
+- **Description:** ******\_\_\_******
+- **Steps to Reproduce:** ******\_\_\_******
+- **Expected:** ******\_\_\_******
+- **Actual:** ******\_\_\_******
 
-- *(Add more as needed)*
+- _(Add more as needed)_
 
 ---
 
@@ -485,15 +485,15 @@ npm run test:coverage
 - [ ] Internationalization verified (EN + FR)
 - [ ] Performance acceptable (no lag, no memory leaks)
 
-**Tester Name:** _______________
-**Date:** _______________
-**Signature:** _______________
+**Tester Name:** ******\_\_\_******
+**Date:** ******\_\_\_******
+**Signature:** ******\_\_\_******
 
 ---
 
 **Approval Required:** Yes
-**Approved By:** _______________
-**Date:** _______________
+**Approved By:** ******\_\_\_******
+**Date:** ******\_\_\_******
 
 ---
 

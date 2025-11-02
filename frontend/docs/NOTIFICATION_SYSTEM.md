@@ -154,19 +154,19 @@ interface NotificationState {
 
 ```typescript
 interface Notification {
-  id: string;              // UUID v4
+  id: string; // UUID v4
   type: "error" | "warning" | "info";
-  message: string;         // Translated user message
-  timestamp: number;       // Date.now() in milliseconds
-  read: boolean;           // User has viewed in modal
-  source?: string;         // e.g., "auth", "inference", "storage"
+  message: string; // Translated user message
+  timestamp: number; // Date.now() in milliseconds
+  read: boolean; // User has viewed in modal
+  source?: string; // e.g., "auth", "inference", "storage"
 }
 
 interface Toast {
-  id: string;              // UUID v4
+  id: string; // UUID v4
   type: "warning" | "info" | "success";
-  message: string;         // Translated user message
-  duration: number;        // Auto-dismiss time (ms)
+  message: string; // Translated user message
+  duration: number; // Auto-dismiss time (ms)
 }
 ```
 
@@ -212,10 +212,10 @@ markAllErrorsAsRead()
 
 ```typescript
 // Get count of unread errors (for badge)
-const count = getUnreadErrorCount()
+const count = getUnreadErrorCount();
 
 // Check if any unread errors exist
-const hasUnread = hasUnreadErrors()
+const hasUnread = hasUnreadErrors();
 ```
 
 ---
@@ -532,11 +532,12 @@ Edit `useNotificationStore.ts`:
 addError: (message: string, source?: string) => {
   // ...
   const updatedErrors = [...state.errors, newError];
-  if (updatedErrors.length > 100) {  // Change this value
+  if (updatedErrors.length > 100) {
+    // Change this value
     updatedErrors.shift();
   }
   // ...
-}
+};
 ```
 
 ---
@@ -614,7 +615,7 @@ Use descriptive source strings for categorization:
 1. **Always translate messages:**
 
    ```typescript
-   addError(t("errors.key"), "source");  // Good
+   addError(t("errors.key"), "source"); // Good
    ```
 
 2. **Use appropriate notification type:**
@@ -629,14 +630,14 @@ Use descriptive source strings for categorization:
 3. **Provide source context:**
 
    ```typescript
-   addError(t("error"), "auth");  // Good - categorized
+   addError(t("error"), "auth"); // Good - categorized
    ```
 
 4. **Set reasonable durations:**
 
    ```typescript
-   addWarning(t("message"), 8000);   // 8s for short message
-   addWarning(t("long"), 15000);     // 15s for longer message
+   addWarning(t("message"), 8000); // 8s for short message
+   addWarning(t("long"), 15000); // 15s for longer message
    ```
 
 5. **Log errors to console:**
@@ -653,27 +654,27 @@ Use descriptive source strings for categorization:
 1. **Don't use hardcoded English:**
 
    ```typescript
-   addError("You must sign in");  // Bad - not translated
+   addError("You must sign in"); // Bad - not translated
    ```
 
 2. **Don't mix notification types:**
 
    ```typescript
-   addError(t("success"));  // Bad - success shouldn't be error
+   addError(t("success")); // Bad - success shouldn't be error
    ```
 
 3. **Don't overuse errors:**
 
    ```typescript
    if (!valid) {
-     addError(t("invalid"));  // Bad - use addWarning() instead
+     addError(t("invalid")); // Bad - use addWarning() instead
    }
    ```
 
 4. **Don't set very long durations:**
 
    ```typescript
-   addWarning(t("msg"), 60000);  // Bad - 60s is too long
+   addWarning(t("msg"), 60000); // Bad - 60s is too long
    ```
 
 5. **Don't suppress console errors:**
@@ -827,12 +828,10 @@ t("notifications.title");  // Good
 const store = useNotificationStore();
 
 // Good - only re-renders when errors change
-const errors = useNotificationStore(state => state.errors);
+const errors = useNotificationStore((state) => state.errors);
 
 // Good - only re-renders when count changes
-const count = useNotificationStore(state =>
-  state.getUnreadErrorCount()
-);
+const count = useNotificationStore((state) => state.getUnreadErrorCount());
 ```
 
 **Memoization:**
@@ -951,9 +950,9 @@ See **[NOTIFICATION_SYSTEM_TESTING.md](./NOTIFICATION_SYSTEM_TESTING.md)** for c
 **A:** Yes, pass duration as second parameter:
 
 ```typescript
-addWarning(t("short"), 5000);   // 5 seconds
+addWarning(t("short"), 5000); // 5 seconds
 addWarning(t("medium"), 10000); // 10 seconds (default)
-addWarning(t("long"), 15000);   // 15 seconds
+addWarning(t("long"), 15000); // 15 seconds
 ```
 
 ---
@@ -987,9 +986,9 @@ Consider implementing in future version if needed.
 **A:** Use the `source` parameter:
 
 ```typescript
-addError(t("error"), "inference");  // ML errors
-addError(t("error"), "auth");       // Auth errors
-addError(t("error"), "storage");    // Storage errors
+addError(t("error"), "inference"); // ML errors
+addError(t("error"), "auth"); // Auth errors
+addError(t("error"), "storage"); // Storage errors
 ```
 
 Source is stored with error but not currently displayed in UI. Could be used for filtering in future.

@@ -65,7 +65,7 @@ return (
 
 ```typescript
 // Translation: "Hello {{name}}, you have {{count}} messages"
-t("greeting", { name: "John", count: 5 })
+t("greeting", { name: "John", count: 5 });
 // Output: "Hello John, you have 5 messages"
 ```
 
@@ -631,10 +631,10 @@ npm install i18next react-i18next i18next-browser-languagedetector
 
    ```typescript
    // ✅ Good
-   t("auth.signInRequired")
+   t("auth.signInRequired");
 
    // ❌ Bad
-   t("error1")
+   t("error1");
    ```
 
 3. **Group related translations**
@@ -653,9 +653,8 @@ npm install i18next react-i18next i18next-browser-languagedetector
    ```typescript
    // ✅ Good
    t("greeting", { name: userName })
-
    // ❌ Bad
-   `Hello ${userName}` // Not translated
+   `Hello ${userName}`; // Not translated
    ```
 
 5. **Keep console logs in English**

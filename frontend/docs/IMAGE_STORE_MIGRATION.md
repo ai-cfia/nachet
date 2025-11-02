@@ -56,7 +56,10 @@ interface ImageState {
   images: Images[];
   currentIndex: number;
   addCapturedImage: (src: string) => Promise<void>;
-  loadInferenceResults: (inferenceData: ApiInferenceData, imageIndex: number) => void;
+  loadInferenceResults: (
+    inferenceData: ApiInferenceData,
+    imageIndex: number,
+  ) => void;
   removeImage: (index: number) => number;
   clearImages: () => void;
   setImages: (images: Images[]) => void;
@@ -124,7 +127,11 @@ export const useImageStore = create<ImageState>()((set, get) => ({
 
   loadInferenceResults: (inferenceData, imageIndex) => {
     const state = get();
-    const newImages = loadResultsToCache(inferenceData, state.images, imageIndex);
+    const newImages = loadResultsToCache(
+      inferenceData,
+      state.images,
+      imageIndex,
+    );
     set({ images: newImages });
   },
 
@@ -287,24 +294,25 @@ onComplete: (results) => {
 
 ```typescript
 // These remain in body.tsx as useMemo calculations
-const currentImageData = useMemo(() =>
-  imageCache.find((img) => img.index === imageIndex),
-  [imageCache, imageIndex]
+const currentImageData = useMemo(
+  () => imageCache.find((img) => img.index === imageIndex),
+  [imageCache, imageIndex],
 );
 
-const imageSrc = useMemo(() =>
-  currentImageData?.src ?? defaultImageSrc,
-  [currentImageData, defaultImageSrc]
+const imageSrc = useMemo(
+  () => currentImageData?.src ?? defaultImageSrc,
+  [currentImageData, defaultImageSrc],
 );
 
-const imageTiff = useMemo(() =>
-  currentImageData?.src.includes("image/tiff") ? currentImageData.src : "",
-  [currentImageData]
+const imageTiff = useMemo(
+  () =>
+    currentImageData?.src.includes("image/tiff") ? currentImageData.src : "",
+  [currentImageData],
 );
 
-const labelOccurrences = useMemo(() =>
-  currentImageData ? getLabelOccurrence(currentImageData) : {},
-  [currentImageData]
+const labelOccurrences = useMemo(
+  () => (currentImageData ? getLabelOccurrence(currentImageData) : {}),
+  [currentImageData],
 );
 ```
 
@@ -377,9 +385,10 @@ interface params {
 
 ```typescript
 const ImageCache: React.FC = () => {
-  const { images, currentIndex, setCurrentIndex, removeImage, clearImages } = useImageStore();
+  const { images, currentIndex, setCurrentIndex, removeImage, clearImages } =
+    useImageStore();
   // ...
-}
+};
 ```
 
 ### 3. **Single Source of Truth**
@@ -451,7 +460,9 @@ This migration can serve as a template for other state management refactoring:
 // stores/useXStore.ts
 export const useXStore = create<XState>()((set, get) => ({
   data: initialData,
-  actions: () => { /* ... */ },
+  actions: () => {
+    /* ... */
+  },
 }));
 ```
 
