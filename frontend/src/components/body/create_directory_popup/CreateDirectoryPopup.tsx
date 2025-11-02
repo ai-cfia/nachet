@@ -4,7 +4,6 @@ import {
   Dialog,
   DialogContent,
   IconButton,
-  TextField,
   Button,
   Typography,
 } from "@mui/material";
@@ -16,14 +15,13 @@ import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
 import { createOrGetFolder, updateFolder } from "@common/api";
 import { normalizedPathSchema, safeUserInputSchema } from "@common/validation";
-import { AzureStorageDirectoryItem } from "@common/types";
+import { getZodErrorKey } from "@common/zodErrorMap";
+import { useTranslation } from "react-i18next";
+import { FolderFieldsGroup } from "../folder_fields_group/FolderFieldsGroup";
+import { useDirectoryModalStore } from "../../../stores/useDirectoryModalStore";
+import { useFolderStore } from "../../../stores/useFolderStore";
 
 interface params {
-  setCreateDirectoryOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  curDir: AzureStorageDirectoryItem | null;
-  setCurDir: React.Dispatch<
-    React.SetStateAction<AzureStorageDirectoryItem | null>
-  >;
   setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
   apiScopeClaim: string;
   mode: "create" | "edit";
@@ -35,14 +33,11 @@ interface params {
 }
 
 const CreateFolder: React.FC<params> = (props) => {
-  const {
-    setCreateDirectoryOpen,
-    setCurDir,
-    setReadAzureStorage,
-    apiScopeClaim,
-    mode,
-    initialData,
-  } = props;
+  const { t } = useTranslation("popups");
+  const { t: tValidation } = useTranslation("validation");
+  const { setReadAzureStorage, apiScopeClaim, mode, initialData } = props;
+  const { closeCreateDirectory, closeEditDirectory } = useDirectoryModalStore();
+  const { setCurDir } = useFolderStore();
   const backendURL = useBackendUrl();
   const [folderNameInput, setFolderNameInput] = useState<string>(
     mode === "edit" && initialData ? initialData.folderName : "",
@@ -57,12 +52,12 @@ const CreateFolder: React.FC<params> = (props) => {
 
   const handleCreateDirectory = (): void => {
     if (!isAuthenticated) {
-      alert("You must be signed in to create a directory");
+      alert(t("createDirectory.errors.signInRequired"));
       return;
     }
 
     if (inProgress !== InteractionStatus.None) {
-      alert("Authentication in progress, please wait");
+      alert(t("createDirectory.errors.authInProgress"));
       return;
     }
 
@@ -75,7 +70,9 @@ const CreateFolder: React.FC<params> = (props) => {
     // Validate normalized path
     const pathValidationResult = normalizedPathSchema.safeParse(normalizedPath);
     if (!pathValidationResult.success) {
-      setValidationError(pathValidationResult.error.issues[0].message);
+      setValidationError(
+        tValidation(getZodErrorKey(pathValidationResult.error)),
+      );
       return;
     }
 
@@ -83,7 +80,9 @@ const CreateFolder: React.FC<params> = (props) => {
     const descriptionValidationResult =
       safeUserInputSchema.safeParse(descriptionInput);
     if (!descriptionValidationResult.success) {
-      setDescriptionError(descriptionValidationResult.error.issues[0].message);
+      setDescriptionError(
+        tValidation(getZodErrorKey(descriptionValidationResult.error)),
+      );
       return;
     }
 
@@ -118,35 +117,34 @@ const CreateFolder: React.FC<params> = (props) => {
           });
           console.log(`Folder updated: ${result.id}`);
         }
-        setCreateDirectoryOpen(false);
+        if (mode === "create") {
+          closeCreateDirectory();
+        } else {
+          closeEditDirectory();
+        }
         setCurDir(null);
         setReadAzureStorage((prev) => !prev);
       })
       .catch((error) => {
-        const action = mode === "create" ? "creating" : "updating";
-        alert(`Error ${action} directory, see console for more details`);
+        const errorMessage =
+          mode === "create"
+            ? t("createDirectory.errors.createFailed")
+            : t("createDirectory.errors.updateFailed");
+        alert(errorMessage);
         console.error(error);
       });
   };
 
   const handleClose = (): void => {
-    setCreateDirectoryOpen(false);
+    if (mode === "create") {
+      closeCreateDirectory();
+    } else {
+      closeEditDirectory();
+    }
     setFolderNameInput("");
     setDescriptionInput("");
     setValidationError("");
     setDescriptionError("");
-  };
-
-  const handleInputChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ): void => {
-    const value = event.target.value;
-    setFolderNameInput(value);
-
-    // Clear validation error when user starts typing
-    if (validationError) {
-      setValidationError("");
-    }
   };
 
   return (
@@ -187,52 +185,32 @@ const CreateFolder: React.FC<params> = (props) => {
                 color: colours.CFIA_Font_Black,
               }}
             >
-              {mode === "create" ? "Create New Directory" : "Edit Directory"}
+              {mode === "create"
+                ? t("createDirectory.titleCreate")
+                : t("createDirectory.titleEdit")}
             </Typography>
             <IconButton onClick={handleClose} size="small">
               <CloseIcon />
             </IconButton>
           </Box>
-          <TextField
-            id="outlined-basic"
-            label="Directory Name"
-            variant="outlined"
-            fullWidth
-            InputLabelProps={{ shrink: true }}
-            onChange={handleInputChange}
-            value={folderNameInput}
-            error={!!validationError}
-            helperText={
-              validationError ||
-              "Directory will be created at root level. Use letters, numbers, hyphens, and underscores."
-            }
-            sx={{ fontSize: "1.2vh" }}
-            size="small"
-            placeholder="e.g., avena-fatua or mycology-samples"
-          />
-          <TextField
-            id="input-description"
-            label="Description (Optional)"
-            variant="outlined"
-            fullWidth
-            multiline
-            rows={3}
-            InputLabelProps={{ shrink: true }}
-            value={descriptionInput}
-            onChange={(e) => {
-              setDescriptionInput(e.target.value);
+          <FolderFieldsGroup
+            folderName={folderNameInput}
+            folderDescription={descriptionInput}
+            onFolderNameChange={(value) => {
+              setFolderNameInput(value);
+              if (validationError) {
+                setValidationError("");
+              }
+            }}
+            onFolderDescriptionChange={(value) => {
+              setDescriptionInput(value);
               if (descriptionError) {
                 setDescriptionError("");
               }
             }}
-            error={!!descriptionError}
-            helperText={
-              descriptionError ||
-              "Optional description for this directory (max 500 characters)"
-            }
-            sx={{ fontSize: "1.2vh", marginTop: "2vh" }}
-            size="small"
-            placeholder="e.g., Sample collection from field trial 2025"
+            folderNameError={validationError}
+            folderDescriptionError={descriptionError}
+            sx={{ marginTop: "0px" }}
           />
           <Box
             sx={{
@@ -269,7 +247,9 @@ const CreateFolder: React.FC<params> = (props) => {
                 handleCreateDirectory();
               }}
             >
-              {mode === "create" ? "Create" : "Update"}
+              {mode === "create"
+                ? t("createDirectory.createButton")
+                : t("createDirectory.updateButton")}
             </Button>
             <Button
               variant="outlined"
@@ -292,7 +272,7 @@ const CreateFolder: React.FC<params> = (props) => {
               }}
               onClick={handleClose}
             >
-              Cancel
+              {t("createDirectory.cancelButton")}
             </Button>
           </Box>
         </Box>
