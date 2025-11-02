@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import type Webcam from "react-webcam";
 import { Box } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { colours } from "../../styles/colours";
 import {
   CreateDirectoryPopup,
@@ -20,9 +21,19 @@ import {
   MicroscopeFeed,
   RegistrationStatusPopup,
 } from "@components/body";
-import { useBackendUrl, useDecoderTiff, useDeviceData } from "@hooks";
+import {
+  useBackendUrl,
+  useDecoderTiff,
+  useDeviceData,
+  useWebcamDevices,
+  useModelMetadata,
+} from "@hooks";
 import { useWorkflowStore } from "../../stores/useWorkflowStore";
 import { useImageStore } from "../../stores/useImageStore";
+import { useModalStore } from "../../stores/useModalStore";
+import { useFolderStore } from "../../stores/useFolderStore";
+import { useDirectoryModalStore } from "../../stores/useDirectoryModalStore";
+import { useModelStore } from "../../stores/useModelStore";
 import { WorkflowQueueManager } from "../../services/WorkflowQueueManager";
 import { InteractionStatus } from "@azure/msal-browser";
 import { useMsal, useIsAuthenticated, useAccount } from "@azure/msal-react";
@@ -30,7 +41,6 @@ import { acquireAccessToken } from "@common/auth";
 import {
   getLabelOccurrence,
   loadToCanvas,
-  fetchModelMetadata,
   inferenceDirectRequest,
   readAzureStorageDir,
   checkUserRegistration,
@@ -39,7 +49,6 @@ import {
 import {
   AzureStorageDirectoryItem,
   AzureStorageDirectoryItemApi,
-  ModelMetadata,
   BoxCSS,
 } from "@common/types";
 // import Cookies from "js-cookie";
@@ -56,42 +65,17 @@ interface params {
 }
 
 const Body: React.FC<params> = (props) => {
-  const defaultImageSrc =
-    "https://ai-cfia.github.io/nachet-frontend/placeholder-image.jpg";
-  const [imageFormat, setImageFormat] = useState<string>("image/png");
-  const [imageLabel, setImageLabel] = useState<string>("");
-  const [saveOpen, setSaveOpen] = useState(false);
-  const [batchUploadOpen, setBatchUploadOpen] = useState(false);
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [modelInfoPopupOpen, setModelInfoPopupOpen] = useState(false);
-  const [switchDeviceOpen, setSwitchDeviceOpen] = useState(false);
-  const [deviceInfoOpen, setDeviceInfoOpen] = useState(false);
-  const [createDirectoryOpen, setCreateDirectoryOpen] = useState(false);
-  const [editDirectoryOpen, setEditDirectoryOpen] = useState(false);
-  const [editingFolder, setEditingFolder] =
-    useState<AzureStorageDirectoryItem | null>(null);
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
-  const [activeDeviceId, setActiveDeviceId] = useState<string | undefined>(
-    undefined,
-  );
-  const [curDir, setCurDir] = useState<AzureStorageDirectoryItem | null>(null);
+  const { t } = useTranslation("errors");
   const [readAzureStorage, setReadAzureStorage] = useState<boolean>(false);
   const [azureStorageDir, setAzureStorageDir] = useState<
     AzureStorageDirectoryItem[]
   >([]);
-  const [delDirectoryOpen, setDelDirectoryOpen] = useState<boolean>(false);
-  const [selectedModel, setSelectedModel] = useState("Swin transformer");
-  const [modelDisplayName, setModelDisplayName] = useState("");
-  const [selectedLabel, setSelectedLabel] = useState<string>("all");
-  const [saveIndividualImage, setSaveIndividualImage] = useState<string>("0");
-  const [switchTable, setSwitchTable] = useState<boolean>(true);
   const [freeformBox, setFreeformBox] = useState<BoxCSS | null>(null);
   const [freeformDragEnabled, setFreeformDragEnabled] = useState<boolean>(true);
   const webcamRef = useRef<Webcam>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isWebcamActive, setIsWebcamActive] = useState(true); // This state determines the visibility of the webcam
   const [isLoading, setIsLoading] = useState(false);
-  const [metadata, setMetadata] = useState<ModelMetadata[]>([]);
   const [showInference, setShowInference] = useState<boolean>(true);
   const [registrationCheckComplete, setRegistrationCheckComplete] =
     useState(false);
@@ -101,6 +85,17 @@ const Body: React.FC<params> = (props) => {
   const queueManagerRef = useRef<WorkflowQueueManager>(
     new WorkflowQueueManager(),
   );
+
+  // Directory modal store
+  const {
+    createDirectoryOpen,
+    editDirectoryOpen,
+    delDirectoryOpen,
+    editingFolder,
+  } = useDirectoryModalStore();
+
+  // Folder store
+  const { curDir, setCurDir } = useFolderStore();
 
   // Workflow store actions
   const { addWorkflow, removeWorkflow, getWorkflowByImageIndex } =
@@ -115,14 +110,26 @@ const Body: React.FC<params> = (props) => {
     setImageId,
   } = useImageStore();
 
-  // Derive imageSrc, imageTiff, and labelOccurrences from store
+  // Modal store
+  const {
+    isSaveOpen,
+    isBatchUploadOpen,
+    isUploadOpen,
+    isModelInfoOpen,
+    isDeviceInfoOpen,
+    isSwitchDeviceOpen,
+    imageFormat,
+    imageLabel,
+    saveIndividualImage,
+    setImageFormat,
+    setImageLabel,
+    setSaveIndividualImage,
+  } = useModalStore();
+
+  // Derive imageTiff and labelOccurrences from store
   const currentImageData = useMemo(() => {
     return imageCache.find((img) => img.index === imageIndex);
   }, [imageCache, imageIndex]);
-
-  const imageSrc = useMemo(() => {
-    return currentImageData?.src ?? defaultImageSrc;
-  }, [currentImageData, defaultImageSrc]);
 
   const imageTiff = useMemo(() => {
     return currentImageData?.src.includes("image/tiff")
@@ -140,8 +147,22 @@ const Body: React.FC<params> = (props) => {
   const { instance: msalInstance, inProgress, accounts } = useMsal();
   const isAuthenticated = useIsAuthenticated();
   const accountInfo = useAccount();
+
+  // Webcam devices hook
+  useWebcamDevices();
   const uuid = accountInfo?.idTokenClaims?.oid ?? "";
   const { devicesData } = useDeviceData(backendUrl, apiScopeClaim);
+
+  // Model metadata hook
+  useModelMetadata({
+    backendUrl,
+    apiScopeClaim,
+    isAuthenticated,
+    inProgress,
+  });
+
+  // Model store
+  const { selectedModel } = useModelStore();
 
   // Derive authPopupOpen from authentication state
   const authPopupOpen = useMemo(() => {
@@ -169,22 +190,18 @@ const Body: React.FC<params> = (props) => {
     addCapturedImage(src);
   };
 
-  const handleDirChange = (dir: AzureStorageDirectoryItem | null): void => {
-    setCurDir(dir);
-  };
-
   const handleDirectInference = (): void => {
     // makes a post request to the backend to get inference data for the current image
     if (!isAuthenticated) {
-      alert("You must be signed in to perform inference");
+      alert(t("auth.signInRequired"));
       return;
     }
     if (inProgress !== InteractionStatus.None) {
-      alert("Authentication in progress, please wait");
+      alert(t("auth.inProgress"));
       return;
     }
     if (!curDir) {
-      alert("Please select a directory");
+      alert(t("directory.notSelected"));
       return;
     }
     if (curDir) {
@@ -210,11 +227,10 @@ const Body: React.FC<params> = (props) => {
         })
         .then((response) => {
           setReadAzureStorage(!readAzureStorage);
-          loadInferenceResults(response, imageIndex);
-          setModelDisplayName(selectedModel);
+          loadInferenceResults(response, imageIndex, selectedModel);
         })
         .catch((error) => {
-          alert("Error fetching inference data, see console for details");
+          alert(t("inference.fetchFailed"));
           console.error(error);
         })
         .finally(() => {
@@ -226,15 +242,15 @@ const Body: React.FC<params> = (props) => {
   const handleInferenceRequest = (): void => {
     // makes a post request to the backend to get inference data for the current image
     if (!isAuthenticated) {
-      alert("You must be signed in to perform inference");
+      alert(t("auth.signInRequired"));
       return;
     }
     if (inProgress !== InteractionStatus.None) {
-      alert("Authentication in progress, please wait");
+      alert(t("auth.inProgress"));
       return;
     }
     if (!curDir) {
-      alert("Please select a directory");
+      alert(t("directory.notSelected"));
       return;
     }
 
@@ -257,7 +273,7 @@ const Body: React.FC<params> = (props) => {
       queueStatus.queueSize + (queueStatus.hasActiveWorkflow ? 1 : 0);
 
     if (totalCount >= MAX_TOTAL) {
-      alert("Queue is full (10 items max). Please wait for some to complete.");
+      alert(t("queue.full"));
       return;
     }
 
@@ -308,9 +324,8 @@ const Body: React.FC<params> = (props) => {
           `[Workflow] Workflow ${workflowId} completed for image ${imageIndex}`,
         );
         // Apply results to the correct image
-        loadInferenceResults(results, imageIndex);
+        loadInferenceResults(results, imageIndex, selectedModel);
         setReadAzureStorage(!readAzureStorage);
-        setModelDisplayName(selectedModel);
 
         // Remove workflow from store after completion
         setTimeout(() => {
@@ -322,7 +337,7 @@ const Body: React.FC<params> = (props) => {
           `[Workflow] Workflow ${workflowId} failed for image ${imageIndex}:`,
           error,
         );
-        alert("Error processing inference, see console for details");
+        alert(t("inference.processingFailed"));
       },
     });
   }, [
@@ -336,10 +351,10 @@ const Body: React.FC<params> = (props) => {
     readAzureStorage,
     loadInferenceResults,
     setReadAzureStorage,
-    setModelDisplayName,
     addWorkflow,
     removeWorkflow,
     setImageId,
+    t,
   ]);
 
   const handleFreeformBoxChange = useCallback(
@@ -362,17 +377,15 @@ const Body: React.FC<params> = (props) => {
       canvasRef,
       decodedTiff,
       imageData,
-      selectedLabel,
+      "all", // Always show all labels on canvas
       labelOccurrences,
-      switchTable,
+      true, // Always use label occurrence view on canvas
       showInference,
       freeformBox,
       freeformDragEnabled,
     );
   }, [
-    selectedLabel,
     labelOccurrences,
-    switchTable,
     decodedTiff,
     imageCache,
     imageIndex,
@@ -381,49 +394,6 @@ const Body: React.FC<params> = (props) => {
     freeformBox,
     freeformDragEnabled,
   ]);
-
-  useEffect(() => {
-    if (
-      !navigator ||
-      !navigator.mediaDevices ||
-      typeof navigator.mediaDevices.enumerateDevices !== "function"
-    ) {
-      return;
-    }
-    // retrieves the available devices and sets the active device to the first available device
-    const updateDevices = async (): Promise<any> => {
-      try {
-        const availableDevices =
-          await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = availableDevices.filter(
-          (i) => i.kind === "videoinput",
-        );
-        setDevices(videoDevices);
-
-        if (activeDeviceId === "" || activeDeviceId === undefined) {
-          setActiveDeviceId(videoDevices[0].deviceId);
-        }
-      } catch (error) {
-        alert(error);
-      }
-    };
-
-    updateDevices().catch((error) => {
-      alert(error);
-    });
-    const handleDeviceChange = (): void => {
-      updateDevices().catch((error) => {
-        alert(error);
-      });
-    };
-    navigator.mediaDevices.addEventListener("devicechange", handleDeviceChange);
-    return () => {
-      navigator.mediaDevices.removeEventListener(
-        "devicechange",
-        handleDeviceChange,
-      );
-    };
-  }, [activeDeviceId]);
 
   // Clear queue manager on unmount
   useEffect(() => {
@@ -469,7 +439,7 @@ const Body: React.FC<params> = (props) => {
         }
       } catch (error) {
         console.error(error);
-        alert("Error checking registration status, see console for details");
+        alert(t("registration.checkFailed"));
       }
     };
 
@@ -482,6 +452,7 @@ const Body: React.FC<params> = (props) => {
     isAuthenticated,
     inProgress,
     registrationCheckComplete,
+    t,
   ]);
 
   useEffect(() => {
@@ -523,7 +494,7 @@ const Body: React.FC<params> = (props) => {
         setAzureStorageDir(directories);
       } catch (error) {
         console.error(error);
-        alert("Error reading Azure storage directory, see console for details");
+        alert(t("storage.readFailed"));
       }
     };
 
@@ -537,6 +508,7 @@ const Body: React.FC<params> = (props) => {
     inProgress,
     registrationCheckComplete,
     readAzureStorage,
+    t,
   ]);
 
   // Auto-select user's default directory after directories are loaded
@@ -564,40 +536,6 @@ const Body: React.FC<params> = (props) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [azureStorageDir, accounts]);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
-    if (inProgress !== InteractionStatus.None) {
-      return;
-    }
-    if (!backendUrl || process.env.REACT_APP_MODE === "test") {
-      return;
-    }
-
-    const loadModelMetadata = async () => {
-      try {
-        const accessToken = await acquireAccessToken(msalInstance, [
-          apiScopeClaim,
-        ]);
-
-        const metadata = await fetchModelMetadata({ backendUrl, accessToken });
-        setMetadata(metadata);
-
-        // Find the default model from the metadata
-        const defaultModel = metadata.find((model) => model.default);
-        if (defaultModel) {
-          setSelectedModel(defaultModel.pipeline_id);
-        }
-      } catch (error) {
-        console.error(error);
-        alert("Error fetching model metadata, see console for details");
-      }
-    };
-
-    loadModelMetadata();
-  }, [backendUrl, msalInstance, apiScopeClaim, isAuthenticated, inProgress]);
 
   return (
     <Box
@@ -632,9 +570,8 @@ const Body: React.FC<params> = (props) => {
           setPopupOpen={setRegistrationModalOpen}
         />
       )}
-      {batchUploadOpen && (
+      {isBatchUploadOpen && (
         <BatchUploadPopup
-          setBatchUploadOpen={setBatchUploadOpen}
           backendUrl={backendUrl}
           uuid={uuid}
           containerName={uuid}
@@ -643,18 +580,12 @@ const Body: React.FC<params> = (props) => {
       )}
       {delDirectoryOpen && (
         <DeleteDirectoryPopup
-          setDelDirectoryOpen={setDelDirectoryOpen}
-          curDir={curDir}
-          setCurDir={setCurDir}
           setReadAzureStorage={setReadAzureStorage}
           apiScopeClaim={apiScopeClaim}
         />
       )}
       {createDirectoryOpen && (
         <CreateDirectoryPopup
-          setCreateDirectoryOpen={setCreateDirectoryOpen}
-          curDir={curDir}
-          setCurDir={setCurDir}
           setReadAzureStorage={setReadAzureStorage}
           apiScopeClaim={apiScopeClaim}
           mode="create"
@@ -662,9 +593,6 @@ const Body: React.FC<params> = (props) => {
       )}
       {editDirectoryOpen && editingFolder && (
         <CreateDirectoryPopup
-          setCreateDirectoryOpen={setEditDirectoryOpen}
-          curDir={curDir}
-          setCurDir={setCurDir}
           setReadAzureStorage={setReadAzureStorage}
           apiScopeClaim={apiScopeClaim}
           mode="edit"
@@ -675,9 +603,8 @@ const Body: React.FC<params> = (props) => {
           }}
         />
       )}
-      {saveOpen && (
+      {isSaveOpen && (
         <SaveCapturePopup
-          setSaveOpen={setSaveOpen}
           imageFormat={imageFormat}
           imageLabel={imageLabel}
           setImageFormat={setImageFormat}
@@ -686,36 +613,10 @@ const Body: React.FC<params> = (props) => {
           saveIndividualImage={saveIndividualImage}
         />
       )}
-      {uploadOpen && (
-        <UploadPopup
-          setUploadOpen={setUploadOpen}
-          pushImageToCache={pushImageToCache}
-        />
-      )}
-      {modelInfoPopupOpen && (
-        <ModelPopup
-          setSwitchModelOpen={setModelInfoPopupOpen}
-          switchModelOpen={modelInfoPopupOpen}
-          selectedModel={selectedModel}
-          setSelectedModel={setSelectedModel}
-          realData={metadata}
-        />
-      )}
-      {switchDeviceOpen && (
-        <SwitchDevicePopup
-          setSwitchDeviceOpen={setSwitchDeviceOpen}
-          devices={devices}
-          setDeviceId={setActiveDeviceId}
-          activeDeviceId={activeDeviceId}
-        />
-      )}
-      {deviceInfoOpen && (
-        <DeviceInfoPopup
-          setDeviceInfoOpen={setDeviceInfoOpen}
-          deviceInfoOpen={deviceInfoOpen}
-          devicesData={devicesData}
-        />
-      )}
+      {isUploadOpen && <UploadPopup pushImageToCache={pushImageToCache} />}
+      {isModelInfoOpen && <ModelPopup />}
+      {isSwitchDeviceOpen && <SwitchDevicePopup />}
+      {isDeviceInfoOpen && <DeviceInfoPopup devicesData={devicesData} />}
       {props.creativeCommonsPopupOpen && (
         <CreativeCommonsPopup
           setCreativeCommonsPopupOpen={props.setCreativeCommonsPopupOpen}
@@ -724,113 +625,75 @@ const Body: React.FC<params> = (props) => {
       )}
 
       <Box
+        data-testid="body-two-column-container"
         sx={{
           background: colours.CFIA_Background_White,
           color: colours.CFIA_Font_Black,
           display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
+          flexDirection: { xs: "column", md: "row" },
+          justifyContent: "flex-start",
           alignItems: "center",
           width: "100%",
           maxWidth: "100%",
           minHeight: "80vh",
+          position: "relative",
+          zIndex: 0,
+          padding: "0px 0px 0px 1vw",
         }}
       >
         <Box
+          data-testid="body-left-column"
           sx={{
-            background: colours.CFIA_Background_White,
-            color: colours.CFIA_Font_Black,
             display: "flex",
-            flexDirection: "row",
-            justifyContent: "flex-start",
+            flexDirection: "column",
             alignItems: "center",
-            minWidth: "100%",
-            maxWidth: "100%",
+            justifyContent: "center",
+            // width: "60%",
+            // maxWidth: "60%",
             minHeight: "80vh",
-            position: "relative",
             zIndex: 0,
-            padding: "0px 0px 0px 1vw",
+            position: "relative",
+            paddingBottom: { xs: "2vh", md: 0 },
           }}
         >
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              // width: "60%",
-              // maxWidth: "60%",
-              minHeight: "80vh",
-              zIndex: 0,
-              position: "relative",
+          <MicroscopeFeed
+            capture={captureFeed}
+            webcamRef={webcamRef}
+            windowSize={props.windowSize}
+            isLoading={isLoading}
+            canvasRef={canvasRef}
+            handleInference={handleInferenceRequest}
+            handleDirectInference={handleDirectInference}
+            isWebcamActive={isWebcamActive}
+            onCaptureClick={() => {
+              setIsWebcamActive(!isWebcamActive);
             }}
-          >
-            <MicroscopeFeed
-              capture={captureFeed}
-              webcamRef={webcamRef}
-              windowSize={props.windowSize}
-              activeDeviceId={activeDeviceId}
-              devices={devices}
-              setSwitchDeviceOpen={setSwitchDeviceOpen}
-              setDeviceInfoOpen={setDeviceInfoOpen}
-              isLoading={isLoading}
-              canvasRef={canvasRef}
-              setSaveOpen={setSaveOpen}
-              handleInference={handleInferenceRequest}
-              handleDirectInference={handleDirectInference}
-              setSwitchModelOpen={setModelInfoPopupOpen}
-              selectedModel={selectedModel}
-              metadata={metadata}
-              setBatchUploadOpen={setBatchUploadOpen}
-              setUploadOpen={setUploadOpen}
-              isWebcamActive={isWebcamActive}
-              onCaptureClick={() => {
-                setIsWebcamActive(!isWebcamActive);
-              }}
-              toggleShowInference={(state: boolean) => setShowInference(state)}
-              onFreeformBoxChange={handleFreeformBoxChange}
-              backendUrl={backendUrl}
-              uuid={uuid}
-              apiScopeClaim={apiScopeClaim}
-            />
-          </Box>
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "start",
-              justifyContent: "space-between",
-              minWidth: "23vw",
-              maxWidth: "23vw",
-              minHeight: "80vh",
-              maxHeight: "100%",
-              zIndex: 0,
-              position: "relative",
-              paddingLeft: "1vw",
-            }}
-          >
-            <StorageDirectory
-              azureStorageDir={azureStorageDir}
-              curDir={curDir}
-              handleDirChange={handleDirChange}
-              setCreateDirectoryOpen={setCreateDirectoryOpen}
-              setEditDirectoryOpen={setEditDirectoryOpen}
-              setEditingFolder={setEditingFolder}
-              setDelDirectoryOpen={setDelDirectoryOpen}
-              setCurDir={setCurDir}
-            />
-            <ImageCache />
-            <ClassificationResults
-              imageSrc={imageSrc}
-              windowSize={props.windowSize}
-              selectedLabel={selectedLabel}
-              setSelectedLabel={setSelectedLabel}
-              labelOccurrences={labelOccurrences}
-              switchTable={switchTable}
-              setSwitchTable={setSwitchTable}
-              modelDisplayName={modelDisplayName}
-            />
-          </Box>
+            toggleShowInference={(state: boolean) => setShowInference(state)}
+            onFreeformBoxChange={handleFreeformBoxChange}
+            backendUrl={backendUrl}
+            uuid={uuid}
+            apiScopeClaim={apiScopeClaim}
+          />
+        </Box>
+        <Box
+          data-testid="body-right-column"
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "start",
+            justifyContent: "space-between",
+            minWidth: { xs: "100%", md: "23vw" },
+            maxWidth: { xs: "100%", md: "23vw" },
+            minHeight: "80vh",
+            maxHeight: "100%",
+            zIndex: 0,
+            position: "relative",
+            paddingLeft: "1vw",
+          }}
+        >
+          <StorageDirectory azureStorageDir={azureStorageDir} />
+          <ImageCache />
+          <ClassificationResults labelOccurrences={labelOccurrences} />
         </Box>
       </Box>
     </Box>
