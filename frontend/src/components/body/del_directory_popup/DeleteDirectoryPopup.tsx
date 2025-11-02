@@ -14,43 +14,37 @@ import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
 import { deleteFolder } from "@common/api";
-import { AzureStorageDirectoryItem } from "@common/types";
+import { useTranslation } from "react-i18next";
+import { useDirectoryModalStore } from "../../../stores/useDirectoryModalStore";
+import { useFolderStore } from "../../../stores/useFolderStore";
 
 interface params {
-  setDelDirectoryOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  curDir: AzureStorageDirectoryItem | null;
-  setCurDir: React.Dispatch<
-    React.SetStateAction<AzureStorageDirectoryItem | null>
-  >;
   setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
   apiScopeClaim: string;
 }
 
 const DeleteDirectoryPopup: React.FC<params> = (props) => {
-  const {
-    apiScopeClaim,
-    setDelDirectoryOpen,
-    curDir,
-    setCurDir,
-    setReadAzureStorage,
-  } = props;
+  const { t } = useTranslation("popups");
+  const { apiScopeClaim, setReadAzureStorage } = props;
+  const { closeDeleteDirectory } = useDirectoryModalStore();
+  const { curDir, setCurDir } = useFolderStore();
   const backendURL = useBackendUrl();
   const { instance: msalInstance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
 
   const handleDelFromDirectory = (): void => {
     if (!isAuthenticated) {
-      alert("You must be signed in to delete a directory");
+      alert(t("deleteDirectory.errors.signInRequired"));
       return;
     }
 
     if (inProgress !== InteractionStatus.None) {
-      alert("Authentication in progress, please wait");
+      alert(t("deleteDirectory.errors.authInProgress"));
       return;
     }
 
     if (!curDir) {
-      alert("No directory selected to delete");
+      alert(t("deleteDirectory.errors.noSelection"));
       return;
     }
 
@@ -69,17 +63,17 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
         setReadAzureStorage((prev) => !prev);
       })
       .catch((error) => {
-        alert("Error deleting directory, see console for more details");
+        alert(t("deleteDirectory.errors.deleteFailed"));
         console.error(error);
       });
   };
 
   const handleClose = (): void => {
-    setDelDirectoryOpen(false);
+    closeDeleteDirectory();
   };
   const handleYes = (): void => {
     handleDelFromDirectory();
-    setDelDirectoryOpen(false);
+    closeDeleteDirectory();
   };
 
   return (
@@ -120,7 +114,7 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
                 color: colours.CFIA_Font_Black,
               }}
             >
-              Delete Directory
+              {t("deleteDirectory.title")}
             </Typography>
             <IconButton onClick={handleClose} size="small">
               <CloseIcon />
@@ -137,7 +131,9 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
               marginBottom: "2vh",
             }}
           >
-            Are you sure you want to delete {curDir?.folderName}?
+            {t("deleteDirectory.confirmMessage", {
+              folderName: curDir?.folderName,
+            })}
           </Typography>
           <Box
             sx={{
@@ -172,7 +168,7 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
               }}
               onClick={handleYes}
             >
-              Delete
+              {t("deleteDirectory.deleteButton")}
             </Button>
             <Button
               variant="outlined"
@@ -195,7 +191,7 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
               }}
               onClick={handleClose}
             >
-              Cancel
+              {t("deleteDirectory.cancelButton")}
             </Button>
           </Box>
         </Box>
