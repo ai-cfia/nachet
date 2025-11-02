@@ -11,23 +11,22 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
 import testData from "../../../static_data/static_model_data.json";
+import { useModalStore } from "@stores/useModalStore";
+import { useModelStore } from "@stores/useModelStore";
+import { useTranslation } from "react-i18next";
 
-interface params {
-  setSwitchModelOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  switchModelOpen: boolean;
-  selectedModel: string;
-  setSelectedModel: React.Dispatch<React.SetStateAction<string>>;
-  realData: any[]; // Type should be adjusted to match the actual data structure
-}
+const SwitchModel: React.FC = () => {
+  const { t } = useTranslation("popups");
+  const { closeModelInfoPopup } = useModalStore();
+  const { selectedModel, metadata, setSelectedModel } = useModelStore();
 
-const SwitchModel: React.FC<params> = (props) => {
   const handleClose = (): void => {
-    props.setSwitchModelOpen(false);
+    closeModelInfoPopup();
   };
 
   const selectModel = (model: string): void => {
     console.log("Model selected:", model);
-    props.setSelectedModel(model);
+    setSelectedModel(model);
   };
 
   const close = (): void => {
@@ -35,7 +34,7 @@ const SwitchModel: React.FC<params> = (props) => {
   };
 
   const dataToDisplay =
-    process.env.VITE_APP_MODE === "test" ? testData : props.realData;
+    process.env.VITE_APP_MODE === "test" ? testData : metadata;
 
   return (
     <Dialog
@@ -77,7 +76,7 @@ const SwitchModel: React.FC<params> = (props) => {
                 color: colours.CFIA_Font_Black,
               }}
             >
-              Classification Model Selection
+              {t("modelSelection.title")}
             </Typography>
             <IconButton onClick={handleClose} size="small">
               <CloseIcon />
@@ -87,7 +86,7 @@ const SwitchModel: React.FC<params> = (props) => {
             variant="subtitle1"
             sx={{ marginTop: 1, marginBottom: 2, fontSize: "1.5vh" }}
           >
-            Model Selection:
+            {t("modelSelection.subtitle")}
           </Typography>
           <Box
             sx={{
@@ -111,9 +110,7 @@ const SwitchModel: React.FC<params> = (props) => {
                   padding: "1vh",
                   cursor: "pointer",
                   backgroundColor:
-                    props.selectedModel === data.pipeline_id
-                      ? "#f0f0f0"
-                      : "#fff",
+                    selectedModel === data.pipeline_id ? "#f0f0f0" : "#fff",
                   "&:hover": {
                     backgroundColor: "#e0e0e0",
                   },
@@ -141,7 +138,7 @@ const SwitchModel: React.FC<params> = (props) => {
                     {data.model_name}
                   </Typography>
                   <Radio
-                    checked={props.selectedModel === data.pipeline_id}
+                    checked={selectedModel === data.pipeline_id}
                     onChange={() => {
                       selectModel(data.pipeline_id);
                     }}
@@ -155,10 +152,10 @@ const SwitchModel: React.FC<params> = (props) => {
                   {data.description}
                 </Typography>
                 <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                  Date: {data.creation_date}
+                  {t("modelSelection.date", { date: data.creation_date })}
                 </Typography>
                 <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                  Version: {data.version}
+                  {t("modelSelection.version", { version: data.version })}
                 </Typography>
                 {/* Add more details as needed */}
               </Box>
@@ -193,7 +190,7 @@ const SwitchModel: React.FC<params> = (props) => {
                 },
               }}
             >
-              Done
+              {t("modelSelection.doneButton")}
             </Button>
           </Box>
         </Box>
