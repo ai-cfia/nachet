@@ -32,6 +32,7 @@ export interface Images {
   overlapping: boolean[];
   overlappingIndices: number[];
   topN: Array<Array<{ score: number; label: string }>>;
+  modelName?: string; // Name of the model used for inference
 }
 
 export interface BoxCoordinates {
@@ -113,6 +114,7 @@ export interface ModelMetadata {
   models: string[];
   pipeline_name: string;
   pipeline_id: string;
+  version?: string;
   default?: boolean;
 }
 

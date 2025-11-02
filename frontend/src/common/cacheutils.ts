@@ -152,7 +152,7 @@ const drawFreeformBox = (
   const boxWidth = box.minWidth;
   const boxHeight = box.minHeight;
 
-  console.log("Drawing freeform box:", {
+  console.debug("Drawing freeform box:", {
     boxX,
     boxY,
     boxWidth,
@@ -167,7 +167,7 @@ const drawFreeformBox = (
   ctx.lineWidth = 2;
   ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
 
-  console.log(
+  console.debug(
     "After strokeRect - strokeStyle:",
     ctx.strokeStyle,
     "lineWidth:",
@@ -272,7 +272,7 @@ export const loadToCanvas = async (
     );
   }
   // Draw freeform box if provided
-  console.log(
+  console.debug(
     "loadToCanvas - freeformBox:",
     freeformBox,
     "dragEnabled:",
@@ -297,7 +297,7 @@ export const loadToCanvas = async (
     const offsetX = (containerWidth - displayedWidth) / 2;
     const offsetY = (containerHeight - displayedHeight) / 2;
 
-    console.log("Unscaling freeform box:", {
+    console.debug("Unscaling freeform box:", {
       containerWidth,
       containerHeight,
       imageWidth,
@@ -317,7 +317,7 @@ export const loadToCanvas = async (
       minHeight: freeformBox.minHeight / scaleFactor,
     };
 
-    console.log("Unscaled box for canvas:", unscaledBox);
+    console.debug("Unscaled box for canvas:", unscaledBox);
 
     drawFreeformBox(unscaledBox, dragEnabled ?? true, ctx);
   }
@@ -461,6 +461,7 @@ export const loadResultsToCache = (
   inferenceData: ApiInferenceData,
   imageCache: Images[],
   imageIndex: number,
+  modelName?: string,
 ): Images[] => {
   if (inferenceData == null) {
     throw new ValueError("Inference data is null");
@@ -505,6 +506,7 @@ export const loadResultsToCache = (
     ),
     topN,
     annotated: true,
+    modelName,
   };
 
   return newCache;
