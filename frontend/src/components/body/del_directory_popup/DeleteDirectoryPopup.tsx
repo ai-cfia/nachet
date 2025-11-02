@@ -15,8 +15,8 @@ import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
 import { deleteFolder } from "@common/api";
 import { useTranslation } from "react-i18next";
-import { useDirectoryModalStore } from "../../../stores/useDirectoryModalStore";
-import { useFolderStore } from "../../../stores/useFolderStore";
+import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";
+import { useFolderStore } from "@stores/useFolderStore";
 
 interface params {
   setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
