@@ -18,10 +18,12 @@ import { colours } from "../../../styles/colours";
 import { saveAs } from "file-saver";
 import JSZip from "jszip";
 import { imageLabelSchema, imageFormatSchema } from "@common/validation";
+import { getZodErrorKey } from "@common/zodErrorMap";
 import { useImageStore } from "@stores/useImageStore";
+import { useModalStore } from "@stores/useModalStore";
+import { useTranslation } from "react-i18next";
 
 interface params {
-  setSaveOpen?: React.Dispatch<React.SetStateAction<boolean>>;
   imageFormat?: string;
   imageLabel?: string;
   setImageFormat?: React.Dispatch<React.SetStateAction<string>>;
@@ -31,7 +33,11 @@ interface params {
 }
 
 const SavePopup: React.FC<params> = (props) => {
+  const { t } = useTranslation("popups");
+  const { t: tValidation } = useTranslation("validation");
+  const { t: tErrors } = useTranslation("errors");
   const { images: imageCache, getCurrentImage } = useImageStore();
+  const { closeSavePopup } = useModalStore();
   const [labelError, setLabelError] = useState<string>("");
 
   // Get imageSrc from current image in store
@@ -45,7 +51,7 @@ const SavePopup: React.FC<params> = (props) => {
     if (props.saveIndividualImage === "0" && props.imageLabel) {
       const labelValidation = imageLabelSchema.safeParse(props.imageLabel);
       if (!labelValidation.success) {
-        setLabelError(labelValidation.error.issues[0].message);
+        setLabelError(tValidation(getZodErrorKey(labelValidation.error)));
         return;
       }
     }
@@ -63,7 +69,7 @@ const SavePopup: React.FC<params> = (props) => {
             new Date().getMonth() + 1
           }-${new Date().getDate()}.${props.imageFormat?.split("/")[1]}`,
         );
-        props.setSaveOpen?.(false);
+        closeSavePopup();
       } else if (props.saveIndividualImage === "1" && imageCache.length > 0) {
         // compress all images from cache to zip file and download
         const zip = new JSZip();
@@ -86,19 +92,16 @@ const SavePopup: React.FC<params> = (props) => {
             new Date().getMonth() + 1
           }-${new Date().getDate()}.${props.imageFormat?.split("/")[1]}.zip`,
         );
-        props.setSaveOpen?.(false);
+        closeSavePopup();
       }
     })().catch((error) => {
       console.error("Save error:", error);
-      alert("Error saving image: " + error);
+      alert(tErrors("save.imageFailed", { error: String(error) }));
     });
   };
 
   const handleClose = (): void => {
-    if (props.setSaveOpen === undefined) {
-      return;
-    }
-    props.setSaveOpen(false);
+    closeSavePopup();
   };
 
   const handleFormat = (event: SelectChangeEvent): void => {
@@ -133,22 +136,21 @@ const SavePopup: React.FC<params> = (props) => {
 
     // Validate image label
     if (props.saveIndividualImage === "0") {
-      try {
-        imageLabelSchema.parse(props.imageLabel);
-        setLabelError("");
-      } catch (error) {
-        setLabelError("Capture name must be at least 3 characters long");
+      const labelValidation = imageLabelSchema.safeParse(props.imageLabel);
+      if (!labelValidation.success) {
+        setLabelError(tValidation(getZodErrorKey(labelValidation.error)));
         isValid = false;
-        console.error("Label validation error:", error);
+        console.error("Label validation error:", labelValidation.error);
+      } else {
+        setLabelError("");
       }
     }
 
     // Validate image format
-    try {
-      imageFormatSchema.parse(props.imageFormat);
-    } catch (error) {
+    const formatValidation = imageFormatSchema.safeParse(props.imageFormat);
+    if (!formatValidation.success) {
       isValid = false;
-      console.error("Format validation error:", error);
+      console.error("Format validation error:", formatValidation.error);
     }
 
     return isValid;
@@ -192,7 +194,7 @@ const SavePopup: React.FC<params> = (props) => {
                 color: colours.CFIA_Font_Black,
               }}
             >
-              Save Capture
+              {t("saveCapture.title")}
             </Typography>
             <IconButton onClick={handleClose} size="small">
               <CloseIcon />
@@ -216,14 +218,14 @@ const SavePopup: React.FC<params> = (props) => {
                 fullWidth
                 sx={{ color: colours.CFIA_Font_Black }}
               >
-                CAPTURE
+                {t("saveCapture.captureTab")}
               </ToggleButton>
               <ToggleButton
                 value="1"
                 fullWidth
                 sx={{ color: colours.CFIA_Font_Black }}
               >
-                CACHE
+                {t("saveCapture.cacheTab")}
               </ToggleButton>
             </ToggleButtonGroup>
           </div>
@@ -232,7 +234,7 @@ const SavePopup: React.FC<params> = (props) => {
               <>
                 <TextField
                   id="outlined-basic"
-                  label="Capture Name"
+                  label={t("saveCapture.captureNameLabel")}
                   variant="outlined"
                   onChange={handleLabel}
                   value={props.imageLabel}
@@ -254,8 +256,12 @@ const SavePopup: React.FC<params> = (props) => {
                 fullWidth
                 sx={{ fontSize: "1.2vh", height: "3vh" }}
               >
-                <MenuItem value="image/png">Format: PNG</MenuItem>
-                <MenuItem value="image/jpeg">Format: JPEG</MenuItem>
+                <MenuItem value="image/png">
+                  {t("saveCapture.formatPng")}
+                </MenuItem>
+                <MenuItem value="image/jpeg">
+                  {t("saveCapture.formatJpeg")}
+                </MenuItem>
               </Select>
             </>
           )}
@@ -267,8 +273,12 @@ const SavePopup: React.FC<params> = (props) => {
                 onChange={handleFormat}
                 sx={{ fontSize: "1.2vh", height: "3vh" }}
               >
-                <MenuItem value="image/png">Format: PNG</MenuItem>
-                <MenuItem value="image/jpeg">Format: JPEG</MenuItem>
+                <MenuItem value="image/png">
+                  {t("saveCapture.formatPng")}
+                </MenuItem>
+                <MenuItem value="image/jpeg">
+                  {t("saveCapture.formatJpeg")}
+                </MenuItem>
               </Select>
             </>
           )}
@@ -306,7 +316,7 @@ const SavePopup: React.FC<params> = (props) => {
                 }
               }}
             >
-              SAVE
+              {t("saveCapture.saveButton")}
             </Button>
           </Box>
         </Box>
