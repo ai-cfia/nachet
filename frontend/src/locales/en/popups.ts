@@ -78,6 +78,7 @@ const popups = {
   // Upload Image Popup
   uploadImage: {
     title: "Load Image",
+    chooseFileButton: "Choose File",
   },
 
   // Taxonomic Fields (shared component used in batch upload and feedback form)
@@ -236,20 +237,20 @@ const popups = {
     },
   },
 
-  // Registration Status Popup (if needed)
+  // Registration Status Popup
   registrationStatus: {
-    title: "Registration Status",
-    pending: "Registration pending...",
-    success: "Registration successful!",
-    failed: "Registration failed",
+    title: "Account Registration Required",
+    message:
+      "Your account is not yet registered in the system. Please contact your system administrator to request access.",
+    instruction: "Provide the following user ID to your administrator:",
+    copyTooltip: "Copy to clipboard",
+    copiedMessage: "Copied to clipboard!",
+    closeButton: "Close",
   },
 
-  // Switch Device Popup (if needed)
+  // Switch Device Popup
   switchDevice: {
-    title: "Switch Device",
-    selectDevice: "Select a device",
-    confirmButton: "Confirm",
-    cancelButton: "Cancel",
+    title: "Choose Media Device",
   },
 } as const;
 

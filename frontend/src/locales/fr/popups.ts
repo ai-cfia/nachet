@@ -79,6 +79,7 @@ const popups = {
   // Fenêtre de téléversement d'image
   uploadImage: {
     title: "Charger une image",
+    chooseFileButton: "Choisir un fichier",
   },
 
   // Champs taxonomiques (composant partagé utilisé dans le téléversement par lot et le formulaire de rétroaction)
@@ -241,20 +242,21 @@ const popups = {
     },
   },
 
-  // Fenêtre d'état d'inscription (si nécessaire)
+  // Fenêtre d'état d'inscription
   registrationStatus: {
-    title: "État de l'inscription",
-    pending: "Inscription en attente...",
-    success: "Inscription réussie !",
-    failed: "Échec de l'inscription",
+    title: "Inscription du compte requise",
+    message:
+      "Votre compte n'est pas encore enregistré dans le système. Veuillez contacter votre administrateur système pour demander l'accès.",
+    instruction:
+      "Fournissez l'identifiant utilisateur suivant à votre administrateur :",
+    copyTooltip: "Copier dans le presse-papiers",
+    copiedMessage: "Copié dans le presse-papiers !",
+    closeButton: "Fermer",
   },
 
-  // Fenêtre de changement d'appareil (si nécessaire)
+  // Fenêtre de changement d'appareil
   switchDevice: {
-    title: "Changer d'appareil",
-    selectDevice: "Sélectionner un appareil",
-    confirmButton: "Confirmer",
-    cancelButton: "Annuler",
+    title: "Choisir l'appareil multimédia",
   },
 } as const;
 
