@@ -8,6 +8,7 @@ const main = {
       loadLabel: "LOAD",
       saveLabel: "SAVE",
       batchLabel: "BATCH",
+      notificationsLabel: "LOG",
       classifyLabel: "CLASSIFY",
       directLabel: "D", // Direct inference button for members
       annotateLabel: "ANNOTATE",

@@ -6,13 +6,14 @@ import { create } from "zustand";
  * Centralized state management for modal/popup dialogs.
  * Eliminates prop drilling from body.tsx through component hierarchy.
  *
- * Currently manages 6 microscope-related modals:
+ * Currently manages 7 microscope-related modals:
  * - Save Capture
  * - Batch Upload
  * - Upload/Load Image
  * - Model Selection
  * - Device Info
  * - Switch Device
+ * - Notification Log
  */
 
 interface ModalState {
@@ -23,6 +24,7 @@ interface ModalState {
   isModelInfoOpen: boolean;
   isDeviceInfoOpen: boolean;
   isSwitchDeviceOpen: boolean;
+  notificationLogOpen: boolean;
 
   // Shared data for SaveCapturePopup
   imageFormat: string;
@@ -53,6 +55,10 @@ interface ModalState {
   openSwitchDevicePopup: () => void;
   closeSwitchDevicePopup: () => void;
 
+  // Actions to control Notification Log modal
+  openNotificationLog: () => void;
+  closeNotificationLog: () => void;
+
   // Actions to update SaveCapturePopup data
   setImageFormat: (format: string | ((prev: string) => string)) => void;
   setImageLabel: (label: string | ((prev: string) => string)) => void;
@@ -70,6 +76,7 @@ export const useModalStore = create<ModalState>()((set) => ({
   isModelInfoOpen: false,
   isDeviceInfoOpen: false,
   isSwitchDeviceOpen: false,
+  notificationLogOpen: false,
 
   // Initial data for SaveCapturePopup
   imageFormat: "image/png",
@@ -100,6 +107,10 @@ export const useModalStore = create<ModalState>()((set) => ({
   openSwitchDevicePopup: () => set({ isSwitchDeviceOpen: true }),
   closeSwitchDevicePopup: () => set({ isSwitchDeviceOpen: false }),
 
+  // Notification Log modal actions
+  openNotificationLog: () => set({ notificationLogOpen: true }),
+  closeNotificationLog: () => set({ notificationLogOpen: false }),
+
   // SaveCapturePopup data setters
   setImageFormat: (format) =>
     set((state) => ({
@@ -125,5 +136,6 @@ export const useModalStore = create<ModalState>()((set) => ({
       isModelInfoOpen: false,
       isDeviceInfoOpen: false,
       isSwitchDeviceOpen: false,
+      notificationLogOpen: false,
     }),
 }));

@@ -21,6 +21,7 @@ import { imageLabelSchema, imageFormatSchema } from "@common/validation";
 import { getZodErrorKey } from "@common/zodErrorMap";
 import { useImageStore } from "@stores/useImageStore";
 import { useModalStore } from "@stores/useModalStore";
+import { useNotificationStore } from "@stores/useNotificationStore";
 import { useTranslation } from "react-i18next";
 
 interface params {
@@ -38,6 +39,7 @@ const SavePopup: React.FC<params> = (props) => {
   const { t: tErrors } = useTranslation("errors");
   const { images: imageCache, getCurrentImage } = useImageStore();
   const { closeSavePopup } = useModalStore();
+  const { addError } = useNotificationStore();
   const [labelError, setLabelError] = useState<string>("");
 
   // Get imageSrc from current image in store
@@ -95,8 +97,11 @@ const SavePopup: React.FC<params> = (props) => {
         closeSavePopup();
       }
     })().catch((error) => {
-      console.error("Save error:", error);
-      alert(tErrors("save.imageFailed", { error: String(error) }));
+      console.error(
+        "Save error:",
+        error instanceof Error ? error.message : String(error),
+      );
+      addError(tErrors("save.imageFailed", { error: String(error) }), "save");
     });
   };
 

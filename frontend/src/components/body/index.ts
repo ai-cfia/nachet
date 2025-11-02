@@ -9,6 +9,7 @@ import SwitchDevicePopup from "./switch_device_popup/SwitchDevicePopup";
 import DeviceInfoPopup from "./device_info_popup/DeviceInfoPopup";
 import CreativeCommonsPopup from "./creative_commons_popup/CreativeCommonsPopup";
 import RegistrationStatusPopup from "./registration_status_popup/RegistrationStatusPopup";
+import NotificationLogPopup from "./notification_log_popup/NotificationLogPopupContainer";
 import ClassificationResults from "./classification_results/ClassificationResults";
 import ImageCache from "./image_cache/ImageCache";
 import StorageDirectory from "./directory_list";
@@ -27,6 +28,7 @@ export {
   DeviceInfoPopup,
   CreativeCommonsPopup,
   RegistrationStatusPopup,
+  NotificationLogPopup,
   ClassificationResults,
   ImageCache,
   StorageDirectory,

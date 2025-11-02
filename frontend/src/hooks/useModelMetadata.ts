@@ -51,7 +51,10 @@ export const useModelMetadata = ({
           setSelectedModel(defaultModel.pipeline_id);
         }
       } catch (error) {
-        console.error(error);
+        console.error(
+          "Error fetching model metadata:",
+          error instanceof Error ? error.message : String(error),
+        );
         alert("Error fetching model metadata, see console for details");
       } finally {
         setLoading(false);

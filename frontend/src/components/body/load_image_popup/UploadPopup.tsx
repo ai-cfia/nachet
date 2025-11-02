@@ -11,6 +11,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
 import { validateImageFile } from "@common";
 import { useModalStore } from "@stores/useModalStore";
+import { useNotificationStore } from "@stores/useNotificationStore";
 import { useTranslation } from "react-i18next";
 
 interface params {
@@ -21,6 +22,7 @@ const UploadPopup: React.FC<params> = (props) => {
   const { t } = useTranslation("popups");
   const { pushImageToCache } = props;
   const { closeUploadPopup } = useModalStore();
+  const { addWarning } = useNotificationStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadImage = async (event: any): Promise<void> => {
@@ -32,7 +34,7 @@ const UploadPopup: React.FC<params> = (props) => {
       // Validate the file with comprehensive checks including dimensions
       const validation = await validateImageFile(file);
       if (!validation.isValid) {
-        alert(validation.errors.join("\n"));
+        addWarning(validation.errors.join("\n"), 8000);
         return;
       }
 

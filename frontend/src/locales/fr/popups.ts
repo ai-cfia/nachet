@@ -258,6 +258,18 @@ const popups = {
   switchDevice: {
     title: "Choisir l'appareil multimédia",
   },
+
+  // Fenêtre du journal des notifications
+  notifications: {
+    title: "Journal des erreurs",
+    emptyState: "Aucune erreur à afficher",
+    clearAll: "Tout effacer",
+    closeButton: "Fermer",
+    justNow: "À l'instant",
+    minutesAgo: "Il y a {{count}} minute(s)",
+    hoursAgo: "Il y a {{count}} heure(s)",
+    daysAgo: "Il y a {{count}} jour(s)",
+  },
 } as const;
 
 export default popups;

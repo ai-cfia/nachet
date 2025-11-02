@@ -17,6 +17,7 @@ import { deleteFolder } from "@common/api";
 import { useTranslation } from "react-i18next";
 import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";
 import { useFolderStore } from "@stores/useFolderStore";
+import { useNotificationStore } from "@stores/useNotificationStore";
 
 interface params {
   setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
@@ -31,20 +32,21 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
   const backendURL = useBackendUrl();
   const { instance: msalInstance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
+  const { addError, addWarning } = useNotificationStore();
 
   const handleDelFromDirectory = (): void => {
     if (!isAuthenticated) {
-      alert(t("deleteDirectory.errors.signInRequired"));
+      addError(t("deleteDirectory.errors.signInRequired"), "auth");
       return;
     }
 
     if (inProgress !== InteractionStatus.None) {
-      alert(t("deleteDirectory.errors.authInProgress"));
+      addWarning(t("deleteDirectory.errors.authInProgress"), 8000);
       return;
     }
 
     if (!curDir) {
-      alert(t("deleteDirectory.errors.noSelection"));
+      addWarning(t("deleteDirectory.errors.noSelection"), 8000);
       return;
     }
 
@@ -63,8 +65,11 @@ const DeleteDirectoryPopup: React.FC<params> = (props) => {
         setReadAzureStorage((prev) => !prev);
       })
       .catch((error) => {
-        alert(t("deleteDirectory.errors.deleteFailed"));
-        console.error(error);
+        addError(t("deleteDirectory.errors.deleteFailed"), "directory");
+        console.error(
+          "Delete folder failed:",
+          error instanceof Error ? error.message : String(error),
+        );
       });
   };
 

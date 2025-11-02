@@ -211,9 +211,13 @@ export class WorkflowQueueManager {
       // Start polling after initial delay
       this.startPolling(response.workflow_id);
     } catch (error) {
+      // Extract error message (api.ts already extracts detail from response)
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+
       errorLogger.logError(
-        "[QueueManager] Error submitting workflow",
-        error as Error,
+        `[QueueManager] Error submitting workflow: ${errorMessage}`,
+        error instanceof Error ? error : new Error(errorMessage),
         { imageIndex: item.imageIndex, imageId: item.imageId },
       );
       this.isProcessing = false;
@@ -222,13 +226,13 @@ export class WorkflowQueueManager {
       this.config.workflowStore.updateWorkflowStatus(
         item.tempId,
         "failed",
-        error instanceof Error ? error.message : "Unknown error",
+        errorMessage,
       );
 
       this.config.onError(
         item.tempId,
         item.imageIndex,
-        error instanceof Error ? error : new Error("Unknown error"),
+        error instanceof Error ? error : new Error(errorMessage),
       );
 
       // Update queue positions

@@ -9,7 +9,8 @@ export const errors = {
   },
   inference: {
     fetchFailed: "Error fetching inference data, see console for details",
-    processingFailed: "Error processing inference, see console for details",
+    processingFailed:
+      "Workflow {{workflowId}} failed for image {{imageId}}: {{error}}",
   },
   queue: {
     full: "Queue is full (10 items max). Please wait for some to complete.",

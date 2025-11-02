@@ -8,6 +8,7 @@ const main = {
       loadLabel: "CHARGER",
       saveLabel: "ENREGISTRER",
       batchLabel: "LOT",
+      notificationsLabel: "JOURNAL",
       classifyLabel: "CLASSIFIER",
       directLabel: "D", // Bouton d'inférence directe pour les membres
       annotateLabel: "ANNOTER",
