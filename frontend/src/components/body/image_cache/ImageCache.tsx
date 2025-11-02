@@ -11,6 +11,7 @@ import {
   CircularProgress,
   Chip,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ImageIcon from "@mui/icons-material/Image";
@@ -20,6 +21,8 @@ import { useImageStore } from "@stores/useImageStore";
 import { useWorkflowStore } from "@stores/useWorkflowStore";
 
 const ImageCache: React.FC = () => {
+  const { t } = useTranslation("main");
+
   const {
     images: savedImages,
     currentIndex: imageIndex,
@@ -43,7 +46,7 @@ const ImageCache: React.FC = () => {
       data-testid="image-cache-component"
     >
       <CardHeader
-        title="CAPTURES"
+        title={t("imageCache.title")}
         titleTypographyProps={{
           variant: "h6",
           align: "left",
@@ -148,13 +151,17 @@ const ImageCache: React.FC = () => {
                         }}
                       />
                       <span style={{ textAlign: "right" }}>
-                        {item.imageId ? item.imageId : `Capture ${item.index}`}
+                        {item.imageId
+                          ? item.imageId
+                          : t("imageCache.captureLabel", { index: item.index })}
                       </span>
                       {isProcessing && (
                         <CircularProgress
                           size={14}
                           sx={{ ml: 0.5 }}
-                          title="Processing..."
+                          title={t(
+                            "microscopeFeed.workspace.processingTooltip",
+                          )}
                         />
                       )}
                       {isQueued && (
@@ -168,7 +175,12 @@ const ImageCache: React.FC = () => {
                               padding: "0 6px",
                             },
                           }}
-                          title={`Queue position ${workflow.queuePosition}`}
+                          title={t(
+                            "microscopeFeed.workspace.queuePositionTooltip",
+                            {
+                              position: workflow.queuePosition,
+                            },
+                          )}
                         />
                       )}
                       {hasResults && !isProcessing && !isQueued && (
@@ -177,7 +189,9 @@ const ImageCache: React.FC = () => {
                             color: "#4caf50",
                             fontSize: "1.6vh",
                           }}
-                          titleAccess="Results available"
+                          titleAccess={t(
+                            "microscopeFeed.workspace.resultsAvailableTooltip",
+                          )}
                         />
                       )}
                     </div>
