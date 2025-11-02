@@ -1,23 +1,27 @@
-import React from "react";
+import React, { useRef } from "react";
 import {
   Box,
+  Button,
   Dialog,
   DialogContent,
   IconButton,
-  Input,
   Typography,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
 import { validateImageFile } from "@common";
+import { useModalStore } from "@stores/useModalStore";
+import { useTranslation } from "react-i18next";
 
 interface params {
-  setUploadOpen: React.Dispatch<React.SetStateAction<boolean>>;
   pushImageToCache: (imageUrl: string) => void;
 }
 
 const UploadPopup: React.FC<params> = (props) => {
-  const { setUploadOpen, pushImageToCache } = props;
+  const { t } = useTranslation("popups");
+  const { pushImageToCache } = props;
+  const { closeUploadPopup } = useModalStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadImage = async (event: any): Promise<void> => {
     // loads image from local storage to cache when upload button is pressed
@@ -41,11 +45,15 @@ const UploadPopup: React.FC<params> = (props) => {
       };
       reader.readAsDataURL(file);
     }
-    setUploadOpen(false);
+    closeUploadPopup();
   };
 
   const handleClose = (): void => {
-    setUploadOpen(false);
+    closeUploadPopup();
+  };
+
+  const handleButtonClick = (): void => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -86,7 +94,7 @@ const UploadPopup: React.FC<params> = (props) => {
                 color: colours.CFIA_Font_Black,
               }}
             >
-              Load Image
+              {t("uploadImage.title")}
             </Typography>
             <IconButton onClick={handleClose} size="small">
               <CloseIcon />
@@ -102,17 +110,24 @@ const UploadPopup: React.FC<params> = (props) => {
               marginBottom: "2vh",
             }}
           >
-            <Input
+            <input
+              ref={fileInputRef}
               type="file"
-              fullWidth
+              accept="image/png"
               onChange={uploadImage}
-              inputProps={{
-                accept: "image/png",
-              }}
+              style={{ display: "none" }}
+            />
+            <Button
+              variant="contained"
+              onClick={handleButtonClick}
+              fullWidth
               sx={{
                 fontSize: "1.2vh",
+                textTransform: "none",
               }}
-            />
+            >
+              {t("uploadImage.chooseFileButton")}
+            </Button>
           </Box>
         </Box>
       </DialogContent>
