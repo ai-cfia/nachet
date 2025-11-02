@@ -103,7 +103,22 @@ const handleAxios = async <T>(request: {
           error.response?.data || "No response data",
           error.response?.headers?.["x-correlation-id"] || correlationId,
         );
-        throw new AzureAPIError(error.response?.data || "API Error");
+
+        // Extract error message from response data
+        let errorMessage = "API Error";
+        const responseData = error.response?.data;
+        if (responseData) {
+          if (typeof responseData === "string") {
+            errorMessage = responseData;
+          } else if (responseData.detail) {
+            errorMessage = responseData.detail;
+          } else if (responseData.message) {
+            errorMessage = responseData.message;
+          } else {
+            errorMessage = JSON.stringify(responseData);
+          }
+        }
+        throw new AzureAPIError(errorMessage);
       } else if (error.request) {
         console.error(error.request); // Log network error
         errorLogger.logError(
@@ -111,7 +126,7 @@ const handleAxios = async <T>(request: {
           new Error("Network request failed"),
           { request: error.request, correlationId },
         );
-        throw new AzureAPIError(error.request);
+        throw new AzureAPIError("Network request failed");
       } else {
         console.error("Error", error.message); // Log other errors
         errorLogger.logError(
@@ -126,7 +141,7 @@ const handleAxios = async <T>(request: {
 
       console.error(error.config);
 
-      throw new AzureAPIError(error.config || error.message);
+      throw new AzureAPIError(error.message || "Unknown error");
     });
   return data;
 };

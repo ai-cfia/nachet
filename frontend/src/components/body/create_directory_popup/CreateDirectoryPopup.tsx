@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import { FolderFieldsGroup } from "../folder_fields_group/FolderFieldsGroup";
 import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";
 import { useFolderStore } from "@stores/useFolderStore";
+import { useNotificationStore } from "@stores/useNotificationStore";
 
 interface params {
   setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
@@ -49,15 +50,16 @@ const CreateFolder: React.FC<params> = (props) => {
   const [descriptionError, setDescriptionError] = useState<string>("");
   const { instance: msalInstance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
+  const { addError, addWarning } = useNotificationStore();
 
   const handleCreateDirectory = (): void => {
     if (!isAuthenticated) {
-      alert(t("createDirectory.errors.signInRequired"));
+      addError(t("createDirectory.errors.signInRequired"), "auth");
       return;
     }
 
     if (inProgress !== InteractionStatus.None) {
-      alert(t("createDirectory.errors.authInProgress"));
+      addWarning(t("createDirectory.errors.authInProgress"), 8000);
       return;
     }
 
@@ -130,8 +132,11 @@ const CreateFolder: React.FC<params> = (props) => {
           mode === "create"
             ? t("createDirectory.errors.createFailed")
             : t("createDirectory.errors.updateFailed");
-        alert(errorMessage);
-        console.error(error);
+        addError(errorMessage, "directory");
+        console.error(
+          "Directory operation failed:",
+          error instanceof Error ? error.message : String(error),
+        );
       });
   };
 

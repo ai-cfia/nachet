@@ -23,6 +23,7 @@ import { useBatchUploadStore } from "@stores/useBatchUploadStore";
 import { useModalStore } from "@stores/useModalStore";
 import { BatchUploadPopupView } from "./BatchUploadPopupView";
 import { useTranslation } from "react-i18next";
+import { useNotificationStore } from "@stores/useNotificationStore";
 
 interface BatchUploadPopupContainerProps {
   backendUrl: string;
@@ -38,6 +39,7 @@ export const BatchUploadPopupContainer = (
   const { closeBatchUploadPopup } = useModalStore();
   const { t } = useTranslation("validation");
   const { t: tErrors } = useTranslation("errors");
+  const { addError, addWarning } = useNotificationStore();
 
   const [files, setFiles] = useState<FileList | null>(null);
   const [fileCount, setFileCount] = useState<number>(0);
@@ -188,7 +190,10 @@ export const BatchUploadPopupContainer = (
       setCreatedFolderId(result.folder_id);
       console.log(`Folder created/retrieved: ${result.folder_id}`);
     } catch (error) {
-      console.error("Folder creation failed:", error);
+      console.error(
+        "Folder creation failed:",
+        error instanceof Error ? error.message : String(error),
+      );
       setUploadError(
         error instanceof Error
           ? error.message
@@ -404,7 +409,7 @@ export const BatchUploadPopupContainer = (
     }
 
     if (inProgress !== InteractionStatus.None) {
-      alert(tErrors("auth.inProgress"));
+      addWarning(tErrors("auth.inProgress"), 8000);
       return;
     }
 
@@ -473,7 +478,9 @@ export const BatchUploadPopupContainer = (
             console.log(`Upload completed: ${file.name}`, results);
           },
           onError: (_workflowId, file, error) => {
-            console.error(`Upload failed: ${file.name}`, error);
+            console.error(`Upload failed: ${file.name} - ${error.message}`);
+            // Add error to notification log with file name and error message
+            addError(`${file.name}: ${error.message}`, "batch-upload");
           },
         });
 

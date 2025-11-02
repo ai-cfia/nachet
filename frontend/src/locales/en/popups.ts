@@ -252,6 +252,18 @@ const popups = {
   switchDevice: {
     title: "Choose Media Device",
   },
+
+  // Notification Log Popup
+  notifications: {
+    title: "Error Log",
+    emptyState: "No errors to display",
+    clearAll: "Clear All",
+    closeButton: "Close",
+    justNow: "Just now",
+    minutesAgo: "{{count}} minute(s) ago",
+    hoursAgo: "{{count}} hour(s) ago",
+    daysAgo: "{{count}} day(s) ago",
+  },
 } as const;
 
 export default popups;

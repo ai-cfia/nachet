@@ -20,7 +20,9 @@ import {
   StorageDirectory,
   MicroscopeFeed,
   RegistrationStatusPopup,
+  NotificationLogPopup,
 } from "@components/body";
+import { ToastNotification } from "@components/common/ToastNotification";
 import {
   useBackendUrl,
   useDecoderTiff,
@@ -34,6 +36,7 @@ import { useModalStore } from "@stores/useModalStore";
 import { useFolderStore } from "@stores/useFolderStore";
 import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";
 import { useModelStore } from "@stores/useModelStore";
+import { useNotificationStore } from "@stores/useNotificationStore";
 import { WorkflowQueueManager } from "../../services/WorkflowQueueManager";
 import { InteractionStatus } from "@azure/msal-browser";
 import { useMsal, useIsAuthenticated, useAccount } from "@azure/msal-react";
@@ -118,6 +121,7 @@ const Body: React.FC<params> = (props) => {
     isModelInfoOpen,
     isDeviceInfoOpen,
     isSwitchDeviceOpen,
+    notificationLogOpen,
     imageFormat,
     imageLabel,
     saveIndividualImage,
@@ -125,6 +129,9 @@ const Body: React.FC<params> = (props) => {
     setImageLabel,
     setSaveIndividualImage,
   } = useModalStore();
+
+  // Notification store
+  const { addError, addWarning } = useNotificationStore();
 
   // Derive imageTiff and labelOccurrences from store
   const currentImageData = useMemo(() => {
@@ -193,15 +200,15 @@ const Body: React.FC<params> = (props) => {
   const handleDirectInference = (): void => {
     // makes a post request to the backend to get inference data for the current image
     if (!isAuthenticated) {
-      alert(t("auth.signInRequired"));
+      addError(t("auth.signInRequired"), "auth");
       return;
     }
     if (inProgress !== InteractionStatus.None) {
-      alert(t("auth.inProgress"));
+      addWarning(t("auth.inProgress"), 8000);
       return;
     }
     if (!curDir) {
-      alert(t("directory.notSelected"));
+      addWarning(t("directory.notSelected"), 8000);
       return;
     }
     if (curDir) {
@@ -230,8 +237,11 @@ const Body: React.FC<params> = (props) => {
           loadInferenceResults(response, imageIndex, selectedModel);
         })
         .catch((error) => {
-          alert(t("inference.fetchFailed"));
-          console.error(error);
+          addError(t("inference.fetchFailed"), "inference");
+          console.error(
+            "Inference fetch failed:",
+            error instanceof Error ? error.message : String(error),
+          );
         })
         .finally(() => {
           setIsLoading(false);
@@ -242,15 +252,15 @@ const Body: React.FC<params> = (props) => {
   const handleInferenceRequest = (): void => {
     // makes a post request to the backend to get inference data for the current image
     if (!isAuthenticated) {
-      alert(t("auth.signInRequired"));
+      addError(t("auth.signInRequired"), "auth");
       return;
     }
     if (inProgress !== InteractionStatus.None) {
-      alert(t("auth.inProgress"));
+      addWarning(t("auth.inProgress"), 8000);
       return;
     }
     if (!curDir) {
-      alert(t("directory.notSelected"));
+      addWarning(t("directory.notSelected"), 8000);
       return;
     }
 
@@ -273,7 +283,7 @@ const Body: React.FC<params> = (props) => {
       queueStatus.queueSize + (queueStatus.hasActiveWorkflow ? 1 : 0);
 
     if (totalCount >= MAX_TOTAL) {
-      alert(t("queue.full"));
+      addWarning(t("queue.full"), 10000);
       return;
     }
 
@@ -333,11 +343,26 @@ const Body: React.FC<params> = (props) => {
         }, 1000); // Keep for 1 second to show "completed" status
       },
       onError: (workflowId, imageIndex, error) => {
+        // Extract readable error message
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+
+        // Look up image_id (UUID) from imageIndex
+        const image = imageCache.find((img) => img.index === imageIndex);
+        const imageId = image?.imageId || `index-${imageIndex}`;
+
         console.error(
-          `[Workflow] Workflow ${workflowId} failed for image ${imageIndex}:`,
-          error,
+          `[Workflow] Workflow ${workflowId} failed for image ${imageId}: ${errorMessage}`,
         );
-        alert(t("inference.processingFailed"));
+
+        addError(
+          t("inference.processingFailed", {
+            workflowId,
+            imageId,
+            error: errorMessage,
+          }),
+          "inference",
+        );
       },
     });
   }, [
@@ -355,6 +380,7 @@ const Body: React.FC<params> = (props) => {
     removeWorkflow,
     setImageId,
     t,
+    addError,
   ]);
 
   const handleFreeformBoxChange = useCallback(
@@ -438,8 +464,11 @@ const Body: React.FC<params> = (props) => {
           setRegistrationCheckComplete(true);
         }
       } catch (error) {
-        console.error(error);
-        alert(t("registration.checkFailed"));
+        console.error(
+          "Registration check failed:",
+          error instanceof Error ? error.message : String(error),
+        );
+        addError(t("registration.checkFailed"), "registration");
       }
     };
 
@@ -453,6 +482,7 @@ const Body: React.FC<params> = (props) => {
     inProgress,
     registrationCheckComplete,
     t,
+    addError,
   ]);
 
   useEffect(() => {
@@ -493,8 +523,11 @@ const Body: React.FC<params> = (props) => {
         });
         setAzureStorageDir(directories);
       } catch (error) {
-        console.error(error);
-        alert(t("storage.readFailed"));
+        console.error(
+          "Storage read failed:",
+          error instanceof Error ? error.message : String(error),
+        );
+        addError(t("storage.readFailed"), "storage");
       }
     };
 
@@ -509,6 +542,7 @@ const Body: React.FC<params> = (props) => {
     registrationCheckComplete,
     readAzureStorage,
     t,
+    addError,
   ]);
 
   // Auto-select user's default directory after directories are loaded
@@ -538,165 +572,171 @@ const Body: React.FC<params> = (props) => {
   }, [azureStorageDir, accounts]);
 
   return (
-    <Box
-      data-testid="body-component"
-      sx={{
-        background: colours.CFIA_Background_White,
-        color: colours.CFIA_Font_Black,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 0,
-        maxWidth: "100%",
-        padding: "0px 1vw",
-        position: "relative",
-        marginTop: "1vh",
-        marginBottom: "1vh",
-      }}
-    >
-      {authPopupOpen && (
-        <AuthPopup
-          open={authPopupOpen}
-          onClose={() => {
-            /* Auth popup closes automatically when user is authenticated */
-          }}
-          apiScopeClaim={apiScopeClaim}
-        />
-      )}
-      {registrationModalOpen && (
-        <RegistrationStatusPopup
-          userOid={uuid}
-          setPopupOpen={setRegistrationModalOpen}
-        />
-      )}
-      {isBatchUploadOpen && (
-        <BatchUploadPopup
-          backendUrl={backendUrl}
-          uuid={uuid}
-          containerName={uuid}
-          apiScopeClaim={apiScopeClaim}
-        />
-      )}
-      {delDirectoryOpen && (
-        <DeleteDirectoryPopup
-          setReadAzureStorage={setReadAzureStorage}
-          apiScopeClaim={apiScopeClaim}
-        />
-      )}
-      {createDirectoryOpen && (
-        <CreateDirectoryPopup
-          setReadAzureStorage={setReadAzureStorage}
-          apiScopeClaim={apiScopeClaim}
-          mode="create"
-        />
-      )}
-      {editDirectoryOpen && editingFolder && (
-        <CreateDirectoryPopup
-          setReadAzureStorage={setReadAzureStorage}
-          apiScopeClaim={apiScopeClaim}
-          mode="edit"
-          initialData={{
-            folderId: editingFolder.folderId,
-            folderName: editingFolder.folderName,
-            description: editingFolder.description || "",
-          }}
-        />
-      )}
-      {isSaveOpen && (
-        <SaveCapturePopup
-          imageFormat={imageFormat}
-          imageLabel={imageLabel}
-          setImageFormat={setImageFormat}
-          setImageLabel={setImageLabel}
-          setSaveIndividualImage={setSaveIndividualImage}
-          saveIndividualImage={saveIndividualImage}
-        />
-      )}
-      {isUploadOpen && <UploadPopup pushImageToCache={pushImageToCache} />}
-      {isModelInfoOpen && <ModelPopup />}
-      {isSwitchDeviceOpen && <SwitchDevicePopup />}
-      {isDeviceInfoOpen && <DeviceInfoPopup devicesData={devicesData} />}
-      {props.creativeCommonsPopupOpen && (
-        <CreativeCommonsPopup
-          setCreativeCommonsPopupOpen={props.setCreativeCommonsPopupOpen}
-          handleCreativeCommonsAgreement={props.handleCreativeCommonsAgreement}
-        />
-      )}
-
+    <>
+      <ToastNotification />
       <Box
-        data-testid="body-two-column-container"
+        data-testid="body-component"
         sx={{
           background: colours.CFIA_Background_White,
           color: colours.CFIA_Font_Black,
           display: "flex",
-          flexDirection: { xs: "column", md: "row" },
-          justifyContent: "flex-start",
+          flexDirection: "column",
           alignItems: "center",
-          width: "100%",
-          maxWidth: "100%",
-          minHeight: "80vh",
-          position: "relative",
+          justifyContent: "center",
           zIndex: 0,
-          padding: "0px 0px 0px 1vw",
+          maxWidth: "100%",
+          padding: "0px 1vw",
+          position: "relative",
+          marginTop: "1vh",
+          marginBottom: "1vh",
         }}
       >
-        <Box
-          data-testid="body-left-column"
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            // width: "60%",
-            // maxWidth: "60%",
-            minHeight: "80vh",
-            zIndex: 0,
-            position: "relative",
-            paddingBottom: { xs: "2vh", md: 0 },
-          }}
-        >
-          <MicroscopeFeed
-            capture={captureFeed}
-            webcamRef={webcamRef}
-            windowSize={props.windowSize}
-            isLoading={isLoading}
-            canvasRef={canvasRef}
-            handleInference={handleInferenceRequest}
-            handleDirectInference={handleDirectInference}
-            isWebcamActive={isWebcamActive}
-            onCaptureClick={() => {
-              setIsWebcamActive(!isWebcamActive);
+        {authPopupOpen && (
+          <AuthPopup
+            open={authPopupOpen}
+            onClose={() => {
+              /* Auth popup closes automatically when user is authenticated */
             }}
-            toggleShowInference={(state: boolean) => setShowInference(state)}
-            onFreeformBoxChange={handleFreeformBoxChange}
-            backendUrl={backendUrl}
-            uuid={uuid}
             apiScopeClaim={apiScopeClaim}
           />
-        </Box>
+        )}
+        {registrationModalOpen && (
+          <RegistrationStatusPopup
+            userOid={uuid}
+            setPopupOpen={setRegistrationModalOpen}
+          />
+        )}
+        {isBatchUploadOpen && (
+          <BatchUploadPopup
+            backendUrl={backendUrl}
+            uuid={uuid}
+            containerName={uuid}
+            apiScopeClaim={apiScopeClaim}
+          />
+        )}
+        {delDirectoryOpen && (
+          <DeleteDirectoryPopup
+            setReadAzureStorage={setReadAzureStorage}
+            apiScopeClaim={apiScopeClaim}
+          />
+        )}
+        {createDirectoryOpen && (
+          <CreateDirectoryPopup
+            setReadAzureStorage={setReadAzureStorage}
+            apiScopeClaim={apiScopeClaim}
+            mode="create"
+          />
+        )}
+        {editDirectoryOpen && editingFolder && (
+          <CreateDirectoryPopup
+            setReadAzureStorage={setReadAzureStorage}
+            apiScopeClaim={apiScopeClaim}
+            mode="edit"
+            initialData={{
+              folderId: editingFolder.folderId,
+              folderName: editingFolder.folderName,
+              description: editingFolder.description || "",
+            }}
+          />
+        )}
+        {isSaveOpen && (
+          <SaveCapturePopup
+            imageFormat={imageFormat}
+            imageLabel={imageLabel}
+            setImageFormat={setImageFormat}
+            setImageLabel={setImageLabel}
+            setSaveIndividualImage={setSaveIndividualImage}
+            saveIndividualImage={saveIndividualImage}
+          />
+        )}
+        {isUploadOpen && <UploadPopup pushImageToCache={pushImageToCache} />}
+        {isModelInfoOpen && <ModelPopup />}
+        {isSwitchDeviceOpen && <SwitchDevicePopup />}
+        {isDeviceInfoOpen && <DeviceInfoPopup devicesData={devicesData} />}
+        {notificationLogOpen && <NotificationLogPopup />}
+        {props.creativeCommonsPopupOpen && (
+          <CreativeCommonsPopup
+            setCreativeCommonsPopupOpen={props.setCreativeCommonsPopupOpen}
+            handleCreativeCommonsAgreement={
+              props.handleCreativeCommonsAgreement
+            }
+          />
+        )}
+
         <Box
-          data-testid="body-right-column"
+          data-testid="body-two-column-container"
           sx={{
+            background: colours.CFIA_Background_White,
+            color: colours.CFIA_Font_Black,
             display: "flex",
-            flexDirection: "column",
-            alignItems: "start",
-            justifyContent: "space-between",
-            minWidth: { xs: "100%", md: "23vw" },
-            maxWidth: { xs: "100%", md: "23vw" },
+            flexDirection: { xs: "column", md: "row" },
+            justifyContent: "flex-start",
+            alignItems: "center",
+            width: "100%",
+            maxWidth: "100%",
             minHeight: "80vh",
-            maxHeight: "100%",
-            zIndex: 0,
             position: "relative",
-            paddingLeft: "1vw",
+            zIndex: 0,
+            padding: "0px 0px 0px 1vw",
           }}
         >
-          <StorageDirectory azureStorageDir={azureStorageDir} />
-          <ImageCache />
-          <ClassificationResults labelOccurrences={labelOccurrences} />
+          <Box
+            data-testid="body-left-column"
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              // width: "60%",
+              // maxWidth: "60%",
+              minHeight: "80vh",
+              zIndex: 0,
+              position: "relative",
+              paddingBottom: { xs: "2vh", md: 0 },
+            }}
+          >
+            <MicroscopeFeed
+              capture={captureFeed}
+              webcamRef={webcamRef}
+              windowSize={props.windowSize}
+              isLoading={isLoading}
+              canvasRef={canvasRef}
+              handleInference={handleInferenceRequest}
+              handleDirectInference={handleDirectInference}
+              isWebcamActive={isWebcamActive}
+              onCaptureClick={() => {
+                setIsWebcamActive(!isWebcamActive);
+              }}
+              toggleShowInference={(state: boolean) => setShowInference(state)}
+              onFreeformBoxChange={handleFreeformBoxChange}
+              backendUrl={backendUrl}
+              uuid={uuid}
+              apiScopeClaim={apiScopeClaim}
+            />
+          </Box>
+          <Box
+            data-testid="body-right-column"
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "start",
+              justifyContent: "space-between",
+              minWidth: { xs: "100%", md: "23vw" },
+              maxWidth: { xs: "100%", md: "23vw" },
+              minHeight: "80vh",
+              maxHeight: "100%",
+              zIndex: 0,
+              position: "relative",
+              paddingLeft: "1vw",
+            }}
+          >
+            <StorageDirectory azureStorageDir={azureStorageDir} />
+            <ImageCache />
+            <ClassificationResults labelOccurrences={labelOccurrences} />
+          </Box>
         </Box>
       </Box>
-    </Box>
+    </>
   );
 };
 

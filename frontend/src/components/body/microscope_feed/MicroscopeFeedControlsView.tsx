@@ -1,7 +1,7 @@
 // \components\body\microscope_feed\MicroscopeFeedControlsView.tsx
 // Controls for MicroscopeFeed component
 import { useMemo } from "react";
-import { Box, Button, Switch } from "@mui/material";
+import { Box, Button, Switch, Badge } from "@mui/material";
 import { useTranslation } from "react-i18next";
 // Import icons
 import SwitchCameraIcon from "@mui/icons-material/SwitchCamera";
@@ -12,6 +12,7 @@ import CropFreeIcon from "@mui/icons-material/CropFree";
 import DonutSmallIcon from "@mui/icons-material/DonutSmall";
 import InfoIcon from "@mui/icons-material/Info";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import NotificationsIcon from "@mui/icons-material/Notifications";
 import { colours } from "@styles/colours";
 import { useAccount } from "@azure/msal-react";
 import { useDeviceStore } from "@stores/useDeviceStore";
@@ -19,6 +20,7 @@ import { useImageStore } from "@stores/useImageStore";
 import { useModalStore } from "@stores/useModalStore";
 import { useWebcamStore } from "@stores/useWebcamStore";
 import { useModelStore } from "@stores/useModelStore";
+import { useNotificationStore } from "@stores/useNotificationStore";
 
 export interface MicroscopeFeedControlsViewProps {
   isWebcamActive: boolean;
@@ -102,7 +104,11 @@ export const MicroscopeFeedControlsView = (
     openModelInfoPopup,
     openSavePopup,
     openBatchUploadPopup,
+    openNotificationLog,
   } = useModalStore();
+
+  // Notification store
+  const { getUnreadErrorCount, markAllErrorsAsRead } = useNotificationStore();
 
   // Icon styles
   const iconStyle = {
@@ -154,7 +160,7 @@ export const MicroscopeFeedControlsView = (
       sx={{
         display: "flex",
         flexDirection: "row",
-        justifyContent: "center",
+        justifyContent: "flex-start",
         flexWrap: "wrap",
         alignItems: "center",
         padding: "0.8vh",
@@ -163,17 +169,31 @@ export const MicroscopeFeedControlsView = (
       }}
     >
       <ButtonMicroscopeFeed
-        label={deviceLabel.slice(0, 8)} // Limit label length to 8 characters
-        icon={<SwitchCameraIcon color="inherit" style={iconStyle} />}
-        endIcon={<ArrowDropDownIcon color="inherit" />}
-        disabled={!isWebcamActive} // Disable when the webcam is active
-        onClick={openSwitchDevicePopup}
+        label={t("microscopeFeed.controls.notificationsLabel")}
+        icon={
+          <Badge badgeContent={getUnreadErrorCount()} color="error">
+            <NotificationsIcon color="inherit" style={iconStyle} />
+          </Badge>
+        }
+        disabled={false} // always active
+        onClick={() => {
+          openNotificationLog();
+          markAllErrorsAsRead();
+        }}
+        sx={{ marginRight: "0.2vh" }}
       />
       <ButtonMicroscopeFeed
         label={t("microscopeFeed.controls.deviceLabel")}
         icon={<InfoIcon color="inherit" style={iconStyle} />}
         disabled={false} // Always active
         onClick={openDeviceInfoPopup}
+      />
+      <ButtonMicroscopeFeed
+        label={deviceLabel.slice(0, 8)} // Limit label length to 8 characters
+        icon={<SwitchCameraIcon color="inherit" style={iconStyle} />}
+        endIcon={<ArrowDropDownIcon color="inherit" />}
+        disabled={!isWebcamActive || !isDeviceInfoSet()} // Disable when the webcam is active
+        onClick={openSwitchDevicePopup}
       />
       <ButtonMicroscopeFeed
         label={t("microscopeFeed.controls.captureLabel")}
@@ -185,6 +205,7 @@ export const MicroscopeFeedControlsView = (
       />
       <Switch
         checked={!isWebcamActive}
+        disabled={!isDeviceInfoSet()} // Disable when device info is not set
         onChange={onCaptureClick}
         size="small"
         sx={{

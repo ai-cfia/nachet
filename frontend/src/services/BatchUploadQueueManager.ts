@@ -177,24 +177,30 @@ export class BatchUploadQueueManager {
       // Start polling after initial delay
       this.startPolling(response.workflow_id);
     } catch (error) {
+      // Extract error message (api.ts already extracts detail from response)
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+
+      // Log with extracted error message
       errorLogger.logError(
-        "[BatchUploadQueueManager] Error submitting upload",
-        error as Error,
+        `[BatchUploadQueueManager] Error submitting upload: ${errorMessage}`,
+        error instanceof Error ? error : new Error(errorMessage),
         { fileName: item.file.name },
       );
+
       this.isProcessing = false;
 
-      // Update upload status to failed
+      // Update upload status to failed with extracted error message
       this.config.uploadStore.updateUploadStatus(
         item.tempId,
         "failed",
-        error instanceof Error ? error.message : "Unknown error",
+        errorMessage,
       );
 
       this.config.onError(
         item.tempId,
         item.file,
-        error instanceof Error ? error : new Error("Unknown error"),
+        error instanceof Error ? error : new Error(errorMessage),
       );
 
       // Update queue positions

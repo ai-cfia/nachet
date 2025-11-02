@@ -18,6 +18,7 @@ import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
 import { getUnscaledCoordinates } from "@common/imageutils";
 import { useImageStore } from "@stores/useImageStore";
+import { useNotificationStore } from "@stores/useNotificationStore";
 import { MicroscopeFeedControlsView } from "./MicroscopeFeedControlsView";
 import { MicroscopeFeedWorkspaceView } from "./MicroscopeFeedWorkspaceView";
 
@@ -66,6 +67,8 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     currentIndex: imageIndex,
     loadInferenceResults,
   } = useImageStore();
+
+  const { addWarning } = useNotificationStore();
 
   const width = windowSize.width * 0.73; // Match 73vw container width
   const height = windowSize.height * 0.75; // Match 75vh container height
@@ -165,7 +168,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     console.log("Submitting positive feedback for key: ", index);
 
     if (inProgress !== InteractionStatus.None) {
-      alert(t("microscopeFeed.errors.authInProgress"));
+      addWarning(t("microscopeFeed.errors.authInProgress"), 8000);
       return;
     }
 
@@ -191,7 +194,10 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
       loadInferenceResults(response, imageIndex);
       setApiSuccess(true);
     } catch (error) {
-      console.error("Error submitting feedback: ", error);
+      console.error(
+        "Error submitting feedback:",
+        error instanceof Error ? error.message : String(error),
+      );
       setApiError(error instanceof Error ? error.message : "Unknown error");
     } finally {
       setApiLoading(false);
@@ -233,7 +239,10 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
       loadInferenceResults(response, imageIndex);
       setApiSuccess(true);
     } catch (error) {
-      console.error("Error submitting feedback: ", error);
+      console.error(
+        "Error submitting feedback:",
+        error instanceof Error ? error.message : String(error),
+      );
       setApiError(error instanceof Error ? error.message : "Unknown error");
     } finally {
       setApiLoading(false);

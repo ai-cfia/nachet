@@ -12,7 +12,7 @@ export const errors = {
     fetchFailed:
       "Erreur lors de la récupération des données d'inférence, voir la console pour plus de détails",
     processingFailed:
-      "Erreur lors du traitement de l'inférence, voir la console pour plus de détails",
+      "Workflow {{workflowId}} a échoué pour l'image {{imageId}} : {{error}}",
   },
   queue: {
     full: "La file d'attente est pleine (10 éléments maximum). Veuillez attendre que certains se terminent.",
