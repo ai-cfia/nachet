@@ -1,8 +1,9 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { Box, Typography, Button, Paper } from "@mui/material";
+import { withTranslation, WithTranslation } from "react-i18next";
 import { errorLogger } from "../../../logging";
 
-interface Props {
+interface Props extends WithTranslation {
   children: ReactNode;
   fallback?: ReactNode;
 }
@@ -61,6 +62,8 @@ class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
+      const { t } = this.props;
+
       return (
         <Box
           display="flex"
@@ -71,16 +74,15 @@ class ErrorBoundary extends Component<Props, State> {
         >
           <Paper elevation={3} sx={{ p: 4, maxWidth: 600 }}>
             <Typography variant="h4" color="error" gutterBottom>
-              Something went wrong
+              {t("errors:boundary.title")}
             </Typography>
             <Typography variant="body1" paragraph>
-              An unexpected error has occurred. The error has been logged and
-              our team has been notified.
+              {t("errors:boundary.message")}
             </Typography>
             {process.env.NODE_ENV === "development" && this.state.error && (
               <Box mt={2}>
                 <Typography variant="subtitle2" color="textSecondary">
-                  Error Details (Development Only):
+                  {t("errors:boundary.devDetails")}
                 </Typography>
                 <Paper
                   variant="outlined"
@@ -108,13 +110,13 @@ class ErrorBoundary extends Component<Props, State> {
                 color="primary"
                 onClick={this.handleReset}
               >
-                Try Again
+                {t("errors:boundary.tryAgain")}
               </Button>
               <Button
                 variant="outlined"
                 onClick={() => (window.location.href = "/")}
               >
-                Go to Home
+                {t("errors:boundary.goHome")}
               </Button>
             </Box>
             <Typography
@@ -123,7 +125,9 @@ class ErrorBoundary extends Component<Props, State> {
               mt={2}
               display="block"
             >
-              Error ID: {errorLogger.getCorrelationId()}
+              {t("errors:boundary.errorId", {
+                errorId: errorLogger.getCorrelationId(),
+              })}
             </Typography>
           </Paper>
         </Box>
@@ -134,4 +138,7 @@ class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-export default ErrorBoundary;
+const ErrorBoundaryWithTranslation = withTranslation()(ErrorBoundary);
+ErrorBoundaryWithTranslation.displayName = "ErrorBoundary";
+
+export default ErrorBoundaryWithTranslation;
