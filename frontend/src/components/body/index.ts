@@ -1,4 +1,4 @@
-import BatchUploadPopup from "./batch_upload_popup/BatchUploadPopup";
+import BatchUploadPopup from "./batch_upload_popup/BatchUploadPopupContainer";
 import CreateDirectoryPopup from "./create_directory_popup/CreateDirectoryPopup";
 import DeleteDirectoryPopup from "./del_directory_popup/DeleteDirectoryPopup";
 import AuthPopup from "./auth_popup/AuthPopup";
