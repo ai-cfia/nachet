@@ -2,6 +2,7 @@ import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import ReportGmailerrorredIcon from "@mui/icons-material/ReportGmailerrorred";
 import LoadingIndicator from "../loading_indicator";
 import { Box, Button, Typography } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 export interface ApiActionProps {
   loading: boolean;
@@ -12,6 +13,7 @@ export interface ApiActionProps {
 
 export const ApiAction = (props: ApiActionProps) => {
   const { loading, success, error, dismiss } = props;
+  const { t } = useTranslation("common");
 
   return (
     <Box
@@ -80,7 +82,7 @@ export const ApiAction = (props: ApiActionProps) => {
             }}
             onClick={dismiss}
           >
-            Dismiss
+            {t("actions.dismiss")}
           </Button>
         )}
       </Box>
