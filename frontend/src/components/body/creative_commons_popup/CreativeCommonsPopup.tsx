@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
+import { useTranslation } from "react-i18next";
 
 interface params {
   setCreativeCommonsPopupOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -16,17 +17,8 @@ interface params {
 }
 
 const CreativeCommonsPopup: React.FC<params> = (props) => {
-  const introduction = `
-By uploading your images to Seed Classification Interface, you agree to license your work under a Creative Commons Attribution-ShareAlike (CC BY-SA) License. This agreement outlines the terms and conditions of the license and other considerations.`;
-  const termsAndConditions = `
-Attribution: You allow others to copy, distribute, display, and perform your copyrighted work—and derivative works based upon it—but only if they give you the proper credit by citing your name and the source.
-Share Alike: You allow others to distribute derivative works only under a license identical to the license that governs your work.
-Machine Learning: You grant the CFIA the right to use your images to train machine learning models. These models may be used for various purposes, including research, analysis, and commercial activities.
-Warranty: You represent and warrant that you are the legal owner of the content you are uploading and that it does not infringe on any copyright, trademark, or other rights of third parties.
-Consent: If your image includes identifiable individuals, you affirm that you have obtained their consent for the image to be shared and used under these terms.
-Waiver: The image is provided "as-is." You waive all warranties, including any regarding the image's accuracy or fitness for a particular purpose.`;
-  const acknowledgment = `
-By clicking "I Agree," you confirm that you have read and understood this agreement, and you will be legally bound by its terms and conditions.`;
+  const { t } = useTranslation("popups");
+
   const handleClose = (): void => {
     props.setCreativeCommonsPopupOpen(false);
   };
@@ -69,7 +61,7 @@ By clicking "I Agree," you confirm that you have read and understood this agreem
                 color: colours.CFIA_Font_Black,
               }}
             >
-              Use of Creative Commons Images
+              {t("creativeCommons.title")}
             </Typography>
             <IconButton onClick={handleClose} size="small">
               <CloseIcon />
@@ -97,7 +89,7 @@ By clicking "I Agree," you confirm that you have read and understood this agreem
                 marginTop: "0.5vh",
               }}
             >
-              Introduction
+              {t("creativeCommons.introduction.heading")}
             </Typography>
             <Typography
               variant="body2"
@@ -109,7 +101,7 @@ By clicking "I Agree," you confirm that you have read and understood this agreem
                 marginBottom: "1vh",
               }}
             >
-              {introduction.trim().replace(/\n/g, " ")}
+              {t("creativeCommons.introduction.text")}
             </Typography>
             <Typography
               variant="h6"
@@ -121,7 +113,7 @@ By clicking "I Agree," you confirm that you have read and understood this agreem
                 marginTop: "0.5vh",
               }}
             >
-              Terms and Conditions
+              {t("creativeCommons.termsAndConditions.heading")}
             </Typography>
             <Typography
               variant="body2"
@@ -133,7 +125,12 @@ By clicking "I Agree," you confirm that you have read and understood this agreem
                 marginBottom: "1vh",
               }}
             >
-              {termsAndConditions.trim().replace(/\n/g, " ")}
+              {t("creativeCommons.termsAndConditions.attribution")}{" "}
+              {t("creativeCommons.termsAndConditions.shareAlike")}{" "}
+              {t("creativeCommons.termsAndConditions.machineLearning")}{" "}
+              {t("creativeCommons.termsAndConditions.warranty")}{" "}
+              {t("creativeCommons.termsAndConditions.consent")}{" "}
+              {t("creativeCommons.termsAndConditions.waiver")}
             </Typography>
             <Typography
               variant="h6"
@@ -145,7 +142,7 @@ By clicking "I Agree," you confirm that you have read and understood this agreem
                 marginTop: "0.5vh",
               }}
             >
-              Acknowledgement
+              {t("creativeCommons.acknowledgment.heading")}
             </Typography>
             <Typography
               variant="body2"
@@ -157,7 +154,7 @@ By clicking "I Agree," you confirm that you have read and understood this agreem
                 marginBottom: "1vh",
               }}
             >
-              {acknowledgment.trim().replace(/\n/g, " ")}
+              {t("creativeCommons.acknowledgment.text")}
             </Typography>
           </Box>
           <Box
@@ -195,7 +192,7 @@ By clicking "I Agree," you confirm that you have read and understood this agreem
                 props.handleCreativeCommonsAgreement(true);
               }}
             >
-              I Agree
+              {t("creativeCommons.agreeButton")}
             </Button>
             <Button
               variant="outlined"
@@ -220,7 +217,7 @@ By clicking "I Agree," you confirm that you have read and understood this agreem
                 props.handleCreativeCommonsAgreement(false);
               }}
             >
-              I Disagree
+              {t("creativeCommons.disagreeButton")}
             </Button>
           </Box>
         </Box>
