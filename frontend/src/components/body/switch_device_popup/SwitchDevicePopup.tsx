@@ -10,21 +10,20 @@ import {
 } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material/Select";
 import CloseIcon from "@mui/icons-material/Close";
+import { useTranslation } from "react-i18next";
 import { colours } from "../../../styles/colours";
 import { deviceIdSchema } from "@common/validation";
+import { useModalStore } from "@stores/useModalStore";
+import { useWebcamStore } from "@stores/useWebcamStore";
 
-interface params {
-  setSwitchDeviceOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  devices: MediaDeviceInfo[];
-  setDeviceId: React.Dispatch<React.SetStateAction<string | undefined>>;
-  activeDeviceId: string | undefined;
-}
-
-const SwitchDevice: React.FC<params> = (props) => {
+const SwitchDevice: React.FC = () => {
+  const { t } = useTranslation("popups");
   const [deviceError, setDeviceError] = useState<string>("");
+  const { closeSwitchDevicePopup } = useModalStore();
+  const { devices, activeDeviceId, setActiveDeviceId } = useWebcamStore();
 
   const handleClose = (): void => {
-    props.setSwitchDeviceOpen(false);
+    closeSwitchDevicePopup();
     setDeviceError("");
   };
 
@@ -40,11 +39,8 @@ const SwitchDevice: React.FC<params> = (props) => {
 
     // Clear error and proceed
     setDeviceError("");
-    if (props.setDeviceId === undefined) {
-      return;
-    }
-    props.setDeviceId(selectedDeviceId);
-    props.setSwitchDeviceOpen(false);
+    setActiveDeviceId(selectedDeviceId);
+    closeSwitchDevicePopup();
   };
 
   return (
@@ -85,7 +81,7 @@ const SwitchDevice: React.FC<params> = (props) => {
                 color: colours.CFIA_Font_Black,
               }}
             >
-              Choose Media Device
+              {t("switchDevice.title")}
             </Typography>
             <IconButton onClick={handleClose} size="small">
               <CloseIcon />
@@ -102,13 +98,13 @@ const SwitchDevice: React.FC<params> = (props) => {
             }}
           >
             <Select
-              value={props.activeDeviceId}
+              value={activeDeviceId}
               onChange={handleSwitch}
               sx={{ fontSize: "1.2vh" }}
               size="small"
               fullWidth
             >
-              {props.devices.map((device) => (
+              {devices.map((device) => (
                 <MenuItem
                   key={device.deviceId}
                   value={device.deviceId}
