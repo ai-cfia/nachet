@@ -308,7 +308,8 @@ async def test_get_by_id_not_found(
                 await MockEntityService.get_by_id(mock_user_id, mock_entity_id)
 
             assert exc_info.value.status_code == 404
-            assert "not found" in str(exc_info.value.detail).lower()
+            # Check for sanitized error message (security fix for CWE-209)
+            assert "failed to process database request" in str(exc_info.value.detail).lower()
 
 
 # Tests for BaseCRUDService.create
@@ -408,7 +409,8 @@ async def test_update_not_found(
                 )
 
             assert exc_info.value.status_code == 404
-            assert "not found" in str(exc_info.value.detail).lower()
+            # Check for sanitized error message (security fix for CWE-209)
+            assert "failed to process database request" in str(exc_info.value.detail).lower()
 
 
 @pytest.mark.asyncio
@@ -481,7 +483,8 @@ async def test_delete_not_found(
                 await MockEntityService.delete(mock_user_id, mock_entity_id)
 
             assert exc_info.value.status_code == 404
-            assert "not found" in str(exc_info.value.detail).lower()
+            # Check for sanitized error message (security fix for CWE-209)
+            assert "failed to process database request" in str(exc_info.value.detail).lower()
 
 
 @pytest.mark.asyncio

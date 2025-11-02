@@ -252,7 +252,8 @@ class TestModelServiceGetById:
             await ModelService.get_by_id(user_id, model_id)
 
         assert exc_info.value.status_code == 404
-        assert "not found" in exc_info.value.detail.lower()
+        # Check for sanitized error message (security fix for CWE-209)
+        assert "failed to process database request" in exc_info.value.detail.lower()
 
 
 class TestModelServiceGetByTaskId:

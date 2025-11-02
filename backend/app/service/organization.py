@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 
 from app.db.utils import sessionmanager
 from app.service.base_crud import BaseCRUDService, BaseCRUDDataService
+from app.service.error_sanitizer import sanitize_error_for_user
 from app.datastore import OrganizationDataService
 from app.db.model import Organization, RbacRole
 from app.service.rbac import RbacService
@@ -271,7 +272,7 @@ class OrganizationService(BaseCRUDService[Organization]):
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create organization: {str(e)}",
+                detail=sanitize_error_for_user(e, context="organization"),
             )
 
     @staticmethod

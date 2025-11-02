@@ -26,6 +26,7 @@ from app.service.inference.workflows import image_processing_workflow
 from app.service.inference.queues import image_processing_queue
 from app.service.inference.state_management import create_processing_state
 from app.service.constants import ProcessingStatus
+from app.service.error_sanitizer import sanitize_error_for_user
 from app.model.batch_upload import BatchUploadImageRequest
 from app.exceptions import InvalidImageError, SeedNotFoundError
 from app.datastore.batch_upload_session import BatchUploadSessionDataService
@@ -129,8 +130,9 @@ class BatchUploadService:
             }
 
         except Exception as e:
-            logger.error(f"Failed to initialize batch session: {str(e)}")
-            raise
+            logger.error(f"Failed to initialize batch session: {str(e)}", exc_info=True)
+            # Re-raise with sanitized message to prevent information leakage
+            raise ValueError(sanitize_error_for_user(e, context="session_init"))
 
     @classmethod
     async def upload_picture_batch(
@@ -405,7 +407,7 @@ class BatchUploadService:
                 "success": False,
                 "picture_id": None,
                 "workflow_id": None,
-                "error": f"Image validation error: {str(e)}",
+                "error": sanitize_error_for_user(e, context="batch_upload"),
             }
         except SeedNotFoundError as e:
             logger.warning(f"Seed validation error in batch upload: {str(e)}")
@@ -413,7 +415,7 @@ class BatchUploadService:
                 "success": False,
                 "picture_id": None,
                 "workflow_id": None,
-                "error": f"Seed validation error: {str(e)}",
+                "error": sanitize_error_for_user(e, context="batch_upload"),
             }
         except Exception as e:
             logger.error(f"Unexpected error in batch upload: {str(e)}", exc_info=True)
@@ -421,5 +423,5 @@ class BatchUploadService:
                 "success": False,
                 "picture_id": None,
                 "workflow_id": None,
-                "error": str(e),
+                "error": sanitize_error_for_user(e, context="batch_upload"),
             }

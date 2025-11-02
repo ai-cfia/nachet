@@ -11,6 +11,7 @@ from app.blob.manager import blob_storage_manager
 from app.blob.exceptions import BlobNotFoundError
 from app.service.logs import LogService
 from app.service.constants import BlobAccount
+from app.service.error_sanitizer import sanitize_error_for_user
 
 
 class FrontendService:
@@ -68,7 +69,7 @@ class FrontendService:
             return "unknown"
         except Exception as e:
             raise HTTPException(
-                status_code=500, detail=f"Failed to retrieve frontend version: {str(e)}"
+                status_code=500, detail=sanitize_error_for_user(e, context="frontend")
             )
 
     @classmethod
@@ -175,7 +176,7 @@ class FrontendService:
             raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
         except Exception as e:
             raise HTTPException(
-                status_code=500, detail=f"Failed to retrieve file {file_path}: {str(e)}"
+                status_code=500, detail=sanitize_error_for_user(e, context="frontend")
             )
 
     @staticmethod
