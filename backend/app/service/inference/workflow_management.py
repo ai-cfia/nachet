@@ -16,6 +16,7 @@ from app.db.model import ImageProcessingState, InferenceRequestState
 from app.db.utils import sessionmanager
 from app.service.rbac import RbacService
 from app.service.constants import ProcessingStatus
+from app.service.error_sanitizer import sanitize_error_for_user
 from app.exceptions import ImageProcessingError
 
 
@@ -403,7 +404,7 @@ async def get_workflow_results(
                 )
                 raise HTTPException(
                     status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Failed to parse inference results: {str(e)}",
+                    detail=sanitize_error_for_user(e, context="inference"),
                 )
 
             logger.info(

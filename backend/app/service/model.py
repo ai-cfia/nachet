@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 from app.db.utils import sessionmanager
 from app.service.base_crud import BaseCRUDService, BaseCRUDDataService
 from app.service.rbac import RbacService
+from app.service.error_sanitizer import sanitize_error_for_user
 from app.datastore.model import ModelDataService
 from app.db.model import Model, ModelTask
 from app.exceptions import (
@@ -207,7 +208,7 @@ class ModelService(BaseCRUDService[Model]):
             )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to retrieve models by task: {str(e)}",
+                detail=sanitize_error_for_user(e, context="model"),
             )
 
 

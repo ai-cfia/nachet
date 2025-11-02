@@ -77,6 +77,7 @@ from abc import ABC, abstractmethod
 
 from app.db.utils import sessionmanager
 from app.service.logs import LogService
+from app.service.error_sanitizer import sanitize_error_for_user
 from app.datastore.base_crud import BaseCRUDDataService
 
 
@@ -320,7 +321,10 @@ class BaseCRUDService(Generic[T]):
                 user_id=str(requester_id),
                 entity_id=str(entity_id),
             ).warning(warning_msg)
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=sanitize_error_for_user(e, context="database"),
+            )
         except Exception as e:
             logger = cls._get_logger()
             error_msg = f"Failed to retrieve {entity_name_lower}: {cls._sanitize_error_message(e)}"
@@ -468,7 +472,10 @@ class BaseCRUDService(Generic[T]):
                 user_id=str(requester_id),
                 entity_id=str(entity_id),
             ).warning(warning_msg)
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=sanitize_error_for_user(e, context="database"),
+            )
         except update_exc as e:
             logger = cls._get_logger()
             error_msg = f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}"
@@ -556,7 +563,10 @@ class BaseCRUDService(Generic[T]):
                 user_id=str(requester_id),
                 entity_id=str(entity_id),
             ).warning(warning_msg)
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=sanitize_error_for_user(e, context="database"),
+            )
         except deletion_exc as e:
             logger = cls._get_logger()
             error_msg = f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}"
@@ -828,7 +838,10 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
                 requester_id=str(requester_id),
                 entity_id=str(entity_id),
             ).warning(warning_msg)
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=sanitize_error_for_user(e, context="database"),
+            )
         except Exception as e:
             logger = cls._get_logger()
             error_msg = f"Failed to retrieve {entity_name_lower}: {cls._sanitize_error_message(e)}"
@@ -903,7 +916,10 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
                 requester_id=str(requester_id),
                 entity_id=str(entity_id),
             ).warning(warning_msg)
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=sanitize_error_for_user(e, context="database"),
+            )
         except update_exc as e:
             logger = cls._get_logger()
             error_msg = f"Failed to update {entity_name_lower}: {cls._sanitize_error_message(e)}"
@@ -990,7 +1006,10 @@ class AuthorizedBaseCRUDService(BaseCRUDService[T], AuthorizationMixin[T]):
                 requester_id=str(requester_id),
                 entity_id=str(entity_id),
             ).warning(warning_msg)
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=sanitize_error_for_user(e, context="database"),
+            )
         except deletion_exc as e:
             logger = cls._get_logger()
             error_msg = f"Failed to delete {entity_name_lower}: {cls._sanitize_error_message(e)}"

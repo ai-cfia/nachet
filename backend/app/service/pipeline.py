@@ -10,6 +10,7 @@ from app.datastore import PipelineDataService
 from app.service.base_crud import BaseCRUDService
 from app.service.logs import LogService
 from app.service.cache import CacheService
+from app.service.error_sanitizer import sanitize_error_for_user
 from app.db.model import Pipeline, PipelineDefault, PipelineModel
 from app.exceptions import (
     PipelineNotFoundError,
@@ -176,7 +177,7 @@ class PipelineService(BaseCRUDService[Pipeline]):
 
         except Exception as e:
             raise HTTPException(
-                status_code=500, detail=f"Failed to retrieve pipelines: {str(e)}"
+                status_code=500, detail=sanitize_error_for_user(e, context="pipeline")
             )
 
     @classmethod
@@ -455,7 +456,7 @@ class PipelineService(BaseCRUDService[Pipeline]):
         except Exception as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to retrieve model endpoints metadata: {str(e)}",
+                detail=sanitize_error_for_user(e, context="pipeline"),
             )
 
 

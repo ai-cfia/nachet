@@ -120,7 +120,8 @@ class TestBatchUploadServiceInitialize:
         """Test initialization fails when file_count > 1000."""
         mock_get_org_roles.return_value = MagicMock()
 
-        with pytest.raises(ValueError, match="file_count cannot exceed 1000"):
+        # After security fix (CWE-209), errors are sanitized
+        with pytest.raises(ValueError, match="Failed to initialize upload session"):
             await BatchUploadService.initialize_batch_session(
                 user_id=sample_user_id,
                 folder_id=sample_folder_id,
@@ -144,7 +145,8 @@ class TestBatchUploadServiceInitialize:
 
         mock_check_folder.side_effect = DirectoryNotFoundError("Folder not found")
 
-        with pytest.raises(DirectoryNotFoundError, match="Folder not found"):
+        # After security fix (CWE-209), errors are sanitized to ValueError
+        with pytest.raises(ValueError, match="Failed to initialize upload session"):
             await BatchUploadService.initialize_batch_session(
                 user_id=sample_user_id,
                 folder_id=sample_folder_id,
@@ -170,7 +172,8 @@ class TestBatchUploadServiceInitialize:
             f"Folder {sample_folder_id} not found or access denied"
         )
 
-        with pytest.raises(DirectoryNotFoundError, match="not found or access denied"):
+        # After security fix (CWE-209), errors are sanitized to ValueError
+        with pytest.raises(ValueError, match="Failed to initialize upload session"):
             await BatchUploadService.initialize_batch_session(
                 user_id=sample_user_id,
                 folder_id=sample_folder_id,

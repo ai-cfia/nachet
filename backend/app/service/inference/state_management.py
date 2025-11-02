@@ -14,6 +14,7 @@ from dbos import DBOS
 from app.db.model import ImageProcessingState, InferenceRequestState
 from app.db.utils import sessionmanager
 from app.service.constants import ProcessingStatus
+from app.service.error_sanitizer import sanitize_error_for_user
 from app.exceptions import ImageProcessingError
 
 
@@ -233,7 +234,7 @@ async def update_processing_state_step(
             f"Failed to update processing state for workflow_id={workflow_id}: {str(e)} (error_type={type(e).__name__})"
         )
         # Don't crash the workflow - log and return empty dict
-        return {"error": str(e)}
+        return {"error": sanitize_error_for_user(e, context="workflow")}
 
 
 @no_type_check
@@ -315,7 +316,7 @@ async def update_inference_state_step(
             error_type=type(e).__name__,
         )
         # Don't crash the workflow - log and return empty dict
-        return {"error": str(e)}
+        return {"error": sanitize_error_for_user(e, context="workflow")}
 
 
 @no_type_check
@@ -398,7 +399,7 @@ async def mark_processing_failed_step(
             f"Failed to mark processing state as failed for workflow_id={workflow_id}: {str(e)} (error_type={type(e).__name__})"
         )
         # Don't crash the workflow - log and return empty dict
-        return {"error": str(e)}
+        return {"error": sanitize_error_for_user(e, context="workflow")}
 
 
 @no_type_check
@@ -467,4 +468,4 @@ async def mark_inference_failed_step(
             error_type=type(e).__name__,
         )
         # Don't crash the workflow - log and return empty dict
-        return {"error": str(e)}
+        return {"error": sanitize_error_for_user(e, context="workflow")}
