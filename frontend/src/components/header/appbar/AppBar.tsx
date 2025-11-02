@@ -1,17 +1,27 @@
 import { colours } from "../../../styles/colours";
 import { Box, Typography, Switch, Stack } from "@mui/material";
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 interface params {
   windowSize: {
     width: number;
     height: number;
   };
-  setSwitchLanguage: React.Dispatch<React.SetStateAction<boolean>>;
-  switchLanguage: boolean;
 }
 
-const Appbar: React.FC<params> = (props) => {
+const Appbar: React.FC<params> = () => {
+  const { t, i18n } = useTranslation("header");
+
+  // Current language is 'fr' when true, 'en' when false
+  const currentLanguage = i18n.language;
+  const isFrench = currentLanguage === "fr";
+
+  const handleLanguageChange = () => {
+    const newLanguage = isFrench ? "en" : "fr";
+    i18n.changeLanguage(newLanguage);
+  };
+
   return (
     <Box
       sx={{
@@ -50,7 +60,7 @@ const Appbar: React.FC<params> = (props) => {
             zIndex: 3,
           }}
         >
-          Nachet Weed Seed Species Classifier
+          {t("appBar.title")}
         </Typography>
         <Stack
           direction="row"
@@ -62,14 +72,14 @@ const Appbar: React.FC<params> = (props) => {
             sx={{
               fontSize: "1.2vh",
               color: colours.CFIA_Font_White,
-              fontWeight: props.switchLanguage ? "normal" : "bold",
+              fontWeight: isFrench ? "normal" : "bold",
             }}
           >
-            EN
+            {t("appBar.languageToggle.en")}
           </Typography>
           <Switch
-            checked={props.switchLanguage}
-            onChange={() => props.setSwitchLanguage(!props.switchLanguage)}
+            checked={isFrench}
+            onChange={handleLanguageChange}
             size="small"
             sx={{
               "& .MuiSwitch-switchBase.Mui-checked": {
@@ -87,10 +97,10 @@ const Appbar: React.FC<params> = (props) => {
             sx={{
               fontSize: "1.2vh",
               color: colours.CFIA_Font_White,
-              fontWeight: props.switchLanguage ? "bold" : "normal",
+              fontWeight: isFrench ? "bold" : "normal",
             }}
           >
-            FR
+            {t("appBar.languageToggle.fr")}
           </Typography>
         </Stack>
       </Box>

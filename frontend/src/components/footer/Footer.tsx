@@ -6,10 +6,12 @@ import CanadaLogo from "../../assets/Canada_logo.png";
 import useBackendUrl from "@hooks/useBackendUrl";
 import { pingBackend } from "@common/api";
 import { colours } from "../../styles/colours";
+import { useTranslation } from "react-i18next";
 
 const Footer: React.FC = () => {
   const accountInfo = useAccount();
   const backendUrl = useBackendUrl();
+  const { t } = useTranslation("footer");
   const [backendConnected, setBackendConnected] = useState<boolean | null>(
     null,
   );
@@ -87,7 +89,7 @@ const Footer: React.FC = () => {
             zIndex: 0,
           }}
         >
-          Developed by AI Lab
+          {t("developedBy")}
         </Link>
         <Box
           component="span"
@@ -102,7 +104,9 @@ const Footer: React.FC = () => {
             zIndex: 0,
           }}
         >
-          {backendConnected ? "Connected ✓" : "Disconnected ✗"}
+          {backendConnected
+            ? t("connection.connected")
+            : t("connection.disconnected")}
         </Box>
         <Box
           component="span"
@@ -117,7 +121,9 @@ const Footer: React.FC = () => {
             zIndex: 0,
           }}
         >
-          {environment.version !== "" ? "Version: " + environment.version : ""}
+          {environment.version !== ""
+            ? t("version", { version: environment.version })
+            : ""}
         </Box>
         <Box
           component="span"
@@ -132,11 +138,12 @@ const Footer: React.FC = () => {
             zIndex: 0,
           }}
         >
-          OID: {accountInfo?.idTokenClaims?.oid || ""}
+          {t("oid", { oid: accountInfo?.idTokenClaims?.oid || "" })}
         </Box>
         <Box
           component="img"
           src={CanadaLogo}
+          alt={t("canadaLogoAlt")}
           sx={{
             width: "6vw",
             zIndex: 0,

@@ -13181,8 +13181,8 @@
     {
       "type": "library",
       "name": "baseline-browser-mapping",
-      "version": "2.8.22",
-      "bom-ref": "nachet-frontend@2.0.0|baseline-browser-mapping@2.8.22",
+      "version": "2.8.23",
+      "bom-ref": "nachet-frontend@2.0.0|baseline-browser-mapping@2.8.23",
       "licenses": [
         {
           "license": {
@@ -13191,15 +13191,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/baseline-browser-mapping@2.8.22",
+      "purl": "pkg:npm/baseline-browser-mapping@2.8.23",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/baseline-browser-mapping/-/baseline-browser-mapping-2.8.22.tgz",
+          "url": "https://registry.npmjs.org/baseline-browser-mapping/-/baseline-browser-mapping-2.8.23.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "fed93d924cbf77c4fc0935c84180122f2840c51e55c0bdf372dd6802855368e507c2b9ac1a77db47035d12afaf3a5d8137c8b73dc0dd3f4a3843e8e3290a056d"
+              "content": "eb5e95e585f86dea4917337239f71ee456bc7c324c7e8c73388cc3099c1a18bf0c295a45ad7a9f354a08a519fd60c239a577ff54a8338c1e21b4532c14a29d89"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -21034,6 +21034,40 @@
     },
     {
       "type": "library",
+      "name": "html-parse-stringify",
+      "version": "3.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|html-parse-stringify@3.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/html-parse-stringify@3.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/html-parse-stringify/-/html-parse-stringify-3.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "2a49c9e7491322727ba8849c1778de68546932913cfe57e24ddcdffedc17c8f04b006acb4539a4cf701d4e729e878d17f24f4bd9f758c04a7fe365865c844672"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/html-parse-stringify"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "htmlparser2",
       "version": "8.0.2",
       "bom-ref": "nachet-frontend@2.0.0|htmlparser2@8.0.2",
@@ -21282,6 +21316,40 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/human-signals"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "i18next",
+      "version": "25.6.0",
+      "bom-ref": "nachet-frontend@2.0.0|i18next@25.6.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/i18next@25.6.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/i18next/-/i18next-25.6.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "b539fc7cbaf0058b67725a4be5a3d72bfb406012d656fa07335cdd7d7a1134b708f91bed32ca19455f7c78f95a5b79211d82ae361fd0eb95bff8d54551e23057"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/i18next"
         }
       ]
     },
@@ -29468,6 +29536,40 @@
     },
     {
       "type": "library",
+      "name": "react-i18next",
+      "version": "16.2.3",
+      "bom-ref": "nachet-frontend@2.0.0|react-i18next@16.2.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/react-i18next@16.2.3",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/react-i18next/-/react-i18next-16.2.3.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "3b4b76cef988cfb9c758a35f20bf8efcd4c86e94da38f634bd9a2fefbf617a06dea77219fb172a91e54f2960525f0cdd922bfbeeaf339aaf6da0a214cacd71dc"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/react-i18next"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "react-icons",
       "version": "5.5.0",
       "bom-ref": "nachet-frontend@2.0.0|react-icons@5.5.0",
@@ -35213,6 +35315,40 @@
     },
     {
       "type": "library",
+      "name": "use-sync-external-store",
+      "version": "1.6.0",
+      "bom-ref": "nachet-frontend@2.0.0|use-sync-external-store@1.6.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/use-sync-external-store@1.6.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/use-sync-external-store/-/use-sync-external-store-1.6.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "3e9e864b018ffcdacf22bc551402243907b2c3c9457a73878a34169144eb0efac5e002eaca53f60bf28291e4bd76950cdcabd84508676b9bedec82fde7e650f7"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/use-sync-external-store"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "utif",
       "version": "3.1.0",
       "bom-ref": "nachet-frontend@2.0.0|utif@3.1.0",
@@ -35645,6 +35781,40 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/vitest"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "void-elements",
+      "version": "3.1.0",
+      "bom-ref": "nachet-frontend@2.0.0|void-elements@3.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/void-elements@3.1.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/void-elements/-/void-elements-3.1.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "0e1c738791d9ba21d085bbd35bd00c7ad15f0470cc629a36dd4a3d6ed3d781d60ffb74f94bea7e8e0372eeca6b6bebde62104fd9d09283147f8b6634da1e7feb"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/void-elements"
         }
       ]
     },
@@ -37171,6 +37341,7 @@
         "nachet-frontend@2.0.0|express@5.1.0",
         "nachet-frontend@2.0.0|file-saver@2.0.5",
         "nachet-frontend@2.0.0|globals@16.5.0",
+        "nachet-frontend@2.0.0|i18next@25.6.0",
         "nachet-frontend@2.0.0|identity-obj-proxy@3.0.0",
         "nachet-frontend@2.0.0|jest-environment-jsdom@30.2.0",
         "nachet-frontend@2.0.0|js-base64@3.7.8",
@@ -37184,6 +37355,7 @@
         "nachet-frontend@2.0.0|re-resizable@6.11.2",
         "nachet-frontend@2.0.0|react-dom@19.2.0",
         "nachet-frontend@2.0.0|react-draggable@4.5.0",
+        "nachet-frontend@2.0.0|react-i18next@16.2.3",
         "nachet-frontend@2.0.0|react-icons@5.5.0",
         "nachet-frontend@2.0.0|react-picture-annotation@1.2.0",
         "nachet-frontend@2.0.0|react-router-dom@7.9.5",
@@ -39434,7 +39606,7 @@
       "ref": "nachet-frontend@2.0.0|base64-js@1.5.1"
     },
     {
-      "ref": "nachet-frontend@2.0.0|baseline-browser-mapping@2.8.22"
+      "ref": "nachet-frontend@2.0.0|baseline-browser-mapping@2.8.23"
     },
     {
       "ref": "nachet-frontend@2.0.0|bindings@1.5.0",
@@ -39510,7 +39682,7 @@
     {
       "ref": "nachet-frontend@2.0.0|browserslist@4.27.0",
       "dependsOn": [
-        "nachet-frontend@2.0.0|baseline-browser-mapping@2.8.22",
+        "nachet-frontend@2.0.0|baseline-browser-mapping@2.8.23",
         "nachet-frontend@2.0.0|caniuse-lite@1.0.30001752",
         "nachet-frontend@2.0.0|electron-to-chromium@1.5.244",
         "nachet-frontend@2.0.0|node-releases@2.0.27",
@@ -40778,6 +40950,12 @@
       "ref": "nachet-frontend@2.0.0|html-escaper@2.0.2"
     },
     {
+      "ref": "nachet-frontend@2.0.0|html-parse-stringify@3.0.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|void-elements@3.1.0"
+      ]
+    },
+    {
       "ref": "nachet-frontend@2.0.0|htmlparser2@8.0.2",
       "dependsOn": [
         "nachet-frontend@2.0.0|domelementtype@2.3.0",
@@ -40818,6 +40996,13 @@
     },
     {
       "ref": "nachet-frontend@2.0.0|human-signals@1.1.1"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|i18next@25.6.0",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|@babel/runtime@7.28.4",
+        "nachet-frontend@2.0.0|typescript@5.9.3"
+      ]
     },
     {
       "ref": "nachet-frontend@2.0.0|iconv-lite@0.6.3",
@@ -41986,6 +42171,17 @@
       ]
     },
     {
+      "ref": "nachet-frontend@2.0.0|react-i18next@16.2.3",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|@babel/runtime@7.28.4",
+        "nachet-frontend@2.0.0|html-parse-stringify@3.0.1",
+        "nachet-frontend@2.0.0|i18next@25.6.0",
+        "nachet-frontend@2.0.0|react@19.2.0",
+        "nachet-frontend@2.0.0|typescript@5.9.3",
+        "nachet-frontend@2.0.0|use-sync-external-store@1.6.0"
+      ]
+    },
+    {
       "ref": "nachet-frontend@2.0.0|react-icons@5.5.0",
       "dependsOn": [
         "nachet-frontend@2.0.0|react@19.2.0"
@@ -42936,6 +43132,12 @@
       ]
     },
     {
+      "ref": "nachet-frontend@2.0.0|use-sync-external-store@1.6.0",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|react@19.2.0"
+      ]
+    },
+    {
       "ref": "nachet-frontend@2.0.0|utif@3.1.0",
       "dependsOn": [
         "nachet-frontend@2.0.0|utif@3.1.0|pako@1.0.11"
@@ -43018,6 +43220,9 @@
         "nachet-frontend@2.0.0|vite@7.1.12",
         "nachet-frontend@2.0.0|why-is-node-running@2.3.0"
       ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|void-elements@3.1.0"
     },
     {
       "ref": "nachet-frontend@2.0.0|w3c-xmlserializer@5.0.0",
@@ -43248,7 +43453,8 @@
       "ref": "nachet-frontend@2.0.0|zustand@5.0.8",
       "dependsOn": [
         "nachet-frontend@2.0.0|@types/react@19.2.2",
-        "nachet-frontend@2.0.0|react@19.2.0"
+        "nachet-frontend@2.0.0|react@19.2.0",
+        "nachet-frontend@2.0.0|use-sync-external-store@1.6.0"
       ]
     }
   ]

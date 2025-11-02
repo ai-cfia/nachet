@@ -5,6 +5,7 @@ import { colours } from "../../../styles/colours";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
+import { useTranslation } from "react-i18next";
 
 interface params {
   windowSize: {
@@ -18,6 +19,7 @@ const Navbar: React.FC<params> = (props) => {
   const { instance, inProgress, accounts } = useMsal();
   const isAuthenticated = useIsAuthenticated();
   const { apiScopeClaim } = props;
+  const { t } = useTranslation("header");
   const logout = async (): Promise<void> => {
     try {
       await instance.logoutRedirect();
@@ -89,7 +91,7 @@ const Navbar: React.FC<params> = (props) => {
         <Box
           component="img"
           src={CFIALogo}
-          alt="CFIA Logo"
+          alt={t("navbar.logoAlt")}
           sx={{
             width: "27vh",
             height: "fit-content",
@@ -120,7 +122,7 @@ const Navbar: React.FC<params> = (props) => {
               }}
               sx={buttonStyle}
             >
-              SIGN IN
+              {t("navbar.signIn")}
             </Button>
           )}
           {isAuthenticated && (
