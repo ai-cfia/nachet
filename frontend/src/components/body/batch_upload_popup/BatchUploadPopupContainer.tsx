@@ -216,33 +216,75 @@ export const BatchUploadPopupContainer = (
   ): Promise<void> => {
     const selectedFiles = event.target.files;
     if (selectedFiles !== null) {
-      // Basic validation first (count, etc.)
-      const validationResult = fileListSchema.safeParse(selectedFiles);
+      // Validate each file and separate valid from invalid
+      const validFiles: File[] = [];
+      const rejectedFiles: { name: string; reasons: string[] }[] = [];
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const fileValidation = await validateImageFile(file);
+
+        if (fileValidation.isValid) {
+          validFiles.push(file);
+        } else {
+          rejectedFiles.push({
+            name: file.name,
+            reasons: fileValidation.errors,
+          });
+        }
+      }
+
+      // Handle case where all files are invalid
+      if (validFiles.length === 0) {
+        const errorMessages = rejectedFiles.map(
+          (f) => `${f.name}: ${f.reasons.join(", ")}`,
+        );
+        setFilesError(
+          `All files failed validation:\n${errorMessages.join("\n")}`,
+        );
+        addError("All selected files failed validation", "batch-upload");
+        return;
+      }
+
+      // Convert validFiles array to FileList using DataTransfer API
+      const dataTransfer = new DataTransfer();
+      validFiles.forEach((file) => dataTransfer.items.add(file));
+      const validFileList = dataTransfer.files;
+
+      // Validate the valid files (e.g., max 100 files)
+      const validationResult = fileListSchema.safeParse(validFileList);
       if (!validationResult.success) {
         setFilesError(validationResult.error.issues[0].message);
         return;
       }
 
-      // Comprehensive validation for each file including dimensions
-      const errors: string[] = [];
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const fileValidation = await validateImageFile(selectedFiles[i]);
-        if (!fileValidation.isValid) {
-          errors.push(
-            `${selectedFiles[i].name}: ${fileValidation.errors.join(", ")}`,
-          );
-        }
+      // Show warning if some files were rejected
+      if (rejectedFiles.length > 0) {
+        // Categorize rejection reasons
+        const sizeErrors = rejectedFiles.filter((f) =>
+          f.reasons.some((r) => r.includes("10MB")),
+        ).length;
+        const typeErrors = rejectedFiles.filter((f) =>
+          f.reasons.some((r) => r.includes("PNG")),
+        ).length;
+        const dimensionErrors = rejectedFiles.filter((f) =>
+          f.reasons.some((r) => r.includes("1920x1080")),
+        ).length;
+
+        const errorParts: string[] = [];
+        if (sizeErrors > 0) errorParts.push(`${sizeErrors} too large`);
+        if (typeErrors > 0) errorParts.push(`${typeErrors} wrong format`);
+        if (dimensionErrors > 0)
+          errorParts.push(`${dimensionErrors} dimensions too large`);
+
+        const message = `${rejectedFiles.length} file(s) excluded: ${errorParts.join(", ")}. ${validFiles.length} file(s) will be uploaded.`;
+        addWarning(message, 8000);
       }
 
-      if (errors.length > 0) {
-        setFilesError(`File validation failed:\n${errors.join("\n")}`);
-        return;
-      }
-
-      // Clear any previous errors
+      // Clear any previous errors and set valid files
       setFilesError("");
-      setFiles(selectedFiles);
-      setFileCount(selectedFiles.length);
+      setFiles(validFileList);
+      setFileCount(validFiles.length);
     }
   };
 
