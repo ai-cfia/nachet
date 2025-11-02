@@ -136,7 +136,7 @@ describe("readAzureStorageDir", () => {
 
     await expect(
       readAzureStorageDir({ backendUrl, accessToken }),
-    ).rejects.toEqual(new AzureAPIError("error"));
+    ).rejects.toEqual(new AzureAPIError("Network request failed"));
     expect(console.error).toHaveBeenCalled();
     console.error = consoleError;
   });
@@ -153,7 +153,7 @@ describe("readAzureStorageDir", () => {
 
     await expect(
       readAzureStorageDir({ backendUrl, accessToken }),
-    ).rejects.toEqual(new AzureAPIError("error config"));
+    ).rejects.toEqual(new AzureAPIError("Network error"));
     expect(console.error).toHaveBeenCalledWith("Error", "Network error");
     console.error = consoleError;
   });
@@ -182,7 +182,7 @@ describe("readAzureStorageDir", () => {
 
     await expect(
       readAzureStorageDir({ backendUrl, accessToken }),
-    ).rejects.toEqual(new AzureAPIError("error"));
+    ).rejects.toEqual(new AzureAPIError("Unknown error"));
     expect(console.error).toHaveBeenCalled();
     console.error = consoleError;
   });
@@ -539,7 +539,7 @@ describe("inferenceRequest", () => {
         accessToken: "token",
         folder_id: "folder-id",
       }),
-    ).rejects.toThrow(new AzureAPIError("Network timeout"));
+    ).rejects.toThrow(new AzureAPIError("Network request failed"));
     console.error = consoleError;
   });
 });
