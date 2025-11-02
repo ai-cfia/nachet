@@ -20,14 +20,18 @@ XSS attacks occur when malicious scripts are injected into web pages and execute
 ### HTML Escaping
 
 ```typescript
-import { escapeHtml, escapeHtmlAttribute, escapeJavaScript } from './validation';
+import {
+  escapeHtml,
+  escapeHtmlAttribute,
+  escapeJavaScript,
+} from "./validation";
 
 // Escape HTML special characters
 const safeHtml = escapeHtml('<script>alert("xss")</script>');
 // Result: &lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;
 
-// Escape HTML attributes  
-const safeAttr = escapeHtmlAttribute('onclick="alert(\'xss\')"');
+// Escape HTML attributes
+const safeAttr = escapeHtmlAttribute("onclick=\"alert('xss')\"");
 // Result: onclick=&#x27;alert(&#x27;xss&#x27;)&#x27;
 
 // Escape JavaScript strings
@@ -38,11 +42,11 @@ const safeJs = escapeJavaScript('"; alert("xss"); "');
 ### URL Sanitization
 
 ```typescript
-import { sanitizeUrl } from './validation';
+import { sanitizeUrl } from "./validation";
 
 // Safe URLs are allowed
-const httpUrl = sanitizeUrl('https://example.com'); // ✅ Returns: 'https://example.com'
-const relativeUrl = sanitizeUrl('/path/to/page'); // ✅ Returns: '/path/to/page'
+const httpUrl = sanitizeUrl("https://example.com"); // ✅ Returns: 'https://example.com'
+const relativeUrl = sanitizeUrl("/path/to/page"); // ✅ Returns: '/path/to/page'
 
 // Dangerous URLs are blocked
 const jsUrl = sanitizeUrl('javascript:alert("xss")'); // ❌ Returns: null
@@ -54,14 +58,14 @@ const dataUrl = sanitizeUrl('data:text/html,<script>alert("xss")</script>'); // 
 Use these schemas for form validation - they now **reject HTML content** instead of sanitizing:
 
 ```typescript
-import { 
-  safeTextSchema, 
-  safeUserInputSchema, 
+import {
+  safeTextSchema,
+  safeUserInputSchema,
   safeUrlSchema,
   safeImageLabelSchema,
   safeHtmlSchema,
-  containsHtml
-} from './validation';
+  containsHtml,
+} from "./validation";
 
 // Validate user text input (rejects HTML)
 try {
@@ -81,7 +85,7 @@ try {
 
 // Check for HTML content before processing
 if (containsHtml(userInput)) {
-  throw new Error('HTML content is not allowed - please use plain text only');
+  throw new Error("HTML content is not allowed - please use plain text only");
 }
 
 // Safe HTML schema now rejects any HTML input
@@ -106,9 +110,9 @@ const SafeUserContent = ({ userText, userTitle }) => {
   if (containsHtml(userText)) {
     return <div className="error">HTML content is not allowed</div>;
   }
-  
+
   return (
-    <div 
+    <div
       title={escapeHtmlAttribute(userTitle)}
       dangerouslySetInnerHTML={{ __html: escapeHtml(userText) }}
     />
@@ -126,24 +130,24 @@ const SecureUserContent = ({ userText, userTitle }) => (
 ### Form Handling
 
 ```typescript
-import { safeUserInputSchema, containsHtml } from './validation';
+import { safeUserInputSchema, containsHtml } from "./validation";
 
 const handleFormSubmit = (formData) => {
   try {
     // Pre-check for HTML content
     if (containsHtml(formData.comment) || containsHtml(formData.title)) {
-      throw new Error('HTML content is not allowed in form inputs');
+      throw new Error("HTML content is not allowed in form inputs");
     }
-    
+
     // Validate all user inputs (will also reject HTML)
     const safeComment = safeUserInputSchema.parse(formData.comment);
     const safeTitle = safeUserInputSchema.parse(formData.title);
-    
+
     // Now safe to use in your application
     submitData({ comment: safeComment, title: safeTitle });
   } catch (error) {
     // Show validation error to user
-    setError(error.message || 'Please check your input for invalid characters');
+    setError(error.message || "Please check your input for invalid characters");
   }
 };
 ```
@@ -151,7 +155,7 @@ const handleFormSubmit = (formData) => {
 ### Template Rendering
 
 ```typescript
-import { html } from './xss-utils';
+import { html } from "./xss-utils";
 
 // Safe template literal helper
 const renderUserCard = (name, bio) => html`
@@ -168,7 +172,7 @@ const renderUserCard = (name, bio) => html`
 Set up CSP headers to add an extra layer of protection:
 
 ```typescript
-import { generateCSP, setupCSP } from './xss-utils';
+import { generateCSP, setupCSP } from "./xss-utils";
 
 // For Express.js
 app.use(setupCSP().expressMiddleware);
@@ -182,13 +186,13 @@ const cspMeta = setupCSP().metaTag;
 Use the provided test patterns to verify your protection:
 
 ```typescript
-import { testXSSProtection, XSSTestPatterns } from './xss-utils';
+import { testXSSProtection, XSSTestPatterns } from "./xss-utils";
 
 // Run comprehensive XSS tests
 testXSSProtection();
 
 // Test specific patterns
-XSSTestPatterns.forEach(pattern => {
+XSSTestPatterns.forEach((pattern) => {
   const escaped = escapeHtml(pattern);
   console.log({ original: pattern, escaped });
 });
@@ -235,10 +239,10 @@ Our protection handles these attack types:
    ```typescript
    // Old approach (sanitization)
    const clean = stripDangerousHtml(userInput);
-   
+
    // New approach (rejection)
    if (containsHtml(userInput)) {
-     throw new Error('HTML content is not allowed');
+     throw new Error("HTML content is not allowed");
    }
    const safe = userInput;
    ```
@@ -248,7 +252,7 @@ Our protection handles these attack types:
    ```typescript
    // Old
    const isValid = userInput.length > 0 && userInput.length < 100;
-   
+
    // New - includes HTML rejection
    const validated = safeUserInputSchema.parse(userInput);
    ```
@@ -258,10 +262,10 @@ Our protection handles these attack types:
    ```typescript
    // Old - attempted sanitization
    const safeContent = stripDangerousHtml(userContent);
-   
+
    // New - reject HTML entirely
    if (containsHtml(userContent)) {
-     throw new Error('HTML content is not allowed - please use plain text');
+     throw new Error("HTML content is not allowed - please use plain text");
    }
    const safeContent = userContent;
    ```
@@ -273,7 +277,7 @@ Our protection handles these attack types:
    catch (error) {
      setError('Invalid input');
    }
-   
+
    // New - more specific
    catch (error) {
      if (error.message.includes('HTML')) {
@@ -288,6 +292,6 @@ Our protection handles these attack types:
 
 - [OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
 - [Content Security Policy Guide](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP)
-- [HTML Escaping Best Practices](https://www.owasp.org/index.php/XSS_(Cross_Site_Scripting)_Prevention_Cheat_Sheet)
+- [HTML Escaping Best Practices](<https://www.owasp.org/index.php/XSS_(Cross_Site_Scripting)_Prevention_Cheat_Sheet>)
 - [Input Validation vs Sanitization](https://owasp.org/www-community/Injection_Theory) - Why rejection is often better than sanitization
 - [Fail-Safe Defaults Principle](https://owasp.org/www-pdf-archive/OWASP_Top_10_2010.pdf) - OWASP guidance on secure defaults

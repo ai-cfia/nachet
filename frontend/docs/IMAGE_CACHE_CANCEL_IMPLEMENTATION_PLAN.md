@@ -102,14 +102,14 @@ Each cached image displays:
 
 **Action Icon Behavior by Status:**
 
-| Status | Icon | Color | Action | Tooltip |
-|--------|------|-------|--------|---------|
-| `queued` | `CancelIcon` | Warning (orange) | Cancel queued inference | "Cancel queued inference" |
-| `pending` | `CloseIcon` (disabled) | Gray | None (disabled) | "Cannot cancel - processing started" |
-| `processing` | `CloseIcon` (disabled) | Gray | None (disabled) | "Cannot cancel - processing started" |
-| `completed` | `CloseIcon` | Primary (blue) | Remove from cache | "Remove from cache" |
-| `failed` | `CloseIcon` | Primary (blue) | Remove from cache | "Remove from cache" |
-| No workflow | `CloseIcon` | Primary (blue) | Remove from cache | "Remove from cache" |
+| Status       | Icon                   | Color            | Action                  | Tooltip                              |
+| ------------ | ---------------------- | ---------------- | ----------------------- | ------------------------------------ |
+| `queued`     | `CancelIcon`           | Warning (orange) | Cancel queued inference | "Cancel queued inference"            |
+| `pending`    | `CloseIcon` (disabled) | Gray             | None (disabled)         | "Cannot cancel - processing started" |
+| `processing` | `CloseIcon` (disabled) | Gray             | None (disabled)         | "Cannot cancel - processing started" |
+| `completed`  | `CloseIcon`            | Primary (blue)   | Remove from cache       | "Remove from cache"                  |
+| `failed`     | `CloseIcon`            | Primary (blue)   | Remove from cache       | "Remove from cache"                  |
+| No workflow  | `CloseIcon`            | Primary (blue)   | Remove from cache       | "Remove from cache"                  |
 
 **Visual Example:**
 
@@ -363,7 +363,7 @@ const handleCancelQueued = useCallback(
       addError(t("queue.cancelFailed"), 5000);
     }
   },
-  [addWarning, addError, t]
+  [addWarning, addError, t],
 );
 ```
 
@@ -526,7 +526,7 @@ this.queue.forEach((item, idx) => {
     item.tempId,
     "queued",
     null,
-    idx + 1
+    idx + 1,
   );
 });
 ```
@@ -824,13 +824,13 @@ After implementation, verify:
 
 ## Risks & Mitigation
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| Race condition during submission | Medium | Low | Return false from cancelQueued(), show error toast |
-| User confusion (cancel vs remove) | Low | Medium | Use different icons (cancel=orange, remove=blue), clear tooltips |
-| Queue desync (positions wrong) | Low | High | Thorough testing, add queue validation in dev mode |
-| Workflow not cleaned up | Low | Medium | Fixed by updating removeImage() to call removeWorkflow() |
-| Translation missing | Low | Low | Add to both EN and FR simultaneously |
+| Risk                              | Likelihood | Impact | Mitigation                                                       |
+| --------------------------------- | ---------- | ------ | ---------------------------------------------------------------- |
+| Race condition during submission  | Medium     | Low    | Return false from cancelQueued(), show error toast               |
+| User confusion (cancel vs remove) | Low        | Medium | Use different icons (cancel=orange, remove=blue), clear tooltips |
+| Queue desync (positions wrong)    | Low        | High   | Thorough testing, add queue validation in dev mode               |
+| Workflow not cleaned up           | Low        | Medium | Fixed by updating removeImage() to call removeWorkflow()         |
+| Translation missing               | Low        | Low    | Add to both EN and FR simultaneously                             |
 
 ---
 
@@ -847,15 +847,15 @@ After implementation, verify:
 
 ## Appendix A: File Change Summary
 
-| File | Lines Changed | Type | Complexity |
-|------|--------------|------|-----------|
-| `WorkflowQueueManager.ts` | +45 | New methods | Medium |
-| `ImageCache.tsx` | ~60 | Modify logic | Medium |
-| `Body.tsx` | +12 | New handler | Low |
-| `useImageStore.ts` | +4 | Bug fix | Low |
-| `locales/en/main.ts` | +5 | Translations | Low |
-| `locales/fr/main.ts` | +5 | Translations | Low |
-| **Total** | **~131 lines** | | |
+| File                      | Lines Changed  | Type         | Complexity |
+| ------------------------- | -------------- | ------------ | ---------- |
+| `WorkflowQueueManager.ts` | +45            | New methods  | Medium     |
+| `ImageCache.tsx`          | ~60            | Modify logic | Medium     |
+| `Body.tsx`                | +12            | New handler  | Low        |
+| `useImageStore.ts`        | +4             | Bug fix      | Low        |
+| `locales/en/main.ts`      | +5             | Translations | Low        |
+| `locales/fr/main.ts`      | +5             | Translations | Low        |
+| **Total**                 | **~131 lines** |              |            |
 
 ---
 

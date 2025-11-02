@@ -64,7 +64,7 @@ Successfully implemented comprehensive XSS (Cross-Site Scripting) protection for
 - Context-aware escaping for HTML content vs attributes
 - JavaScript string escaping with Unicode encoding
 
-### 2. URL Sanitization  
+### 2. URL Sanitization
 
 - Blocks dangerous protocols: `javascript:`, `data:`, `vbscript:`, `file:`, `about:`
 - Allows safe protocols: `https:`, `http:`, `ftp:`, `mailto:`
@@ -103,7 +103,7 @@ The implementation protects against these XSS attack types:
 ### Safe HTML Content Validation
 
 ```typescript
-import { safeHtmlSchema, containsHtml } from './validation';
+import { safeHtmlSchema, containsHtml } from "./validation";
 
 // ✅ Safe: Plain text is accepted
 const plainText = safeHtmlSchema.parse("This is just plain text");
@@ -126,14 +126,16 @@ if (containsHtml(userInput)) {
 ### Form Validation with HTML Rejection
 
 ```typescript
-import { safeUserInputSchema } from './validation';
+import { safeUserInputSchema } from "./validation";
 
 const validateInput = (userInput: string) => {
   try {
     return safeUserInputSchema.parse(userInput);
   } catch (error) {
     // Now catches HTML content and other XSS attempts
-    throw new Error('Input contains unsafe content - HTML and scripts are not allowed');
+    throw new Error(
+      "Input contains unsafe content - HTML and scripts are not allowed",
+    );
   }
 };
 ```
@@ -141,7 +143,7 @@ const validateInput = (userInput: string) => {
 ### URL Validation
 
 ```typescript
-import { sanitizeUrl } from './validation';
+import { sanitizeUrl } from "./validation";
 
 const safeUrl = sanitizeUrl(userProvidedUrl);
 if (safeUrl) {
@@ -149,7 +151,7 @@ if (safeUrl) {
   window.location.href = safeUrl;
 } else {
   // Blocked dangerous URL
-  console.error('Unsafe URL blocked');
+  console.error("Unsafe URL blocked");
 }
 ```
 
@@ -325,7 +327,7 @@ Our implementation aligns perfectly with both OWASP cheat sheets:
 #### **OWASP Guidelines Adherence:**
 
 - **✅ GUIDELINE #1**: Untrusted data treated as displayable text only
-- **✅ GUIDELINE #2**: JavaScript encoding with proper string delimiting  
+- **✅ GUIDELINE #2**: JavaScript encoding with proper string delimiting
 - **✅ GUIDELINE #3**: Uses safe DOM methods (`createElement`, `setAttribute`)
 - **✅ GUIDELINE #4**: Avoids dangerous HTML rendering methods
 - **✅ GUIDELINE #5**: No implicit `eval()` usage

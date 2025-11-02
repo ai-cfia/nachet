@@ -227,9 +227,11 @@ const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
 ```typescript
 const handleClose = (): void => {
   // Check if uploads are in progress
-  const hasActiveUploads = currentSession &&
+  const hasActiveUploads =
+    currentSession &&
     currentSession.status === "active" &&
-    (currentSession.completedFiles + currentSession.failedFiles) < currentSession.totalFiles;
+    currentSession.completedFiles + currentSession.failedFiles <
+      currentSession.totalFiles;
 
   if (hasActiveUploads && uploading) {
     // Show confirmation dialog
@@ -253,7 +255,9 @@ const handleCancelConfirmed = async (): Promise<void> => {
 
     // Cancel batch session on server
     if (currentSession?.sessionId) {
-      const accessToken = await acquireAccessToken(msalInstance, [apiScopeClaim]);
+      const accessToken = await acquireAccessToken(msalInstance, [
+        apiScopeClaim,
+      ]);
       await cancelBatchSession({
         backendUrl,
         accessToken,
@@ -302,16 +306,13 @@ export const cancelWorkflow = async ({
   accessToken: string;
   workflowId: string;
 }): Promise<{ status: string; message: string }> => {
-  const response = await fetch(
-    `${backendUrl}/workflow/${workflowId}/cancel`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  const response = await fetch(`${backendUrl}/workflow/${workflowId}/cancel`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to cancel workflow: ${response.statusText}`);
@@ -345,7 +346,7 @@ export const cancelBatchSession = async ({
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
-    }
+    },
   );
 
   if (!response.ok) {
@@ -402,13 +403,13 @@ export const cancelBatchSession = async ({
 
 ### Button Behavior Matrix
 
-| Scenario | User Action | Behavior |
-|----------|-------------|----------|
-| No uploads started | Click Cancel | Close immediately |
-| Uploads in progress | Click Cancel | Show confirmation dialog |
+| Scenario             | User Action        | Behavior                        |
+| -------------------- | ------------------ | ------------------------------- |
+| No uploads started   | Click Cancel       | Close immediately               |
+| Uploads in progress  | Click Cancel       | Show confirmation dialog        |
 | User confirms cancel | Click "Cancel All" | Cancel uploads, clean up, close |
-| User declines cancel | Click "Continue" | Dismiss dialog, keep uploading |
-| Uploads complete | Click Close | Close immediately |
+| User declines cancel | Click "Continue"   | Dismiss dialog, keep uploading  |
+| Uploads complete     | Click Close        | Close immediately               |
 
 ### User Notifications
 

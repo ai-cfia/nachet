@@ -13,6 +13,7 @@ The `ErrorBoundary` component is a React class component that catches JavaScript
 **Error Boundaries MUST be class components.** This is a React architectural limitation, not a design choice.
 
 From the React documentation:
+
 > Error boundaries are React components that catch JavaScript errors anywhere in their child component tree. There is currently no way to write an error boundary as a functional component with hooks.
 
 The required lifecycle methods are **only available in class components**:
@@ -102,8 +103,8 @@ errorLogger.logError("React Error Boundary caught an error", error, {
 
 ```typescript
 interface Props {
-  children: ReactNode;       // Components to wrap and protect
-  fallback?: ReactNode;      // Optional custom fallback UI
+  children: ReactNode; // Components to wrap and protect
+  fallback?: ReactNode; // Optional custom fallback UI
 }
 ```
 
@@ -111,8 +112,8 @@ interface Props {
 
 ```typescript
 interface State {
-  hasError: boolean;         // Whether an error occurred
-  error: Error | null;       // The error object
+  hasError: boolean; // Whether an error occurred
+  error: Error | null; // The error object
   errorInfo: ErrorInfo | null; // React error info with component stack
 }
 ```
@@ -158,7 +159,7 @@ render(): ReactNode {
 
 ```typescript
 handleReset = (): void => {
-  window.location.href = "/";  // Navigate to reset state
+  window.location.href = "/"; // Navigate to reset state
 };
 ```
 
@@ -292,7 +293,7 @@ Error boundaries **do not** catch errors in:
      try {
        await riskyOperation();
      } catch (error) {
-       errorLogger.logError('Button click failed', error);
+       errorLogger.logError("Button click failed", error);
      }
    };
    ```
@@ -301,8 +302,8 @@ Error boundaries **do not** catch errors in:
 
    ```typescript
    useEffect(() => {
-     fetchData().catch(error => {
-       errorLogger.logError('Data fetch failed', error);
+     fetchData().catch((error) => {
+       errorLogger.logError("Data fetch failed", error);
      });
    }, []);
    ```
@@ -499,8 +500,8 @@ npm run test ErrorBoundary.test.tsx
 
 ## Changelog
 
-| Date | Change | Author |
-|------|--------|--------|
+| Date       | Change                        | Author      |
+| ---------- | ----------------------------- | ----------- |
 | 2025-10-09 | Initial documentation created | Claude Code |
 
 ---
