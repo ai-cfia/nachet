@@ -11,6 +11,7 @@ import {
   CardHeader,
   IconButton,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { colours } from "../../../styles/colours";
 import SwitchLeftIcon from "@mui/icons-material/SwitchLeft";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -20,28 +21,26 @@ import Typography from "@mui/material/Typography";
 import { useImageStore } from "@stores/useImageStore";
 
 interface params {
-  imageSrc: string;
-  selectedLabel: string;
-  setSelectedLabel: React.Dispatch<React.SetStateAction<string>>;
   labelOccurrences: any;
-  switchTable: boolean;
-  setSwitchTable: React.Dispatch<React.SetStateAction<boolean>>;
-  modelDisplayName: string;
-  windowSize: {
-    width: number;
-    height: number;
-  };
 }
 
 const ClassificationResults: React.FC<params> = (props) => {
+  const { t } = useTranslation("main");
+
   const { images: savedImages, currentIndex: imageIndex } = useImageStore();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [selectedLabel, setSelectedLabel] = useState<string>("all");
+  const [switchTable, setSwitchTable] = useState<boolean>(true);
+
+  // Get current image's modelName for display
+  const currentImage = savedImages.find((img) => img.index === imageIndex);
+  const modelDisplayName = currentImage?.modelName || "";
 
   const handleSelect = (key: string): void => {
-    if (key === props.selectedLabel) {
-      props.setSelectedLabel("all");
+    if (key === selectedLabel) {
+      setSelectedLabel("all");
     } else {
-      props.setSelectedLabel(key);
+      setSelectedLabel(key);
     }
   };
 
@@ -69,7 +68,7 @@ const ClassificationResults: React.FC<params> = (props) => {
             fontSize: "0.75em",
           }}
         >
-          Top Results
+          {t("classificationResults.topResults")}
         </Typography>
         {topN.map((result, index) => {
           // Parse the score to a float if it's a string, then immediately declare it as a const.
@@ -116,8 +115,9 @@ const ClassificationResults: React.FC<params> = (props) => {
       <CardHeader
         title={
           <span>
-            {"RESULTS | "}
-            <strong>{props.modelDisplayName}</strong>
+            {t("classificationResults.title")}
+            {" | "}
+            <strong>{modelDisplayName}</strong>
           </span>
         }
         titleTypographyProps={{
@@ -133,7 +133,7 @@ const ClassificationResults: React.FC<params> = (props) => {
             <IconButton
               sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
               onClick={() => {
-                props.setSwitchTable(!props.switchTable);
+                setSwitchTable(!switchTable);
               }}
             >
               <SwitchLeftIcon
@@ -167,13 +167,13 @@ const ClassificationResults: React.FC<params> = (props) => {
       >
         <Table sx={{ borderBottom: 0 }}>
           <TableBody sx={{ borderBottom: 0 }}>
-            {props.switchTable &&
+            {switchTable &&
               Object.keys(props.labelOccurrences).map((key, index) => (
                 <TableRow
                   key={index}
                   sx={{
                     backgroundColor:
-                      props.selectedLabel === key
+                      selectedLabel === key
                         ? "#F5F5F5"
                         : colours.CFIA_Background_White,
                     "&:hover": {
@@ -304,7 +304,7 @@ const ClassificationResults: React.FC<params> = (props) => {
                 </TableRow>
               ))}
 
-            {!props.switchTable &&
+            {!switchTable &&
               savedImages.map((object: any, objectIndex: number) => {
                 if (object.index === imageIndex && object.annotated === true) {
                   return object.classifications.map(
@@ -313,8 +313,7 @@ const ClassificationResults: React.FC<params> = (props) => {
                       const topN = object.topN[classificationIndex];
                       const isExpanded = expandedRow === rowId;
                       const labelMatchesSelection =
-                        props.selectedLabel === "all" ||
-                        props.selectedLabel === prediction;
+                        selectedLabel === "all" || selectedLabel === prediction;
 
                       if (labelMatchesSelection) {
                         return (
