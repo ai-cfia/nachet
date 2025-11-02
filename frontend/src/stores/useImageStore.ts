@@ -13,6 +13,7 @@ interface ImageState {
   loadInferenceResults: (
     inferenceData: ApiInferenceData,
     imageIndex: number,
+    modelName?: string,
   ) => void;
   removeImage: (index: number) => number;
   clearImages: () => void;
@@ -40,12 +41,14 @@ export const useImageStore = create<ImageState>()((set, get) => ({
   loadInferenceResults: (
     inferenceData: ApiInferenceData,
     imageIndex: number,
+    modelName?: string,
   ) => {
     const state = get();
     const newImages = loadResultsToCache(
       inferenceData,
       state.images,
       imageIndex,
+      modelName,
     );
     set({ images: newImages });
   },
