@@ -1008,7 +1008,6 @@ Both auto-dismiss after 5 seconds by default.
 
 ## Related Documentation
 
-- **[NOTIFICATION_SYSTEM_PLAN.md](./NOTIFICATION_SYSTEM_PLAN.md)** - Implementation plan (Phases 1-4)
 - **[NOTIFICATION_SYSTEM_TESTING.md](./NOTIFICATION_SYSTEM_TESTING.md)** - Testing guide (Phase 5)
 - **[I18N_REFERENCE.md](./I18N_REFERENCE.md)** - Translation system
 - **[TESTING.md](../TESTING.md)** - General testing procedures
