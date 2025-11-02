@@ -11,16 +11,18 @@ import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
 import { ApiDevicesResponse } from "@common/types";
 import { useDeviceStore } from "@stores/useDeviceStore";
+import { useModalStore } from "@stores/useModalStore";
 import { DeviceSelectionFields } from "@components/common/DeviceSelectionFields";
+import { useTranslation } from "react-i18next";
 
 interface DeviceInfoPopupProps {
-  setDeviceInfoOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  deviceInfoOpen: boolean;
   devicesData: ApiDevicesResponse | null;
 }
 
 const DeviceInfoPopup: React.FC<DeviceInfoPopupProps> = (props) => {
+  const { t } = useTranslation("popups");
   const { deviceSelection, setDeviceSelection } = useDeviceStore();
+  const { isDeviceInfoOpen, closeDeviceInfoPopup } = useModalStore();
 
   // Initialize state with persisted values directly
   const [selectedBrandId, setSelectedBrandId] = useState<string>("");
@@ -29,14 +31,14 @@ const DeviceInfoPopup: React.FC<DeviceInfoPopupProps> = (props) => {
 
   // Load persisted values when popup opens (only when transitioning to open)
   useEffect(() => {
-    if (props.deviceInfoOpen) {
+    if (isDeviceInfoOpen) {
       // Use a functional update to avoid dependency on state setters
       setSelectedBrandId(() => deviceSelection.selectedBrandId);
       setSelectedModelId(() => deviceSelection.selectedModelId);
       setSelectedLensId(() => deviceSelection.selectedLensId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.deviceInfoOpen]); // Only re-run when dialog opens/closes
+  }, [isDeviceInfoOpen]); // Only re-run when dialog opens/closes
 
   const handleClose = (): void => {
     // Save selections to Zustand store
@@ -45,7 +47,7 @@ const DeviceInfoPopup: React.FC<DeviceInfoPopupProps> = (props) => {
       selectedModelId,
       selectedLensId,
     });
-    props.setDeviceInfoOpen(false);
+    closeDeviceInfoPopup();
   };
 
   // Get the selected brand object for display
@@ -68,7 +70,7 @@ const DeviceInfoPopup: React.FC<DeviceInfoPopupProps> = (props) => {
 
   return (
     <Dialog
-      open={props.deviceInfoOpen}
+      open={isDeviceInfoOpen}
       onClose={handleClose}
       maxWidth="sm"
       fullWidth
@@ -106,7 +108,7 @@ const DeviceInfoPopup: React.FC<DeviceInfoPopupProps> = (props) => {
                 color: colours.CFIA_Font_Black,
               }}
             >
-              Device Information
+              {t("deviceInfo.title")}
             </Typography>
             <IconButton onClick={handleClose} size="small">
               <CloseIcon />
@@ -145,7 +147,7 @@ const DeviceInfoPopup: React.FC<DeviceInfoPopupProps> = (props) => {
                   variant="body2"
                   sx={{ fontSize: "1.3vh", marginBottom: "0.5vh" }}
                 >
-                  <strong>Brand:</strong> {selectedBrand.name}
+                  <strong>{t("deviceInfo.brand")}:</strong> {selectedBrand.name}
                 </Typography>
                 {selectedBrand.description && (
                   <Typography
@@ -160,7 +162,7 @@ const DeviceInfoPopup: React.FC<DeviceInfoPopupProps> = (props) => {
                     variant="body2"
                     sx={{ fontSize: "1.3vh", marginTop: "0.5vh" }}
                   >
-                    <strong>Model:</strong>{" "}
+                    <strong>{t("deviceInfo.model")}:</strong>{" "}
                     {
                       availableModels.find((m) => m.id === selectedModelId)
                         ?.name
@@ -172,7 +174,7 @@ const DeviceInfoPopup: React.FC<DeviceInfoPopupProps> = (props) => {
                     variant="body2"
                     sx={{ fontSize: "1.3vh", marginTop: "0.5vh" }}
                   >
-                    <strong>Lens:</strong>{" "}
+                    <strong>{t("deviceInfo.lens")}:</strong>{" "}
                     {availableLenses.find((l) => l.id === selectedLensId)?.name}
                   </Typography>
                 )}
@@ -207,7 +209,7 @@ const DeviceInfoPopup: React.FC<DeviceInfoPopupProps> = (props) => {
                 },
               }}
             >
-              Done
+              {t("deviceInfo.doneButton")}
             </Button>
           </Box>
         </Box>
