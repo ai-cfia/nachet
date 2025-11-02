@@ -39,9 +39,7 @@ from app.model.batch_upload import (
     BatchUploadImageRequest,
 )
 from app.service.auth import User
-from app.exceptions import DirectoryNotFoundError
 from tests.fixtures.test_images import get_test_seed_image
-from fastapi import HTTPException
 
 # Load test environment
 if not os.getenv("NACHET_SCHEMA"):
@@ -238,7 +236,8 @@ class TestBatchUploadAPIInitialize:
                 file_count=1001,  # Exceeds limit
             )
 
-        assert "1000" in str(exc_info.value)
+        # After security fix (CWE-209), errors are sanitized
+        assert "failed to initialize upload session" in str(exc_info.value).lower()
 
     async def test_initialize_folder_not_found(
         self,
@@ -247,7 +246,8 @@ class TestBatchUploadAPIInitialize:
         """Test that non-existent folder raises error."""
         nonexistent_folder = uuid4()
 
-        with pytest.raises(DirectoryNotFoundError):
+        # After security fix (CWE-209), errors are sanitized to ValueError
+        with pytest.raises(ValueError, match="Failed to initialize upload session"):
             await BatchUploadService.initialize_batch_session(
                 user_id=test_admin_user,
                 folder_id=nonexistent_folder,
@@ -281,14 +281,13 @@ class TestBatchUploadAPIInitialize:
         cleanup_test_folders.append(admin_folder_id)
 
         # Try to use admin's folder as regular user (should fail due to RBAC)
-        with pytest.raises(HTTPException) as exc_info:
+        # After security fix (CWE-209), errors are sanitized to ValueError
+        with pytest.raises(ValueError, match="Failed to initialize upload session"):
             await BatchUploadService.initialize_batch_session(
                 user_id=test_regular_user,
                 folder_id=admin_folder_id,  # Use the UUID directly
                 file_count=10,
             )
-
-        assert exc_info.value.status_code in [403, 404]
 
 
 @pytest.mark.integration
@@ -556,8 +555,8 @@ class TestBatchUploadAPIUpload:
         )
 
         assert result["success"] is False
-        assert "seed" in result["error"].lower()
-        assert "not found" in result["error"].lower()
+        # After security fix (CWE-209), errors are sanitized
+        assert "failed to process image upload" in result["error"].lower()
 
 
 @pytest.mark.integration
