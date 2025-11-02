@@ -80,7 +80,7 @@ const Footer: React.FC = () => {
           href="https://github.com/ai-cfia"
           sx={{
             color: colours.CFIA_Font_Black,
-            fontSize: "0.6vw",
+            fontSize: "1rem",
             textDecoration: "none",
             cursor: "pointer",
             marginBottom: "auto",
@@ -95,7 +95,7 @@ const Footer: React.FC = () => {
           component="span"
           sx={{
             color: colours.CFIA_Font_Black,
-            fontSize: "0.6vw",
+            fontSize: "1rem",
             textDecoration: "none",
             cursor: "pointer",
             marginBottom: "auto",
@@ -112,7 +112,7 @@ const Footer: React.FC = () => {
           component="span"
           sx={{
             color: colours.CFIA_Font_Black,
-            fontSize: "0.6vw",
+            fontSize: "1rem",
             textDecoration: "none",
             cursor: "pointer",
             marginBottom: "auto",
@@ -129,7 +129,7 @@ const Footer: React.FC = () => {
           component="span"
           sx={{
             color: colours.CFIA_Font_Black,
-            fontSize: "0.6vw",
+            fontSize: "1rem",
             textDecoration: "none",
             cursor: "pointer",
             marginBottom: "auto",
