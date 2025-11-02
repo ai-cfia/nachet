@@ -9,6 +9,7 @@ import {
   CardHeader,
   IconButton,
 } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { colours } from "../../../styles/colours";
 import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import CloseIcon from "@mui/icons-material/Close";
@@ -27,6 +28,8 @@ interface params {
 }
 
 const StorageDirectoryView: React.FC<params> = (props) => {
+  const { t } = useTranslation("main");
+
   const {
     azureStorageDir,
     curDir,
@@ -47,7 +50,7 @@ const StorageDirectoryView: React.FC<params> = (props) => {
       data-testid="storage-directory-component"
     >
       <CardHeader
-        title="DIRECTORIES"
+        title={t("directoryList.title")}
         titleTypographyProps={{
           variant: "h6",
           align: "left",
