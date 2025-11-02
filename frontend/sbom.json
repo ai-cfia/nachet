@@ -4889,8 +4889,8 @@
       "type": "library",
       "name": "aix-ppc64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/aix-ppc64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/aix-ppc64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -4900,15 +4900,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/aix-ppc64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/aix-ppc64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "5edd5d38bd779bcbb4584f22a65c7d21b6e6fa11403b41ac5363f7e143680c6bd962463c89f4a2cba66e735958c5f1bbb2f584d9fcea094985a791c29f9d6026"
+              "content": "1e19b077a0889d9dddc29b864c5f1f246eb2a169ac4e813ebd8803e27cad655c5cbb5ba51e9510440075509f3e375026dcccf8fb1381ca84284997f80fe0a990"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4929,8 +4929,8 @@
       "type": "library",
       "name": "android-arm",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/android-arm@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/android-arm@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -4940,15 +4940,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/android-arm@0.25.11",
+      "purl": "pkg:npm/%40esbuild/android-arm@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "ba86bb754f83b771d8b1eb61909d64e99f5875c1e34eb49be4d532eba65f65a495f21118183e591db10c5e7a8b1656c17e52ec97cf5991eec201d0c9e0923e1a"
+              "content": "549fac2af340fc613b09c69c73d0a16bb6e94bc9f2cd5bf48dd560c0d0da478803302ff64d345cdf7229f2aacd61472990e1d44f9399d1b51c34d55943d44b96"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -4969,8 +4969,8 @@
       "type": "library",
       "name": "android-arm64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/android-arm64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/android-arm64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -4980,15 +4980,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/android-arm64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/android-arm64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "f6c969c8505ce053cfcf8f3e7fa8f28973b1fd8e2fdf84d47830d726966a016427ff4f25286783f1a0e9f53327f630f3d82884b87c1f85198606fa6777f3d621"
+              "content": "e800262c6ef3c03d59d79f6308a3ef03165de32fd54ced15929ad8cbedcdd85b49f3e0505855d4f8ec40448c00e3a739b5d0fd4ac28667fd6872a052fe000a1e"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5009,8 +5009,8 @@
       "type": "library",
       "name": "android-x64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/android-x64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/android-x64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5020,15 +5020,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/android-x64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/android-x64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "4a089a6f8c418cf5354283c422a4b75f1f91da57b3bb42ca2047187baa5fb6be7a3ea3f281b07bfaccd59f3a1285bc7ae0c52ea6aa04d0ac9194dee07b36e5f2"
+              "content": "e636dbfb68610c7c79a61611d81cbc193584ce7e88f54a91d752b07f6da229b36962bb26441d7c697ffd8af73971a6dc522013ff033e60867a486f503ba6bc92"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5049,8 +5049,8 @@
       "type": "library",
       "name": "darwin-arm64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/darwin-arm64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/darwin-arm64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5060,15 +5060,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/darwin-arm64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/darwin-arm64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "55e918d0f042ba4a69a10af2705c54aa40a88e74d085d79cd2f7af50bfc40ce0a75ddf4b296a83fdb1f030fce28082573e10b9f5577558520be7b48ab369a0e3"
+              "content": "377ce5fa5c470a27e022570c50fe74d7a11291e4232e3ffde7d471c4d608b61220f82407227ba316e5de59b58c8274e8e1ca795d51ea14f9a9caef49eb90b562"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5089,8 +5089,8 @@
       "type": "library",
       "name": "darwin-x64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/darwin-x64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/darwin-x64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5100,15 +5100,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/darwin-x64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/darwin-x64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "fa17e9df27c16a5344a531a9f65a1881b9278d1ebde4792ab58ddddff2634915323e0ff177aabe990a886f9a9dcb09c3c516729081ecddac44a94ea5d7ea1611"
+              "content": "1d0f646b82b1db5a875f0b654d455b2893809e61b58a95e17564e635788fccf7d62a95ea01255c59d9dfd9b9cbef7c208cdac55c06b7c98bc149df69cdf108a4"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5129,8 +5129,8 @@
       "type": "library",
       "name": "freebsd-arm64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/freebsd-arm64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/freebsd-arm64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5140,15 +5140,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/freebsd-arm64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/freebsd-arm64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "0a62a3ae76b2c93245d9e56e3bffee4a397f2b72ac3087987b237b1720c18ec4779674891da5e556800af0365aee55d60a16ee3a4ecd8c073bca0030ae73c184"
+              "content": "800d01c7be7dfbb26f7b4dcad52d2f90ebb92e0ffce5da2edc4b1e38651eb3c7e554e1b16e10c387f8996a87a4d7563c9adc8a3c6177bcff178679031009b37a"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5169,8 +5169,8 @@
       "type": "library",
       "name": "freebsd-x64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/freebsd-x64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/freebsd-x64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5180,15 +5180,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/freebsd-x64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/freebsd-x64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "0f2abee68b1c4c9bcc6983ef5b7c7714ba62dbe812653084ff57df770b8ce86d4045a9e0fe66f78ef8f1b349b0ea7dcbb30f38a1c7e8f42acd32a7399537c63b"
+              "content": "4c66cedba630db1b07cf1b5b5451845c1147d054403fb82d70f13b3f9c8fef01b2edc5cada83bb4723a12f934b8aa4e5061e3b5e1988517b867225c4a9815f05"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5209,8 +5209,8 @@
       "type": "library",
       "name": "linux-arm",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-arm@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-arm@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5220,15 +5220,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/linux-arm@0.25.11",
+      "purl": "pkg:npm/%40esbuild/linux-arm@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "4c132fe81e2409fac627c7143e8eef77a3440991fff213e90471e5608deace8605bd6bb601d4ef64db94ffb86c6ca5aabbf08e53b3482b5d9d1c002a04b2d783"
+              "content": "94f0c6c82d493c3a2ef2419ccb06346082f35a58619d18dda1fdd495ca2a6264bd125f35f0b2df2497373d75e0647ac70802acfd9d92799b4326be4cae4c6d3b"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5249,8 +5249,8 @@
       "type": "library",
       "name": "linux-arm64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-arm64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-arm64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5260,15 +5260,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/linux-arm64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/linux-arm64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "42bf00cdca655211af772505d3c03590753756bd8ef3cc713f44e6f0671d54e526db95d870c3e9d98a925476cbb97cd840c7fd061fe22b1ed83ea102b3a7df2c"
+              "content": "f1bc17edaf05821220aeea5cc5be1a5266032e9f295f4eab1a1e47a834fb6c1fbc45d7a596cea61efac51c75b624038f6546e78d4a4a4cb83a102cb3bdab3601"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5289,8 +5289,8 @@
       "type": "library",
       "name": "linux-ia32",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-ia32@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-ia32@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5300,15 +5300,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/linux-ia32@0.25.11",
+      "purl": "pkg:npm/%40esbuild/linux-ia32@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-ia32/-/linux-ia32-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-ia32/-/linux-ia32-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "4e69c983c04c18f7a1b3924aac22eac964d502f89e95ceb5e636e43a2ac04d0bd6581d4d31763bee82cccec52344b6b4fa781e7049831aab798e20c2e9b7ef3b"
+              "content": "d32f4aadd5676cc336fef1bc29f5346f285437e1050a7cbdfbc836d36818a924953289dbb027cb8d43beac2722ee933458112dcfea0afcf2301e4cf193285aac"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5329,8 +5329,8 @@
       "type": "library",
       "name": "linux-loong64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-loong64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-loong64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5340,15 +5340,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/linux-loong64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/linux-loong64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "0c81972f6fa0bc369795aabcc6bb8d5d425d4f9b45f9205b25029b5b2ff427b3a153c80e1cecca9862257d34e5ea71da08ea22a7141bb898bb3befa576bc6033"
+              "content": "87ffff2ebe5af6b89bfefd461aa5d51b38cbe1332f553bfeb350cfa3141dcfb97f018bfa2c34b1748c33c64acf5b8dfca145e20edc0cd74a3d3e6c12ffa67436"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5369,8 +5369,8 @@
       "type": "library",
       "name": "linux-mips64el",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-mips64el@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-mips64el@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5380,15 +5380,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/linux-mips64el@0.25.11",
+      "purl": "pkg:npm/%40esbuild/linux-mips64el@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-mips64el/-/linux-mips64el-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-mips64el/-/linux-mips64el-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "3acc759c02d426ee29538de8f4eca34825e89059056f2ce35dbe95846209650e49662f3294243dfcb15a82894fb07b60c3a8629834b26f911349f9a9e2ba6229"
+              "content": "8b246b3353f3cbd1853032ec5e7d621d49b5f2784a9cd316b1c8e6a78fa1a5a7dc663aebd966d3fff776d316869635c30581ea45c97c1e7c5b5fab9a03f78657"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5409,8 +5409,8 @@
       "type": "library",
       "name": "linux-ppc64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-ppc64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-ppc64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5420,15 +5420,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/linux-ppc64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/linux-ppc64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-ppc64/-/linux-ppc64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-ppc64/-/linux-ppc64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "9db2c582c41012c05af174a04934a5ae7052ae9a1687b8a8143526c28d79f20226e4d34ffb5ec8626356cda2335a6802c6ae7abdfaf7e311a439c67b8d7e823f"
+              "content": "f6678cfe5457c4c8b93d252a117442b558c46411b007b3ff0f8c93f141bf9b021dcded9a578568e94e600f7f91b281d72a41c27d2c592b3983b2c565463d5040"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5449,8 +5449,8 @@
       "type": "library",
       "name": "linux-riscv64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-riscv64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-riscv64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5460,15 +5460,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/linux-riscv64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/linux-riscv64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-riscv64/-/linux-riscv64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-riscv64/-/linux-riscv64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "1dfc809aa662f6e0406e02983f5c86b88eed491117c086f8dfcab49eabe5a7100eb375e767c46c8ac45f995b20578f3a35d8c3eccc3652b152c39d65cd4935c3"
+              "content": "66beca478860294a560306f57f7a39ca04f4e0ccea56b18419718b9e3d796100c912b62efc11a0fb09859480ce749a743e607494bbf1148397660151add8d1d3"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5489,8 +5489,8 @@
       "type": "library",
       "name": "linux-s390x",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-s390x@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-s390x@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5500,15 +5500,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/linux-s390x@0.25.11",
+      "purl": "pkg:npm/%40esbuild/linux-s390x@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-s390x/-/linux-s390x-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-s390x/-/linux-s390x-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "1e32ea560492627557462b327e6cec1fa997ab2be3d1203ba46e60fbd5bb11283003bd005d83697ca06a87529b4f199055a631a7303f4af941f6872518f6c0a7"
+              "content": "32c2a770e7204cdbddb6221273f8d9b3f65ff1dd1c97fb77818597f09f6e6c19d53b0964eb9508104be004e4538a58e5a085a70732ece2a8733e425c8ad23322"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5529,8 +5529,8 @@
       "type": "library",
       "name": "linux-x64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-x64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/linux-x64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5540,15 +5540,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/linux-x64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/linux-x64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "1d21404f8f96623221ac7c4a0701a638e4a9a618d891cb30178e3d8fa123b236e29d365ba7c3c9b63b152b55c5252b5dcd7772fe369d7407a9d85198fb0c8501"
+              "content": "baa64c4cbaffcd1fde7788c81a7c122e468798f8ce8c9be79ba4d5562b406b4f122d2f59d1533cc08471ee059b241e7f279e18b883089c3aae5b262f40b66483"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5569,8 +5569,8 @@
       "type": "library",
       "name": "netbsd-arm64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/netbsd-arm64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/netbsd-arm64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5580,15 +5580,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/netbsd-arm64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/netbsd-arm64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/netbsd-arm64/-/netbsd-arm64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/netbsd-arm64/-/netbsd-arm64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "86bf4ec63d456b8af4e1d3695abdcff1029556c8d086aacc494cd9cdff8b65c62364daa10372007cf41d121d452d55094a2bbab20030a773a6c017db1601b65e"
+              "content": "c57c1c4eae0685133b27d03c1afe5ba1a9c78516bf43d28b5667325c709368ce3029f2295a475788ca20fcab27c73274035fa70fece879cbb3a8f9824720468e"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5609,8 +5609,8 @@
       "type": "library",
       "name": "netbsd-x64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/netbsd-x64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/netbsd-x64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5620,15 +5620,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/netbsd-x64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/netbsd-x64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/netbsd-x64/-/netbsd-x64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/netbsd-x64/-/netbsd-x64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "bbbb4a03ea9bcc1c9dca3d2f829bbee61e407ae7713801a771bf0de82f4a8753789fbc14d57c35243029b118e94a14695d142524b6fdc18dbc10ba7074f719ec"
+              "content": "2dde694e5ccfcb763019e7383ae1e1d5a095091bce5dd1fc0e04637c3cbfa2e995a2f9ae4b359f9d2260f95b5a901f429b483134ef41cd6923ea6b4ed4531791"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5649,8 +5649,8 @@
       "type": "library",
       "name": "openbsd-arm64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/openbsd-arm64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/openbsd-arm64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5660,15 +5660,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/openbsd-arm64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/openbsd-arm64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/openbsd-arm64/-/openbsd-arm64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/openbsd-arm64/-/openbsd-arm64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "42ae981e16b289ea2bdc3c453a860cd6ad2ad6e30561bedc4a92c3daacc34af2b5340bea162f17822befd1c142e89fa1595c36b5e09896dcb2f7f9bfd78af21e"
+              "content": "7c5f7a4fa2ac068fe991023de74140454f5aa463534a5646b2fd6364102570b2f530b8cb34858f0648f93654b3f1a03360a83e78daa49eb509db8401c9b791e4"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5689,8 +5689,8 @@
       "type": "library",
       "name": "openbsd-x64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/openbsd-x64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/openbsd-x64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5700,15 +5700,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/openbsd-x64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/openbsd-x64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/openbsd-x64/-/openbsd-x64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/openbsd-x64/-/openbsd-x64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "08dfbb73efa491badc9133b3e61ade87158deee2211459664bf86ace2485556a40ce95ab428006e1c847fa737705ef8aceffeeba8ef3857ef5eb1dd29f625dbb"
+              "content": "319c975246478d0c54bf32bbacdf032774919ab56b91ef19c91bac1e53fe92ec2a4dc7d62f2a8c384dec49c3cfc9e21737f9832487c65ef70ca8281829e92843"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5729,8 +5729,8 @@
       "type": "library",
       "name": "openharmony-arm64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/openharmony-arm64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/openharmony-arm64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5740,15 +5740,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/openharmony-arm64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/openharmony-arm64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/openharmony-arm64/-/openharmony-arm64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/openharmony-arm64/-/openharmony-arm64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "ace444b8d21081a891fbd42e3646e4c6e6dba7c3123bdace366c0fe672a7727589f6fe634382711672eee330d244f7f7c78bbed95378a4ce117722330edcbfc1"
+              "content": "ae6d185aca94491ae39dc497180ed9bfbf0d6e7c385cbebf773af6d1ccab41fed999172ca2fa5c4417610f8dcdba4df2ed72285b63b1315bf0b91be4f577404a"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5769,8 +5769,8 @@
       "type": "library",
       "name": "sunos-x64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/sunos-x64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/sunos-x64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5780,15 +5780,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/sunos-x64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/sunos-x64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/sunos-x64/-/sunos-x64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/sunos-x64/-/sunos-x64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "9eadb1758696c7283d0dc2325e4661718ba50baa50d85b8281e9b72c8f76230320219ebd287798f13e18f3ca5cc282c88db79df27dfa0b22a86110f280d48684"
+              "content": "df0192083cae4c7414cedd2757b6e8703cbbdabda5237dd02f78240cd1a4a1ddb612c625d38b0c7f4a8b6fc96e34a4ce9a017f7831033f9045370a01287e38d7"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5809,8 +5809,8 @@
       "type": "library",
       "name": "win32-arm64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/win32-arm64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/win32-arm64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5820,15 +5820,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/win32-arm64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/win32-arm64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "dd7c4408e589ab5a8c67730df2cac227f41fa0ba4bf956b10ff59f3519b53b7078f8067f0672d58056d45777a24580cc5deb5c887d7a7703db6c7ab07b5b94d1"
+              "content": "acc98baeeafae00efe0ca9674aec2a51d44ac9ddd413ba0f2599a7963a84a6d7ac28cf30c7d27c831e6ed3ef4fab47d0416f2fa9e29e6f035775f3b23fef01b2"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5849,8 +5849,8 @@
       "type": "library",
       "name": "win32-ia32",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/win32-ia32@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/win32-ia32@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5860,15 +5860,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/win32-ia32@0.25.11",
+      "purl": "pkg:npm/%40esbuild/win32-ia32@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/win32-ia32/-/win32-ia32-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/win32-ia32/-/win32-ia32-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "dee92cb3a81bf5767c4e547226580b9f5ede72c2b835241399d217440495b224b6b10eb33cf66494d253e46479b44fcc51aaf29a6cbc90211fe713c2342a9538"
+              "content": "1e4aa79a606809b0b0c5428a34f062c62583182a50195b2b41f26854660b3d3e355d617c947b84e4de9685589ada7e28e502b9338b58af6d7cdbb7cd862e1bc9"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -5889,8 +5889,8 @@
       "type": "library",
       "name": "win32-x64",
       "group": "@esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|@esbuild/win32-x64@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|@esbuild/win32-x64@0.25.12",
       "scope": "optional",
       "licenses": [
         {
@@ -5900,15 +5900,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40esbuild/win32-x64@0.25.11",
+      "purl": "pkg:npm/%40esbuild/win32-x64@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "0fb1e9cfa0362f8873b11a4f68262442718ea2d754a43cd219122ff48fb521374744e4855165bde593d959098691ad4583b5b7cc5268c329fd586c0c274f8a3c"
+              "content": "6a5242d2e099a5316b48bd020838dc8257815cf9c2ac40214c120ba5e029eccfce160a2ab407ad7c1cd7d31334d0c52c5553e956394fb8c6d112a9d90976939c"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -8939,6 +8939,45 @@
     },
     {
       "type": "library",
+      "name": "merge-streams",
+      "group": "@sindresorhus",
+      "version": "2.3.0",
+      "bom-ref": "nachet-frontend@2.0.0|@sindresorhus/merge-streams@2.3.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40sindresorhus/merge-streams@2.3.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@sindresorhus/merge-streams/-/merge-streams-2.3.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "2eda0c321c40968adc1a1985608f8b84f81b3d90a480feab6b560beb4e04785e94f7ca4b950de258818c756482faf5a63c15813609830408670286cb44e266c2"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@sindresorhus/merge-streams"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "commons",
       "group": "@sinonjs",
       "version": "3.0.1",
@@ -9821,6 +9860,45 @@
     },
     {
       "type": "library",
+      "name": "debug",
+      "group": "@types",
+      "version": "4.1.12",
+      "bom-ref": "nachet-frontend@2.0.0|@types/debug@4.1.12",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40types/debug@4.1.12",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@types/debug/-/debug-4.1.12.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "bc80a159d546dcb1b548cc44bc8fc02be15626d865aea953bbb7dbae5cb04e491a38dc24fd40066942d74657fcbe4cc504b566d3390c742aae84be5a3a38573d"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/debug"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "deep-eql",
       "group": "@types",
       "version": "4.0.2",
@@ -10206,6 +10284,84 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@types/json5"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "katex",
+      "group": "@types",
+      "version": "0.16.7",
+      "bom-ref": "nachet-frontend@2.0.0|@types/katex@0.16.7",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40types/katex@0.16.7",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@types/katex/-/katex-0.16.7.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "1ccc05891ba31393e3ae0c07436e7e6ec2c9828c231a39b967c15549fd0de8fc2026bc311f4431cc760370ab137d5df0bdad2fceba6a313252da35cfaf904c11"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/katex"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "ms",
+      "group": "@types",
+      "version": "2.1.0",
+      "bom-ref": "nachet-frontend@2.0.0|@types/ms@2.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40types/ms@2.1.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@types/ms/-/ms-2.1.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "1ac0822190c4fe9de2f7abed12ac7eedd054197adcef37922b7c303c721a453852fbd3a15885d1ab3b3877a93549553c83dd43acd456c56506869e4a5d06f654"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/ms"
         }
       ]
     },
@@ -10651,6 +10807,45 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/@types/trusted-types"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "unist",
+      "group": "@types",
+      "version": "2.0.11",
+      "bom-ref": "nachet-frontend@2.0.0|@types/unist@2.0.11",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/%40types/unist@2.0.11",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/@types/unist/-/unist-2.0.11.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "0a604a88be8d368fceaa098c9fde4593d5a1969da6b6f22ff8a36940a3761784a3beb11eb2e6d34561984a0f819d664e9e509a493535b0ca6c04ece06d8867b0"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/@types/unist"
         }
       ]
     },
@@ -13905,8 +14100,8 @@
     {
       "type": "library",
       "name": "caniuse-lite",
-      "version": "1.0.30001752",
-      "bom-ref": "nachet-frontend@2.0.0|caniuse-lite@1.0.30001752",
+      "version": "1.0.30001753",
+      "bom-ref": "nachet-frontend@2.0.0|caniuse-lite@1.0.30001753",
       "licenses": [
         {
           "license": {
@@ -13915,15 +14110,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/caniuse-lite@1.0.30001752",
+      "purl": "pkg:npm/caniuse-lite@1.0.30001753",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001752.tgz",
+          "url": "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001753.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "bca524edb7a8ba4c44e3b3f981c54d2a40d1cd7755a1fa2db211f07d1f6f9a97852b1988e4f06980e302d7c2d425403f0ef27bd18ed1bde6ac201adaaacc8efe"
+              "content": "063e47df9303fde6da395e220cba8f12d8a5893376f6a906b441c2c1ac169f87189be6cf24cd8db1a3f7d2fb597271110a5333a79d89e3e6b0d9435b2b8a3ecf"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -14039,6 +14234,120 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/chalk"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "character-entities-legacy",
+      "version": "3.0.0",
+      "bom-ref": "nachet-frontend@2.0.0|character-entities-legacy@3.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/character-entities-legacy@3.0.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/character-entities-legacy/-/character-entities-legacy-3.0.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "4693e9d1ab13ffab9f466fff009570a558996c633f3248d017125c710447988485ff6d8d06db07a805a62fefe99a43d6a08509756c9e565793975c3274701355"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/character-entities-legacy"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "character-entities",
+      "version": "2.0.2",
+      "bom-ref": "nachet-frontend@2.0.0|character-entities@2.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/character-entities@2.0.2",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/character-entities/-/character-entities-2.0.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "b21c7ba10d00c1e9ff05121d92392fcf9e0f9c4108fc48f05c3488669f3afca29d6da7c78750dffd16060619f885b7b6fae282f459d3e540847723f3dda8bd85"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/character-entities"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "character-reference-invalid",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|character-reference-invalid@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/character-reference-invalid@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/character-reference-invalid/-/character-reference-invalid-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "881678178c116f239156cbb48cf57b81790eb066231873e6032bfe1e21c6f208b93ed0bd288da3d7ebfcfed9626d1be3a165f4dbbca9986fe7d07b4ee6deee9f"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/character-reference-invalid"
         }
       ]
     },
@@ -15593,6 +15902,44 @@
     },
     {
       "type": "library",
+      "name": "decode-named-character-reference",
+      "version": "1.2.0",
+      "bom-ref": "nachet-frontend@2.0.0|decode-named-character-reference@1.2.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/decode-named-character-reference@1.2.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/decode-named-character-reference/-/decode-named-character-reference-1.2.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "73a7dc125355e9286d6579ac80d805155e6d557d8f695e20f8c38091bf1e5c7be7eacaf2241ad96bdaf4cd5ebe76d4f2a022b1b43cb9b7243967042e89db5df9"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/decode-named-character-reference"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "decompress-response",
       "version": "6.0.0",
       "bom-ref": "nachet-frontend@2.0.0|decompress-response@6.0.0",
@@ -15950,6 +16297,44 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/detect-libc"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "devlop",
+      "version": "1.1.0",
+      "bom-ref": "nachet-frontend@2.0.0|devlop@1.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/devlop@1.1.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/devlop/-/devlop-1.1.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "456988aa17057f5951601bcd9abeea4cdbb20adffbfe7b368dba69d7e3da96013fac341c053d1f8a848c52927dde2ae55210b986b838718a9ee94fb42265b4ac"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/devlop"
         }
       ]
     },
@@ -17022,8 +17407,8 @@
     {
       "type": "library",
       "name": "esbuild",
-      "version": "0.25.11",
-      "bom-ref": "nachet-frontend@2.0.0|esbuild@0.25.11",
+      "version": "0.25.12",
+      "bom-ref": "nachet-frontend@2.0.0|esbuild@0.25.12",
       "licenses": [
         {
           "license": {
@@ -17032,15 +17417,15 @@
           }
         }
       ],
-      "purl": "pkg:npm/esbuild@0.25.11",
+      "purl": "pkg:npm/esbuild@0.25.12",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/esbuild/-/esbuild-0.25.11.tgz",
+          "url": "https://registry.npmjs.org/esbuild/-/esbuild-0.25.12.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "2a8850c32ceb2934268570d6d4f8c2bf74f2b299fd9f919c6364530ea78e448748258f3228817bb134a8a459a7ff0a4c3d6e2b74f5c8d141392c92eeab76f1d1"
+              "content": "6db3c1618aed65b92de8eb3a1624cb093171beae2db7724a6a5975bd1c2c840ddf755cedb0b01ab45699a1b864042f3f06b3deb686b4a24b18a0a5e81b8af226"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -20338,6 +20723,160 @@
     },
     {
       "type": "library",
+      "name": "globby",
+      "version": "14.1.0",
+      "bom-ref": "nachet-frontend@2.0.0|globby@14.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/globby@14.1.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/globby/-/globby-14.1.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "d086b8e9f0ce693ee4e288353c35b861ba1d596af7b1c4b6bc0af69536eca653add9690aa74bd06e423dc0a8acfd3e4b57f76a3e33b76e94bfcfa193241f362c"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/globby"
+        }
+      ],
+      "components": [
+        {
+          "type": "library",
+          "name": "ignore",
+          "version": "7.0.5",
+          "bom-ref": "nachet-frontend@2.0.0|globby@14.1.0|ignore@7.0.5",
+          "licenses": [
+            {
+              "license": {
+                "id": "MIT",
+                "acknowledgement": "declared"
+              }
+            }
+          ],
+          "purl": "pkg:npm/ignore@7.0.5",
+          "externalReferences": [
+            {
+              "url": "https://registry.npmjs.org/ignore/-/ignore-7.0.5.tgz",
+              "type": "distribution",
+              "hashes": [
+                {
+                  "alg": "SHA-512",
+                  "content": "1ece7dc4135f508ba730581601b197e5cabaf3ddc86d68382a7ae36d8c17dedc74ceda2b5604c303a076b317fc7a31c9e30cfc06a194318967ccd05eaf936f1a"
+                }
+              ],
+              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:development",
+              "value": "true"
+            },
+            {
+              "name": "cdx:npm:package:path",
+              "value": "node_modules/globby/node_modules/ignore"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "name": "path-type",
+          "version": "6.0.0",
+          "bom-ref": "nachet-frontend@2.0.0|globby@14.1.0|path-type@6.0.0",
+          "licenses": [
+            {
+              "license": {
+                "id": "MIT",
+                "acknowledgement": "declared"
+              }
+            }
+          ],
+          "purl": "pkg:npm/path-type@6.0.0",
+          "externalReferences": [
+            {
+              "url": "https://registry.npmjs.org/path-type/-/path-type-6.0.0.tgz",
+              "type": "distribution",
+              "hashes": [
+                {
+                  "alg": "SHA-512",
+                  "content": "563eec7fefade69043eb7ecd49f931a4748c7d669e8a0e7e0ca58b85ca88631ea6590cf985d25318354c42225cc35658921b3b01acca0c6a515638b52c909951"
+                }
+              ],
+              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:development",
+              "value": "true"
+            },
+            {
+              "name": "cdx:npm:package:path",
+              "value": "node_modules/globby/node_modules/path-type"
+            }
+          ]
+        },
+        {
+          "type": "library",
+          "name": "slash",
+          "version": "5.1.0",
+          "bom-ref": "nachet-frontend@2.0.0|globby@14.1.0|slash@5.1.0",
+          "licenses": [
+            {
+              "license": {
+                "id": "MIT",
+                "acknowledgement": "declared"
+              }
+            }
+          ],
+          "purl": "pkg:npm/slash@5.1.0",
+          "externalReferences": [
+            {
+              "url": "https://registry.npmjs.org/slash/-/slash-5.1.0.tgz",
+              "type": "distribution",
+              "hashes": [
+                {
+                  "alg": "SHA-512",
+                  "content": "640ea84774ffa44caeab032000a4f4fe102ff28017724cdb926474524528b10f8c7384711a8264466c07807b9f69e9e5c80804d4cc60a5d72b7fbe72e977270e"
+                }
+              ],
+              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:development",
+              "value": "true"
+            },
+            {
+              "name": "cdx:npm:package:path",
+              "value": "node_modules/globby/node_modules/slash"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "gopd",
       "version": "1.2.0",
       "bom-ref": "nachet-frontend@2.0.0|gopd@1.2.0",
@@ -21321,6 +21860,40 @@
     },
     {
       "type": "library",
+      "name": "i18next-browser-languagedetector",
+      "version": "8.2.0",
+      "bom-ref": "nachet-frontend@2.0.0|i18next-browser-languagedetector@8.2.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/i18next-browser-languagedetector@8.2.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/i18next-browser-languagedetector/-/i18next-browser-languagedetector-8.2.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "3fedf310a2e7385d2a9a27ac5b7f37bec2ddb505722ad08d03d7234a8282a694ca3d055f29dd96f216d5a39661349283a9e33b04e72f3682893a3a4787826cf6"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/i18next-browser-languagedetector"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "i18next",
       "version": "25.6.0",
       "bom-ref": "nachet-frontend@2.0.0|i18next@25.6.0",
@@ -21823,6 +22396,82 @@
     },
     {
       "type": "library",
+      "name": "is-alphabetical",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|is-alphabetical@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/is-alphabetical@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/is-alphabetical/-/is-alphabetical-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "156cb263ad0c79337279246990cd88af2d06f61a6befff640f8d260ff706404ba295c6584b8a24cfc48dd90eab2c227c81b0ade9f37eac2fbab4c192f7d2dac5"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/is-alphabetical"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "is-alphanumerical",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|is-alphanumerical@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/is-alphanumerical@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/is-alphanumerical/-/is-alphanumerical-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "8666d8857ffd314305e6e87bb4e5f22bf9f466f5a969de5c681035ec6b02eafcae0aa696962446e4ad6a4bd8a799484431a381216effc210274b0bde5bf2ed67"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/is-alphanumerical"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "is-array-buffer",
       "version": "3.0.5",
       "bom-ref": "nachet-frontend@2.0.0|is-array-buffer@3.0.5",
@@ -22152,6 +22801,44 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/is-date-object"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "is-decimal",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|is-decimal@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/is-decimal@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/is-decimal/-/is-decimal-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "00007d862a2642ce435d6711075aeab31194b2d6d1ae814e3cf540a26364ff75c74792721190a13b24d67b6a1ac8a9ec4acaff91c1aa17ecfacae1fa1c7a4dd0"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/is-decimal"
         }
       ]
     },
@@ -22578,6 +23265,44 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/is-glob"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "is-hexadecimal",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|is-hexadecimal@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/is-hexadecimal@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/is-hexadecimal/-/is-hexadecimal-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "0e0650a76e3573ca0ee9c03549b4c45a25dea31578daf95c271807f81de18b5022aaa2abb9947764617c227ddf8f8fbfcbfeeb1ef94e64b66d809ff8b6d60666"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/is-hexadecimal"
         }
       ]
     },
@@ -24278,6 +25003,44 @@
     },
     {
       "type": "library",
+      "name": "jsonc-parser",
+      "version": "3.3.1",
+      "bom-ref": "nachet-frontend@2.0.0|jsonc-parser@3.3.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/jsonc-parser@3.3.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/jsonc-parser/-/jsonc-parser-3.3.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "1d4807eb92b27a3ad414fbc714f6ea398d2bb058a9dc1a39c1be2782f762d44a426165100c2e55f98ee6670b3e0cb92be0cfffcd02686a7bb548ffbcec3bf5a1"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/jsonc-parser"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "jsx-ast-utils",
       "version": "3.3.5",
       "bom-ref": "nachet-frontend@2.0.0|jsx-ast-utils@3.3.5",
@@ -24411,6 +25174,84 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/jwt-decode"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "katex",
+      "version": "0.16.25",
+      "bom-ref": "nachet-frontend@2.0.0|katex@0.16.25",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/katex@0.16.25",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/katex/-/katex-0.16.25.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "c281d1519fe2176dc604fd5d90340c87540169df5d9abf3f3c0c0d039e15ad2395620235d8c01c135e13aa70dd40e773c84a271b331ea589ea04c61db2802bf1"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/katex"
+        }
+      ],
+      "components": [
+        {
+          "type": "library",
+          "name": "commander",
+          "version": "8.3.0",
+          "bom-ref": "nachet-frontend@2.0.0|katex@0.16.25|commander@8.3.0",
+          "licenses": [
+            {
+              "license": {
+                "id": "MIT",
+                "acknowledgement": "declared"
+              }
+            }
+          ],
+          "purl": "pkg:npm/commander@8.3.0",
+          "externalReferences": [
+            {
+              "url": "https://registry.npmjs.org/commander/-/commander-8.3.0.tgz",
+              "type": "distribution",
+              "hashes": [
+                {
+                  "alg": "SHA-512",
+                  "content": "3a44cbf6e99ff877b60d9914abc7fc27da1fef22fa449288db875521306635f6419ab8bdcd8650aca92e5e22a1c9f3d2bbcb5486754107588a5debef9e54785b"
+                }
+              ],
+              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+            }
+          ],
+          "properties": [
+            {
+              "name": "cdx:npm:package:development",
+              "value": "true"
+            },
+            {
+              "name": "cdx:npm:package:path",
+              "value": "node_modules/katex/node_modules/commander"
+            }
+          ]
         }
       ]
     },
@@ -24594,6 +25435,44 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/lines-and-columns"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "linkify-it",
+      "version": "5.0.0",
+      "bom-ref": "nachet-frontend@2.0.0|linkify-it@5.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/linkify-it@5.0.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/linkify-it/-/linkify-it-5.0.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "e5a1c26f341100371d3fe013aa70ee86127f31122a0e4657e69ca3147451cac4bcbd9e406ea184a0521bea96073d9f8bfce0b62dcfb14fcb875554790802bfc1"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/linkify-it"
         }
       ]
     },
@@ -25046,6 +25925,158 @@
     },
     {
       "type": "library",
+      "name": "markdown-it",
+      "version": "14.1.0",
+      "bom-ref": "nachet-frontend@2.0.0|markdown-it@14.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/markdown-it@14.1.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/markdown-it/-/markdown-it-14.1.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "6b9e08c2058f69e042000b2fd776209802ce1757a5001074f05c4ef62fabe15164e55978a4aa2444f797f2ee530a04ac3e2e9e735a2d7cb8dd3a955c81ba6c86"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/markdown-it"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "markdownlint-cli2-formatter-default",
+      "version": "0.0.5",
+      "bom-ref": "nachet-frontend@2.0.0|markdownlint-cli2-formatter-default@0.0.5",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/markdownlint-cli2-formatter-default@0.0.5",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/markdownlint-cli2-formatter-default/-/markdownlint-cli2-formatter-default-0.0.5.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "e17293c10e66d7e4f1a3692e437260a68fca9a71be5fdd1d5ade1a72e7e0e8754669d4d41b98731c5ff0b2ca7d6f930160e3029d9f5130f694fffb87b2ccc5f1"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/markdownlint-cli2-formatter-default"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "markdownlint-cli2",
+      "version": "0.18.1",
+      "bom-ref": "nachet-frontend@2.0.0|markdownlint-cli2@0.18.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/markdownlint-cli2@0.18.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/markdownlint-cli2/-/markdownlint-cli2-0.18.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "ff83acae2f501460993824e47c0f2a245f971a3298111487917cf14b24b585ddd91112468efb146a8da1e30767be91e9e93bb6261fdb3c7334144f492736ba9e"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/markdownlint-cli2"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "markdownlint",
+      "version": "0.38.0",
+      "bom-ref": "nachet-frontend@2.0.0|markdownlint@0.38.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/markdownlint@0.38.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/markdownlint/-/markdownlint-0.38.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "c5a4b191a53bc18ff4f39db3180a4cf0b76521f1825bc11367446beb6210b409d432532e89fb20d3dbd625c35878be1fd1a9efafc568e1941aafc8c6a55d1bb5"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/markdownlint"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "math-intrinsics",
       "version": "1.1.0",
       "bom-ref": "nachet-frontend@2.0.0|math-intrinsics@1.1.0",
@@ -25075,6 +26106,44 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/math-intrinsics"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "mdurl",
+      "version": "2.0.0",
+      "bom-ref": "nachet-frontend@2.0.0|mdurl@2.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/mdurl@2.0.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/mdurl/-/mdurl-2.0.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "2dffbdfb6afe4dda79c170d70b83dc2018d30edab850a8c23cc421288bb3a49356d1bf7a915a92c16d1b4fb1614527e602215880ff92091bddac3a337e1d14e7"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/mdurl"
         }
       ]
     },
@@ -25215,6 +26284,956 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/merge2"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-core-commonmark",
+      "version": "2.0.3",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-core-commonmark@2.0.3",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-core-commonmark@2.0.3",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-core-commonmark/-/micromark-core-commonmark-2.0.3.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "44306b1c4312c5514b83ac6f9d799bd40cabd96ccb0168de4804c0a31c0a60957de1378d6af82821d0346bdcadcc3495cc1cb660a14af9e9823ce1226cb782ae"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-core-commonmark"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-extension-directive",
+      "version": "4.0.0",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-extension-directive@4.0.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-extension-directive@4.0.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-extension-directive/-/micromark-extension-directive-4.0.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "fc2da7a959975e68ac7924ae09d22d08c868ef26f0c28a7a46bad13e4d0a6ce1d6db524aa0295d0bef2b14e6ae9dd0e8441516067249731780fcabe2df85905e"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-extension-directive"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-extension-gfm-autolink-literal",
+      "version": "2.1.0",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-extension-gfm-autolink-literal@2.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-extension-gfm-autolink-literal@2.1.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-extension-gfm-autolink-literal/-/micromark-extension-gfm-autolink-literal-2.1.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "a0e83b927ce189c810dede100a309681399f361bd06c30e725e56ef6ff35afb365b4d0959a13f2d5f2515f6ee921269f7632fe495738777978f066faa5b472a7"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-extension-gfm-autolink-literal"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-extension-gfm-footnote",
+      "version": "2.1.0",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-extension-gfm-footnote@2.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-extension-gfm-footnote@2.1.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-extension-gfm-footnote/-/micromark-extension-gfm-footnote-2.1.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "ff23e1c48d67b670cdb221edccb2989c4def7fd259e9c022b2a5436ae869e02107c656f8ba8393c4e089fbdb39d5b201f14d4dd4527545738a4c8943e41fe0ab"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-extension-gfm-footnote"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-extension-gfm-table",
+      "version": "2.1.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-extension-gfm-table@2.1.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-extension-gfm-table@2.1.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-extension-gfm-table/-/micromark-extension-gfm-table-2.1.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "b76394fdd5d78a8011ac2eb259f27886a07badcb75e1ef1fee6d1c6c8e615260f2c88970bf9bc4b68a29b47f083646cbcce6adccab956d098061c6d6a32cfa0e"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-extension-gfm-table"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-extension-math",
+      "version": "3.1.0",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-extension-math@3.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-extension-math@3.1.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-extension-math/-/micromark-extension-math-3.1.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "96f12a77e7c78c04d5b3edafffc920f62e50d003f693ce47d1650ec29215bd430bf016a9b0cbe1d57028826423382b0ba6829109542a12440107736154172c3a"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-extension-math"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-factory-destination",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-factory-destination@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-factory-destination@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-factory-destination/-/micromark-factory-destination-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "5deeab0dd2659266c5444c694ce9918fd37731a5a66c081da52ac142f085aa17b3527e001ea2476da1277db5586227b1552b3ffeda8e758fc3c618dd0a226720"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-factory-destination"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-factory-label",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-factory-label@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-factory-label@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-factory-label/-/micromark-factory-label-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "54531e932404c6a216ef120285c5e7e28936f58137ae7bb2bde5b7c194165aa17836ff56939ae027df4accfbc78e498f5c5f7715721b069e98756dedef5ffb56"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-factory-label"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-factory-space",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-factory-space@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-factory-space@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-factory-space/-/micromark-factory-space-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "cd19318ed071c4b77649cd1df9f6e712e9ec4e3e3a4965e05dc899987ab49036069dc93f6521a3f7fc142d357de6ea1e6222b98515cfda627df14a3872afcb42"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-factory-space"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-factory-title",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-factory-title@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-factory-title@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-factory-title/-/micromark-factory-title-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "e5b67edc28e101df5e0a16131ec8f2e931b1a4e1522a028a24f271af6f778d36dfaf2d8a0e85a48416fa4dc3d5078366cda3e132cd45ae6f40647ece0f80a3cf"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-factory-title"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-factory-whitespace",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-factory-whitespace@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-factory-whitespace@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-factory-whitespace/-/micromark-factory-whitespace-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "39bd27b99dcf2adfe7d213911f2be80fdb9986bf996bcb05a0ff8e9cc72758ae659e04b300b81060a32bf512553962ea418bb29faba5a865925ddc1fe85f3495"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-factory-whitespace"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-util-character",
+      "version": "2.1.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-util-character@2.1.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-util-character/-/micromark-util-character-2.1.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "c2ff2d7544c9ded8521451492ada5828e62218fdbebfde87be4e13bbc2a9080b1332ceb28be9d5986875b32bd20ac6b1cf8e49e896f0fbd0c3ea0f7bf8d57aed"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-util-character"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-util-chunked",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-util-chunked@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-util-chunked@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-util-chunked/-/micromark-util-chunked-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "41434510e3c42df9afbfee3188d836b1161e4bf3fce294d6d130a03f9cdcf45a577ad1d8d1a6fb4b12b201008d09cd5e2b4e39f6ea0b235cb9a0ee5573575b84"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-util-chunked"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-util-classify-character",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-util-classify-character@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-util-classify-character@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-util-classify-character/-/micromark-util-classify-character-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "2b4907ccce9a7d6fcc6de59858b8e81d0bf5b2083643d11c707103cd293188ffc469a80dcc29bb4ff58c299deb8cc6ef229bc189983047774a33282d038986d5"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-util-classify-character"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-util-combine-extensions",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-util-combine-extensions@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-util-combine-extensions@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-util-combine-extensions/-/micromark-util-combine-extensions-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "3a70271fc5239b2e7d25cc99c3c2526caf5c1a9755638e0d2a048cec4f4487b0e22d2d84f513507f474e35a183cc41bdca3125e6172a788b23e217d190b1ff06"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-util-combine-extensions"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-util-decode-numeric-character-reference",
+      "version": "2.0.2",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-util-decode-numeric-character-reference@2.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-util-decode-numeric-character-reference@2.0.2",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-util-decode-numeric-character-reference/-/micromark-util-decode-numeric-character-reference-2.0.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "71c51b624e82c1576498240ccabeb8757cf8d847c71a43d09418f9a7b6151b3abc23b0ad8d7649aee6c061ecdfed1a7e6e33ec7a244ea9eec6e9fa0577e944bb"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-util-decode-numeric-character-reference"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-util-encode",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-util-encode@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-util-encode@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-util-encode/-/micromark-util-encode-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "737715c76cb82aa527c28a5c3bd6ff482768d8eebb2f0249fd4caa19f6e281a85f7a02fd9b2a041680d8660913edfdfa4f46cbaccf6165301a0321fe3c20178f"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-util-encode"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-util-html-tag-name",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-util-html-tag-name@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-util-html-tag-name@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-util-html-tag-name/-/micromark-util-html-tag-name-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "d9c3448980e1096288f86b3d4f44e2cac935dfa4a7475de184ef325ba04637284e0b8a98167c05d6729f0f71c50085c0e5ce3946b206d6e6f5d46897798775c4"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-util-html-tag-name"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-util-normalize-identifier",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-util-normalize-identifier@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-util-normalize-identifier@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-util-normalize-identifier/-/micromark-util-normalize-identifier-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "b313ea9a8ef42f201126cd30d947250023d4504aa5b42909e8f84a74c203b89de049ffd0fbf1887b758a9742236ff1b21fd94ea5491100edb0a7419590bbd2f5"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-util-normalize-identifier"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-util-resolve-all",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-util-resolve-all@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-util-resolve-all@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-util-resolve-all/-/micromark-util-resolve-all-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "55d432c455854f6fc51898304272586ded638d0a0d4d2e118e09664a34d496950c6bde47b71f4d1de616e2b1832736e3bc2b25f5e2e3310c0678496caa6cdc1e"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-util-resolve-all"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-util-sanitize-uri",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-util-sanitize-uri@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-util-sanitize-uri@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-util-sanitize-uri/-/micromark-util-sanitize-uri-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "f4df48a2667f62e18665999079cd4c6e0c6d960a2e8314e8755c03cf3128b8f2a8dea156bf29851d67270e2dafcd5d5f7fa91ab3db9c5bea37cb324af5807501"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-util-sanitize-uri"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-util-subtokenize",
+      "version": "2.1.0",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-util-subtokenize@2.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-util-subtokenize@2.1.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-util-subtokenize/-/micromark-util-subtokenize-2.1.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "5d02eee79da249cb6f9c47205f0ebe4b1ef919f9403cd103d6ac7b78127ec327416f62826d165ef8dc2f20410c33cdee9a5d7ed96497a4101ca7d2140a009858"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-util-subtokenize"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-util-symbol",
+      "version": "2.0.1",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-util-symbol@2.0.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-util-symbol/-/micromark-util-symbol-2.0.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "bece6df00a5ab9df4ddbc9200ab45474479de1427ec1636f89c1cb3f109af4436562e018df5334113cb9cb5bc0df762834f0c54e08446e787a79f684f21e31d1"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-util-symbol"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark-util-types",
+      "version": "2.0.2",
+      "bom-ref": "nachet-frontend@2.0.0|micromark-util-types@2.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark-util-types@2.0.2",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark-util-types/-/micromark-util-types-2.0.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "630d04092a49a15885d6a4d4e030ba370b42e1a586b75124cda401f0a3cfc82451f33f5359e5741db1051933be658d70076db39b19c9aa13f24e93950a97874c"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark-util-types"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "micromark",
+      "version": "4.0.2",
+      "bom-ref": "nachet-frontend@2.0.0|micromark@4.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/micromark@4.0.2",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/micromark/-/micromark-4.0.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "ce97bdf10ea4bdabe90abd4d3d548231e6c229f0fb080d8da99fabca478d84e348241a5cd6d14ab7d86e70b1b085ade3353348f251e972d5895a88a6545e0f7c"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/micromark"
         }
       ]
     },
@@ -27767,6 +29786,44 @@
     },
     {
       "type": "library",
+      "name": "parse-entities",
+      "version": "4.0.2",
+      "bom-ref": "nachet-frontend@2.0.0|parse-entities@4.0.2",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/parse-entities@4.0.2",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/parse-entities/-/parse-entities-4.0.2.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "186d804185a82e02fcefb81020a7913c63b5c45f7e786d6e8c86f9b284b980fbcb435cb6a3c14bf74c3641635d7fd237eb5329a7bef6e9cfa58f7534a8ad6e1b"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/parse-entities"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "parse-json",
       "version": "5.2.0",
       "bom-ref": "nachet-frontend@2.0.0|parse-json@5.2.0",
@@ -29073,6 +31130,44 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/pump"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "punycode.js",
+      "version": "2.3.1",
+      "bom-ref": "nachet-frontend@2.0.0|punycode.js@2.3.1",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/punycode.js@2.3.1",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/punycode.js/-/punycode.js-2.3.1.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "bb11481d4d189476210d0b55e11f49e9ae7648bc76f010a34fee227a1ec819b83054958efa49b8df5738c9195111402c026b7fb8c8d05324073443dfd0cdfd08"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/punycode.js"
         }
       ]
     },
@@ -34873,6 +36968,44 @@
     },
     {
       "type": "library",
+      "name": "uc.micro",
+      "version": "2.1.0",
+      "bom-ref": "nachet-frontend@2.0.0|uc.micro@2.1.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/uc.micro@2.1.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/uc.micro/-/uc.micro-2.1.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "0110c99a986676f524e86970ef2f434366c590a047c101cb8b696c687e8f3e6cff29af6c14e06c065ba8ce10e5b569a7bfdbbf705e91b7cef39d14cf57eca9fc"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/uc.micro"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "unbox-primitive",
       "version": "1.1.0",
       "bom-ref": "nachet-frontend@2.0.0|unbox-primitive@1.1.0",
@@ -35096,6 +37229,44 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/unicode-property-aliases-ecmascript"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "unicorn-magic",
+      "version": "0.3.0",
+      "bom-ref": "nachet-frontend@2.0.0|unicorn-magic@0.3.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT",
+            "acknowledgement": "declared"
+          }
+        }
+      ],
+      "purl": "pkg:npm/unicorn-magic@0.3.0",
+      "externalReferences": [
+        {
+          "url": "https://registry.npmjs.org/unicorn-magic/-/unicorn-magic-0.3.0.tgz",
+          "type": "distribution",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "f900415c10af89f739e9fb1bbb1650e9289cdf0aaa7375966aac6ce7c82f26b70eb8df371c64c2c33de84b9a61cd4f4bb6144d13d56b2421422d480779e1677c"
+            }
+          ],
+          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
+        }
+      ],
+      "properties": [
+        {
+          "name": "cdx:npm:package:development",
+          "value": "true"
+        },
+        {
+          "name": "cdx:npm:package:path",
+          "value": "node_modules/unicorn-magic"
         }
       ]
     },
@@ -37341,6 +39512,7 @@
         "nachet-frontend@2.0.0|express@5.1.0",
         "nachet-frontend@2.0.0|file-saver@2.0.5",
         "nachet-frontend@2.0.0|globals@16.5.0",
+        "nachet-frontend@2.0.0|i18next-browser-languagedetector@8.2.0",
         "nachet-frontend@2.0.0|i18next@25.6.0",
         "nachet-frontend@2.0.0|identity-obj-proxy@3.0.0",
         "nachet-frontend@2.0.0|jest-environment-jsdom@30.2.0",
@@ -37348,6 +39520,7 @@
         "nachet-frontend@2.0.0|js-cookie@3.0.5",
         "nachet-frontend@2.0.0|jszip@3.10.1",
         "nachet-frontend@2.0.0|jwt-decode@4.0.0",
+        "nachet-frontend@2.0.0|markdownlint-cli2@0.18.1",
         "nachet-frontend@2.0.0|node-fetch@3.3.2",
         "nachet-frontend@2.0.0|pako@2.1.0",
         "nachet-frontend@2.0.0|playwright@1.56.1",
@@ -38399,82 +40572,82 @@
       "ref": "nachet-frontend@2.0.0|@emotion/weak-memoize@0.4.0"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/aix-ppc64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/aix-ppc64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/android-arm@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/android-arm@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/android-arm64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/android-arm64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/android-x64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/android-x64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/darwin-arm64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/darwin-arm64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/darwin-x64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/darwin-x64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/freebsd-arm64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/freebsd-arm64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/freebsd-x64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/freebsd-x64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/linux-arm@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/linux-arm@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/linux-arm64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/linux-arm64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/linux-ia32@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/linux-ia32@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/linux-loong64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/linux-loong64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/linux-mips64el@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/linux-mips64el@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/linux-ppc64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/linux-ppc64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/linux-riscv64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/linux-riscv64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/linux-s390x@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/linux-s390x@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/linux-x64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/linux-x64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/netbsd-arm64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/netbsd-arm64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/netbsd-x64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/netbsd-x64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/openbsd-arm64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/openbsd-arm64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/openbsd-x64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/openbsd-x64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/openharmony-arm64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/openharmony-arm64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/sunos-x64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/sunos-x64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/win32-arm64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/win32-arm64@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/win32-ia32@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/win32-ia32@0.25.12"
     },
     {
-      "ref": "nachet-frontend@2.0.0|@esbuild/win32-x64@0.25.11"
+      "ref": "nachet-frontend@2.0.0|@esbuild/win32-x64@0.25.12"
     },
     {
       "ref": "nachet-frontend@2.0.0|@eslint-community/eslint-utils@4.9.0",
@@ -38925,6 +41098,9 @@
       "ref": "nachet-frontend@2.0.0|@sinclair/typebox@0.34.41"
     },
     {
+      "ref": "nachet-frontend@2.0.0|@sindresorhus/merge-streams@2.3.0"
+    },
+    {
       "ref": "nachet-frontend@2.0.0|@sinonjs/commons@3.0.1",
       "dependsOn": [
         "nachet-frontend@2.0.0|type-detect@4.0.8"
@@ -39050,6 +41226,12 @@
       ]
     },
     {
+      "ref": "nachet-frontend@2.0.0|@types/debug@4.1.12",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|@types/ms@2.1.0"
+      ]
+    },
+    {
       "ref": "nachet-frontend@2.0.0|@types/deep-eql@4.0.2"
     },
     {
@@ -39089,6 +41271,12 @@
     },
     {
       "ref": "nachet-frontend@2.0.0|@types/json5@0.0.29"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|@types/katex@0.16.7"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|@types/ms@2.1.0"
     },
     {
       "ref": "nachet-frontend@2.0.0|@types/node@22.18.13",
@@ -39140,6 +41328,9 @@
     },
     {
       "ref": "nachet-frontend@2.0.0|@types/trusted-types@2.0.7"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|@types/unist@2.0.11"
     },
     {
       "ref": "nachet-frontend@2.0.0|@types/utif@3.0.6",
@@ -39683,7 +41874,7 @@
       "ref": "nachet-frontend@2.0.0|browserslist@4.27.0",
       "dependsOn": [
         "nachet-frontend@2.0.0|baseline-browser-mapping@2.8.23",
-        "nachet-frontend@2.0.0|caniuse-lite@1.0.30001752",
+        "nachet-frontend@2.0.0|caniuse-lite@1.0.30001753",
         "nachet-frontend@2.0.0|electron-to-chromium@1.5.244",
         "nachet-frontend@2.0.0|node-releases@2.0.27",
         "nachet-frontend@2.0.0|update-browserslist-db@1.1.4"
@@ -39749,7 +41940,7 @@
       "ref": "nachet-frontend@2.0.0|camelcase@7.0.1"
     },
     {
-      "ref": "nachet-frontend@2.0.0|caniuse-lite@1.0.30001752"
+      "ref": "nachet-frontend@2.0.0|caniuse-lite@1.0.30001753"
     },
     {
       "ref": "nachet-frontend@2.0.0|chai@6.2.0"
@@ -39766,6 +41957,15 @@
         "nachet-frontend@2.0.0|ansi-styles@4.3.0",
         "nachet-frontend@2.0.0|supports-color@7.2.0"
       ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|character-entities-legacy@3.0.0"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|character-entities@2.0.2"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|character-reference-invalid@2.0.1"
     },
     {
       "ref": "nachet-frontend@2.0.0|chownr@3.0.0"
@@ -39999,6 +42199,12 @@
       "ref": "nachet-frontend@2.0.0|decimal.js@10.6.0"
     },
     {
+      "ref": "nachet-frontend@2.0.0|decode-named-character-reference@1.2.0",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|character-entities@2.0.2"
+      ]
+    },
+    {
       "ref": "nachet-frontend@2.0.0|decompress-response@6.0.0",
       "dependsOn": [
         "nachet-frontend@2.0.0|mimic-response@3.1.0"
@@ -40040,6 +42246,12 @@
     },
     {
       "ref": "nachet-frontend@2.0.0|detect-libc@2.1.2"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|devlop@1.1.0",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|dequal@2.0.3"
+      ]
     },
     {
       "ref": "nachet-frontend@2.0.0|discontinuous-range@1.0.0"
@@ -40260,34 +42472,34 @@
       ]
     },
     {
-      "ref": "nachet-frontend@2.0.0|esbuild@0.25.11",
+      "ref": "nachet-frontend@2.0.0|esbuild@0.25.12",
       "dependsOn": [
-        "nachet-frontend@2.0.0|@esbuild/aix-ppc64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/android-arm@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/android-arm64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/android-x64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/darwin-arm64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/darwin-x64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/freebsd-arm64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/freebsd-x64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/linux-arm@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/linux-arm64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/linux-ia32@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/linux-loong64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/linux-mips64el@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/linux-ppc64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/linux-riscv64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/linux-s390x@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/linux-x64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/netbsd-arm64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/netbsd-x64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/openbsd-arm64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/openbsd-x64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/openharmony-arm64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/sunos-x64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/win32-arm64@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/win32-ia32@0.25.11",
-        "nachet-frontend@2.0.0|@esbuild/win32-x64@0.25.11"
+        "nachet-frontend@2.0.0|@esbuild/aix-ppc64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/android-arm@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/android-arm64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/android-x64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/darwin-arm64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/darwin-x64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/freebsd-arm64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/freebsd-x64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/linux-arm@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/linux-arm64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/linux-ia32@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/linux-loong64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/linux-mips64el@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/linux-ppc64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/linux-riscv64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/linux-s390x@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/linux-x64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/netbsd-arm64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/netbsd-x64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/openbsd-arm64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/openbsd-x64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/openharmony-arm64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/sunos-x64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/win32-arm64@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/win32-ia32@0.25.12",
+        "nachet-frontend@2.0.0|@esbuild/win32-x64@0.25.12"
       ]
     },
     {
@@ -40869,6 +43081,26 @@
       ]
     },
     {
+      "ref": "nachet-frontend@2.0.0|globby@14.1.0",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|@sindresorhus/merge-streams@2.3.0",
+        "nachet-frontend@2.0.0|fast-glob@3.3.3",
+        "nachet-frontend@2.0.0|globby@14.1.0|ignore@7.0.5",
+        "nachet-frontend@2.0.0|globby@14.1.0|path-type@6.0.0",
+        "nachet-frontend@2.0.0|globby@14.1.0|slash@5.1.0",
+        "nachet-frontend@2.0.0|unicorn-magic@0.3.0"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|globby@14.1.0|ignore@7.0.5"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|globby@14.1.0|path-type@6.0.0"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|globby@14.1.0|slash@5.1.0"
+    },
+    {
       "ref": "nachet-frontend@2.0.0|gopd@1.2.0"
     },
     {
@@ -40998,6 +43230,12 @@
       "ref": "nachet-frontend@2.0.0|human-signals@1.1.1"
     },
     {
+      "ref": "nachet-frontend@2.0.0|i18next-browser-languagedetector@8.2.0",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|@babel/runtime@7.28.4"
+      ]
+    },
+    {
       "ref": "nachet-frontend@2.0.0|i18next@25.6.0",
       "dependsOn": [
         "nachet-frontend@2.0.0|@babel/runtime@7.28.4",
@@ -41059,6 +43297,16 @@
       "ref": "nachet-frontend@2.0.0|ipaddr.js@1.9.1"
     },
     {
+      "ref": "nachet-frontend@2.0.0|is-alphabetical@2.0.1"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|is-alphanumerical@2.0.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|is-alphabetical@2.0.1",
+        "nachet-frontend@2.0.0|is-decimal@2.0.1"
+      ]
+    },
+    {
       "ref": "nachet-frontend@2.0.0|is-array-buffer@3.0.5",
       "dependsOn": [
         "nachet-frontend@2.0.0|call-bind@1.0.8",
@@ -41115,6 +43363,9 @@
         "nachet-frontend@2.0.0|call-bound@1.0.4",
         "nachet-frontend@2.0.0|has-tostringtag@1.0.2"
       ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|is-decimal@2.0.1"
     },
     {
       "ref": "nachet-frontend@2.0.0|is-docker@2.2.1"
@@ -41180,6 +43431,9 @@
       "dependsOn": [
         "nachet-frontend@2.0.0|is-extglob@2.1.1"
       ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|is-hexadecimal@2.0.1"
     },
     {
       "ref": "nachet-frontend@2.0.0|is-map@2.0.3"
@@ -41442,6 +43696,9 @@
       "ref": "nachet-frontend@2.0.0|json5@2.2.3"
     },
     {
+      "ref": "nachet-frontend@2.0.0|jsonc-parser@3.3.1"
+    },
+    {
       "ref": "nachet-frontend@2.0.0|jsx-ast-utils@3.3.5",
       "dependsOn": [
         "nachet-frontend@2.0.0|array-includes@3.1.9",
@@ -41464,6 +43721,15 @@
     },
     {
       "ref": "nachet-frontend@2.0.0|jwt-decode@4.0.0"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|katex@0.16.25",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|katex@0.16.25|commander@8.3.0"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|katex@0.16.25|commander@8.3.0"
     },
     {
       "ref": "nachet-frontend@2.0.0|keyv@4.5.4",
@@ -41495,6 +43761,12 @@
     },
     {
       "ref": "nachet-frontend@2.0.0|lines-and-columns@1.2.4"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|linkify-it@5.0.0",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|uc.micro@2.1.0"
+      ]
     },
     {
       "ref": "nachet-frontend@2.0.0|locate-path@6.0.0",
@@ -41566,7 +43838,52 @@
       ]
     },
     {
+      "ref": "nachet-frontend@2.0.0|markdown-it@14.1.0",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|argparse@2.0.1",
+        "nachet-frontend@2.0.0|entities@4.5.0",
+        "nachet-frontend@2.0.0|linkify-it@5.0.0",
+        "nachet-frontend@2.0.0|mdurl@2.0.0",
+        "nachet-frontend@2.0.0|punycode.js@2.3.1",
+        "nachet-frontend@2.0.0|uc.micro@2.1.0"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|markdownlint-cli2-formatter-default@0.0.5",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|markdownlint-cli2@0.18.1"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|markdownlint-cli2@0.18.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|globby@14.1.0",
+        "nachet-frontend@2.0.0|js-yaml@4.1.0",
+        "nachet-frontend@2.0.0|jsonc-parser@3.3.1",
+        "nachet-frontend@2.0.0|markdown-it@14.1.0",
+        "nachet-frontend@2.0.0|markdownlint-cli2-formatter-default@0.0.5",
+        "nachet-frontend@2.0.0|markdownlint@0.38.0",
+        "nachet-frontend@2.0.0|micromatch@4.0.8"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|markdownlint@0.38.0",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|micromark-core-commonmark@2.0.3",
+        "nachet-frontend@2.0.0|micromark-extension-directive@4.0.0",
+        "nachet-frontend@2.0.0|micromark-extension-gfm-autolink-literal@2.1.0",
+        "nachet-frontend@2.0.0|micromark-extension-gfm-footnote@2.1.0",
+        "nachet-frontend@2.0.0|micromark-extension-gfm-table@2.1.1",
+        "nachet-frontend@2.0.0|micromark-extension-math@3.1.0",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2",
+        "nachet-frontend@2.0.0|micromark@4.0.2"
+      ]
+    },
+    {
       "ref": "nachet-frontend@2.0.0|math-intrinsics@1.1.0"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|mdurl@2.0.0"
     },
     {
       "ref": "nachet-frontend@2.0.0|media-typer@1.1.0"
@@ -41579,6 +43896,222 @@
     },
     {
       "ref": "nachet-frontend@2.0.0|merge2@1.4.1"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-core-commonmark@2.0.3",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|decode-named-character-reference@1.2.0",
+        "nachet-frontend@2.0.0|devlop@1.1.0",
+        "nachet-frontend@2.0.0|micromark-factory-destination@2.0.1",
+        "nachet-frontend@2.0.0|micromark-factory-label@2.0.1",
+        "nachet-frontend@2.0.0|micromark-factory-space@2.0.1",
+        "nachet-frontend@2.0.0|micromark-factory-title@2.0.1",
+        "nachet-frontend@2.0.0|micromark-factory-whitespace@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+        "nachet-frontend@2.0.0|micromark-util-chunked@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-classify-character@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-html-tag-name@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-normalize-identifier@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-resolve-all@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-subtokenize@2.1.0",
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-extension-directive@4.0.0",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|devlop@1.1.0",
+        "nachet-frontend@2.0.0|micromark-factory-space@2.0.1",
+        "nachet-frontend@2.0.0|micromark-factory-whitespace@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2",
+        "nachet-frontend@2.0.0|parse-entities@4.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-extension-gfm-autolink-literal@2.1.0",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+        "nachet-frontend@2.0.0|micromark-util-sanitize-uri@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-extension-gfm-footnote@2.1.0",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|devlop@1.1.0",
+        "nachet-frontend@2.0.0|micromark-core-commonmark@2.0.3",
+        "nachet-frontend@2.0.0|micromark-factory-space@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+        "nachet-frontend@2.0.0|micromark-util-normalize-identifier@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-sanitize-uri@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-extension-gfm-table@2.1.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|devlop@1.1.0",
+        "nachet-frontend@2.0.0|micromark-factory-space@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-extension-math@3.1.0",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|@types/katex@0.16.7",
+        "nachet-frontend@2.0.0|devlop@1.1.0",
+        "nachet-frontend@2.0.0|katex@0.16.25",
+        "nachet-frontend@2.0.0|micromark-factory-space@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-factory-destination@2.0.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-factory-label@2.0.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|devlop@1.1.0",
+        "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-factory-space@2.0.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-factory-title@2.0.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|micromark-factory-space@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-factory-whitespace@2.0.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|micromark-factory-space@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-util-chunked@2.0.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-util-classify-character@2.0.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-util-combine-extensions@2.0.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|micromark-util-chunked@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-util-decode-numeric-character-reference@2.0.2",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-util-encode@2.0.1"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-util-html-tag-name@2.0.1"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-util-normalize-identifier@2.0.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-util-resolve-all@2.0.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-util-sanitize-uri@2.0.1",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+        "nachet-frontend@2.0.0|micromark-util-encode@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-util-subtokenize@2.1.0",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|devlop@1.1.0",
+        "nachet-frontend@2.0.0|micromark-util-chunked@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|micromark@4.0.2",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|@types/debug@4.1.12",
+        "nachet-frontend@2.0.0|debug@4.4.3",
+        "nachet-frontend@2.0.0|decode-named-character-reference@1.2.0",
+        "nachet-frontend@2.0.0|devlop@1.1.0",
+        "nachet-frontend@2.0.0|micromark-core-commonmark@2.0.3",
+        "nachet-frontend@2.0.0|micromark-factory-space@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-character@2.1.1",
+        "nachet-frontend@2.0.0|micromark-util-chunked@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-combine-extensions@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-decode-numeric-character-reference@2.0.2",
+        "nachet-frontend@2.0.0|micromark-util-encode@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-normalize-identifier@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-resolve-all@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-sanitize-uri@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-subtokenize@2.1.0",
+        "nachet-frontend@2.0.0|micromark-util-symbol@2.0.1",
+        "nachet-frontend@2.0.0|micromark-util-types@2.0.2"
+      ]
     },
     {
       "ref": "nachet-frontend@2.0.0|micromatch@4.0.8",
@@ -41927,6 +44460,18 @@
       ]
     },
     {
+      "ref": "nachet-frontend@2.0.0|parse-entities@4.0.2",
+      "dependsOn": [
+        "nachet-frontend@2.0.0|@types/unist@2.0.11",
+        "nachet-frontend@2.0.0|character-entities-legacy@3.0.0",
+        "nachet-frontend@2.0.0|character-reference-invalid@2.0.1",
+        "nachet-frontend@2.0.0|decode-named-character-reference@1.2.0",
+        "nachet-frontend@2.0.0|is-alphanumerical@2.0.1",
+        "nachet-frontend@2.0.0|is-decimal@2.0.1",
+        "nachet-frontend@2.0.0|is-hexadecimal@2.0.1"
+      ]
+    },
+    {
       "ref": "nachet-frontend@2.0.0|parse-json@5.2.0",
       "dependsOn": [
         "nachet-frontend@2.0.0|@babel/code-frame@7.27.1",
@@ -42094,6 +44639,9 @@
         "nachet-frontend@2.0.0|end-of-stream@1.4.5",
         "nachet-frontend@2.0.0|once@1.4.0"
       ]
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|punycode.js@2.3.1"
     },
     {
       "ref": "nachet-frontend@2.0.0|punycode@2.3.1"
@@ -43068,6 +45616,9 @@
       "ref": "nachet-frontend@2.0.0|typescript@5.9.3"
     },
     {
+      "ref": "nachet-frontend@2.0.0|uc.micro@2.1.0"
+    },
+    {
       "ref": "nachet-frontend@2.0.0|unbox-primitive@1.1.0",
       "dependsOn": [
         "nachet-frontend@2.0.0|call-bound@1.0.4",
@@ -43094,6 +45645,9 @@
     },
     {
       "ref": "nachet-frontend@2.0.0|unicode-property-aliases-ecmascript@2.2.0"
+    },
+    {
+      "ref": "nachet-frontend@2.0.0|unicorn-magic@0.3.0"
     },
     {
       "ref": "nachet-frontend@2.0.0|unique-filename@4.0.0",
@@ -43182,7 +45736,7 @@
       "ref": "nachet-frontend@2.0.0|vite@7.1.12",
       "dependsOn": [
         "nachet-frontend@2.0.0|@types/node@22.18.13",
-        "nachet-frontend@2.0.0|esbuild@0.25.11",
+        "nachet-frontend@2.0.0|esbuild@0.25.12",
         "nachet-frontend@2.0.0|fdir@6.5.0",
         "nachet-frontend@2.0.0|picomatch@4.0.3",
         "nachet-frontend@2.0.0|postcss@8.5.6",
@@ -43197,6 +45751,7 @@
     {
       "ref": "nachet-frontend@2.0.0|vitest@4.0.6",
       "dependsOn": [
+        "nachet-frontend@2.0.0|@types/debug@4.1.12",
         "nachet-frontend@2.0.0|@types/node@22.18.13",
         "nachet-frontend@2.0.0|@vitest/expect@4.0.6",
         "nachet-frontend@2.0.0|@vitest/mocker@4.0.6",
