@@ -10,6 +10,7 @@ import {
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { colours } from "../../../styles/colours";
+import { useTranslation } from "react-i18next";
 
 interface AuthPopupProps {
   open: boolean;
@@ -22,6 +23,7 @@ const AuthPopup: React.FC<AuthPopupProps> = ({
   onClose,
   apiScopeClaim,
 }) => {
+  const { t } = useTranslation("popups");
   const { instance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
 
@@ -87,7 +89,7 @@ const AuthPopup: React.FC<AuthPopupProps> = ({
                   color: colours.CFIA_Font_Black,
                 }}
               >
-                Signing in...
+                {t("auth.signingIn")}
               </Typography>
             </>
           ) : (
@@ -101,7 +103,7 @@ const AuthPopup: React.FC<AuthPopupProps> = ({
                   textAlign: "center",
                 }}
               >
-                Authentication Required
+                {t("auth.title")}
               </Typography>
               <Typography
                 variant="body1"
@@ -111,7 +113,7 @@ const AuthPopup: React.FC<AuthPopupProps> = ({
                   textAlign: "center",
                 }}
               >
-                Please sign in to access the application
+                {t("auth.message")}
               </Typography>
               <Button
                 variant="outlined"
@@ -135,7 +137,7 @@ const AuthPopup: React.FC<AuthPopupProps> = ({
                   },
                 }}
               >
-                SIGN IN
+                {t("auth.signInButton")}
               </Button>
             </>
           )}
