@@ -71,7 +71,7 @@ t("greeting", { name: "John", count: 5 })
 
 ## Translation File Structure
 
-```
+```text
 frontend/src/locales/
 ├── en/                          # English translations
 │   ├── common.ts               # Shared terms (actions, status, form)
@@ -96,11 +96,13 @@ const { t } = useTranslation("common");
 ```
 
 **Keys:**
+
 - `actions.*` - Button labels (save, cancel, close, delete, edit, add, remove, confirm, dismiss, etc.)
 - `status.*` - Status messages (loading, processing, complete, success, error, warning, info)
 - `form.*` - Form labels (required, optional)
 
 **Example:**
+
 ```typescript
 <Button>{t("common:actions.save")}</Button>
 <span>{t("common:status.loading")}</span>
@@ -115,6 +117,7 @@ const { t } = useTranslation("header");
 ```
 
 **Keys:**
+
 - `navbar.*` - Sign in/out buttons, greetings
 - `appBar.*` - Application title, language toggle
 
@@ -127,6 +130,7 @@ const { t } = useTranslation("footer");
 ```
 
 **Keys:**
+
 - `developedBy` - Developer credit
 - `connected` / `disconnected` - Connection status
 - `version` - Version label
@@ -142,6 +146,7 @@ const { t } = useTranslation("popups");
 ```
 
 **Keys:**
+
 - `auth.*` - Authentication popup
 - `creativeCommons.*` - Creative Commons agreement
 - `deviceInfo.*` - Device information popup
@@ -164,6 +169,7 @@ const { t } = useTranslation("main");
 ```
 
 **Keys:**
+
 - `microscopeFeed.*` - Microscope feed controls, buttons, errors
 - `classificationResults.*` - Results display
 - `imageCache.*` - Capture labels, workflow tooltips
@@ -184,6 +190,7 @@ if (!validation.success) {
 ```
 
 **Keys:**
+
 - `string.*` - String validation errors (min, max, required, etc.)
 - `number.*` - Number validation errors
 - `array.*` - Array validation errors
@@ -198,6 +205,7 @@ const { t } = useTranslation("errors");
 ```
 
 **Keys:**
+
 - `auth.*` - Authentication errors (signInRequired, inProgress, etc.)
 - `directory.*` - Directory selection errors
 - `inference.*` - Inference processing errors
@@ -265,16 +273,19 @@ throw new Error(t("errors.invalidData"));
 
 ### Translated Components (27/27 - 100%)
 
-**Phase 1: Infrastructure**
+#### Phase 1: Infrastructure
+
 - ✅ i18n configuration
 - ✅ Translation file structure
 
-**Phase 2: Header & Footer (3 components)**
+#### Phase 2: Header & Footer (3 components)
+
 - ✅ Navbar
 - ✅ AppBar
 - ✅ Footer
 
-**Phase 3: Popups & Dialogs (10 components)**
+#### Phase 3: Popups & Dialogs (10 components)
+
 - ✅ AuthPopup
 - ✅ CreativeCommonsPopup
 - ✅ DeviceInfoPopup
@@ -286,7 +297,8 @@ throw new Error(t("errors.invalidData"));
 - ✅ BatchUploadPopupView
 - ✅ FeedbackForm
 
-**Phase 4: Main Application (7 components)**
+#### Phase 4: Main Application (7 components)
+
 - ✅ MicroscopeFeedControlsView
 - ✅ MicroscopeFeed
 - ✅ ClassificationResults
@@ -294,12 +306,14 @@ throw new Error(t("errors.invalidData"));
 - ✅ StorageDirectoryView
 - ✅ (Batch upload UI covered in Phase 3)
 
-**Phase 5: Validation (3 components)**
+#### Phase 5: Validation (3 components)
+
 - ✅ BatchUploadPopupContainer (validation)
 - ✅ CreateDirectoryPopup (validation)
 - ✅ SaveCapturePopup (validation)
 
-**Phase 6: Finalization (7 components)**
+#### Phase 6: Finalization (7 components)
+
 - ✅ body.tsx (11 alert messages)
 - ✅ ErrorBoundary (6 UI strings)
 - ✅ RegistrationStatusPopup (6 strings)
@@ -474,6 +488,7 @@ npm run build
 ```
 
 **Expected output:**
+
 - ✅ Prettier formatting passed
 - ✅ ESLint passed (max-warnings 0)
 - ✅ TypeScript compilation passed
@@ -505,6 +520,7 @@ npm run build
 **Symptom:** Console warning: `i18next: key 'foo.bar' not found`
 
 **Solution:**
+
 1. Check if key exists in translation files
 2. Verify namespace is registered in `i18n.ts`
 3. Check spelling and case sensitivity
@@ -514,6 +530,7 @@ npm run build
 **Symptom:** Component still shows old text after language switch
 
 **Solution:**
+
 1. Verify component uses `useTranslation()` hook
 2. Check that component re-renders on language change
 3. Clear browser cache and localStorage
@@ -523,6 +540,7 @@ npm run build
 **Symptom:** TypeScript error: `Property 'foo' does not exist`
 
 **Solution:**
+
 1. Ensure translation files use `as const`
 2. Rebuild TypeScript (`npm run build`)
 3. Restart TypeScript server in IDE
@@ -532,6 +550,7 @@ npm run build
 **Symptom:** Class component doesn't have `t` function
 
 **Solution:**
+
 1. Use `withTranslation()` HOC
 2. Extend `WithTranslation` interface
 3. Set `displayName` to avoid ESLint warnings
@@ -558,21 +577,26 @@ export default MyComponentWithTranslation;
 ## File Locations Reference
 
 **Configuration:**
+
 - `frontend/src/i18n.ts` - i18n configuration
 - `frontend/package.json` - Dependencies (i18next, react-i18next)
 
 **Translation Files:**
+
 - `frontend/src/locales/en/*.ts` - English translations
 - `frontend/src/locales/fr/*.ts` - French translations
 
 **Helpers:**
+
 - `frontend/src/common/zodErrorMap.ts` - Zod error translation helpers
 
 **Documentation:**
+
 - `frontend/docs/I18N_IMPLEMENTATION_PLAN.md` - Implementation plan (6 phases)
 - `frontend/docs/I18N_REFERENCE.md` - This reference guide
 
 **Updated Components:**
+
 - See "Component Coverage" section above for full list of 27 translated components
 
 ## Dependencies
@@ -594,6 +618,7 @@ npm install i18next react-i18next i18next-browser-languagedetector
 ## Best Practices
 
 1. **Always use translation keys, never hardcode strings**
+
    ```typescript
    // ✅ Good
    <button>{t("actions.save")}</button>
@@ -603,6 +628,7 @@ npm install i18next react-i18next i18next-browser-languagedetector
    ```
 
 2. **Use descriptive translation keys**
+
    ```typescript
    // ✅ Good
    t("auth.signInRequired")
@@ -612,6 +638,7 @@ npm install i18next react-i18next i18next-browser-languagedetector
    ```
 
 3. **Group related translations**
+
    ```typescript
    // ✅ Good
    auth: {
@@ -622,6 +649,7 @@ npm install i18next react-i18next i18next-browser-languagedetector
    ```
 
 4. **Use interpolation for dynamic content**
+
    ```typescript
    // ✅ Good
    t("greeting", { name: userName })
@@ -631,6 +659,7 @@ npm install i18next react-i18next i18next-browser-languagedetector
    ```
 
 5. **Keep console logs in English**
+
    ```typescript
    // ✅ Good
    console.error("Failed to load user data", error);
@@ -652,6 +681,7 @@ npm install i18next react-i18next i18next-browser-languagedetector
 ## Support
 
 For questions or issues:
+
 1. Check this reference guide
 2. Review implementation plan: `frontend/docs/I18N_IMPLEMENTATION_PLAN.md`
 3. Search codebase for examples: `grep -r "useTranslation" frontend/src/`
