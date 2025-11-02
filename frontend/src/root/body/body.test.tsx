@@ -51,6 +51,14 @@ vi.mock("@hooks", () => ({
     isLoading: false,
     error: null,
   }),
+  useWebcamDevices: () => ({
+    devices: [],
+    activeDeviceId: "",
+  }),
+  useModelMetadata: () => ({
+    metadata: [],
+    selectedModel: "",
+  }),
 }));
 
 // Mock react-webcam
