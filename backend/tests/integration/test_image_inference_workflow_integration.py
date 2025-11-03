@@ -521,7 +521,7 @@ class TestImageInferenceWorkflowComplete:
             image_id=image_id,
             org_prefix=org_prefix,
             pipeline_id=test_pipeline_id,
-            imageDims=[test_picture.width, test_picture.height],
+            image_dims=[test_picture.width, test_picture.height],
             user_id=test_user,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -547,15 +547,17 @@ class TestImageInferenceWorkflowComplete:
         # Verify response structure (result is an ApiInferenceResponse Pydantic model)
         assert hasattr(result, "filename")
         assert hasattr(result, "boxes")
-        assert hasattr(result, "labelOccurrence")
-        assert hasattr(result, "totalBoxes")
+        assert hasattr(
+            result, "label_occurrence"
+        )  # Use Python attribute name, not alias
+        assert hasattr(result, "total_boxes")  # Use Python attribute name, not alias
         assert hasattr(result, "models")
 
         # Verify actual values
         assert result.filename is not None
         assert isinstance(result.boxes, list)
-        assert isinstance(result.labelOccurrence, dict)
-        assert isinstance(result.totalBoxes, int)
+        assert isinstance(result.label_occurrence, dict)  # Use Python attribute name
+        assert isinstance(result.total_boxes, int)  # Use Python attribute name
         assert isinstance(result.models, list)
 
         # Verify DBOS events
@@ -606,7 +608,7 @@ class TestImageInferenceWorkflowComplete:
             image_id=image_id,
             org_prefix=org_prefix,
             pipeline_id=fake_pipeline_id,
-            imageDims=[test_picture.width, test_picture.height],
+            image_dims=[test_picture.width, test_picture.height],
             user_id=test_user,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -655,7 +657,7 @@ class TestImageInferenceWorkflowComplete:
             image_id=image_id,
             org_prefix=org_prefix,
             pipeline_id=test_pipeline_id,
-            imageDims=[640, 480],
+            image_dims=[640, 480],
             user_id=test_user,
             org_user_role_id=test_org_user_role,
             org_admin_role_id=test_org_admin_role,
@@ -766,11 +768,11 @@ class TestInferenceResultsDatabasePersistence:
 
         api_response = ApiInferenceResponse(
             filename="test.png",
-            imageId=str(test_picture.id),
+            image_id=str(test_picture.id),
             inference_id=str(parent_workflow_id),
             boxes=test_boxes,
-            labelOccurrence={"CHENO_ALB": 1},
-            totalBoxes=1,
+            label_occurrence={"CHENO_ALB": 1},
+            total_boxes=1,
             models=[ModelInfo(name="test-model", version="1")],
         )
 
@@ -885,11 +887,11 @@ class TestInferenceResultsDatabasePersistence:
 
         api_response = ApiInferenceResponse(
             filename="test.png",
-            imageId=str(test_picture.id),
+            image_id=str(test_picture.id),
             inference_id=str(parent_workflow_id),
             boxes=test_boxes,
-            labelOccurrence={"UNMAPPED_SPECIES_XYZ123": 1},
-            totalBoxes=1,
+            label_occurrence={"UNMAPPED_SPECIES_XYZ123": 1},
+            total_boxes=1,
             models=[ModelInfo(name="test-model", version="1")],
         )
 
@@ -1002,11 +1004,11 @@ class TestInferenceResultsDatabasePersistence:
 
         api_response = ApiInferenceResponse(
             filename="test.png",
-            imageId=str(test_picture.id),
+            image_id=str(test_picture.id),
             inference_id=str(parent_workflow_id),
             boxes=test_boxes,
-            labelOccurrence={"CHENO_ALB": 1, "CHENO_FIC": 1, "CHENO_PAL": 1},
-            totalBoxes=3,
+            label_occurrence={"CHENO_ALB": 1, "CHENO_FIC": 1, "CHENO_PAL": 1},
+            total_boxes=3,
             models=[ModelInfo(name="test-model", version="1")],
         )
 

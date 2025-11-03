@@ -28,7 +28,7 @@ from sqlalchemy import select
 from app.service.inference import InferenceService
 from app.db.model import Picture, ImageProcessingState, Folder
 from app.service.constants import ProcessingStatus
-from app.model.inference import InferenceRequest
+from app.model.inference import InferenceRequest, TrayCode
 from app.exceptions import InvalidImageError, FolderNotFoundError, ImageProcessingError
 from app.blob.azure.storage import AzureBlobStorage
 from app.api.config import get_settings
@@ -105,17 +105,28 @@ async def test_pipeline_id(
 
 @pytest.fixture()
 def test_inference_request(
-    test_folder: UUID, test_image_base64: str, test_pipeline_id: UUID
+    test_folder: UUID,
+    test_image_base64: str,
+    test_pipeline_id: UUID,
+    test_device_model: UUID,
+    test_device_lens: UUID,
 ):
     """Create valid InferenceRequest for testing."""
     return InferenceRequest(
         pipeline_id=str(test_pipeline_id),
         folder_name="Test Submission Folder",
         folder_id=str(test_folder),
-        imageDims=[638, 559],  # Dimensions of test seed image
+        image_dims=[638, 559],  # Dimensions of test seed image
         image=test_image_base64,
         area_ratio=0.5,
         color_format="hex",
+        # Required metadata fields (must match validation rules)
+        image_name="Test-Seed-Image",  # Alphanumeric + hyphens only
+        image_description="Integration test image for inference request",
+        device_model_id=test_device_model,
+        device_lens_id=test_device_lens,
+        tray_code=TrayCode.A,  # Must be A, B, C, D, or E
+        magnification=40.0,
     )
 
 
@@ -284,6 +295,8 @@ class TestSubmitInferenceRequestValidation:
         test_user: UUID,
         test_image_base64: str,
         test_pipeline_id: UUID,
+        test_device_model: UUID,
+        test_device_lens: UUID,
     ):
         """Test submission with non-existent folder raises error."""
         # Arrange
@@ -293,10 +306,16 @@ class TestSubmitInferenceRequestValidation:
             pipeline_id=str(test_pipeline_id),
             folder_name="Fake Folder",
             folder_id=fake_folder_id,
-            imageDims=[640, 480],
+            image_dims=[640, 480],
             image=test_image_base64,
             area_ratio=0.5,
             color_format="hex",
+            image_name="Test-Image",
+            image_description="Test description",
+            device_model_id=test_device_model,
+            device_lens_id=test_device_lens,
+            tray_code=TrayCode.B,
+            magnification=40.0,
         )
 
         # Act & Assert
@@ -316,6 +335,8 @@ class TestSubmitInferenceRequestValidation:
         test_user: UUID,
         test_folder: UUID,
         test_pipeline_id: UUID,
+        test_device_model: UUID,
+        test_device_lens: UUID,
     ):
         """Test submission with >10MB image raises InvalidImageError."""
         # Arrange - create a large base64 string (>10MB)
@@ -326,10 +347,16 @@ class TestSubmitInferenceRequestValidation:
             pipeline_id=str(test_pipeline_id),
             folder_name="Test Folder",
             folder_id=str(test_folder),
-            imageDims=[640, 480],
+            image_dims=[640, 480],
             image=f"data:image/png;base64,{large_base64}",
             area_ratio=0.5,
             color_format="hex",
+            image_name="Large-Image",
+            image_description="Test description",
+            device_model_id=test_device_model,
+            device_lens_id=test_device_lens,
+            tray_code=TrayCode.C,
+            magnification=40.0,
         )
 
         # Act & Assert
@@ -346,6 +373,8 @@ class TestSubmitInferenceRequestValidation:
         test_user: UUID,
         test_folder: UUID,
         test_pipeline_id: UUID,
+        test_device_model: UUID,
+        test_device_lens: UUID,
     ):
         """Test submission with <384x384 image raises InvalidImageError."""
         # Arrange - create a small PNG image (but large enough to pass base64 size check)
@@ -363,10 +392,16 @@ class TestSubmitInferenceRequestValidation:
             pipeline_id=str(test_pipeline_id),
             folder_name="Test Folder",
             folder_id=str(test_folder),
-            imageDims=[383, 383],
+            image_dims=[383, 383],
             image=f"data:image/png;base64,{small_base64}",
             area_ratio=0.5,
             color_format="hex",
+            image_name="Small-Image",
+            image_description="Test description",
+            device_model_id=test_device_model,
+            device_lens_id=test_device_lens,
+            tray_code=TrayCode.D,
+            magnification=40.0,
         )
 
         # Act & Assert
@@ -385,6 +420,8 @@ class TestSubmitInferenceRequestValidation:
         test_user: UUID,
         test_folder: UUID,
         test_pipeline_id: UUID,
+        test_device_model: UUID,
+        test_device_lens: UUID,
     ):
         """Test submission with JPEG image raises InvalidImageError."""
         # Arrange - create a JPEG image
@@ -401,10 +438,16 @@ class TestSubmitInferenceRequestValidation:
             pipeline_id=str(test_pipeline_id),
             folder_name="Test Folder",
             folder_id=str(test_folder),
-            imageDims=[640, 480],
+            image_dims=[640, 480],
             image=f"data:image/jpeg;base64,{jpeg_base64}",
             area_ratio=0.5,
             color_format="hex",
+            image_name="JPEG-Image",
+            image_description="Test description",
+            device_model_id=test_device_model,
+            device_lens_id=test_device_lens,
+            tray_code=TrayCode.E,
+            magnification=40.0,
         )
 
         # Act & Assert
@@ -424,6 +467,8 @@ class TestSubmitInferenceRequestValidation:
         test_user: UUID,
         test_folder: UUID,
         test_pipeline_id: UUID,
+        test_device_model: UUID,
+        test_device_lens: UUID,
     ):
         """Test submission with corrupted base64 raises InvalidImageError."""
         # Arrange - corrupted base64
@@ -433,10 +478,16 @@ class TestSubmitInferenceRequestValidation:
             pipeline_id=str(test_pipeline_id),
             folder_name="Test Folder",
             folder_id=str(test_folder),
-            imageDims=[640, 480],
+            image_dims=[640, 480],
             image=corrupted_base64,
             area_ratio=0.5,
             color_format="hex",
+            image_name="Corrupted-Image",
+            image_description="Test description",
+            device_model_id=test_device_model,
+            device_lens_id=test_device_lens,
+            tray_code=TrayCode.A,
+            magnification=40.0,
         )
 
         # Act & Assert
@@ -499,6 +550,8 @@ class TestSubmitInferenceRequestRbac:
         test_folder: UUID,
         test_image_base64: str,
         test_pipeline_id: UUID,
+        test_device_model: UUID,
+        test_device_lens: UUID,
     ):
         """
         Test submission to folder from different organization is denied.
@@ -510,10 +563,16 @@ class TestSubmitInferenceRequestRbac:
             pipeline_id=str(test_pipeline_id),
             folder_name="Test Folder",
             folder_id=str(test_folder),
-            imageDims=[638, 559],
+            image_dims=[638, 559],
             image=test_image_base64,
             area_ratio=0.5,
             color_format="hex",
+            image_name="Test-Image",
+            image_description="Test description",
+            device_model_id=test_device_model,
+            device_lens_id=test_device_lens,
+            tray_code=TrayCode.B,
+            magnification=40.0,
         )
 
         # Act & Assert - should raise authorization error

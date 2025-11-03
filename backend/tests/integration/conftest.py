@@ -590,3 +590,84 @@ async def dbos_runtime():
     # when we switch between test and main app configurations.
     DBOS(fastapi=app, config=dbos_config)
     DBOS.launch()
+
+
+# ============================================================================
+# Device Fixtures (for Image Metadata)
+# ============================================================================
+
+
+@pytest_asyncio.fixture()
+async def test_device_brand(
+    integration_db_session: AsyncSession,
+):
+    """Create a test device brand for image metadata tests."""
+    from app.db.model import DeviceBrand
+    from uuid import uuid4
+
+    brand = DeviceBrand(
+        id=uuid4(),
+        name="Test Microscope Brand",
+        description="Test brand for integration tests",
+        active=True,
+    )
+    integration_db_session.add(brand)
+    await integration_db_session.commit()
+    await integration_db_session.refresh(brand)
+    yield brand.id
+
+    # Cleanup
+    await integration_db_session.delete(brand)
+    await integration_db_session.commit()
+
+
+@pytest_asyncio.fixture()
+async def test_device_model(
+    integration_db_session: AsyncSession,
+    test_device_brand: UUID,
+):
+    """Create a test device model for image metadata tests."""
+    from app.db.model import DeviceModel
+    from uuid import uuid4
+
+    model = DeviceModel(
+        id=uuid4(),
+        device_brand_id=test_device_brand,
+        name="Test Microscope Model X1000",
+        description="Test model for integration tests",
+        active=True,
+    )
+    integration_db_session.add(model)
+    await integration_db_session.commit()
+    await integration_db_session.refresh(model)
+    yield model.id
+
+    # Cleanup
+    await integration_db_session.delete(model)
+    await integration_db_session.commit()
+
+
+@pytest_asyncio.fixture()
+async def test_device_lens(
+    integration_db_session: AsyncSession,
+    test_device_brand: UUID,
+):
+    """Create a test device lens for image metadata tests."""
+    from app.db.model import DeviceLens
+    from uuid import uuid4
+
+    lens = DeviceLens(
+        id=uuid4(),
+        device_brand_id=test_device_brand,
+        name="Test Lens 40x",
+        description="Test lens for integration tests",
+        active=True,
+    )
+    integration_db_session.add(lens)
+    await integration_db_session.commit()
+    await integration_db_session.refresh(lens)
+    yield lens.id
+
+    # Cleanup
+    await integration_db_session.delete(lens)
+    await integration_db_session.commit()
