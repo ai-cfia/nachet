@@ -6,12 +6,13 @@ import { create } from "zustand";
  * Centralized state management for modal/popup dialogs.
  * Eliminates prop drilling from body.tsx through component hierarchy.
  *
- * Currently manages 7 microscope-related modals:
+ * Currently manages 8 microscope-related modals:
  * - Save Capture
  * - Batch Upload
  * - Upload/Load Image
  * - Model Selection
- * - Device Info
+ * - Sample Metadata
+ * - Image Metadata
  * - Switch Device
  * - Notification Log
  */
@@ -22,9 +23,14 @@ interface ModalState {
   isBatchUploadOpen: boolean;
   isUploadOpen: boolean;
   isModelInfoOpen: boolean;
-  isDeviceInfoOpen: boolean;
+  isSampleMetadataOpen: boolean;
+  isImageMetadataOpen: boolean;
   isSwitchDeviceOpen: boolean;
   notificationLogOpen: boolean;
+
+  // Image Metadata modal state
+  imageMetadataImageIndex: number | null;
+  imageMetadataMode: "edit" | "delete";
 
   // Shared data for SaveCapturePopup
   imageFormat: string;
@@ -47,9 +53,16 @@ interface ModalState {
   openModelInfoPopup: () => void;
   closeModelInfoPopup: () => void;
 
-  // Actions to control Device Info modal
-  openDeviceInfoPopup: () => void;
-  closeDeviceInfoPopup: () => void;
+  // Actions to control Sample Metadata modal
+  openSampleMetadataPopup: () => void;
+  closeSampleMetadataPopup: () => void;
+
+  // Actions to control Image Metadata modal
+  openImageMetadataPopup: (
+    imageIndex: number,
+    mode?: "edit" | "delete",
+  ) => void;
+  closeImageMetadataPopup: () => void;
 
   // Actions to control Switch Device modal
   openSwitchDevicePopup: () => void;
@@ -74,9 +87,14 @@ export const useModalStore = create<ModalState>()((set) => ({
   isBatchUploadOpen: false,
   isUploadOpen: false,
   isModelInfoOpen: false,
-  isDeviceInfoOpen: false,
+  isSampleMetadataOpen: false,
+  isImageMetadataOpen: false,
   isSwitchDeviceOpen: false,
   notificationLogOpen: false,
+
+  // Initial state for Image Metadata modal
+  imageMetadataImageIndex: null,
+  imageMetadataMode: "edit" as "edit" | "delete",
 
   // Initial data for SaveCapturePopup
   imageFormat: "image/png",
@@ -99,9 +117,23 @@ export const useModalStore = create<ModalState>()((set) => ({
   openModelInfoPopup: () => set({ isModelInfoOpen: true }),
   closeModelInfoPopup: () => set({ isModelInfoOpen: false }),
 
-  // Device Info modal actions
-  openDeviceInfoPopup: () => set({ isDeviceInfoOpen: true }),
-  closeDeviceInfoPopup: () => set({ isDeviceInfoOpen: false }),
+  // Sample Metadata modal actions
+  openSampleMetadataPopup: () => set({ isSampleMetadataOpen: true }),
+  closeSampleMetadataPopup: () => set({ isSampleMetadataOpen: false }),
+
+  // Image Metadata modal actions
+  openImageMetadataPopup: (imageIndex, mode = "edit") =>
+    set({
+      isImageMetadataOpen: true,
+      imageMetadataImageIndex: imageIndex,
+      imageMetadataMode: mode,
+    }),
+  closeImageMetadataPopup: () =>
+    set({
+      isImageMetadataOpen: false,
+      imageMetadataImageIndex: null,
+      imageMetadataMode: "edit",
+    }),
 
   // Switch Device modal actions
   openSwitchDevicePopup: () => set({ isSwitchDeviceOpen: true }),
@@ -134,8 +166,11 @@ export const useModalStore = create<ModalState>()((set) => ({
       isBatchUploadOpen: false,
       isUploadOpen: false,
       isModelInfoOpen: false,
-      isDeviceInfoOpen: false,
+      isSampleMetadataOpen: false,
+      isImageMetadataOpen: false,
       isSwitchDeviceOpen: false,
       notificationLogOpen: false,
+      imageMetadataImageIndex: null,
+      imageMetadataMode: "edit",
     }),
 }));

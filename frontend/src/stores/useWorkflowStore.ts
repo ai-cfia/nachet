@@ -12,6 +12,8 @@ interface WorkflowState {
     workflowId: string,
     imageId: string,
     imageIndex: number,
+    pipelineId: string,
+    pipelineName: string,
     queuePosition?: number,
   ) => void;
   updateWorkflowStatus: (
@@ -33,6 +35,8 @@ export const useWorkflowStore = create<WorkflowState>()((set, get) => ({
     workflowId: string,
     imageId: string,
     imageIndex: number,
+    pipelineId: string,
+    pipelineName: string,
     queuePosition?: number,
   ) => {
     const now = Date.now();
@@ -40,6 +44,8 @@ export const useWorkflowStore = create<WorkflowState>()((set, get) => ({
       workflow_id: workflowId,
       image_id: imageId,
       imageIndex,
+      pipeline_id: pipelineId,
+      pipeline_name: pipelineName,
       status: "pending",
       started_at: now,
       last_checked_at: now,
