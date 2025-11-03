@@ -19,6 +19,7 @@ import CropFreeIcon from "@mui/icons-material/CropFree";
 import LabelIcon from "@mui/icons-material/Label";
 import Typography from "@mui/material/Typography";
 import { useImageStore } from "@stores/useImageStore";
+import { useInferenceResultsStore } from "@stores/useInferenceResultsStore";
 
 interface params {
   labelOccurrences: any;
@@ -28,13 +29,16 @@ const ClassificationResults: React.FC<params> = (props) => {
   const { t } = useTranslation("main");
 
   const { images: savedImages, currentIndex: imageIndex } = useImageStore();
+  const getResult = useInferenceResultsStore((state) => state.getResult);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [selectedLabel, setSelectedLabel] = useState<string>("all");
   const [switchTable, setSwitchTable] = useState<boolean>(true);
 
-  // Get current image's modelName for display
+  // Get current image and its active inference result
   const currentImage = savedImages.find((img) => img.index === imageIndex);
-  const modelDisplayName = currentImage?.modelName || "";
+  const activeWorkflowId = currentImage?.activeWorkflowId;
+  const activeResult = activeWorkflowId ? getResult(activeWorkflowId) : null;
+  const modelDisplayName = activeResult?.pipeline_name || "";
 
   const handleSelect = (key: string): void => {
     if (key === selectedLabel) {
