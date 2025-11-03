@@ -13,12 +13,16 @@ interface QueueItem {
   imageId: string;
   tempId: string;
   queuePosition: number;
+  pipelineId: string;
+  pipelineName: string;
 }
 
 interface ActiveWorkflow {
   workflowId: string;
   imageIndex: number;
   imageId: string;
+  pipelineId: string;
+  pipelineName: string;
   pollingInterval: ReturnType<typeof setInterval> | null;
   initialDelay: ReturnType<typeof setTimeout> | null;
 }
@@ -28,6 +32,8 @@ interface WorkflowStore {
     workflowId: string,
     imageId: string,
     imageIndex: number,
+    pipelineId: string,
+    pipelineName: string,
     queuePosition?: number,
   ) => void;
   updateWorkflowStatus: (
@@ -43,7 +49,8 @@ interface WorkflowQueueManagerConfig {
   backendUrl: string;
   msalInstance: IPublicClientApplication;
   scopes: string[];
-  selectedModel: string;
+  pipelineId: string;
+  pipelineName: string;
   curDir: { folderId: string; folderName: string };
   images: Images[];
   workflowStore: WorkflowStore;
@@ -52,6 +59,8 @@ interface WorkflowQueueManagerConfig {
     workflowId: string,
     imageIndex: number,
     results: ApiInferenceData,
+    pipelineId: string,
+    pipelineName: string,
   ) => void;
   onError: (workflowId: string, imageIndex: number, error: Error) => void;
 }
@@ -93,13 +102,23 @@ export class WorkflowQueueManager {
     const tempId = `temp-${Date.now()}-${Math.random()}`;
     const queuePosition = this.queue.length + 1;
 
-    this.queue.push({ imageIndex, imageId, tempId, queuePosition });
+    // Capture current pipeline info at enqueue time
+    this.queue.push({
+      imageIndex,
+      imageId,
+      tempId,
+      queuePosition,
+      pipelineId: this.config.pipelineId,
+      pipelineName: this.config.pipelineName,
+    });
 
     // Add to workflow store with "queued" status
     this.config.workflowStore.addWorkflow(
       tempId,
       imageId,
       imageIndex,
+      this.config.pipelineId,
+      this.config.pipelineName,
       queuePosition,
     );
     this.config.workflowStore.updateWorkflowStatus(
@@ -171,10 +190,10 @@ export class WorkflowQueueManager {
         this.config.scopes,
       );
 
-      // Submit to backend
+      // Submit to backend using the pipeline info from queue item
       const response = await inferenceRequest({
         backendUrl: this.config.backendUrl,
-        selectedModel: this.config.selectedModel,
+        selectedModel: item.pipelineId,
         imageObject: image as Images,
         curDir: this.config.curDir.folderName,
         accessToken,
@@ -192,6 +211,8 @@ export class WorkflowQueueManager {
         response.workflow_id,
         response.image_id,
         item.imageIndex,
+        item.pipelineId,
+        item.pipelineName,
       );
 
       // Set as current active workflow
@@ -199,6 +220,8 @@ export class WorkflowQueueManager {
         workflowId: response.workflow_id,
         imageIndex: item.imageIndex,
         imageId: item.imageId,
+        pipelineId: item.pipelineId,
+        pipelineName: item.pipelineName,
         pollingInterval: null,
         initialDelay: null,
       };
@@ -338,7 +361,7 @@ export class WorkflowQueueManager {
       return;
     }
 
-    const { imageIndex } = this.currentWorkflow;
+    const { imageIndex, pipelineId, pipelineName } = this.currentWorkflow;
 
     // Stop polling
     this.stopPolling();
@@ -360,8 +383,14 @@ export class WorkflowQueueManager {
       // Clear current workflow BEFORE calling callback
       this.currentWorkflow = null;
 
-      // Call completion callback
-      this.config.onComplete(workflowId, imageIndex, results);
+      // Call completion callback with pipeline info
+      this.config.onComplete(
+        workflowId,
+        imageIndex,
+        results,
+        pipelineId,
+        pipelineName,
+      );
 
       // Process next item in queue
       this.processNext();
