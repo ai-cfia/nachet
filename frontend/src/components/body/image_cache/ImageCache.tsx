@@ -14,11 +14,13 @@ import {
 import { useTranslation } from "react-i18next";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import ImageIcon from "@mui/icons-material/Image";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { colours } from "../../../styles/colours";
 import { useImageStore } from "@stores/useImageStore";
 import { useWorkflowStore } from "@stores/useWorkflowStore";
+import { useModalStore } from "@stores/useModalStore";
 
 const ImageCache: React.FC = () => {
   const { t } = useTranslation("main");
@@ -27,11 +29,11 @@ const ImageCache: React.FC = () => {
     images: savedImages,
     currentIndex: imageIndex,
     setCurrentIndex: setImageIndex,
-    removeImage,
     clearImages: clearImageCache,
   } = useImageStore();
 
   const { getWorkflowByImageIndex } = useWorkflowStore();
+  const { openImageMetadataPopup } = useModalStore();
   return (
     <Box
       sx={{
@@ -151,9 +153,7 @@ const ImageCache: React.FC = () => {
                         }}
                       />
                       <span style={{ textAlign: "right" }}>
-                        {item.imageId
-                          ? item.imageId
-                          : t("imageCache.captureLabel", { index: item.index })}
+                        {item.imageName}
                       </span>
                       {isProcessing && (
                         <CircularProgress
@@ -209,7 +209,24 @@ const ImageCache: React.FC = () => {
                   >
                     <IconButton
                       onClick={() => {
-                        removeImage(item.index);
+                        openImageMetadataPopup(item.index);
+                      }}
+                      sx={{ padding: 0, marginRight: "0.5vh" }}
+                    >
+                      <EditIcon
+                        style={{
+                          color: colours.CFIA_Background_Blue,
+                          fontSize: "1.8vh",
+                          marginTop: 0,
+                          marginBottom: 0,
+                          paddingTop: 0,
+                          paddingBottom: 0,
+                        }}
+                      />
+                    </IconButton>
+                    <IconButton
+                      onClick={() => {
+                        openImageMetadataPopup(item.index, "delete");
                       }}
                       sx={{ padding: 0 }}
                     >
