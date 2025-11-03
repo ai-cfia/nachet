@@ -21,6 +21,7 @@ import { colours } from "../../../styles/colours";
 import { useImageStore } from "@stores/useImageStore";
 import { useWorkflowStore } from "@stores/useWorkflowStore";
 import { useModalStore } from "@stores/useModalStore";
+import { useInferenceResultsStore } from "@stores/useInferenceResultsStore";
 
 const ImageCache: React.FC = () => {
   const { t } = useTranslation("main");
@@ -34,6 +35,7 @@ const ImageCache: React.FC = () => {
 
   const { getWorkflowByImageIndex } = useWorkflowStore();
   const { openImageMetadataPopup } = useModalStore();
+  const getResult = useInferenceResultsStore((state) => state.getResult);
   return (
     <Box
       sx={{
@@ -100,7 +102,9 @@ const ImageCache: React.FC = () => {
                 workflow?.status === "processing" ||
                 workflow?.status === "pending";
               const isQueued = workflow?.status === "queued";
-              const hasResults = item.boxes && item.boxes.length > 0;
+              const hasResults = item.activeWorkflowId
+                ? (getResult(item.activeWorkflowId)?.boxes?.length ?? 0) > 0
+                : false;
 
               return (
                 <TableRow

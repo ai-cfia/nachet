@@ -45,6 +45,7 @@ const StorageDirectoryView: React.FC<params> = (props) => {
         height: "22.23vh",
         border: `0.01vh solid LightGrey`,
         borderRadius: "0.4vh",
+        boxSizing: "border-box",
       }}
       boxShadow={0}
       data-testid="storage-directory-component"
