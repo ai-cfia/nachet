@@ -55,11 +55,13 @@ that DBOS workflows are working correctly.
 """
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic.alias_generators import to_camel
 from beartype.typing import Dict, Any
 
 from dbos import DBOS
 from app.service.toy_workflow import toy_workflow
+from app.model.workflow import WorkflowEventsResponse
 
 
 # Create router
@@ -71,12 +73,39 @@ class ToyWorkflowRequest(BaseModel):
 
     name: str
 
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        """
+        Validate name field: non-empty, max 100 chars.
+
+        Basic validation for test endpoint.
+        """
+        if not v or not v.strip():
+            raise ValueError("Name cannot be empty")
+
+        if len(v) > 100:
+            raise ValueError("Name exceeds 100 characters")
+
+        return v.strip()
+
 
 class ToyWorkflowResponse(BaseModel):
     """Response model for toy workflow submission."""
 
     workflow_id: str
     message: str
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        serialize_by_alias=True,
+    )
 
 
 class WorkflowStatusResponse(BaseModel):
@@ -86,6 +115,42 @@ class WorkflowStatusResponse(BaseModel):
     status: str
     result: Dict[str, Any] | None = None
     error: str | None = None
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        serialize_by_alias=True,
+    )
+
+
+class SyncWorkflowResponse(BaseModel):
+    """Response model for synchronous workflow execution."""
+
+    status: str
+    input: str
+    greeting: str
+    result: str
+    workflow_id: str
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        serialize_by_alias=True,
+    )
+
+
+class DbosHealthResponse(BaseModel):
+    """Response model for DBOS test health check."""
+
+    status: str
+    message: str
+    endpoints: list[str]
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        serialize_by_alias=True,
+    )
 
 
 @router.post("/toy-workflow", response_model=ToyWorkflowResponse)
@@ -219,7 +284,7 @@ async def get_workflow_status(workflow_id: str):
         )
 
 
-@router.get("/workflow/{workflow_id}/events")
+@router.get("/workflow/{workflow_id}/events", response_model=WorkflowEventsResponse)
 async def get_workflow_events(workflow_id: str):
     """
     Get all events published by a workflow.
@@ -267,7 +332,7 @@ async def get_workflow_events(workflow_id: str):
         )
 
 
-@router.post("/sync-workflow")
+@router.post("/sync-workflow", response_model=SyncWorkflowResponse)
 async def run_toy_workflow_sync(request: ToyWorkflowRequest):
     """
     Run toy workflow synchronously (wait for completion).
@@ -299,7 +364,7 @@ async def run_toy_workflow_sync(request: ToyWorkflowRequest):
         raise HTTPException(status_code=500, detail=f"Workflow failed: {str(e)}")
 
 
-@router.get("/health")
+@router.get("/health", response_model=DbosHealthResponse)
 async def dbos_health():
     """
     Simple health check for DBOS testing routes.
