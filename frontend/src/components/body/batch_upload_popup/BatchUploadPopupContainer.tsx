@@ -30,12 +30,13 @@ interface BatchUploadPopupContainerProps {
   containerName: string;
   uuid: string;
   apiScopeClaim: string;
+  setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const BatchUploadPopupContainer = (
   props: BatchUploadPopupContainerProps,
 ) => {
-  const { backendUrl, apiScopeClaim } = props;
+  const { backendUrl, apiScopeClaim, setReadAzureStorage } = props;
   const { closeBatchUploadPopup } = useModalStore();
   const { t } = useTranslation("validation");
   const { t: tErrors } = useTranslation("errors");
@@ -192,6 +193,8 @@ export const BatchUploadPopupContainer = (
 
       setCreatedFolderId(result.folder_id);
       console.log(`Folder created/retrieved: ${result.folder_id}`);
+      // Trigger directory list refresh
+      setReadAzureStorage((prev) => !prev);
     } catch (error) {
       console.error(
         "Folder creation failed:",
