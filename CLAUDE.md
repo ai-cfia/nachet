@@ -210,6 +210,139 @@ nachet/
 - **API caching** with custom cache utilities
 - **Real-time updates** through workflow status polling
 
+### Frontend Validation with Zod & i18n
+
+**All form validation uses Zod schemas with i18n support for bilingual error messages (EN/FR).**
+
+#### Key Validation Schemas
+
+Located in `frontend/src/common/validation.ts`:
+
+- **`imageNameSchema`**: Image names and sample ID prefixes
+  - Lowercase a-z, numbers 0-9, dashes only
+  - Auto-normalizes on blur: removes invalid chars, consecutive dashes, leading/trailing dashes
+  - Min: 1, Max: 100 characters
+
+- **`descriptionSchema`**: All description fields (image, sample, etc.)
+  - Letters (a-z, A-Z), numbers, spaces, periods
+  - Auto-normalizes on blur: removes invalid chars, consecutive spaces/periods
+  - Required (min 1 char), Max: 1000 characters
+
+- **`magnificationSchema`**: Magnification values
+  - Range: 0.1 to 1000
+
+- **`trayCodeSchema`**: Tray code enum
+  - Valid values: A, B, C, D, E
+
+- **`deviceIdValidationSchema`**: Device UUIDs
+  - UUID format validation
+
+#### Validation Pattern with i18n
+
+```typescript
+import { getZodErrorKey } from "@common/zodErrorMap";
+import { imageNameSchema } from "@common/validation";
+
+const result = imageNameSchema.safeParse(value);
+if (!result.success) {
+  const issue = result.error.issues[0];
+  // Map Zod error codes to specific translation keys
+  if (issue.code === "too_small") {
+    setError(t("validation.imageName.empty"));
+  } else if (issue.code === "too_big") {
+    setError(t("validation.imageName.tooLong"));
+  } else {
+    // Fallback to generic error key
+    const errorKey = getZodErrorKey(result.error);
+    setError(t(errorKey));
+  }
+}
+```
+
+#### Translation Keys
+
+Located in `frontend/src/locales/{en,fr}/validation.ts`:
+
+- `validation.imageName.empty` / `validation.imageName.tooLong`
+- `validation.description.empty` / `validation.description.tooLong`
+- `validation.magnification.tooSmall` / `validation.magnification.tooLarge`
+- `validation.generic.*` (fallback for unmapped errors)
+
+#### Auto-Normalization on Blur
+
+Schemas use `.transform()` to auto-clean inputs. Components call `.safeParse()` on `onBlur` to:
+
+1. Normalize the value (Zod transforms it)
+2. Update the field with cleaned value
+3. Clear any errors if valid
+
+```typescript
+onBlur={() => {
+  const result = imageNameSchema.safeParse(imageName);
+  if (result.success) {
+    setImageName(result.data); // ← User sees cleaned value
+    setImageNameError("");
+  }
+}}
+```
+
+#### useZodFieldValidation Hook (Recommended)
+
+**DRY approach for validation**: Use the `useZodFieldValidation` hook to eliminate duplicated onBlur logic.
+
+Located in `frontend/src/hooks/useZodFieldValidation.ts`:
+
+```typescript
+import { useZodFieldValidation, ERROR_KEY_MAPPINGS } from "@hooks/useZodFieldValidation";
+import { imageNameSchema, descriptionSchema } from "@common/validation";
+
+// In your component:
+const [imageName, setImageName] = useState("");
+const [imageNameError, setImageNameError] = useState("");
+
+// Create validation handler
+const imageNameValidation = useZodFieldValidation(
+  imageNameSchema,
+  imageName,
+  setImageName,
+  setImageNameError,
+  ERROR_KEY_MAPPINGS.imageName, // Pre-defined error key mappings
+);
+
+// Use in TextField
+<TextField
+  value={imageName}
+  onChange={(e) => imageNameValidation.onChange(e.target.value)}
+  onBlur={imageNameValidation.onBlur}
+  error={!!imageNameError}
+  helperText={imageNameError}
+/>
+```
+
+**Benefits**:
+
+- **No duplication**: Validation logic centralized in one hook
+- **Standard behavior**: All fields validate the same way
+- **Auto-normalization**: Users see cleaned values immediately on blur
+- **Error clearing**: Errors clear automatically on change
+- **Pre-defined mappings**: Use `ERROR_KEY_MAPPINGS.imageName`, `ERROR_KEY_MAPPINGS.description`, etc.
+
+**Available error key mappings**:
+
+- `ERROR_KEY_MAPPINGS.imageName` - For image names and sample ID prefixes
+- `ERROR_KEY_MAPPINGS.description` - For all description fields
+- `ERROR_KEY_MAPPINGS.magnification` - For magnification values
+
+#### Best Practices
+
+1. **Use `useZodFieldValidation` hook** - Eliminates code duplication and ensures consistent validation behavior
+2. **Never hardcode error messages** in schemas - use translation keys
+3. **Always map Zod error codes** (`too_small`, `too_big`) to specific translation keys
+4. **Use `getZodErrorKey()`** as fallback for unmapped error types
+5. **Apply normalization on blur** for better UX (user sees cleaned input)
+6. **Reuse schemas** - `imageNameSchema` for both image names AND sample ID prefixes
+7. **Use pre-defined ERROR_KEY_MAPPINGS** - Avoids manually defining error key mappings for common fields
+
 ### Backend Service Layer Architecture
 
 - **Service facade pattern**: `InferenceService` provides clean API for controllers
