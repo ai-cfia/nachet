@@ -25,6 +25,7 @@ from app.service.inference.image_validation import preprocess_image
 from app.service.inference.workflows import image_processing_workflow
 from app.service.inference.queues import image_processing_queue
 from app.service.inference.state_management import create_processing_state
+from app.service.inference.submission import sanitize_text
 from app.service.constants import ProcessingStatus
 from app.service.error_sanitizer import sanitize_error_for_user
 from app.model.batch_upload import BatchUploadImageRequest
@@ -302,13 +303,31 @@ class BatchUploadService:
             blob_url_original = f"{user_org_roles.org_prefix}/{image_id}.png"
             logger.debug(f"Blob URL: {blob_url_original}")
 
-            # 8. Build description with batch metadata
-            description = (
-                f"Batch upload: Seed {seed.get('name_code', 'unknown')} | "
-                f"Tray: {request.tray_code} | Sample: {request.sample_id}"
+            # 8. Build description: use user description if provided, otherwise auto-generate
+            if request.image_description:
+                # Sanitize user-provided description (defense-in-depth)
+                description = sanitize_text(
+                    request.image_description,
+                    max_length=500,
+                    allowed_chars="a-zA-Z0-9. ",
+                    field_name="Image description",
+                )
+            else:
+                # Fallback to auto-generated description for batch efficiency
+                description = (
+                    f"Batch upload: Seed {seed.get('name_code', 'unknown')} | "
+                    f"Tray: {request.tray_code} | Sample: {request.sample_id}"
+                )
+
+            # 9. Sanitize sample_id (defense-in-depth)
+            sanitized_sample_id = sanitize_text(
+                request.sample_id,
+                max_length=100,
+                allowed_chars="a-zA-Z0-9-",
+                field_name="Sample ID",
             )
 
-            # 9. Create Picture record (REUSE ImageService)
+            # 10. Create Picture record (REUSE ImageService)
             # Note: sample_id becomes picture.name, seed_id links to single_species_image
             await ImageService.create(
                 requester_id=UUID(user.oid),
@@ -317,7 +336,7 @@ class BatchUploadService:
                 folder_id=folder_id,
                 org_user_role_id=user_org_roles.org_user_role_id,
                 org_admin_role_id=user_org_roles.org_admin_role_id,
-                name=request.sample_id,  # sample_id becomes picture name
+                name=sanitized_sample_id,  # Use sanitized sample_id
                 width=info.width,
                 height=info.height,
                 format=info.mime_type,
