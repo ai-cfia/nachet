@@ -46,6 +46,8 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
   // Load persisted values when popup opens (only when transitioning to open)
   useEffect(() => {
     if (isSampleMetadataOpen) {
+      console.log("DEBUG: Loading sample metadata from store:", sampleMetadata);
+
       // Load device selection
       setSelectedBrandId(() => deviceSelection.selectedBrandId);
       setSelectedModelId(() => deviceSelection.selectedModelId);
@@ -56,6 +58,11 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
       setMagnification(() => sampleMetadata.magnification);
       setSampleIdPrefix(() => sampleMetadata.sampleIdPrefix);
       setSampleDescription(() => sampleMetadata.sampleDescription);
+
+      console.log(
+        "DEBUG: After setting state - sampleIdPrefix:",
+        sampleMetadata.sampleIdPrefix,
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSampleMetadataOpen]); // Only re-run when dialog opens/closes
@@ -249,6 +256,10 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
                 if (magnificationError) setMagnificationError("");
               }}
               onSampleIdPrefixChange={(value) => {
+                console.log(
+                  "DEBUG: onSampleIdPrefixChange called with:",
+                  value,
+                );
                 setSampleIdPrefix(value);
                 if (sampleIdPrefixError) setSampleIdPrefixError("");
               }}
