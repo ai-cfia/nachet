@@ -1,20 +1,18 @@
 import { create } from "zustand";
-import { Images, ApiInferenceData } from "@common/types";
-import {
-  loadCaptureToCache,
-  loadResultsToCache,
-  nextCacheIndex,
-} from "@common/cacheutils";
+import { Images } from "@common/types";
+import { loadCaptureToCache, nextCacheIndex } from "@common/cacheutils";
+import { useDeviceStore } from "./useDeviceStore";
 
 interface ImageState {
   images: Images[];
   currentIndex: number;
   addCapturedImage: (src: string) => Promise<void>;
-  loadInferenceResults: (
-    inferenceData: ApiInferenceData,
+  addWorkflowToImage: (
     imageIndex: number,
-    modelName?: string,
+    workflowId: string,
+    setAsActive?: boolean,
   ) => void;
+  setActiveWorkflow: (imageIndex: number, workflowId: string) => void;
   removeImage: (index: number) => number;
   clearImages: () => void;
   setImages: (images: Images[]) => void;
@@ -22,6 +20,21 @@ interface ImageState {
   getCurrentImage: () => Images | undefined;
   getImageIndexByImageId: (imageId: string) => number | undefined;
   setImageId: (imageIndex: number, imageId: string) => void;
+  updateImageMetadata: (
+    imageIndex: number,
+    metadata: Partial<
+      Pick<
+        Images,
+        | "imageName"
+        | "imageDescription"
+        | "deviceBrandId"
+        | "deviceModelId"
+        | "deviceLensId"
+        | "trayCode"
+        | "magnification"
+      >
+    >,
+  ) => void;
 }
 
 export const useImageStore = create<ImageState>()((set, get) => ({
@@ -32,23 +45,65 @@ export const useImageStore = create<ImageState>()((set, get) => ({
     const state = get();
     const nextIndex = nextCacheIndex(state.currentIndex, state.images);
 
+    // Get current device and sample metadata from device store
+    const { deviceSelection, sampleMetadata } = useDeviceStore.getState();
+
+    // Prepare metadata object with only non-empty values
+    const metadata = {
+      ...(deviceSelection.selectedBrandId && {
+        deviceBrandId: deviceSelection.selectedBrandId,
+      }),
+      ...(deviceSelection.selectedModelId && {
+        deviceModelId: deviceSelection.selectedModelId,
+      }),
+      ...(deviceSelection.selectedLensId && {
+        deviceLensId: deviceSelection.selectedLensId,
+      }),
+      ...(sampleMetadata.trayCode && { trayCode: sampleMetadata.trayCode }),
+      ...(sampleMetadata.magnification > 0 && {
+        magnification: sampleMetadata.magnification,
+      }),
+      ...(sampleMetadata.sampleIdPrefix && {
+        sampleIdPrefix: sampleMetadata.sampleIdPrefix,
+      }),
+      ...(sampleMetadata.sampleDescription && {
+        imageDescription: sampleMetadata.sampleDescription,
+      }),
+    };
+
     // loadCaptureToCache returns a promise that resolves to the new cache
-    const newImages = await loadCaptureToCache(src, state.images, nextIndex);
+    const newImages = await loadCaptureToCache(
+      src,
+      state.images,
+      nextIndex,
+      metadata,
+    );
 
     set({ images: newImages, currentIndex: nextIndex });
   },
 
-  loadInferenceResults: (
-    inferenceData: ApiInferenceData,
-    imageIndex: number,
-    modelName?: string,
-  ) => {
+  addWorkflowToImage: (imageIndex, workflowId, setAsActive = true) => {
     const state = get();
-    const newImages = loadResultsToCache(
-      inferenceData,
-      state.images,
-      imageIndex,
-      modelName,
+    const newImages = state.images.map((img) => {
+      if (img.index === imageIndex) {
+        const newWorkflowIds = img.workflowIds
+          ? [...img.workflowIds, workflowId]
+          : [workflowId];
+        return {
+          ...img,
+          workflowIds: newWorkflowIds,
+          activeWorkflowId: setAsActive ? workflowId : img.activeWorkflowId,
+        };
+      }
+      return img;
+    });
+    set({ images: newImages });
+  },
+
+  setActiveWorkflow: (imageIndex, workflowId) => {
+    const state = get();
+    const newImages = state.images.map((img) =>
+      img.index === imageIndex ? { ...img, activeWorkflowId: workflowId } : img,
     );
     set({ images: newImages });
   },
@@ -112,6 +167,28 @@ export const useImageStore = create<ImageState>()((set, get) => ({
     const state = get();
     const newImages = state.images.map((img) =>
       img.index === imageIndex ? { ...img, imageId } : img,
+    );
+    set({ images: newImages });
+  },
+
+  updateImageMetadata: (
+    imageIndex: number,
+    metadata: Partial<
+      Pick<
+        Images,
+        | "imageName"
+        | "imageDescription"
+        | "deviceBrandId"
+        | "deviceModelId"
+        | "deviceLensId"
+        | "trayCode"
+        | "magnification"
+      >
+    >,
+  ) => {
+    const state = get();
+    const newImages = state.images.map((img) =>
+      img.index === imageIndex ? { ...img, ...metadata } : img,
     );
     set({ images: newImages });
   },
