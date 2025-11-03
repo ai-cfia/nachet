@@ -355,9 +355,11 @@ export const MicroscopeFeedWorkspaceView = (
       sx={{
         position: "relative",
         width: { xs: "100%", md: "73vw" },
-        height: { xs: "50vh", md: "75vh" },
-        // minHeight: { xs: "50vh", md: "75vh" },
+        height: { xs: "40vh", md: "75vh" },
+        // flex: 1,
+        // minHeight: { xs: "30vh", md: "75vh" },
         // maxHeight: { xs: "50vh", md: "75vh" },
+        // objectFit: "contain",
         borderTop: `0.01vh solid LightGrey`,
       }}
     >

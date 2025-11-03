@@ -778,8 +778,8 @@ const Body: React.FC<params> = (props) => {
               zIndex: 0,
               position: "relative",
               paddingBottom: { xs: "2vh", md: 0 },
-              paddingLeft: { xs: "5vw", md: 0 },
-              paddingRight: { xs: "5vw", md: 0 },
+              paddingLeft: { xs: "2vw", md: 0 },
+              paddingRight: { xs: "2vw", md: 0 },
             }}
           >
             <MicroscopeFeed
@@ -817,8 +817,8 @@ const Body: React.FC<params> = (props) => {
               maxHeight: { xs: "50vh", md: "80vh" },
               zIndex: 0,
               position: "relative",
-              paddingLeft: { xs: "10vw", md: "1vw" },
-              paddingRight: { xs: "10vw", md: 0 },
+              paddingLeft: { xs: "2vw", md: "1vw" },
+              paddingRight: { xs: "2vw", md: 0 },
             }}
           >
             <StorageDirectory azureStorageDir={azureStorageDir} />
