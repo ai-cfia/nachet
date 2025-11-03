@@ -85,7 +85,8 @@ export const BatchUploadPopupContainer = (
   const [species, setSpecies] = useState<string>("");
   const [nameCode, setNameCode] = useState<string>("");
   const [trayCode, setTrayCode] = useState<string>("");
-  const [sampleId, setSampleId] = useState<string>("");
+  const [sampleIdPrefix, setSampleIdPrefix] = useState<string>("");
+  const [sampleDescription, setSampleDescription] = useState<string>("");
   const [deviceBrandId, setDeviceBrandId] = useState<string>("");
   const [deviceModelId, setDeviceModelId] = useState<string>("");
   const [deviceLensId, setDeviceLensId] = useState<string>("");
@@ -101,7 +102,9 @@ export const BatchUploadPopupContainer = (
   const [speciesError, setSpeciesError] = useState<string>("");
   const [nameCodeError, setNameCodeError] = useState<string>("");
   const [trayCodeError, setTrayCodeError] = useState<string>("");
-  const [sampleIdError, setSampleIdError] = useState<string>("");
+  const [sampleIdPrefixError, setSampleIdPrefixError] = useState<string>("");
+  const [sampleDescriptionError, setSampleDescriptionError] =
+    useState<string>("");
   const [deviceBrandError, setDeviceBrandError] = useState<string>("");
   const [deviceModelError, setDeviceModelError] = useState<string>("");
   const [deviceLensError, setDeviceLensError] = useState<string>("");
@@ -301,7 +304,7 @@ export const BatchUploadPopupContainer = (
     setSpecies("");
     setNameCode("");
     setTrayCode("");
-    setSampleId("");
+    setSampleIdPrefix("");
     // Reset device fields to empty strings
     setDeviceBrandId("");
     setDeviceModelId("");
@@ -331,7 +334,7 @@ export const BatchUploadPopupContainer = (
     setSpeciesError("");
     setNameCodeError("");
     setTrayCodeError("");
-    setSampleIdError("");
+    setSampleIdPrefixError("");
     setDeviceBrandError("");
     setDeviceModelError("");
     setDeviceLensError("");
@@ -380,10 +383,10 @@ export const BatchUploadPopupContainer = (
       return;
     }
 
-    // Validate sample ID
-    const sampleIdValidation = sampleIdSchema.safeParse(sampleId);
-    if (!sampleIdValidation.success) {
-      setSampleIdError(t(getZodErrorKey(sampleIdValidation.error)));
+    // Validate sample ID prefix
+    const sampleIdPrefixValidation = sampleIdSchema.safeParse(sampleIdPrefix);
+    if (!sampleIdPrefixValidation.success) {
+      setSampleIdPrefixError(t(getZodErrorKey(sampleIdPrefixValidation.error)));
       return;
     }
 
@@ -534,7 +537,7 @@ export const BatchUploadPopupContainer = (
               sessionId,
               seedId,
               trayCode,
-              sampleId,
+              sampleIdPrefix,
               deviceBrandId,
               deviceModelId,
               deviceLensId,
@@ -588,7 +591,8 @@ export const BatchUploadPopupContainer = (
     species,
     nameCode,
     trayCode,
-    sampleId,
+    sampleIdPrefix,
+    sampleDescription,
     deviceBrandId,
     deviceModelId,
     deviceLensId,
@@ -627,9 +631,13 @@ export const BatchUploadPopupContainer = (
       setTrayCode(value);
       if (trayCodeError) setTrayCodeError("");
     },
-    onSampleIdChange: (value: string) => {
-      setSampleId(value);
-      if (sampleIdError) setSampleIdError("");
+    onSampleIdPrefixChange: (value: string) => {
+      setSampleIdPrefix(value);
+      if (sampleIdPrefixError) setSampleIdPrefixError("");
+    },
+    onSampleDescriptionChange: (value: string) => {
+      setSampleDescription(value);
+      if (sampleDescriptionError) setSampleDescriptionError("");
     },
     onDeviceBrandChange: setDeviceBrandId,
     onDeviceModelChange: setDeviceModelId,
@@ -647,7 +655,8 @@ export const BatchUploadPopupContainer = (
     speciesError,
     nameCodeError,
     trayCodeError,
-    sampleIdError,
+    sampleIdPrefixError,
+    sampleDescriptionError,
     deviceBrandError,
     deviceModelError,
     deviceLensError,

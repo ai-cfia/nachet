@@ -10,9 +10,7 @@ import {
   ListItem,
   ListItemText,
   ListSubheader,
-  MenuItem,
   Stack,
-  TextField,
   Typography,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
@@ -22,6 +20,7 @@ import { colours } from "@styles/colours";
 import { ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { DeviceSelectionFields } from "@components/common/DeviceSelectionFields";
+import { SampleMetadataFields } from "@components/common/SampleMetadataFields";
 import { TaxonomicFieldsGroup } from "../taxonomic_fields_group/TaxonomicFieldsGroup";
 import { FolderFieldsGroup } from "../folder_fields_group/FolderFieldsGroup";
 import { SpeciesData, ApiDevicesResponse } from "@common/types";
@@ -50,7 +49,8 @@ export interface BatchUploadPopupViewProps {
   species: string;
   nameCode: string;
   trayCode: string;
-  sampleId: string;
+  sampleIdPrefix: string;
+  sampleDescription: string;
   deviceBrandId: string;
   deviceModelId: string;
   deviceLensId: string;
@@ -65,7 +65,8 @@ export interface BatchUploadPopupViewProps {
   onSpeciesChange: (value: string) => void;
   onNameCodeChange: (value: string) => void;
   onTrayCodeChange: (value: string) => void;
-  onSampleIdChange: (value: string) => void;
+  onSampleIdPrefixChange: (value: string) => void;
+  onSampleDescriptionChange: (value: string) => void;
   onDeviceBrandChange: (value: string) => void;
   onDeviceModelChange: (value: string) => void;
   onDeviceLensChange: (value: string) => void;
@@ -79,7 +80,8 @@ export interface BatchUploadPopupViewProps {
   speciesError: string;
   nameCodeError: string;
   trayCodeError: string;
-  sampleIdError: string;
+  sampleIdPrefixError: string;
+  sampleDescriptionError: string;
   deviceBrandError: string;
   deviceModelError: string;
   deviceLensError: string;
@@ -121,7 +123,8 @@ export const BatchUploadPopupView = (props: BatchUploadPopupViewProps) => {
     species,
     nameCode,
     trayCode,
-    sampleId,
+    sampleIdPrefix,
+    sampleDescription,
     deviceBrandId,
     deviceModelId,
     deviceLensId,
@@ -134,7 +137,8 @@ export const BatchUploadPopupView = (props: BatchUploadPopupViewProps) => {
     onSpeciesChange,
     onNameCodeChange,
     onTrayCodeChange,
-    onSampleIdChange,
+    onSampleIdPrefixChange,
+    onSampleDescriptionChange,
     onDeviceBrandChange,
     onDeviceModelChange,
     onDeviceLensChange,
@@ -146,7 +150,8 @@ export const BatchUploadPopupView = (props: BatchUploadPopupViewProps) => {
     speciesError,
     nameCodeError,
     trayCodeError,
-    sampleIdError,
+    sampleIdPrefixError,
+    sampleDescriptionError,
     deviceBrandError,
     deviceModelError,
     deviceLensError,
@@ -262,66 +267,19 @@ export const BatchUploadPopupView = (props: BatchUploadPopupViewProps) => {
                   sx={{ width: "100%" }}
                 />
 
-                <TextField
-                  id="input-tray-code"
-                  label={t("batchUpload.metadataSection.trayCodeLabel")}
-                  variant="outlined"
-                  select
-                  value={trayCode}
-                  onChange={(e) => onTrayCodeChange(e.target.value)}
-                  sx={{
-                    width: "100%",
-                  }}
-                  error={!!trayCodeError}
-                  helperText={trayCodeError}
-                  disabled={uploading}
-                >
-                  <MenuItem value="">
-                    <em>{t("batchUpload.metadataSection.selectTrayCode")}</em>
-                  </MenuItem>
-                  <MenuItem value="A">A</MenuItem>
-                  <MenuItem value="B">B</MenuItem>
-                  <MenuItem value="C">C</MenuItem>
-                  <MenuItem value="D">D</MenuItem>
-                  <MenuItem value="E">E</MenuItem>
-                </TextField>
-
-                <TextField
-                  id="input-magnification"
-                  label={t("batchUpload.deviceSection.magnificationLabel")}
-                  variant="outlined"
-                  type="number"
-                  value={magnification > 0 ? magnification : ""}
-                  onChange={(e) =>
-                    onMagnificationChange(parseFloat(e.target.value) || 0)
-                  }
-                  sx={{
-                    width: "100%",
-                  }}
-                  slotProps={{
-                    htmlInput: {
-                      min: 0.2,
-                      max: 1000,
-                      step: 0.1,
-                      style: { textAlign: "center" },
-                    },
-                  }}
-                  error={!!magnificationError}
-                  helperText={magnificationError}
-                  disabled={uploading}
-                />
-
-                <TextField
-                  id="input-sample-id"
-                  label={t("batchUpload.metadataSection.sampleIdLabel")}
-                  variant="outlined"
-                  value={sampleId}
-                  onChange={(e) => onSampleIdChange(e.target.value)}
-                  sx={{
-                    width: "100%",
-                  }}
-                  error={!!sampleIdError}
-                  helperText={sampleIdError}
+                <SampleMetadataFields
+                  trayCode={trayCode}
+                  magnification={magnification}
+                  sampleIdPrefix={sampleIdPrefix}
+                  sampleDescription={sampleDescription}
+                  onTrayCodeChange={onTrayCodeChange}
+                  onMagnificationChange={onMagnificationChange}
+                  onSampleIdPrefixChange={onSampleIdPrefixChange}
+                  onSampleDescriptionChange={onSampleDescriptionChange}
+                  trayCodeError={trayCodeError}
+                  magnificationError={magnificationError}
+                  sampleIdPrefixError={sampleIdPrefixError}
+                  sampleDescriptionError={sampleDescriptionError}
                   disabled={uploading}
                 />
 
