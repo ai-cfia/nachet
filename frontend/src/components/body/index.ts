@@ -1,12 +1,12 @@
 import BatchUploadPopup from "./batch_upload_popup/BatchUploadPopupContainer";
-import CreateDirectoryPopup from "./create_directory_popup/CreateDirectoryPopup";
-import DeleteDirectoryPopup from "./del_directory_popup/DeleteDirectoryPopup";
+import DirectoryPopup from "./directory_popup/DirectoryPopup";
 import AuthPopup from "./auth_popup/AuthPopup";
 import UploadPopup from "./load_image_popup/UploadPopup";
 import ModelPopup from "./model_popup/ModelPopup";
 import SaveCapturePopup from "./save_capture_popup/SaveCapturePopup";
 import SwitchDevicePopup from "./switch_device_popup/SwitchDevicePopup";
-import DeviceInfoPopup from "./device_info_popup/DeviceInfoPopup";
+import SampleMetadataPopup from "./sample_metadata_popup/SampleMetadataPopup";
+import ImageMetadataPopup from "./image_metadata_popup/ImageMetadataPopup";
 import CreativeCommonsPopup from "./creative_commons_popup/CreativeCommonsPopup";
 import RegistrationStatusPopup from "./registration_status_popup/RegistrationStatusPopup";
 import NotificationLogPopup from "./notification_log_popup/NotificationLogPopupContainer";
@@ -18,14 +18,14 @@ import ErrorBoundary from "./error_boundary/ErrorBoundary";
 
 export {
   BatchUploadPopup,
-  CreateDirectoryPopup,
-  DeleteDirectoryPopup,
+  DirectoryPopup,
   AuthPopup,
   UploadPopup,
   ModelPopup,
   SaveCapturePopup,
   SwitchDevicePopup,
-  DeviceInfoPopup,
+  SampleMetadataPopup,
+  ImageMetadataPopup,
   CreativeCommonsPopup,
   RegistrationStatusPopup,
   NotificationLogPopup,
