@@ -485,6 +485,7 @@ class Picture(Base):
     blob_url_sanitized: Mapped[Optional[str]] = mapped_column(Text)
     device_model_id: Mapped[Optional[UUID]] = mapped_column(UUID)
     device_lens_id: Mapped[Optional[UUID]] = mapped_column(UUID)
+    tray_code: Mapped[str] = mapped_column(Text, nullable=False, default="")
     single_species_image: Mapped[Optional[UUID]] = mapped_column(
         UUID,
         comment="for training, multiple seeds of the same species will be in the image, this value is specified by uploader, null if multi spp",
