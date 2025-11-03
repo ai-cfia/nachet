@@ -1,5 +1,11 @@
 // Popup and dialog component translations
 const popups = {
+  // Common button labels used across multiple popups
+  common: {
+    save: "Save",
+    cancel: "Cancel",
+  },
+
   // Authentication Popup
   auth: {
     title: "Authentication Required",
@@ -38,13 +44,15 @@ const popups = {
     disagreeButton: "I Disagree",
   },
 
-  // Device Information Popup
+  // Sample Metadata Popup
   deviceInfo: {
-    title: "Device Information",
+    title: "Sample Metadata",
     brand: "Brand",
     model: "Model",
     lens: "Lens",
     doneButton: "Done",
+    saveButton: "Save",
+    cancelButton: "Cancel",
     // Device Selection Fields (shared component)
     deviceBrandLabel: "Device Brand",
     deviceModelLabel: "Device Model",
@@ -52,6 +60,23 @@ const popups = {
     selectBrand: "Select a brand",
     selectModel: "Select a model",
     selectLens: "Select a lens",
+    errors: {
+      brandRequired: "Device brand is required",
+      modelRequired: "Device model is required",
+      lensRequired: "Device lens is required",
+    },
+  },
+
+  // Image Metadata Popup
+  imageMetadata: {
+    title: "Edit Image Metadata",
+    imageName: "Image Name",
+    imageId: "Image ID",
+    saveButton: "Save",
+    cancelButton: "Cancel",
+    errors: {
+      imageNameRequired: "Image name is required",
+    },
   },
 
   // Model Selection Popup
@@ -61,6 +86,8 @@ const popups = {
     date: "Date: {{date}}",
     version: "Version: {{version}}",
     doneButton: "Done",
+    saveButton: "Save",
+    cancelButton: "Cancel",
   },
 
   // Save Capture Popup
@@ -73,6 +100,7 @@ const popups = {
     formatPng: "Format: PNG",
     formatJpeg: "Format: JPEG",
     saveButton: "SAVE",
+    cancelButton: "CANCEL",
   },
 
   // Upload Image Popup
@@ -97,12 +125,12 @@ const popups = {
       folderNameLabel: "Folder Name",
       folderNamePlaceholder: "e.g., avena-fatua",
       folderNameHelper:
-        "Folder name will be auto-generated from genus-species if not provided",
+        "Only letters, numbers, periods, hyphens, and underscores. Cannot end with dash or underscore. Auto-normalized on blur. If not provided, will be auto-generated from genus-species.",
       folderDescriptionLabel: "Description (Optional)",
       folderDescriptionPlaceholder:
         "e.g., Sample collection from field trial 2025",
       folderDescriptionHelper:
-        "Optional description for this folder (max 500 characters)",
+        "Only letters, numbers, periods, and spaces. No consecutive spaces or periods. Auto-normalized on blur.",
     },
     taxonomySection: {
       heading: "Taxonomy Information",
@@ -120,8 +148,18 @@ const popups = {
       trayCodeLabel: "Tray Code",
       trayCodePlaceholder: "Enter tray code",
       selectTrayCode: "Select Tray Code",
-      sampleIdLabel: "Sample ID",
-      sampleIdPlaceholder: "Enter sample identifier",
+      trayCodeRequired: "Tray code is required",
+      sampleIdLabel: "Sample ID Prefix",
+      sampleIdPlaceholder: "Enter prefix (letters, numbers, dashes)",
+      sampleIdHelper:
+        "Only letters, numbers, and dashes. Cannot end with a dash. Auto-normalized on blur.",
+      sampleIdRequired: "Sample ID prefix is required",
+      sampleDescriptionLabel: "Sample Description",
+      sampleDescriptionPlaceholder: "e.g., Field trial sample from location A",
+      sampleDescriptionHelper:
+        "Only letters, numbers, periods, and spaces. No consecutive spaces or periods. Auto-normalized on blur.",
+      sampleDescriptionRequired: "Sample description is required",
+      magnificationRequired: "Magnification is required",
     },
     deviceSection: {
       heading: "Device Information",
@@ -172,11 +210,11 @@ const popups = {
     titleEdit: "Edit Directory",
     directoryNameLabel: "Directory Name",
     directoryNameHelper:
-      "Directory will be created at root level. Use letters, numbers, hyphens, and underscores.",
+      "Only letters, numbers, periods, hyphens, and underscores. Cannot end with dash or underscore. Auto-normalized on blur.",
     directoryNamePlaceholder: "e.g., avena-fatua or mycology-samples",
-    descriptionLabel: "Description (Optional)",
+    descriptionLabel: "Description",
     descriptionHelper:
-      "Optional description for this directory (max 500 characters)",
+      "Only letters, numbers, periods, and spaces. No consecutive spaces or periods. Auto-normalized on blur.",
     descriptionPlaceholder: "e.g., Sample collection from field trial 2025",
     createButton: "Create",
     updateButton: "Update",
@@ -251,6 +289,8 @@ const popups = {
   // Switch Device Popup
   switchDevice: {
     title: "Choose Media Device",
+    save: "Save",
+    cancel: "Cancel",
   },
 
   // Notification Log Popup
