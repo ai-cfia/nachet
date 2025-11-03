@@ -91,7 +91,7 @@ export const MicroscopeFeedControlsView = (
   const { t } = useTranslation("main");
 
   const { devices, activeDeviceId } = useWebcamStore();
-  const { isDeviceInfoSet } = useDeviceStore();
+  const { isDeviceInfoSet, getMissingMetadataCount } = useDeviceStore();
   const { images: imageCache } = useImageStore();
   const { selectedModel, metadata } = useModelStore();
   const accountInfo = useAccount();
@@ -99,7 +99,7 @@ export const MicroscopeFeedControlsView = (
   // Modal store actions
   const {
     openSwitchDevicePopup,
-    openDeviceInfoPopup,
+    openSampleMetadataPopup,
     openUploadPopup,
     openModelInfoPopup,
     openSavePopup,
@@ -184,9 +184,13 @@ export const MicroscopeFeedControlsView = (
       />
       <ButtonMicroscopeFeed
         label={t("microscopeFeed.controls.deviceLabel")}
-        icon={<InfoIcon color="inherit" style={iconStyle} />}
+        icon={
+          <Badge badgeContent={getMissingMetadataCount()} color="error">
+            <InfoIcon color="inherit" style={iconStyle} />
+          </Badge>
+        }
         disabled={false} // Always active
-        onClick={openDeviceInfoPopup}
+        onClick={openSampleMetadataPopup}
       />
       <ButtonMicroscopeFeed
         label={deviceLabel.slice(0, 8)} // Limit label length to 8 characters
