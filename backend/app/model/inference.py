@@ -2,8 +2,22 @@
 Pydantic models for image inference and processing endpoints.
 """
 
-from pydantic import BaseModel, Field, RootModel, ConfigDict
+import re
+from enum import Enum
+from pydantic import BaseModel, Field, RootModel, ConfigDict, field_validator
+from pydantic.alias_generators import to_camel
 from beartype.typing import Optional
+from uuid import UUID
+
+
+class TrayCode(str, Enum):
+    """Valid tray codes for sample identification."""
+
+    A = "A"
+    B = "B"
+    C = "C"
+    D = "D"
+    E = "E"
 
 
 class InferenceRequest(BaseModel):
@@ -11,17 +25,95 @@ class InferenceRequest(BaseModel):
     Request model for POST /inf endpoint.
 
     Matches legacy API format for backwards compatibility.
+    Includes required image metadata fields sent by frontend.
     """
 
     pipeline_id: str
     folder_name: str
     folder_id: str  # UUID as string
-    imageDims: list[int] = Field(
-        description="Image dimensions as [width, height]", min_length=2, max_length=2
+    image_dims: list[int] = Field(
+        ...,
+        description="Image dimensions as [width, height]",
+        min_length=2,
+        max_length=2,
     )
     image: str  # base64 with data URL prefix
     area_ratio: float = 0.5
     color_format: str = "hex"
+
+    # Required image metadata fields (from frontend ImageMetadata)
+    image_name: str = Field(
+        ...,
+        description="Human-readable name for the image",
+        max_length=100,
+    )
+    image_description: str = Field(
+        ...,
+        description="Description or notes about the image",
+        max_length=500,
+    )
+    device_model_id: UUID = Field(
+        ...,
+        description="UUID of the device model used to capture the image",
+    )
+    device_lens_id: UUID = Field(
+        ...,
+        description="UUID of the lens used to capture the image",
+    )
+    tray_code: TrayCode = Field(
+        ..., description="Sample tray identification code (A-E only)"
+    )
+    magnification: float = Field(
+        ..., description="Magnification level used when capturing the image"
+    )
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
+
+    @field_validator("image_name")
+    @classmethod
+    def validate_image_name(cls, v: str) -> str:
+        """
+        Validate imageName: alphanumeric and hyphens only, max 100 chars.
+
+        Matches frontend SampleMetadataFields normalization pattern.
+        """
+        if not v or not v.strip():
+            raise ValueError("Image name cannot be empty")
+
+        # Check character set: only alphanumeric and hyphens allowed
+        if not re.match(r"^[a-zA-Z0-9-]+$", v):
+            raise ValueError(
+                "Image name can only contain letters, numbers, and hyphens"
+            )
+
+        if len(v) > 100:
+            raise ValueError("Image name exceeds 100 characters")
+
+        return v
+
+    @field_validator("image_description")
+    @classmethod
+    def validate_image_description(cls, v: str) -> str:
+        """
+        Validate imageDescription: alphanumeric, periods, spaces only, max 500 chars.
+
+        Matches frontend SampleMetadataFields normalization pattern.
+        """
+        # Description can be empty, so only validate if non-empty
+        if v:
+            # Check character set: only alphanumeric, periods, and spaces allowed
+            if not re.match(r"^[a-zA-Z0-9. ]*$", v):
+                raise ValueError(
+                    "Image description can only contain letters, numbers, periods, and spaces"
+                )
+
+            if len(v) > 500:
+                raise ValueError("Image description exceeds 500 characters")
+
+        return v
 
 
 class ImageSubmissionResponse(BaseModel):
@@ -31,6 +123,12 @@ class ImageSubmissionResponse(BaseModel):
     workflow_id: str
     status: str
     message: str
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        serialize_by_alias=True,
+    )
 
 
 class SanitizationCallbackRequest(BaseModel):
@@ -336,11 +434,17 @@ class ApiInferenceResponse(BaseModel):
     """
 
     filename: str
-    imageId: str = Field(description="Image UUID or identifier")
-    inference_id: str = Field(description="Inference UUID or identifier")
+    image_id: str = Field(..., description="Image UUID or identifier")
+    inference_id: str = Field(..., description="Inference UUID or identifier")
     boxes: list[ApiInferenceBox]
-    labelOccurrence: dict[str, int] = Field(
-        description="Count of each label found in the image"
+    label_occurrence: dict[str, int] = Field(
+        ..., description="Count of each label found in the image"
     )
-    totalBoxes: int = Field(description="Total number of detected boxes")
-    models: list[ModelInfo] = Field(description="Models used for inference")
+    total_boxes: int = Field(..., description="Total number of detected boxes")
+    models: list[ModelInfo] = Field(..., description="Models used for inference")
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        serialize_by_alias=True,
+    )
