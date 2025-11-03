@@ -26,8 +26,26 @@ from app.model.batch_upload import (
     BatchUploadInitRequest,
     BatchUploadInitResponse,
     BatchUploadImageRequest,
+    BatchUploadImageResponse,
 )
-from app.model.directory import CreateOrGetFolderRequest, UpdateFolderRequest
+from app.model.directory import (
+    CreateOrGetFolderRequest,
+    UpdateFolderRequest,
+    UpdateFolderResponse,
+    CreateFolderResponse,
+    DeleteFolderResponse,
+)
+from app.model.logs import FrontendLogRequest, LogSubmissionResponse
+from app.model.workflow import WorkflowStatusResponse
+from app.model.data import (
+    PipelinesResponse,
+    SeedDataResponse,
+    DevicesResponse,
+    DirectoriesResponse,
+    ModelEndpointsMetadataResponse,
+)
+from app.model.user import UserIdResponse, RegistrationStatusResponse
+from app.model.system import HealthResponse, VersionResponse, RateLimitTestResponse
 from app.service.batch_upload import BatchUploadService
 # from app.exceptions import ImageProcessingError
 # from app.api.test_dbos import router as test_dbos_router
@@ -133,6 +151,7 @@ async def submit_image_for_simple_direct_processing(
 @router.get(
     "/workflow/{workflow_id}/status",
     status_code=status.HTTP_200_OK,
+    response_model=WorkflowStatusResponse,
     name="Get Workflow Status [AUTH REQUIRED]",
 )
 @limiter.limit("60/minute")
@@ -299,6 +318,7 @@ async def get_workflow_results(
 @router.get(
     "/rate-limit-test",
     status_code=status.HTTP_200_OK,
+    response_model=RateLimitTestResponse,
     name="Rate Limit Test [NO AUTH REQUIRED]",
 )
 @limiter.limit("2/minute")
@@ -310,6 +330,7 @@ async def rate_limit_test(request: Request):
 @router.get(
     "/health",
     status_code=status.HTTP_200_OK,
+    response_model=HealthResponse,
     name="Get Health Status [NO AUTH REQUIRED]",
 )
 async def get_health_status(request: Request):
@@ -319,6 +340,7 @@ async def get_health_status(request: Request):
 @router.get(
     "/version",
     status_code=status.HTTP_200_OK,
+    response_model=VersionResponse,
     name="Get API Version [NO AUTH REQUIRED]",
 )
 async def get_version(request: Request):
@@ -328,6 +350,7 @@ async def get_version(request: Request):
 @router.get(
     "/ready",
     status_code=status.HTTP_200_OK,
+    response_model=HealthResponse,
     name="Get Readiness Status [NO AUTH REQUIRED]",
 )
 async def get_readiness_status(request: Request):
@@ -337,6 +360,7 @@ async def get_readiness_status(request: Request):
 @router.post(
     "/get-user-id",
     status_code=status.HTTP_200_OK,
+    response_model=UserIdResponse,
     name="Get User ID from email [AUTH REQUIRED]",
 )
 async def get_user_id(request: Request, current_user: User = Depends(get_current_user)):
@@ -347,6 +371,7 @@ async def get_user_id(request: Request, current_user: User = Depends(get_current
 @router.get(
     "/pipelines",
     status_code=status.HTTP_200_OK,
+    response_model=PipelinesResponse,
     name="Get Pipelines [AUTH REQUIRED]",
 )
 @limiter.limit("10/minute")
@@ -360,6 +385,7 @@ async def get_pipelines(
 @router.get(
     "/model-endpoints-metadata",
     status_code=status.HTTP_200_OK,
+    response_model=ModelEndpointsMetadataResponse,
     name="Get Model Endpoints Metadata [AUTH REQUIRED]",
 )
 @limiter.limit("10/minute")
@@ -376,6 +402,7 @@ async def get_model_endpoints_metadata(
 @router.get(
     "/seeds",
     status_code=status.HTTP_200_OK,
+    response_model=SeedDataResponse,
     name="Get Seed Data [AUTH REQUIRED]",
 )
 @limiter.limit("10/minute")
@@ -391,6 +418,7 @@ async def get_seed_data(
 @router.get(
     "/devices",
     status_code=status.HTTP_200_OK,
+    response_model=DevicesResponse,
     name="Get All Devices [AUTH REQUIRED]",
 )
 @limiter.limit("10/minute")
@@ -405,6 +433,7 @@ async def get_devices(request: Request, current_user: User = Depends(get_current
 @router.get(
     "/get-directories",
     status_code=status.HTTP_200_OK,
+    response_model=DirectoriesResponse,
     name="Get Directories [AUTH REQUIRED]",
 )
 @limiter.limit("10/minute")
@@ -421,6 +450,7 @@ async def get_directories(
 @router.post(
     "/folders",
     status_code=status.HTTP_200_OK,
+    response_model=CreateFolderResponse,
     name="Create or Get Folder [AUTH REQUIRED]",
 )
 @limiter.limit("10/minute")
@@ -463,6 +493,7 @@ async def create_or_get_folder(
 @router.put(
     "/folders/{folder_id}",
     status_code=status.HTTP_200_OK,
+    response_model=UpdateFolderResponse,
     name="Update Folder [AUTH REQUIRED]",
 )
 @limiter.limit("10/minute")
@@ -514,6 +545,7 @@ async def update_folder(
 @router.delete(
     "/folders/{folder_id}",
     status_code=status.HTTP_200_OK,
+    response_model=DeleteFolderResponse,
     name="Delete Folder [AUTH REQUIRED]",
 )
 @limiter.limit("10/minute")
@@ -552,6 +584,7 @@ async def delete_folder(
 @router.get(
     "/is-registered",
     status_code=status.HTTP_200_OK,
+    response_model=RegistrationStatusResponse,
     name="Check if User is Registered [AUTH REQUIRED]",
 )
 @limiter.limit("10/minute")
@@ -598,12 +631,24 @@ async def logout_user(request: Request):
 @router.post(
     "/logs",
     status_code=status.HTTP_200_OK,
+    response_model=LogSubmissionResponse,
     name="Frontend Log Endpoint [AUTH REQUIRED]",
 )
 async def frontend_log_endpoint(
-    request: Request, current_user: User = Depends(get_current_user)
+    request: Request,
+    log_request: FrontendLogRequest,
+    current_user: User = Depends(get_current_user),
 ):
-    log_data = await request.json()
+    """
+    Accept frontend log messages for centralized logging.
+
+    Now uses FrontendLogRequest Pydantic model for validation:
+    - Enforces max lengths on all fields
+    - Removes control characters
+    - Validates log level enum
+    """
+    # Convert Pydantic model to dict and add metadata
+    log_data = log_request.model_dump(exclude_none=True)
     log_data["user_id"] = current_user.oid
     log_data["user_agent"] = request.headers.get("user-agent", "")
     response = await LogService.process_frontend_log(log_data)
@@ -682,6 +727,7 @@ async def initialize_batch_upload(
 @router.post(
     "/upload-picture",
     status_code=status.HTTP_200_OK,
+    response_model=BatchUploadImageResponse,
     name="Upload Picture in Batch [AUTH REQUIRED]",
 )
 @limiter.limit("60/minute")
@@ -758,10 +804,11 @@ async def upload_picture_in_batch(
 
     # Return workflow_id for async tracking
     # Frontend will need to be updated to handle this
-    return {
-        "workflow_id": result["workflow_id"],
-        "picture_id": result["picture_id"],
-    }
+    return BatchUploadImageResponse(
+        success=True,
+        workflow_id=result["workflow_id"],
+        picture_id=result["picture_id"],
+    )
 
 
 # This is placed at the end to avoid catching other routes
