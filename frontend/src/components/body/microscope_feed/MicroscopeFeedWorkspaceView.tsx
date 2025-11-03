@@ -9,7 +9,7 @@ import {
   BoxCSS,
   SpeciesData,
   FeedbackDataNegative,
-  Images,
+  ImageWithInference,
 } from "@common/types";
 import { NegativeFeedbackForm } from "../feedback_form";
 import ApiAction from "../api_action";
@@ -29,7 +29,7 @@ export interface MicroscopeFeedWorkspaceViewProps {
   boxDragEnabled: boolean;
   isWebcamActive: boolean;
   isLoading: boolean;
-  imageData: Images | null;
+  imageData: ImageWithInference | null;
 
   // Dimensions
   windowSize: {
@@ -355,7 +355,9 @@ export const MicroscopeFeedWorkspaceView = (
       sx={{
         position: "relative",
         width: { xs: "100%", md: "73vw" },
-        height: "75vh",
+        height: { xs: "50vh", md: "75vh" },
+        // minHeight: { xs: "50vh", md: "75vh" },
+        // maxHeight: { xs: "50vh", md: "75vh" },
         borderTop: `0.01vh solid LightGrey`,
       }}
     >

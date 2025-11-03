@@ -9,7 +9,7 @@ import {
   SpeciesData,
   FeedbackDataNegative,
   FeedbackDataPositive,
-  Images,
+  ImageWithInference,
 } from "@common/types";
 import { sendNegativeFeedback, sendPositiveFeedback } from "@common";
 import { useSpeciesData } from "@hooks";
@@ -19,6 +19,7 @@ import { acquireAccessToken } from "@common/auth";
 import { getUnscaledCoordinates } from "@common/imageutils";
 import { useImageStore } from "@stores/useImageStore";
 import { useNotificationStore } from "@stores/useNotificationStore";
+import { useInferenceResultsStore } from "@stores/useInferenceResultsStore";
 import { MicroscopeFeedControlsView } from "./MicroscopeFeedControlsView";
 import { MicroscopeFeedWorkspaceView } from "./MicroscopeFeedWorkspaceView";
 
@@ -62,11 +63,8 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
 
   const { t } = useTranslation("main");
 
-  const {
-    images: imageCache,
-    currentIndex: imageIndex,
-    loadInferenceResults,
-  } = useImageStore();
+  const { images: imageCache, currentIndex: imageIndex } = useImageStore();
+  const getResult = useInferenceResultsStore((state) => state.getResult);
 
   const { addWarning } = useNotificationStore();
 
@@ -82,7 +80,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
   //   top: height / 2 - 50,
   // };
 
-  const [imageData, setImageData] = useState<Images | null>(null);
+  const [imageData, setImageData] = useState<ImageWithInference | null>(null);
   const [feedbackMode, setFeedbackMode] = useState<boolean>(false);
   const [isNewAnnotation, setIsNewAnnotation] = useState<boolean>(false);
   const [scaledFeedbackBox, setScaledFeedbackBox] = useState<BoxCSS | null>(
@@ -185,13 +183,14 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
       const accessToken = await acquireAccessToken(msalInstance, [
         apiScopeClaim,
       ]);
-      const response = await sendPositiveFeedback({
+      await sendPositiveFeedback({
         feedbackData: feedbackDataPositive,
         backendUrl,
         accessToken,
       });
       console.log("Positive Feedback submitted successfully");
-      loadInferenceResults(response, imageIndex);
+      // TODO: Update active inference result with feedback response
+      // Need to implement update logic for useInferenceResultsStore
       setApiSuccess(true);
     } catch (error) {
       console.error(
@@ -230,13 +229,14 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
       const accessToken = await acquireAccessToken(msalInstance, [
         apiScopeClaim,
       ]);
-      const response = await sendNegativeFeedback({
+      await sendNegativeFeedback({
         feedbackData: feedbackDataNegative,
         backendUrl,
         accessToken,
       });
       console.log("Negative Feedback submitted successfully");
-      loadInferenceResults(response, imageIndex);
+      // TODO: Update active inference result with feedback response
+      // Need to implement update logic for useInferenceResultsStore
       setApiSuccess(true);
     } catch (error) {
       console.error(
@@ -357,26 +357,55 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
 
   useEffect(() => {
     if (imageCache.length > 0) {
-      const image = imageCache.find((image) => image.index === imageIndex);
+      const image = imageCache.find((img) => img.index === imageIndex);
+      if (!image) {
+        setImageData(null);
+        return;
+      }
+
+      // Get active inference result
+      const activeWorkflowId = image.activeWorkflowId;
+      if (!activeWorkflowId) {
+        setImageData(null);
+        return;
+      }
+
+      const activeResult = getResult(activeWorkflowId);
+      if (!activeResult) {
+        setImageData(null);
+        return;
+      }
+
+      // Check if we have valid inference data
       if (
-        image &&
-        image.annotated &&
-        image.scores.length > 0 &&
-        image.boxes.length > 0 &&
-        image.classifications.length > 0 &&
+        activeResult.scores.length > 0 &&
+        activeResult.boxes.length > 0 &&
+        activeResult.classifications.length > 0 &&
         image.imageDims[0] > 0
       ) {
-        setImageData(image);
+        // Merge image with inference result
+        const mergedImageData: ImageWithInference = {
+          ...image,
+          annotated: true,
+          scores: activeResult.scores,
+          classifications: activeResult.classifications,
+          boxes: activeResult.boxes,
+          topN: activeResult.topN,
+          overlapping: activeResult.overlapping,
+          overlappingIndices: activeResult.overlappingIndices,
+        };
+        setImageData(mergedImageData);
       } else {
         setImageData(null);
       }
     }
-  }, [imageIndex, imageCache]);
+  }, [imageIndex, imageCache, getResult]);
   return (
     <Box
       sx={{
         minWidth: { xs: "100%", md: "73vw" },
-        minHeight: "80vh",
+        minHeight: { xs: "50vh", md: "80vh" },
+        maxHeight: { xs: "50vh", md: "80vh" },
         border: `0.01vh solid LightGrey`,
         borderRadius: "0.4vh",
       }}
