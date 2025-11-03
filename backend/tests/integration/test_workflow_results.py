@@ -363,7 +363,7 @@ class TestWorkflowResults:
         assert result is not None
         assert "filename" in result
         assert "imageId" in result
-        assert "inference_id" in result
+        assert "inferenceId" in result
         assert "boxes" in result
         assert "labelOccurrence" in result
         assert "totalBoxes" in result
