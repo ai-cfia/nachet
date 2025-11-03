@@ -22,9 +22,8 @@ const StorageDirectoryContainer: React.FC<params> = (props) => {
   const handleSelect = (folder: string): void => {
     const selectedDir =
       props.azureStorageDir.find((item) => item.folderId === folder) ?? null;
-    if (folder === curDir?.folderId) {
-      setCurDir(null);
-    } else {
+    // Prevent deselection - only set if clicking a different directory
+    if (folder !== curDir?.folderId) {
       setCurDir(selectedDir);
     }
   };
