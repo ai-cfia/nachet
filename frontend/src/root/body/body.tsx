@@ -5,16 +5,16 @@ import { Box } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { colours } from "../../styles/colours";
 import {
-  CreateDirectoryPopup,
+  DirectoryPopup,
   BatchUploadPopup,
-  DeleteDirectoryPopup,
   AuthPopup,
   UploadPopup,
   CreativeCommonsPopup,
   SaveCapturePopup,
   ModelPopup,
   SwitchDevicePopup,
-  DeviceInfoPopup,
+  SampleMetadataPopup,
+  ImageMetadataPopup,
   ClassificationResults,
   ImageCache,
   StorageDirectory,
@@ -37,6 +37,7 @@ import { useFolderStore } from "@stores/useFolderStore";
 import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";
 import { useModelStore } from "@stores/useModelStore";
 import { useNotificationStore } from "@stores/useNotificationStore";
+import { useInferenceResultsStore } from "@stores/useInferenceResultsStore";
 import { WorkflowQueueManager } from "../../services/WorkflowQueueManager";
 import { InteractionStatus } from "@azure/msal-browser";
 import { useMsal, useIsAuthenticated, useAccount } from "@azure/msal-react";
@@ -109,7 +110,7 @@ const Body: React.FC<params> = (props) => {
     images: imageCache,
     currentIndex: imageIndex,
     addCapturedImage,
-    loadInferenceResults,
+    addWorkflowToImage,
     setImageId,
   } = useImageStore();
 
@@ -119,7 +120,7 @@ const Body: React.FC<params> = (props) => {
     isBatchUploadOpen,
     isUploadOpen,
     isModelInfoOpen,
-    isDeviceInfoOpen,
+    isSampleMetadataOpen,
     isSwitchDeviceOpen,
     notificationLogOpen,
     imageFormat,
@@ -144,9 +145,17 @@ const Body: React.FC<params> = (props) => {
       : "";
   }, [currentImageData]);
 
+  // Get active inference result for label occurrences
   const labelOccurrences = useMemo(() => {
-    return currentImageData ? getLabelOccurrence(currentImageData) : {};
-  }, [currentImageData]);
+    if (!currentImageData?.activeWorkflowId) return {};
+
+    const inferenceResult =
+      useInferenceResultsStore
+        .getState()
+        .getResult(currentImageData.activeWorkflowId) ?? null;
+
+    return getLabelOccurrence(inferenceResult);
+  }, [currentImageData?.activeWorkflowId]);
 
   const decodedTiff = useDecoderTiff(imageTiff);
   const backendUrl = useBackendUrl();
@@ -169,7 +178,29 @@ const Body: React.FC<params> = (props) => {
   });
 
   // Model store
-  const { selectedModel } = useModelStore();
+  const { selectedModel, metadata: modelMetadata } = useModelStore();
+
+  // Derive pipeline ID and name from selected model
+  const { pipelineId, pipelineName } = useMemo(() => {
+    // Find metadata for selected model
+    const modelData = modelMetadata.find(
+      (m) =>
+        m.pipeline_id === selectedModel || m.pipeline_name === selectedModel,
+    );
+
+    if (modelData) {
+      return {
+        pipelineId: modelData.pipeline_id,
+        pipelineName: modelData.pipeline_name,
+      };
+    }
+
+    // Fallback if metadata not found (use selectedModel as both)
+    return {
+      pipelineId: selectedModel,
+      pipelineName: selectedModel,
+    };
+  }, [selectedModel, modelMetadata]);
 
   // Derive authPopupOpen from authentication state
   const authPopupOpen = useMemo(() => {
@@ -234,7 +265,9 @@ const Body: React.FC<params> = (props) => {
         })
         .then((response) => {
           setReadAzureStorage(!readAzureStorage);
-          loadInferenceResults(response, imageIndex, selectedModel);
+          // TODO: Handle direct inference results with new inference store
+          // Direct inference is a legacy/testing endpoint
+          console.log("Direct inference response:", response);
         })
         .catch((error) => {
           addError(t("inference.fetchFailed"), "inference");
@@ -308,7 +341,8 @@ const Body: React.FC<params> = (props) => {
       backendUrl,
       msalInstance,
       scopes,
-      selectedModel,
+      pipelineId,
+      pipelineName,
       curDir,
       images: imageCache,
       workflowStore: {
@@ -329,12 +363,41 @@ const Body: React.FC<params> = (props) => {
         removeWorkflow,
       },
       setImageId,
-      onComplete: (workflowId, imageIndex, results) => {
+      onComplete: (
+        workflowId,
+        imageIndex,
+        results,
+        pipelineId,
+        pipelineName,
+      ) => {
         console.log(
-          `[Workflow] Workflow ${workflowId} completed for image ${imageIndex}`,
+          `[Workflow] Workflow ${workflowId} completed for image ${imageIndex} with pipeline ${pipelineName}`,
         );
-        // Apply results to the correct image
-        loadInferenceResults(results, imageIndex, selectedModel);
+
+        // Get image_id for this image
+        const image = imageCache.find((img) => img.index === imageIndex);
+        if (!image?.imageId) {
+          console.error(`[Workflow] Image not found for index ${imageIndex}`);
+          return;
+        }
+
+        // Store results in inference results store
+        useInferenceResultsStore
+          .getState()
+          .addResult(
+            workflowId,
+            image.imageId,
+            results,
+            pipelineId,
+            pipelineName,
+          );
+
+        // Link workflow to image and set as active
+        addWorkflowToImage(imageIndex, workflowId, true);
+        useInferenceResultsStore
+          .getState()
+          .setActiveResult(image.imageId, workflowId);
+
         setReadAzureStorage(!readAzureStorage);
 
         // Remove workflow from store after completion
@@ -369,12 +432,13 @@ const Body: React.FC<params> = (props) => {
     backendUrl,
     msalInstance,
     apiScopeClaim,
-    selectedModel,
+    pipelineId,
+    pipelineName,
     curDir,
     imageCache,
     isAuthenticated,
     readAzureStorage,
-    loadInferenceResults,
+    addWorkflowToImage,
     setReadAzureStorage,
     addWorkflow,
     removeWorkflow,
@@ -399,10 +463,19 @@ const Body: React.FC<params> = (props) => {
     if (isWebcamActive) {
       return;
     }
+
+    // Get inference result for drawing boxes
+    const inferenceResult = imageData.activeWorkflowId
+      ? (useInferenceResultsStore
+          .getState()
+          .getResult(imageData.activeWorkflowId) ?? null)
+      : null;
+
     loadToCanvas(
       canvasRef,
       decodedTiff,
       imageData,
+      inferenceResult,
       "all", // Always show all labels on canvas
       labelOccurrences,
       true, // Always use label occurrence view on canvas
@@ -614,21 +687,15 @@ const Body: React.FC<params> = (props) => {
             apiScopeClaim={apiScopeClaim}
           />
         )}
-        {delDirectoryOpen && (
-          <DeleteDirectoryPopup
-            setReadAzureStorage={setReadAzureStorage}
-            apiScopeClaim={apiScopeClaim}
-          />
-        )}
         {createDirectoryOpen && (
-          <CreateDirectoryPopup
+          <DirectoryPopup
             setReadAzureStorage={setReadAzureStorage}
             apiScopeClaim={apiScopeClaim}
             mode="create"
           />
         )}
         {editDirectoryOpen && editingFolder && (
-          <CreateDirectoryPopup
+          <DirectoryPopup
             setReadAzureStorage={setReadAzureStorage}
             apiScopeClaim={apiScopeClaim}
             mode="edit"
@@ -636,6 +703,18 @@ const Body: React.FC<params> = (props) => {
               folderId: editingFolder.folderId,
               folderName: editingFolder.folderName,
               description: editingFolder.description || "",
+            }}
+          />
+        )}
+        {delDirectoryOpen && curDir && (
+          <DirectoryPopup
+            setReadAzureStorage={setReadAzureStorage}
+            apiScopeClaim={apiScopeClaim}
+            mode="delete"
+            initialData={{
+              folderId: curDir.folderId,
+              folderName: curDir.folderName,
+              description: curDir.description || "",
             }}
           />
         )}
@@ -652,7 +731,10 @@ const Body: React.FC<params> = (props) => {
         {isUploadOpen && <UploadPopup pushImageToCache={pushImageToCache} />}
         {isModelInfoOpen && <ModelPopup />}
         {isSwitchDeviceOpen && <SwitchDevicePopup />}
-        {isDeviceInfoOpen && <DeviceInfoPopup devicesData={devicesData} />}
+        {isSampleMetadataOpen && (
+          <SampleMetadataPopup devicesData={devicesData} />
+        )}
+        <ImageMetadataPopup devicesData={devicesData} />
         {notificationLogOpen && <NotificationLogPopup />}
         {props.creativeCommonsPopupOpen && (
           <CreativeCommonsPopup
@@ -674,7 +756,8 @@ const Body: React.FC<params> = (props) => {
             alignItems: "center",
             width: "100%",
             maxWidth: "100%",
-            minHeight: "80vh",
+            // minHeight: "80vh",
+            minHeight: { xs: "50vh", md: "80vh" },
             position: "relative",
             zIndex: 0,
             padding: "0px 0px 0px 1vw",
@@ -689,10 +772,13 @@ const Body: React.FC<params> = (props) => {
               justifyContent: "center",
               // width: "60%",
               // maxWidth: "60%",
-              minHeight: "80vh",
+              minHeight: { xs: "50vh", md: "80vh" },
+              maxHeight: { xs: "50vh", md: "80vh" },
               zIndex: 0,
               position: "relative",
               paddingBottom: { xs: "2vh", md: 0 },
+              paddingLeft: { xs: "5vw", md: 0 },
+              paddingRight: { xs: "5vw", md: 0 },
             }}
           >
             <MicroscopeFeed
@@ -719,15 +805,19 @@ const Body: React.FC<params> = (props) => {
             sx={{
               display: "flex",
               flexDirection: "column",
-              alignItems: "start",
+              // alignItems: "start",
+              alignItems: { xs: "flex-end", md: "flex-start" },
               justifyContent: "space-between",
               minWidth: { xs: "100%", md: "23vw" },
               maxWidth: { xs: "100%", md: "23vw" },
-              minHeight: "80vh",
-              maxHeight: "100%",
+              // minHeight: "80vh",
+              // maxHeight: "100%",
+              minHeight: { xs: "50vh", md: "80vh" },
+              maxHeight: { xs: "50vh", md: "80vh" },
               zIndex: 0,
               position: "relative",
-              paddingLeft: "1vw",
+              paddingLeft: { xs: "10vw", md: "1vw" },
+              paddingRight: { xs: "10vw", md: 0 },
             }}
           >
             <StorageDirectory azureStorageDir={azureStorageDir} />

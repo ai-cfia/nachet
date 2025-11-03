@@ -89,13 +89,23 @@ vi.mock("@stores/useDeviceStore", () => ({
       selectedModelId: "",
       selectedLensId: "",
     },
+    sampleMetadata: {
+      trayCode: "",
+      magnification: 0,
+      sampleIdPrefix: "",
+      sampleDescription: "",
+    },
     setDevicesData: vi.fn(),
     setLoading: vi.fn(),
     setError: vi.fn(),
     clearDevicesData: vi.fn(),
     setDeviceSelection: vi.fn(),
     clearDeviceSelection: vi.fn(),
+    setSampleMetadata: vi.fn(),
+    clearSampleMetadata: vi.fn(),
     isDeviceInfoSet: () => false,
+    isSampleMetadataComplete: () => false,
+    getMissingMetadataCount: () => 0,
   }),
 }));
 

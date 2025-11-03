@@ -8,9 +8,11 @@ import {
   LogLevel,
 } from "@azure/msal-browser";
 import { CacheProvider } from "@emotion/react";
+import { ThemeProvider } from "@mui/material/styles";
 import { createEmotionCache } from "./common/emotionCache";
 import { ErrorBoundary } from "@components/body/index.ts";
 import { errorLogger } from "./logging";
+import { theme } from "./theme";
 import {
   acquireAccessToken,
   shouldTriggerRedirect,
@@ -137,15 +139,17 @@ msalInstance
     // Render app after MSAL is initialized
     ReactDOM.createRoot(document.getElementById("root")!).render(
       <React.StrictMode>
-        <CacheProvider value={emotionCache}>
-          <ErrorBoundary>
-            <App
-              msalInstance={msalInstance}
-              basename={basename}
-              apiScopeClaim={apiScopeClaim}
-            />
-          </ErrorBoundary>
-        </CacheProvider>
+        <ThemeProvider theme={theme}>
+          <CacheProvider value={emotionCache}>
+            <ErrorBoundary>
+              <App
+                msalInstance={msalInstance}
+                basename={basename}
+                apiScopeClaim={apiScopeClaim}
+              />
+            </ErrorBoundary>
+          </CacheProvider>
+        </ThemeProvider>
       </React.StrictMode>,
     );
   })
@@ -156,15 +160,17 @@ msalInstance
     const emotionCache = createEmotionCache();
     ReactDOM.createRoot(document.getElementById("root")!).render(
       <React.StrictMode>
-        <CacheProvider value={emotionCache}>
-          <ErrorBoundary>
-            <App
-              msalInstance={msalInstance}
-              basename={basename}
-              apiScopeClaim={apiScopeClaim}
-            />
-          </ErrorBoundary>
-        </CacheProvider>
+        <ThemeProvider theme={theme}>
+          <CacheProvider value={emotionCache}>
+            <ErrorBoundary>
+              <App
+                msalInstance={msalInstance}
+                basename={basename}
+                apiScopeClaim={apiScopeClaim}
+              />
+            </ErrorBoundary>
+          </CacheProvider>
+        </ThemeProvider>
       </React.StrictMode>,
     );
   });
