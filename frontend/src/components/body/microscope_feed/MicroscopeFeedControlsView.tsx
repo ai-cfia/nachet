@@ -91,7 +91,7 @@ export const MicroscopeFeedControlsView = (
   const { t } = useTranslation("main");
 
   const { devices, activeDeviceId } = useWebcamStore();
-  const { isDeviceInfoSet, getMissingMetadataCount } = useDeviceStore();
+  const { getMissingMetadataCount } = useDeviceStore();
   const { images: imageCache } = useImageStore();
   const { selectedModel, metadata } = useModelStore();
   const accountInfo = useAccount();
@@ -196,20 +196,20 @@ export const MicroscopeFeedControlsView = (
         label={deviceLabel.slice(0, 8)} // Limit label length to 8 characters
         icon={<SwitchCameraIcon color="inherit" style={iconStyle} />}
         endIcon={<ArrowDropDownIcon color="inherit" />}
-        disabled={!isWebcamActive || !isDeviceInfoSet()} // Disable when the webcam is active
+        disabled={!isWebcamActive || getMissingMetadataCount() > 0} // Disable when the webcam is active
         onClick={openSwitchDevicePopup}
       />
       <ButtonMicroscopeFeed
         label={t("microscopeFeed.controls.captureLabel")}
         icon={<AddAPhotoIcon color="inherit" style={iconStyle} />}
-        disabled={!isWebcamActive || !isDeviceInfoSet()} // Disable when the webcam is inactive or device info is not set
+        disabled={!isWebcamActive || getMissingMetadataCount() > 0} // Disable when the webcam is inactive or device info is not set
         onClick={() => {
           capture();
         }}
       />
       <Switch
         checked={!isWebcamActive}
-        disabled={!isDeviceInfoSet()} // Disable when device info is not set
+        disabled={getMissingMetadataCount() > 0} // Disable when device info is not set
         onChange={onCaptureClick}
         size="small"
         sx={{

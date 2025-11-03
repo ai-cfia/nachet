@@ -116,6 +116,26 @@ export const useDeviceStore = create<DeviceState>()(
         deviceSelection: state.deviceSelection,
         sampleMetadata: state.sampleMetadata,
       }),
+      version: 1, // Increment version to trigger migration
+      migrate: (persistedState: any, version: number) => {
+        console.log("DEBUG: Migrating device store from version", version);
+
+        // Migrate from version 0 (no version) to version 1
+        if (version === 0 || !version) {
+          // Check if old sampleId exists and migrate to sampleIdPrefix
+          if (persistedState?.sampleMetadata?.sampleId !== undefined) {
+            console.log(
+              "DEBUG: Migrating sampleId to sampleIdPrefix:",
+              persistedState.sampleMetadata.sampleId,
+            );
+            persistedState.sampleMetadata.sampleIdPrefix =
+              persistedState.sampleMetadata.sampleId;
+            delete persistedState.sampleMetadata.sampleId;
+          }
+        }
+
+        return persistedState;
+      },
     },
   ),
 );

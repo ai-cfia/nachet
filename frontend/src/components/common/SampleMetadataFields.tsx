@@ -40,6 +40,14 @@ export const SampleMetadataFields = (props: SampleMetadataFieldsProps) => {
 
   const { t } = useTranslation("popups");
 
+  // Debug: Log props to check if sampleIdPrefix is being passed
+  console.log("DEBUG SampleMetadataFields props:", {
+    sampleIdPrefix,
+    hasSampleIdPrefixProp: sampleIdPrefix !== undefined,
+    hasOnSampleIdPrefixChange: !!onSampleIdPrefixChange,
+    shouldRender: sampleIdPrefix !== undefined && !!onSampleIdPrefixChange,
+  });
+
   // Normalize sample ID prefix: remove invalid chars and trailing dashes
   const normalizeSampleIdPrefix = (value: string): string => {
     return value
@@ -136,13 +144,22 @@ export const SampleMetadataFields = (props: SampleMetadataFieldsProps) => {
         />
       </Box>
 
-      {sampleIdPrefix !== undefined && onSampleIdPrefixChange && (
+      {(() => {
+        const shouldRenderField =
+          sampleIdPrefix !== undefined && onSampleIdPrefixChange;
+        console.log("DEBUG: Sample ID Prefix field render check:", {
+          shouldRenderField,
+          sampleIdPrefix,
+          onSampleIdPrefixChange: !!onSampleIdPrefixChange,
+        });
+        return shouldRenderField;
+      })() && (
         <TextField
           id="input-sample-id"
           label={t("batchUpload.metadataSection.sampleIdLabel")}
           variant="outlined"
           value={sampleIdPrefix}
-          onChange={(e) => onSampleIdPrefixChange(e.target.value)}
+          onChange={(e) => onSampleIdPrefixChange!(e.target.value)}
           onBlur={handleSampleIdPrefixBlur}
           error={!!sampleIdPrefixError}
           helperText={
