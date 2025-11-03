@@ -4,7 +4,6 @@ import {
   Dialog,
   DialogContent,
   IconButton,
-  Button,
   Typography,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
@@ -13,11 +12,12 @@ import { useBackendUrl } from "@hooks";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
-import { createOrGetFolder, updateFolder } from "@common/api";
+import { createOrGetFolder, updateFolder, deleteFolder } from "@common/api";
 import { normalizedPathSchema, safeUserInputSchema } from "@common/validation";
 import { getZodErrorKey } from "@common/zodErrorMap";
 import { useTranslation } from "react-i18next";
 import { FolderFieldsGroup } from "../folder_fields_group/FolderFieldsGroup";
+import { PopupActionButtons } from "@components/common";
 import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";
 import { useFolderStore } from "@stores/useFolderStore";
 import { useNotificationStore } from "@stores/useNotificationStore";
@@ -25,7 +25,7 @@ import { useNotificationStore } from "@stores/useNotificationStore";
 interface params {
   setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
   apiScopeClaim: string;
-  mode: "create" | "edit";
+  mode: "create" | "edit" | "delete";
   initialData?: {
     folderId: string;
     folderName: string;
@@ -33,18 +33,23 @@ interface params {
   };
 }
 
-const CreateFolder: React.FC<params> = (props) => {
+const DirectoryPopup: React.FC<params> = (props) => {
   const { t } = useTranslation("popups");
   const { t: tValidation } = useTranslation("validation");
   const { setReadAzureStorage, apiScopeClaim, mode, initialData } = props;
-  const { closeCreateDirectory, closeEditDirectory } = useDirectoryModalStore();
+  const { closeCreateDirectory, closeEditDirectory, closeDeleteDirectory } =
+    useDirectoryModalStore();
   const { setCurDir } = useFolderStore();
   const backendURL = useBackendUrl();
   const [folderNameInput, setFolderNameInput] = useState<string>(
-    mode === "edit" && initialData ? initialData.folderName : "",
+    (mode === "edit" || mode === "delete") && initialData
+      ? initialData.folderName
+      : "",
   );
   const [descriptionInput, setDescriptionInput] = useState<string>(
-    mode === "edit" && initialData ? initialData.description || "" : "",
+    (mode === "edit" || mode === "delete") && initialData
+      ? initialData.description || ""
+      : "",
   );
   const [validationError, setValidationError] = useState<string>("");
   const [descriptionError, setDescriptionError] = useState<string>("");
@@ -52,17 +57,55 @@ const CreateFolder: React.FC<params> = (props) => {
   const isAuthenticated = useIsAuthenticated();
   const { addError, addWarning } = useNotificationStore();
 
-  const handleCreateDirectory = (): void => {
+  const handleDirectoryOperation = (): void => {
     if (!isAuthenticated) {
-      addError(t("createDirectory.errors.signInRequired"), "auth");
+      const errorKey =
+        mode === "delete"
+          ? "deleteDirectory.errors.signInRequired"
+          : "createDirectory.errors.signInRequired";
+      addError(t(errorKey), "auth");
       return;
     }
 
     if (inProgress !== InteractionStatus.None) {
-      addWarning(t("createDirectory.errors.authInProgress"), 8000);
+      const warningKey =
+        mode === "delete"
+          ? "deleteDirectory.errors.authInProgress"
+          : "createDirectory.errors.authInProgress";
+      addWarning(t(warningKey), 8000);
       return;
     }
 
+    // For delete mode, skip validation and go straight to deletion
+    if (mode === "delete") {
+      if (!initialData) {
+        addError(t("deleteDirectory.errors.noSelection"), "directory");
+        return;
+      }
+
+      acquireAccessToken(msalInstance, [apiScopeClaim])
+        .then(async (accessToken) => {
+          await deleteFolder({
+            backendUrl: backendURL,
+            accessToken,
+            folderId: initialData.folderId,
+          });
+          console.log(`Folder deleted: ${initialData.folderId}`);
+          closeDeleteDirectory();
+          setCurDir(null);
+          setReadAzureStorage((prev) => !prev);
+        })
+        .catch((error) => {
+          addError(t("deleteDirectory.errors.deleteFailed"), "directory");
+          console.error(
+            "Directory deletion failed:",
+            error instanceof Error ? error.message : String(error),
+          );
+        });
+      return;
+    }
+
+    // For create/edit modes, validate inputs
     // Normalize folder name (lowercase, replace invalid chars with hyphens)
     const normalizedPath = folderNameInput
       .toLowerCase()
@@ -75,6 +118,12 @@ const CreateFolder: React.FC<params> = (props) => {
       setValidationError(
         tValidation(getZodErrorKey(pathValidationResult.error)),
       );
+      return;
+    }
+
+    // Validate description - now required
+    if (!descriptionInput.trim()) {
+      setDescriptionError(tValidation("directoryDescriptionRequired"));
       return;
     }
 
@@ -143,8 +192,10 @@ const CreateFolder: React.FC<params> = (props) => {
   const handleClose = (): void => {
     if (mode === "create") {
       closeCreateDirectory();
-    } else {
+    } else if (mode === "edit") {
       closeEditDirectory();
+    } else {
+      closeDeleteDirectory();
     }
     setFolderNameInput("");
     setDescriptionInput("");
@@ -192,7 +243,9 @@ const CreateFolder: React.FC<params> = (props) => {
             >
               {mode === "create"
                 ? t("createDirectory.titleCreate")
-                : t("createDirectory.titleEdit")}
+                : mode === "edit"
+                  ? t("createDirectory.titleEdit")
+                  : t("deleteDirectory.title")}
             </Typography>
             <IconButton onClick={handleClose} size="small">
               <CloseIcon />
@@ -215,75 +268,25 @@ const CreateFolder: React.FC<params> = (props) => {
             }}
             folderNameError={validationError}
             folderDescriptionError={descriptionError}
+            disabled={mode === "delete"}
             sx={{ marginTop: "0px" }}
           />
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              marginTop: "2vh",
-              marginBottom: "1vh",
-              gap: "1vh",
-            }}
-          >
-            <Button
-              variant="outlined"
-              size="medium"
-              sx={{
-                borderRadius: "0.4vh",
-                paddingTop: "0.6vh",
-                paddingBottom: "0.6vh",
-                paddingLeft: "1.5vh",
-                paddingRight: "1.5vh",
-                fontSize: "1.17vh",
-                width: "fit-content",
-                border: `0.15vh solid ${colours.CFIA_Background_Blue}`,
-                color: colours.CFIA_Background_Blue,
-                "&:hover": {
-                  backgroundColor: colours.CFIA_Background_Blue,
-                  color: colours.CFIA_Background_White,
-                  border: `0.15vh solid ${colours.CFIA_Background_Blue}`,
-                  transition: "0.2s ease-in-out all",
-                },
-              }}
-              onClick={() => {
-                handleCreateDirectory();
-              }}
-            >
-              {mode === "create"
+          <PopupActionButtons
+            onSave={handleDirectoryOperation}
+            onCancel={handleClose}
+            saveLabel={
+              mode === "create"
                 ? t("createDirectory.createButton")
-                : t("createDirectory.updateButton")}
-            </Button>
-            <Button
-              variant="outlined"
-              size="medium"
-              sx={{
-                borderRadius: "0.4vh",
-                paddingTop: "0.6vh",
-                paddingBottom: "0.6vh",
-                paddingLeft: "1.5vh",
-                paddingRight: "1.5vh",
-                fontSize: "1.17vh",
-                width: "fit-content",
-                border: `0.15vh solid LightGrey`,
-                color: colours.CFIA_Font_Black,
-                "&:hover": {
-                  backgroundColor: "#F5F5F5",
-                  transition: "0.2s ease-in-out all",
-                  border: `0.15vh solid LightGrey`,
-                },
-              }}
-              onClick={handleClose}
-            >
-              {t("createDirectory.cancelButton")}
-            </Button>
-          </Box>
+                : mode === "edit"
+                  ? t("createDirectory.updateButton")
+                  : t("deleteDirectory.deleteButton")
+            }
+            sx={{ marginTop: "2vh", marginBottom: "1vh" }}
+          />
         </Box>
       </DialogContent>
     </Dialog>
   );
 };
 
-export default CreateFolder;
+export default DirectoryPopup;
