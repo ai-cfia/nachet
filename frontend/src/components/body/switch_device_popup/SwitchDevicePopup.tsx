@@ -13,6 +13,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { useTranslation } from "react-i18next";
 import { colours } from "../../../styles/colours";
 import { deviceIdSchema } from "@common/validation";
+import { PopupActionButtons } from "@components/common";
 import { useModalStore } from "@stores/useModalStore";
 import { useWebcamStore } from "@stores/useWebcamStore";
 
@@ -21,26 +22,43 @@ const SwitchDevice: React.FC = () => {
   const [deviceError, setDeviceError] = useState<string>("");
   const { closeSwitchDevicePopup } = useModalStore();
   const { devices, activeDeviceId, setActiveDeviceId } = useWebcamStore();
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>(
+    activeDeviceId ?? "",
+  );
 
   const handleClose = (): void => {
     closeSwitchDevicePopup();
     setDeviceError("");
   };
 
-  const handleSwitch = (event: SelectChangeEvent): void => {
-    const selectedDeviceId = event.target.value;
+  const handleDeviceChange = (event: SelectChangeEvent): void => {
+    const newDeviceId = event.target.value;
+    setSelectedDeviceId(newDeviceId);
 
     // Validate device ID
+    const validation = deviceIdSchema.safeParse(newDeviceId);
+    if (!validation.success) {
+      setDeviceError(validation.error.issues[0].message);
+    } else {
+      setDeviceError("");
+    }
+  };
+
+  const handleSave = (): void => {
+    // Validate device ID before saving
     const validation = deviceIdSchema.safeParse(selectedDeviceId);
     if (!validation.success) {
       setDeviceError(validation.error.issues[0].message);
       return;
     }
 
-    // Clear error and proceed
-    setDeviceError("");
+    // Apply the device change
     setActiveDeviceId(selectedDeviceId);
     closeSwitchDevicePopup();
+  };
+
+  const handleCancel = (): void => {
+    handleClose();
   };
 
   return (
@@ -98,8 +116,8 @@ const SwitchDevice: React.FC = () => {
             }}
           >
             <Select
-              value={activeDeviceId}
-              onChange={handleSwitch}
+              value={selectedDeviceId}
+              onChange={handleDeviceChange}
               sx={{ fontSize: "1.2vh" }}
               size="small"
               fullWidth
@@ -126,6 +144,12 @@ const SwitchDevice: React.FC = () => {
           </Box>
         </Box>
       </DialogContent>
+      <PopupActionButtons
+        onSave={handleSave}
+        onCancel={handleCancel}
+        disabled={!!deviceError}
+        sx={{ padding: "1vh 2vh" }}
+      />
     </Dialog>
   );
 };
