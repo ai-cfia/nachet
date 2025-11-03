@@ -412,10 +412,10 @@ async def get_workflow_results(
                 workflow_id=workflow_id,
                 annotation_id=str(annotation.id),
                 user_id=str(user_id),
-                total_boxes=inference_response.totalBoxes,
+                total_boxes=inference_response.total_boxes,
             )
 
-            # Return as dict for FastAPI serialization
+            # Return as dict for FastAPI serialization (automatically uses camelCase via serialize_by_alias)
             return inference_response.model_dump()
 
     except HTTPException:

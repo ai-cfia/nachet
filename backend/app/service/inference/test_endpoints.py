@@ -139,7 +139,7 @@ async def submit_direct_pipeline_inference_request_test(
         # Returns API-ready result with normalized coordinates
         api_result = await process_api_ready_classification_result(
             result=classification_result.result,
-            imageDims=request.imageDims,
+            imageDims=request.image_dims,
             area_ratio=request.area_ratio,
             color_format=request.color_format,
         )
@@ -155,11 +155,11 @@ async def submit_direct_pipeline_inference_request_test(
         # Return validated API response using Pydantic model
         return ApiInferenceResponse(
             filename=api_result.filename,
-            imageId="direct-inference",  # No DB storage for direct inference
+            image_id="direct-inference",  # No DB storage for direct inference
             inference_id="direct-inference",  # No DB storage for direct inference
             boxes=api_result.boxes,
-            labelOccurrence=api_result.labelOccurrence,
-            totalBoxes=api_result.totalBoxes,
+            label_occurrence=api_result.labelOccurrence,
+            total_boxes=api_result.totalBoxes,
             models=models,
         )
 
@@ -263,7 +263,7 @@ async def submit_direct_inference_request_test(
         # Returns API-ready result with normalized coordinates
         api_result = await process_api_ready_classification_result(
             result=classification_result.result,
-            imageDims=request.imageDims,
+            imageDims=request.image_dims,
             area_ratio=request.area_ratio,
             color_format=request.color_format,
         )
@@ -273,11 +273,11 @@ async def submit_direct_inference_request_test(
 
         return ApiInferenceResponse(
             filename=api_result.filename,
-            imageId="direct-inference",  # No DB storage for direct inference
+            image_id="direct-inference",  # No DB storage for direct inference
             inference_id="direct-inference",  # No DB storage for direct inference
             boxes=api_result.boxes,
-            labelOccurrence=api_result.labelOccurrence,
-            totalBoxes=api_result.totalBoxes,
+            label_occurrence=api_result.labelOccurrence,
+            total_boxes=api_result.totalBoxes,
             models=[
                 ModelInfo(name="rcnn_seed_detector", version="1"),
                 ModelInfo(name="swin_classifier_model", version="1"),

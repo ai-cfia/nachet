@@ -451,7 +451,7 @@ async def image_inference_workflow(
     image_id: UUID,
     org_prefix: str,
     pipeline_id: UUID,
-    imageDims: list[int],
+    image_dims: list[int],
     user_id: UUID,
     org_user_role_id: UUID,
     org_admin_role_id: UUID,
@@ -512,7 +512,7 @@ async def image_inference_workflow(
             org_user_role_id=org_user_role_id,
             org_admin_role_id=org_admin_role_id,
             workflow_id=DBOS.workflow_id,
-            image_dims=imageDims,
+            image_dims=image_dims,
         )
         inference_state_id = UUID(_inference_state["inference_request_state_id"])
         logger.info(
@@ -602,7 +602,7 @@ async def image_inference_workflow(
         # This remains in workflow as it's pure computation
         api_result = await process_api_ready_classification_result(
             result=classification_result.result,
-            imageDims=imageDims,
+            imageDims=image_dims,
         )
 
         # Build model info list from pipeline steps
@@ -614,13 +614,13 @@ async def image_inference_workflow(
         # Build complete API response
         api_response = ApiInferenceResponse(
             filename=api_result.filename,
-            imageId=str(image_id),
+            image_id=str(image_id),
             inference_id=str(
                 parent_workflow_id
             ),  # Use parent workflow ID as inference ID
             boxes=api_result.boxes,
-            labelOccurrence=api_result.labelOccurrence,
-            totalBoxes=api_result.totalBoxes,
+            label_occurrence=api_result.labelOccurrence,
+            total_boxes=api_result.totalBoxes,
             models=models,
         )
 
@@ -835,7 +835,7 @@ async def image_processing_and_inference_workflow(
     user_id: UUID,
     org_prefix: str,
     pipeline_id: UUID,
-    imageDims: list[int],
+    image_dims: list[int],
     org_user_role_id: UUID,
     org_admin_role_id: UUID,
     skip_preprocessing: bool = False,
@@ -917,7 +917,7 @@ async def image_processing_and_inference_workflow(
                 image_id=image_id,
                 org_prefix=org_prefix,
                 pipeline_id=pipeline_id,
-                imageDims=imageDims,
+                image_dims=image_dims,
                 user_id=user_id,
                 org_user_role_id=org_user_role_id,
                 org_admin_role_id=org_admin_role_id,

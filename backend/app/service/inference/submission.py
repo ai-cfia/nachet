@@ -5,6 +5,7 @@ This module handles image submission for processing and inference,
 including validation, deduplication, and workflow orchestration.
 """
 
+import re
 from uuid import UUID
 from datetime import datetime, timezone
 from beartype.typing import Dict, Any
@@ -13,6 +14,7 @@ from dbos import DBOS
 
 from app.model.inference import InferenceRequest, ImageSubmissionResponse
 from app.service import DirectoryService, PipelineService, ImageService
+from app.service.device import DeviceModelService, DeviceLensService
 from app.service.rbac import RbacService
 from app.service.constants import ProcessingStatus
 from app.exceptions import (
@@ -20,6 +22,8 @@ from app.exceptions import (
     FolderNotFoundError,
     PipelineNotFoundError,
     ImageProcessingError,
+    DeviceModelNotFoundError,
+    DeviceLensNotFoundError,
 )
 from app.db.utils import sessionmanager
 from app.service.inference.image_validation import preprocess_image
@@ -27,6 +31,67 @@ from app.service.inference.state_management import create_processing_state
 from app.service.inference.queues import image_processing_queue
 from app.service.inference.workflows import image_processing_and_inference_workflow
 from app.service.inference.workflow_management import get_processing_status
+
+
+def sanitize_text(
+    text: str,
+    max_length: int = 255,
+    allowed_chars: str = r"a-zA-Z0-9. ",
+    field_name: str = "Text",
+) -> str:
+    """
+    Sanitize text input by filtering characters, normalizing whitespace,
+    and enforcing maximum length.
+
+    This function provides defense-in-depth sanitization after Pydantic validation.
+    It matches the frontend form normalization behavior from SampleMetadataFields.
+
+    Args:
+        text: The input text to sanitize
+        max_length: Maximum allowed length for the text
+        allowed_chars: Regex character class of allowed characters (e.g., 'a-zA-Z0-9-')
+        field_name: Name of field for error messages
+
+    Returns:
+        Sanitized text string
+
+    Raises:
+        ValueError: If text is invalid after sanitization
+
+    Note:
+        Type enforcement is handled by beartype at runtime via type hints.
+    """
+    # Strip leading/trailing whitespace
+    sanitized = text.strip()
+
+    # Remove characters not in allowed set
+    # Use negative character class to remove unwanted characters
+    sanitized = re.sub(f"[^{allowed_chars}]", "", sanitized)
+
+    # Normalize multiple spaces to single space
+    sanitized = re.sub(r"\s+", " ", sanitized)
+
+    # Remove consecutive periods (for description fields)
+    if "." in allowed_chars:
+        sanitized = re.sub(r"\.{2,}", ".", sanitized)
+
+    # Strip again after normalization
+    sanitized = sanitized.strip()
+
+    # Check if empty after sanitization
+    if not sanitized:
+        raise ValueError(
+            f"{field_name} cannot be empty or contain only invalid characters"
+        )
+
+    # Enforce max length
+    if len(sanitized) > max_length:
+        raise ValueError(
+            f"{field_name} exceeds maximum length of {max_length} characters "
+            f"(got {len(sanitized)} characters)"
+        )
+
+    return sanitized
 
 
 async def submit_inference_request(
@@ -110,6 +175,25 @@ async def submit_inference_request(
             request.pipeline_id, user_id
         )
 
+        # Validate device metadata foreign keys
+        try:
+            await DeviceModelService.get_by_id(
+                requester_id=user_id, entity_id=request.device_model_id
+            )
+        except DeviceModelNotFoundError:
+            raise DeviceModelNotFoundError(
+                f"Device model with ID {request.device_model_id} not found"
+            )
+
+        try:
+            await DeviceLensService.get_by_id(
+                requester_id=user_id, entity_id=request.device_lens_id
+            )
+        except DeviceLensNotFoundError:
+            raise DeviceLensNotFoundError(
+                f"Device lens with ID {request.device_lens_id} not found"
+            )
+
         # Validate and preprocess the image
         info = await preprocess_image(
             image_base64=request.image, user_role_id=user_org_roles.org_user_role_id
@@ -122,6 +206,23 @@ async def submit_inference_request(
             # Construct blob URL using org_prefix and image_id
             blob_url_original = f"{user_org_roles.org_prefix}/{image_id}.png"
 
+            # Sanitize text metadata fields with character restrictions
+            # Matches frontend SampleMetadataFields normalization behavior
+            sanitized_name = sanitize_text(
+                request.image_name,
+                max_length=100,
+                allowed_chars="a-zA-Z0-9-",
+                field_name="Image name",
+            )
+            sanitized_description = sanitize_text(
+                request.image_description,
+                max_length=500,
+                allowed_chars="a-zA-Z0-9. ",
+                field_name="Image description",
+            )
+            # tray_code is already validated by Pydantic enum - just use value
+            sanitized_tray_code = request.tray_code.value
+
             _picture_data = await ImageService.create(
                 requester_id=user_id,
                 id=image_id,
@@ -129,13 +230,18 @@ async def submit_inference_request(
                 folder_id=folder_id,
                 org_user_role_id=user_org_roles.org_user_role_id,
                 org_admin_role_id=user_org_roles.org_admin_role_id,
-                name=image_id,  # from the parsed image info
+                name=sanitized_name,
                 width=info.width,
                 height=info.height,
                 format=info.mime_type,  # Changed from info.format to info.mime_type
                 size_on_disk_original=info.size_bytes,
                 sha256=info.sha256_hash,
                 blob_url_original=blob_url_original,
+                description=sanitized_description,
+                device_model_id=request.device_model_id,
+                device_lens_id=request.device_lens_id,
+                tray_code=sanitized_tray_code,
+                magnification=request.magnification,
             )
         else:
             logger.info(
@@ -156,7 +262,7 @@ async def submit_inference_request(
             user_id=user_id,
             org_prefix=user_org_roles.org_prefix,
             pipeline_id=pipeline_id,
-            imageDims=[info.width, info.height],
+            image_dims=[info.width, info.height],
             org_user_role_id=user_org_roles.org_user_role_id,
             org_admin_role_id=user_org_roles.org_admin_role_id,
             skip_preprocessing=bool(
