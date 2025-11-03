@@ -144,47 +144,56 @@ export const TaxonomicFieldsGroup = (props: TaxonomicFieldsGroupProps) => {
         disabled={disabled}
       />
 
-      <Autocomplete
-        id="taxonomic-genus"
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            label={t("taxonomicFields.genusLabel")}
-            error={!!genusError}
-            helperText={genusError}
-          />
-        )}
-        options={availableGenera}
-        value={genus}
-        onChange={(_event, newValue) => {
-          onGenusChange(newValue || "");
-        }}
+      <Box
         sx={{
-          width: sx?.width || "100%",
+          display: "flex",
+          flexDirection: "row",
+          gap: "10px",
+          width: "100%",
         }}
-        disabled={disabled}
-      />
+      >
+        <Autocomplete
+          id="taxonomic-genus"
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label={t("taxonomicFields.genusLabel")}
+              error={!!genusError}
+              helperText={genusError}
+            />
+          )}
+          options={availableGenera}
+          value={genus}
+          onChange={(_event, newValue) => {
+            onGenusChange(newValue || "");
+          }}
+          sx={{
+            width: "calc(50% - 5px)",
+          }}
+          disabled={disabled}
+        />
 
-      <Autocomplete
-        id="taxonomic-species"
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            label={t("taxonomicFields.speciesLabel")}
-            error={!!speciesError}
-            helperText={speciesError}
-          />
-        )}
-        options={availableSpecies}
-        value={species}
-        onChange={(_event, newValue) => {
-          handleSpeciesChange(newValue || "");
-        }}
-        sx={{
-          width: sx?.width || "100%",
-        }}
-        disabled={disabled}
-      />
+        <Autocomplete
+          id="taxonomic-species"
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label={t("taxonomicFields.speciesLabel")}
+              error={!!speciesError}
+              helperText={speciesError}
+            />
+          )}
+          options={availableSpecies}
+          value={species}
+          onChange={(_event, newValue) => {
+            handleSpeciesChange(newValue || "");
+          }}
+          sx={{
+            width: "calc(50% - 5px)",
+          }}
+          disabled={disabled}
+        />
+      </Box>
 
       <Autocomplete
         id="taxonomic-name-code"

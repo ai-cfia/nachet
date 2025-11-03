@@ -37,6 +37,37 @@ export const FolderFieldsGroup = (props: FolderFieldsGroupProps) => {
 
   const { t } = useTranslation("popups");
 
+  // Normalize folder name: remove invalid chars and trailing dashes/underscores
+  const normalizeFolderName = (value: string): string => {
+    return value
+      .replace(/[^a-zA-Z0-9._-]/g, "") // Remove invalid characters
+      .replace(/[-_]+$/, "") // Remove trailing dashes and underscores
+      .trim();
+  };
+
+  const handleFolderNameBlur = () => {
+    const normalized = normalizeFolderName(folderName);
+    if (normalized !== folderName) {
+      onFolderNameChange(normalized);
+    }
+  };
+
+  // Normalize folder description: remove invalid chars, trim, no consecutive spaces/periods
+  const normalizeFolderDescription = (value: string): string => {
+    return value
+      .replace(/[^a-zA-Z0-9. ]/g, "") // Remove invalid characters (keep letters, numbers, periods, spaces)
+      .replace(/\.{2,}/g, ".") // Replace consecutive periods with single period
+      .replace(/\s{2,}/g, " ") // Replace consecutive spaces with single space
+      .trim();
+  };
+
+  const handleFolderDescriptionBlur = () => {
+    const normalized = normalizeFolderDescription(folderDescription);
+    if (normalized !== folderDescription) {
+      onFolderDescriptionChange(normalized);
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -52,6 +83,7 @@ export const FolderFieldsGroup = (props: FolderFieldsGroupProps) => {
         variant="outlined"
         value={folderName}
         onChange={(e) => onFolderNameChange(e.target.value)}
+        onBlur={handleFolderNameBlur}
         sx={{
           marginTop: sx?.marginTop || "0px",
           width: sx?.width || "100%",
@@ -77,6 +109,7 @@ export const FolderFieldsGroup = (props: FolderFieldsGroupProps) => {
         variant="outlined"
         value={folderDescription}
         onChange={(e) => onFolderDescriptionChange(e.target.value)}
+        onBlur={handleFolderDescriptionBlur}
         sx={{
           width: sx?.width || "100%",
         }}
