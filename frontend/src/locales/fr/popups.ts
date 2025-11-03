@@ -1,5 +1,11 @@
 // Traductions des composants de fenêtres contextuelles et dialogues
 const popups = {
+  // Étiquettes de boutons communs utilisés dans plusieurs fenêtres contextuelles
+  common: {
+    save: "Enregistrer",
+    cancel: "Annuler",
+  },
+
   // Fenêtre d'authentification
   auth: {
     title: "Authentification requise",
@@ -38,13 +44,15 @@ const popups = {
     disagreeButton: "Je n'accepte pas",
   },
 
-  // Fenêtre d'informations sur l'appareil
+  // Fenêtre de métadonnées d'échantillon
   deviceInfo: {
-    title: "Informations sur l'appareil",
+    title: "Métadonnées d'échantillon",
     brand: "Marque",
     model: "Modèle",
     lens: "Lentille",
     doneButton: "Terminé",
+    saveButton: "Enregistrer",
+    cancelButton: "Annuler",
     // Champs de sélection d'appareil (composant partagé)
     deviceBrandLabel: "Marque de l'appareil",
     deviceModelLabel: "Modèle de l'appareil",
@@ -52,6 +60,23 @@ const popups = {
     selectBrand: "Sélectionner une marque",
     selectModel: "Sélectionner un modèle",
     selectLens: "Sélectionner une lentille",
+    errors: {
+      brandRequired: "La marque de l'appareil est requise",
+      modelRequired: "Le modèle de l'appareil est requis",
+      lensRequired: "La lentille de l'appareil est requise",
+    },
+  },
+
+  // Fenêtre de métadonnées d'image
+  imageMetadata: {
+    title: "Modifier les métadonnées de l'image",
+    imageName: "Nom de l'image",
+    imageId: "ID de l'image",
+    saveButton: "Enregistrer",
+    cancelButton: "Annuler",
+    errors: {
+      imageNameRequired: "Le nom de l'image est requis",
+    },
   },
 
   // Fenêtre de sélection du modèle
@@ -61,6 +86,8 @@ const popups = {
     date: "Date : {{date}}",
     version: "Version : {{version}}",
     doneButton: "Terminé",
+    saveButton: "Enregistrer",
+    cancelButton: "Annuler",
   },
 
   // Fenêtre d'enregistrement de capture
@@ -74,6 +101,7 @@ const popups = {
     formatPng: "Format : PNG",
     formatJpeg: "Format : JPEG",
     saveButton: "ENREGISTRER",
+    cancelButton: "ANNULER",
   },
 
   // Fenêtre de téléversement d'image
@@ -98,12 +126,12 @@ const popups = {
       folderNameLabel: "Nom du dossier",
       folderNamePlaceholder: "p. ex., avena-fatua",
       folderNameHelper:
-        "Le nom du dossier sera généré automatiquement à partir du genre-espèce s'il n'est pas fourni",
+        "Seulement lettres, chiffres, points, tirets et traits de soulignement. Ne peut pas se terminer par un tiret ou trait de soulignement. Auto-normalisé en perdant le focus. S'il n'est pas fourni, sera généré automatiquement à partir du genre-espèce.",
       folderDescriptionLabel: "Description (facultative)",
       folderDescriptionPlaceholder:
         "p. ex., Collection d'échantillons de l'essai au champ 2025",
       folderDescriptionHelper:
-        "Description facultative pour ce dossier (max 500 caractères)",
+        "Seulement lettres, chiffres, points et espaces. Pas d'espaces ou de points consécutifs. Auto-normalisé en perdant le focus.",
     },
     taxonomySection: {
       heading: "Informations taxonomiques",
@@ -121,8 +149,19 @@ const popups = {
       trayCodeLabel: "Code du plateau",
       trayCodePlaceholder: "Entrer le code du plateau",
       selectTrayCode: "Sélectionner le code du plateau",
-      sampleIdLabel: "ID de l'échantillon",
-      sampleIdPlaceholder: "Entrer l'identifiant de l'échantillon",
+      trayCodeRequired: "Le code du plateau est requis",
+      sampleIdLabel: "Préfixe d'ID d'échantillon",
+      sampleIdPlaceholder: "Entrer le préfixe (lettres, chiffres, tirets)",
+      sampleIdHelper:
+        "Seulement lettres, chiffres et tirets. Ne peut pas se terminer par un tiret. Auto-normalisé en perdant le focus.",
+      sampleIdRequired: "Le préfixe d'ID d'échantillon est requis",
+      sampleDescriptionLabel: "Description de l'échantillon",
+      sampleDescriptionPlaceholder:
+        "p. ex., Échantillon d'essai au champ de l'emplacement A",
+      sampleDescriptionHelper:
+        "Seulement lettres, chiffres, points et espaces. Pas d'espaces ou de points consécutifs. Auto-normalisé en perdant le focus.",
+      sampleDescriptionRequired: "La description de l'échantillon est requise",
+      magnificationRequired: "Le grossissement est requis",
     },
     deviceSection: {
       heading: "Informations sur l'appareil",
@@ -173,11 +212,11 @@ const popups = {
     titleEdit: "Modifier le répertoire",
     directoryNameLabel: "Nom du répertoire",
     directoryNameHelper:
-      "Le répertoire sera créé au niveau racine. Utilisez des lettres, des chiffres, des traits d'union et des traits de soulignement.",
+      "Seulement lettres, chiffres, points, tirets et traits de soulignement. Ne peut pas se terminer par un tiret ou trait de soulignement. Auto-normalisé en perdant le focus.",
     directoryNamePlaceholder: "p. ex., avena-fatua ou echantillons-mycologie",
-    descriptionLabel: "Description (facultative)",
+    descriptionLabel: "Description",
     descriptionHelper:
-      "Description facultative pour ce répertoire (max 500 caractères)",
+      "Seulement lettres, chiffres, points et espaces. Pas d'espaces ou de points consécutifs. Auto-normalisé en perdant le focus.",
     descriptionPlaceholder:
       "p. ex., Collection d'échantillons de l'essai au champ 2025",
     createButton: "Créer",
@@ -257,6 +296,8 @@ const popups = {
   // Fenêtre de changement d'appareil
   switchDevice: {
     title: "Choisir l'appareil multimédia",
+    save: "Enregistrer",
+    cancel: "Annuler",
   },
 
   // Fenêtre du journal des notifications

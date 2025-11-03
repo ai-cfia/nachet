@@ -8,6 +8,9 @@ const validation = {
       "Le nom du répertoire doit contenir uniquement des lettres, des chiffres, des traits d'union et des traits de soulignement, et ne peut pas commencer ou se terminer par un trait d'union ou un trait de soulignement",
   },
 
+  // Erreurs de description de répertoire
+  directoryDescriptionRequired: "La description du répertoire est requise",
+
   // Erreurs d'email
   email: {
     required: "L'adresse courriel est requise",

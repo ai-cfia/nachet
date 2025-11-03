@@ -8,6 +8,9 @@ const validation = {
       "Directory name must contain only letters, numbers, hyphens, and underscores, and cannot start or end with a hyphen or underscore",
   },
 
+  // Directory description errors
+  directoryDescriptionRequired: "Directory description is required",
+
   // Email errors
   email: {
     required: "Email is required",

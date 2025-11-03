@@ -3,7 +3,7 @@ const main = {
   // MicroscopeFeed Controls
   microscopeFeed: {
     controls: {
-      deviceLabel: "DEVICE",
+      deviceLabel: "META",
       captureLabel: "CAPTURE",
       loadLabel: "LOAD",
       saveLabel: "SAVE",
