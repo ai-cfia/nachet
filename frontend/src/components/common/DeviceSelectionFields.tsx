@@ -99,81 +99,91 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
         )}
       </FormControl>
 
-      {/* Model Dropdown */}
-      <FormControl
-        fullWidth
-        disabled={!selectedBrandId || disabled}
-        error={!!modelError}
+      {/* Model and Lens Dropdowns - Side by Side */}
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "row",
+          gap: "10px",
+          width: "100%",
+        }}
       >
-        <InputLabel id="device-model-label">
-          {t("deviceInfo.deviceModelLabel")}
-        </InputLabel>
-        <Select
-          labelId="device-model-label"
-          value={selectedModelId}
-          onChange={(e) => onModelChange(e.target.value)}
-          label={t("deviceInfo.deviceModelLabel")}
+        {/* Model Dropdown */}
+        <FormControl
+          sx={{ width: "calc(50% - 5px)" }}
+          disabled={!selectedBrandId || disabled}
+          error={!!modelError}
         >
-          <MenuItem value="">
-            <em>{t("deviceInfo.selectModel")}</em>
-          </MenuItem>
-          {availableModels.map((model) => (
-            <MenuItem key={model.id} value={model.id}>
-              {model.name}
-            </MenuItem>
-          ))}
-        </Select>
-        {modelError && (
-          <div
-            style={{
-              color: "#d32f2f",
-              fontSize: "0.75rem",
-              marginTop: "3px",
-              marginLeft: "14px",
-            }}
+          <InputLabel id="device-model-label">
+            {t("deviceInfo.deviceModelLabel")}
+          </InputLabel>
+          <Select
+            labelId="device-model-label"
+            value={selectedModelId}
+            onChange={(e) => onModelChange(e.target.value)}
+            label={t("deviceInfo.deviceModelLabel")}
           >
-            {modelError}
-          </div>
-        )}
-      </FormControl>
+            <MenuItem value="">
+              <em>{t("deviceInfo.selectModel")}</em>
+            </MenuItem>
+            {availableModels.map((model) => (
+              <MenuItem key={model.id} value={model.id}>
+                {model.name}
+              </MenuItem>
+            ))}
+          </Select>
+          {modelError && (
+            <div
+              style={{
+                color: "#d32f2f",
+                fontSize: "0.75rem",
+                marginTop: "3px",
+                marginLeft: "14px",
+              }}
+            >
+              {modelError}
+            </div>
+          )}
+        </FormControl>
 
-      {/* Lens Dropdown */}
-      <FormControl
-        fullWidth
-        disabled={!selectedBrandId || disabled}
-        error={!!lensError}
-      >
-        <InputLabel id="device-lens-label">
-          {t("deviceInfo.deviceLensLabel")}
-        </InputLabel>
-        <Select
-          labelId="device-lens-label"
-          value={selectedLensId}
-          onChange={(e) => onLensChange(e.target.value)}
-          label={t("deviceInfo.deviceLensLabel")}
+        {/* Lens Dropdown */}
+        <FormControl
+          sx={{ width: "calc(50% - 5px)" }}
+          disabled={!selectedBrandId || disabled}
+          error={!!lensError}
         >
-          <MenuItem value="">
-            <em>{t("deviceInfo.selectLens")}</em>
-          </MenuItem>
-          {availableLenses.map((lens) => (
-            <MenuItem key={lens.id} value={lens.id}>
-              {lens.name}
-            </MenuItem>
-          ))}
-        </Select>
-        {lensError && (
-          <div
-            style={{
-              color: "#d32f2f",
-              fontSize: "0.75rem",
-              marginTop: "3px",
-              marginLeft: "14px",
-            }}
+          <InputLabel id="device-lens-label">
+            {t("deviceInfo.deviceLensLabel")}
+          </InputLabel>
+          <Select
+            labelId="device-lens-label"
+            value={selectedLensId}
+            onChange={(e) => onLensChange(e.target.value)}
+            label={t("deviceInfo.deviceLensLabel")}
           >
-            {lensError}
-          </div>
-        )}
-      </FormControl>
+            <MenuItem value="">
+              <em>{t("deviceInfo.selectLens")}</em>
+            </MenuItem>
+            {availableLenses.map((lens) => (
+              <MenuItem key={lens.id} value={lens.id}>
+                {lens.name}
+              </MenuItem>
+            ))}
+          </Select>
+          {lensError && (
+            <div
+              style={{
+                color: "#d32f2f",
+                fontSize: "0.75rem",
+                marginTop: "3px",
+                marginLeft: "14px",
+              }}
+            >
+              {lensError}
+            </div>
+          )}
+        </FormControl>
+      </Box>
     </Box>
   );
 };
