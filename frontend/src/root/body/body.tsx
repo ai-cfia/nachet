@@ -685,6 +685,7 @@ const Body: React.FC<params> = (props) => {
             uuid={uuid}
             containerName={uuid}
             apiScopeClaim={apiScopeClaim}
+            setReadAzureStorage={setReadAzureStorage}
           />
         )}
         {createDirectoryOpen && (
