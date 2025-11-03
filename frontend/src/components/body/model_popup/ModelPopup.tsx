@@ -1,16 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Box,
   Dialog,
   DialogContent,
   IconButton,
-  Button,
   Radio,
   Typography,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
 import testData from "../../../static_data/static_model_data.json";
+import { PopupActionButtons } from "@components/common";
 import { useModalStore } from "@stores/useModalStore";
 import { useModelStore } from "@stores/useModelStore";
 import { useTranslation } from "react-i18next";
@@ -19,6 +19,9 @@ const SwitchModel: React.FC = () => {
   const { t } = useTranslation("popups");
   const { closeModelInfoPopup } = useModalStore();
   const { selectedModel, metadata, setSelectedModel } = useModelStore();
+  const [tempSelectedModel, setTempSelectedModel] = useState<string>(
+    selectedModel ?? "",
+  );
 
   const handleClose = (): void => {
     closeModelInfoPopup();
@@ -26,11 +29,16 @@ const SwitchModel: React.FC = () => {
 
   const selectModel = (model: string): void => {
     console.log("Model selected:", model);
-    setSelectedModel(model);
+    setTempSelectedModel(model);
   };
 
-  const close = (): void => {
-    handleClose(); // Call handleClose to close the popup
+  const handleSave = (): void => {
+    setSelectedModel(tempSelectedModel);
+    handleClose();
+  };
+
+  const handleCancel = (): void => {
+    handleClose();
   };
 
   const dataToDisplay =
@@ -110,7 +118,7 @@ const SwitchModel: React.FC = () => {
                   padding: "1vh",
                   cursor: "pointer",
                   backgroundColor:
-                    selectedModel === data.pipeline_id ? "#f0f0f0" : "#fff",
+                    tempSelectedModel === data.pipeline_id ? "#f0f0f0" : "#fff",
                   "&:hover": {
                     backgroundColor: "#e0e0e0",
                   },
@@ -138,7 +146,7 @@ const SwitchModel: React.FC = () => {
                     {data.model_name}
                   </Typography>
                   <Radio
-                    checked={selectedModel === data.pipeline_id}
+                    checked={tempSelectedModel === data.pipeline_id}
                     onChange={() => {
                       selectModel(data.pipeline_id);
                     }}
@@ -161,40 +169,13 @@ const SwitchModel: React.FC = () => {
               </Box>
             ))}
           </Box>
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              marginTop: "3vh",
-            }}
-          >
-            <Button
-              variant="outlined"
-              onClick={() => {
-                close();
-              }}
-              sx={{
-                borderRadius: "0.4vh",
-                paddingTop: "0.6vh",
-                paddingBottom: "0.6vh",
-                paddingLeft: "2vh",
-                paddingRight: "2vh",
-                fontSize: "1.17vh",
-                border: `0.15vh solid ${colours.CFIA_Background_Blue}`,
-                color: colours.CFIA_Background_Blue,
-                "&:hover": {
-                  backgroundColor: colours.CFIA_Background_Blue,
-                  color: colours.CFIA_Background_White,
-                  border: `0.15vh solid ${colours.CFIA_Background_Blue}`,
-                  transition: "0.2s ease-in-out all",
-                },
-              }}
-            >
-              {t("modelSelection.doneButton")}
-            </Button>
-          </Box>
         </Box>
       </DialogContent>
+      <PopupActionButtons
+        onSave={handleSave}
+        onCancel={handleCancel}
+        sx={{ padding: "1vh 2vh" }}
+      />
     </Dialog>
   );
 };

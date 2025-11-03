@@ -4,7 +4,6 @@ import {
   Dialog,
   DialogContent,
   IconButton,
-  Button,
   TextField,
   MenuItem,
   Select,
@@ -19,6 +18,7 @@ import { saveAs } from "file-saver";
 import JSZip from "jszip";
 import { imageLabelSchema, imageFormatSchema } from "@common/validation";
 import { getZodErrorKey } from "@common/zodErrorMap";
+import { PopupActionButtons } from "@components/common";
 import { useImageStore } from "@stores/useImageStore";
 import { useModalStore } from "@stores/useModalStore";
 import { useNotificationStore } from "@stores/useNotificationStore";
@@ -287,43 +287,15 @@ const SavePopup: React.FC<params> = (props) => {
               </Select>
             </>
           )}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              marginTop: "2vh",
-              marginBottom: "1vh",
+          <PopupActionButtons
+            onSave={() => {
+              if (validateFields()) {
+                saveImage();
+              }
             }}
-          >
-            <Button
-              variant="outlined"
-              size="medium"
-              sx={{
-                borderRadius: "0.4vh",
-                paddingTop: "0.6vh",
-                paddingBottom: "0.6vh",
-                paddingLeft: "2vh",
-                paddingRight: "2vh",
-                fontSize: "1.17vh",
-                width: "fit-content",
-                border: `0.15vh solid ${colours.CFIA_Background_Blue}`,
-                color: colours.CFIA_Background_Blue,
-                "&:hover": {
-                  backgroundColor: colours.CFIA_Background_Blue,
-                  color: colours.CFIA_Background_White,
-                  border: `0.15vh solid ${colours.CFIA_Background_Blue}`,
-                  transition: "0.2s ease-in-out all",
-                },
-              }}
-              onClick={() => {
-                if (validateFields()) {
-                  saveImage();
-                }
-              }}
-            >
-              {t("saveCapture.saveButton")}
-            </Button>
-          </Box>
+            onCancel={handleClose}
+            sx={{ marginTop: "2vh", marginBottom: "1vh" }}
+          />
         </Box>
       </DialogContent>
     </Dialog>

@@ -48,6 +48,10 @@ describe("SwitchModel Component", () => {
     const modelName = testData[0].model_name;
     fireEvent.click(screen.getByText(modelName));
 
+    // Click the Save button to confirm selection
+    const saveButton = screen.getByText(/save/i);
+    fireEvent.click(saveButton);
+
     // Assert setSelectedModel was called with the pipeline_id (not model name)
     expect(mockSetSelectedModel).toHaveBeenCalledWith(modelToSelect);
   });
