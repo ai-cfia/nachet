@@ -1,34 +1,27 @@
-import { describe, it, beforeEach, expect } from "vitest";
+import { describe, it, expect } from "vitest";
 import { getLabelOccurrence } from "../cacheutils";
-import { Images } from "../types";
 
 describe("getLabelOccurrence", () => {
-  let image: Images = {
-    index: 0,
-    src: "test",
-    scores: [0.1, 0.2, 0.3, 0.4, 0.5],
-    classifications: ["a", "b", "c", "d", "e"],
+  const createInferenceResult = (
+    scores: number[],
+    classifications: string[],
+  ) => ({
+    workflow_id: "wf-test",
+    image_id: "img-test",
+    inference_id: "inf-test",
+    pipeline_id: "pipe-test",
+    pipeline_name: "Test Pipeline",
+    scores,
+    classifications,
     boxes: [],
-    annotated: true,
-    imageDims: [0, 0],
+    topN: [],
     overlapping: [],
     overlappingIndices: [],
-    topN: [],
-  };
-
-  beforeEach(() => {
-    image = {
-      index: 0,
-      src: "test",
-      scores: [0.1, 0.2, 0.3, 0.4, 0.5],
-      classifications: ["a", "b", "c", "d", "e"],
-      boxes: [],
-      annotated: true,
-      imageDims: [0, 0],
-      overlapping: [],
-      overlappingIndices: [],
-      topN: [],
-    };
+    labelOccurrence: {},
+    totalBoxes: scores.length,
+    models: [],
+    completed_at: "2024-01-01T00:00:00Z",
+    is_active: true,
   });
 
   it.each([
@@ -66,9 +59,8 @@ describe("getLabelOccurrence", () => {
       { a: 3 },
     ],
   ])(`%s`, (_, input, expected) => {
-    image.classifications = input.cla;
-    image.scores = input.sco;
-    const labelOccurrence = getLabelOccurrence(image);
+    const inferenceResult = createInferenceResult(input.sco, input.cla);
+    const labelOccurrence = getLabelOccurrence(inferenceResult);
     expect(labelOccurrence).toEqual(expected);
   });
 });

@@ -27,7 +27,6 @@ import {
   getImageDims,
   nextCacheIndex,
   loadCaptureToCache,
-  loadResultsToCache,
   getLabelOccurrence,
 } from "./cacheutils";
 import {
@@ -56,7 +55,6 @@ export {
   getImageDims,
   nextCacheIndex,
   loadCaptureToCache,
-  loadResultsToCache,
   getLabelOccurrence,
   getScaledBounds,
   validateImageFile,

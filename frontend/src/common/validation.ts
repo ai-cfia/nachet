@@ -85,14 +85,18 @@ export const taxonomicFieldSchema = z
   )
   .transform((val) => val.trim());
 
-// Sample ID validation - alphanumeric and dashes only
+// Sample ID validation - alphanumeric and dashes only, cannot end with dash
 export const sampleIdSchema = z
   .string()
-  .min(1, "Sample ID cannot be empty")
-  .max(100, "Sample ID is too long")
+  .min(1, "Sample ID Prefix cannot be empty")
+  .max(100, "Sample ID Prefix is too long")
   .regex(
     /^[a-zA-Z0-9-]+$/,
-    "Sample ID can only contain letters, numbers, and dashes",
+    "Sample ID Prefix can only contain letters, numbers, and dashes",
+  )
+  .refine(
+    (val) => !val.endsWith("-"),
+    "Sample ID Prefix cannot end with a dash",
   )
   .transform((val) => val.trim());
 
@@ -928,3 +932,57 @@ export type ImageSubmissionResponse = z.infer<
 export type WorkflowStatusResponse = z.infer<
   typeof WorkflowStatusResponseSchema
 >;
+
+// ==========================================
+// Image Metadata Validation Schema
+// ==========================================
+
+/**
+ * Schema for validating image metadata fields
+ * Matches the ImageMetadata interface from types.d.ts
+ * All fields are required to ensure complete metadata capture
+ */
+export const ImageMetadataSchema = z.object({
+  imageName: z
+    .string()
+    .min(1, "Image name cannot be empty")
+    .max(100, "Image name is too long"),
+  imageDescription: z.string().max(500, "Image description is too long"),
+  imageDims: z
+    .array(z.number().int().positive())
+    .length(2, "Image dimensions must be [width, height]"),
+  deviceBrandId: deviceIdValidationSchema,
+  deviceModelId: deviceIdValidationSchema,
+  deviceLensId: deviceIdValidationSchema,
+  trayCode: trayCodeSchema,
+  magnification: magnificationSchema,
+});
+
+export type ImageMetadataValidated = z.infer<typeof ImageMetadataSchema>;
+
+// ==========================================
+// Inference Request Validation Schema
+// ==========================================
+
+/**
+ * Schema for validating inference request payload before sending to /inf endpoint
+ * Combines system fields with image metadata
+ * Uses camelCase for TypeScript interface compatibility
+ */
+export const InferenceRequestSchema = z
+  .object({
+    // System fields
+    pipelineId: z.string().min(1, "Model/pipeline ID is required"),
+    folderName: z.string().min(1, "Folder name is required"),
+    folderId: z.string().uuid("Folder ID must be a valid UUID"),
+    image: z
+      .string()
+      .min(1, "Image data is required")
+      .refine(
+        (val) => val.startsWith("data:image/"),
+        "Image must be a valid data URL",
+      ),
+  })
+  .merge(ImageMetadataSchema);
+
+export type InferenceRequest = z.infer<typeof InferenceRequestSchema>;

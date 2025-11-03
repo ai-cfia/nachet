@@ -20,20 +20,82 @@ export interface ApiInferenceData {
   totalBoxes: number;
   models: Array<{ name: string; version: string }>;
 }
-export interface Images {
-  index: number;
-  imageId?: string; // Image ID from backend (UUID string)
-  src: string;
+
+/**
+ * Shared device and sample metadata fields
+ * Base interface used by both ImageMetadata and BatchUploadMetadata
+ */
+export interface DeviceAndSampleMetadata {
+  deviceBrandId: string;
+  deviceModelId: string;
+  deviceLensId: string;
+  trayCode: string;
+  magnification: number;
+}
+
+/**
+ * Shared metadata fields for images
+ * Used across frontend state, API requests, and validation
+ */
+export interface ImageMetadata extends DeviceAndSampleMetadata {
+  imageName: string;
+  imageDescription: string;
+  imageDims: number[];
+}
+
+/**
+ * Complete inference result for a single workflow execution
+ * Stored separately from Images to support multiple inferences per image
+ */
+export interface InferenceResult {
+  // Identifiers
+  workflow_id: string;
+  image_id: string;
+  inference_id: string;
+  pipeline_id: string;
+  pipeline_name: string; // For display (e.g., "Swin transformer")
+
+  // Inference data (from ApiInferenceData)
   scores: number[];
   classifications: string[];
   boxes: InferenceBox[];
-  annotated: boolean;
-  imageDims: number[];
+  topN: Array<Array<{ score: number; label: string }>>;
   overlapping: boolean[];
   overlappingIndices: number[];
-  topN: Array<Array<{ score: number; label: string }>>;
-  modelName?: string; // Name of the model used for inference
+  labelOccurrence: { [key: string]: number };
+  totalBoxes: number;
+  models: Array<{ name: string; version: string }>;
+
+  // Metadata
+  completed_at: string; // ISO timestamp
+  is_active: boolean; // For tracking which result is currently displayed
 }
+
+export interface Images extends Omit<Partial<ImageMetadata>, "imageDims"> {
+  // Core fields
+  index: number;
+  imageId?: string; // Image ID from backend (UUID string)
+  src: string;
+  imageDims: number[]; // Required - always set when image is loaded
+
+  // Workflow tracking - supports multiple inferences
+  workflowIds: string[]; // Array of workflow_ids that have completed
+  activeWorkflowId: string | null; // Which inference is currently displayed
+}
+
+/**
+ * Helper type for Images that have been merged with InferenceResult data
+ * Used in components and utilities that need both image and inference data
+ */
+export type ImageWithInference = Images & {
+  annotated: boolean;
+  scores: number[];
+  classifications: string[];
+  boxes: InferenceBox[];
+  topN: Array<Array<{ score: number; label: string }>>;
+  overlapping: boolean[];
+  overlappingIndices: number[];
+};
 
 export interface BoxCoordinates {
   topX: number;
@@ -118,15 +180,10 @@ export interface ModelMetadata {
   default?: boolean;
 }
 
-export interface BatchUploadMetadata {
+export interface BatchUploadMetadata extends DeviceAndSampleMetadata {
   sessionId: string;
   seedId: string;
-  trayCode: string; // A | B | C | D | E
-  sampleId: string;
-  deviceBrandId: string;
-  deviceModelId: string;
-  deviceLensId: string;
-  magnification: number;
+  sampleIdPrefix: string;
   imageDataUrl: string;
 }
 
@@ -320,6 +377,8 @@ export interface WorkflowInfo {
   workflow_id: string;
   image_id: string;
   imageIndex: number; // Track which image this workflow belongs to
+  pipeline_id: string; // Which model/pipeline is running
+  pipeline_name: string; // Display name for UI
   status: WorkflowStatus;
   started_at: number;
   last_checked_at: number;

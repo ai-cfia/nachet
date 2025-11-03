@@ -2,7 +2,12 @@ import React from "react";
 import UTIF from "utif";
 import { BlobError, DecodeError, FetchError, ValueError } from "@common";
 import { DecodedTiff } from "../hooks/useDecoderTiff";
-import { ApiInferenceData, Images, LabelOccurrences } from "./types";
+import {
+  Images,
+  InferenceBox,
+  LabelOccurrences,
+  InferenceResult,
+} from "./types";
 
 export const getInferenceLabelIndex = (
   prediction: string,
@@ -18,7 +23,7 @@ export const getInferenceLabelIndex = (
 };
 
 const drawBoxLabel = (
-  box: Images["boxes"][0],
+  box: InferenceBox,
   score: number,
   index: number,
   ctx: CanvasRenderingContext2D,
@@ -62,10 +67,7 @@ const drawBoxLabel = (
   ctx.closePath();
 };
 
-const drawBox = (
-  box: Images["boxes"][0],
-  ctx: CanvasRenderingContext2D,
-): void => {
+const drawBox = (box: InferenceBox, ctx: CanvasRenderingContext2D): void => {
   const bottomY = box.bottomY;
   const topY = box.topY;
   const bottomX = box.bottomX;
@@ -85,6 +87,7 @@ const drawBox = (
 };
 
 const drawBoxes = (
+  inferenceResult: InferenceResult | null,
   imageData: Images,
   selectedLabel: string,
   labelOccurrences: LabelOccurrences,
@@ -92,34 +95,37 @@ const drawBoxes = (
   canvas: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
 ): void => {
-  if (!imageData.annotated) {
+  if (inferenceResult == null) {
     return;
   }
-  if (imageData.classifications == null) {
-    throw new ValueError("Image object is missing classifications");
+  if (inferenceResult.classifications == null) {
+    throw new ValueError("Inference result is missing classifications");
   }
-  if (imageData.boxes == null) {
-    throw new ValueError("Image object is missing boxes");
+  if (inferenceResult.boxes == null) {
+    throw new ValueError("Inference result is missing boxes");
   }
-  if (imageData.scores == null) {
-    throw new ValueError("Image object is missing scores");
+  if (inferenceResult.scores == null) {
+    throw new ValueError("Inference result is missing scores");
   }
-  let selectedClassifications = imageData.classifications.map(
-    (prediction, index) => ({ label: prediction, index }),
+  let selectedClassifications = inferenceResult.classifications.map(
+    (prediction: string, index: number) => ({ label: prediction, index }),
   );
 
   if (selectedLabel !== "all") {
-    selectedClassifications = imageData.classifications
-      .map((prediction, index) => ({ label: prediction, index }))
+    selectedClassifications = inferenceResult.classifications
+      .map((prediction: string, index: number) => ({
+        label: prediction,
+        index,
+      }))
       .filter((item) => item.label === selectedLabel);
   }
   selectedClassifications.forEach((prediction) => {
-    drawBox(imageData.boxes[prediction.index], ctx);
+    drawBox(inferenceResult.boxes[prediction.index], ctx);
   });
   selectedClassifications.forEach((prediction) => {
     drawBoxLabel(
-      imageData.boxes[prediction.index],
-      imageData.scores[prediction.index],
+      inferenceResult.boxes[prediction.index],
+      inferenceResult.scores[prediction.index],
       prediction.index,
       ctx,
       prediction.label,
@@ -134,7 +140,7 @@ const drawBoxes = (
   ctx.textAlign = "left";
   ctx.fillStyle = "red";
   ctx.fillText(
-    `${imageData.imageId ? imageData.imageId : `Capture ${imageData.index}`}`,
+    imageData.imageName || `Capture ${imageData.index}`,
     10,
     canvas.height - 15,
   );
@@ -233,6 +239,7 @@ export const loadToCanvas = async (
   canvasRef: React.MutableRefObject<HTMLCanvasElement | null>,
   decodedTiff: DecodedTiff,
   imageData: Images,
+  inferenceResult: InferenceResult | null,
   selectedLabel: string,
   labelOccurrences: any,
   switchTable: boolean,
@@ -263,6 +270,7 @@ export const loadToCanvas = async (
   }
   if (showInference) {
     drawBoxes(
+      inferenceResult,
       imageData,
       selectedLabel,
       labelOccurrences,
@@ -426,6 +434,15 @@ export const loadCaptureToCache = async (
   src: string,
   imageCache: Images[],
   index: number,
+  metadata?: {
+    deviceBrandId?: string;
+    deviceModelId?: string;
+    deviceLensId?: string;
+    trayCode?: string;
+    magnification?: number;
+    sampleIdPrefix?: string;
+    imageDescription?: string;
+  },
 ): Promise<Images[]> => {
   if (src == null || src === "") {
     throw new ValueError("Image source is null or empty");
@@ -437,19 +454,47 @@ export const loadCaptureToCache = async (
     throw new ValueError("Image cache is null");
   }
   return getImageDims(src).then((dims) => {
+    // Generate sequential image name based on sampleIdPrefix
+    let imageName: string;
+    const prefix = metadata?.sampleIdPrefix || "Capture";
+
+    // Count existing images with this prefix
+    // Escape special regex characters in prefix
+    const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const prefixPattern = new RegExp(`^${escapedPrefix}-\\d{4}$`);
+    const existingWithPrefix = imageCache.filter((img) =>
+      img.imageName ? prefixPattern.test(img.imageName) : false,
+    );
+
+    // Generate next sequential number (padded to 4 digits)
+    const nextNumber = existingWithPrefix.length + 1;
+    imageName = `${prefix}-${nextNumber.toString().padStart(4, "0")}`;
+
     const newCache = [
       ...imageCache,
       {
         index: index,
+        imageName,
         src,
-        scores: [],
-        classifications: [],
-        boxes: [],
-        annotated: false,
         imageDims: dims,
-        overlapping: [],
-        overlappingIndices: [],
-        topN: [],
+        // Workflow tracking fields
+        workflowIds: [],
+        activeWorkflowId: null,
+        // Include metadata if provided
+        ...(metadata?.deviceBrandId && {
+          deviceBrandId: metadata.deviceBrandId,
+        }),
+        ...(metadata?.deviceModelId && {
+          deviceModelId: metadata.deviceModelId,
+        }),
+        ...(metadata?.deviceLensId && { deviceLensId: metadata.deviceLensId }),
+        ...(metadata?.trayCode && { trayCode: metadata.trayCode }),
+        ...(metadata?.magnification && {
+          magnification: metadata.magnification,
+        }),
+        ...(metadata?.imageDescription && {
+          imageDescription: metadata.imageDescription,
+        }),
       },
     ];
 
@@ -457,87 +502,38 @@ export const loadCaptureToCache = async (
   });
 };
 
-export const loadResultsToCache = (
-  inferenceData: ApiInferenceData,
-  imageCache: Images[],
-  imageIndex: number,
-  modelName?: string,
-): Images[] => {
-  if (inferenceData == null) {
-    throw new ValueError("Inference data is null");
-  }
-  if (inferenceData.boxes == null) {
-    throw new ValueError("Inference data boxes are null");
-  }
-  if (imageIndex == null || imageIndex < 0) {
-    throw new ValueError("Image index is invalid");
-  }
-  if (imageCache == null) {
-    throw new ValueError("Image cache is null");
-  }
-  // amends the image cache given an image index, with the inference data
-  // which is received from the server
-  const newCache = [...imageCache];
-  const topN = inferenceData.boxes.map((box) => box.topN);
-  const index = newCache.findIndex((item) => item.index === imageIndex);
-  if (index === -1) {
-    throw new ValueError("Image index not found in cache");
-  }
+// DEPRECATED: loadResultsToCache has been removed
+// Inference results are now stored in useInferenceResultsStore
+// Images only track workflowIds, not inference data directly
 
-  newCache[index] = {
-    ...newCache[index],
-    scores: inferenceData.boxes.map((box) => box.score),
-    classifications: inferenceData.boxes.map((box) =>
-      box.label.replace(/^\d+\s+/, ""),
-    ),
-    boxes: inferenceData.boxes.map((box) => {
-      return {
-        ...box.box,
-        inferenceId: inferenceData.inference_id,
-        boxId: box.box_id,
-        classId: box.object_type_id,
-        label: box.label,
-        is_verified: box.is_verified !== undefined ? box.is_verified : false,
-      };
-    }),
-    overlapping: inferenceData.boxes.map((box) => box.overlapping),
-    overlappingIndices: inferenceData.boxes.map(
-      (box) => box.overlappingIndices,
-    ),
-    topN,
-    annotated: true,
-    modelName,
-  };
-
-  return newCache;
-};
-
-export const getLabelOccurrence = (image: Images): LabelOccurrences => {
-  if (image == null) {
-    throw new ValueError("Image object is null");
+export const getLabelOccurrence = (
+  inferenceResult: InferenceResult | null,
+): LabelOccurrences => {
+  if (inferenceResult == null) {
+    return {};
   }
   if (
-    image.annotated &&
-    (image.scores == null || image.classifications == null)
+    inferenceResult.scores == null ||
+    inferenceResult.classifications == null
   ) {
-    throw new ValueError("Image object is missing scores and classifications");
+    throw new ValueError(
+      "Inference result is missing scores and classifications",
+    );
   }
   // gets the number of occurences of each label in the current
   // image based on score threshold and seed label selection in classification results
   const result: LabelOccurrences = {};
 
-  if (image.annotated) {
-    image.scores.forEach((score: number, index: number) => {
-      if (score) {
-        const label: string = image.classifications[index];
-        if (result[label] !== undefined) {
-          result[label] = result[label] + 1;
-        } else {
-          result[label] = 1;
-        }
+  inferenceResult.scores.forEach((score: number, index: number) => {
+    if (score) {
+      const label: string = inferenceResult.classifications[index];
+      if (result[label] !== undefined) {
+        result[label] = result[label] + 1;
+      } else {
+        result[label] = 1;
       }
-    });
-  }
+    }
+  });
 
   return result;
 };
@@ -550,7 +546,7 @@ export interface BoxElement {
 }
 
 export const createBoxElement = (
-  box: Images["boxes"][0],
+  box: InferenceBox,
   score: number,
   index: number,
   prediction: string,
@@ -615,38 +611,41 @@ export const createBoxElement = (
 };
 
 export const createBoxElements = (
-  imageData: Images,
+  inferenceResult: InferenceResult | null,
   selectedLabel: string,
   labelOccurrences: LabelOccurrences,
   switchTable: boolean,
 ): BoxElement[] => {
-  if (!imageData.annotated) {
+  if (inferenceResult == null) {
     return [];
   }
-  if (imageData.classifications == null) {
-    throw new ValueError("Image object is missing classifications");
+  if (inferenceResult.classifications == null) {
+    throw new ValueError("Inference result is missing classifications");
   }
-  if (imageData.boxes == null) {
-    throw new ValueError("Image object is missing boxes");
+  if (inferenceResult.boxes == null) {
+    throw new ValueError("Inference result is missing boxes");
   }
-  if (imageData.scores == null) {
-    throw new ValueError("Image object is missing scores");
+  if (inferenceResult.scores == null) {
+    throw new ValueError("Inference result is missing scores");
   }
 
-  let selectedClassifications = imageData.classifications.map(
-    (prediction, index) => ({ label: prediction, index }),
+  let selectedClassifications = inferenceResult.classifications.map(
+    (prediction: string, index: number) => ({ label: prediction, index }),
   );
 
   if (selectedLabel !== "all") {
-    selectedClassifications = imageData.classifications
-      .map((prediction, index) => ({ label: prediction, index }))
+    selectedClassifications = inferenceResult.classifications
+      .map((prediction: string, index: number) => ({
+        label: prediction,
+        index,
+      }))
       .filter((item) => item.label === selectedLabel);
   }
 
   return selectedClassifications.map((prediction) =>
     createBoxElement(
-      imageData.boxes[prediction.index],
-      imageData.scores[prediction.index],
+      inferenceResult.boxes[prediction.index],
+      inferenceResult.scores[prediction.index],
       prediction.index,
       prediction.label,
       labelOccurrences,
@@ -657,6 +656,7 @@ export const createBoxElements = (
 
 export const renderBoxesToContainer = (
   container: HTMLElement,
+  inferenceResult: InferenceResult | null,
   imageData: Images,
   selectedLabel: string,
   labelOccurrences: LabelOccurrences,
@@ -679,7 +679,7 @@ export const renderBoxesToContainer = (
 
   // Create and append new box elements
   const boxElements = createBoxElements(
-    imageData,
+    inferenceResult,
     selectedLabel,
     labelOccurrences,
     switchTable,
@@ -701,6 +701,7 @@ export const renderBoxesToContainer = (
   captureLabel.style.pointerEvents = "none";
   captureLabel.className = "capture-label";
   captureLabel.setAttribute("data-testid", "capture-label");
-  captureLabel.textContent = `${imageData.imageId ? imageData.imageId : `Capture ${imageData.index}`}`;
+  captureLabel.textContent =
+    imageData.imageName || `Capture ${imageData.index}`;
   container.appendChild(captureLabel);
 };
