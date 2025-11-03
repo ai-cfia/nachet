@@ -352,14 +352,16 @@ describe("inferenceRequest", () => {
   const mockImageObject = {
     index: 0,
     src: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ",
-    scores: [],
-    classifications: [],
-    boxes: [],
-    annotated: false,
+    imageName: "test-image",
+    imageDescription: "Test image description",
     imageDims: [640, 480],
-    overlapping: [],
-    overlappingIndices: [],
-    topN: [],
+    deviceBrandId: "12345678-1234-1234-8234-123456789012",
+    deviceModelId: "22345678-1234-1234-8234-123456789012",
+    deviceLensId: "32345678-1234-1234-8234-123456789012",
+    trayCode: "A" as const,
+    magnification: 50,
+    workflowIds: [],
+    activeWorkflowId: null,
   };
 
   it("should return inference data on success", async () => {
@@ -376,7 +378,7 @@ describe("inferenceRequest", () => {
     });
 
     const backendUrl = "http://localhost:8080";
-    const folderId = "folder-uuid-123";
+    const folderId = "42345678-1234-1234-8234-123456789012";
     const curDir = "test-directory";
     const selectedModel = "swin-transformer";
 
@@ -401,11 +403,18 @@ describe("inferenceRequest", () => {
         "X-Session-ID": "test-session-id",
       },
       data: {
-        pipeline_id: selectedModel,
-        folder_name: curDir,
-        folder_id: folderId,
-        imageDims: mockImageObject.imageDims,
+        pipelineId: selectedModel,
+        folderName: curDir,
+        folderId: folderId,
         image: mockImageObject.src,
+        imageName: mockImageObject.imageName,
+        imageDescription: mockImageObject.imageDescription,
+        imageDims: mockImageObject.imageDims,
+        deviceBrandId: mockImageObject.deviceBrandId,
+        deviceModelId: mockImageObject.deviceModelId,
+        deviceLensId: mockImageObject.deviceLensId,
+        trayCode: mockImageObject.trayCode,
+        magnification: mockImageObject.magnification,
       },
       withCredentials: true,
     });
@@ -494,7 +503,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "token",
-        folder_id: "folder-id",
+        folder_id: "52345678-1234-1234-8234-123456789012",
       }),
     ).rejects.toThrow(new AzureAPIError("Model not available"));
     console.error = consoleError;
@@ -517,7 +526,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "token",
-        folder_id: "folder-id",
+        folder_id: "62345678-1234-1234-8234-123456789012",
       }),
     ).rejects.toThrow(new AzureAPIError("Invalid image format"));
     console.error = consoleError;
@@ -537,7 +546,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "token",
-        folder_id: "folder-id",
+        folder_id: "72345678-1234-1234-8234-123456789012",
       }),
     ).rejects.toThrow(new AzureAPIError("Network request failed"));
     console.error = consoleError;
@@ -779,7 +788,7 @@ describe("batchUploadImage", () => {
     sessionId: "session-456",
     seedId: "seed-uuid-123",
     trayCode: "A",
-    sampleId: "SAMPLE-123",
+    sampleIdPrefix: "SAMPLE-123",
     deviceBrandId: "550e8400-e29b-41d4-a716-446655440000",
     deviceModelId: "550e8400-e29b-41d4-a716-446655440001",
     deviceLensId: "550e8400-e29b-41d4-a716-446655440002",
@@ -820,7 +829,7 @@ describe("batchUploadImage", () => {
         session_id: mockBatchUploadData.sessionId,
         seed_id: mockBatchUploadData.seedId,
         tray_code: mockBatchUploadData.trayCode,
-        sample_id: mockBatchUploadData.sampleId,
+        sample_id: mockBatchUploadData.sampleIdPrefix,
         device_brand_id: mockBatchUploadData.deviceBrandId,
         device_model_id: mockBatchUploadData.deviceModelId,
         device_lens_id: mockBatchUploadData.deviceLensId,
@@ -896,15 +905,15 @@ describe("batchUploadImage", () => {
     ).rejects.toThrow(new ValueError("Tray code is null or empty"));
   });
 
-  it("should throw ValueError for empty sample ID", async () => {
-    const invalidData = { ...mockBatchUploadData, sampleId: "" };
+  it("should throw ValueError for empty sample ID prefix", async () => {
+    const invalidData = { ...mockBatchUploadData, sampleIdPrefix: "" };
     await expect(
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: invalidData,
         accessToken: "valid-token",
       }),
-    ).rejects.toThrow(new ValueError("Sample ID is null or empty"));
+    ).rejects.toThrow(new ValueError("Sample ID Prefix is null or empty"));
   });
 
   it("should throw ValueError for empty device brand", async () => {

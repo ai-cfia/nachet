@@ -28,6 +28,7 @@ import {
   ApiDevicesResponseSchema,
   ImageSubmissionResponseSchema,
   WorkflowStatusResponseSchema,
+  InferenceRequestSchema,
   ImageSubmissionResponse,
   WorkflowStatusResponse,
   BatchUploadImageResponseSchema,
@@ -390,6 +391,38 @@ export const inferenceRequest = async ({
   if (accessToken === "" || accessToken == null) {
     throw new ValueError("Access token is null or empty");
   }
+
+  // Build payload object with all required and optional fields
+  const payload = {
+    pipelineId: selectedModel,
+    folderName: curDir,
+    folderId: folder_id,
+    imageDims: imageObject.imageDims,
+    image: imageObject.src,
+    // Include device and sample metadata if available
+    ...(imageObject.deviceBrandId && {
+      deviceBrandId: imageObject.deviceBrandId,
+    }),
+    ...(imageObject.deviceModelId && {
+      deviceModelId: imageObject.deviceModelId,
+    }),
+    ...(imageObject.deviceLensId && {
+      deviceLensId: imageObject.deviceLensId,
+    }),
+    ...(imageObject.trayCode && { trayCode: imageObject.trayCode }),
+    ...(imageObject.magnification && {
+      magnification: imageObject.magnification,
+    }),
+    // Include image identification fields
+    ...(imageObject.imageName && { imageName: imageObject.imageName }),
+    ...(imageObject.imageDescription && {
+      imageDescription: imageObject.imageDescription,
+    }),
+  };
+
+  // Validate payload against schema
+  const validatedPayload = InferenceRequestSchema.parse(payload);
+
   const request = {
     method: "post",
     url: `${backendUrl}/inf`,
@@ -398,13 +431,7 @@ export const inferenceRequest = async ({
       "Access-Control-Allow-Origin": "*",
       Authorization: `Bearer ${accessToken}`,
     },
-    data: {
-      pipeline_id: selectedModel,
-      folder_name: curDir,
-      folder_id: folder_id,
-      imageDims: imageObject.imageDims,
-      image: imageObject.src,
-    },
+    data: validatedPayload,
   };
   const response = await handleAxios<unknown>(request);
   return validateApiResponse(
@@ -444,6 +471,38 @@ export const inferenceDirectRequest = async ({
   if (accessToken === "" || accessToken == null) {
     throw new ValueError("Access token is null or empty");
   }
+
+  // Build payload object with all required and optional fields
+  const payload = {
+    pipelineId: selectedModel,
+    folderName: curDir,
+    folderId: folder_id,
+    imageDims: imageObject.imageDims,
+    image: imageObject.src,
+    // Include device and sample metadata if available
+    ...(imageObject.deviceBrandId && {
+      deviceBrandId: imageObject.deviceBrandId,
+    }),
+    ...(imageObject.deviceModelId && {
+      deviceModelId: imageObject.deviceModelId,
+    }),
+    ...(imageObject.deviceLensId && {
+      deviceLensId: imageObject.deviceLensId,
+    }),
+    ...(imageObject.trayCode && { trayCode: imageObject.trayCode }),
+    ...(imageObject.magnification && {
+      magnification: imageObject.magnification,
+    }),
+    // Include image identification fields
+    ...(imageObject.imageName && { imageName: imageObject.imageName }),
+    ...(imageObject.imageDescription && {
+      imageDescription: imageObject.imageDescription,
+    }),
+  };
+
+  // Validate payload against schema
+  const validatedPayload = InferenceRequestSchema.parse(payload);
+
   const request = {
     method: "post",
     url: `${backendUrl}/inf-direct`,
@@ -452,13 +511,7 @@ export const inferenceDirectRequest = async ({
       "Access-Control-Allow-Origin": "*",
       Authorization: `Bearer ${accessToken}`,
     },
-    data: {
-      pipeline_id: selectedModel,
-      folder_name: curDir,
-      folder_id: folder_id,
-      imageDims: imageObject.imageDims,
-      image: imageObject.src,
-    },
+    data: validatedPayload,
   };
   const response = await handleAxios<unknown>(request);
   return validateApiResponse(
@@ -816,7 +869,7 @@ export const batchUploadImage = async ({
     sessionId,
     seedId,
     trayCode,
-    sampleId,
+    sampleIdPrefix,
     deviceBrandId,
     deviceModelId,
     deviceLensId,
@@ -840,8 +893,8 @@ export const batchUploadImage = async ({
   if (trayCode === "" || trayCode == null) {
     throw new ValueError("Tray code is null or empty");
   }
-  if (sampleId === "" || sampleId == null) {
-    throw new ValueError("Sample ID is null or empty");
+  if (sampleIdPrefix === "" || sampleIdPrefix == null) {
+    throw new ValueError("Sample ID Prefix is null or empty");
   }
   if (deviceBrandId === "" || deviceBrandId == null) {
     throw new ValueError("Device brand is null or empty");
@@ -871,7 +924,7 @@ export const batchUploadImage = async ({
       session_id: sessionId,
       seed_id: seedId,
       tray_code: trayCode,
-      sample_id: sampleId,
+      sample_id: sampleIdPrefix,
       device_brand_id: deviceBrandId,
       device_model_id: deviceModelId,
       device_lens_id: deviceLensId,
