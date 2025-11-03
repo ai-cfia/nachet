@@ -209,6 +209,7 @@ class TestBatchUploadServiceUpload:
             seed_id=str(sample_seed_id),
             tray_code="A",
             sample_id="SAMPLE-001",
+            image_description="Test batch upload image",
             device_brand_id=str(uuid4()),
             device_model_id=str(uuid4()),
             device_lens_id=str(uuid4()),
