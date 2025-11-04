@@ -363,7 +363,9 @@ class TestBatchUploadAPIUpload:
         assert picture is not None
         assert picture.folder_id == test_folder
         assert picture.user_id == test_admin_user
-        assert picture.name == "TEST-SAMPLE-001"  # sample_id becomes name
+        assert (
+            picture.name == "TEST-SAMPLE-001-0001"
+        )  # First image in batch (incremental naming)
         assert picture.single_species_image == test_seed
         assert picture.width == 638
         assert picture.height == 559
