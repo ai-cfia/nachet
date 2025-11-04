@@ -197,7 +197,7 @@ export const mergeHeaders = (
         delete mergedHeaders[key];
       } else if (Array.isArray(value)) {
         for (const v of value) {
-          // @ts-expect-error - Merging array values into header object
+          // @ts-expect-error
           mergedHeaders[key] = [...(mergedHeaders[key] ?? []), v as string];
         }
       } else if (value !== undefined) {

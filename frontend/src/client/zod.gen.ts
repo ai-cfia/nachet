@@ -176,6 +176,23 @@ export type CreateOrGetFolderRequestZodType = z.infer<
 >;
 
 /**
+ * DefenderScanResult
+ *
+ * Microsoft Defender for Storage scan result.
+ */
+export const zDefenderScanResult = z
+  .object({
+    status: z.string(),
+    tags: z.record(z.string(), z.unknown()),
+    scanTimestamp: z.string(),
+  })
+  .register(z.globalRegistry, {
+    description: "Microsoft Defender for Storage scan result.",
+  });
+
+export type DefenderScanResultZodType = z.infer<typeof zDefenderScanResult>;
+
+/**
  * DeleteFolderResponse
  *
  * Response model for folder deletion (soft delete).
@@ -196,21 +213,163 @@ export const zDeleteFolderResponse = z
 export type DeleteFolderResponseZodType = z.infer<typeof zDeleteFolderResponse>;
 
 /**
+ * DeviceLens
+ *
+ * Device lens entry.
+ */
+export const zDeviceLens = z
+  .object({
+    id: z.string().register(z.globalRegistry, {
+      description: "UUID of the device lens",
+    }),
+    name: z.string().register(z.globalRegistry, {
+      description: "Lens name",
+    }),
+    description: z.string().register(z.globalRegistry, {
+      description: "Lens description",
+    }),
+  })
+  .register(z.globalRegistry, {
+    description: "Device lens entry.",
+  });
+
+export type DeviceLensZodType = z.infer<typeof zDeviceLens>;
+
+/**
+ * DeviceModel
+ *
+ * Device model entry.
+ */
+export const zDeviceModel = z
+  .object({
+    id: z.string().register(z.globalRegistry, {
+      description: "UUID of the device model",
+    }),
+    name: z.string().register(z.globalRegistry, {
+      description: "Model name",
+    }),
+    description: z.string().register(z.globalRegistry, {
+      description: "Model description",
+    }),
+  })
+  .register(z.globalRegistry, {
+    description: "Device model entry.",
+  });
+
+export type DeviceModelZodType = z.infer<typeof zDeviceModel>;
+
+/**
+ * DeviceBrand
+ *
+ * Device brand with associated models and lenses.
+ *
+ * Represents a manufacturer brand with its available models and lenses.
+ */
+export const zDeviceBrand = z
+  .object({
+    id: z.string().register(z.globalRegistry, {
+      description: "UUID of the device brand",
+    }),
+    name: z.string().register(z.globalRegistry, {
+      description: "Brand name",
+    }),
+    description: z.string().register(z.globalRegistry, {
+      description: "Brand description",
+    }),
+    models: z.array(zDeviceModel).register(z.globalRegistry, {
+      description: "List of models for this brand",
+    }),
+    lenses: z.array(zDeviceLens).register(z.globalRegistry, {
+      description: "List of lenses for this brand",
+    }),
+  })
+  .register(z.globalRegistry, {
+    description:
+      "Device brand with associated models and lenses.\n\nRepresents a manufacturer brand with its available models and lenses.",
+  });
+
+export type DeviceBrandZodType = z.infer<typeof zDeviceBrand>;
+
+/**
+ * DeviceData
+ *
+ * Wrapper for device data list.
+ */
+export const zDeviceData = z
+  .object({
+    devices: z.array(zDeviceBrand).register(z.globalRegistry, {
+      description: "List of device brands",
+    }),
+  })
+  .register(z.globalRegistry, {
+    description: "Wrapper for device data list.",
+  });
+
+export type DeviceDataZodType = z.infer<typeof zDeviceData>;
+
+/**
  * DevicesResponse
  *
  * Response model for GET /devices endpoint.
  *
  * Returns device information (brands, models, lenses) for image metadata.
- * Uses RootModel since the response is a direct dict structure.
+ * Uses RootModel wrapping DeviceData for proper camelCase serialization.
  */
-export const zDevicesResponse = z
-  .record(z.string(), z.unknown())
-  .register(z.globalRegistry, {
-    description:
-      "Response model for GET /devices endpoint.\n\nReturns device information (brands, models, lenses) for image metadata.\nUses RootModel since the response is a direct dict structure.",
-  });
+export const zDevicesResponse = zDeviceData;
 
 export type DevicesResponseZodType = z.infer<typeof zDevicesResponse>;
+
+/**
+ * DirectoryItem
+ *
+ * Individual directory/folder entry.
+ *
+ * Represents a user's folder with picture count and metadata.
+ */
+export const zDirectoryItem = z
+  .object({
+    id: z.string().register(z.globalRegistry, {
+      description: "UUID of the directory",
+    }),
+    name: z.string().register(z.globalRegistry, {
+      description: "Directory name",
+    }),
+    folderPrefix: z.string().register(z.globalRegistry, {
+      description: "Organization prefix for the folder",
+    }),
+    description: z.string().register(z.globalRegistry, {
+      description: "Directory description",
+    }),
+    pictureCount: z.int().register(z.globalRegistry, {
+      description: "Number of pictures in this directory",
+    }),
+    isDefaultFolder: z.boolean().register(z.globalRegistry, {
+      description: "Whether this is the user's default folder",
+    }),
+  })
+  .register(z.globalRegistry, {
+    description:
+      "Individual directory/folder entry.\n\nRepresents a user's folder with picture count and metadata.",
+  });
+
+export type DirectoryItemZodType = z.infer<typeof zDirectoryItem>;
+
+/**
+ * DirectoryData
+ *
+ * Wrapper for directory data list.
+ */
+export const zDirectoryData = z
+  .object({
+    directories: z.array(zDirectoryItem).register(z.globalRegistry, {
+      description: "List of user directories",
+    }),
+  })
+  .register(z.globalRegistry, {
+    description: "Wrapper for directory data list.",
+  });
+
+export type DirectoryDataZodType = z.infer<typeof zDirectoryData>;
 
 /**
  * DirectoriesResponse
@@ -218,14 +377,9 @@ export type DevicesResponseZodType = z.infer<typeof zDevicesResponse>;
  * Response model for GET /get-directories endpoint.
  *
  * Returns user's directory/folder tree structure.
- * Uses RootModel since the response is a direct dict structure.
+ * Uses RootModel wrapping DirectoryData for proper camelCase serialization.
  */
-export const zDirectoriesResponse = z
-  .record(z.string(), z.unknown())
-  .register(z.globalRegistry, {
-    description:
-      "Response model for GET /get-directories endpoint.\n\nReturns user's directory/folder tree structure.\nUses RootModel since the response is a direct dict structure.",
-  });
+export const zDirectoriesResponse = zDirectoryData;
 
 export type DirectoriesResponseZodType = z.infer<typeof zDirectoriesResponse>;
 
@@ -301,6 +455,26 @@ export type ImageSubmissionResponseZodType = z.infer<
 >;
 
 /**
+ * InferenceRequestPayload
+ *
+ * Payload for inference workflow request.
+ */
+export const zInferenceRequestPayload = z
+  .object({
+    pictureId: z.string(),
+    pipelineId: z.string(),
+    imageDims: z.array(z.int()),
+    workflowId: z.string(),
+  })
+  .register(z.globalRegistry, {
+    description: "Payload for inference workflow request.",
+  });
+
+export type InferenceRequestPayloadZodType = z.infer<
+  typeof zInferenceRequestPayload
+>;
+
+/**
  * InferenceWorkflowStatus
  *
  * Status information for ML inference workflow.
@@ -315,9 +489,7 @@ export const zInferenceWorkflowStatus = z
     completedAt: z.optional(z.union([z.string(), z.null()])),
     failedAt: z.optional(z.union([z.string(), z.null()])),
     errorMessage: z.optional(z.union([z.string(), z.null()])),
-    requestPayload: z.optional(
-      z.union([z.record(z.string(), z.unknown()), z.null()]),
-    ),
+    requestPayload: z.optional(z.union([zInferenceRequestPayload, z.null()])),
   })
   .register(z.globalRegistry, {
     description: "Status information for ML inference workflow.",
@@ -348,25 +520,6 @@ export const zLogSubmissionResponse = z
 
 export type LogSubmissionResponseZodType = z.infer<
   typeof zLogSubmissionResponse
->;
-
-/**
- * ModelEndpointsMetadataResponse
- *
- * Response model for GET /model-endpoints-metadata endpoint.
- *
- * Returns ML model endpoint configuration metadata.
- * Uses RootModel since the response is a direct dict structure.
- */
-export const zModelEndpointsMetadataResponse = z
-  .record(z.string(), z.unknown())
-  .register(z.globalRegistry, {
-    description:
-      "Response model for GET /model-endpoints-metadata endpoint.\n\nReturns ML model endpoint configuration metadata.\nUses RootModel since the response is a direct dict structure.",
-  });
-
-export type ModelEndpointsMetadataResponseZodType = z.infer<
-  typeof zModelEndpointsMetadataResponse
 >;
 
 /**
@@ -408,6 +561,178 @@ export const zParentWorkflowStatus = z
 export type ParentWorkflowStatusZodType = z.infer<typeof zParentWorkflowStatus>;
 
 /**
+ * PipelineMetadata
+ *
+ * Model for individual pipeline metadata entry.
+ *
+ * Contains pipeline configuration, model information, and metadata.
+ */
+export const zPipelineMetadata = z
+  .object({
+    createdBy: z.string().register(z.globalRegistry, {
+      description: "Creator of the pipeline",
+    }),
+    creationDate: z.string().register(z.globalRegistry, {
+      description: "ISO formatted creation date",
+    }),
+    dataset: z.string().register(z.globalRegistry, {
+      description: "Dataset used for training",
+    }),
+    description: z.string().register(z.globalRegistry, {
+      description: "Pipeline description",
+    }),
+    identifiable: z.optional(
+      z.array(z.string()).register(z.globalRegistry, {
+        description: "List of identifiable classes",
+      }),
+    ),
+    jobName: z.string().register(z.globalRegistry, {
+      description: "Job name for the pipeline",
+    }),
+    metrics: z.optional(
+      z.array(z.record(z.string(), z.unknown())).register(z.globalRegistry, {
+        description: "Performance metrics",
+      }),
+    ),
+    modelName: z.string().register(z.globalRegistry, {
+      description: "Model display name",
+    }),
+    models: z.array(z.string()).register(z.globalRegistry, {
+      description: "List of model names in the pipeline",
+    }),
+    pipelineName: z.string().register(z.globalRegistry, {
+      description: "Pipeline name",
+    }),
+    pipelineId: z.string().register(z.globalRegistry, {
+      description: "Pipeline UUID",
+    }),
+    version: z.string().register(z.globalRegistry, {
+      description: "Pipeline version",
+    }),
+    default: z
+      .optional(
+        z.boolean().register(z.globalRegistry, {
+          description: "Whether this is the default pipeline",
+        }),
+      )
+      .default(false),
+  })
+  .register(z.globalRegistry, {
+    description:
+      "Model for individual pipeline metadata entry.\n\nContains pipeline configuration, model information, and metadata.",
+  });
+
+export type PipelineMetadataZodType = z.infer<typeof zPipelineMetadata>;
+
+/**
+ * ModelEndpointsMetadataResponse
+ *
+ * Response model for GET /model-endpoints-metadata endpoint.
+ *
+ * Returns ML model endpoint configuration metadata.
+ * Uses RootModel to return a list of PipelineMetadata objects.
+ */
+export const zModelEndpointsMetadataResponse = z
+  .array(zPipelineMetadata)
+  .register(z.globalRegistry, {
+    description:
+      "Response model for GET /model-endpoints-metadata endpoint.\n\nReturns ML model endpoint configuration metadata.\nUses RootModel to return a list of PipelineMetadata objects.",
+  });
+
+export type ModelEndpointsMetadataResponseZodType = z.infer<
+  typeof zModelEndpointsMetadataResponse
+>;
+
+/**
+ * PipelineStep
+ *
+ * Individual model step in a pipeline.
+ *
+ * Represents a single ML model within a pipeline's execution sequence.
+ */
+export const zPipelineStep = z
+  .object({
+    modelId: z.string().register(z.globalRegistry, {
+      description: "UUID of the model",
+    }),
+    modelName: z.string().register(z.globalRegistry, {
+      description: "Name of the model",
+    }),
+    version: z.string().register(z.globalRegistry, {
+      description: "Model version",
+    }),
+    endpoint: z.string().register(z.globalRegistry, {
+      description: "API endpoint URL",
+    }),
+    apiKey: z.string().register(z.globalRegistry, {
+      description: "API key for authentication",
+    }),
+    contentType: z.string().register(z.globalRegistry, {
+      description: "Content type for requests",
+    }),
+    deploymentPlatform: z.string().register(z.globalRegistry, {
+      description: "Platform where model is deployed",
+    }),
+    endpointName: z.string().register(z.globalRegistry, {
+      description: "Endpoint identifier name",
+    }),
+    requestFunction: z.string().register(z.globalRegistry, {
+      description: "Function used to make requests",
+    }),
+    step: z.int().register(z.globalRegistry, {
+      description: "Step number in the pipeline sequence",
+    }),
+  })
+  .register(z.globalRegistry, {
+    description:
+      "Individual model step in a pipeline.\n\nRepresents a single ML model within a pipeline's execution sequence.",
+  });
+
+export type PipelineStepZodType = z.infer<typeof zPipelineStep>;
+
+/**
+ * PipelineDetail
+ *
+ * Complete pipeline configuration with metadata and steps.
+ *
+ * Represents a single ML pipeline with all its models and metadata.
+ */
+export const zPipelineDetail = z
+  .object({
+    pipelineId: z.string().register(z.globalRegistry, {
+      description: "UUID of the pipeline",
+    }),
+    pipelineName: z.string().register(z.globalRegistry, {
+      description: "Pipeline name",
+    }),
+    createdBy: z.optional(z.union([z.string(), z.null()])),
+    creationDate: z.optional(z.union([z.string(), z.null()])),
+    description: z.optional(z.union([z.string(), z.null()])),
+    jobName: z.optional(z.union([z.string(), z.null()])),
+    version: z.optional(z.union([z.string(), z.null()])),
+    dataset: z.optional(z.union([z.string(), z.null()])),
+    identifiable: z.optional(
+      z.array(z.string()).register(z.globalRegistry, {
+        description: "List of identifiable classes",
+      }),
+    ),
+    metrics: z.optional(
+      z.array(z.record(z.string(), z.unknown())).register(z.globalRegistry, {
+        description: "Performance metrics",
+      }),
+    ),
+    models: z.array(zPipelineStep).register(z.globalRegistry, {
+      description: "Ordered list of model steps in the pipeline",
+    }),
+  })
+  .register(z.globalRegistry, {
+    description:
+      "Complete pipeline configuration with metadata and steps.\n\nRepresents a single ML pipeline with all its models and metadata.",
+  });
+
+export type PipelineDetailZodType = z.infer<typeof zPipelineDetail>;
+
+/**
  * PipelinesResponse
  *
  * Response model for GET /pipelines endpoint.
@@ -416,11 +741,9 @@ export type ParentWorkflowStatusZodType = z.infer<typeof zParentWorkflowStatus>;
  */
 export const zPipelinesResponse = z
   .object({
-    pipelines: z
-      .array(z.record(z.string(), z.unknown()))
-      .register(z.globalRegistry, {
-        description: "List of available pipeline configurations",
-      }),
+    pipelines: z.array(zPipelineDetail).register(z.globalRegistry, {
+      description: "List of available pipeline configurations",
+    }),
   })
   .register(z.globalRegistry, {
     description:
@@ -509,7 +832,7 @@ export const zProcessingWorkflowStatus = z
     status: z.string(),
     stages: zProcessingStages,
     timestamps: zProcessingTimestamps,
-    defenderScanResult: z.optional(z.union([z.string(), z.null()])),
+    defenderScanResult: z.optional(z.union([zDefenderScanResult, z.null()])),
     blobUrls: zBlobUrls,
     errorMessage: z.optional(z.union([z.string(), z.null()])),
     errorDetails: z.optional(z.union([z.string(), z.null()])),
@@ -567,19 +890,66 @@ export type RegistrationStatusResponseZodType = z.infer<
 >;
 
 /**
+ * SeedItem
+ *
+ * Individual seed entry with taxonomic information.
+ *
+ * Represents a single seed species with identification metadata.
+ */
+export const zSeedItem = z
+  .object({
+    seedId: z.string().register(z.globalRegistry, {
+      description: "UUID of the seed",
+    }),
+    nameCode: z.string().register(z.globalRegistry, {
+      description: "Short code name for the seed",
+    }),
+    family: z.string().register(z.globalRegistry, {
+      description: "Taxonomic family",
+    }),
+    genus: z.string().register(z.globalRegistry, {
+      description: "Taxonomic genus",
+    }),
+    species: z.string().register(z.globalRegistry, {
+      description: "Taxonomic species",
+    }),
+    seedMetadata: z.optional(
+      z.union([z.record(z.string(), z.unknown()), z.null()]),
+    ),
+  })
+  .register(z.globalRegistry, {
+    description:
+      "Individual seed entry with taxonomic information.\n\nRepresents a single seed species with identification metadata.",
+  });
+
+export type SeedItemZodType = z.infer<typeof zSeedItem>;
+
+/**
+ * SeedData
+ *
+ * Wrapper for seed data list.
+ */
+export const zSeedData = z
+  .object({
+    seeds: z.array(zSeedItem).register(z.globalRegistry, {
+      description: "List of seed species",
+    }),
+  })
+  .register(z.globalRegistry, {
+    description: "Wrapper for seed data list.",
+  });
+
+export type SeedDataZodType = z.infer<typeof zSeedData>;
+
+/**
  * SeedDataResponse
  *
  * Response model for GET /seeds endpoint.
  *
  * Returns seed species data for frontend selection.
- * Uses RootModel since the response is a direct dict structure.
+ * Uses RootModel wrapping SeedData for proper camelCase serialization.
  */
-export const zSeedDataResponse = z
-  .record(z.string(), z.unknown())
-  .register(z.globalRegistry, {
-    description:
-      "Response model for GET /seeds endpoint.\n\nReturns seed species data for frontend selection.\nUses RootModel since the response is a direct dict structure.",
-  });
+export const zSeedDataResponse = zSeedData;
 
 export type SeedDataResponseZodType = z.infer<typeof zSeedDataResponse>;
 
@@ -630,10 +1000,10 @@ export const zApiInferenceBox = z
     classId: z.string().register(z.globalRegistry, {
       description: "Unique identifier for this classification",
     }),
-    object_type_id: z.string().register(z.globalRegistry, {
+    objectTypeId: z.string().register(z.globalRegistry, {
       description: "Type identifier for the detected object",
     }),
-    box_id: z.string().register(z.globalRegistry, {
+    boxId: z.string().register(z.globalRegistry, {
       description: "Unique identifier for this bounding box",
     }),
     overlapping: z.boolean().register(z.globalRegistry, {
@@ -642,7 +1012,7 @@ export const zApiInferenceBox = z
     overlappingIndices: z.int().register(z.globalRegistry, {
       description: "Index of overlapping box (if any), -1 if none",
     }),
-    is_verified: z
+    isVerified: z
       .optional(
         z.boolean().register(z.globalRegistry, {
           description: "Whether this box has been verified by user",
