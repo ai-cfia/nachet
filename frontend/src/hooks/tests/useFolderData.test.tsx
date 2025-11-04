@@ -26,7 +26,6 @@ describe("useFolderData", () => {
         folderPrefix: "prefix1",
         description: "Description 1",
         pictureCount: 10,
-        isDefaultFolder: true,
       },
       {
         id: "folder-2",
@@ -34,7 +33,6 @@ describe("useFolderData", () => {
         folderPrefix: "prefix2",
         description: "",
         pictureCount: 5,
-        isDefaultFolder: false,
       },
     ],
   };
@@ -46,7 +44,6 @@ describe("useFolderData", () => {
       folderPrefix: "prefix1",
       description: "Description 1",
       pictureCount: 10,
-      isDefaultFolder: true,
     },
     {
       folderId: "folder-2",
@@ -54,7 +51,6 @@ describe("useFolderData", () => {
       folderPrefix: "prefix2",
       description: "",
       pictureCount: 5,
-      isDefaultFolder: false,
     },
   ];
 
@@ -118,12 +114,13 @@ describe("useFolderData", () => {
           name: "Folder 1",
           folderPrefix: "prefix1",
           pictureCount: 10,
-          isDefaultFolder: true,
         },
       ],
     };
 
-    (readAzureStorageDir as any).mockResolvedValue(apiResponseWithoutDescription);
+    (readAzureStorageDir as any).mockResolvedValue(
+      apiResponseWithoutDescription,
+    );
 
     renderHook(() => useFolderData("http://test-backend.com", "test-scope"));
 
@@ -136,7 +133,6 @@ describe("useFolderData", () => {
             folderPrefix: "prefix1",
             description: "",
             pictureCount: 10,
-            isDefaultFolder: true,
           },
         ],
       });
@@ -204,7 +200,7 @@ describe("useFolderData", () => {
 
   it("should return folderData, isLoading, and error from store", () => {
     const mockFolderData = { directories: expectedFolderData };
-    
+
     (useFolderStore as any).mockReturnValue({
       folderData: mockFolderData,
       isLoading: true,

@@ -108,7 +108,6 @@ frontend/src/
 │   ├── cacheutils.ts         # Cache management utilities
 │   ├── imageutils.ts         # Image processing utilities
 │   ├── error.ts              # Custom error classes
-│   ├── cookiedecoder.ts      # Cookie utilities
 │   └── tests/                # Unit tests for utilities
 │
 ├── hooks/                    # Custom React hooks
