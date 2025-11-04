@@ -10406,45 +10406,6 @@
     },
     {
       "type": "library",
-      "name": "pako",
-      "group": "@types",
-      "version": "2.0.4",
-      "bom-ref": "nachet-frontend@2.2.0|@types/pako@2.0.4",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/%40types/pako@2.0.4",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/@types/pako/-/pako-2.0.4.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "5560c26eb2de55724cf5f8a162875c2e222fd24bbe02539afd34354af60e681bb2ad22a011cae8f792c9c88b09e2f4a8e815c8c4e2b188901ab74e029924fd17"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:development",
-          "value": "true"
-        },
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/@types/pako"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "name": "parse-json",
       "group": "@types",
       "version": "4.0.2",
@@ -24613,40 +24574,6 @@
     },
     {
       "type": "library",
-      "name": "js-base64",
-      "version": "3.7.8",
-      "bom-ref": "nachet-frontend@2.2.0|js-base64@3.7.8",
-      "licenses": [
-        {
-          "license": {
-            "id": "BSD-3-Clause",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/js-base64@3.7.8",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/js-base64/-/js-base64-3.7.8.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "84d9e009e2b121442211437718f24e933e3017f62f75475b34bf61b0170c41390acdba03ed3feadce60ebae3d92d413a741c521a9c219399b0b83b9dec9540a3"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/js-base64"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "name": "js-cookie",
       "version": "3.0.5",
       "bom-ref": "nachet-frontend@2.2.0|js-cookie@3.0.5",
@@ -25106,74 +25033,6 @@
         {
           "name": "cdx:npm:package:path",
           "value": "node_modules/jszip"
-        }
-      ],
-      "components": [
-        {
-          "type": "library",
-          "name": "pako",
-          "version": "1.0.11",
-          "bom-ref": "nachet-frontend@2.2.0|jszip@3.10.1|pako@1.0.11",
-          "licenses": [
-            {
-              "expression": "(MIT AND Zlib)",
-              "acknowledgement": "declared"
-            }
-          ],
-          "purl": "pkg:npm/pako@1.0.11",
-          "externalReferences": [
-            {
-              "url": "https://registry.npmjs.org/pako/-/pako-1.0.11.tgz",
-              "type": "distribution",
-              "hashes": [
-                {
-                  "alg": "SHA-512",
-                  "content": "e212c1f0fcb8cd971ee6ce3277d5f3a29ab056fff218d855d4197c353982ab5efadc778adbe130553bfe95e19e2f5dc39e1db07dbaa8c153d70883b4cf8b5a63"
-                }
-              ],
-              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-            }
-          ],
-          "properties": [
-            {
-              "name": "cdx:npm:package:path",
-              "value": "node_modules/jszip/node_modules/pako"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "name": "jwt-decode",
-      "version": "4.0.0",
-      "bom-ref": "nachet-frontend@2.2.0|jwt-decode@4.0.0",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT",
-            "acknowledgement": "declared"
-          }
-        }
-      ],
-      "purl": "pkg:npm/jwt-decode@4.0.0",
-      "externalReferences": [
-        {
-          "url": "https://registry.npmjs.org/jwt-decode/-/jwt-decode-4.0.0.tgz",
-          "type": "distribution",
-          "hashes": [
-            {
-              "alg": "SHA-512",
-              "content": "f8a2462321e0906b88ab720404d7ed7e15bf2df5a15d4218e8e9b25568e58aee4a1f5cb47f0ed543c627744d8ee2a65d31277d4aa6e70bc18e719132d0e9bbb0"
-            }
-          ],
-          "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-        }
-      ],
-      "properties": [
-        {
-          "name": "cdx:npm:package:path",
-          "value": "node_modules/jwt-decode"
         }
       ]
     },
@@ -29721,23 +29580,23 @@
     {
       "type": "library",
       "name": "pako",
-      "version": "2.1.0",
-      "bom-ref": "nachet-frontend@2.2.0|pako@2.1.0",
+      "version": "1.0.11",
+      "bom-ref": "nachet-frontend@2.2.0|pako@1.0.11",
       "licenses": [
         {
           "expression": "(MIT AND Zlib)",
           "acknowledgement": "declared"
         }
       ],
-      "purl": "pkg:npm/pako@2.1.0",
+      "purl": "pkg:npm/pako@1.0.11",
       "externalReferences": [
         {
-          "url": "https://registry.npmjs.org/pako/-/pako-2.1.0.tgz",
+          "url": "https://registry.npmjs.org/pako/-/pako-1.0.11.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
-              "content": "c3e7ae7e26755ae25880f5db57f3cedcd08c11cdf1ab2964287ce9f1bc69d6e5b8a9a48d41493098b2c473790ab1fcfc96957517c1eddd4d429bef52ae8836ba"
+              "content": "e212c1f0fcb8cd971ee6ce3277d5f3a29ab056fff218d855d4197c353982ab5efadc778adbe130553bfe95e19e2f5dc39e1db07dbaa8c153d70883b4cf8b5a63"
             }
           ],
           "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
@@ -37550,40 +37409,6 @@
           "name": "cdx:npm:package:path",
           "value": "node_modules/utif"
         }
-      ],
-      "components": [
-        {
-          "type": "library",
-          "name": "pako",
-          "version": "1.0.11",
-          "bom-ref": "nachet-frontend@2.2.0|utif@3.1.0|pako@1.0.11",
-          "licenses": [
-            {
-              "expression": "(MIT AND Zlib)",
-              "acknowledgement": "declared"
-            }
-          ],
-          "purl": "pkg:npm/pako@1.0.11",
-          "externalReferences": [
-            {
-              "url": "https://registry.npmjs.org/pako/-/pako-1.0.11.tgz",
-              "type": "distribution",
-              "hashes": [
-                {
-                  "alg": "SHA-512",
-                  "content": "e212c1f0fcb8cd971ee6ce3277d5f3a29ab056fff218d855d4197c353982ab5efadc778adbe130553bfe95e19e2f5dc39e1db07dbaa8c153d70883b4cf8b5a63"
-                }
-              ],
-              "comment": "as detected from npm-ls property \"resolved\" and property \"integrity\""
-            }
-          ],
-          "properties": [
-            {
-              "name": "cdx:npm:package:path",
-              "value": "node_modules/utif/node_modules/pako"
-            }
-          ]
-        }
       ]
     },
     {
@@ -39490,7 +39315,6 @@
         "nachet-frontend@2.2.0|@types/file-saver@2.0.7",
         "nachet-frontend@2.2.0|@types/js-cookie@3.0.6",
         "nachet-frontend@2.2.0|@types/node@22.19.0",
-        "nachet-frontend@2.2.0|@types/pako@2.0.4",
         "nachet-frontend@2.2.0|@types/react-dom@19.2.2",
         "nachet-frontend@2.2.0|@types/react@19.2.2",
         "nachet-frontend@2.2.0|@types/sanitize-html@2.16.0",
@@ -39516,13 +39340,10 @@
         "nachet-frontend@2.2.0|i18next@25.6.0",
         "nachet-frontend@2.2.0|identity-obj-proxy@3.0.0",
         "nachet-frontend@2.2.0|jest-environment-jsdom@30.2.0",
-        "nachet-frontend@2.2.0|js-base64@3.7.8",
         "nachet-frontend@2.2.0|js-cookie@3.0.5",
         "nachet-frontend@2.2.0|jszip@3.10.1",
-        "nachet-frontend@2.2.0|jwt-decode@4.0.0",
         "nachet-frontend@2.2.0|markdownlint-cli2@0.18.1",
         "nachet-frontend@2.2.0|node-fetch@3.3.2",
-        "nachet-frontend@2.2.0|pako@2.1.0",
         "nachet-frontend@2.2.0|playwright@1.56.1",
         "nachet-frontend@2.2.0|prettier@3.6.2",
         "nachet-frontend@2.2.0|re-resizable@6.11.2",
@@ -41283,9 +41104,6 @@
       "dependsOn": [
         "nachet-frontend@2.2.0|undici-types@6.21.0"
       ]
-    },
-    {
-      "ref": "nachet-frontend@2.2.0|@types/pako@2.0.4"
     },
     {
       "ref": "nachet-frontend@2.2.0|@types/parse-json@4.0.2"
@@ -43638,9 +43456,6 @@
       ]
     },
     {
-      "ref": "nachet-frontend@2.2.0|js-base64@3.7.8"
-    },
-    {
       "ref": "nachet-frontend@2.2.0|js-cookie@3.0.5"
     },
     {
@@ -43710,17 +43525,11 @@
     {
       "ref": "nachet-frontend@2.2.0|jszip@3.10.1",
       "dependsOn": [
-        "nachet-frontend@2.2.0|jszip@3.10.1|pako@1.0.11",
         "nachet-frontend@2.2.0|lie@3.3.0",
+        "nachet-frontend@2.2.0|pako@1.0.11",
         "nachet-frontend@2.2.0|readable-stream@2.3.8",
         "nachet-frontend@2.2.0|setimmediate@1.0.5"
       ]
-    },
-    {
-      "ref": "nachet-frontend@2.2.0|jszip@3.10.1|pako@1.0.11"
-    },
-    {
-      "ref": "nachet-frontend@2.2.0|jwt-decode@4.0.0"
     },
     {
       "ref": "nachet-frontend@2.2.0|katex@0.16.25",
@@ -44451,7 +44260,7 @@
       "ref": "nachet-frontend@2.2.0|packageurl-js@2.0.1"
     },
     {
-      "ref": "nachet-frontend@2.2.0|pako@2.1.0"
+      "ref": "nachet-frontend@2.2.0|pako@1.0.11"
     },
     {
       "ref": "nachet-frontend@2.2.0|parent-module@1.0.1",
@@ -45694,11 +45503,8 @@
     {
       "ref": "nachet-frontend@2.2.0|utif@3.1.0",
       "dependsOn": [
-        "nachet-frontend@2.2.0|utif@3.1.0|pako@1.0.11"
+        "nachet-frontend@2.2.0|pako@1.0.11"
       ]
-    },
-    {
-      "ref": "nachet-frontend@2.2.0|utif@3.1.0|pako@1.0.11"
     },
     {
       "ref": "nachet-frontend@2.2.0|util-deprecate@1.0.2"

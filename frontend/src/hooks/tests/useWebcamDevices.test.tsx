@@ -132,10 +132,9 @@ describe("useWebcamDevices", () => {
 
     unmount();
 
-    expect(global.navigator.mediaDevices.removeEventListener).toHaveBeenCalledWith(
-      "devicechange",
-      expect.any(Function),
-    );
+    expect(
+      global.navigator.mediaDevices.removeEventListener,
+    ).toHaveBeenCalledWith("devicechange", expect.any(Function));
   });
 
   it("should return devices and activeDeviceId", () => {

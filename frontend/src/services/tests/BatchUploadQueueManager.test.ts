@@ -51,7 +51,7 @@ describe("BatchUploadQueueManager", () => {
       result: string = "data:image/jpeg;base64,testdata";
       onload: (() => void) | null = null;
       onerror: (() => void) | null = null;
-      
+
       readAsDataURL() {
         setTimeout(() => {
           if (this.onload) this.onload();
@@ -65,6 +65,25 @@ describe("BatchUploadQueueManager", () => {
     queueManager.clear();
   });
 
+  // Helper to create complete metadata with all required fields
+  const createMockMetadata = (overrides = {}) => ({
+    folderId: "folder-1",
+    folderName: "Test Folder",
+    pipelineId: "pipeline-1",
+    pipelineName: "Test Pipeline",
+    seedSampleId: "sample-1",
+    sessionId: "session-1",
+    seedId: "seed-1",
+    sampleIdPrefix: "TEST",
+    sampleDescription: "Test sample",
+    deviceBrandId: "brand-1",
+    deviceModelId: "model-1",
+    deviceLensId: "lens-1",
+    trayCode: "T001",
+    magnification: 10,
+    ...overrides,
+  });
+
   describe("configure", () => {
     it("should store configuration", () => {
       queueManager.configure(mockConfig);
@@ -76,15 +95,9 @@ describe("BatchUploadQueueManager", () => {
   describe("enqueue", () => {
     it("should add file to queue", async () => {
       queueManager.configure(mockConfig);
-      
+
       const mockFile = new File(["test"], "test.jpg", { type: "image/jpeg" });
-      const metadata = {
-        folderId: "folder-1",
-        folderName: "Test Folder",
-        pipelineId: "pipeline-1",
-        pipelineName: "Test Pipeline",
-        seedSampleId: "sample-1",
-      };
+      const metadata = createMockMetadata();
 
       queueManager.enqueue(mockFile, metadata);
 
@@ -99,13 +112,7 @@ describe("BatchUploadQueueManager", () => {
 
     it("should log error if not configured", () => {
       const mockFile = new File(["test"], "test.jpg", { type: "image/jpeg" });
-      const metadata = {
-        folderId: "folder-1",
-        folderName: "Test Folder",
-        pipelineId: "pipeline-1",
-        pipelineName: "Test Pipeline",
-        seedSampleId: "sample-1",
-      };
+      const metadata = createMockMetadata();
 
       queueManager.enqueue(mockFile, metadata);
       expect(errorLogger.logError).toHaveBeenCalled();
@@ -115,19 +122,21 @@ describe("BatchUploadQueueManager", () => {
       queueManager.configure(mockConfig);
 
       // Mock batch upload to delay processing
-      (api.batchUploadImage as any).mockImplementation(() => new Promise(() => {}));
+      (api.batchUploadImage as any).mockImplementation(
+        () => new Promise(() => {}),
+      );
 
-      const mockFile1 = new File(["test1"], "test1.jpg", { type: "image/jpeg" });
-      const mockFile2 = new File(["test2"], "test2.jpg", { type: "image/jpeg" });
-      const mockFile3 = new File(["test3"], "test3.jpg", { type: "image/jpeg" });
-      
-      const metadata = {
-        folderId: "folder-1",
-        folderName: "Test Folder",
-        pipelineId: "pipeline-1",
-        pipelineName: "Test Pipeline",
-        seedSampleId: "sample-1",
-      };
+      const mockFile1 = new File(["test1"], "test1.jpg", {
+        type: "image/jpeg",
+      });
+      const mockFile2 = new File(["test2"], "test2.jpg", {
+        type: "image/jpeg",
+      });
+      const mockFile3 = new File(["test3"], "test3.jpg", {
+        type: "image/jpeg",
+      });
+
+      const metadata = createMockMetadata();
 
       queueManager.enqueue(mockFile1, metadata);
       queueManager.enqueue(mockFile2, metadata);
@@ -142,13 +151,7 @@ describe("BatchUploadQueueManager", () => {
       queueManager.configure(mockConfig);
 
       const mockFile = new File(["test"], "test.jpg", { type: "image/jpeg" });
-      const metadata = {
-        folderId: "folder-1",
-        folderName: "Test Folder",
-        pipelineId: "pipeline-1",
-        pipelineName: "Test Pipeline",
-        seedSampleId: "sample-1",
-      };
+      const metadata = createMockMetadata();
 
       (api.batchUploadImage as any).mockResolvedValue({
         workflowId: "workflow-1",
@@ -176,13 +179,7 @@ describe("BatchUploadQueueManager", () => {
       queueManager.configure(mockConfig);
 
       const mockFile = new File(["test"], "test.jpg", { type: "image/jpeg" });
-      const metadata = {
-        folderId: "folder-1",
-        folderName: "Test Folder",
-        pipelineId: "pipeline-1",
-        pipelineName: "Test Pipeline",
-        seedSampleId: "sample-1",
-      };
+      const metadata = createMockMetadata();
 
       (api.batchUploadImage as any).mockRejectedValue(
         new Error("Upload failed"),
@@ -204,13 +201,7 @@ describe("BatchUploadQueueManager", () => {
       queueManager.configure(mockConfig);
 
       const mockFile = new File(["test"], "test.jpg", { type: "image/jpeg" });
-      const metadata = {
-        folderId: "folder-1",
-        folderName: "Test Folder",
-        pipelineId: "pipeline-1",
-        pipelineName: "Test Pipeline",
-        seedSampleId: "sample-1",
-      };
+      const metadata = createMockMetadata();
 
       (api.batchUploadImage as any).mockResolvedValue({
         // No workflowId
@@ -229,13 +220,7 @@ describe("BatchUploadQueueManager", () => {
       queueManager.configure(mockConfig);
 
       const mockFile = new File(["test"], "test.jpg", { type: "image/jpeg" });
-      const metadata = {
-        folderId: "folder-1",
-        folderName: "Test Folder",
-        pipelineId: "pipeline-1",
-        pipelineName: "Test Pipeline",
-        seedSampleId: "sample-1",
-      };
+      const metadata = createMockMetadata();
 
       (api.batchUploadImage as any).mockResolvedValue({
         workflowId: "workflow-1",
@@ -263,13 +248,7 @@ describe("BatchUploadQueueManager", () => {
       queueManager.configure(mockConfig);
 
       const mockFile = new File(["test"], "test.jpg", { type: "image/jpeg" });
-      const metadata = {
-        folderId: "folder-1",
-        folderName: "Test Folder",
-        pipelineId: "pipeline-1",
-        pipelineName: "Test Pipeline",
-        seedSampleId: "sample-1",
-      };
+      const metadata = createMockMetadata();
 
       (api.batchUploadImage as any).mockResolvedValue({
         workflowId: "workflow-1",
@@ -283,24 +262,14 @@ describe("BatchUploadQueueManager", () => {
       await vi.advanceTimersByTimeAsync(25000);
 
       // Batch uploads don't fetch results, just call onComplete with null
-      expect(mockOnComplete).toHaveBeenCalledWith(
-        "workflow-1",
-        mockFile,
-        null,
-      );
+      expect(mockOnComplete).toHaveBeenCalledWith("workflow-1", mockFile, null);
     });
 
     it("should handle failed workflow", async () => {
       queueManager.configure(mockConfig);
 
       const mockFile = new File(["test"], "test.jpg", { type: "image/jpeg" });
-      const metadata = {
-        folderId: "folder-1",
-        folderName: "Test Folder",
-        pipelineId: "pipeline-1",
-        pipelineName: "Test Pipeline",
-        seedSampleId: "sample-1",
-      };
+      const metadata = createMockMetadata();
 
       (api.batchUploadImage as any).mockResolvedValue({
         workflowId: "workflow-1",
@@ -343,13 +312,7 @@ describe("BatchUploadQueueManager", () => {
       queueManager.configure(mockConfig);
 
       const mockFile = new File(["test"], "test.jpg", { type: "image/jpeg" });
-      const metadata = {
-        folderId: "folder-1",
-        folderName: "Test Folder",
-        pipelineId: "pipeline-1",
-        pipelineName: "Test Pipeline",
-        seedSampleId: "sample-1",
-      };
+      const metadata = createMockMetadata();
 
       (api.batchUploadImage as any).mockResolvedValue({
         workflowId: "workflow-1",
@@ -374,13 +337,7 @@ describe("BatchUploadQueueManager", () => {
       queueManager.configure(mockConfig);
 
       const mockFile = new File(["test"], "test.jpg", { type: "image/jpeg" });
-      const metadata = {
-        folderId: "folder-1",
-        folderName: "Test Folder",
-        pipelineId: "pipeline-1",
-        pipelineName: "Test Pipeline",
-        seedSampleId: "sample-1",
-      };
+      const metadata = createMockMetadata();
 
       (api.batchUploadImage as any).mockResolvedValue({
         workflowId: "workflow-1",
@@ -401,16 +358,14 @@ describe("BatchUploadQueueManager", () => {
     it("should process uploads one at a time", async () => {
       queueManager.configure(mockConfig);
 
-      const mockFile1 = new File(["test1"], "test1.jpg", { type: "image/jpeg" });
-      const mockFile2 = new File(["test2"], "test2.jpg", { type: "image/jpeg" });
-      
-      const metadata = {
-        folderId: "folder-1",
-        folderName: "Test Folder",
-        pipelineId: "pipeline-1",
-        pipelineName: "Test Pipeline",
-        seedSampleId: "sample-1",
-      };
+      const mockFile1 = new File(["test1"], "test1.jpg", {
+        type: "image/jpeg",
+      });
+      const mockFile2 = new File(["test2"], "test2.jpg", {
+        type: "image/jpeg",
+      });
+
+      const metadata = createMockMetadata();
 
       let uploadCounter = 0;
       (api.batchUploadImage as any).mockImplementation(async () => {
@@ -450,13 +405,7 @@ describe("BatchUploadQueueManager", () => {
       queueManager.configure(mockConfig);
 
       const mockFile = new File(["test"], "test.jpg", { type: "image/jpeg" });
-      const metadata = {
-        folderId: "folder-1",
-        folderName: "Test Folder",
-        pipelineId: "pipeline-1",
-        pipelineName: "Test Pipeline",
-        seedSampleId: "sample-1",
-      };
+      const metadata = createMockMetadata();
 
       (api.batchUploadImage as any).mockResolvedValue({
         workflowId: "workflow-1",
