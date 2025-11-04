@@ -72,6 +72,18 @@ const validation = {
     invalidFormat: "Sample ID can only contain letters, numbers, and dashes",
   },
 
+  // Image name errors (also used for sample ID prefix)
+  imageName: {
+    empty: "This field cannot be empty",
+    tooLong: "This field is too long (max 100 characters)",
+  },
+
+  // Description errors (used for all description fields)
+  description: {
+    empty: "Description cannot be empty",
+    tooLong: "Description is too long (max 1000 characters)",
+  },
+
   // Device ID errors
   deviceId: {
     empty: "Device ID cannot be empty",

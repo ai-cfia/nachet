@@ -22,8 +22,8 @@ export interface UploadWorkflowInfo {
   fileName: string;
   fileSize: number;
   status: WorkflowStatus;
-  started_at: number;
-  last_checked_at: number;
+  startedAt: number;
+  lastCheckedAt: number;
   error: string | null;
   queuePosition?: number; // Position in queue (for queued items)
   resultData?: unknown; // Store the workflow result when completed
@@ -129,8 +129,8 @@ export const useBatchUploadStore = create<BatchUploadState>()((set, get) => ({
       fileName: file.name,
       fileSize: file.size,
       status: queuePosition !== undefined ? "queued" : "pending",
-      started_at: now,
-      last_checked_at: now,
+      startedAt: now,
+      lastCheckedAt: now,
       error: null,
       queuePosition,
     };
@@ -155,7 +155,7 @@ export const useBatchUploadStore = create<BatchUploadState>()((set, get) => ({
       const updatedUpload: UploadWorkflowInfo = {
         ...upload,
         status,
-        last_checked_at: Date.now(),
+        lastCheckedAt: Date.now(),
         error,
         queuePosition:
           queuePosition !== undefined ? queuePosition : upload.queuePosition,

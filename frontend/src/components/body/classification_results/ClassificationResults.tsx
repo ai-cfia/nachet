@@ -38,7 +38,7 @@ const ClassificationResults: React.FC<params> = (props) => {
   const currentImage = savedImages.find((img) => img.index === imageIndex);
   const activeWorkflowId = currentImage?.activeWorkflowId;
   const activeResult = activeWorkflowId ? getResult(activeWorkflowId) : null;
-  const modelDisplayName = activeResult?.pipeline_name || "";
+  const modelDisplayName = activeResult?.pipelineName || "";
 
   const handleSelect = (key: string): void => {
     if (key === selectedLabel) {

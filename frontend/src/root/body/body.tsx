@@ -184,14 +184,13 @@ const Body: React.FC<params> = (props) => {
   const { pipelineId, pipelineName } = useMemo(() => {
     // Find metadata for selected model
     const modelData = modelMetadata.find(
-      (m) =>
-        m.pipeline_id === selectedModel || m.pipeline_name === selectedModel,
+      (m) => m.pipelineId === selectedModel || m.pipelineName === selectedModel,
     );
 
     if (modelData) {
       return {
-        pipelineId: modelData.pipeline_id,
-        pipelineName: modelData.pipeline_name,
+        pipelineId: modelData.pipelineId,
+        pipelineName: modelData.pipelineName,
       };
     }
 
@@ -248,8 +247,8 @@ const Body: React.FC<params> = (props) => {
         return;
       }
 
-      const folder_id = curDir.folderId;
-      const folder_name = curDir.folderName;
+      const folderId = curDir.folderId;
+      const folderName = curDir.folderName;
 
       setIsLoading(true);
       acquireAccessToken(msalInstance, [apiScopeClaim])
@@ -258,9 +257,9 @@ const Body: React.FC<params> = (props) => {
             backendUrl,
             selectedModel,
             imageObject,
-            curDir: folder_name,
+            curDir: folderName,
             accessToken,
-            folder_id: folder_id,
+            folderId: folderId,
           });
         })
         .then((response) => {
@@ -530,7 +529,7 @@ const Body: React.FC<params> = (props) => {
           accessToken,
         });
 
-        if (!response.is_registered) {
+        if (!response.isRegistered) {
           setRegistrationModalOpen(true);
           // Don't proceed to load directories
         } else {
@@ -588,10 +587,10 @@ const Body: React.FC<params> = (props) => {
           directories.push({
             folderId: item.id,
             folderName: item.name,
-            folderPrefix: item.folder_prefix,
+            folderPrefix: item.folderPrefix,
             description: item.description,
-            pictureCount: item.picture_count,
-            isDefaultFolder: item.is_default_folder,
+            pictureCount: item.pictureCount,
+            isDefaultFolder: item.isDefaultFolder,
           });
         });
         setAzureStorageDir(directories);

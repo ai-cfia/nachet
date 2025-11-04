@@ -100,6 +100,29 @@ export const sampleIdSchema = z
   )
   .transform((val) => val.trim());
 
+// Image name validation - lowercase alphanumeric and dashes, auto-normalizes
+// Also used for sample ID prefixes to ensure consistency
+export const imageNameSchema = z
+  .string()
+  .min(1)
+  .max(100)
+  .transform((val) => val.trim())
+  .transform((val) => val.toLowerCase())
+  .transform((val) => val.replace(/[^a-z0-9-]/g, "")) // Remove invalid chars
+  .transform((val) => val.replace(/--+/g, "-")) // Remove consecutive dashes
+  .transform((val) => val.replace(/^-+|-+$/g, "")); // Remove leading/trailing dashes
+
+// Description validation - alphanumeric, spaces, periods with normalization
+// Used for all description fields across the application
+export const descriptionSchema = z
+  .string()
+  .min(1)
+  .max(1000)
+  .transform((val) => val.trim())
+  .transform((val) => val.replace(/[^a-zA-Z0-9. ]/g, "")) // Keep only valid chars
+  .transform((val) => val.replace(/\.\.+/g, ".")) // Remove consecutive periods
+  .transform((val) => val.replace(/  +/g, " ")); // Remove consecutive spaces
+
 // Device ID validation - UUID format
 export const deviceIdValidationSchema = z
   .string()
@@ -616,12 +639,12 @@ export const InferenceBoxApiSchema = z.object({
   score: z.number(),
   label: z.string(),
   classId: z.string(),
-  object_type_id: z.string(),
-  box_id: z.string(),
+  objectTypeId: z.string(),
+  boxId: z.string(),
   box: BoxCoordinatesSchema,
   overlapping: z.boolean(),
   overlappingIndices: z.number(),
-  is_verified: z.boolean().default(false),
+  isVerified: z.boolean().default(false),
 });
 
 // Direct Inference Box schema (simplified for /inf-direct endpoint)
@@ -647,7 +670,7 @@ export const DirectInferenceResponseSchema = z.object({
 export const ApiInferenceDataSchema = z.object({
   filename: z.string(),
   imageId: z.string(),
-  inference_id: z.string(),
+  inferenceId: z.string(),
   boxes: z.array(InferenceBoxApiSchema),
   labelOccurrence: z.record(z.string(), z.number()),
   totalBoxes: z.number(),
@@ -661,17 +684,17 @@ export const ApiInferenceDataSchema = z.object({
 
 // Model Metadata schema
 export const ModelMetadataSchema = z.object({
-  created_by: z.string(),
-  creation_date: z.string(),
+  createdBy: z.string(),
+  creationDate: z.string(),
   dataset: z.string(),
   description: z.string(),
   identifiable: z.array(z.string()),
-  job_name: z.string(),
+  jobName: z.string(),
   metrics: z.array(z.string()),
-  model_name: z.string(),
+  modelName: z.string(),
   models: z.array(z.string()),
-  pipeline_name: z.string(),
-  pipeline_id: z.string(),
+  pipelineName: z.string(),
+  pipelineId: z.string(),
   default: z.boolean().optional(),
 });
 
@@ -679,12 +702,12 @@ export const ModelMetadataSchema = z.object({
 export const ApiSpeciesDataSchema = z.object({
   seeds: z.array(
     z.object({
-      seed_id: z.string(),
-      name_code: z.string(),
+      seedId: z.string(),
+      nameCode: z.string(),
       family: z.string(),
       genus: z.string(),
       species: z.string(),
-      seed_name: z.string().nullable().optional(),
+      seedMetadata: z.record(z.string(), z.any()).nullable().optional(),
       id: z.number().optional(),
       label: z.string().optional(),
     }),
@@ -693,17 +716,17 @@ export const ApiSpeciesDataSchema = z.object({
 
 // Azure Storage Directory schemas
 export const DirectoryPictureApiSchema = z.object({
-  inference_exists: z.boolean(),
-  is_validation: z.boolean(),
-  picture_id: z.string(),
+  inferenceExists: z.boolean(),
+  isValidation: z.boolean(),
+  pictureId: z.string(),
 });
 
 export const AzureStorageDirectoryItemApiSchema = z.object({
   id: z.string(),
   name: z.string(),
-  folder_prefix: z.string(),
+  folderPrefix: z.string(),
   description: z.string().nullable(),
-  picture_count: z.number(),
+  pictureCount: z.number(),
   // pictures: z.array(DirectoryPictureApiSchema),
 });
 
@@ -713,17 +736,17 @@ export const ReadAzureStorageDirApiSchema = z.object({
 
 // Simple response schemas
 export const UserIdResponseSchema = z.object({
-  user_id: z.string(),
+  userId: z.string(),
 });
 
 export const SessionIdResponseSchema = z.object({
-  session_id: z.string(),
+  sessionId: z.string(),
 });
 
 export const BooleanResponseSchema = z.boolean();
 
 export const IsRegisteredResponseSchema = z.object({
-  is_registered: z.boolean(),
+  isRegistered: z.boolean(),
 });
 
 // Void response for operations that don't return data (but still succeed)
@@ -758,90 +781,90 @@ export const ApiDevicesResponseSchema = z.object({
 
 // Workflow tracking schemas
 export const ImageSubmissionResponseSchema = z.object({
-  image_id: z.string(),
-  workflow_id: z.string(),
+  imageId: z.string(),
+  workflowId: z.string(),
   status: z.string(),
   message: z.string(),
 });
 
 export const ParentWorkflowStatusSchema = z.object({
-  workflow_id: z.string(),
+  workflowId: z.string(),
   status: z.string(),
-  progress_percentage: z.number(),
-  created_at: z.string().nullable(),
-  completed_at: z.string().nullable(),
-  failed_at: z.string().nullable(),
-  error_message: z.string().nullable(),
-  malware_detected: z.boolean().nullable(),
+  progressPercentage: z.number(),
+  createdAt: z.string().nullable(),
+  completedAt: z.string().nullable(),
+  failedAt: z.string().nullable(),
+  errorMessage: z.string().nullable(),
+  malwareDetected: z.boolean().nullable(),
 });
 
 export const ProcessingWorkflowStatusSchema = z.object({
   status: z.string(),
   stages: z.object({
     uploaded: z.boolean(),
-    defender_scanning: z.boolean(),
-    defender_scanned: z.boolean(),
+    defenderScanning: z.boolean(),
+    defenderScanned: z.boolean(),
     sanitizing: z.boolean(),
     sanitized: z.boolean(),
   }),
   timestamps: z.object({
-    uploaded_at: z.string().nullable(),
-    defender_scan_started_at: z.string().nullable(),
-    defender_scan_completed_at: z.string().nullable(),
-    sanitization_started_at: z.string().nullable(),
-    sanitization_completed_at: z.string().nullable(),
-    completed_at: z.string().nullable(),
-    failed_at: z.string().nullable(),
+    uploadedAt: z.string().nullable(),
+    defenderScanStartedAt: z.string().nullable(),
+    defenderScanCompletedAt: z.string().nullable(),
+    sanitizationStartedAt: z.string().nullable(),
+    sanitizationCompletedAt: z.string().nullable(),
+    completedAt: z.string().nullable(),
+    failedAt: z.string().nullable(),
   }),
-  defender_scan_result: z
+  defenderScanResult: z
     .object({
       status: z.string(),
       tags: z.record(z.string(), z.any()),
-      scan_timestamp: z.string(),
+      scanTimestamp: z.string(),
     })
     .nullable(),
-  blob_urls: z.object({
+  blobUrls: z.object({
     original: z.string().nullable(),
     sanitized: z.string().nullable(),
   }),
-  error_message: z.string().nullable(),
-  error_details: z.any().nullable(),
+  errorMessage: z.string().nullable(),
+  errorDetails: z.any().nullable(),
 });
 
 export const InferenceWorkflowStatusSchema = z.object({
-  workflow_id: z.string(),
+  workflowId: z.string(),
   status: z.string(),
-  pipeline_id: z.string(),
-  created_at: z.string().nullable(),
-  started_at: z.string().nullable(),
-  completed_at: z.string().nullable(),
-  failed_at: z.string().nullable(),
-  error_message: z.string().nullable(),
-  request_payload: z.any(),
+  pipelineId: z.string(),
+  createdAt: z.string().nullable(),
+  startedAt: z.string().nullable(),
+  completedAt: z.string().nullable(),
+  failedAt: z.string().nullable(),
+  errorMessage: z.string().nullable(),
+  requestPayload: z.any(),
 });
 
 export const WorkflowStatusResponseSchema = z.object({
-  workflow_id: z.string(),
-  workflow_type: z.string(),
-  image_id: z.string(),
-  overall_status: z.string(),
-  parent_workflow: ParentWorkflowStatusSchema.nullable().optional(),
-  processing_workflow: ProcessingWorkflowStatusSchema.nullable().optional(),
-  inference_workflow: InferenceWorkflowStatusSchema.nullable().optional(),
+  workflowId: z.string(),
+  workflowType: z.string(),
+  imageId: z.string(),
+  overallStatus: z.string(),
+  parentWorkflow: ParentWorkflowStatusSchema.nullable().optional(),
+  processingWorkflow: ProcessingWorkflowStatusSchema.nullable().optional(),
+  inferenceWorkflow: InferenceWorkflowStatusSchema.nullable().optional(),
   authorization: z.object({
-    user_id: z.string(),
-    is_owner: z.boolean(),
-    is_cfia_admin: z.boolean(),
+    userId: z.string(),
+    isOwner: z.boolean(),
+    isCfiaAdmin: z.boolean(),
   }),
 });
 
 export const BatchUploadImageResponseSchema = z.object({
-  workflow_id: z.string(),
-  picture_id: z.string(),
+  workflowId: z.string(),
+  pictureId: z.string(),
 });
 
 export const BatchUploadInitResponseSchema = z.object({
-  session_id: z.string(),
+  sessionId: z.string(),
 });
 
 /**
@@ -877,7 +900,7 @@ export const normalizedPathSchema = z
   });
 
 export const CreateOrGetFolderResponseSchema = z.object({
-  folder_id: z.string().uuid(),
+  folderId: z.string().uuid(),
 });
 
 export const UpdateFolderRequestSchema = z.object({
@@ -986,3 +1009,42 @@ export const InferenceRequestSchema = z
   .merge(ImageMetadataSchema);
 
 export type InferenceRequest = z.infer<typeof InferenceRequestSchema>;
+
+// ==========================================
+// Batch Upload Request Validation Schema
+// ==========================================
+
+/**
+ * Schema for validating batch upload request payload before sending to /upload-picture endpoint
+ * Uses camelCase for TypeScript interface compatibility
+ */
+export const BatchUploadRequestSchema = z.object({
+  // Session and taxonomy
+  sessionId: z.string().uuid("Session ID must be a valid UUID"),
+  seedId: z.string().uuid("Seed ID must be a valid UUID"),
+
+  // Sample metadata
+  sampleId: sampleIdSchema,
+  imageDescription: z
+    .string()
+    .max(500, "Image description is too long")
+    .optional(),
+  trayCode: trayCodeSchema,
+
+  // Device metadata
+  deviceBrandId: deviceIdValidationSchema,
+  deviceModelId: deviceIdValidationSchema,
+  deviceLensId: deviceIdValidationSchema,
+  magnification: magnificationSchema,
+
+  // Image data
+  image: z
+    .string()
+    .min(1, "Image data is required")
+    .refine(
+      (val) => val.startsWith("data:image/"),
+      "Image must be a valid data URL",
+    ),
+});
+
+export type BatchUploadRequest = z.infer<typeof BatchUploadRequestSchema>;

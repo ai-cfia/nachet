@@ -154,7 +154,7 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
     inference?.boxes[0]?.species || "",
   );
   const [nameCode, setNameCode] = useState<string>(
-    inference?.boxes[0]?.name_code || "",
+    inference?.boxes[0]?.nameCode || "",
   );
   const [comment, setComment] = useState<string>(
     isNewAnnotation ? reasons[0] : reasons[1],
@@ -180,13 +180,13 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
   };
 
   const handleSubmit = () => {
-    // Find the matching seed_id based on taxonomic fields
+    // Find the matching seedId based on taxonomic fields
     const matchingSeed = classList.find(
       (seed) =>
         seed.family === family &&
         seed.genus === genus &&
         seed.species === species &&
-        seed.name_code === nameCode,
+        seed.nameCode === nameCode,
     );
 
     onSubmit({
@@ -194,12 +194,12 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
       boxes: [
         {
           ...inference.boxes[0],
-          classId: matchingSeed?.seed_id || "",
+          classId: matchingSeed?.seedId || "",
           label: matchingSeed?.label || "",
           family: family,
           genus: genus,
           species: species,
-          name_code: nameCode,
+          nameCode: nameCode,
           comment: comment,
         },
       ],

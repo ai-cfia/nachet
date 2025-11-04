@@ -47,10 +47,10 @@ export const useFolderData = (backendUrl: string, apiScopeClaim: string) => {
         const directories: FolderData[] = response.directories.map((item) => ({
           folderId: item.id,
           folderName: item.name,
-          folderPrefix: item.folder_prefix,
+          folderPrefix: item.folderPrefix,
           description: item.description || "",
-          pictureCount: item.picture_count,
-          isDefaultFolder: item.is_default_folder,
+          pictureCount: item.pictureCount,
+          isDefaultFolder: item.isDefaultFolder,
         }));
 
         setFolderData({ directories });

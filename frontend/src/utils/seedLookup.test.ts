@@ -17,25 +17,25 @@ vi.mock("@stores/useSpeciesStore", () => ({
 describe("seedLookup", () => {
   const mockSeeds: SpeciesData[] = [
     {
-      seed_id: "seed-1",
+      seedId: "seed-1",
       family: "Poaceae",
       genus: "Triticum",
       species: "aestivum",
-      name_code: "WHEAT_001",
+      nameCode: "WHEAT_001",
     },
     {
-      seed_id: "seed-2",
+      seedId: "seed-2",
       family: "Fabaceae",
       genus: "Glycine",
       species: "max",
-      name_code: "SOYBEAN_001",
+      nameCode: "SOYBEAN_001",
     },
     {
-      seed_id: "seed-3",
+      seedId: "seed-3",
       family: "Poaceae",
       genus: "Zea",
       species: "mays",
-      name_code: "CORN_001",
+      nameCode: "CORN_001",
     },
   ];
 

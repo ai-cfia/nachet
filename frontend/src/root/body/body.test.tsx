@@ -121,16 +121,16 @@ vi.mock("@common", async (importOriginal) => {
           {
             id: "testDir1ID",
             name: "testDir1",
-            folder_prefix: "testDir1",
+            folderPrefix: "testDir1",
             description: "Test directory 1",
-            picture_count: 1,
+            pictureCount: 1,
           },
           {
             id: "testDir2ID",
             name: "testDir2",
-            folder_prefix: "testDir2",
+            folderPrefix: "testDir2",
             description: "Test directory 2",
-            picture_count: 2,
+            pictureCount: 2,
           },
         ],
       });
@@ -141,17 +141,17 @@ vi.mock("@common", async (importOriginal) => {
     fetchModelMetadata: vi.fn(() => {
       return Promise.resolve([
         {
-          created_by: "Wayne Gretzky",
-          creation_date: "2023-12-01",
+          createdBy: "Wayne Gretzky",
+          creationDate: "2023-12-01",
           dataset: "",
           default: false,
           description:
             "trained using 6 seed images per image of 14of15 tagarno",
-          job_name: "neat_cartoon_k0y4m0vz",
-          model_name: "9000 Seed Detector",
+          jobName: "neat_cartoon_k0y4m0vz",
+          modelName: "9000 Seed Detector",
           models: ["m-14of15seeds-6seedsmag"],
-          pipeline_id: "123",
-          pipeline_name: "9000 Seed Detector",
+          pipelineId: "123",
+          pipelineName: "9000 Seed Detector",
           version: "1",
         },
       ]);

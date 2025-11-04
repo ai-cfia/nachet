@@ -42,11 +42,11 @@ export const useInferenceResultsStore = create<InferenceResultsState>(
       pipelineName,
     ) => {
       const newResult: InferenceResult = {
-        workflow_id: workflowId,
-        image_id: imageId,
-        inference_id: inferenceData.inference_id,
-        pipeline_id: pipelineId,
-        pipeline_name: pipelineName,
+        workflowId: workflowId,
+        imageId: imageId,
+        inferenceId: inferenceData.inferenceId,
+        pipelineId: pipelineId,
+        pipelineName: pipelineName,
         scores: inferenceData.boxes.map((box) => box.score),
         classifications: inferenceData.boxes.map((box) =>
           box.label.replace(/^\d+\s+/, ""),
@@ -54,12 +54,11 @@ export const useInferenceResultsStore = create<InferenceResultsState>(
         boxes: inferenceData.boxes.map((box) => {
           return {
             ...box.box,
-            inferenceId: inferenceData.inference_id,
-            boxId: box.box_id,
-            classId: box.object_type_id,
+            inferenceId: inferenceData.inferenceId,
+            boxId: box.boxId,
+            classId: box.objectTypeId,
             label: box.label,
-            is_verified:
-              box.is_verified !== undefined ? box.is_verified : false,
+            isVerified: box.isVerified !== undefined ? box.isVerified : false,
           };
         }),
         topN: inferenceData.boxes.map((box) => box.topN),
@@ -70,8 +69,8 @@ export const useInferenceResultsStore = create<InferenceResultsState>(
         labelOccurrence: inferenceData.labelOccurrence,
         totalBoxes: inferenceData.totalBoxes,
         models: inferenceData.models,
-        completed_at: new Date().toISOString(),
-        is_active: false,
+        completedAt: new Date().toISOString(),
+        isActive: false,
       };
 
       set((state) => {
@@ -87,7 +86,7 @@ export const useInferenceResultsStore = create<InferenceResultsState>(
 
     getResultsForImage: (imageId) => {
       return Array.from(get().results.values()).filter(
-        (result) => result.image_id === imageId,
+        (result) => result.imageId === imageId,
       );
     },
 
@@ -103,8 +102,8 @@ export const useInferenceResultsStore = create<InferenceResultsState>(
       set((state) => {
         const newMap = new Map(state.results);
         Array.from(newMap.values()).forEach((result) => {
-          if (result.image_id === imageId) {
-            newMap.delete(result.workflow_id);
+          if (result.imageId === imageId) {
+            newMap.delete(result.workflowId);
           }
         });
         return { results: newMap };
@@ -120,10 +119,10 @@ export const useInferenceResultsStore = create<InferenceResultsState>(
         const newMap = new Map(state.results);
         // Deactivate all results for this image
         Array.from(newMap.values()).forEach((result) => {
-          if (result.image_id === imageId) {
-            newMap.set(result.workflow_id, {
+          if (result.imageId === imageId) {
+            newMap.set(result.workflowId, {
               ...result,
-              is_active: result.workflow_id === workflowId,
+              isActive: result.workflowId === workflowId,
             });
           }
         });
@@ -133,7 +132,7 @@ export const useInferenceResultsStore = create<InferenceResultsState>(
 
     getActiveResult: (imageId) => {
       return Array.from(get().results.values()).find(
-        (result) => result.image_id === imageId && result.is_active,
+        (result) => result.imageId === imageId && result.isActive,
       );
     },
   }),

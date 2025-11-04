@@ -2,7 +2,12 @@ import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { batchUploadInit, createOrGetFolder } from "@common/api";
 import { validateImageFile } from "@common";
 import { BatchUploadMetadata } from "@common/types";
-import { useSpeciesData, useDeviceData } from "@hooks";
+import {
+  useSpeciesData,
+  useDeviceData,
+  useZodFieldValidation,
+  ERROR_KEY_MAPPINGS,
+} from "@hooks";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
@@ -15,7 +20,7 @@ import {
   sampleIdSchema,
   deviceIdValidationSchema,
   fileListSchema,
-  safeUserInputSchema,
+  descriptionSchema,
 } from "@common/validation";
 import { getZodErrorKey } from "@common/zodErrorMap";
 import { BatchUploadQueueManager } from "../../../services/BatchUploadQueueManager";
@@ -88,6 +93,7 @@ export const BatchUploadPopupContainer = (
   const [trayCode, setTrayCode] = useState<string>("");
   const [sampleIdPrefix, setSampleIdPrefix] = useState<string>("");
   const [sampleDescription, setSampleDescription] = useState<string>("");
+  const [folderDescription, setFolderDescription] = useState<string>("");
   const [deviceBrandId, setDeviceBrandId] = useState<string>("");
   const [deviceModelId, setDeviceModelId] = useState<string>("");
   const [deviceLensId, setDeviceLensId] = useState<string>("");
@@ -114,13 +120,29 @@ export const BatchUploadPopupContainer = (
   const [folderDescriptionError, setFolderDescriptionError] =
     useState<string>("");
 
+  // Zod validation hooks for auto-normalization on blur
+  const folderDescriptionValidation = useZodFieldValidation(
+    descriptionSchema,
+    folderDescription,
+    setFolderDescription,
+    setFolderDescriptionError,
+    ERROR_KEY_MAPPINGS.description,
+  );
+
+  const sampleDescriptionValidation = useZodFieldValidation(
+    descriptionSchema,
+    sampleDescription,
+    setSampleDescription,
+    setSampleDescriptionError,
+    ERROR_KEY_MAPPINGS.description,
+  );
+
   const { speciesData } = useSpeciesData(backendUrl, apiScopeClaim);
   const { devicesData } = useDeviceData(backendUrl, apiScopeClaim);
   const { instance: msalInstance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
 
   // Folder creation state
-  const [folderDescription, setFolderDescription] = useState<string>("");
   const [createdFolderId, setCreatedFolderId] = useState<string>("");
   const [creatingFolder, setCreatingFolder] = useState<boolean>(false);
 
@@ -166,13 +188,20 @@ export const BatchUploadPopupContainer = (
       return;
     }
 
-    // Validate description using safeUserInputSchema (same as CreateDirectoryPopup)
+    // Validate description using descriptionSchema (consistent with other description fields)
     const descriptionValidationResult =
-      safeUserInputSchema.safeParse(folderDescription);
+      descriptionSchema.safeParse(folderDescription);
     if (!descriptionValidationResult.success) {
-      setFolderDescriptionError(
-        descriptionValidationResult.error.issues[0].message,
-      );
+      const issue = descriptionValidationResult.error.issues[0];
+      if (issue.code === "too_small") {
+        setFolderDescriptionError(t("description.empty"));
+      } else if (issue.code === "too_big") {
+        setFolderDescriptionError(t("description.tooLong"));
+      } else {
+        setFolderDescriptionError(
+          t(getZodErrorKey(descriptionValidationResult.error)),
+        );
+      }
       return;
     }
 
@@ -191,8 +220,8 @@ export const BatchUploadPopupContainer = (
         description: descriptionValidationResult.data,
       });
 
-      setCreatedFolderId(result.folder_id);
-      console.log(`Folder created/retrieved: ${result.folder_id}`);
+      setCreatedFolderId(result.folderId);
+      console.log(`Folder created/retrieved: ${result.folderId}`);
       // Trigger directory list refresh
       setReadAzureStorage((prev) => !prev);
     } catch (error) {
@@ -393,6 +422,25 @@ export const BatchUploadPopupContainer = (
       return;
     }
 
+    // Validate sample description (optional, but if provided must be valid)
+    if (sampleDescription && sampleDescription.trim() !== "") {
+      const sampleDescriptionValidation =
+        descriptionSchema.safeParse(sampleDescription);
+      if (!sampleDescriptionValidation.success) {
+        const issue = sampleDescriptionValidation.error.issues[0];
+        if (issue.code === "too_small") {
+          setSampleDescriptionError(t("description.empty"));
+        } else if (issue.code === "too_big") {
+          setSampleDescriptionError(t("description.tooLong"));
+        } else {
+          setSampleDescriptionError(
+            t(getZodErrorKey(sampleDescriptionValidation.error)),
+          );
+        }
+        return;
+      }
+    }
+
     // Validate device brand
     console.log("DEBUG: deviceBrandId value:", deviceBrandId);
     console.log("DEBUG: deviceBrandId type:", typeof deviceBrandId);
@@ -502,7 +550,7 @@ export const BatchUploadPopupContainer = (
           fileCount,
         }).then((response) => ({
           accessToken,
-          sessionId: response.session_id,
+          sessionId: response.sessionId,
         }));
       })
       .then(({ sessionId }) => {
@@ -541,6 +589,7 @@ export const BatchUploadPopupContainer = (
               seedId,
               trayCode,
               sampleIdPrefix,
+              sampleDescription,
               deviceBrandId,
               deviceModelId,
               deviceLensId,
@@ -610,10 +659,8 @@ export const BatchUploadPopupContainer = (
       // Reset created folder ID when folder name changes
       if (createdFolderId) setCreatedFolderId("");
     },
-    onFolderDescriptionChange: (value: string) => {
-      setFolderDescription(value);
-      if (folderDescriptionError) setFolderDescriptionError("");
-    },
+    onFolderDescriptionChange: folderDescriptionValidation.onChange,
+    onFolderDescriptionBlur: folderDescriptionValidation.onBlur,
     onFamilyChange: (value: string) => {
       setFamily(value);
       if (familyError) setFamilyError("");
@@ -638,10 +685,8 @@ export const BatchUploadPopupContainer = (
       setSampleIdPrefix(value);
       if (sampleIdPrefixError) setSampleIdPrefixError("");
     },
-    onSampleDescriptionChange: (value: string) => {
-      setSampleDescription(value);
-      if (sampleDescriptionError) setSampleDescriptionError("");
-    },
+    onSampleDescriptionChange: sampleDescriptionValidation.onChange,
+    onSampleDescriptionBlur: sampleDescriptionValidation.onBlur,
     onDeviceBrandChange: setDeviceBrandId,
     onDeviceModelChange: setDeviceModelId,
     onDeviceLensChange: setDeviceLensId,

@@ -40,19 +40,19 @@ describe("SwitchModel Component", () => {
 
     // Check if the model names from testData are displayed
     testData.forEach((data) => {
-      expect(screen.getByText(data.model_name)).toBeInTheDocument();
+      expect(screen.getByText(data.modelName)).toBeInTheDocument();
     });
 
     // Simulate model selection
-    const modelToSelect = testData[0].pipeline_id;
-    const modelName = testData[0].model_name;
+    const modelToSelect = testData[0].pipelineId;
+    const modelName = testData[0].modelName;
     fireEvent.click(screen.getByText(modelName));
 
     // Click the Save button to confirm selection
     const saveButton = screen.getByText(/save/i);
     fireEvent.click(saveButton);
 
-    // Assert setSelectedModel was called with the pipeline_id (not model name)
+    // Assert setSelectedModel was called with the pipelineId (not model name)
     expect(mockSetSelectedModel).toHaveBeenCalledWith(modelToSelect);
   });
 });

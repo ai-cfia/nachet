@@ -45,7 +45,7 @@ export const getSeedIdByTaxonomy = (taxonomy: SeedTaxonomy): string => {
       seed.family === taxonomy.family &&
       seed.genus === taxonomy.genus &&
       seed.species === taxonomy.species &&
-      seed.name_code === taxonomy.nameCode,
+      seed.nameCode === taxonomy.nameCode,
   );
 
   if (!matchingSeed) {
@@ -54,7 +54,7 @@ export const getSeedIdByTaxonomy = (taxonomy: SeedTaxonomy): string => {
     );
   }
 
-  return matchingSeed.seed_id;
+  return matchingSeed.seedId;
 };
 
 /**

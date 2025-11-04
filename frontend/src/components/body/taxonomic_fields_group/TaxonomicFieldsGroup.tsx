@@ -76,7 +76,7 @@ export const TaxonomicFieldsGroup = (props: TaxonomicFieldsGroupProps) => {
         (!genus || seed.genus === genus) &&
         (!species || seed.species === species),
     );
-    return Array.from(new Set(filtered.map((seed) => seed.name_code))).sort();
+    return Array.from(new Set(filtered.map((seed) => seed.nameCode))).sort();
   }, [speciesData, family, genus, species]);
 
   // Auto-fill logic: When name_code is selected, auto-populate all fields
@@ -84,7 +84,7 @@ export const TaxonomicFieldsGroup = (props: TaxonomicFieldsGroupProps) => {
     onNameCodeChange(value);
 
     if (value && speciesData && speciesData.length > 0) {
-      const matchingSeed = speciesData.find((seed) => seed.name_code === value);
+      const matchingSeed = speciesData.find((seed) => seed.nameCode === value);
       if (matchingSeed) {
         onFamilyChange(matchingSeed.family);
         onGenusChange(matchingSeed.genus);

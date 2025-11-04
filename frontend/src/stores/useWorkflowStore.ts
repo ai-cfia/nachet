@@ -41,14 +41,14 @@ export const useWorkflowStore = create<WorkflowState>()((set, get) => ({
   ) => {
     const now = Date.now();
     const newWorkflow: WorkflowInfo = {
-      workflow_id: workflowId,
-      image_id: imageId,
+      workflowId: workflowId,
+      imageId: imageId,
       imageIndex,
-      pipeline_id: pipelineId,
-      pipeline_name: pipelineName,
+      pipelineId: pipelineId,
+      pipelineName: pipelineName,
       status: "pending",
-      started_at: now,
-      last_checked_at: now,
+      startedAt: now,
+      lastCheckedAt: now,
       error: null,
       queuePosition,
     };
@@ -73,7 +73,7 @@ export const useWorkflowStore = create<WorkflowState>()((set, get) => ({
       const updatedWorkflow: WorkflowInfo = {
         ...workflow,
         status,
-        last_checked_at: Date.now(),
+        lastCheckedAt: Date.now(),
         error,
         queuePosition:
           queuePosition !== undefined ? queuePosition : workflow.queuePosition,

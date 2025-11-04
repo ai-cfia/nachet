@@ -13,9 +13,13 @@ import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { acquireAccessToken } from "@common/auth";
 import { createOrGetFolder, updateFolder, deleteFolder } from "@common/api";
-import { normalizedPathSchema, safeUserInputSchema } from "@common/validation";
+import { normalizedPathSchema, descriptionSchema } from "@common/validation";
 import { getZodErrorKey } from "@common/zodErrorMap";
 import { useTranslation } from "react-i18next";
+import {
+  useZodFieldValidation,
+  ERROR_KEY_MAPPINGS,
+} from "@hooks/useZodFieldValidation";
 import { FolderFieldsGroup } from "../folder_fields_group/FolderFieldsGroup";
 import { PopupActionButtons } from "@components/common";
 import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";
@@ -56,6 +60,15 @@ const DirectoryPopup: React.FC<params> = (props) => {
   const { instance: msalInstance, inProgress } = useMsal();
   const isAuthenticated = useIsAuthenticated();
   const { addError, addWarning } = useNotificationStore();
+
+  // Zod validation hook for auto-normalization on blur
+  const descriptionValidation = useZodFieldValidation(
+    descriptionSchema,
+    descriptionInput,
+    setDescriptionInput,
+    setDescriptionError,
+    ERROR_KEY_MAPPINGS.description,
+  );
 
   const handleDirectoryOperation = (): void => {
     if (!isAuthenticated) {
@@ -121,19 +134,20 @@ const DirectoryPopup: React.FC<params> = (props) => {
       return;
     }
 
-    // Validate description - now required
-    if (!descriptionInput.trim()) {
-      setDescriptionError(tValidation("directoryDescriptionRequired"));
-      return;
-    }
-
-    // Sanitize description using XSS protection schema
+    // Validate description - required, using consistent descriptionSchema
     const descriptionValidationResult =
-      safeUserInputSchema.safeParse(descriptionInput);
+      descriptionSchema.safeParse(descriptionInput);
     if (!descriptionValidationResult.success) {
-      setDescriptionError(
-        tValidation(getZodErrorKey(descriptionValidationResult.error)),
-      );
+      const issue = descriptionValidationResult.error.issues[0];
+      if (issue.code === "too_small") {
+        setDescriptionError(tValidation("description.empty"));
+      } else if (issue.code === "too_big") {
+        setDescriptionError(tValidation("description.tooLong"));
+      } else {
+        setDescriptionError(
+          tValidation(getZodErrorKey(descriptionValidationResult.error)),
+        );
+      }
       return;
     }
 
@@ -153,7 +167,7 @@ const DirectoryPopup: React.FC<params> = (props) => {
             normalizedPath,
             description: sanitizedDescription,
           });
-          console.log(`Folder created/retrieved: ${result.folder_id}`);
+          console.log(`Folder created/retrieved: ${result.folderId}`);
         } else {
           // Edit mode - update existing folder
           if (!initialData) {
@@ -260,12 +274,8 @@ const DirectoryPopup: React.FC<params> = (props) => {
                 setValidationError("");
               }
             }}
-            onFolderDescriptionChange={(value) => {
-              setDescriptionInput(value);
-              if (descriptionError) {
-                setDescriptionError("");
-              }
-            }}
+            onFolderDescriptionChange={descriptionValidation.onChange}
+            onFolderDescriptionBlur={descriptionValidation.onBlur}
             folderNameError={validationError}
             folderDescriptionError={descriptionError}
             disabled={mode === "delete"}
