@@ -4,8 +4,14 @@ from app.api.routes import router as api_router
 from app.api.config import create_app, lifespan, Settings
 from dbos import DBOS, DBOSConfig
 
+settings = Settings()
+# Conditional import for debug routes
+if settings.nachet_env == "development":
+    from app.api.dev_routes import router as debug_router
 
-app = create_app(Settings(), api_router, lifespan=lifespan)
+    api_router.include_router(debug_router)
+
+app = create_app(settings, api_router, lifespan=lifespan)
 
 dbos_config = DBOSConfig(
     name="nachet-dbos",

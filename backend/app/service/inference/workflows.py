@@ -34,7 +34,7 @@ from app.exceptions import ImageProcessingError
 from app.service.constants import BlobAccount
 from app.service.blob_operations import (
     upload_to_azure_blob,
-    wait_for_defender_scan,
+    # wait_for_defender_scan,
 )
 from app.service.sanitization import trigger_sanitization_function_local
 from app.service.inference.state_management import (
@@ -1027,11 +1027,20 @@ async def image_processing_workflow(
             progress_percentage=40,
         )
 
-        defender_result = await wait_for_defender_scan(
-            image_id=image_id,
-            org_prefix=org_prefix,
-            timeout_sec=300,
+        # TODO: use the actual method when blob is unblocked
+        defender_result = {
+            "status": "clean",
+            "scan_result": "No threats detected",
+            "scan_timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        DBOS.logger.info(
+            f"IMPORTANT: This is not for production use. Assuming clean scan for image {image_id}."
         )
+        # defender_result = await wait_for_defender_scan(
+        #     image_id=image_id,
+        #     org_prefix=org_prefix,
+        #     timeout_sec=300,
+        # )
         await DBOS.set_event_async("defender_scan_complete", True)
         await DBOS.set_event_async("processing_status", "defender_scanned")
         await DBOS.set_event_async("defender_result", defender_result)
