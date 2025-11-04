@@ -18,6 +18,8 @@ def generate_openapi_json():
 
     with open("openapi.json", "w") as f:
         json.dump(openapi_schema, f, indent=2)
+        # add newline at the end of the file
+        f.write("\n")
 
 
 if __name__ == "__main__":

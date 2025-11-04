@@ -99,8 +99,16 @@ class SeedService(BaseCRUDService[Seed]):
             seeds = None
             async with sessionmanager.get_session() as session:
                 seeds = await SeedDataService(session).get_seed_data()
+
+            # Convert UUID seed_id to string for API response
+            serialized_seeds = (
+                [{**seed, "seed_id": str(seed["seed_id"])} for seed in seeds]
+                if seeds
+                else []
+            )
+
             # TypedDict (SeedDataRow) is compatible with Dict[str, Any] at runtime
-            return {"seeds": cast(List[Dict[str, Any]], seeds) if seeds else []}
+            return {"seeds": cast(List[Dict[str, Any]], serialized_seeds)}
         except Exception as e:
             raise SeedError(f"Failed to retrieve seed data: {str(e)}") from e
 

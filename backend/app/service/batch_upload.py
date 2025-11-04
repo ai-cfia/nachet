@@ -327,8 +327,17 @@ class BatchUploadService:
                 field_name="Sample ID",
             )
 
+            # 9b. Generate incremental image name: <sampleidprefix>-0001, <sampleidprefix>-0002, etc.
+            # Use uploaded_count (before increment) as the image number
+            # Add 1 because we want to start from 1, not 0 (first image is -0001)
+            image_number = session.uploaded_count + 1
+            image_name = f"{sanitized_sample_id}-{image_number:04d}"
+            logger.debug(
+                f"Generated incremental image name: {image_name} (image #{image_number})"
+            )
+
             # 10. Create Picture record (REUSE ImageService)
-            # Note: sample_id becomes picture.name, seed_id links to single_species_image
+            # Note: image_name uses incremental counter, seed_id links to single_species_image
             await ImageService.create(
                 requester_id=UUID(user.oid),
                 id=image_id,
@@ -336,7 +345,7 @@ class BatchUploadService:
                 folder_id=folder_id,
                 org_user_role_id=user_org_roles.org_user_role_id,
                 org_admin_role_id=user_org_roles.org_admin_role_id,
-                name=sanitized_sample_id,  # Use sanitized sample_id
+                name=image_name,  # Use incremental name: <sampleid>-0001, <sampleid>-0002, etc.
                 width=info.width,
                 height=info.height,
                 format=info.mime_type,
@@ -352,7 +361,7 @@ class BatchUploadService:
                 ),  # Link to seed for training data
             )
             logger.info(
-                f"Picture record created for image_id {image_id} with seed {request.seed_id}"
+                f"Picture record created for image_id {image_id} with name '{image_name}' and seed {request.seed_id}"
             )
 
             # 10. Enqueue DBOS workflow (PROCESSING ONLY - no inference)
@@ -372,8 +381,10 @@ class BatchUploadService:
             )
 
             # 11. Create processing state for tracking
+            # IMPORTANT: Use parent_workflow_id as the state key, since that's what
+            # image_processing_workflow uses for all state updates
             await create_processing_state(
-                workflow_id=workflow_id,
+                workflow_id=parent_workflow_id,  # Must match parent_workflow_id passed to workflow
                 picture_id=image_id,
                 user_id=UUID(user.oid),
                 org_user_role_id=user_org_roles.org_user_role_id,
@@ -382,7 +393,9 @@ class BatchUploadService:
                 created_at=datetime.now(timezone.utc),
                 progress_percentage=5,
             )
-            logger.debug(f"Processing state created for workflow {workflow_id}")
+            logger.debug(
+                f"Processing state created for parent workflow {parent_workflow_id}"
+            )
 
             # 12. Update session counter and check completion
             async with sessionmanager.get_session() as db_session:
@@ -416,7 +429,7 @@ class BatchUploadService:
             return {
                 "success": True,
                 "picture_id": str(image_id),
-                "workflow_id": workflow_id,  # Frontend polls this!
+                "workflow_id": parent_workflow_id,  # Frontend polls this (matches state record)
                 "error": None,
             }
 
