@@ -936,7 +936,7 @@ Current schema supports batch upload fully.
 
 **Test Results:**
 
-```
+```text
 tests/test_batch_upload.py::TestBatchUploadServiceInitialize::test_initialize_success PASSED
 tests/test_batch_upload.py::TestBatchUploadServiceInitialize::test_initialize_file_count_exceeds_limit PASSED
 tests/test_batch_upload.py::TestBatchUploadServiceInitialize::test_initialize_folder_not_found PASSED
