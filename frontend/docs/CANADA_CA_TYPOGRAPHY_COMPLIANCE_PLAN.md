@@ -1,6 +1,7 @@
 # Canada.ca Typography Compliance Implementation Plan
 
 ## Overview
+
 Transform Nachet frontend from current Arial/vh-based typography to Canada.ca mandatory standards (Lato/Noto Sans with specific px sizes).
 
 ---
@@ -8,9 +9,11 @@ Transform Nachet frontend from current Arial/vh-based typography to Canada.ca ma
 ## Phase 1: Foundation - Font Imports & Theme Setup (2-3 hours)
 
 ### 1.1 Import Required Fonts
+
 **File:** `frontend/index.html`
 
 Add Google Fonts links in `<head>`:
+
 ```html
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,6 +23,7 @@ Add Google Fonts links in `<head>`:
 **File:** `frontend/src/index.css` (lines 2, 22, 28)
 
 Replace Arial with Noto Sans:
+
 ```css
 html {
   font-family: 'Noto Sans', sans-serif;
@@ -31,6 +35,7 @@ body {
 ```
 
 ### 1.2 Create MUI Theme Configuration
+
 **File:** `frontend/src/theme/canadaTheme.ts` (NEW)
 
 ```typescript
@@ -138,15 +143,18 @@ export const canadaTheme = createTheme({
 ```
 
 ### 1.3 Wrap App with ThemeProvider
+
 **File:** `frontend/src/main.tsx`
 
 Add import:
+
 ```typescript
 import { ThemeProvider } from '@mui/material/styles';
 import { canadaTheme } from './theme/canadaTheme';
 ```
 
 Wrap the app (around line 140-148):
+
 ```typescript
 <ThemeProvider theme={canadaTheme}>
   <CacheProvider value={emotionCache}>
@@ -162,9 +170,11 @@ Wrap the app (around line 140-148):
 ## Phase 2: Update Color Palette (1-2 hours)
 
 ### 2.1 Extend colours.tsx
+
 **File:** `frontend/src/styles/colours.tsx`
 
 Add Canada.ca required colors:
+
 ```typescript
 export const colours = {
   // Existing CFIA colors
@@ -195,32 +205,40 @@ export const colours = {
 **Priority Component Updates:**
 
 #### A. AppBar.tsx (line 51)
+
 **Current:**
+
 ```tsx
 <Typography variant="h2" sx={{ fontSize: "1.4vh" }}>
 ```
 
 **Update to:**
+
 ```tsx
 <Typography variant="h2">
   {/* Remove fontSize override - use theme */}
 ```
 
 #### B. ModelPopup.tsx (lines 81, 146)
+
 **Current:**
+
 ```tsx
 <Typography variant="h6" sx={{ fontSize: "1.8vh" }}>
 <Typography fontSize={20} variant="h6">
 ```
 
 **Update to:**
+
 ```tsx
 <Typography variant="h6">
   {/* Remove fontSize override */}
 ```
 
 #### C. ErrorBoundary.tsx (line 76)
+
 **Current:**
+
 ```tsx
 <Typography variant="h4" color="error" gutterBottom>
 ```
@@ -232,6 +250,7 @@ export const colours = {
 Identify main pages and add H1 titles:
 
 **Example for main page:**
+
 ```tsx
 import { PageTitle } from '@components/common/PageTitle';
 
@@ -246,12 +265,14 @@ function MainPage() {
 ```
 
 **Pages needing H1:**
+
 - Main dashboard/home page
 - Upload page
 - Results page
 - Settings/configuration pages
 
 ### 3.3 Create H1 Red Bar Component
+
 **File:** `frontend/src/components/common/PageTitle.tsx` (NEW)
 
 ```tsx
@@ -288,6 +309,7 @@ export const PageTitle: React.FC<PageTitleProps> = ({ children }) => {
 **File:** `frontend/src/components/common/index.ts`
 
 Add:
+
 ```typescript
 export { PageTitle } from './PageTitle';
 ```
@@ -299,7 +321,9 @@ export { PageTitle } from './PageTitle';
 ### 4.1 Remove textDecoration: "none"
 
 #### A. Footer.tsx (lines 79-84)
+
 **Current:**
+
 ```tsx
 <Link href="https://github.com/ai-cfia"
   sx={{
@@ -312,6 +336,7 @@ export { PageTitle } from './PageTitle';
 ```
 
 **Update to:**
+
 ```tsx
 <Link href="https://github.com/ai-cfia"
   sx={{
@@ -324,24 +349,30 @@ export { PageTitle } from './PageTitle';
 ```
 
 #### B. AppBar.tsx (line 56)
+
 **Current:**
+
 ```tsx
 textDecoration: "none"  // ❌ Remove this
 ```
 
 **Update to:**
+
 ```tsx
 // Remove textDecoration property entirely
 // Let theme handle link styling
 ```
 
 ### 4.2 Search for All Instances
+
 Use Grep to find all `textDecoration: "none"` and update each occurrence.
 
 ### 4.3 Global Link Styles (if needed)
+
 **File:** `frontend/src/index.css`
 
 Add:
+
 ```css
 a {
   text-decoration: underline;
@@ -358,6 +389,7 @@ a {
 **File:** `frontend/src/root/body/body.tsx`
 
 Wrap text content in constrained container:
+
 ```tsx
 <Box sx={{ maxWidth: '65ch', mx: 'auto', px: 2 }}>
   {/* Text content here */}
@@ -365,12 +397,14 @@ Wrap text content in constrained container:
 ```
 
 ### 5.2 Apply to Text-Heavy Components
+
 - Error messages
 - Description text
 - Form help text
 - Information panels
 
 **Example pattern:**
+
 ```tsx
 <Typography variant="body1" sx={{ maxWidth: '65ch' }}>
   Long descriptive text that should be constrained...
@@ -378,6 +412,7 @@ Wrap text content in constrained container:
 ```
 
 ### 5.3 Important Note
+
 Page layouts can be wider than 65ch - only **lines of text** should be constrained for readability.
 
 ---
@@ -385,21 +420,25 @@ Page layouts can be wider than 65ch - only **lines of text** should be constrain
 ## Phase 6: Responsive Typography (3-4 hours)
 
 ### 6.1 Verify Breakpoint Logic in Theme
+
 The theme created in Phase 1.2 already includes responsive breakpoints. Verify it works correctly.
 
 ### 6.2 Test Across Devices
 
 **Desktop sizes to test:**
+
 - 1920px (Full HD)
 - 1440px (Laptop)
 - 1024px (Tablet landscape)
 
 **Mobile sizes to test:**
+
 - 768px (Tablet portrait)
 - 414px (iPhone Plus)
 - 375px (iPhone)
 
 ### 6.3 Use Browser DevTools
+
 1. Open DevTools (F12)
 2. Toggle device toolbar (Ctrl+Shift+M)
 3. Test each breakpoint
@@ -410,6 +449,7 @@ The theme created in Phase 1.2 already includes responsive breakpoints. Verify i
 ## Phase 7: Testing & Validation (4-6 hours)
 
 ### 7.1 Visual Regression Testing
+
 - Take screenshots of all major pages before changes
 - Take screenshots after each phase
 - Compare for layout breakage
@@ -418,11 +458,13 @@ The theme created in Phase 1.2 already includes responsive breakpoints. Verify i
 ### 7.2 Accessibility Testing
 
 **Tools:**
+
 - Chrome Lighthouse (Accessibility score)
 - axe DevTools browser extension
 - WAVE browser extension
 
 **Checklist:**
+
 - [ ] WCAG AAA contrast ratios (4.5:1 minimum)
 - [ ] Links visually distinguishable from text
 - [ ] Focus indicators visible on all interactive elements
@@ -432,12 +474,14 @@ The theme created in Phase 1.2 already includes responsive breakpoints. Verify i
 ### 7.3 Cross-Browser Testing
 
 **Required browsers:**
+
 - Chrome (latest)
 - Firefox (latest)
 - Safari (latest)
 - Edge (latest)
 
 **Check:**
+
 - Font rendering consistency
 - Link underlines display correctly
 - Responsive breakpoints work
@@ -446,6 +490,7 @@ The theme created in Phase 1.2 already includes responsive breakpoints. Verify i
 ### 7.4 Manual Compliance Checklist
 
 **Typography:**
+
 - [ ] Lato loads for all headings (h1-h6)
 - [ ] Lato uses bold weight (700) for headings
 - [ ] Noto Sans loads for all body text
@@ -453,6 +498,7 @@ The theme created in Phase 1.2 already includes responsive breakpoints. Verify i
 - [ ] Mobile font sizes: H1=37px, H2=35px, H3=26px, H4=22px, H5=20px, H6=18px, Body=18px
 
 **Colors:**
+
 - [ ] Text color is #333
 - [ ] Default link color is #284162
 - [ ] Hover/focus link color is #0535d2
@@ -461,6 +507,7 @@ The theme created in Phase 1.2 already includes responsive breakpoints. Verify i
 - [ ] Error color is #d3080c
 
 **Elements:**
+
 - [ ] H1 red bars present on main pages
 - [ ] Red bar is #A62A1E, 72px wide, 6px thick
 - [ ] Red bar positioned 0.2em below H1
@@ -468,6 +515,7 @@ The theme created in Phase 1.2 already includes responsive breakpoints. Verify i
 - [ ] Link underlines skip descenders (text-decoration-skip-ink: auto)
 
 **Layout:**
+
 - [ ] Text line length ≤ 65 characters
 - [ ] Page layouts can be wider than 65ch
 - [ ] Majority of page has white background
@@ -479,6 +527,7 @@ The theme created in Phase 1.2 already includes responsive breakpoints. Verify i
 ### 8.1 Update CLAUDE.md
 
 Add section:
+
 ```markdown
 ## Canada.ca Design System Compliance
 
@@ -504,6 +553,7 @@ Nachet follows the mandatory requirements of the Canada.ca Web Design System:
 ```
 
 ### 8.2 Create Component Usage Guide
+
 **File:** `frontend/docs/CANADA_CA_COMPONENT_GUIDE.md` (NEW)
 
 ```markdown
@@ -523,6 +573,7 @@ import { PageTitle } from '@components/common/PageTitle';
 This automatically includes the Canada.ca mandatory red bar.
 
 ### Section Headings
+
 Use MUI Typography with appropriate variant:
 
 ```tsx
@@ -533,12 +584,14 @@ Use MUI Typography with appropriate variant:
 **DO NOT** override fontSize with sx prop - let theme handle sizing.
 
 ### Body Text
+
 ```tsx
 <Typography variant="body1">Regular paragraph text</Typography>
 <Typography variant="body2">Smaller text (captions, etc.)</Typography>
 ```
 
 ### Links
+
 Use MUI Link component - theme handles Canada.ca styling:
 
 ```tsx
@@ -552,31 +605,37 @@ import { Link } from '@mui/material';
 ## Common Mistakes to Avoid
 
 ❌ **Don't** use inline fontSize overrides:
+
 ```tsx
 <Typography variant="h2" sx={{ fontSize: "1.4vh" }}>  // Bad
 ```
 
 ✅ **Do** use theme variants:
+
 ```tsx
 <Typography variant="h2">  // Good
 ```
 
 ❌ **Don't** remove link underlines:
+
 ```tsx
 <Link sx={{ textDecoration: "none" }}>  // Bad
 ```
 
 ✅ **Do** let theme handle styling:
+
 ```tsx
 <Link href="/path">  // Good
 ```
 
 ❌ **Don't** use arbitrary colors:
+
 ```tsx
 <Typography sx={{ color: "#666" }}>  // Bad
 ```
 
 ✅ **Do** use theme or Canada.ca colors:
+
 ```tsx
 <Typography color="text.primary">  // Good
 import { colours } from '@styles/colours';
@@ -596,7 +655,8 @@ Wrap text content in max-width containers:
 ```
 
 Note: Page layouts can be wider - only text content should be constrained.
-```
+
+```text
 
 ---
 
