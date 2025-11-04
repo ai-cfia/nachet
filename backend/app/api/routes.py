@@ -45,7 +45,7 @@ from app.model.data import (
     ModelEndpointsMetadataResponse,
 )
 from app.model.user import UserIdResponse, RegistrationStatusResponse
-from app.model.system import HealthResponse, VersionResponse, RateLimitTestResponse
+from app.model.system import HealthResponse, VersionResponse
 from app.service.batch_upload import BatchUploadService
 # from app.exceptions import ImageProcessingError
 # from app.api.test_dbos import router as test_dbos_router
@@ -113,36 +113,6 @@ async def submit_image_for_processing(
     # Delegate to InferenceService (handles session, logging, business logic)
     # user.oid is validated by get_current_user to be a valid UUID string
     return await InferenceService.submit_inference_request(
-        request=req,
-        user_id=UUID(current_user.oid),  # type: ignore[arg-type]
-    )
-
-
-@router.post(
-    "/inf-direct",
-    status_code=status.HTTP_200_OK,
-    response_model=ApiInferenceResponse,
-    name="Submit Image for Direct Processing [CFIA ADMIN ONLY]",
-)
-@limiter.limit("10/minute")
-async def submit_image_for_simple_direct_processing(
-    request: Request,
-    req: InferenceRequest,
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Submit an image for direct processing (synchronous).
-    Does not store anything.
-    Direct to the model endpoint and returns the classification result.
-
-    Returns ApiInferenceResponse with boxes and classifications.
-
-    Access: CFIA admin only
-    """
-
-    # Delegate to InferenceService (handles session, logging, business logic)
-    # user.oid is validated by get_current_user to be a valid UUID string
-    return await InferenceService.submit_direct_pipeline_inference_request_test(
         request=req,
         user_id=UUID(current_user.oid),  # type: ignore[arg-type]
     )
@@ -312,18 +282,6 @@ async def get_workflow_results(
 #                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
 #                 detail=f"Failed to process callback: {str(e)}",
 #             )
-
-
-# Rate limiter test route
-@router.get(
-    "/rate-limit-test",
-    status_code=status.HTTP_200_OK,
-    response_model=RateLimitTestResponse,
-    name="Rate Limit Test [NO AUTH REQUIRED]",
-)
-@limiter.limit("2/minute")
-async def rate_limit_test(request: Request):
-    return {"message": "This is a rate-limited endpoint."}
 
 
 # no authentication needed
@@ -655,23 +613,6 @@ async def frontend_log_endpoint(
     return response
 
 
-# Frontend static file serving routes
-@router.get(
-    "/",
-    status_code=status.HTTP_200_OK,
-    name="Serve Frontend Root [NO AUTH REQUIRED]",
-    include_in_schema=False,
-)
-@limiter.limit("60/minute")
-async def serve_frontend_root(request: Request):
-    """Serve the main index.html file."""
-    await FrontendService.check_and_update_version()
-    # Get CSP nonce from request state (set by HeadersMiddleware)
-    csp_nonce = getattr(request.state, "csp_nonce", None)
-    content, content_type = await FrontendService.get_file("index.html", csp_nonce)
-    return Response(content=content, media_type=content_type)
-
-
 # Batch Upload Endpoints
 @router.post(
     "/new-batch-import",
@@ -809,6 +750,23 @@ async def upload_picture_in_batch(
         workflow_id=result["workflow_id"],
         picture_id=result["picture_id"],
     )
+
+
+# Frontend static file serving routes
+@router.get(
+    "/",
+    status_code=status.HTTP_200_OK,
+    name="Serve Frontend Root [NO AUTH REQUIRED]",
+    include_in_schema=False,
+)
+@limiter.limit("60/minute")
+async def serve_frontend_root(request: Request):
+    """Serve the main index.html file."""
+    await FrontendService.check_and_update_version()
+    # Get CSP nonce from request state (set by HeadersMiddleware)
+    csp_nonce = getattr(request.state, "csp_nonce", None)
+    content, content_type = await FrontendService.get_file("index.html", csp_nonce)
+    return Response(content=content, media_type=content_type)
 
 
 # This is placed at the end to avoid catching other routes

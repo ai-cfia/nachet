@@ -401,6 +401,7 @@ class TestImageProcessingWorkflowStateUpdates:
         assert state is not None, "ImageProcessingState should exist"
         assert state.progress_percentage == 100, "Final progress should be 100%"
 
+    @pytest.mark.skip(reason="Waiting for blob store to be unblocked from network")
     async def test_processing_state_malware_detection(
         self,
         dbos_runtime,
@@ -672,6 +673,7 @@ class TestInferenceWorkflowStateUpdates:
 class TestWorkflowStateErrorHandling:
     """Integration tests for workflow state updates during error scenarios."""
 
+    @pytest.mark.skip(reason="Waiting for blob store to be unblocked from network")
     async def test_processing_state_marked_failed_on_error(
         self,
         dbos_runtime,

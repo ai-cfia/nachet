@@ -100,6 +100,7 @@ class Settings(BaseSettings):
     azure_sanitization_function_key: str | None = None
     backend_url: str | None = None
     is_test_environment: bool = False
+    nachet_env: str = "production"  # "development", "staging", "production"
 
     @computed_field
     @property
