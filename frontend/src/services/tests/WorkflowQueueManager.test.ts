@@ -78,7 +78,9 @@ describe("WorkflowQueueManager", () => {
       queueManager.configure(mockConfig);
 
       // Mock inference to delay processing
-      (api.inferenceRequest as any).mockImplementation(() => new Promise(() => {}));
+      (api.inferenceRequest as any).mockImplementation(
+        () => new Promise(() => {}),
+      );
 
       queueManager.enqueue(0, "image-1");
 
@@ -101,7 +103,9 @@ describe("WorkflowQueueManager", () => {
       queueManager.configure(mockConfig);
 
       // Mock inference to delay processing
-      (api.inferenceRequest as any).mockImplementation(() => new Promise(() => {}));
+      (api.inferenceRequest as any).mockImplementation(
+        () => new Promise(() => {}),
+      );
 
       queueManager.enqueue(0, "image-1");
       queueManager.enqueue(1, "image-2");
@@ -140,7 +144,7 @@ describe("WorkflowQueueManager", () => {
       });
 
       queueManager.enqueue(0, "image-1");
-      
+
       // Advance timers to process submission
       await vi.advanceTimersByTimeAsync(1000);
 
@@ -229,7 +233,7 @@ describe("WorkflowQueueManager", () => {
       });
 
       queueManager.enqueue(0, "image-1");
-      
+
       // Advance past initial delay and first poll
       await vi.advanceTimersByTimeAsync(25000);
 
@@ -390,7 +394,7 @@ describe("WorkflowQueueManager", () => {
       });
 
       queueManager.enqueue(0, "image-1");
-      
+
       // Advance to allow polling to happen
       await vi.advanceTimersByTimeAsync(25000);
 
