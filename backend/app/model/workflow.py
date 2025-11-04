@@ -90,16 +90,45 @@ class BlobUrls(BaseModel):
     )
 
 
+class DefenderScanResult(BaseModel):
+    """Microsoft Defender for Storage scan result."""
+
+    status: str
+    tags: Dict[str, Any]
+    scan_timestamp: str
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        serialize_by_alias=True,
+    )
+
+
 class ProcessingWorkflowStatus(BaseModel):
     """Detailed status for image processing workflow."""
 
     status: str
     stages: ProcessingStages
     timestamps: ProcessingTimestamps
-    defender_scan_result: str | None = None
+    defender_scan_result: DefenderScanResult | None = None
     blob_urls: BlobUrls
     error_message: str | None = None
     error_details: str | None = None
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        serialize_by_alias=True,
+    )
+
+
+class InferenceRequestPayload(BaseModel):
+    """Payload for inference workflow request."""
+
+    picture_id: str
+    pipeline_id: str
+    image_dims: list[int]
+    workflow_id: str
 
     model_config = ConfigDict(
         alias_generator=to_camel,
@@ -119,7 +148,7 @@ class InferenceWorkflowStatus(BaseModel):
     completed_at: str | None = None
     failed_at: str | None = None
     error_message: str | None = None
-    request_payload: Dict[str, Any] | None = None
+    request_payload: InferenceRequestPayload | None = None
 
     model_config = ConfigDict(
         alias_generator=to_camel,

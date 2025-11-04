@@ -653,14 +653,14 @@
             "title": "Classid",
             "description": "Unique identifier for this classification"
           },
-          "object_type_id": {
+          "objectTypeId": {
             "type": "string",
-            "title": "Object Type Id",
+            "title": "Objecttypeid",
             "description": "Type identifier for the detected object"
           },
-          "box_id": {
+          "boxId": {
             "type": "string",
-            "title": "Box Id",
+            "title": "Boxid",
             "description": "Unique identifier for this bounding box"
           },
           "overlapping": {
@@ -673,9 +673,9 @@
             "title": "Overlappingindices",
             "description": "Index of overlapping box (if any), -1 if none"
           },
-          "is_verified": {
+          "isVerified": {
             "type": "boolean",
-            "title": "Is Verified",
+            "title": "Isverified",
             "description": "Whether this box has been verified by user",
             "default": false
           }
@@ -687,8 +687,8 @@
           "score",
           "topN",
           "classId",
-          "object_type_id",
-          "box_id",
+          "objectTypeId",
+          "boxId",
           "overlapping",
           "overlappingIndices"
         ],
@@ -978,6 +978,31 @@
         "title": "CreateOrGetFolderRequest",
         "description": "Request model for creating or retrieving a folder.\n\nThe normalized_path is a relative path (e.g., 'avena-fatua' or 'mycology/avena-fatua').\nThe backend will prepend the user's organization prefix automatically.\n\nValidation is performed in the service layer via DirectoryService._validate_and_parse_fullpath().\n\nThe description field is optional and defaults to empty string if not provided."
       },
+      "DefenderScanResult": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "tags": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Tags"
+          },
+          "scanTimestamp": {
+            "type": "string",
+            "title": "Scantimestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "tags",
+          "scanTimestamp"
+        ],
+        "title": "DefenderScanResult",
+        "description": "Microsoft Defender for Storage scan result."
+      },
       "DeleteFolderResponse": {
         "properties": {
           "id": {
@@ -999,17 +1024,195 @@
         "title": "DeleteFolderResponse",
         "description": "Response model for folder deletion (soft delete)."
       },
-      "DevicesResponse": {
-        "additionalProperties": true,
+      "DeviceBrand": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "UUID of the device brand"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Brand name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Brand description"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceModel"
+            },
+            "type": "array",
+            "title": "Models",
+            "description": "List of models for this brand"
+          },
+          "lenses": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceLens"
+            },
+            "type": "array",
+            "title": "Lenses",
+            "description": "List of lenses for this brand"
+          }
+        },
         "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "models",
+          "lenses"
+        ],
+        "title": "DeviceBrand",
+        "description": "Device brand with associated models and lenses.\n\nRepresents a manufacturer brand with its available models and lenses."
+      },
+      "DeviceData": {
+        "properties": {
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceBrand"
+            },
+            "type": "array",
+            "title": "Devices",
+            "description": "List of device brands"
+          }
+        },
+        "type": "object",
+        "required": [
+          "devices"
+        ],
+        "title": "DeviceData",
+        "description": "Wrapper for device data list."
+      },
+      "DeviceLens": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "UUID of the device lens"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Lens name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Lens description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "title": "DeviceLens",
+        "description": "Device lens entry."
+      },
+      "DeviceModel": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "UUID of the device model"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Model name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Model description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "title": "DeviceModel",
+        "description": "Device model entry."
+      },
+      "DevicesResponse": {
+        "$ref": "#/components/schemas/DeviceData",
         "title": "DevicesResponse",
-        "description": "Response model for GET /devices endpoint.\n\nReturns device information (brands, models, lenses) for image metadata.\nUses RootModel since the response is a direct dict structure."
+        "description": "Response model for GET /devices endpoint.\n\nReturns device information (brands, models, lenses) for image metadata.\nUses RootModel wrapping DeviceData for proper camelCase serialization."
       },
       "DirectoriesResponse": {
-        "additionalProperties": true,
-        "type": "object",
+        "$ref": "#/components/schemas/DirectoryData",
         "title": "DirectoriesResponse",
-        "description": "Response model for GET /get-directories endpoint.\n\nReturns user's directory/folder tree structure.\nUses RootModel since the response is a direct dict structure."
+        "description": "Response model for GET /get-directories endpoint.\n\nReturns user's directory/folder tree structure.\nUses RootModel wrapping DirectoryData for proper camelCase serialization."
+      },
+      "DirectoryData": {
+        "properties": {
+          "directories": {
+            "items": {
+              "$ref": "#/components/schemas/DirectoryItem"
+            },
+            "type": "array",
+            "title": "Directories",
+            "description": "List of user directories"
+          }
+        },
+        "type": "object",
+        "required": [
+          "directories"
+        ],
+        "title": "DirectoryData",
+        "description": "Wrapper for directory data list."
+      },
+      "DirectoryItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "UUID of the directory"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Directory name"
+          },
+          "folderPrefix": {
+            "type": "string",
+            "title": "Folderprefix",
+            "description": "Organization prefix for the folder"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Directory description"
+          },
+          "pictureCount": {
+            "type": "integer",
+            "title": "Picturecount",
+            "description": "Number of pictures in this directory"
+          },
+          "isDefaultFolder": {
+            "type": "boolean",
+            "title": "Isdefaultfolder",
+            "description": "Whether this is the user's default folder"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "folderPrefix",
+          "description",
+          "pictureCount",
+          "isDefaultFolder"
+        ],
+        "title": "DirectoryItem",
+        "description": "Individual directory/folder entry.\n\nRepresents a user's folder with picture count and metadata."
       },
       "FrontendLogRequest": {
         "properties": {
@@ -1249,6 +1452,38 @@
         "title": "InferenceRequest",
         "description": "Request model for POST /inf endpoint.\n\nMatches legacy API format for backwards compatibility.\nIncludes required image metadata fields sent by frontend."
       },
+      "InferenceRequestPayload": {
+        "properties": {
+          "pictureId": {
+            "type": "string",
+            "title": "Pictureid"
+          },
+          "pipelineId": {
+            "type": "string",
+            "title": "Pipelineid"
+          },
+          "imageDims": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Imagedims"
+          },
+          "workflowId": {
+            "type": "string",
+            "title": "Workflowid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pictureId",
+          "pipelineId",
+          "imageDims",
+          "workflowId"
+        ],
+        "title": "InferenceRequestPayload",
+        "description": "Payload for inference workflow request."
+      },
       "InferenceWorkflowStatus": {
         "properties": {
           "workflowId": {
@@ -1321,14 +1556,12 @@
           "requestPayload": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/InferenceRequestPayload"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Requestpayload"
+            ]
           }
         },
         "type": "object",
@@ -1368,10 +1601,12 @@
         "description": "Response model for frontend log submission.\n\nConfirms that the log was received and processed."
       },
       "ModelEndpointsMetadataResponse": {
-        "additionalProperties": true,
-        "type": "object",
+        "items": {
+          "$ref": "#/components/schemas/PipelineMetadata"
+        },
+        "type": "array",
         "title": "ModelEndpointsMetadataResponse",
-        "description": "Response model for GET /model-endpoints-metadata endpoint.\n\nReturns ML model endpoint configuration metadata.\nUses RootModel since the response is a direct dict structure."
+        "description": "Response model for GET /model-endpoints-metadata endpoint.\n\nReturns ML model endpoint configuration metadata.\nUses RootModel to return a list of PipelineMetadata objects."
       },
       "ModelInfo": {
         "properties": {
@@ -1477,12 +1712,294 @@
         "title": "ParentWorkflowStatus",
         "description": "Status information for parent (orchestrator) workflow."
       },
+      "PipelineDetail": {
+        "properties": {
+          "pipelineId": {
+            "type": "string",
+            "title": "Pipelineid",
+            "description": "UUID of the pipeline"
+          },
+          "pipelineName": {
+            "type": "string",
+            "title": "Pipelinename",
+            "description": "Pipeline name"
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdby",
+            "description": "Creator of the pipeline"
+          },
+          "creationDate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creationdate",
+            "description": "ISO formatted creation date"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Pipeline description"
+          },
+          "jobName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jobname",
+            "description": "Job name for the pipeline"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version",
+            "description": "Pipeline version"
+          },
+          "dataset": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset",
+            "description": "Dataset used for training"
+          },
+          "identifiable": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Identifiable",
+            "description": "List of identifiable classes"
+          },
+          "metrics": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Metrics",
+            "description": "Performance metrics"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/PipelineStep"
+            },
+            "type": "array",
+            "title": "Models",
+            "description": "Ordered list of model steps in the pipeline"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pipelineId",
+          "pipelineName",
+          "models"
+        ],
+        "title": "PipelineDetail",
+        "description": "Complete pipeline configuration with metadata and steps.\n\nRepresents a single ML pipeline with all its models and metadata."
+      },
+      "PipelineMetadata": {
+        "properties": {
+          "createdBy": {
+            "type": "string",
+            "title": "Createdby",
+            "description": "Creator of the pipeline"
+          },
+          "creationDate": {
+            "type": "string",
+            "title": "Creationdate",
+            "description": "ISO formatted creation date"
+          },
+          "dataset": {
+            "type": "string",
+            "title": "Dataset",
+            "description": "Dataset used for training"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Pipeline description"
+          },
+          "identifiable": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Identifiable",
+            "description": "List of identifiable classes"
+          },
+          "jobName": {
+            "type": "string",
+            "title": "Jobname",
+            "description": "Job name for the pipeline"
+          },
+          "metrics": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Metrics",
+            "description": "Performance metrics"
+          },
+          "modelName": {
+            "type": "string",
+            "title": "Modelname",
+            "description": "Model display name"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Models",
+            "description": "List of model names in the pipeline"
+          },
+          "pipelineName": {
+            "type": "string",
+            "title": "Pipelinename",
+            "description": "Pipeline name"
+          },
+          "pipelineId": {
+            "type": "string",
+            "title": "Pipelineid",
+            "description": "Pipeline UUID"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "Pipeline version"
+          },
+          "default": {
+            "type": "boolean",
+            "title": "Default",
+            "description": "Whether this is the default pipeline",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "createdBy",
+          "creationDate",
+          "dataset",
+          "description",
+          "jobName",
+          "modelName",
+          "models",
+          "pipelineName",
+          "pipelineId",
+          "version"
+        ],
+        "title": "PipelineMetadata",
+        "description": "Model for individual pipeline metadata entry.\n\nContains pipeline configuration, model information, and metadata."
+      },
+      "PipelineStep": {
+        "properties": {
+          "modelId": {
+            "type": "string",
+            "title": "Modelid",
+            "description": "UUID of the model"
+          },
+          "modelName": {
+            "type": "string",
+            "title": "Modelname",
+            "description": "Name of the model"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "Model version"
+          },
+          "endpoint": {
+            "type": "string",
+            "title": "Endpoint",
+            "description": "API endpoint URL"
+          },
+          "apiKey": {
+            "type": "string",
+            "title": "Apikey",
+            "description": "API key for authentication"
+          },
+          "contentType": {
+            "type": "string",
+            "title": "Contenttype",
+            "description": "Content type for requests"
+          },
+          "deploymentPlatform": {
+            "type": "string",
+            "title": "Deploymentplatform",
+            "description": "Platform where model is deployed"
+          },
+          "endpointName": {
+            "type": "string",
+            "title": "Endpointname",
+            "description": "Endpoint identifier name"
+          },
+          "requestFunction": {
+            "type": "string",
+            "title": "Requestfunction",
+            "description": "Function used to make requests"
+          },
+          "step": {
+            "type": "integer",
+            "title": "Step",
+            "description": "Step number in the pipeline sequence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "modelId",
+          "modelName",
+          "version",
+          "endpoint",
+          "apiKey",
+          "contentType",
+          "deploymentPlatform",
+          "endpointName",
+          "requestFunction",
+          "step"
+        ],
+        "title": "PipelineStep",
+        "description": "Individual model step in a pipeline.\n\nRepresents a single ML model within a pipeline's execution sequence."
+      },
       "PipelinesResponse": {
         "properties": {
           "pipelines": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/PipelineDetail"
             },
             "type": "array",
             "title": "Pipelines",
@@ -1662,13 +2179,12 @@
           "defenderScanResult": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/DefenderScanResult"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Defenderscanresult"
+            ]
           },
           "blobUrls": {
             "$ref": "#/components/schemas/BlobUrls"
@@ -1736,11 +2252,80 @@
         "title": "RegistrationStatusResponse",
         "description": "Response model for GET /is-registered endpoint.\n\nChecks if the user is registered in the system."
       },
-      "SeedDataResponse": {
-        "additionalProperties": true,
+      "SeedData": {
+        "properties": {
+          "seeds": {
+            "items": {
+              "$ref": "#/components/schemas/SeedItem"
+            },
+            "type": "array",
+            "title": "Seeds",
+            "description": "List of seed species"
+          }
+        },
         "type": "object",
+        "required": [
+          "seeds"
+        ],
+        "title": "SeedData",
+        "description": "Wrapper for seed data list."
+      },
+      "SeedDataResponse": {
+        "$ref": "#/components/schemas/SeedData",
         "title": "SeedDataResponse",
-        "description": "Response model for GET /seeds endpoint.\n\nReturns seed species data for frontend selection.\nUses RootModel since the response is a direct dict structure."
+        "description": "Response model for GET /seeds endpoint.\n\nReturns seed species data for frontend selection.\nUses RootModel wrapping SeedData for proper camelCase serialization."
+      },
+      "SeedItem": {
+        "properties": {
+          "seedId": {
+            "type": "string",
+            "title": "Seedid",
+            "description": "UUID of the seed"
+          },
+          "nameCode": {
+            "type": "string",
+            "title": "Namecode",
+            "description": "Short code name for the seed"
+          },
+          "family": {
+            "type": "string",
+            "title": "Family",
+            "description": "Taxonomic family"
+          },
+          "genus": {
+            "type": "string",
+            "title": "Genus",
+            "description": "Taxonomic genus"
+          },
+          "species": {
+            "type": "string",
+            "title": "Species",
+            "description": "Taxonomic species"
+          },
+          "seedMetadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seedmetadata",
+            "description": "Additional seed metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "seedId",
+          "nameCode",
+          "family",
+          "genus",
+          "species"
+        ],
+        "title": "SeedItem",
+        "description": "Individual seed entry with taxonomic information.\n\nRepresents a single seed species with identification metadata."
       },
       "TopNPredictionCleaned": {
         "properties": {

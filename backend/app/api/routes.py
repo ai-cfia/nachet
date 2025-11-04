@@ -595,7 +595,7 @@ async def check_user_registration(
         "check_user_registration endpoint called", user_id=current_user.oid
     )
     is_registered = await UserService.check_user_registration(current_user)
-    return {"is_registered": is_registered}
+    return RegistrationStatusResponse(is_registered=is_registered)
 
 
 @router.get(

@@ -418,9 +418,14 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
                 str(user_id)
             )
 
+            # Convert UUID id to string for API response
+            serialized_directories = [{**d, "id": str(d["id"])} for d in directories]
+
             logger.info(f"Retrieved {len(directories)} directories for user {user_id}")
 
-            return {"directories": directories if directories else []}
+            return {
+                "directories": serialized_directories if serialized_directories else []
+            }
         except HTTPException:
             raise
         except Exception as e:
@@ -463,11 +468,19 @@ class DirectoryService(AuthorizedBaseCRUDService[Folder]):
                 str(org_user_role_id)
             )
 
+            # Convert UUID fields to strings for API response
+            serialized_directories = [
+                {**d, "id": str(d["id"]), "user_id": str(d["user_id"])}
+                for d in directories
+            ]
+
             logger.info(
                 f"Retrieved {len(directories)} directories for organization (org_id: {user_org_id})"
             )
 
-            return {"directories": directories if directories else []}
+            return {
+                "directories": serialized_directories if serialized_directories else []
+            }
         except HTTPException:
             raise
         except Exception as e:
