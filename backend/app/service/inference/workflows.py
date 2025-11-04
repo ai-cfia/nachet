@@ -1030,7 +1030,12 @@ async def image_processing_workflow(
         # TODO: use the actual method when blob is unblocked
         defender_result = {
             "status": "clean",
-            "scan_result": "No threats detected",
+            "tags": {
+                "Malware scanning scan result": "No threats found",
+                "Malware scanning scan time UTC": datetime.now(
+                    timezone.utc
+                ).isoformat(),
+            },
             "scan_timestamp": datetime.now(timezone.utc).isoformat(),
         }
         DBOS.logger.info(
@@ -1129,7 +1134,16 @@ async def image_processing_workflow(
 
         if isinstance(e, DefenderScanFailedError) and "Malware detected" in str(e):
             malware_detected = True
-            defender_scan_result = {"status": "malicious", "scan_result": "Malicious"}
+            defender_scan_result = {
+                "status": "malicious",
+                "tags": {
+                    "Malware scanning scan result": "Malicious",
+                    "Malware scanning scan time UTC": datetime.now(
+                        timezone.utc
+                    ).isoformat(),
+                },
+                "scan_timestamp": datetime.now(timezone.utc).isoformat(),
+            }
 
         # Update processing state on error
         await mark_processing_failed_step(
