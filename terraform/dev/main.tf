@@ -21,70 +21,70 @@ resource "azurerm_private_endpoint" "tfstate_storage" {
 }
 
 # Container App Environment
-module "container_app_environment" {
-  source = "../modules/container-app-environment"
+# module "container_app_environment" {
+#   source = "../modules/container-app-environment"
 
-  # Default
-  project_name        = var.project_name
-  environment         = var.environment
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
+#   # Default
+#   project_name        = var.project_name
+#   environment         = var.environment
+#   location            = var.location
+#   resource_group_name = var.resource_group_name
+#   tags                = var.tags
 
-  # Networking
-  vnet_name                  = var.vnet_name
-  vnet_resource_group_name   = var.vnet_resource_group_name
-  private_endpoint_subnet_id = var.private_endpoint_subnet_id
-  container_apps_subnet_name = var.container_apps_subnet_name
+#   # Networking
+#   vnet_name                  = var.vnet_name
+#   vnet_resource_group_name   = var.vnet_resource_group_name
+#   private_endpoint_subnet_id = var.private_endpoint_subnet_id
+#   container_apps_subnet_name = var.container_apps_subnet_name
 
-  # CAE
-  infrastructure_resource_group_name = var.cae_infrastructure_resource_group_name
-}
+#   # CAE
+#   infrastructure_resource_group_name = var.cae_infrastructure_resource_group_name
+# }
 
 # PostgreSQL Database
-module "db" {
-  source = "../modules/postgresql-flexible-server"
+# module "db" {
+#   source = "../modules/postgresql-flexible-server"
 
-  # Default
-  project_name        = var.project_name
-  environment         = var.environment
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
+#   # Default
+#   project_name        = var.project_name
+#   environment         = var.environment
+#   location            = var.location
+#   resource_group_name = var.resource_group_name
+#   tags                = var.tags
 
-  # Network
-  vnet_name                = var.vnet_name
-  vnet_resource_group_name = var.vnet_resource_group_name
-  postgresql_subnet_name   = var.postgresql_subnet_name
+#   # Network
+#   vnet_name                = var.vnet_name
+#   vnet_resource_group_name = var.vnet_resource_group_name
+#   postgresql_subnet_name   = var.postgresql_subnet_name
 
-  # PostgreSQL Configuration
-  postgresql_admin_username     = var.postgresql_admin_username
-  postgresql_admin_password     = var.postgresql_admin_password
-  postgresql_sku_name           = var.postgresql_sku_name
-  postgresql_storage_mb         = var.postgresql_storage_mb
-  postgresql_version            = var.postgresql_version
-  public_network_access_enabled = var.postgresql_public_network_access_enabled
-}
+#   # PostgreSQL Configuration
+#   postgresql_admin_username     = var.postgresql_admin_username
+#   postgresql_admin_password     = var.postgresql_admin_password
+#   postgresql_sku_name           = var.postgresql_sku_name
+#   postgresql_storage_mb         = var.postgresql_storage_mb
+#   postgresql_version            = var.postgresql_version
+#   public_network_access_enabled = var.postgresql_public_network_access_enabled
+# }
 
 # Container Registry
-module "container_registry" {
-  source = "../modules/container-registry"
+# module "container_registry" {
+#   source = "../modules/container-registry"
 
-  # Default
-  name                = "${var.project_name}${var.environment}acr"
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  tags                = var.tags
+#   # Default
+#   name                = "${var.project_name}${var.environment}acr"
+#   resource_group_name = var.resource_group_name
+#   location            = var.location
+#   tags                = var.tags
 
-  # Network
-  vnet_name                  = var.vnet_name
-  vnet_resource_group_name   = var.vnet_resource_group_name
-  private_endpoint_subnet_id = var.private_endpoint_subnet_id
+#   # Network
+#   vnet_name                  = var.vnet_name
+#   vnet_resource_group_name   = var.vnet_resource_group_name
+#   private_endpoint_subnet_id = var.private_endpoint_subnet_id
 
-  # ACR
-  allowed_ip_1 = var.acr_allowed_ip_1
-  allowed_ip_2 = var.acr_allowed_ip_2
-}
+#   # ACR
+#   allowed_ip_1 = var.acr_allowed_ip_1
+#   allowed_ip_2 = var.acr_allowed_ip_2
+# }
 
 module "storage_account_nachet_external" {
   source = "../modules/storage-account"
