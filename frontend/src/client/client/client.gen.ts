@@ -35,7 +35,7 @@ export const createClient = (config: Config = {}): Client => {
     instance.defaults = {
       ...instance.defaults,
       ..._config,
-      // @ts-expect-error - Axios headers type mismatch with our merged headers
+      // @ts-expect-error
       headers: mergeHeaders(instance.defaults.headers, _config.headers),
     };
     return getConfig();
@@ -69,9 +69,9 @@ export const createClient = (config: Config = {}): Client => {
     return { opts, url };
   };
 
-  // @ts-expect-error - RequestOptions type complexity exceeds TS inference limits
+  // @ts-expect-error
   const request: Client["request"] = async (options) => {
-    // @ts-expect-error - beforeRequest return type inferred from complex generics
+    // @ts-expect-error
     const { opts, url } = await beforeRequest(options);
     try {
       // assign Axios here for consistency with fetch
@@ -109,7 +109,7 @@ export const createClient = (config: Config = {}): Client => {
       if (opts.throwOnError) {
         throw e;
       }
-      // @ts-expect-error - Adding custom error property to AxiosError
+      // @ts-expect-error
       e.error = e.response?.data ?? {};
       return e;
     }
@@ -127,7 +127,7 @@ export const createClient = (config: Config = {}): Client => {
         body: opts.body as BodyInit | null | undefined,
         headers: opts.headers as Record<string, string>,
         method,
-        // @ts-expect-error - AbortSignal type compatibility issue
+        // @ts-expect-error
         signal: opts.signal,
         url,
       });

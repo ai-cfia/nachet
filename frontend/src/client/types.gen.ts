@@ -41,17 +41,17 @@ export type ApiInferenceBox = {
    */
   classId: string;
   /**
-   * Object Type Id
+   * Objecttypeid
    *
    * Type identifier for the detected object
    */
-  object_type_id: string;
+  objectTypeId: string;
   /**
-   * Box Id
+   * Boxid
    *
    * Unique identifier for this bounding box
    */
-  box_id: string;
+  boxId: string;
   /**
    * Overlapping
    *
@@ -65,11 +65,11 @@ export type ApiInferenceBox = {
    */
   overlappingIndices: number;
   /**
-   * Is Verified
+   * Isverified
    *
    * Whether this box has been verified by user
    */
-  is_verified?: boolean;
+  isVerified?: boolean;
 };
 
 /**
@@ -308,6 +308,28 @@ export type CreateOrGetFolderRequest = {
 };
 
 /**
+ * DefenderScanResult
+ *
+ * Microsoft Defender for Storage scan result.
+ */
+export type DefenderScanResult = {
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Tags
+   */
+  tags: {
+    [key: string]: unknown;
+  };
+  /**
+   * Scantimestamp
+   */
+  scanTimestamp: string;
+};
+
+/**
  * DeleteFolderResponse
  *
  * Response model for folder deletion (soft delete).
@@ -328,16 +350,120 @@ export type DeleteFolderResponse = {
 };
 
 /**
+ * DeviceBrand
+ *
+ * Device brand with associated models and lenses.
+ *
+ * Represents a manufacturer brand with its available models and lenses.
+ */
+export type DeviceBrand = {
+  /**
+   * Id
+   *
+   * UUID of the device brand
+   */
+  id: string;
+  /**
+   * Name
+   *
+   * Brand name
+   */
+  name: string;
+  /**
+   * Description
+   *
+   * Brand description
+   */
+  description: string;
+  /**
+   * Models
+   *
+   * List of models for this brand
+   */
+  models: Array<DeviceModel>;
+  /**
+   * Lenses
+   *
+   * List of lenses for this brand
+   */
+  lenses: Array<DeviceLens>;
+};
+
+/**
+ * DeviceData
+ *
+ * Wrapper for device data list.
+ */
+export type DeviceData = {
+  /**
+   * Devices
+   *
+   * List of device brands
+   */
+  devices: Array<DeviceBrand>;
+};
+
+/**
+ * DeviceLens
+ *
+ * Device lens entry.
+ */
+export type DeviceLens = {
+  /**
+   * Id
+   *
+   * UUID of the device lens
+   */
+  id: string;
+  /**
+   * Name
+   *
+   * Lens name
+   */
+  name: string;
+  /**
+   * Description
+   *
+   * Lens description
+   */
+  description: string;
+};
+
+/**
+ * DeviceModel
+ *
+ * Device model entry.
+ */
+export type DeviceModel = {
+  /**
+   * Id
+   *
+   * UUID of the device model
+   */
+  id: string;
+  /**
+   * Name
+   *
+   * Model name
+   */
+  name: string;
+  /**
+   * Description
+   *
+   * Model description
+   */
+  description: string;
+};
+
+/**
  * DevicesResponse
  *
  * Response model for GET /devices endpoint.
  *
  * Returns device information (brands, models, lenses) for image metadata.
- * Uses RootModel since the response is a direct dict structure.
+ * Uses RootModel wrapping DeviceData for proper camelCase serialization.
  */
-export type DevicesResponse = {
-  [key: string]: unknown;
-};
+export type DevicesResponse = DeviceData;
 
 /**
  * DirectoriesResponse
@@ -345,10 +471,68 @@ export type DevicesResponse = {
  * Response model for GET /get-directories endpoint.
  *
  * Returns user's directory/folder tree structure.
- * Uses RootModel since the response is a direct dict structure.
+ * Uses RootModel wrapping DirectoryData for proper camelCase serialization.
  */
-export type DirectoriesResponse = {
-  [key: string]: unknown;
+export type DirectoriesResponse = DirectoryData;
+
+/**
+ * DirectoryData
+ *
+ * Wrapper for directory data list.
+ */
+export type DirectoryData = {
+  /**
+   * Directories
+   *
+   * List of user directories
+   */
+  directories: Array<DirectoryItem>;
+};
+
+/**
+ * DirectoryItem
+ *
+ * Individual directory/folder entry.
+ *
+ * Represents a user's folder with picture count and metadata.
+ */
+export type DirectoryItem = {
+  /**
+   * Id
+   *
+   * UUID of the directory
+   */
+  id: string;
+  /**
+   * Name
+   *
+   * Directory name
+   */
+  name: string;
+  /**
+   * Folderprefix
+   *
+   * Organization prefix for the folder
+   */
+  folderPrefix: string;
+  /**
+   * Description
+   *
+   * Directory description
+   */
+  description: string;
+  /**
+   * Picturecount
+   *
+   * Number of pictures in this directory
+   */
+  pictureCount: number;
+  /**
+   * Isdefaultfolder
+   *
+   * Whether this is the user's default folder
+   */
+  isDefaultFolder: boolean;
 };
 
 /**
@@ -530,6 +714,30 @@ export type InferenceRequest = {
 };
 
 /**
+ * InferenceRequestPayload
+ *
+ * Payload for inference workflow request.
+ */
+export type InferenceRequestPayload = {
+  /**
+   * Pictureid
+   */
+  pictureId: string;
+  /**
+   * Pipelineid
+   */
+  pipelineId: string;
+  /**
+   * Imagedims
+   */
+  imageDims: Array<number>;
+  /**
+   * Workflowid
+   */
+  workflowId: string;
+};
+
+/**
  * InferenceWorkflowStatus
  *
  * Status information for ML inference workflow.
@@ -567,12 +775,7 @@ export type InferenceWorkflowStatus = {
    * Errormessage
    */
   errorMessage?: string | null;
-  /**
-   * Requestpayload
-   */
-  requestPayload?: {
-    [key: string]: unknown;
-  } | null;
+  requestPayload?: InferenceRequestPayload | null;
 };
 
 /**
@@ -603,11 +806,9 @@ export type LogSubmissionResponse = {
  * Response model for GET /model-endpoints-metadata endpoint.
  *
  * Returns ML model endpoint configuration metadata.
- * Uses RootModel since the response is a direct dict structure.
+ * Uses RootModel to return a list of PipelineMetadata objects.
  */
-export type ModelEndpointsMetadataResponse = {
-  [key: string]: unknown;
-};
+export type ModelEndpointsMetadataResponse = Array<PipelineMetadata>;
 
 /**
  * ModelInfo
@@ -666,6 +867,244 @@ export type ParentWorkflowStatus = {
 };
 
 /**
+ * PipelineDetail
+ *
+ * Complete pipeline configuration with metadata and steps.
+ *
+ * Represents a single ML pipeline with all its models and metadata.
+ */
+export type PipelineDetail = {
+  /**
+   * Pipelineid
+   *
+   * UUID of the pipeline
+   */
+  pipelineId: string;
+  /**
+   * Pipelinename
+   *
+   * Pipeline name
+   */
+  pipelineName: string;
+  /**
+   * Createdby
+   *
+   * Creator of the pipeline
+   */
+  createdBy?: string | null;
+  /**
+   * Creationdate
+   *
+   * ISO formatted creation date
+   */
+  creationDate?: string | null;
+  /**
+   * Description
+   *
+   * Pipeline description
+   */
+  description?: string | null;
+  /**
+   * Jobname
+   *
+   * Job name for the pipeline
+   */
+  jobName?: string | null;
+  /**
+   * Version
+   *
+   * Pipeline version
+   */
+  version?: string | null;
+  /**
+   * Dataset
+   *
+   * Dataset used for training
+   */
+  dataset?: string | null;
+  /**
+   * Identifiable
+   *
+   * List of identifiable classes
+   */
+  identifiable?: Array<string>;
+  /**
+   * Metrics
+   *
+   * Performance metrics
+   */
+  metrics?: Array<{
+    [key: string]: unknown;
+  }>;
+  /**
+   * Models
+   *
+   * Ordered list of model steps in the pipeline
+   */
+  models: Array<PipelineStep>;
+};
+
+/**
+ * PipelineMetadata
+ *
+ * Model for individual pipeline metadata entry.
+ *
+ * Contains pipeline configuration, model information, and metadata.
+ */
+export type PipelineMetadata = {
+  /**
+   * Createdby
+   *
+   * Creator of the pipeline
+   */
+  createdBy: string;
+  /**
+   * Creationdate
+   *
+   * ISO formatted creation date
+   */
+  creationDate: string;
+  /**
+   * Dataset
+   *
+   * Dataset used for training
+   */
+  dataset: string;
+  /**
+   * Description
+   *
+   * Pipeline description
+   */
+  description: string;
+  /**
+   * Identifiable
+   *
+   * List of identifiable classes
+   */
+  identifiable?: Array<string>;
+  /**
+   * Jobname
+   *
+   * Job name for the pipeline
+   */
+  jobName: string;
+  /**
+   * Metrics
+   *
+   * Performance metrics
+   */
+  metrics?: Array<{
+    [key: string]: unknown;
+  }>;
+  /**
+   * Modelname
+   *
+   * Model display name
+   */
+  modelName: string;
+  /**
+   * Models
+   *
+   * List of model names in the pipeline
+   */
+  models: Array<string>;
+  /**
+   * Pipelinename
+   *
+   * Pipeline name
+   */
+  pipelineName: string;
+  /**
+   * Pipelineid
+   *
+   * Pipeline UUID
+   */
+  pipelineId: string;
+  /**
+   * Version
+   *
+   * Pipeline version
+   */
+  version: string;
+  /**
+   * Default
+   *
+   * Whether this is the default pipeline
+   */
+  default?: boolean;
+};
+
+/**
+ * PipelineStep
+ *
+ * Individual model step in a pipeline.
+ *
+ * Represents a single ML model within a pipeline's execution sequence.
+ */
+export type PipelineStep = {
+  /**
+   * Modelid
+   *
+   * UUID of the model
+   */
+  modelId: string;
+  /**
+   * Modelname
+   *
+   * Name of the model
+   */
+  modelName: string;
+  /**
+   * Version
+   *
+   * Model version
+   */
+  version: string;
+  /**
+   * Endpoint
+   *
+   * API endpoint URL
+   */
+  endpoint: string;
+  /**
+   * Apikey
+   *
+   * API key for authentication
+   */
+  apiKey: string;
+  /**
+   * Contenttype
+   *
+   * Content type for requests
+   */
+  contentType: string;
+  /**
+   * Deploymentplatform
+   *
+   * Platform where model is deployed
+   */
+  deploymentPlatform: string;
+  /**
+   * Endpointname
+   *
+   * Endpoint identifier name
+   */
+  endpointName: string;
+  /**
+   * Requestfunction
+   *
+   * Function used to make requests
+   */
+  requestFunction: string;
+  /**
+   * Step
+   *
+   * Step number in the pipeline sequence
+   */
+  step: number;
+};
+
+/**
  * PipelinesResponse
  *
  * Response model for GET /pipelines endpoint.
@@ -678,9 +1117,7 @@ export type PipelinesResponse = {
    *
    * List of available pipeline configurations
    */
-  pipelines: Array<{
-    [key: string]: unknown;
-  }>;
+  pipelines: Array<PipelineDetail>;
 };
 
 /**
@@ -794,10 +1231,7 @@ export type ProcessingWorkflowStatus = {
   status: string;
   stages: ProcessingStages;
   timestamps: ProcessingTimestamps;
-  /**
-   * Defenderscanresult
-   */
-  defenderScanResult?: string | null;
+  defenderScanResult?: DefenderScanResult | null;
   blobUrls: BlobUrls;
   /**
    * Errormessage
@@ -842,15 +1276,75 @@ export type RegistrationStatusResponse = {
 };
 
 /**
+ * SeedData
+ *
+ * Wrapper for seed data list.
+ */
+export type SeedData = {
+  /**
+   * Seeds
+   *
+   * List of seed species
+   */
+  seeds: Array<SeedItem>;
+};
+
+/**
  * SeedDataResponse
  *
  * Response model for GET /seeds endpoint.
  *
  * Returns seed species data for frontend selection.
- * Uses RootModel since the response is a direct dict structure.
+ * Uses RootModel wrapping SeedData for proper camelCase serialization.
  */
-export type SeedDataResponse = {
-  [key: string]: unknown;
+export type SeedDataResponse = SeedData;
+
+/**
+ * SeedItem
+ *
+ * Individual seed entry with taxonomic information.
+ *
+ * Represents a single seed species with identification metadata.
+ */
+export type SeedItem = {
+  /**
+   * Seedid
+   *
+   * UUID of the seed
+   */
+  seedId: string;
+  /**
+   * Namecode
+   *
+   * Short code name for the seed
+   */
+  nameCode: string;
+  /**
+   * Family
+   *
+   * Taxonomic family
+   */
+  family: string;
+  /**
+   * Genus
+   *
+   * Taxonomic genus
+   */
+  genus: string;
+  /**
+   * Species
+   *
+   * Taxonomic species
+   */
+  species: string;
+  /**
+   * Seedmetadata
+   *
+   * Additional seed metadata
+   */
+  seedMetadata?: {
+    [key: string]: unknown;
+  } | null;
 };
 
 /**
@@ -891,7 +1385,6 @@ export const TrayCode = {
  *
  * Valid tray codes for sample identification.
  */
-// eslint-disable-next-line no-redeclare -- TypeScript allows same name for const and type
 export type TrayCode = (typeof TrayCode)[keyof typeof TrayCode];
 
 /**
