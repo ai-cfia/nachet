@@ -294,11 +294,11 @@ class TestWorkflowResults:
         test_workflow_id_1: UUID,
     ) -> Annotation:
         """Create annotation with inference results."""
-        # Mock ApiInferenceResponse data - must match full schema
+        # Mock ApiInferenceResponse data - must match full schema with camelCase
         mock_results = {
             "filename": "test_results_image.png",
             "imageId": str(test_picture_1.id),
-            "inference_id": str(test_workflow_id_1),
+            "inferenceId": str(test_workflow_id_1),
             "boxes": [
                 {
                     "box": {  # PixelBoundingBox
@@ -314,11 +314,11 @@ class TestWorkflowResults:
                         {"label": "Seed Type B", "score": 0.03},
                     ],
                     "classId": "class_1",
-                    "object_type_id": "obj_type_1",
-                    "box_id": "box_1",
+                    "objectTypeId": "obj_type_1",
+                    "boxId": "box_1",
                     "overlapping": False,
                     "overlappingIndices": -1,
-                    "is_verified": False,
+                    "isVerified": False,
                 }
             ],
             "labelOccurrence": {"Seed Type A": 1},
@@ -327,7 +327,6 @@ class TestWorkflowResults:
                 {
                     "name": "Test Model",
                     "version": "1.0",
-                    "endpoint": "https://test.model.com",
                 }
             ],
         }
@@ -439,10 +438,10 @@ class TestWorkflowResults:
 
         result = await InferenceService.get_workflow_results(workflow_id, test_user_1)
 
-        # Verify box structure
+        # Verify box structure (camelCase for frontend compatibility)
         assert isinstance(result["boxes"], list)
         box = result["boxes"][0]
-        assert "box_id" in box
+        assert "boxId" in box
         assert "box" in box
         assert "topX" in box["box"]
         assert "topY" in box["box"]
@@ -452,10 +451,10 @@ class TestWorkflowResults:
         assert "score" in box
         assert "topN" in box
         assert "classId" in box
-        assert "object_type_id" in box
+        assert "objectTypeId" in box
         assert "overlapping" in box
         assert "overlappingIndices" in box
-        assert "is_verified" in box
+        assert "isVerified" in box
 
         # Verify labelOccurrence is a dict
         assert isinstance(result["labelOccurrence"], dict)
