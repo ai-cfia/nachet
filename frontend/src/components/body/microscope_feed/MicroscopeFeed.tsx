@@ -317,14 +317,14 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
             family: "",
             genus: "",
             species: "",
-            name_code: "",
+            nameCode: "",
           },
         ],
       });
     } else {
       // Find matching species data for the existing box
       const matchingSeed = classList.find(
-        (seed) => seed.seed_id === imageData.boxes[index].classId,
+        (seed) => seed.seedId === imageData.boxes[index].classId,
       );
 
       setInferenceForRevision({
@@ -345,7 +345,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
             family: matchingSeed?.family || "",
             genus: matchingSeed?.genus || "",
             species: matchingSeed?.species || "",
-            name_code: matchingSeed?.name_code || "",
+            nameCode: matchingSeed?.nameCode || "",
           },
         ],
       });

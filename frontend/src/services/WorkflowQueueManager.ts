@@ -197,19 +197,19 @@ export class WorkflowQueueManager {
         imageObject: image as Images,
         curDir: this.config.curDir.folderName,
         accessToken,
-        folder_id: this.config.curDir.folderId,
+        folderId: this.config.curDir.folderId,
       });
 
-      // Store the image_id in the image store
-      this.config.setImageId(item.imageIndex, response.image_id);
+      // Store the imageId in the image store
+      this.config.setImageId(item.imageIndex, response.imageId);
 
       // Remove temp workflow from store
       this.config.workflowStore.removeWorkflow(item.tempId);
 
       // Add real workflow with "pending" status
       this.config.workflowStore.addWorkflow(
-        response.workflow_id,
-        response.image_id,
+        response.workflowId,
+        response.imageId,
         item.imageIndex,
         item.pipelineId,
         item.pipelineName,
@@ -217,7 +217,7 @@ export class WorkflowQueueManager {
 
       // Set as current active workflow
       this.currentWorkflow = {
-        workflowId: response.workflow_id,
+        workflowId: response.workflowId,
         imageIndex: item.imageIndex,
         imageId: item.imageId,
         pipelineId: item.pipelineId,
@@ -232,7 +232,7 @@ export class WorkflowQueueManager {
       this.updateQueuePositions();
 
       // Start polling after initial delay
-      this.startPolling(response.workflow_id);
+      this.startPolling(response.workflowId);
     } catch (error) {
       // Extract error message (api.ts already extracts detail from response)
       const errorMessage =
@@ -331,13 +331,13 @@ export class WorkflowQueueManager {
       // Update workflow status in store
       this.config.workflowStore.updateWorkflowStatus(
         workflowId,
-        statusResponse.overall_status,
+        statusResponse.overallStatus,
       );
 
       // Check for terminal states
-      if (statusResponse.overall_status === "completed") {
+      if (statusResponse.overallStatus === "completed") {
         await this.handleCompletion(workflowId);
-      } else if (statusResponse.overall_status === "failed") {
+      } else if (statusResponse.overallStatus === "failed") {
         await this.handleFailure(workflowId, statusResponse);
       }
       // Otherwise continue polling (pending/processing states)

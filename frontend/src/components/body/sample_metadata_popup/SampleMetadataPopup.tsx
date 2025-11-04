@@ -17,6 +17,18 @@ import {
   PopupActionButtons,
 } from "@components/common";
 import { useTranslation } from "react-i18next";
+import {
+  imageNameSchema,
+  descriptionSchema,
+  deviceIdValidationSchema,
+  trayCodeSchema,
+  magnificationSchema,
+} from "@common/validation";
+import { getZodErrorKey } from "@common/zodErrorMap";
+import {
+  useZodFieldValidation,
+  ERROR_KEY_MAPPINGS,
+} from "@hooks/useZodFieldValidation";
 
 interface SampleMetadataPopupProps {
   devicesData: ApiDevicesResponse | null;
@@ -77,43 +89,112 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
   const [sampleDescriptionError, setSampleDescriptionError] =
     useState<string>("");
 
+  // Zod validation hooks for auto-normalization on blur
+  const sampleIdPrefixValidation = useZodFieldValidation(
+    imageNameSchema,
+    sampleIdPrefix,
+    setSampleIdPrefix,
+    setSampleIdPrefixError,
+    ERROR_KEY_MAPPINGS.imageName,
+  );
+
+  const sampleDescriptionValidation = useZodFieldValidation(
+    descriptionSchema,
+    sampleDescription,
+    setSampleDescription,
+    setSampleDescriptionError,
+    ERROR_KEY_MAPPINGS.description,
+  );
+
   const validateAndSave = (): boolean => {
     let isValid = true;
 
-    // Validate device selection
-    if (!selectedBrandId) {
+    // Validate device selection using Zod with i18n
+    const brandResult = deviceIdValidationSchema.safeParse(selectedBrandId);
+    if (!brandResult.success) {
       setBrandError(t("deviceInfo.errors.brandRequired"));
       isValid = false;
-    }
-    if (!selectedModelId) {
-      setModelError(t("deviceInfo.errors.modelRequired"));
-      isValid = false;
-    }
-    if (!selectedLensId) {
-      setLensError(t("deviceInfo.errors.lensRequired"));
-      isValid = false;
+    } else {
+      setBrandError("");
     }
 
-    // Validate sample metadata
-    if (!trayCode) {
+    const modelResult = deviceIdValidationSchema.safeParse(selectedModelId);
+    if (!modelResult.success) {
+      setModelError(t("deviceInfo.errors.modelRequired"));
+      isValid = false;
+    } else {
+      setModelError("");
+    }
+
+    const lensResult = deviceIdValidationSchema.safeParse(selectedLensId);
+    if (!lensResult.success) {
+      setLensError(t("deviceInfo.errors.lensRequired"));
+      isValid = false;
+    } else {
+      setLensError("");
+    }
+
+    // Validate sample metadata using Zod with i18n
+    const trayCodeResult = trayCodeSchema.safeParse(trayCode);
+    if (!trayCodeResult.success) {
       setTrayCodeError(t("batchUpload.metadataSection.trayCodeRequired"));
       isValid = false;
+    } else {
+      setTrayCodeError("");
     }
-    if (magnification <= 0) {
-      setMagnificationError(
-        t("batchUpload.metadataSection.magnificationRequired"),
-      );
+
+    const magnificationResult = magnificationSchema.safeParse(magnification);
+    if (!magnificationResult.success) {
+      const issue = magnificationResult.error.issues[0];
+      // Map Zod error codes to specific translation keys
+      if (issue.code === "too_small") {
+        setMagnificationError(t("validation.magnification.tooSmall"));
+      } else if (issue.code === "too_big") {
+        setMagnificationError(t("validation.magnification.tooLarge"));
+      } else {
+        const errorKey = getZodErrorKey(magnificationResult.error);
+        setMagnificationError(t(errorKey));
+      }
       isValid = false;
+    } else {
+      setMagnificationError("");
     }
-    if (!sampleIdPrefix) {
-      setSampleIdPrefixError(t("batchUpload.metadataSection.sampleIdRequired"));
+
+    // Validate sample ID prefix using Zod with i18n (same rules as image name)
+    const sampleIdPrefixResult = imageNameSchema.safeParse(sampleIdPrefix);
+    if (!sampleIdPrefixResult.success) {
+      const issue = sampleIdPrefixResult.error.issues[0];
+      // Map Zod error codes to specific translation keys
+      if (issue.code === "too_small") {
+        setSampleIdPrefixError(t("validation.imageName.empty"));
+      } else if (issue.code === "too_big") {
+        setSampleIdPrefixError(t("validation.imageName.tooLong"));
+      } else {
+        const errorKey = getZodErrorKey(sampleIdPrefixResult.error);
+        setSampleIdPrefixError(t(errorKey));
+      }
       isValid = false;
+    } else {
+      setSampleIdPrefixError("");
     }
-    if (!sampleDescription) {
-      setSampleDescriptionError(
-        t("batchUpload.metadataSection.sampleDescriptionRequired"),
-      );
+
+    // Validate sample description using Zod with i18n
+    const sampleDescriptionResult =
+      descriptionSchema.safeParse(sampleDescription);
+    if (!sampleDescriptionResult.success) {
+      const issue = sampleDescriptionResult.error.issues[0];
+      // Map Zod error codes to specific translation keys
+      if (issue.code === "too_small") {
+        setSampleDescriptionError(t("validation.description.empty"));
+      } else if (issue.code === "too_big") {
+        setSampleDescriptionError(t("validation.description.tooLong"));
+      } else {
+        const errorKey = getZodErrorKey(sampleDescriptionResult.error);
+        setSampleDescriptionError(t(errorKey));
+      }
       isValid = false;
+    } else {
+      setSampleDescriptionError("");
     }
 
     return isValid;
@@ -255,18 +336,10 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
                 setMagnification(value);
                 if (magnificationError) setMagnificationError("");
               }}
-              onSampleIdPrefixChange={(value) => {
-                console.log(
-                  "DEBUG: onSampleIdPrefixChange called with:",
-                  value,
-                );
-                setSampleIdPrefix(value);
-                if (sampleIdPrefixError) setSampleIdPrefixError("");
-              }}
-              onSampleDescriptionChange={(value) => {
-                setSampleDescription(value);
-                if (sampleDescriptionError) setSampleDescriptionError("");
-              }}
+              onSampleIdPrefixChange={sampleIdPrefixValidation.onChange}
+              onSampleIdPrefixBlur={sampleIdPrefixValidation.onBlur}
+              onSampleDescriptionChange={sampleDescriptionValidation.onChange}
+              onSampleDescriptionBlur={sampleDescriptionValidation.onBlur}
               trayCodeError={trayCodeError}
               magnificationError={magnificationError}
               sampleIdPrefixError={sampleIdPrefixError}

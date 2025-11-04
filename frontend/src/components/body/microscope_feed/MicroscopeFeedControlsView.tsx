@@ -143,10 +143,10 @@ export const MicroscopeFeedControlsView = (
     return acctClaim !== 0;
   }, [accountInfo]);
 
-  // Find the model name from metadata based on selectedModel (pipeline_id)
+  // Find the model name from metadata based on selectedModel (pipelineId)
   const selectedModelName = useMemo(() => {
-    const model = metadata.find((m) => m.pipeline_id === selectedModel);
-    return model?.model_name || selectedModel;
+    const model = metadata.find((m) => m.pipelineId === selectedModel);
+    return model?.modelName || selectedModel;
   }, [metadata, selectedModel]);
 
   // Get device label

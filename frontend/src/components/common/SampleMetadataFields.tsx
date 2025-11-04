@@ -12,6 +12,9 @@ interface SampleMetadataFieldsProps {
   onMagnificationChange: (value: number) => void;
   onSampleIdPrefixChange?: (value: string) => void;
   onSampleDescriptionChange: (value: string) => void;
+  // Blur handlers (for normalization)
+  onSampleIdPrefixBlur?: () => void;
+  onSampleDescriptionBlur?: () => void;
   // Validation errors
   trayCodeError?: string;
   magnificationError?: string;
@@ -31,6 +34,8 @@ export const SampleMetadataFields = (props: SampleMetadataFieldsProps) => {
     onMagnificationChange,
     onSampleIdPrefixChange,
     onSampleDescriptionChange,
+    onSampleIdPrefixBlur,
+    onSampleDescriptionBlur,
     trayCodeError,
     magnificationError,
     sampleIdPrefixError,
@@ -39,47 +44,6 @@ export const SampleMetadataFields = (props: SampleMetadataFieldsProps) => {
   } = props;
 
   const { t } = useTranslation("popups");
-
-  // Debug: Log props to check if sampleIdPrefix is being passed
-  console.log("DEBUG SampleMetadataFields props:", {
-    sampleIdPrefix,
-    hasSampleIdPrefixProp: sampleIdPrefix !== undefined,
-    hasOnSampleIdPrefixChange: !!onSampleIdPrefixChange,
-    shouldRender: sampleIdPrefix !== undefined && !!onSampleIdPrefixChange,
-  });
-
-  // Normalize sample ID prefix: remove invalid chars and trailing dashes
-  const normalizeSampleIdPrefix = (value: string): string => {
-    return value
-      .replace(/[^a-zA-Z0-9-]/g, "") // Remove invalid characters
-      .replace(/-+$/, "") // Remove trailing dashes
-      .trim();
-  };
-
-  const handleSampleIdPrefixBlur = () => {
-    if (sampleIdPrefix !== undefined && onSampleIdPrefixChange) {
-      const normalized = normalizeSampleIdPrefix(sampleIdPrefix);
-      if (normalized !== sampleIdPrefix) {
-        onSampleIdPrefixChange(normalized);
-      }
-    }
-  };
-
-  // Normalize sample description: remove invalid chars, trim, no consecutive spaces/periods
-  const normalizeSampleDescription = (value: string): string => {
-    return value
-      .replace(/[^a-zA-Z0-9. ]/g, "") // Remove invalid characters (keep letters, numbers, periods, spaces)
-      .replace(/\.{2,}/g, ".") // Replace consecutive periods with single period
-      .replace(/\s{2,}/g, " ") // Replace consecutive spaces with single space
-      .trim();
-  };
-
-  const handleSampleDescriptionBlur = () => {
-    const normalized = normalizeSampleDescription(sampleDescription);
-    if (normalized !== sampleDescription) {
-      onSampleDescriptionChange(normalized);
-    }
-  };
 
   return (
     <Box
@@ -144,23 +108,14 @@ export const SampleMetadataFields = (props: SampleMetadataFieldsProps) => {
         />
       </Box>
 
-      {(() => {
-        const shouldRenderField =
-          sampleIdPrefix !== undefined && onSampleIdPrefixChange;
-        console.log("DEBUG: Sample ID Prefix field render check:", {
-          shouldRenderField,
-          sampleIdPrefix,
-          onSampleIdPrefixChange: !!onSampleIdPrefixChange,
-        });
-        return shouldRenderField;
-      })() && (
+      {sampleIdPrefix !== undefined && onSampleIdPrefixChange && (
         <TextField
           id="input-sample-id"
           label={t("batchUpload.metadataSection.sampleIdLabel")}
           variant="outlined"
           value={sampleIdPrefix}
           onChange={(e) => onSampleIdPrefixChange!(e.target.value)}
-          onBlur={handleSampleIdPrefixBlur}
+          onBlur={onSampleIdPrefixBlur}
           error={!!sampleIdPrefixError}
           helperText={
             sampleIdPrefixError ||
@@ -178,7 +133,7 @@ export const SampleMetadataFields = (props: SampleMetadataFieldsProps) => {
         variant="outlined"
         value={sampleDescription}
         onChange={(e) => onSampleDescriptionChange(e.target.value)}
-        onBlur={handleSampleDescriptionBlur}
+        onBlur={onSampleDescriptionBlur}
         multiline
         rows={2}
         error={!!sampleDescriptionError}

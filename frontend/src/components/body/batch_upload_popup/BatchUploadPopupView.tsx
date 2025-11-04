@@ -60,6 +60,7 @@ export interface BatchUploadPopupViewProps {
   onFilesSelected: (event: ChangeEvent<HTMLInputElement>) => Promise<void>;
   onFolderNameChange: (value: string) => void;
   onFolderDescriptionChange: (value: string) => void;
+  onFolderDescriptionBlur: () => void;
   onFamilyChange: (value: string) => void;
   onGenusChange: (value: string) => void;
   onSpeciesChange: (value: string) => void;
@@ -67,6 +68,7 @@ export interface BatchUploadPopupViewProps {
   onTrayCodeChange: (value: string) => void;
   onSampleIdPrefixChange: (value: string) => void;
   onSampleDescriptionChange: (value: string) => void;
+  onSampleDescriptionBlur: () => void;
   onDeviceBrandChange: (value: string) => void;
   onDeviceModelChange: (value: string) => void;
   onDeviceLensChange: (value: string) => void;
@@ -132,6 +134,7 @@ export const BatchUploadPopupView = (props: BatchUploadPopupViewProps) => {
     onFilesSelected,
     onFolderNameChange,
     onFolderDescriptionChange,
+    onFolderDescriptionBlur,
     onFamilyChange,
     onGenusChange,
     onSpeciesChange,
@@ -139,6 +142,7 @@ export const BatchUploadPopupView = (props: BatchUploadPopupViewProps) => {
     onTrayCodeChange,
     onSampleIdPrefixChange,
     onSampleDescriptionChange,
+    onSampleDescriptionBlur,
     onDeviceBrandChange,
     onDeviceModelChange,
     onDeviceLensChange,
@@ -276,6 +280,7 @@ export const BatchUploadPopupView = (props: BatchUploadPopupViewProps) => {
                   onMagnificationChange={onMagnificationChange}
                   onSampleIdPrefixChange={onSampleIdPrefixChange}
                   onSampleDescriptionChange={onSampleDescriptionChange}
+                  onSampleDescriptionBlur={onSampleDescriptionBlur}
                   trayCodeError={trayCodeError}
                   magnificationError={magnificationError}
                   sampleIdPrefixError={sampleIdPrefixError}
@@ -302,6 +307,7 @@ export const BatchUploadPopupView = (props: BatchUploadPopupViewProps) => {
                   folderDescription={folderDescription}
                   onFolderNameChange={onFolderNameChange}
                   onFolderDescriptionChange={onFolderDescriptionChange}
+                  onFolderDescriptionBlur={onFolderDescriptionBlur}
                   folderNameError={folderNameError}
                   folderDescriptionError={folderDescriptionError}
                   disabled={uploading || creatingFolder}

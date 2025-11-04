@@ -1,4 +1,4 @@
-import { getWorkflowStatus, getWorkflowResults } from "@common";
+import { getWorkflowStatus } from "@common";
 import { batchUploadImage } from "@common/api";
 import type { BatchUploadMetadata, WorkflowStatus } from "@common/types";
 import { errorLogger } from "../logging";
@@ -150,7 +150,7 @@ export class BatchUploadQueueManager {
       });
 
       // Check if upload returned workflow ID
-      if (!response.workflow_id) {
+      if (!response.workflowId) {
         throw new Error("Upload failed - no workflow ID returned");
       }
 
@@ -158,11 +158,11 @@ export class BatchUploadQueueManager {
       this.config.uploadStore.removeUpload(item.tempId);
 
       // Add real workflow with "pending" status
-      this.config.uploadStore.addUpload(response.workflow_id, item.file);
+      this.config.uploadStore.addUpload(response.workflowId, item.file);
 
       // Set as current active workflow
       this.currentWorkflow = {
-        workflowId: response.workflow_id,
+        workflowId: response.workflowId,
         file: item.file,
         fileName: item.file.name,
         pollingInterval: null,
@@ -175,7 +175,7 @@ export class BatchUploadQueueManager {
       this.updateQueuePositions();
 
       // Start polling after initial delay
-      this.startPolling(response.workflow_id);
+      this.startPolling(response.workflowId);
     } catch (error) {
       // Extract error message (api.ts already extracts detail from response)
       const errorMessage =
@@ -298,13 +298,13 @@ export class BatchUploadQueueManager {
       // Update upload status in store
       this.config.uploadStore.updateUploadStatus(
         workflowId,
-        statusResponse.overall_status as WorkflowStatus,
+        statusResponse.overallStatus as WorkflowStatus,
       );
 
       // Check for terminal states
-      if (statusResponse.overall_status === "completed") {
+      if (statusResponse.overallStatus === "completed") {
         await this.handleCompletion(workflowId);
-      } else if (statusResponse.overall_status === "failed") {
+      } else if (statusResponse.overallStatus === "failed") {
         await this.handleFailure(workflowId, statusResponse);
       }
       // Otherwise continue polling (pending/processing states)
@@ -322,6 +322,12 @@ export class BatchUploadQueueManager {
 
   /**
    * Handle workflow completion
+   *
+   * NOTE: Batch uploads do NOT call /workflow/{id}/results because they only
+   * perform image processing (upload → defender scan → sanitize) without inference.
+   * No ML models are run, so there are no inference results to retrieve.
+   *
+   * Once status is "completed", the image is sanitized and ready in the folder.
    */
   private async handleCompletion(workflowId: string): Promise<void> {
     if (
@@ -337,58 +343,20 @@ export class BatchUploadQueueManager {
     // Stop polling
     this.stopPolling();
 
-    try {
-      // Acquire fresh access token
-      const accessToken = await acquireAccessToken(
-        this.config.msalInstance,
-        this.config.scopes,
-      );
+    // Batch uploads: No inference results to fetch
+    // The workflow only does: Upload → Defender Scan → Sanitize
+    // Once completed, the image is ready in the folder (no /results endpoint needed)
 
-      // Fetch results
-      const results = await getWorkflowResults({
-        backendUrl: this.config.backendUrl,
-        workflowId,
-        accessToken,
-      });
+    // Clear current workflow BEFORE calling callback
+    this.currentWorkflow = null;
 
-      // Store results in upload store
-      this.config.uploadStore.setUploadResult(workflowId, results);
+    // Call completion callback with null results (no inference performed)
+    this.config.onComplete(workflowId, file, null);
 
-      // Clear current workflow BEFORE calling callback
-      this.currentWorkflow = null;
-
-      // Call completion callback
-      this.config.onComplete(workflowId, file, results);
-
-      // Process next item in queue after brief delay
-      setTimeout(() => {
-        this.processNext();
-      }, DELAY_AFTER_COMPLETION_MS);
-    } catch (error) {
-      errorLogger.logError(
-        `[BatchUploadQueueManager] Failed to fetch workflow results`,
-        error as Error,
-        {
-          workflowId,
-          fileName: file.name,
-        },
-      );
-
-      // Clear current workflow
-      this.currentWorkflow = null;
-
-      // Call error callback
-      this.config.onError(
-        workflowId,
-        file,
-        error instanceof Error ? error : new Error("Failed to fetch results"),
-      );
-
-      // Process next item after delay (prevent spamming on failures)
-      setTimeout(() => {
-        this.processNext();
-      }, DELAY_AFTER_FAILURE_MS);
-    }
+    // Process next item in queue after brief delay
+    setTimeout(() => {
+      this.processNext();
+    }, DELAY_AFTER_COMPLETION_MS);
   }
 
   /**

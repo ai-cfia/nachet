@@ -48,7 +48,7 @@ export const useModelMetadata = ({
         // Find the default model from the metadata
         const defaultModel = metadata.find((model) => model.default);
         if (defaultModel) {
-          setSelectedModel(defaultModel.pipeline_id);
+          setSelectedModel(defaultModel.pipelineId);
         }
       } catch (error) {
         console.error(

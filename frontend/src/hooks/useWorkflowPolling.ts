@@ -78,33 +78,33 @@ export const useWorkflowPolling = ({
       });
 
       console.log(
-        `[Workflow] Status received: overall_status=${statusResponse.overall_status}`,
+        `[Workflow] Status received: overall_status=${statusResponse.overallStatus}`,
         statusResponse,
       );
 
       // Update the store with the current status
       updateWorkflowStatus(
         workflowId,
-        statusResponse.overall_status as WorkflowStatus,
+        statusResponse.overallStatus as WorkflowStatus,
       );
 
       // Check if workflow has reached a terminal state (completed or failed)
-      if (!isTerminalState(statusResponse.overall_status)) {
+      if (!isTerminalState(statusResponse.overallStatus)) {
         // Status is still "pending" or "in_progress", continue polling
         console.log(
-          `[Workflow] Status is ${statusResponse.overall_status}, continuing to poll`,
+          `[Workflow] Status is ${statusResponse.overallStatus}, continuing to poll`,
         );
         return;
       }
 
       // Terminal state reached - stop polling
       console.log(
-        `[Workflow] Terminal state reached: ${statusResponse.overall_status}`,
+        `[Workflow] Terminal state reached: ${statusResponse.overallStatus}`,
       );
       stopPolling();
 
       // Handle completed workflow
-      if (statusResponse.overall_status === "completed") {
+      if (statusResponse.overallStatus === "completed") {
         console.log(
           `[Workflow] Workflow completed, fetching results for workflow_id=${workflowId}`,
         );
@@ -140,11 +140,11 @@ export const useWorkflowPolling = ({
         }
       }
       // Handle failed workflow
-      else if (statusResponse.overall_status === "failed") {
+      else if (statusResponse.overallStatus === "failed") {
         const errorMessage =
-          statusResponse.parent_workflow?.error_message ||
-          statusResponse.inference_workflow?.error_message ||
-          statusResponse.processing_workflow?.error_message ||
+          statusResponse.parentWorkflow?.errorMessage ||
+          statusResponse.inferenceWorkflow?.errorMessage ||
+          statusResponse.processingWorkflow?.errorMessage ||
           "Workflow processing failed";
 
         console.log(

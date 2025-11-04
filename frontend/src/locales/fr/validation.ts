@@ -73,6 +73,18 @@ const validation = {
       "L'identifiant d'échantillon ne peut contenir que des lettres, des chiffres et des traits d'union",
   },
 
+  // Erreurs de nom d'image (également utilisé pour le préfixe d'identifiant d'échantillon)
+  imageName: {
+    empty: "Ce champ ne peut pas être vide",
+    tooLong: "Ce champ est trop long (max 100 caractères)",
+  },
+
+  // Erreurs de description (utilisé pour tous les champs de description)
+  description: {
+    empty: "La description ne peut pas être vide",
+    tooLong: "La description est trop longue (max 1000 caractères)",
+  },
+
   // Erreurs d'identifiant d'appareil
   deviceId: {
     empty: "L'identifiant d'appareil ne peut pas être vide",

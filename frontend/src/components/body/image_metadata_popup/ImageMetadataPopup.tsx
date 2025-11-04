@@ -18,6 +18,18 @@ import {
   PopupActionButtons,
 } from "@components/common";
 import { useTranslation } from "react-i18next";
+import {
+  imageNameSchema,
+  descriptionSchema,
+  deviceIdValidationSchema,
+  trayCodeSchema,
+  magnificationSchema,
+} from "@common/validation";
+import { getZodErrorKey } from "@common/zodErrorMap";
+import {
+  useZodFieldValidation,
+  ERROR_KEY_MAPPINGS,
+} from "@hooks/useZodFieldValidation";
 
 interface ImageMetadataPopupProps {
   devicesData: ApiDevicesResponse | null;
@@ -80,40 +92,115 @@ const ImageMetadataPopup: React.FC<ImageMetadataPopupProps> = (props) => {
   const [lensError, setLensError] = useState<string>("");
   const [trayCodeError, setTrayCodeError] = useState<string>("");
   const [magnificationError, setMagnificationError] = useState<string>("");
+  const [sampleDescriptionError, setSampleDescriptionError] =
+    useState<string>("");
+
+  // Zod validation hooks for auto-normalization on blur
+  const imageNameValidation = useZodFieldValidation(
+    imageNameSchema,
+    imageName,
+    setImageName,
+    setImageNameError,
+    ERROR_KEY_MAPPINGS.imageName,
+  );
+
+  const sampleDescriptionValidation = useZodFieldValidation(
+    descriptionSchema,
+    sampleDescription,
+    setSampleDescription,
+    setSampleDescriptionError,
+    ERROR_KEY_MAPPINGS.description,
+  );
 
   const validateAndSave = (): boolean => {
     let isValid = true;
 
-    // Validate image name
-    if (!imageName.trim()) {
-      setImageNameError(t("imageMetadata.errors.imageNameRequired"));
+    // Validate image name using Zod with i18n
+    const imageNameResult = imageNameSchema.safeParse(imageName);
+    if (!imageNameResult.success) {
+      const issue = imageNameResult.error.issues[0];
+      // Map Zod error codes to specific translation keys
+      if (issue.code === "too_small") {
+        setImageNameError(t("validation.imageName.empty"));
+      } else if (issue.code === "too_big") {
+        setImageNameError(t("validation.imageName.tooLong"));
+      } else {
+        const errorKey = getZodErrorKey(imageNameResult.error);
+        setImageNameError(t(errorKey));
+      }
       isValid = false;
+    } else {
+      setImageNameError("");
     }
 
-    // Validate device selection
-    if (!selectedBrandId) {
+    // Validate device selection using Zod with i18n
+    const brandResult = deviceIdValidationSchema.safeParse(selectedBrandId);
+    if (!brandResult.success) {
       setBrandError(t("deviceInfo.errors.brandRequired"));
       isValid = false;
-    }
-    if (!selectedModelId) {
-      setModelError(t("deviceInfo.errors.modelRequired"));
-      isValid = false;
-    }
-    if (!selectedLensId) {
-      setLensError(t("deviceInfo.errors.lensRequired"));
-      isValid = false;
+    } else {
+      setBrandError("");
     }
 
-    // Validate sample metadata
-    if (!trayCode) {
+    const modelResult = deviceIdValidationSchema.safeParse(selectedModelId);
+    if (!modelResult.success) {
+      setModelError(t("deviceInfo.errors.modelRequired"));
+      isValid = false;
+    } else {
+      setModelError("");
+    }
+
+    const lensResult = deviceIdValidationSchema.safeParse(selectedLensId);
+    if (!lensResult.success) {
+      setLensError(t("deviceInfo.errors.lensRequired"));
+      isValid = false;
+    } else {
+      setLensError("");
+    }
+
+    // Validate sample metadata using Zod with i18n
+    const trayCodeResult = trayCodeSchema.safeParse(trayCode);
+    if (!trayCodeResult.success) {
       setTrayCodeError(t("batchUpload.metadataSection.trayCodeRequired"));
       isValid = false;
+    } else {
+      setTrayCodeError("");
     }
-    if (magnification <= 0) {
-      setMagnificationError(
-        t("batchUpload.metadataSection.magnificationRequired"),
-      );
+
+    const magnificationResult = magnificationSchema.safeParse(magnification);
+    if (!magnificationResult.success) {
+      const issue = magnificationResult.error.issues[0];
+      // Map Zod error codes to specific translation keys
+      if (issue.code === "too_small") {
+        setMagnificationError(t("validation.magnification.tooSmall"));
+      } else if (issue.code === "too_big") {
+        setMagnificationError(t("validation.magnification.tooLarge"));
+      } else {
+        const errorKey = getZodErrorKey(magnificationResult.error);
+        setMagnificationError(t(errorKey));
+      }
       isValid = false;
+    } else {
+      setMagnificationError("");
+    }
+
+    // Validate sample description (now required) using Zod with i18n
+    const sampleDescriptionResult =
+      descriptionSchema.safeParse(sampleDescription);
+    if (!sampleDescriptionResult.success) {
+      const issue = sampleDescriptionResult.error.issues[0];
+      // Map Zod error codes to specific translation keys
+      if (issue.code === "too_small") {
+        setSampleDescriptionError(t("validation.description.empty"));
+      } else if (issue.code === "too_big") {
+        setSampleDescriptionError(t("validation.description.tooLong"));
+      } else {
+        const errorKey = getZodErrorKey(sampleDescriptionResult.error);
+        setSampleDescriptionError(t(errorKey));
+      }
+      isValid = false;
+    } else {
+      setSampleDescriptionError("");
     }
 
     return isValid;
@@ -155,6 +242,7 @@ const ImageMetadataPopup: React.FC<ImageMetadataPopupProps> = (props) => {
     setLensError("");
     setTrayCodeError("");
     setMagnificationError("");
+    setSampleDescriptionError("");
 
     // Close popup
     closeImageMetadataPopup();
@@ -241,10 +329,8 @@ const ImageMetadataPopup: React.FC<ImageMetadataPopupProps> = (props) => {
             <TextField
               label={t("imageMetadata.imageName")}
               value={imageName}
-              onChange={(e) => {
-                setImageName(e.target.value);
-                if (imageNameError) setImageNameError("");
-              }}
+              onChange={(e) => imageNameValidation.onChange(e.target.value)}
+              onBlur={imageNameValidation.onBlur}
               error={!!imageNameError}
               helperText={imageNameError}
               fullWidth
@@ -298,11 +384,11 @@ const ImageMetadataPopup: React.FC<ImageMetadataPopupProps> = (props) => {
                 setMagnification(value);
                 if (magnificationError) setMagnificationError("");
               }}
-              onSampleDescriptionChange={(value) => {
-                setSampleDescription(value);
-              }}
+              onSampleDescriptionChange={sampleDescriptionValidation.onChange}
+              onSampleDescriptionBlur={sampleDescriptionValidation.onBlur}
               trayCodeError={trayCodeError}
               magnificationError={magnificationError}
+              sampleDescriptionError={sampleDescriptionError}
               disabled={imageMetadataMode === "delete"}
             />
 

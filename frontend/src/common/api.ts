@@ -177,7 +177,7 @@ export const checkUserRegistration = async ({
 }: {
   backendUrl: string;
   accessToken: string;
-}): Promise<{ is_registered: boolean }> => {
+}): Promise<{ isRegistered: boolean }> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
   }
@@ -261,13 +261,13 @@ export const createAzureStorageDir = async ({
       Authorization: `Bearer ${accessToken}`,
     },
     data: {
-      folder_name: folderName,
+      folderName: folderName,
     },
   };
-  const response = await handleAxios<{ folder_name: string }>(request);
+  const response = await handleAxios<{ folderName: string }>(request);
   return validateApiResponse(
     BooleanResponseSchema,
-    response.folder_name === folderName,
+    response.folderName === folderName,
     "createAzureStorageDir",
   );
 };
@@ -303,19 +303,19 @@ export const deleteAzureStorageDir = async ({
       Authorization: `Bearer ${accessToken}`,
     },
     data: {
-      folder_name: folderName,
+      folderName: folderName,
     },
   };
-  const response = await handleAxios<{ folder_name: string }>(request);
+  const response = await handleAxios<{ folderName: string }>(request);
   return validateApiResponse(
     BooleanResponseSchema,
-    response.folder_name === folderName,
+    response.folderName === folderName,
     "deleteAzureStorageDir",
   );
 };
 
 /**
- * Delete a folder by ID using the new DELETE /folders/{folder_id} endpoint.
+ * Delete a folder by ID using the new DELETE /folders/{folderId} endpoint.
  */
 export const deleteFolder = async ({
   backendUrl,
@@ -367,14 +367,14 @@ export const inferenceRequest = async ({
   imageObject,
   curDir,
   accessToken,
-  folder_id,
+  folderId,
 }: {
   backendUrl: string;
   selectedModel: string;
   imageObject: Images;
   curDir: string;
   accessToken: string;
-  folder_id: string;
+  folderId: string;
 }): Promise<ImageSubmissionResponse> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -396,7 +396,7 @@ export const inferenceRequest = async ({
   const payload = {
     pipelineId: selectedModel,
     folderName: curDir,
-    folderId: folder_id,
+    folderId: folderId,
     imageDims: imageObject.imageDims,
     image: imageObject.src,
     // Include device and sample metadata if available
@@ -447,14 +447,14 @@ export const inferenceDirectRequest = async ({
   imageObject,
   curDir,
   accessToken,
-  folder_id,
+  folderId,
 }: {
   backendUrl: string;
   selectedModel: string;
   imageObject: Images;
   curDir: string;
   accessToken: string;
-  folder_id: string;
+  folderId: string;
 }): Promise<ApiInferenceData> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -476,7 +476,7 @@ export const inferenceDirectRequest = async ({
   const payload = {
     pipelineId: selectedModel,
     folderName: curDir,
-    folderId: folder_id,
+    folderId: folderId,
     imageDims: imageObject.imageDims,
     image: imageObject.src,
     // Include device and sample metadata if available
@@ -821,7 +821,7 @@ export const batchUploadInit = async ({
   folderId: string;
   fileCount: number;
 }): Promise<{
-  session_id: string;
+  sessionId: string;
 }> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -844,8 +844,8 @@ export const batchUploadInit = async ({
       Authorization: `Bearer ${accessToken}`,
     },
     data: {
-      folder_id: folderId,
-      file_count: fileCount,
+      folderId: folderId,
+      fileCount: fileCount,
     },
   };
   const response = await handleAxios<unknown>(request);
@@ -870,6 +870,7 @@ export const batchUploadImage = async ({
     seedId,
     trayCode,
     sampleIdPrefix,
+    sampleDescription,
     deviceBrandId,
     deviceModelId,
     deviceLensId,
@@ -921,15 +922,16 @@ export const batchUploadImage = async ({
       Authorization: `Bearer ${accessToken}`,
     },
     data: {
-      session_id: sessionId,
-      seed_id: seedId,
-      tray_code: trayCode,
-      sample_id: sampleIdPrefix,
-      device_brand_id: deviceBrandId,
-      device_model_id: deviceModelId,
-      device_lens_id: deviceLensId,
+      sessionId: sessionId,
+      seedId: seedId,
+      trayCode: trayCode,
+      sampleId: sampleIdPrefix,
+      deviceBrandId: deviceBrandId,
+      deviceModelId: deviceModelId,
+      deviceLensId: deviceLensId,
       magnification: magnification,
       image: imageDataUrl,
+      ...(sampleDescription && { imageDescription: sampleDescription }),
     },
   };
 
@@ -942,28 +944,31 @@ export const batchUploadImage = async ({
 };
 
 /**
- * Create or get a folder using the get-or-create pattern (idempotent).
+ * Create or Get Folder API
  *
- * This function sends a normalized path to the backend. If the folder exists,
- * it returns the existing folder_id. If not, it creates a new folder and
- * returns the new folder_id.
+ * Creates a new folder or returns the existing one if a folder with the same
+ * normalized path already exists for the user. If a folder with the same path exists,
+ * it returns the existing folderId. If not, it creates a new folder and
+ * returns the new folderId.
+ *
+ * Authorization: Users can only create folders for themselves
  *
  * @param backendUrl - Backend API base URL
- * @param accessToken - JWT access token for authentication
- * @param normalizedPath - Relative path (e.g., "avena-fatua" or "mycology/avena-fatua")
- * @param description - Optional description for the folder (defaults to empty string)
- * @returns Promise resolving to CreateOrGetFolderResponse with folder_id
+ * @param accessToken - Bearer token for authentication
+ * @param normalizedPath - Relative path from user's root (e.g., "avena-fatua" or "mycology/avena-fatua")
+ * @param description - Optional folder description
+ * @returns Promise resolving to CreateOrGetFolderResponse with folderId
  * @throws ValueError if parameters are invalid
- * @throws AzureAPIError if API request fails
+ * @throws AxiosError if API call fails
  *
  * @example
- * const result = await createOrGetFolder({
- *   backendUrl: "http://localhost:8080",
- *   accessToken: "eyJhbGc...",
- *   normalizedPath: "avena-fatua",
+ * await createOrGetFolder({
+ *   backendUrl: "https://api.example.com",
+ *   accessToken: "bearer-token",
+ *   normalizedPath: "mycology/avena-fatua",
  *   description: "Wild oat samples"
  * });
- * // Returns: { folder_id: "uuid-string" }
+ * // Returns: { folderId: "uuid-string" }
  */
 export const createOrGetFolder = async ({
   backendUrl,
@@ -1004,7 +1009,7 @@ export const createOrGetFolder = async ({
       Authorization: `Bearer ${accessToken}`,
     },
     data: {
-      normalized_path: normalizedPath,
+      normalizedPath: normalizedPath,
       description: description,
     },
   };
@@ -1022,7 +1027,7 @@ export const createOrGetFolder = async ({
  *
  * Updates a folder's name and/or description.
  *
- * Authorization: Users with folder's org_user_role_id OR org_admin_role_id OR CFIA admin
+ * Authorization: Users with folder's orgUserRoleId OR orgAdminRoleId OR CFIA admin
  * Restrictions: Cannot update default folders for active users
  *
  * @param backendUrl - Backend API base URL
@@ -1125,11 +1130,11 @@ export const sendLogToBackend = async ({
   logData: {
     level: "ERROR" | "WARNING" | "INFO" | "DEBUG";
     message: string;
-    error_type?: string;
-    stack_trace?: string;
+    errorType?: string;
+    stackTrace?: string;
     url?: string;
     timestamp?: string;
-    user_agent?: string;
+    userAgent?: string;
     extra?: Record<string, any>;
   };
 }): Promise<void> => {

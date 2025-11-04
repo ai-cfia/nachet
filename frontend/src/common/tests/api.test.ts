@@ -43,9 +43,9 @@ describe("readAzureStorageDir", () => {
         {
           id: "set-123",
           name: "test-folder",
-          folder_prefix: "test-prefix",
+          folderPrefix: "test-prefix",
           description: "Test folder description",
-          picture_count: 5,
+          pictureCount: 5,
         },
       ],
     };
@@ -193,7 +193,7 @@ describe("createAzureStorageDir", () => {
     mockedAxios.mockResolvedValue({
       ok: true,
       status: 200,
-      data: { folder_name: "test-folder" },
+      data: { folderName: "test-folder" },
     });
     const backendUrl = "http://localhost:8080";
     const accessToken = "valid-token";
@@ -211,7 +211,7 @@ describe("createAzureStorageDir", () => {
         "X-Session-ID": "test-session-id",
       },
       data: {
-        folder_name: folderName,
+        folderName: folderName,
       },
       withCredentials: true,
     });
@@ -273,7 +273,7 @@ describe("deleteAzureStorageDir", () => {
     mockedAxios.mockResolvedValue({
       ok: true,
       status: 200,
-      data: { folder_name: "test-folder" },
+      data: { folderName: "test-folder" },
     });
     const backendUrl = "http://localhost:8080";
     const accessToken = "valid-token";
@@ -291,7 +291,7 @@ describe("deleteAzureStorageDir", () => {
         "X-Session-ID": "test-session-id",
       },
       data: {
-        folder_name: folderName,
+        folderName: folderName,
       },
       withCredentials: true,
     });
@@ -366,8 +366,8 @@ describe("inferenceRequest", () => {
 
   it("should return inference data on success", async () => {
     const mockSubmissionResponse = {
-      image_id: "img-123",
-      workflow_id: "wf-456",
+      imageId: "img-123",
+      workflowId: "wf-456",
       status: "pending",
       message: "Image submitted for processing",
     };
@@ -388,7 +388,7 @@ describe("inferenceRequest", () => {
       imageObject: mockImageObject,
       curDir,
       accessToken: "valid-token",
-      folder_id: folderId,
+      folderId: folderId,
     });
 
     expect(result).toEqual(mockSubmissionResponse);
@@ -428,7 +428,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "token",
-        folder_id: "folder-id",
+        folderId: "folder-id",
       }),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
   });
@@ -441,7 +441,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "token",
-        folder_id: "folder-id",
+        folderId: "folder-id",
       }),
     ).rejects.toThrow(new ValueError("Model is null or empty"));
   });
@@ -455,7 +455,7 @@ describe("inferenceRequest", () => {
         imageObject: emptyImageObject,
         curDir: "dir",
         accessToken: "token",
-        folder_id: "folder-id",
+        folderId: "folder-id",
       }),
     ).rejects.toThrow(new ValueError("Image is null or empty"));
   });
@@ -468,7 +468,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "",
         accessToken: "token",
-        folder_id: "folder-id",
+        folderId: "folder-id",
       }),
     ).rejects.toThrow(new ValueError("Directory is null or empty"));
   });
@@ -481,7 +481,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "",
-        folder_id: "folder-id",
+        folderId: "folder-id",
       }),
     ).rejects.toThrow(new ValueError("Access token is null or empty"));
   });
@@ -503,7 +503,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "token",
-        folder_id: "52345678-1234-1234-8234-123456789012",
+        folderId: "52345678-1234-1234-8234-123456789012",
       }),
     ).rejects.toThrow(new AzureAPIError("Model not available"));
     console.error = consoleError;
@@ -526,7 +526,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "token",
-        folder_id: "62345678-1234-1234-8234-123456789012",
+        folderId: "62345678-1234-1234-8234-123456789012",
       }),
     ).rejects.toThrow(new AzureAPIError("Invalid image format"));
     console.error = consoleError;
@@ -546,7 +546,7 @@ describe("inferenceRequest", () => {
         imageObject: mockImageObject,
         curDir: "dir",
         accessToken: "token",
-        folder_id: "72345678-1234-1234-8234-123456789012",
+        folderId: "72345678-1234-1234-8234-123456789012",
       }),
     ).rejects.toThrow(new AzureAPIError("Network request failed"));
     console.error = consoleError;
@@ -573,17 +573,17 @@ describe("fetchModelMetadata", () => {
   it("should return model metadata on success", async () => {
     const mockMetadata = [
       {
-        created_by: "test-user",
-        creation_date: "2023-12-01",
+        createdBy: "test-user",
+        creationDate: "2023-12-01",
         dataset: "seed-dataset-v1",
         description: "Test model for seed detection",
         identifiable: ["wheat", "oat", "barley"],
-        job_name: "test_job_123",
+        jobName: "test_job_123",
         metrics: ["precision: 0.95", "recall: 0.92"],
-        model_name: "Seed Detector v1",
+        modelName: "Seed Detector v1",
         models: ["detector-model-123"],
-        pipeline_name: "seed-detection-pipeline",
-        pipeline_id: "00000000-0000-0000-0000-000000000001",
+        pipelineName: "seed-detection-pipeline",
+        pipelineId: "00000000-0000-0000-0000-000000000001",
         default: true,
       },
     ];
@@ -669,17 +669,15 @@ describe("requestClassList", () => {
     const mockSpeciesData = {
       seeds: [
         {
-          seed_id: "1",
-          seed_name: "Wheat",
-          name_code: "WHEAT_001",
+          seedId: "1",
+          nameCode: "WHEAT_001",
           family: "Poaceae",
           genus: "Triticum",
           species: "aestivum",
         },
         {
-          seed_id: "2",
-          seed_name: "Oat",
-          name_code: "OAT_001",
+          seedId: "2",
+          nameCode: "OAT_001",
           family: "Poaceae",
           genus: "Avena",
           species: "sativa",
@@ -723,7 +721,7 @@ describe("requestClassList", () => {
 
 describe("batchUploadInit", () => {
   it("should return session ID on success", async () => {
-    const mockResponse = { session_id: "session-123" };
+    const mockResponse = { sessionId: "session-123" };
     mockedAxios.mockResolvedValue({
       ok: true,
       status: 200,
@@ -753,8 +751,8 @@ describe("batchUploadInit", () => {
         "X-Session-ID": "test-session-id",
       },
       data: {
-        folder_id: folderId,
-        file_count: nbPictures,
+        folderId: folderId,
+        fileCount: nbPictures,
       },
       withCredentials: true,
     });
@@ -801,8 +799,8 @@ describe("batchUploadImage", () => {
       ok: true,
       status: 200,
       data: {
-        picture_id: "picture-uuid-789",
-        workflow_id: "workflow-uuid-456",
+        pictureId: "picture-uuid-789",
+        workflowId: "workflow-uuid-456",
       },
     });
 
@@ -813,8 +811,8 @@ describe("batchUploadImage", () => {
       accessToken: "valid-token",
     });
 
-    expect(result.picture_id).toBe("picture-uuid-789");
-    expect(result.workflow_id).toBe("workflow-uuid-456");
+    expect(result.pictureId).toBe("picture-uuid-789");
+    expect(result.workflowId).toBe("workflow-uuid-456");
     expect(mockedAxios).toHaveBeenCalledWith({
       method: "post",
       url: `${backendUrl}/upload-picture`,
@@ -826,13 +824,13 @@ describe("batchUploadImage", () => {
         "X-Session-ID": "test-session-id",
       },
       data: {
-        session_id: mockBatchUploadData.sessionId,
-        seed_id: mockBatchUploadData.seedId,
-        tray_code: mockBatchUploadData.trayCode,
-        sample_id: mockBatchUploadData.sampleIdPrefix,
-        device_brand_id: mockBatchUploadData.deviceBrandId,
-        device_model_id: mockBatchUploadData.deviceModelId,
-        device_lens_id: mockBatchUploadData.deviceLensId,
+        sessionId: mockBatchUploadData.sessionId,
+        seedId: mockBatchUploadData.seedId,
+        trayCode: mockBatchUploadData.trayCode,
+        sampleId: mockBatchUploadData.sampleIdPrefix,
+        deviceBrandId: mockBatchUploadData.deviceBrandId,
+        deviceModelId: mockBatchUploadData.deviceModelId,
+        deviceLensId: mockBatchUploadData.deviceLensId,
         magnification: mockBatchUploadData.magnification,
         image: mockBatchUploadData.imageDataUrl,
       },
@@ -981,7 +979,7 @@ describe("sendPositiveFeedback", () => {
     const mockResponse = {
       filename: "test.jpg",
       imageId: "img-123",
-      inference_id: "inf-456",
+      inferenceId: "inf-456",
       boxes: [],
       labelOccurrence: { seed_name: 2 },
       totalBoxes: 2,
@@ -1061,7 +1059,7 @@ describe("sendNegativeFeedback", () => {
         family: "Poaceae",
         genus: "Avena",
         species: "fatua",
-        name_code: "AVEFA",
+        nameCode: "AVEFA",
       },
     ],
   };
@@ -1070,7 +1068,7 @@ describe("sendNegativeFeedback", () => {
     const mockResponse = {
       filename: "test.jpg",
       imageId: "img-123",
-      inference_id: "inf-456",
+      inferenceId: "inf-456",
       boxes: [],
       labelOccurrence: { seed_name: 0 },
       totalBoxes: 0,
@@ -1130,7 +1128,7 @@ describe("sendFeedbackNewBox", () => {
         family: "Brassicaceae",
         genus: "Sinapis",
         species: "arvensis",
-        name_code: "SINAR",
+        nameCode: "SINAR",
       },
     ],
   };
@@ -1139,19 +1137,19 @@ describe("sendFeedbackNewBox", () => {
     const mockResponse = {
       filename: "test.jpg",
       imageId: "img-123",
-      inference_id: "inf-456",
+      inferenceId: "inf-456",
       boxes: [
         {
           topN: [{ score: 0.95, label: "new-seed-type" }],
           score: 0.95,
           label: "new-seed-type",
           classId: "class-new",
-          object_type_id: "obj-1",
-          box_id: "box-new",
+          objectTypeId: "obj-1",
+          boxId: "box-new",
           box: { topX: 15, topY: 15, bottomX: 55, bottomY: 55 },
           overlapping: false,
           overlappingIndices: 0,
-          is_verified: true,
+          isVerified: true,
         },
       ],
       labelOccurrence: { "new-seed-type": 1 },

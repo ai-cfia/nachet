@@ -118,7 +118,7 @@ const SwitchModel: React.FC = () => {
                   padding: "1vh",
                   cursor: "pointer",
                   backgroundColor:
-                    tempSelectedModel === data.pipeline_id ? "#f0f0f0" : "#fff",
+                    tempSelectedModel === data.pipelineId ? "#f0f0f0" : "#fff",
                   "&:hover": {
                     backgroundColor: "#e0e0e0",
                   },
@@ -128,7 +128,7 @@ const SwitchModel: React.FC = () => {
                   maxHeight: "200px",
                 }}
                 onClick={() => {
-                  selectModel(data.pipeline_id);
+                  selectModel(data.pipelineId);
                 }}
               >
                 <Box
@@ -143,14 +143,14 @@ const SwitchModel: React.FC = () => {
                   }}
                 >
                   <Typography fontSize={20} variant="h6">
-                    {data.model_name}
+                    {data.modelName}
                   </Typography>
                   <Radio
-                    checked={tempSelectedModel === data.pipeline_id}
+                    checked={tempSelectedModel === data.pipelineId}
                     onChange={() => {
-                      selectModel(data.pipeline_id);
+                      selectModel(data.pipelineId);
                     }}
-                    value={data.pipeline_id}
+                    value={data.pipelineId}
                   />
                 </Box>
                 <Typography
@@ -160,7 +160,7 @@ const SwitchModel: React.FC = () => {
                   {data.description}
                 </Typography>
                 <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                  {t("modelSelection.date", { date: data.creation_date })}
+                  {t("modelSelection.date", { date: data.creationDate })}
                 </Typography>
                 <Typography variant="body2" sx={{ marginBottom: 1 }}>
                   {t("modelSelection.version", { version: data.version })}

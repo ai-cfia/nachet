@@ -4,11 +4,11 @@ import { v7 as uuidv7 } from "uuid";
 interface LogEntry {
   level: "ERROR" | "WARNING" | "INFO" | "DEBUG";
   message: string;
-  error_type?: string;
-  stack_trace?: string;
+  errorType?: string;
+  stackTrace?: string;
   url?: string;
   timestamp?: string;
-  user_agent?: string;
+  userAgent?: string;
   extra?: Record<string, any>;
 }
 
@@ -61,7 +61,7 @@ class ErrorLogger {
         ...entry,
         url: entry.url || window.location.href,
         timestamp: entry.timestamp || new Date().toISOString(),
-        user_agent: navigator.userAgent,
+        userAgent: navigator.userAgent,
       };
 
       const headers: Record<string, string> = {
@@ -105,8 +105,8 @@ class ErrorLogger {
     const entry: LogEntry = {
       level: "ERROR",
       message,
-      error_type: error?.name || "UnknownError",
-      stack_trace: error?.stack,
+      errorType: error?.name || "UnknownError",
+      stackTrace: error?.stack,
       extra,
     };
 
@@ -155,13 +155,13 @@ class ErrorLogger {
     const entry: LogEntry = {
       level: "ERROR",
       message: `API Error: ${endpoint} returned ${status} ${statusText}`,
-      error_type: "APIError",
+      errorType: "APIError",
       extra: {
         endpoint,
         status,
         statusText,
-        response_data: data,
-        correlation_id: correlationId || this.getCorrelationId(),
+        responseData: data,
+        correlationId: correlationId || this.getCorrelationId(),
       },
     };
 

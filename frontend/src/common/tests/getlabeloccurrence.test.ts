@@ -6,11 +6,11 @@ describe("getLabelOccurrence", () => {
     scores: number[],
     classifications: string[],
   ) => ({
-    workflow_id: "wf-test",
-    image_id: "img-test",
-    inference_id: "inf-test",
-    pipeline_id: "pipe-test",
-    pipeline_name: "Test Pipeline",
+    workflowId: "wf-test",
+    imageId: "img-test",
+    inferenceId: "inf-test",
+    pipelineId: "pipe-test",
+    pipelineName: "Test Pipeline",
     scores,
     classifications,
     boxes: [],
@@ -20,8 +20,8 @@ describe("getLabelOccurrence", () => {
     labelOccurrence: {},
     totalBoxes: scores.length,
     models: [],
-    completed_at: "2024-01-01T00:00:00Z",
-    is_active: true,
+    completedAt: "2024-01-01T00:00:00Z",
+    isActive: true,
   });
 
   it.each([

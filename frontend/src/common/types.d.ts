@@ -1,18 +1,18 @@
 export interface ApiInferenceData {
   filename: string;
   imageId: string;
-  inference_id: string;
+  inferenceId: string;
   boxes: Array<{
     topN: Array<{ score: number; label: string }>;
     score: number;
     label: string;
     classId: string;
-    object_type_id: string;
-    box_id: string;
+    objectTypeId: string;
+    boxId: string;
     box: BoxCoordinates;
     overlapping: boolean;
     overlappingIndices: number;
-    is_verified?: boolean;
+    isVerified?: boolean;
   }>;
   labelOccurrence: {
     [key: string]: number;
@@ -49,11 +49,11 @@ export interface ImageMetadata extends DeviceAndSampleMetadata {
  */
 export interface InferenceResult {
   // Identifiers
-  workflow_id: string;
-  image_id: string;
-  inference_id: string;
-  pipeline_id: string;
-  pipeline_name: string; // For display (e.g., "Swin transformer")
+  workflowId: string;
+  imageId: string;
+  inferenceId: string;
+  pipelineId: string;
+  pipelineName: string; // For display (e.g., "Swin transformer")
 
   // Inference data (from ApiInferenceData)
   scores: number[];
@@ -67,8 +67,8 @@ export interface InferenceResult {
   models: Array<{ name: string; version: string }>;
 
   // Metadata
-  completed_at: string; // ISO timestamp
-  is_active: boolean; // For tracking which result is currently displayed
+  completedAt: string; // ISO timestamp
+  isActive: boolean; // For tracking which result is currently displayed
 }
 
 export interface Images extends Omit<Partial<ImageMetadata>, "imageDims"> {
@@ -109,7 +109,7 @@ export interface InferenceBox extends BoxCoordinates {
   boxId: string;
   classId: string;
   label: string;
-  is_verified: boolean;
+  isVerified: boolean;
 }
 
 export interface BoxCSS {
@@ -142,7 +142,7 @@ export interface FeedbackDataNegative extends FeedbackData {
     family: string;
     genus: string;
     species: string;
-    name_code: string;
+    nameCode: string;
   }>;
 }
 
@@ -153,11 +153,12 @@ export interface LabelOccurrences {
 export interface SpeciesData {
   id?: number;
   label?: string;
-  seed_id: string;
-  name_code: string;
+  seedId: string;
+  nameCode: string;
   family: string;
   genus: string;
   species: string;
+  seedMetadata?: Record<string, any> | null;
 }
 
 export interface ApiSpeciesData {
@@ -165,17 +166,17 @@ export interface ApiSpeciesData {
 }
 
 export interface ModelMetadata {
-  created_by: string;
-  creation_date: string;
+  createdBy: string;
+  creationDate: string;
   dataset: string;
   description: string;
   identifiable: string[];
-  job_name: string;
+  jobName: string;
   metrics: string[];
-  model_name: string;
+  modelName: string;
   models: string[];
-  pipeline_name: string;
-  pipeline_id: string;
+  pipelineName: string;
+  pipelineId: string;
   version?: string;
   default?: boolean;
 }
@@ -184,30 +185,31 @@ export interface BatchUploadMetadata extends DeviceAndSampleMetadata {
   sessionId: string;
   seedId: string;
   sampleIdPrefix: string;
+  sampleDescription?: string;
   imageDataUrl: string;
 }
 
 export interface BatchUploadImageResponse {
-  workflow_id: string;
-  picture_id: string;
+  workflowId: string;
+  pictureId: string;
 }
 
 export interface BatchUploadInitRequest {
-  folder_id: string;
-  file_count: number;
+  folderId: string;
+  fileCount: number;
 }
 
 export interface BatchUploadInitResponse {
-  session_id: string;
+  sessionId: string;
 }
 
 export interface CreateOrGetFolderRequest {
-  normalized_path: string;
+  normalizedPath: string;
   description?: string;
 }
 
 export interface CreateOrGetFolderResponse {
-  folder_id: string;
+  folderId: string;
 }
 
 export interface UpdateFolderRequest {
@@ -238,19 +240,19 @@ interface AzureStorageDirectoryItem {
 interface AzureStorageDirectoryItemApi {
   id: string;
   name: string;
-  folder_prefix: string;
+  folderPrefix: string;
   description: string | null;
-  picture_count: number;
-  is_default_folder?: boolean;
+  pictureCount: number;
+  isDefaultFolder?: boolean;
   // pictures: DirectoryPictureApi[];
 }
-//   folder_name: string;
-//   nb_pictures: number;
-//   picture_set_id: string;
+//   folderName: string;
+//   nbPictures: number;
+//   pictureSetId: string;
 //   pictures: {
-//     inference_exists: boolean;
-//     is_validation: boolean;
-//     picture_id: string;
+//     inferenceExists: boolean;
+//     isValidation: boolean;
+//     pictureId: string;
 //   }[];
 // }
 
@@ -290,78 +292,78 @@ export interface ApiDevicesResponse {
 
 // Workflow tracking types
 export interface ImageSubmissionResponse {
-  image_id: string;
-  workflow_id: string;
+  imageId: string;
+  workflowId: string;
   status: string;
   message: string;
 }
 
 export interface ParentWorkflowStatus {
-  workflow_id: string;
+  workflowId: string;
   status: string;
-  progress_percentage: number;
-  created_at: string | null;
-  completed_at: string | null;
-  failed_at: string | null;
-  error_message: string | null;
-  malware_detected: boolean | null;
+  progressPercentage: number;
+  createdAt: string | null;
+  completedAt: string | null;
+  failedAt: string | null;
+  errorMessage: string | null;
+  malwareDetected: boolean | null;
 }
 
 export interface ProcessingWorkflowStatus {
   status: string;
   stages: {
     uploaded: boolean;
-    defender_scanning: boolean;
-    defender_scanned: boolean;
+    defenderScanning: boolean;
+    defenderScanned: boolean;
     sanitizing: boolean;
     sanitized: boolean;
   };
   timestamps: {
-    uploaded_at: string | null;
-    defender_scan_started_at: string | null;
-    defender_scan_completed_at: string | null;
-    sanitization_started_at: string | null;
-    sanitization_completed_at: string | null;
-    completed_at: string | null;
-    failed_at: string | null;
+    uploadedAt: string | null;
+    defenderScanStartedAt: string | null;
+    defenderScanCompletedAt: string | null;
+    sanitizationStartedAt: string | null;
+    sanitizationCompletedAt: string | null;
+    completedAt: string | null;
+    failedAt: string | null;
   };
-  defender_scan_result: {
+  defenderScanResult: {
     status: string;
     tags: Record<string, any>;
-    scan_timestamp: string;
+    scanTimestamp: string;
   } | null;
-  blob_urls: {
+  blobUrls: {
     original: string | null;
     sanitized: string | null;
   };
-  error_message: string | null;
-  error_details: any | null;
+  errorMessage: string | null;
+  errorDetails: any | null;
 }
 
 export interface InferenceWorkflowStatus {
-  workflow_id: string;
+  workflowId: string;
   status: string;
-  pipeline_id: string;
-  created_at: string | null;
-  started_at: string | null;
-  completed_at: string | null;
-  failed_at: string | null;
-  error_message: string | null;
-  request_payload: any;
+  pipelineId: string;
+  createdAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  failedAt: string | null;
+  errorMessage: string | null;
+  requestPayload: any;
 }
 
 export interface WorkflowStatusResponse {
-  workflow_id: string;
-  workflow_type: string;
-  image_id: string;
-  overall_status: string;
-  parent_workflow: ParentWorkflowStatus | null;
-  processing_workflow: ProcessingWorkflowStatus | null;
-  inference_workflow: InferenceWorkflowStatus | null;
+  workflowId: string;
+  workflowType: string;
+  imageId: string;
+  overallStatus: string;
+  parentWorkflow: ParentWorkflowStatus | null;
+  processingWorkflow: ProcessingWorkflowStatus | null;
+  inferenceWorkflow: InferenceWorkflowStatus | null;
   authorization: {
-    user_id: string;
-    is_owner: boolean;
-    is_cfia_admin: boolean;
+    userId: string;
+    isOwner: boolean;
+    isCfiaAdmin: boolean;
   };
 }
 
@@ -374,14 +376,14 @@ export type WorkflowStatus =
   | "cancelled"; // User cancelled (future)
 
 export interface WorkflowInfo {
-  workflow_id: string;
-  image_id: string;
+  workflowId: string;
+  imageId: string;
   imageIndex: number; // Track which image this workflow belongs to
-  pipeline_id: string; // Which model/pipeline is running
-  pipeline_name: string; // Display name for UI
+  pipelineId: string; // Which model/pipeline is running
+  pipelineName: string; // Display name for UI
   status: WorkflowStatus;
-  started_at: number;
-  last_checked_at: number;
+  startedAt: number;
+  lastCheckedAt: number;
   error: string | null;
   queuePosition?: number; // Position in queue (for queued items)
 }

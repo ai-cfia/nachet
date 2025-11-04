@@ -97,11 +97,11 @@ describe("nextCacheIndex", () => {
 describe("getLabelOccurrence", () => {
   it("should count label occurrences correctly", () => {
     const mockInferenceResult: InferenceResult = {
-      workflow_id: "wf-123",
-      image_id: "img-123",
-      inference_id: "inf-123",
-      pipeline_id: "pipe-123",
-      pipeline_name: "Test Pipeline",
+      workflowId: "wf-123",
+      imageId: "img-123",
+      inferenceId: "inf-123",
+      pipelineId: "pipe-123",
+      pipelineName: "Test Pipeline",
       scores: [0.9, 0.8, 0.7],
       classifications: ["wheat", "oat", "wheat"],
       boxes: [],
@@ -111,8 +111,8 @@ describe("getLabelOccurrence", () => {
       labelOccurrence: {},
       totalBoxes: 3,
       models: [],
-      completed_at: "2024-01-01T00:00:00Z",
-      is_active: true,
+      completedAt: "2024-01-01T00:00:00Z",
+      isActive: true,
     };
 
     const result = getLabelOccurrence(mockInferenceResult);
@@ -130,11 +130,11 @@ describe("getLabelOccurrence", () => {
 
   it("should handle single classification", () => {
     const mockInferenceResult: InferenceResult = {
-      workflow_id: "wf-123",
-      image_id: "img-123",
-      inference_id: "inf-123",
-      pipeline_id: "pipe-123",
-      pipeline_name: "Test Pipeline",
+      workflowId: "wf-123",
+      imageId: "img-123",
+      inferenceId: "inf-123",
+      pipelineId: "pipe-123",
+      pipelineName: "Test Pipeline",
       scores: [0.95],
       classifications: ["barley"],
       boxes: [],
@@ -144,8 +144,8 @@ describe("getLabelOccurrence", () => {
       labelOccurrence: {},
       totalBoxes: 1,
       models: [],
-      completed_at: "2024-01-01T00:00:00Z",
-      is_active: true,
+      completedAt: "2024-01-01T00:00:00Z",
+      isActive: true,
     };
 
     const result = getLabelOccurrence(mockInferenceResult);
@@ -156,11 +156,11 @@ describe("getLabelOccurrence", () => {
 
   it("should handle multiple same classifications", () => {
     const mockInferenceResult: InferenceResult = {
-      workflow_id: "wf-123",
-      image_id: "img-123",
-      inference_id: "inf-123",
-      pipeline_id: "pipe-123",
-      pipeline_name: "Test Pipeline",
+      workflowId: "wf-123",
+      imageId: "img-123",
+      inferenceId: "inf-123",
+      pipelineId: "pipe-123",
+      pipelineName: "Test Pipeline",
       scores: [0.9, 0.85, 0.8, 0.75],
       classifications: ["corn", "corn", "corn", "corn"],
       boxes: [],
@@ -170,8 +170,8 @@ describe("getLabelOccurrence", () => {
       labelOccurrence: {},
       totalBoxes: 4,
       models: [],
-      completed_at: "2024-01-01T00:00:00Z",
-      is_active: true,
+      completedAt: "2024-01-01T00:00:00Z",
+      isActive: true,
     };
 
     const result = getLabelOccurrence(mockInferenceResult);

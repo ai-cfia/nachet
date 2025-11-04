@@ -76,7 +76,7 @@ const drawBox = (box: InferenceBox, ctx: CanvasRenderingContext2D): void => {
 
   // draw bounding box
   ctx.lineWidth = 3;
-  if (box.is_verified) {
+  if (box.isVerified) {
     ctx.strokeStyle = "green";
   } else {
     ctx.strokeStyle = "red";
@@ -568,7 +568,7 @@ export const createBoxElement = (
   boxDiv.style.top = `${topY}px`;
   boxDiv.style.width = `${width}px`;
   boxDiv.style.height = `${height}px`;
-  boxDiv.style.border = `3px solid ${box.is_verified ? "green" : "red"}`;
+  boxDiv.style.border = `3px solid ${box.isVerified ? "green" : "red"}`;
   boxDiv.style.pointerEvents = "none";
   boxDiv.className = "inference-box";
   boxDiv.setAttribute("data-testid", `inference-box-${index}`);

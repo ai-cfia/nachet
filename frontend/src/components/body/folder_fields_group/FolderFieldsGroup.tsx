@@ -1,11 +1,14 @@
 import { TextField, Box } from "@mui/material";
 import { useTranslation } from "react-i18next";
+import { descriptionSchema } from "@common/validation";
 
 interface FolderFieldsGroupProps {
   folderName: string;
   folderDescription: string;
   onFolderNameChange: (value: string) => void;
   onFolderDescriptionChange: (value: string) => void;
+  onFolderNameBlur?: () => void;
+  onFolderDescriptionBlur?: () => void;
   folderNameError?: string;
   folderDescriptionError?: string;
   disabled?: boolean;
@@ -25,6 +28,8 @@ export const FolderFieldsGroup = (props: FolderFieldsGroupProps) => {
     folderDescription,
     onFolderNameChange,
     onFolderDescriptionChange,
+    onFolderNameBlur,
+    onFolderDescriptionBlur,
     folderNameError,
     folderDescriptionError,
     disabled = false,
@@ -46,25 +51,31 @@ export const FolderFieldsGroup = (props: FolderFieldsGroupProps) => {
   };
 
   const handleFolderNameBlur = () => {
-    const normalized = normalizeFolderName(folderName);
-    if (normalized !== folderName) {
-      onFolderNameChange(normalized);
+    // Use parent's blur handler if provided, otherwise normalize internally
+    if (onFolderNameBlur) {
+      onFolderNameBlur();
+    } else {
+      const normalized = normalizeFolderName(folderName);
+      if (normalized !== folderName) {
+        onFolderNameChange(normalized);
+      }
     }
   };
 
-  // Normalize folder description: remove invalid chars, trim, no consecutive spaces/periods
-  const normalizeFolderDescription = (value: string): string => {
-    return value
-      .replace(/[^a-zA-Z0-9. ]/g, "") // Remove invalid characters (keep letters, numbers, periods, spaces)
-      .replace(/\.{2,}/g, ".") // Replace consecutive periods with single period
-      .replace(/\s{2,}/g, " ") // Replace consecutive spaces with single space
-      .trim();
-  };
-
+  // Normalize folder description using Zod schema (consistent with other description fields)
   const handleFolderDescriptionBlur = () => {
-    const normalized = normalizeFolderDescription(folderDescription);
-    if (normalized !== folderDescription) {
-      onFolderDescriptionChange(normalized);
+    // Use parent's blur handler if provided, otherwise normalize internally
+    if (onFolderDescriptionBlur) {
+      onFolderDescriptionBlur();
+    } else {
+      const result = descriptionSchema.safeParse(folderDescription);
+      if (result.success) {
+        // Only update if normalization changed the value
+        if (result.data !== folderDescription) {
+          onFolderDescriptionChange(result.data);
+        }
+      }
+      // Note: Parent components handle validation and error display on submit
     }
   };
 
