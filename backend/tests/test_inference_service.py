@@ -560,7 +560,7 @@ class TestInferenceServiceGetHash:
                     test_image_base64, mock_user_role_id
                 )
 
-        assert "Failed to compute image hash" in str(exc_info.value)
+        assert "Failed to preprocess image" in str(exc_info.value)
         assert "Database connection failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
