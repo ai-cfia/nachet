@@ -271,6 +271,10 @@ async def download_sanitized_blob(
     """Download sanitized image from blob storage."""
     from app.api.config import get_settings
     from app.blob.manager import blob_storage_manager
+    from app.service.logs import LogService
+    import time
+
+    logger = LogService.get_logger()
 
     storage = blob_storage_manager.get_client(BlobAccount.ONPREM.value)
     settings = get_settings()
@@ -283,8 +287,37 @@ async def download_sanitized_blob(
 
     blob_name = f"{org_prefix}/{image_id}.png"
 
+    logger.debug(
+        "Downloading sanitized blob",
+        image_id=str(image_id),
+        org_prefix=org_prefix,
+        container=container,
+        blob_name=blob_name,
+    )
+
+    start_time = time.time()
+
     try:
         blob_bytes = await storage.download_blob(container, blob_name)
+
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.debug(
+            "Sanitized blob downloaded",
+            image_id=str(image_id),
+            blob_size_bytes=len(blob_bytes),
+            duration_ms=round(elapsed_ms, 2),
+        )
+
         return blob_bytes
     except Exception as e:
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.error(
+            "Failed to download sanitized blob",
+            image_id=str(image_id),
+            container=container,
+            blob_name=blob_name,
+            error=str(e),
+            error_type=type(e).__name__,
+            duration_ms=round(elapsed_ms, 2),
+        )
         raise BlobDownloadError(f"Failed to download sanitized blob: {str(e)}") from e

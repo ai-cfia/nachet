@@ -163,23 +163,68 @@ class RbacService:
             HTTPException: 500 if organization roles not found
         """
         from app.datastore import OrganizationDataService
+        from app.service.logs import LogService
+        import time
 
-        async with sessionmanager.get_session() as session:
-            result = await OrganizationDataService(session).get_user_org_roles(user_id)
+        logger = LogService.get_logger()
 
-            if not result:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="User not associated with an organization or organization roles not found",
+        logger.debug(
+            "Fetching user org roles",
+            user_id=str(user_id),
+        )
+
+        start_time = time.time()
+
+        try:
+            async with sessionmanager.get_session() as session:
+                result = await OrganizationDataService(session).get_user_org_roles(
+                    user_id
                 )
 
-            org_id, org_prefix, org_admin_role_id, org_user_role_id = result
-            return UserOrgRoles(
-                org_id=org_id,
-                org_prefix=org_prefix,
-                org_admin_role_id=org_admin_role_id,
-                org_user_role_id=org_user_role_id,
+                if not result:
+                    elapsed_ms = (time.time() - start_time) * 1000
+                    logger.error(
+                        "User not associated with organization",
+                        user_id=str(user_id),
+                        duration_ms=round(elapsed_ms, 2),
+                    )
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="User not associated with an organization or organization roles not found",
+                    )
+
+                org_id, org_prefix, org_admin_role_id, org_user_role_id = result
+
+                elapsed_ms = (time.time() - start_time) * 1000
+                logger.debug(
+                    "User org roles retrieved",
+                    user_id=str(user_id),
+                    org_id=str(org_id),
+                    org_prefix=org_prefix,
+                    org_admin_role_id=str(org_admin_role_id),
+                    org_user_role_id=str(org_user_role_id),
+                    duration_ms=round(elapsed_ms, 2),
+                )
+
+                return UserOrgRoles(
+                    org_id=org_id,
+                    org_prefix=org_prefix,
+                    org_admin_role_id=org_admin_role_id,
+                    org_user_role_id=org_user_role_id,
+                )
+        except HTTPException:
+            # Re-raise HTTPException without additional logging (already logged above)
+            raise
+        except Exception as e:
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.error(
+                "Failed to retrieve user org roles",
+                user_id=str(user_id),
+                error=str(e),
+                error_type=type(e).__name__,
+                duration_ms=round(elapsed_ms, 2),
             )
+            raise
 
     @staticmethod
     async def get_org_user_role_id(organization_id: UUID) -> UUID:

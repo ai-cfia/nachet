@@ -134,8 +134,47 @@ class AnnotationService(AuthorizedBaseCRUDService[Annotation]):
         Raises:
             HTTPException: If creation fails or user lacks permission
         """
+        from app.service.logs import LogService
+        import time
+
+        logger = LogService.get_logger()
+
+        picture_id = kwargs.get("picture_id")
+        pipeline_id = kwargs.get("pipeline_id")
+
+        logger.debug(
+            "Creating annotation",
+            requester_id=str(requester_id),
+            picture_id=str(picture_id) if picture_id else None,
+            pipeline_id=str(pipeline_id) if pipeline_id else None,
+        )
+
+        start_time = time.time()
+
         # Ensure user_id is set to requester_id for Annotation model
         kwargs["user_id"] = requester_id
 
-        # Call parent create method
-        return await super().create(requester_id, **kwargs)
+        try:
+            # Call parent create method
+            result = await super().create(requester_id, **kwargs)
+
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.debug(
+                "Annotation created",
+                annotation_id=str(result.get("id"))
+                if result and "id" in result
+                else None,
+                duration_ms=round(elapsed_ms, 2),
+            )
+
+            return result
+        except Exception as e:
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.error(
+                "Failed to create annotation",
+                requester_id=str(requester_id),
+                error=str(e),
+                error_type=type(e).__name__,
+                duration_ms=round(elapsed_ms, 2),
+            )
+            raise

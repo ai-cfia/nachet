@@ -139,6 +139,18 @@ async def trigger_sanitization_function_local(
     from app.blob.manager import blob_storage_manager
     from PIL import Image
     from io import BytesIO
+    from app.service.logs import LogService
+    import time
+
+    logger = LogService.get_logger()
+
+    logger.debug(
+        "Starting local sanitization",
+        image_id=str(image_id),
+        org_prefix=org_prefix,
+    )
+
+    overall_start = time.time()
 
     settings = get_settings()
     sanitized_storage = blob_storage_manager.get_client(BlobAccount.ONPREM.value)
@@ -158,36 +170,67 @@ async def trigger_sanitization_function_local(
         # Step 1: Download original image from blob storage
         blob_name = f"{org_prefix}/{image_id}.png"
 
-        DBOS.logger.info(
-            f"Downloading original image: {original_container}/{blob_name}"
+        logger.debug(
+            "Downloading original image",
+            image_id=str(image_id),
+            container=original_container,
+            blob_name=blob_name,
         )
-        blob_bytes = await external_storage.download_blob(original_container, blob_name)
 
-        # Step 2: Open image with PIL and extract RGB data
-        DBOS.logger.info(f"Sanitizing image {image_id}")
+        download_start = time.time()
+        blob_bytes = await external_storage.download_blob(original_container, blob_name)
+        download_ms = (time.time() - download_start) * 1000
+
+        logger.debug(
+            "Original image downloaded",
+            image_id=str(image_id),
+            blob_size_bytes=len(blob_bytes),
+            download_duration_ms=round(download_ms, 2),
+        )
+
+        # Step 2-4: Open, sanitize, and convert image
+        processing_start = time.time()
+
         original_image = Image.open(BytesIO(blob_bytes))
+        image_mode = original_image.mode
+        image_size = original_image.size
 
         # Convert to RGB mode if needed (handles RGBA, grayscale, etc.)
         if original_image.mode != "RGB":
             original_image = original_image.convert("RGB")
 
-        # Step 3: Create new sanitized image (creates a clean copy without metadata)
+        # Create new sanitized image (creates a clean copy without metadata)
         sanitized_image = Image.new("RGB", original_image.size)
-        # getdata() returns ImagingCore which is iterable but not typed as such
-        # Using paste() instead for better type safety
         sanitized_image.paste(original_image, (0, 0))
 
-        # Step 4: Convert sanitized image to bytes
+        # Convert sanitized image to bytes
         sanitized_buffer = BytesIO()
         sanitized_image.save(sanitized_buffer, format="PNG")
         sanitized_bytes = sanitized_buffer.getvalue()
 
+        processing_ms = (time.time() - processing_start) * 1000
+
+        logger.debug(
+            "Image sanitization processing complete",
+            image_id=str(image_id),
+            original_mode=image_mode,
+            image_size=f"{image_size[0]}x{image_size[1]}",
+            original_size_bytes=len(blob_bytes),
+            sanitized_size_bytes=len(sanitized_bytes),
+            processing_duration_ms=round(processing_ms, 2),
+        )
+
         # Step 5: Upload to sanitized container
         sanitized_blob_name = f"{org_prefix}/{image_id}.png"
 
-        DBOS.logger.info(
-            f"Uploading sanitized image: {sanitized_container}/{sanitized_blob_name}"
+        logger.debug(
+            "Uploading sanitized image",
+            image_id=str(image_id),
+            container=sanitized_container,
+            blob_name=sanitized_blob_name,
         )
+
+        upload_start = time.time()
         _result = await sanitized_storage.upload_blob(
             container=sanitized_container,
             name=sanitized_blob_name,
@@ -197,14 +240,33 @@ async def trigger_sanitization_function_local(
                 "date_sanitized": datetime.now(timezone.utc).isoformat(),
             },
         )
-        DBOS.logger.info(f"Sanitized image uploaded: {_result['url']}")
+        upload_ms = (time.time() - upload_start) * 1000
 
         sanitized_url = f"{blob_name}"
-        DBOS.logger.info(f"Sanitization complete: {sanitized_url}")
+
+        overall_ms = (time.time() - overall_start) * 1000
+
+        logger.debug(
+            "Local sanitization completed",
+            image_id=str(image_id),
+            sanitized_url=sanitized_url,
+            upload_duration_ms=round(upload_ms, 2),
+            total_duration_ms=round(overall_ms, 2),
+            download_ms=round(download_ms, 2),
+            processing_ms=round(processing_ms, 2),
+        )
 
         return sanitized_url
 
     except Exception as e:
+        overall_ms = (time.time() - overall_start) * 1000
+        logger.error(
+            "Local sanitization failed",
+            image_id=str(image_id),
+            error=str(e),
+            error_type=type(e).__name__,
+            duration_ms=round(overall_ms, 2),
+        )
         raise SanitizationError(f"Failed to sanitize image locally: {str(e)}") from e
 
 

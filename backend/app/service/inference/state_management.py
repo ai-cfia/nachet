@@ -47,6 +47,20 @@ async def create_processing_state(
     Raises:
         ImageProcessingError: If creation fails
     """
+    from app.service.logs import LogService
+    import time
+
+    logger = LogService.get_logger()
+    logger.debug(
+        "Creating processing state",
+        workflow_id=workflow_id,
+        picture_id=str(picture_id),
+        status=status,
+        progress_percentage=progress_percentage,
+    )
+
+    start_time = time.time()
+
     try:
         async with sessionmanager.get_session() as session:
             processing_state = ImageProcessingState(
@@ -62,8 +76,25 @@ async def create_processing_state(
             session.add(processing_state)
             await session.commit()
             await session.refresh(processing_state)
+
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.debug(
+                "Processing state created",
+                workflow_id=workflow_id,
+                status=processing_state.status,
+                duration_ms=round(elapsed_ms, 2),
+            )
+
             return processing_state
     except Exception as e:
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.error(
+            "Failed to create processing state",
+            workflow_id=workflow_id,
+            error=str(e),
+            error_type=type(e).__name__,
+            duration_ms=round(elapsed_ms, 2),
+        )
         raise ImageProcessingError(
             f"Failed to create processing state: {str(e)}"
         ) from e
@@ -96,6 +127,19 @@ async def create_inference_request_state(
     Raises:
         ImageProcessingError: If creation fails
     """
+    from app.service.logs import LogService
+    import time
+
+    logger = LogService.get_logger()
+    logger.debug(
+        "Creating inference request state",
+        workflow_id=workflow_id,
+        picture_id=str(picture_id),
+        pipeline_id=str(pipeline_id),
+    )
+
+    start_time = time.time()
+
     try:
         async with sessionmanager.get_session() as session:
             inference_state = InferenceRequestState(
@@ -111,8 +155,26 @@ async def create_inference_request_state(
             session.add(inference_state)
             await session.commit()
             await session.refresh(inference_state)
+
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.debug(
+                "Inference request state created",
+                workflow_id=workflow_id,
+                state_id=str(inference_state.id),
+                status=inference_state.status,
+                duration_ms=round(elapsed_ms, 2),
+            )
+
             return inference_state
     except Exception as e:
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.error(
+            "Failed to create inference request state",
+            workflow_id=workflow_id,
+            error=str(e),
+            error_type=type(e).__name__,
+            duration_ms=round(elapsed_ms, 2),
+        )
         raise ImageProcessingError(
             f"Failed to create inference request state: {str(e)}"
         ) from e

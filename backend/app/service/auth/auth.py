@@ -299,17 +299,17 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
                 ImmatureSignatureError,
                 MissingRequiredClaimError,
             ) as error:
-                _get_logger().info(f"Token contains invalid claims. {error}")
+                _get_logger().error(f"Token contains invalid claims. {error}")
                 raise Unauthorized(
                     detail="Token contains invalid claims", request=request
                 ) from error
             except ExpiredSignatureError as error:
-                _get_logger().info(f"Token signature has expired. {error}")
+                _get_logger().error(f"Token signature has expired. {error}")
                 raise Unauthorized(
                     detail="Token signature has expired", request=request
                 ) from error
             except InvalidTokenError as error:
-                _get_logger().warning(f"Invalid token. Error: {error}", exc_info=True)
+                _get_logger().error(f"Invalid token. Error: {error}", exc_info=True)
                 raise Unauthorized(
                     detail="Unable to validate token", request=request
                 ) from error

@@ -246,6 +246,19 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
         Returns:
             The folder_prefix if folder exists and belongs to the user role, None otherwise
         """
+        from app.service.logs import LogService
+        import time
+
+        logger = LogService.get_logger()
+
+        logger.debug(
+            "Checking folder exists",
+            folder_id=folder_id,
+            user_role_id=user_role_id,
+        )
+
+        start_time = time.time()
+
         stmt = (
             select(Folder.folder_prefix)
             .where(Folder.id == folder_id)
@@ -253,7 +266,25 @@ class DirectoryDataService(BaseCRUDDataService[Folder]):
             .where(Folder.active.is_(True))
         )
         result = await self.session.execute(stmt)  # type: ignore[attr-defined]
-        return result.scalar_one_or_none()
+        folder_prefix = result.scalar_one_or_none()
+
+        elapsed_ms = (time.time() - start_time) * 1000
+
+        if folder_prefix:
+            logger.debug(
+                "Folder exists",
+                folder_id=folder_id,
+                folder_prefix=folder_prefix,
+                duration_ms=round(elapsed_ms, 2),
+            )
+        else:
+            logger.debug(
+                "Folder not found",
+                folder_id=folder_id,
+                duration_ms=round(elapsed_ms, 2),
+            )
+
+        return folder_prefix
 
     async def find_folder_by_path(
         self, org_user_role_id: str, folder_name: str, folder_prefix: str
