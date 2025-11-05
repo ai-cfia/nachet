@@ -123,6 +123,18 @@ async def request_inference_from_seed_detector(
 
         # Serialize request to JSON
         body = str.encode(request_data.model_dump_json())
+
+        # Log request details (excluding full base64 image)
+        logger.debug(
+            "Seed detector API request",
+            model_name=model.name,
+            endpoint=model.endpoint,
+            columns=request_data.input_data.columns,
+            index=request_data.input_data.index,
+            image_data_length=len(previous_result),
+            request_body_size=len(body),
+        )
+
         req = Request(model.endpoint, body, headers, method="POST")
         # req = Request("http://192.168.x.x:12380/score", body, headers, method="POST")
 
@@ -133,6 +145,13 @@ async def request_inference_from_seed_detector(
         # Parse and validate response using Pydantic model
         result = response.read()
         result_dict = json.loads(result.decode("utf8"))
+
+        # Log the raw model response for debugging
+        logger.debug(
+            "Seed detector raw API response",
+            model_name=model.name,
+            response=result_dict,
+        )
 
         # Validate the API response structure
         validated_response = SeedDetectorAPIResponse(**result_dict)

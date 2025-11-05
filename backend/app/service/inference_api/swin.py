@@ -142,6 +142,16 @@ async def request_inference_from_swin(
                 model.deployment_platform: model.name,
             }
             body = img
+
+            # Log request details (excluding full base64 image)
+            logger.debug(
+                "SWIN API request",
+                model_name=model.name,
+                endpoint=model.endpoint,
+                image_index=idx + 1,
+                request_body_size=len(body),
+            )
+
             req = Request(model.endpoint, body, headers, method="POST")
             # req = Request("http://192.168.x.x:12390/score", body, headers, method="POST")
 
@@ -152,6 +162,14 @@ async def request_inference_from_swin(
             total_api_time_ms += api_call_ms
 
             result_list = json.loads(result.decode("utf8"))
+
+            # Log the raw model response for debugging
+            logger.debug(
+                "SWIN raw API response",
+                model_name=model.name,
+                image_index=idx + 1,
+                response=result_list,
+            )
 
             # Validate the SWIN API response
             validated_classification = SwinClassificationAPIResponse(result_list)

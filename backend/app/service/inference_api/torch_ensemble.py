@@ -144,10 +144,13 @@ async def request_inference_ensemble_a(
             }
             body = img
 
+            # Log request details (excluding full base64 image)
             logger.debug(
-                "Processing ensemble_a image",
+                "Ensemble_a API request",
                 model_name=model.name,
+                endpoint=model.endpoint,
                 image_index=idx + 1,
+                request_body_size=len(body),
             )
 
             api_call_start = time.time()
@@ -158,6 +161,14 @@ async def request_inference_ensemble_a(
             total_api_time_ms += api_call_ms
 
             inf_result_json = json.loads(inf_result.decode("utf8"))
+
+            # Log the raw model response for debugging
+            logger.debug(
+                "Ensemble_a raw API response",
+                model_name=model.name,
+                image_index=idx + 1,
+                response=inf_result_json,
+            )
 
             # Validate the SWIN API response
             validated_classification = SwinClassificationAPIResponse(inf_result_json)
@@ -296,11 +307,14 @@ async def request_inference_ensemble_b(
                 }
                 body = previous_result.images[idx]
 
+                # Log request details (excluding full base64 image)
                 logger.debug(
-                    "Box matches species list - reclassifying",
+                    "Ensemble_b API request",
                     model_name=model.name,
+                    endpoint=model.endpoint,
                     box_index=idx + 1,
                     original_label=box.label,
+                    request_body_size=len(body),
                 )
 
                 api_call_start = time.time()
@@ -311,6 +325,14 @@ async def request_inference_ensemble_b(
                 total_api_time_ms += api_call_ms
 
                 inf_result_json = json.loads(inf_result.decode("utf8"))
+
+                # Log the raw model response for debugging
+                logger.debug(
+                    "Ensemble_b raw API response",
+                    model_name=model.name,
+                    box_index=idx + 1,
+                    response=inf_result_json,
+                )
 
                 # Validate the SWIN API response
                 validated_classification = SwinClassificationAPIResponse(

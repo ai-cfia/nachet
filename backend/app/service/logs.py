@@ -3,6 +3,7 @@ Log service module for processing frontend logs and managing logging infrastruct
 """
 
 import sys
+import json
 import logging
 from contextvars import ContextVar
 from beartype.typing import Dict, Any, Optional
@@ -134,7 +135,7 @@ class LogService:
         record["extra"]["service"] = service
 
         # Build base format
-        base = "{time:YYYY-MM-DD HH:mm:ss} | {level} | {extra[service]} | {extra[correlation_id]}"
+        base = "{time:YYYY-MM-DD HH:mm:ss} | {level} | {extra[service]} | {extra[correlation_id]} | {file.name}:{function}:{line}"
 
         # Known fields that are already handled in the base format or below
         known_fields = {
@@ -167,8 +168,13 @@ class LogService:
         additional_fields = []
         for key, value in record["extra"].items():
             if key not in known_fields:
-                # Format the extra field as key=value
-                additional_fields.append(f"{key}={value}")
+                # Safely format value (convert dicts/lists to JSON to avoid format string issues)
+                if isinstance(value, (dict, list)):
+                    # Escape curly braces so Loguru doesn't interpret them as format specifiers
+                    safe_value = json.dumps(value).replace("{", "{{").replace("}", "}}")
+                else:
+                    safe_value = value
+                additional_fields.append(f"{key}={safe_value}")
 
         # Combine: base | request_info | message | extra_fields
         parts = [base]

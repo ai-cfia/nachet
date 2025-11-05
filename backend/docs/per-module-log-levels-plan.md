@@ -62,7 +62,7 @@ LOG_LEVEL_BLOB=ERROR  # app.blob.*
 
 **Changes Required**:
 
-#### 1. **Update `Settings` class** (`backend/app/api/config.py`):
+#### 1. **Update `Settings` class** (`backend/app/api/config.py`)
 
 ```python
 class Settings(BaseSettings):
@@ -96,7 +96,7 @@ class Settings(BaseSettings):
         return levels
 ```
 
-#### 2. **Update `LogService.setup_logging`** (`backend/app/service/logs.py`):
+#### 2. **Update `LogService.setup_logging`** (`backend/app/service/logs.py`)
 
 ```python
 @classmethod
@@ -138,7 +138,7 @@ def setup_logging(cls, config: Optional[Dict[str, Any]] = None):
     # ... rest of OTEL setup (apply same filter to OTEL bridge) ...
 ```
 
-#### 3. **Update `create_app` to pass module levels**:
+#### 3. **Update `create_app` to pass module levels**
 
 ```python
 # In config.py lifespan function:
