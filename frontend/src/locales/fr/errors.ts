@@ -2,7 +2,7 @@ export const errors = {
   auth: {
     signInRequired: "Vous devez être connecté pour effectuer une inférence",
     signInRequiredUpload:
-      "Vous devez être connecté pour télécharger des fichiers",
+      "Vous devez être connecté pour téléverser des fichiers",
     inProgress: "Authentification en cours, veuillez patienter",
   },
   directory: {
@@ -12,7 +12,7 @@ export const errors = {
     fetchFailed:
       "Erreur lors de la récupération des données d'inférence, voir la console pour plus de détails",
     processingFailed:
-      "Workflow {{workflowId}} a échoué pour l'image {{imageId}} : {{error}}",
+      "Le flux de travail {{workflowId}} a échoué pour l'image {{imageId}} : {{error}}",
   },
   queue: {
     full: "La file d'attente est pleine (10 éléments maximum). Veuillez attendre que certains se terminent.",
