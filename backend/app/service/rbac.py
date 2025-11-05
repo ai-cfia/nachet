@@ -177,7 +177,9 @@ class RbacService:
 
         try:
             async with sessionmanager.get_session() as session:
-                result = await OrganizationDataService(session).get_user_org_roles(user_id)
+                result = await OrganizationDataService(session).get_user_org_roles(
+                    user_id
+                )
 
                 if not result:
                     elapsed_ms = (time.time() - start_time) * 1000

@@ -118,7 +118,9 @@ class InferenceDispatchService:
                 # Seed detector expects a base64 string
                 if not isinstance(previous_result, str):
                     raise TypeError("rcnn_seed_detector expects a base64 string")
-                result = request_inference_from_seed_detector(model_info, previous_result)
+                result = request_inference_from_seed_detector(
+                    model_info, previous_result
+                )
             case "swin_classifier":
                 # SWIN classifier expects ModelInferenceDetectorResult
                 if not isinstance(previous_result, ModelInferenceDetectorResult):

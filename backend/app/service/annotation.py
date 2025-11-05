@@ -161,7 +161,9 @@ class AnnotationService(AuthorizedBaseCRUDService[Annotation]):
             elapsed_ms = (time.time() - start_time) * 1000
             logger.debug(
                 "Annotation created",
-                annotation_id=str(result.get("id")) if result and "id" in result else None,
+                annotation_id=str(result.get("id"))
+                if result and "id" in result
+                else None,
                 duration_ms=round(elapsed_ms, 2),
             )
 

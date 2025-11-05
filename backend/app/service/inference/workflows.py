@@ -338,7 +338,9 @@ async def execute_inference_step(
 
     # Log result summary
     if isinstance(step_result, ModelInferenceDetectorResult):
-        box_count = len(step_result.result.boxes) if hasattr(step_result.result, "boxes") else 0
+        box_count = (
+            len(step_result.result.boxes) if hasattr(step_result.result, "boxes") else 0
+        )
         logger.debug(
             "Inference step completed (detector)",
             model_name=model_name,
@@ -346,7 +348,9 @@ async def execute_inference_step(
             detected_boxes=box_count,
         )
     elif isinstance(step_result, ModelInferenceClassifierResult):
-        box_count = len(step_result.result.boxes) if hasattr(step_result.result, "boxes") else 0
+        box_count = (
+            len(step_result.result.boxes) if hasattr(step_result.result, "boxes") else 0
+        )
         logger.debug(
             "Inference step completed (classifier)",
             model_name=model_name,
@@ -1025,7 +1029,6 @@ async def image_processing_and_inference_workflow(
     )
 
     try:
-
         # Track workflow IDs
         processing_workflow_id = None
         inference_workflow_id = None
@@ -1206,7 +1209,6 @@ async def image_processing_workflow(
     )
 
     try:
-
         # Publish initial progress event
         await DBOS.set_event_async("processing_status", "started")
         await DBOS.set_event_async(

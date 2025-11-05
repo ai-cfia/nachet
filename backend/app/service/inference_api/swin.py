@@ -171,7 +171,9 @@ async def request_inference_from_swin(
             model_name=model.name,
             total_classifications=len(classification_results),
             total_api_time_ms=round(total_api_time_ms, 2),
-            avg_per_image_ms=round(total_api_time_ms / image_count, 2) if image_count > 0 else 0,
+            avg_per_image_ms=round(total_api_time_ms / image_count, 2)
+            if image_count > 0
+            else 0,
         )
 
         # Merge detection boxes with classification results

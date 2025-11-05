@@ -518,7 +518,7 @@ async def process_api_ready_classification_result(
             "Failed to process API-ready classification result",
             error=str(error),
             error_type=type(error).__name__,
-            box_count=len(result.boxes) if result and hasattr(result, 'boxes') else 0,
+            box_count=len(result.boxes) if result and hasattr(result, "boxes") else 0,
             duration_ms=round(elapsed_ms, 2),
         )
         raise ProcessInferenceResultsModelAPIError(
