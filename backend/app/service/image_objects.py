@@ -105,6 +105,65 @@ class ImageObjectsService(AuthorizedBaseCRUDService[Object]):
         }
 
     @classmethod
+    async def create(
+        cls,
+        requester_id: UUID,
+        **kwargs,
+    ):
+        """
+        Create a new image object with logging.
+
+        Args:
+            requester_id: UUID of the user creating the object
+            **kwargs: Additional object fields (inference_id, box_id, topN_id, etc.)
+
+        Returns:
+            Dictionary representation of the created image object
+
+        Raises:
+            HTTPException: If creation fails or user lacks permission
+        """
+        from app.service.logs import LogService
+        import time
+
+        logger = LogService.get_logger()
+
+        inference_id = kwargs.get("inference_id")
+        top_id = kwargs.get("topN_id")
+
+        logger.debug(
+            "Creating image object",
+            requester_id=str(requester_id),
+            inference_id=str(inference_id) if inference_id else None,
+            top_id=str(top_id) if top_id else None,
+        )
+
+        start_time = time.time()
+
+        try:
+            # Call parent create method
+            result = await super().create(requester_id, **kwargs)
+
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.debug(
+                "Image object created",
+                object_id=str(result.get("id")) if result and "id" in result else None,
+                duration_ms=round(elapsed_ms, 2),
+            )
+
+            return result
+        except Exception as e:
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.error(
+                "Failed to create image object",
+                requester_id=str(requester_id),
+                error=str(e),
+                error_type=type(e).__name__,
+                duration_ms=round(elapsed_ms, 2),
+            )
+            raise
+
+    @classmethod
     def get_not_found_exception(cls) -> Type[Exception]:
         """Return the exception to raise when an image object is not found."""
         return ImageObjectsNotFoundError

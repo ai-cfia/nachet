@@ -78,9 +78,9 @@ class OpenIdConfig:
                         f"Unable to fetch provider information. {error}"
                     ) from error
 
-            _get_logger().info(
-                "fastapi-azure-auth loaded settings from Azure Entra ID."
-            )
+            # _get_logger().info(
+            #     "fastapi-azure-auth loaded settings from Azure Entra ID."
+            # )
             # _get_logger().debug(
             #     f"authorization endpoint: {self.authorization_endpoint}"
             # )

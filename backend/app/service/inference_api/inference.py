@@ -354,6 +354,20 @@ async def process_api_ready_classification_result(
     Raises:
         ProcessInferenceResultsModelAPIError: If processing fails
     """
+    from app.service.logs import LogService
+    import time
+
+    logger = LogService.get_logger()
+
+    logger.debug(
+        "Processing classification result for API",
+        box_count=len(result.boxes),
+        image_dims=imageDims,
+        area_ratio=area_ratio,
+    )
+
+    start_time = time.time()
+
     try:
         from app.model.inference import ApiReadyInferenceResult, ApiInferenceBox
         import uuid
@@ -365,6 +379,8 @@ async def process_api_ready_classification_result(
 
         # Convert normalized coordinates to pixel coordinates for frontend rendering
         from app.model.inference import PixelBoundingBox
+
+        coord_conversion_start = time.time()
 
         for i, box in enumerate(result.boxes):
             # Convert normalized (0.0-1.0) coordinates to pixel coordinates
@@ -395,7 +411,11 @@ async def process_api_ready_classification_result(
                 )
             )
 
+        coord_conversion_ms = (time.time() - coord_conversion_start) * 1000
+
         # Detect overlapping boxes using pixel coordinates
+        overlap_detection_start = time.time()
+
         for i in range(len(api_boxes)):
             for j in range(i + 1, len(api_boxes)):
                 box = api_boxes[i].box
@@ -442,7 +462,18 @@ async def process_api_ready_classification_result(
                         api_boxes[i].box.topX = api_boxes[j].box.topX
                         api_boxes[i].box.topY = api_boxes[j].box.topY
 
+        overlap_detection_ms = (time.time() - overlap_detection_start) * 1000
+        overlapping_count = sum(1 for box in api_boxes if box.overlapping)
+
+        logger.debug(
+            "Overlap detection completed",
+            total_boxes=len(api_boxes),
+            overlapping_boxes=overlapping_count,
+            duration_ms=round(overlap_detection_ms, 2),
+        )
+
         # Assign colors and calculate label occurrence
+        color_assignment_start = time.time()
         gen = generator(len(api_boxes))
         label_occurrence: dict[str, int] = {}
         label_colors: dict[str, str] = {}
@@ -460,6 +491,19 @@ async def process_api_ready_classification_result(
             else:
                 label_occurrence[box.label] += 1
 
+        color_assignment_ms = (time.time() - color_assignment_start) * 1000
+
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.debug(
+            "API-ready classification result processed",
+            total_boxes=len(api_boxes),
+            unique_labels=len(label_occurrence),
+            coord_conversion_ms=round(coord_conversion_ms, 2),
+            overlap_detection_ms=round(overlap_detection_ms, 2),
+            color_assignment_ms=round(color_assignment_ms, 2),
+            total_duration_ms=round(elapsed_ms, 2),
+        )
+
         # Return API-ready result
         return ApiReadyInferenceResult(
             boxes=api_boxes,
@@ -469,7 +513,14 @@ async def process_api_ready_classification_result(
         )
 
     except (KeyError, TypeError, IndexError, ValueError, ZeroDivisionError) as error:
-        print(error)
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.error(
+            "Failed to process API-ready classification result",
+            error=str(error),
+            error_type=type(error).__name__,
+            box_count=len(result.boxes) if result and hasattr(result, 'boxes') else 0,
+            duration_ms=round(elapsed_ms, 2),
+        )
         raise ProcessInferenceResultsModelAPIError(
             f"Error while processing API-ready classification results:\n {str(error)}"
         ) from error

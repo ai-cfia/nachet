@@ -59,6 +59,63 @@ class SeedService(BaseCRUDService[Seed]):
         return SeedDeletionError
 
     @classmethod
+    async def get_by_id(
+        cls,
+        requester_id: UUID,
+        entity_id: UUID,
+    ) -> Dict[str, Any]:
+        """
+        Get a seed by ID with debug logging.
+
+        Args:
+            requester_id: UUID of the user making the request
+            entity_id: UUID of the seed to retrieve
+
+        Returns:
+            Dictionary representation of the seed
+
+        Raises:
+            SeedNotFoundError: If seed not found
+        """
+        from app.service.logs import LogService
+        import time
+
+        logger = LogService.get_logger()
+
+        logger.debug(
+            "Fetching seed by ID",
+            seed_id=str(entity_id),
+            requester_id=str(requester_id),
+        )
+
+        start_time = time.time()
+
+        try:
+            # Call parent get_by_id method
+            result = await super().get_by_id(requester_id, entity_id)
+
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.debug(
+                "Seed retrieved successfully",
+                seed_id=str(entity_id),
+                name_code=result.get("name_code"),
+                active=result.get("active"),
+                duration_ms=round(elapsed_ms, 2),
+            )
+
+            return result
+        except Exception as e:
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.error(
+                "Failed to retrieve seed",
+                seed_id=str(entity_id),
+                error=str(e),
+                error_type=type(e).__name__,
+                duration_ms=round(elapsed_ms, 2),
+            )
+            raise
+
+    @classmethod
     async def get_all(
         cls,
         requester_id: UUID,
@@ -95,6 +152,15 @@ class SeedService(BaseCRUDService[Seed]):
         Raises:
             SeedError: If data retrieval fails
         """
+        from app.service.logs import LogService
+        import time
+
+        logger = LogService.get_logger()
+
+        logger.debug("Fetching seed data")
+
+        start_time = time.time()
+
         try:
             seeds = None
             async with sessionmanager.get_session() as session:
@@ -107,9 +173,23 @@ class SeedService(BaseCRUDService[Seed]):
                 else []
             )
 
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.debug(
+                "Seed data retrieved",
+                seed_count=len(serialized_seeds),
+                duration_ms=round(elapsed_ms, 2),
+            )
+
             # TypedDict (SeedDataRow) is compatible with Dict[str, Any] at runtime
             return {"seeds": cast(List[Dict[str, Any]], serialized_seeds)}
         except Exception as e:
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.error(
+                "Failed to retrieve seed data",
+                error=str(e),
+                error_type=type(e).__name__,
+                duration_ms=round(elapsed_ms, 2),
+            )
             raise SeedError(f"Failed to retrieve seed data: {str(e)}") from e
 
     @staticmethod

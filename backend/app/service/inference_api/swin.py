@@ -111,12 +111,30 @@ async def request_inference_from_swin(
     Raises:
         SwinModelAPIError: If an error occurs while processing the request.
     """
+    from app.service.logs import LogService
+    import time
+
+    logger = LogService.get_logger()
+
+    image_count = len(previous_result.images)
+
+    logger.debug(
+        "Requesting SWIN classification",
+        model_name=model.name,
+        endpoint=model.endpoint,
+        image_count=image_count,
+    )
+
+    start_time = time.time()
+
     try:
         # Get the validated detection response from previous step
         detection_response = previous_result.result
 
         # Perform classification on each cropped image
         classification_results = []
+        total_api_time_ms = 0
+
         for idx, img in enumerate(previous_result.images):
             headers = {
                 "Content-Type": model.content_type,
@@ -126,32 +144,63 @@ async def request_inference_from_swin(
             body = img
             req = Request(model.endpoint, body, headers, method="POST")
             # req = Request("http://192.168.x.x:12390/score", body, headers, method="POST")
+
+            api_call_start = time.time()
             response = urlopen(req)
             result = response.read()
+            api_call_ms = (time.time() - api_call_start) * 1000
+            total_api_time_ms += api_call_ms
+
             result_list = json.loads(result.decode("utf8"))
 
             # Validate the SWIN API response
             validated_classification = SwinClassificationAPIResponse(result_list)
 
-            print(
-                f"Result for image {idx + 1}: \n {json.dumps([p.model_dump() for p in validated_classification.predictions], indent=4)}"
+            logger.debug(
+                "SWIN classification result",
+                model_name=model.name,
+                image_index=idx + 1,
+                predictions=len(validated_classification.predictions),
+                api_call_duration_ms=round(api_call_ms, 2),
             )
+
             classification_results.append(validated_classification)
 
-        print(
-            f"Total classifications: {len(classification_results)}"
-        )  # TODO Transform into logging
+        logger.debug(
+            "SWIN API calls completed",
+            model_name=model.name,
+            total_classifications=len(classification_results),
+            total_api_time_ms=round(total_api_time_ms, 2),
+            avg_per_image_ms=round(total_api_time_ms / image_count, 2) if image_count > 0 else 0,
+        )
 
         # Merge detection boxes with classification results
+        merge_start = time.time()
         enhanced_result = process_swin_result(
             detection_response, classification_results
         )
-        # print(json.dumps(enhanced_result, indent=4))
+        merge_ms = (time.time() - merge_start) * 1000
+
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.debug(
+            "SWIN classification completed",
+            model_name=model.name,
+            classified_boxes=len(enhanced_result.boxes),
+            merge_duration_ms=round(merge_ms, 2),
+            total_duration_ms=round(elapsed_ms, 2),
+        )
 
         return ModelInferenceClassifierResult(result=enhanced_result)
 
     except ValidationError as error:
-        print(f"Pydantic validation error: {error}")
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.error(
+            "SWIN validation error",
+            model_name=model.name,
+            error=str(error),
+            error_type="ValidationError",
+            duration_ms=round(elapsed_ms, 2),
+        )
         raise SwinModelAPIError(
             f"Invalid data structure from SWIN API:\n {str(error)}"
         ) from error
@@ -162,7 +211,14 @@ async def request_inference_from_swin(
         URLError,
         json.JSONDecodeError,
     ) as error:
-        print(error)
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.error(
+            "SWIN processing error",
+            model_name=model.name,
+            error=str(error),
+            error_type=type(error).__name__,
+            duration_ms=round(elapsed_ms, 2),
+        )
         raise SwinModelAPIError(
             f"An error occurred while processing the request:\n {str(error)}"
         ) from error

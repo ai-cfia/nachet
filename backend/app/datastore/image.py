@@ -48,6 +48,19 @@ class ImageDataService(BaseCRUDDataService[Picture]):
         Returns:
             UUID | None: The UUID of the picture if it exists in the same organization, None otherwise
         """
+        from app.service.logs import LogService
+        import time
+
+        logger = LogService.get_logger()
+
+        logger.debug(
+            "Checking SHA256 existence",
+            sha256=sha256[:16] + "...",  # Log first 16 chars for privacy
+            user_role_id=str(user_role_id),
+        )
+
+        start_time = time.time()
+
         query = (
             select(Picture.id)
             .where(Picture.sha256 == sha256)
@@ -55,4 +68,22 @@ class ImageDataService(BaseCRUDDataService[Picture]):
             .limit(1)
         )
         result = await self.session.execute(query)
-        return result.scalar_one_or_none()
+        picture_id = result.scalar_one_or_none()
+
+        elapsed_ms = (time.time() - start_time) * 1000
+
+        if picture_id:
+            logger.debug(
+                "SHA256 exists (duplicate detected)",
+                sha256=sha256[:16] + "...",
+                existing_picture_id=str(picture_id),
+                duration_ms=round(elapsed_ms, 2),
+            )
+        else:
+            logger.debug(
+                "SHA256 not found (no duplicate)",
+                sha256=sha256[:16] + "...",
+                duration_ms=round(elapsed_ms, 2),
+            )
+
+        return picture_id

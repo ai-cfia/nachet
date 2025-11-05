@@ -80,6 +80,16 @@ async def create_inference_request_state_step(
         Dict with inference_request_state_id
     """
     from app.service.inference.state_management import create_inference_request_state
+    from app.service.logs import LogService
+
+    logger = LogService.get_logger()
+    logger.debug(
+        "Creating inference request state",
+        picture_id=str(picture_id),
+        pipeline_id=str(pipeline_id),
+        workflow_id=workflow_id,
+        image_dims=image_dims,
+    )
 
     request_payload = {
         "picture_id": str(picture_id),
@@ -96,6 +106,13 @@ async def create_inference_request_state_step(
         org_admin_role_id=org_admin_role_id,
         workflow_id=workflow_id,
         request_payload=request_payload,
+    )
+
+    logger.debug(
+        "Inference request state created successfully",
+        inference_request_state_id=str(state.id),
+        status=state.status,
+        workflow_id=workflow_id,
     )
 
     return {
@@ -128,12 +145,32 @@ async def download_image_from_blob_step(
     """
     import base64
     from app.service.blob_operations import download_sanitized_blob
+    from app.service.logs import LogService
+
+    logger = LogService.get_logger()
+    logger.debug(
+        "Downloading sanitized image from blob storage",
+        image_id=str(image_id),
+        org_prefix=org_prefix,
+    )
 
     image_bytes = await download_sanitized_blob(image_id, org_prefix)
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
     if not image_base64:
+        logger.error(
+            "Image download failed - empty result",
+            image_id=str(image_id),
+            org_prefix=org_prefix,
+        )
         raise ImageProcessingError("Image not found")
+
+    logger.debug(
+        "Image downloaded successfully",
+        image_id=str(image_id),
+        image_bytes_size=len(image_bytes),
+        base64_size=len(image_base64),
+    )
 
     return image_base64
 
@@ -158,17 +195,29 @@ async def get_pipeline_configuration_step(
     Raises:
         ValueError: If pipeline not found
     """
+    from app.service.logs import LogService
+
+    logger = LogService.get_logger()
+    logger.debug(
+        "Retrieving pipeline configuration",
+        pipeline_id=str(pipeline_id),
+    )
+
     pipeline_steps = await PipelineService.get_pipeline_steps(str(pipeline_id))
 
     if not pipeline_steps:
-        from app.service.logs import LogService
-
-        logger = LogService.get_logger()
         error_msg = f"Pipeline '{pipeline_id}' not found in cache"
         logger.error(
             f"{error_msg} (available_pipelines={PipelineService.get_cached_pipeline_names()})"
         )
         raise ValueError(error_msg)
+
+    logger.debug(
+        "Pipeline configuration retrieved",
+        pipeline_id=str(pipeline_id),
+        step_count=len(pipeline_steps),
+        model_names=[s.get("model_name", "unknown") for s in pipeline_steps],
+    )
 
     return pipeline_steps
 
@@ -200,6 +249,21 @@ async def execute_inference_step(
         ModelInferenceClassifierResult,
         InferenceDispatchService,
     )
+    from app.service.logs import LogService
+    import time
+
+    logger = LogService.get_logger()
+    model_name = step_config.get("model_name", "unknown")
+
+    logger.debug(
+        "Starting inference step",
+        model_name=model_name,
+        step=step_config.get("step"),
+        request_function=step_config.get("request_function"),
+        previous_result_type=type(previous_result).__name__,
+    )
+
+    start_time = time.time()
 
     # Reconstruct typed objects from dict if needed
     if isinstance(previous_result, dict):
@@ -218,6 +282,11 @@ async def execute_inference_step(
                     previous_result = ModelInferenceDetectorResult(
                         result=result_obj, images=previous_result["images"]
                     )
+                    logger.debug(
+                        "Reconstructed detector result from dict",
+                        model_name=model_name,
+                        box_count=len(result_field.get("boxes", [])),
+                    )
                 elif "filename" in result_field and "boxes" in result_field:
                     # This is a classifier result - reconstruct EnhancedClassificationResult
                     from app.model.inference import (
@@ -227,6 +296,11 @@ async def execute_inference_step(
                     result_obj = EnhancedClassificationResultModel(**result_field)
                     previous_result = ModelInferenceClassifierResult(
                         result=result_obj, images=previous_result.get("images")
+                    )
+                    logger.debug(
+                        "Reconstructed classifier result from dict",
+                        model_name=model_name,
+                        box_count=len(result_field.get("boxes", [])),
                     )
             # else: result field is already a Pydantic model instance, use as-is
             elif hasattr(result_field, "boxes"):
@@ -238,17 +312,53 @@ async def execute_inference_step(
                 )
 
     # Dispatch to inference service
+    logger.debug(
+        "Calling ML model endpoint",
+        model_name=model_name,
+    )
+
     step_result = await InferenceDispatchService.dispatch(
         model=step_config,
         previous_result=previous_result,
     )
+
+    elapsed_ms = (time.time() - start_time) * 1000
 
     # Type guard: dispatch returns only valid result types
     if not isinstance(
         step_result,
         (str, ModelInferenceDetectorResult, ModelInferenceClassifierResult),
     ):
+        logger.error(
+            "Pipeline step returned unexpected type",
+            model_name=model_name,
+            actual_type=type(step_result).__name__,
+        )
         raise ValueError(f"Pipeline step returned unexpected type: {type(step_result)}")
+
+    # Log result summary
+    if isinstance(step_result, ModelInferenceDetectorResult):
+        box_count = len(step_result.result.boxes) if hasattr(step_result.result, "boxes") else 0
+        logger.debug(
+            "Inference step completed (detector)",
+            model_name=model_name,
+            duration_ms=round(elapsed_ms, 2),
+            detected_boxes=box_count,
+        )
+    elif isinstance(step_result, ModelInferenceClassifierResult):
+        box_count = len(step_result.result.boxes) if hasattr(step_result.result, "boxes") else 0
+        logger.debug(
+            "Inference step completed (classifier)",
+            model_name=model_name,
+            duration_ms=round(elapsed_ms, 2),
+            classified_boxes=box_count,
+        )
+    else:
+        logger.debug(
+            "Inference step completed (base64)",
+            model_name=model_name,
+            duration_ms=round(elapsed_ms, 2),
+        )
 
     # Convert to dict for DBOS serialization
     if isinstance(
@@ -485,12 +595,20 @@ async def image_inference_workflow(
         process_api_ready_classification_result,
     )
     from app.model.inference import ModelInfo
+    import time
 
     logger = LogService.get_logger()
+    workflow_start_time = time.time()
 
     logger.debug(
-        "Processing direct pipeline inference request",
-        pipeline_id=pipeline_id,
+        "=== INFERENCE WORKFLOW STARTED ===",
+        workflow_id=DBOS.workflow_id,
+        parent_workflow_id=str(parent_workflow_id),
+        image_id=str(image_id),
+        pipeline_id=str(pipeline_id),
+        org_prefix=org_prefix,
+        image_dims=image_dims,
+        user_id=str(user_id),
     )
 
     # Initialize inference_state_id to None for error handling
@@ -663,10 +781,24 @@ async def image_inference_workflow(
                 },
             )
 
+        workflow_elapsed_ms = (time.time() - workflow_start_time) * 1000
+        logger.debug(
+            "=== INFERENCE WORKFLOW COMPLETED ===",
+            workflow_id=DBOS.workflow_id,
+            parent_workflow_id=str(parent_workflow_id),
+            image_id=str(image_id),
+            pipeline_id=str(pipeline_id),
+            total_duration_ms=round(workflow_elapsed_ms, 2),
+            total_boxes=api_response.total_boxes,
+            unique_labels=len(api_response.label_occurrence),
+        )
+
         # Return validated API response
         return api_response
 
     except Exception as e:
+        workflow_elapsed_ms = (time.time() - workflow_start_time) * 1000
+
         # Update inference state on error (only if state was created)
         if inference_state_id is not None:
             await mark_inference_failed_step(
@@ -686,7 +818,14 @@ async def image_inference_workflow(
         )
 
         logger.error(
-            f"Failed to submit direct pipeline inference for pipeline_id={pipeline_id}: {str(e)} (error_type={type(e).__name__})"
+            "=== INFERENCE WORKFLOW FAILED ===",
+            workflow_id=DBOS.workflow_id,
+            parent_workflow_id=str(parent_workflow_id),
+            image_id=str(image_id),
+            pipeline_id=str(pipeline_id),
+            error=str(e),
+            error_type=type(e).__name__,
+            duration_before_failure_ms=round(workflow_elapsed_ms, 2),
         )
 
         # Re-raise ValueError as-is, convert others to ImageProcessingError
@@ -867,10 +1006,25 @@ async def image_processing_and_inference_workflow(
     Raises:
         Various exceptions for different failure modes (defender, sanitization, inference)
     """
+    from app.service.logs import LogService
+    import time
+
+    logger = LogService.get_logger()
+    parent_start_time = time.time()
+
+    logger.debug(
+        "=== PARENT WORKFLOW STARTED ===",
+        workflow_id=DBOS.workflow_id,
+        image_id=str(image_id),
+        pipeline_id=str(pipeline_id),
+        org_prefix=org_prefix,
+        skip_preprocessing=skip_preprocessing,
+        has_file_bytes=file_bytes is not None,
+        file_size_bytes=len(file_bytes) if file_bytes else 0,
+        user_id=str(user_id),
+    )
+
     try:
-        DBOS.logger.info(
-            f"Starting parent workflow for {image_id} (skip_preprocessing={skip_preprocessing})"
-        )
 
         # Track workflow IDs
         processing_workflow_id = None
@@ -879,6 +1033,12 @@ async def image_processing_and_inference_workflow(
         # Step 1: Process image (upload → scan → sanitize)
         processing_result = None
         if not skip_preprocessing:
+            logger.debug(
+                "Starting processing workflow (upload/scan/sanitize)",
+                workflow_id=DBOS.workflow_id,
+                image_id=str(image_id),
+            )
+
             # Get the child workflow ID before executing
             processing_workflow_id = (
                 DBOS.workflow_id
@@ -894,22 +1054,44 @@ async def image_processing_and_inference_workflow(
 
             # Publish processing workflow ID
             await DBOS.set_event_async("processing_workflow_id", processing_workflow_id)
+
+            logger.debug(
+                "Processing workflow completed",
+                workflow_id=DBOS.workflow_id,
+                image_id=str(image_id),
+                processing_status=processing_result.get("status"),
+            )
         else:
             # For duplicates, wait for sanitization to complete before inference
             # This handles race condition where duplicate submitted while first upload still processing
-            DBOS.logger.info(
-                f"[{image_id}] Duplicate image - waiting for sanitization to complete"
+            logger.debug(
+                "Duplicate image detected - waiting for sanitization",
+                workflow_id=DBOS.workflow_id,
+                image_id=str(image_id),
             )
             await wait_for_sanitization_workflow(image_id)
-            DBOS.logger.info(
-                f"[{image_id}] Sanitization complete, proceeding to inference"
+            logger.debug(
+                "Sanitization complete, proceeding to inference",
+                workflow_id=DBOS.workflow_id,
+                image_id=str(image_id),
             )
 
-        DBOS.logger.info(f"[{image_id}] Processing complete, starting inference")
+        logger.debug(
+            "Processing phase complete, starting inference phase",
+            workflow_id=DBOS.workflow_id,
+            image_id=str(image_id),
+        )
 
         # Step 2: Run inference on the processed image (if pipeline_id provided)
         inference_result = None
         if pipeline_id:
+            logger.debug(
+                "Starting inference workflow",
+                workflow_id=DBOS.workflow_id,
+                image_id=str(image_id),
+                pipeline_id=str(pipeline_id),
+            )
+
             # Get the child workflow ID before executing
             inference_workflow_id = DBOS.workflow_id
 
@@ -926,7 +1108,12 @@ async def image_processing_and_inference_workflow(
 
             # Publish inference workflow ID
             await DBOS.set_event_async("inference_workflow_id", inference_workflow_id)
-            DBOS.logger.info(f"[{image_id}] Inference complete")
+
+            logger.debug(
+                "Inference workflow completed",
+                workflow_id=DBOS.workflow_id,
+                image_id=str(image_id),
+            )
 
         # Publish both workflow IDs together for easy retrieval
         await DBOS.set_event_async(
@@ -936,6 +1123,18 @@ async def image_processing_and_inference_workflow(
                 "processing_workflow_id": processing_workflow_id,
                 "inference_workflow_id": inference_workflow_id,
             },
+        )
+
+        parent_elapsed_ms = (time.time() - parent_start_time) * 1000
+
+        logger.debug(
+            "=== PARENT WORKFLOW COMPLETED ===",
+            workflow_id=DBOS.workflow_id,
+            image_id=str(image_id),
+            pipeline_id=str(pipeline_id),
+            total_duration_ms=round(parent_elapsed_ms, 2),
+            processing_workflow_id=processing_workflow_id,
+            inference_workflow_id=inference_workflow_id,
         )
 
         return {
@@ -949,7 +1148,16 @@ async def image_processing_and_inference_workflow(
         }
 
     except Exception as e:
-        DBOS.logger.error(f"[{image_id}] Parent workflow failed: {str(e)}")
+        parent_elapsed_ms = (time.time() - parent_start_time) * 1000
+
+        logger.error(
+            "=== PARENT WORKFLOW FAILED ===",
+            workflow_id=DBOS.workflow_id,
+            image_id=str(image_id),
+            error=str(e),
+            error_type=type(e).__name__,
+            duration_before_failure_ms=round(parent_elapsed_ms, 2),
+        )
         raise
 
 
@@ -981,8 +1189,23 @@ async def image_processing_workflow(
     Raises:
         Various exceptions for different failure modes (defender, sanitization)
     """
+    from app.service.logs import LogService
+    import time
+
+    logger = LogService.get_logger()
+    processing_start_time = time.time()
+
+    logger.debug(
+        "=== PROCESSING WORKFLOW STARTED ===",
+        workflow_id=DBOS.workflow_id,
+        parent_workflow_id=parent_workflow_id,
+        image_id=str(image_id),
+        org_prefix=org_prefix,
+        has_file_bytes=file_bytes is not None,
+        file_size_bytes=len(file_bytes) if file_bytes else 0,
+    )
+
     try:
-        DBOS.logger.info(f"Starting image processing pipeline for {image_id})")
 
         # Publish initial progress event
         await DBOS.set_event_async("processing_status", "started")
@@ -992,9 +1215,14 @@ async def image_processing_workflow(
 
         # Step 1: Upload to Azure Blob Storage (nachet-original on EXTERNAL)
         # Must upload to EXTERNAL account for Azure Defender malware scanning
-        DBOS.logger.info(
-            f"[{image_id}] Step 1: Uploading to nachet-original on EXTERNAL storage"
+        logger.debug(
+            "Step 1: Uploading to EXTERNAL blob storage",
+            workflow_id=DBOS.workflow_id,
+            image_id=str(image_id),
+            container="nachet-original",
+            account="EXTERNAL",
         )
+
         blob_url_original = await upload_to_azure_blob(
             image_id=image_id,
             file_bytes=file_bytes,
@@ -1006,6 +1234,13 @@ async def image_processing_workflow(
         await DBOS.set_event_async("processing_status", "uploaded")
         await DBOS.set_event_async("blob_url_original", blob_url_original)
 
+        logger.debug(
+            "Upload completed",
+            workflow_id=DBOS.workflow_id,
+            image_id=str(image_id),
+            blob_url=blob_url_original,
+        )
+
         # Update processing state after upload
         await update_processing_state_step(
             workflow_id=parent_workflow_id,
@@ -1016,7 +1251,11 @@ async def image_processing_workflow(
         )
 
         # Step 2: Wait for Azure Defender scan
-        DBOS.logger.info(f"[{image_id}] Step 2: Waiting for Defender scan")
+        logger.debug(
+            "Step 2: Starting Defender scan",
+            workflow_id=DBOS.workflow_id,
+            image_id=str(image_id),
+        )
         await DBOS.set_event_async("processing_status", "defender_scanning")
 
         # Update processing state before defender scan
@@ -1026,6 +1265,8 @@ async def image_processing_workflow(
             defender_scan_started_at=datetime.now(timezone.utc),
             progress_percentage=40,
         )
+
+        defender_scan_start = time.time()
 
         # TODO: use the actual method when blob is unblocked
         defender_result = {
@@ -1038,8 +1279,10 @@ async def image_processing_workflow(
             },
             "scan_timestamp": datetime.now(timezone.utc).isoformat(),
         }
-        DBOS.logger.info(
-            f"IMPORTANT: This is not for production use. Assuming clean scan for image {image_id}."
+        logger.warning(
+            "MOCK MODE: Skipping real Defender scan (not for production)",
+            workflow_id=DBOS.workflow_id,
+            image_id=str(image_id),
         )
         # defender_result = await wait_for_defender_scan(
         #     image_id=image_id,
@@ -1049,6 +1292,15 @@ async def image_processing_workflow(
         await DBOS.set_event_async("defender_scan_complete", True)
         await DBOS.set_event_async("processing_status", "defender_scanned")
         await DBOS.set_event_async("defender_result", defender_result)
+
+        defender_elapsed_ms = (time.time() - defender_scan_start) * 1000
+        logger.debug(
+            "Defender scan completed",
+            workflow_id=DBOS.workflow_id,
+            image_id=str(image_id),
+            scan_result=defender_result.get("status"),
+            duration_ms=round(defender_elapsed_ms, 2),
+        )
 
         # Update processing state after defender scan
         await update_processing_state_step(
@@ -1061,7 +1313,11 @@ async def image_processing_workflow(
         )
 
         # Step 3: Trigger sanitization Azure Function
-        DBOS.logger.info(f"[{image_id}] Step 3: Triggering sanitization function")
+        logger.debug(
+            "Step 3: Starting sanitization",
+            workflow_id=DBOS.workflow_id,
+            image_id=str(image_id),
+        )
         await DBOS.set_event_async("processing_status", "sanitizing")
 
         # Update processing state before sanitization
@@ -1072,9 +1328,20 @@ async def image_processing_workflow(
             progress_percentage=75,
         )
 
+        sanitization_start = time.time()
+
         blob_url_sanitized = await trigger_sanitization_function_local(
             image_id=image_id,
             org_prefix=org_prefix,
+        )
+
+        sanitization_elapsed_ms = (time.time() - sanitization_start) * 1000
+        logger.debug(
+            "Sanitization completed",
+            workflow_id=DBOS.workflow_id,
+            image_id=str(image_id),
+            blob_url_sanitized=blob_url_sanitized,
+            duration_ms=round(sanitization_elapsed_ms, 2),
         )
 
         # Update Picture table with sanitized blob URL (for legacy compatibility)
@@ -1114,7 +1381,16 @@ async def image_processing_workflow(
             progress_percentage=100,
         )
 
-        DBOS.logger.info(f"[{image_id}] Pipeline completed successfully")
+        processing_elapsed_ms = (time.time() - processing_start_time) * 1000
+        logger.debug(
+            "=== PROCESSING WORKFLOW COMPLETED ===",
+            workflow_id=DBOS.workflow_id,
+            parent_workflow_id=parent_workflow_id,
+            image_id=str(image_id),
+            total_duration_ms=round(processing_elapsed_ms, 2),
+            blob_url_original=blob_url_original,
+            blob_url_sanitized=blob_url_sanitized,
+        )
 
         return {
             "image_id": str(image_id),
@@ -1124,7 +1400,17 @@ async def image_processing_workflow(
         }
 
     except Exception as e:
-        DBOS.logger.error(f"[{image_id}] Pipeline failed: {str(e)}")
+        processing_elapsed_ms = (time.time() - processing_start_time) * 1000
+
+        logger.error(
+            "=== PROCESSING WORKFLOW FAILED ===",
+            workflow_id=DBOS.workflow_id,
+            parent_workflow_id=parent_workflow_id,
+            image_id=str(image_id),
+            error=str(e),
+            error_type=type(e).__name__,
+            duration_before_failure_ms=round(processing_elapsed_ms, 2),
+        )
 
         # Check if this is a malware detection error
         from app.exceptions import DefenderScanFailedError

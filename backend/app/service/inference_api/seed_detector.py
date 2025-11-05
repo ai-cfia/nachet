@@ -89,6 +89,20 @@ async def request_inference_from_seed_detector(
     Raises:
         SeedDetectorModelAPIError: If an error occurs while processing the request.
     """
+    from app.service.logs import LogService
+    import time
+
+    logger = LogService.get_logger()
+
+    logger.debug(
+        "Requesting seed detector inference",
+        model_name=model.name,
+        endpoint=model.endpoint,
+        image_size_b64=len(previous_result),
+    )
+
+    start_time = time.time()
+
     try:
         # Create and validate request using Pydantic model
         from app.model.inference import AzureMLInputData
@@ -111,7 +125,10 @@ async def request_inference_from_seed_detector(
         body = str.encode(request_data.model_dump_json())
         req = Request(model.endpoint, body, headers, method="POST")
         # req = Request("http://192.168.x.x:12380/score", body, headers, method="POST")
+
+        api_call_start = time.time()
         response = urlopen(req)
+        api_call_ms = (time.time() - api_call_start) * 1000
 
         # Parse and validate response using Pydantic model
         result = response.read()
@@ -120,19 +137,41 @@ async def request_inference_from_seed_detector(
         # Validate the API response structure
         validated_response = SeedDetectorAPIResponse(**result_dict)
 
-        print(
-            json.dumps([box.model_dump() for box in validated_response.boxes], indent=4)
-        )  # TODO Transform into logging
+        logger.debug(
+            "Seed detector API response received",
+            model_name=model.name,
+            detected_boxes=len(validated_response.boxes),
+            api_call_duration_ms=round(api_call_ms, 2),
+        )
 
         # Create cropped images from detected boxes using Pydantic model
+        slicing_start = time.time()
         cropped_images = process_image_slicing(previous_result, validated_response)
+        slicing_ms = (time.time() - slicing_start) * 1000
+
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.debug(
+            "Seed detector inference completed",
+            model_name=model.name,
+            detected_boxes=len(validated_response.boxes),
+            cropped_images=len(cropped_images),
+            slicing_duration_ms=round(slicing_ms, 2),
+            total_duration_ms=round(elapsed_ms, 2),
+        )
 
         # Return structured dataclass with Pydantic model
         return ModelInferenceDetectorResult(
             result=validated_response, images=cropped_images
         )
     except ValidationError as error:
-        print(f"Pydantic validation error: {error}")
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.error(
+            "Seed detector validation error",
+            model_name=model.name,
+            error=str(error),
+            error_type="ValidationError",
+            duration_ms=round(elapsed_ms, 2),
+        )
         raise SeedDetectorModelAPIError(
             f"Invalid data structure from seed detector API:\n {str(error)}"
         ) from error
@@ -144,7 +183,14 @@ async def request_inference_from_seed_detector(
         URLError,
         json.JSONDecodeError,
     ) as error:
-        print(error)
+        elapsed_ms = (time.time() - start_time) * 1000
+        logger.error(
+            "Seed detector processing error",
+            model_name=model.name,
+            error=str(error),
+            error_type=type(error).__name__,
+            duration_ms=round(elapsed_ms, 2),
+        )
         raise SeedDetectorModelAPIError(
             f"Error while processing inference results:\n {str(error)}"
         ) from error
