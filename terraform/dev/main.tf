@@ -21,25 +21,25 @@ resource "azurerm_private_endpoint" "tfstate_storage" {
 }
 
 # Container App Environment
-# module "container_app_environment" {
-#   source = "../modules/container-app-environment"
+module "container_app_environment" {
+  source = "../modules/container-app-environment"
+  
+  # Default
+  project_name        = var.project_name
+  environment         = var.environment
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  tags                = var.tags
 
-#   # Default
-#   project_name        = var.project_name
-#   environment         = var.environment
-#   location            = var.location
-#   resource_group_name = var.resource_group_name
-#   tags                = var.tags
+  # Networking
+  vnet_name                  = var.vnet_name
+  vnet_resource_group_name   = var.vnet_resource_group_name
+  private_endpoint_subnet_id = var.private_endpoint_subnet_id
+  container_apps_subnet_name = var.container_apps_subnet_name
 
-#   # Networking
-#   vnet_name                  = var.vnet_name
-#   vnet_resource_group_name   = var.vnet_resource_group_name
-#   private_endpoint_subnet_id = var.private_endpoint_subnet_id
-#   container_apps_subnet_name = var.container_apps_subnet_name
-
-#   # CAE
-#   infrastructure_resource_group_name = var.cae_infrastructure_resource_group_name
-# }
+  # CAE
+  infrastructure_resource_group_name = var.cae_infrastructure_resource_group_name
+}
 
 # PostgreSQL Database
 # module "db" {
