@@ -411,33 +411,36 @@ async def save_inference_results_step(
     logger = LogService.get_logger()
 
     try:
-        # Step 1: Get seed lookup cache with both name_code and species name mappings
-        seed_data = await SeedService.get_seed_data()
-        seed_lookup: dict[str, UUID] = {}
+        # Step 1: Extract all unique labels from inference response
+        # This includes 1st, 2nd, and 3rd predictions for all detected boxes
+        unique_labels = set()
+        for box in api_response.boxes:
+            # Add 1st prediction label
+            unique_labels.add(box.label.strip())
 
-        for seed in seed_data["seeds"]:
-            seed_id = (
-                seed["seed_id"]
-                if isinstance(seed["seed_id"], UUID)
-                else UUID(seed["seed_id"])
-            )
-            # Map by name_code (e.g., "AMBRO_PSI")
-            seed_lookup[seed["name_code"]] = seed_id
+            # Add 2nd prediction label if exists
+            if len(box.topN) > 1:
+                unique_labels.add(box.topN[1].label.strip())
 
-            # Also map by full species name for ML models that return full names
-            # Format: "Genus species" (e.g., "Ambrosia psilostachya")
-            genus = seed.get("genus", "").strip()
-            species = seed.get("species", "").strip()
-            if genus and species:
-                full_species_name = f"{genus} {species}"
-                seed_lookup[full_species_name] = seed_id
+            # Add 3rd prediction label if exists
+            if len(box.topN) > 2:
+                unique_labels.add(box.topN[2].label.strip())
 
         logger.debug(
-            f"Loaded {len(seed_data['seeds'])} seeds with {len(seed_lookup)} lookup keys (name_code + species names)",
+            f"Extracted {len(unique_labels)} unique labels from {len(api_response.boxes)} detected boxes",
             image_id=str(image_id),
         )
 
-        # Step 2: Create Annotation record with parent workflow ID as annotation ID
+        # Step 2: Batch query for only the seeds we need (case-insensitive)
+        # This is MUCH more efficient than loading all 3000+ seeds into memory
+        seed_lookup = await SeedService.get_seeds_by_labels(list(unique_labels))
+
+        logger.debug(
+            f"Queried database and found {len(seed_lookup)} matching seeds (out of {len(unique_labels)} unique labels)",
+            image_id=str(image_id),
+        )
+
+        # Step 3: Create Annotation record with parent workflow ID as annotation ID
         annotation_id = parent_workflow_id
         raw_data = api_response.model_dump()
 
@@ -457,16 +460,17 @@ async def save_inference_results_step(
             annotation_id=str(annotation_id),
         )
 
-        # Step 3: Create Object records for each detected box
+        # Step 4: Create Object records for each detected box
         created_object_ids = []
 
         for box in api_response.boxes:
-            # Map species label to seed ID
+            # Map species label to seed ID (case-insensitive lookup)
             # The label format is typically like "Avena fatua" or "0 Avena fatua"
             label = box.label.strip()
+            label_lower = label.lower()
 
-            # Try to find seed by name_code
-            top_id = seed_lookup.get(label)
+            # Try to find seed by label (case-insensitive)
+            top_id = seed_lookup.get(label_lower)
 
             if top_id is None:
                 # Critical error - species not found in database
@@ -480,7 +484,7 @@ async def save_inference_results_step(
                 )
                 raise Exception(error_msg)
 
-            # Get top-N predictions
+            # Get top-N predictions (case-insensitive lookup)
             top_id_2 = None
             top_score_2 = None
             top_id_3 = None
@@ -488,7 +492,8 @@ async def save_inference_results_step(
 
             if len(box.topN) > 1:
                 second_label = box.topN[1].label.strip()
-                top_id_2 = seed_lookup.get(second_label)
+                second_label_lower = second_label.lower()
+                top_id_2 = seed_lookup.get(second_label_lower)
                 if top_id_2 is None:
                     logger.error(
                         f"CRITICAL: Species label '{second_label}' (2nd prediction) not found in seed database (image_id={image_id}, label={second_label})"
@@ -500,7 +505,8 @@ async def save_inference_results_step(
 
             if len(box.topN) > 2:
                 third_label = box.topN[2].label.strip()
-                top_id_3 = seed_lookup.get(third_label)
+                third_label_lower = third_label.lower()
+                top_id_3 = seed_lookup.get(third_label_lower)
                 if top_id_3 is None:
                     logger.error(
                         f"CRITICAL: Species label '{third_label}' (3rd prediction) not found in seed database (image_id={image_id}, label={third_label})"

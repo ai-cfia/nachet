@@ -193,6 +193,57 @@ class SeedService(BaseCRUDService[Seed]):
             raise SeedError(f"Failed to retrieve seed data: {str(e)}") from e
 
     @staticmethod
+    async def get_seeds_by_labels(labels: List[str]) -> Dict[str, UUID]:
+        """
+        Get seeds matching the provided labels (case-insensitive).
+
+        Efficiently queries only the seeds needed based on ML model labels.
+        Much more efficient than loading all seeds into memory.
+
+        Args:
+            labels: List of label strings to match (e.g., ["Avena fatua", "AMBRO_PSI"])
+
+        Returns:
+            Dict[str, UUID]: Dictionary mapping lowercase labels to seed UUIDs
+            Example: {"avena fatua": UUID("..."), "ambro_psi": UUID("...")}
+
+        Raises:
+            SeedError: If data retrieval fails
+        """
+        from app.service.logs import LogService
+        import time
+
+        logger = LogService.get_logger()
+
+        logger.debug("Fetching seeds by labels", label_count=len(labels))
+
+        start_time = time.time()
+
+        try:
+            seed_lookup = None
+            async with sessionmanager.get_session() as session:
+                seed_lookup = await SeedDataService(session).get_seeds_by_labels(labels)
+
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.debug(
+                "Seeds retrieved by labels",
+                label_count=len(labels),
+                seeds_found=len(seed_lookup),
+                duration_ms=round(elapsed_ms, 2),
+            )
+
+            return seed_lookup
+        except Exception as e:
+            elapsed_ms = (time.time() - start_time) * 1000
+            logger.error(
+                "Failed to retrieve seeds by labels",
+                error=str(e),
+                error_type=type(e).__name__,
+                duration_ms=round(elapsed_ms, 2),
+            )
+            raise SeedError(f"Failed to retrieve seeds by labels: {str(e)}") from e
+
+    @staticmethod
     def normalize_taxonomic_name(name: str) -> str:
         """
         Normalize taxonomic names (genus/species) for blob storage paths.
