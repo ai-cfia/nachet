@@ -677,3 +677,156 @@ class TestSeedServiceGetSeedData:
             await SeedService.get_seed_data()
 
         assert "Failed to retrieve seed data" in str(exc_info.value)
+
+
+class TestSeedServiceGetSeedsByLabels:
+    """Test SeedService.get_seeds_by_labels method for case-insensitive matching."""
+
+    @pytest.mark.asyncio
+    async def test_get_seeds_by_labels_case_insensitive_match(self, monkeypatch):
+        """Test get_seeds_by_labels with mixed case labels"""
+        from app.db.utils import sessionmanager
+
+        seed1_id = uuid4()
+        seed2_id = uuid4()
+
+        # Labels with different cases
+        labels = [
+            "Avena fatua",  # Normal case
+            "AMBROSIA PSILOSTACHYA",  # Uppercase
+            "ambro_psi",  # Lowercase name_code
+        ]
+
+        # Expected lookup result (lowercase keys)
+        expected_lookup = {
+            "avena fatua": seed1_id,
+            "ambrosia psilostachya": seed2_id,
+            "ambro_psi": seed2_id,
+        }
+
+        # Mock session
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
+
+        # Mock SeedDataService class
+        mock_data_service = AsyncMock()
+        mock_data_service.get_seeds_by_labels = AsyncMock(return_value=expected_lookup)
+
+        class MockSeedDataService:
+            def __init__(self, session):
+                pass
+
+            async def get_seeds_by_labels(self, labels):
+                return await mock_data_service.get_seeds_by_labels(labels)
+
+        monkeypatch.setattr(
+            "app.service.seed.SeedDataService",
+            MockSeedDataService,
+        )
+
+        # Call service method
+        result = await SeedService.get_seeds_by_labels(labels)
+
+        # Verify response
+        assert len(result) == 3
+        assert result["avena fatua"] == seed1_id
+        assert result["ambrosia psilostachya"] == seed2_id
+        assert result["ambro_psi"] == seed2_id
+
+        # Verify datastore was called with original labels
+        mock_data_service.get_seeds_by_labels.assert_called_once_with(labels)
+
+    @pytest.mark.asyncio
+    async def test_get_seeds_by_labels_empty_input(self, monkeypatch):
+        """Test get_seeds_by_labels with empty label list"""
+        from app.db.utils import sessionmanager
+
+        # Mock session
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
+
+        # Mock SeedDataService class
+        mock_data_service = AsyncMock()
+        mock_data_service.get_seeds_by_labels = AsyncMock(return_value={})
+
+        class MockSeedDataService:
+            def __init__(self, session):
+                pass
+
+            async def get_seeds_by_labels(self, labels):
+                return await mock_data_service.get_seeds_by_labels(labels)
+
+        monkeypatch.setattr(
+            "app.service.seed.SeedDataService",
+            MockSeedDataService,
+        )
+
+        result = await SeedService.get_seeds_by_labels([])
+
+        assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_get_seeds_by_labels_no_matches(self, monkeypatch):
+        """Test get_seeds_by_labels when no seeds match"""
+        from app.db.utils import sessionmanager
+
+        labels = ["Unknown species", "Fake genus fake_species"]
+
+        # Mock session
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
+
+        # Mock SeedDataService class - no matches
+        mock_data_service = AsyncMock()
+        mock_data_service.get_seeds_by_labels = AsyncMock(return_value={})
+
+        class MockSeedDataService:
+            def __init__(self, session):
+                pass
+
+            async def get_seeds_by_labels(self, labels):
+                return await mock_data_service.get_seeds_by_labels(labels)
+
+        monkeypatch.setattr(
+            "app.service.seed.SeedDataService",
+            MockSeedDataService,
+        )
+
+        result = await SeedService.get_seeds_by_labels(labels)
+
+        assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_get_seeds_by_labels_handles_errors(self, monkeypatch):
+        """Test get_seeds_by_labels raises SeedError on failure"""
+        from app.db.utils import sessionmanager
+        from app.exceptions import SeedError
+
+        labels = ["Avena fatua"]
+
+        # Mock session
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        monkeypatch.setattr(sessionmanager, "get_session", lambda: mock_session)
+
+        # Mock data service to raise exception
+        async def mock_get_seeds_by_labels_error(self, labels):
+            raise Exception("Database connection failed")
+
+        monkeypatch.setattr(
+            "app.datastore.seed.SeedDataService.get_seeds_by_labels",
+            mock_get_seeds_by_labels_error,
+        )
+
+        # Verify SeedError is raised
+        with pytest.raises(SeedError) as exc_info:
+            await SeedService.get_seeds_by_labels(labels)
+
+        assert "Failed to retrieve seeds by labels" in str(exc_info.value)

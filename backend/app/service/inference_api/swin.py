@@ -28,6 +28,27 @@ class SwinModelAPIError(ModelAPIError):
     pass
 
 
+def correct_model_label(label: str) -> str:
+    """
+    Temporary shim to correct known spelling mistakes from ML models.
+
+    TODO: Remove this once model API is fixed.
+
+    Known corrections:
+    - "Brassica junsea" → "Brassica juncea"
+
+    Args:
+        label: Raw label from ML model
+
+    Returns:
+        Corrected label
+    """
+    # Case-insensitive correction for known spelling mistakes
+    if label.lower() == "brassica junsea":
+        return "Brassica juncea"
+    return label
+
+
 def process_swin_result(
     detection_response: SeedDetectorAPIResponse,
     classification_results: list[SwinClassificationAPIResponse],
@@ -60,8 +81,11 @@ def process_swin_result(
         def clean_label(label: str) -> str:
             parts = label.split(" ", 1)  # Split only on first space
             if len(parts) > 1 and parts[0].isdigit():
-                return parts[1]  # Remove numeric index prefix
-            return label  # No index prefix, return as-is
+                cleaned = parts[1]  # Remove numeric index prefix
+            else:
+                cleaned = label  # No index prefix, return as-is
+            # Apply spelling corrections (temporary shim)
+            return correct_model_label(cleaned)
 
         cleaned_label = clean_label(top_prediction.label)
 
