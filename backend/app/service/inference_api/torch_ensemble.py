@@ -28,6 +28,27 @@ class SwinModelAPIError(ModelAPIError):
     pass
 
 
+def correct_model_label(label: str) -> str:
+    """
+    Temporary shim to correct known spelling mistakes from ML models.
+
+    TODO: Remove this once model API is fixed.
+
+    Known corrections:
+    - "Brassica junsea" → "Brassica juncea"
+
+    Args:
+        label: Raw label from ML model
+
+    Returns:
+        Corrected label
+    """
+    # Case-insensitive correction for known spelling mistakes
+    if label.lower() == "brassica junsea":
+        return "Brassica juncea"
+    return label
+
+
 SPECIES_LIST = [
     "ambrosia artemisiifolia",
     "ambrosia trifida",
@@ -63,12 +84,16 @@ def process_swin_result(
         top_prediction = classification.predictions[0]
 
         # Extract label and score from the classification result
-        label = top_prediction.label
+        # Apply spelling corrections (temporary shim)
+        label = correct_model_label(top_prediction.label)
         score = top_prediction.score
 
         # Build topN predictions with cleaned labels using Pydantic model
+        # Apply spelling corrections to all predictions (temporary shim)
         top_n_predictions = [
-            TopNPredictionCleaned(label=pred.label, score=pred.score)
+            TopNPredictionCleaned(
+                label=correct_model_label(pred.label), score=pred.score
+            )
             for pred in classification.predictions
         ]
 
@@ -348,6 +373,9 @@ async def request_inference_ensemble_b(
                 if top_prediction.label.split(" ")[0].isdigit():
                     corrected_label = " ".join(top_prediction.label.split(" ")[1:])
 
+                # Apply spelling corrections (temporary shim)
+                corrected_label = correct_model_label(corrected_label)
+
                 logger.debug(
                     "Ensemble_b reclassification result",
                     model_name=model.name,
@@ -359,11 +387,14 @@ async def request_inference_ensemble_b(
                 )
 
                 # Build topN predictions with cleaned labels
+                # Apply spelling corrections to all predictions (temporary shim)
                 top_n_predictions = [
                     TopNPredictionCleaned(
-                        label=" ".join(pred.label.split(" ")[1:])
-                        if pred.label.split(" ")[0].isdigit()
-                        else pred.label,
+                        label=correct_model_label(
+                            " ".join(pred.label.split(" ")[1:])
+                            if pred.label.split(" ")[0].isdigit()
+                            else pred.label
+                        ),
                         score=pred.score,
                     )
                     for pred in validated_classification.predictions
