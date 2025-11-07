@@ -750,12 +750,12 @@ class TestInferenceResultsDatabasePersistence:
         test_boxes = [
             ApiInferenceBox(
                 box=PixelBoundingBox(topX=10, topY=20, bottomX=100, bottomY=200),
-                label="CHENO_ALB",  # Using seed name_code that exists in test data
+                label="Chenopodium album",  # Using full species name (genus + species)
                 score=0.95,
                 topN=[
-                    TopNPredictionCleaned(label="CHENO_ALB", score=0.95),
-                    TopNPredictionCleaned(label="CHENO_FIC", score=0.03),
-                    TopNPredictionCleaned(label="CHENO_PAL", score=0.02),
+                    TopNPredictionCleaned(label="Chenopodium album", score=0.95),
+                    TopNPredictionCleaned(label="Chenopodium ficifolium", score=0.03),
+                    TopNPredictionCleaned(label="Chenopodium pallidicaule", score=0.02),
                 ],
                 classId="0",
                 object_type_id="seed",
@@ -771,7 +771,7 @@ class TestInferenceResultsDatabasePersistence:
             image_id=str(test_picture.id),
             inference_id=str(parent_workflow_id),
             boxes=test_boxes,
-            label_occurrence={"CHENO_ALB": 1},
+            label_occurrence={"Chenopodium album": 1},
             total_boxes=1,
             models=[ModelInfo(name="test-model", version="1")],
         )
@@ -966,9 +966,9 @@ class TestInferenceResultsDatabasePersistence:
         test_boxes = [
             ApiInferenceBox(
                 box=PixelBoundingBox(topX=10, topY=20, bottomX=100, bottomY=200),
-                label="CHENO_ALB",
+                label="Chenopodium album",
                 score=0.95,
-                topN=[TopNPredictionCleaned(label="CHENO_ALB", score=0.95)],
+                topN=[TopNPredictionCleaned(label="Chenopodium album", score=0.95)],
                 classId="0",
                 object_type_id="seed",
                 box_id="box-1",
@@ -978,9 +978,11 @@ class TestInferenceResultsDatabasePersistence:
             ),
             ApiInferenceBox(
                 box=PixelBoundingBox(topX=150, topY=50, bottomX=250, bottomY=150),
-                label="CHENO_FIC",
+                label="Chenopodium ficifolium",
                 score=0.88,
-                topN=[TopNPredictionCleaned(label="CHENO_FIC", score=0.88)],
+                topN=[
+                    TopNPredictionCleaned(label="Chenopodium ficifolium", score=0.88)
+                ],
                 classId="1",
                 object_type_id="seed",
                 box_id="box-2",
@@ -990,9 +992,11 @@ class TestInferenceResultsDatabasePersistence:
             ),
             ApiInferenceBox(
                 box=PixelBoundingBox(topX=300, topY=100, bottomX=400, bottomY=200),
-                label="CHENO_PAL",
+                label="Chenopodium pallidicaule",
                 score=0.92,
-                topN=[TopNPredictionCleaned(label="CHENO_PAL", score=0.92)],
+                topN=[
+                    TopNPredictionCleaned(label="Chenopodium pallidicaule", score=0.92)
+                ],
                 classId="2",
                 object_type_id="seed",
                 box_id="box-3",
@@ -1007,7 +1011,11 @@ class TestInferenceResultsDatabasePersistence:
             image_id=str(test_picture.id),
             inference_id=str(parent_workflow_id),
             boxes=test_boxes,
-            label_occurrence={"CHENO_ALB": 1, "CHENO_FIC": 1, "CHENO_PAL": 1},
+            label_occurrence={
+                "Chenopodium album": 1,
+                "Chenopodium ficifolium": 1,
+                "Chenopodium pallidicaule": 1,
+            },
             total_boxes=3,
             models=[ModelInfo(name="test-model", version="1")],
         )

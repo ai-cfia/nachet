@@ -5,7 +5,6 @@ TODO: Remove these tests once the model API is fixed and the shim is removed.
 """
 
 
-
 class TestCorrectModelLabelSwin:
     """Test correct_model_label() function from swin.py"""
 
