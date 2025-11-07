@@ -19,9 +19,11 @@ export interface SeedTaxonomy {
  * Get seed_id by taxonomic fields.
  * Uses cached data from useSpeciesStore (already populated by useSpeciesData hook).
  *
+ * Matches based on family, genus, and species only (nameCode is not unique).
+ *
  * @param taxonomy - Taxonomic fields to match
  * @returns seed_id string
- * @throws Error if seed not found or data not loaded
+ * @throws Error if seed not found, multiple seeds match, or data not loaded
  *
  * @example
  * const seedId = getSeedIdByTaxonomy({
@@ -40,21 +42,28 @@ export const getSeedIdByTaxonomy = (taxonomy: SeedTaxonomy): string => {
     );
   }
 
-  const matchingSeed = speciesData.seeds.find(
+  // Match only on family+genus+species (nameCode is not unique)
+  const matchingSeeds = speciesData.seeds.filter(
     (seed: SpeciesData) =>
       seed.family === taxonomy.family &&
       seed.genus === taxonomy.genus &&
-      seed.species === taxonomy.species &&
-      seed.nameCode === taxonomy.nameCode,
+      seed.species === taxonomy.species,
   );
 
-  if (!matchingSeed) {
+  if (matchingSeeds.length === 0) {
     throw new Error(
-      `Seed not found: ${taxonomy.family} ${taxonomy.genus} ${taxonomy.species} (${taxonomy.nameCode})`,
+      `Seed not found: ${taxonomy.family} ${taxonomy.genus} ${taxonomy.species}`,
     );
   }
 
-  return matchingSeed.seedId;
+  if (matchingSeeds.length > 1) {
+    throw new Error(
+      `Multiple seeds match taxonomy: ${taxonomy.family} ${taxonomy.genus} ${taxonomy.species}. ` +
+        `Found ${matchingSeeds.length} matches. Please contact support.`,
+    );
+  }
+
+  return matchingSeeds[0].seedId;
 };
 
 /**

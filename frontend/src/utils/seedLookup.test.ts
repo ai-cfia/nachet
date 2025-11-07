@@ -151,9 +151,45 @@ describe("seedLookup", () => {
           species: "nonexistent",
           nameCode: "NONE_001",
         }),
-      ).toThrow(
-        "Seed not found: NonExistent NonExistent nonexistent (NONE_001)",
-      );
+      ).toThrow("Seed not found: NonExistent NonExistent nonexistent");
+    });
+
+    it("should throw error if multiple seeds match (edge case)", () => {
+      const duplicateMockSeeds: SpeciesData[] = [
+        {
+          seedId: "seed-1",
+          family: "Poaceae",
+          genus: "Triticum",
+          species: "aestivum",
+          nameCode: "WHEAT_001",
+        },
+        {
+          seedId: "seed-2",
+          family: "Poaceae",
+          genus: "Triticum",
+          species: "aestivum",
+          nameCode: "WHEAT_002",
+        },
+      ];
+
+      vi.mocked(useSpeciesStore.getState).mockReturnValue({
+        speciesData: { seeds: duplicateMockSeeds },
+        isLoading: false,
+        error: null,
+        setSpeciesData: vi.fn(),
+        setLoading: vi.fn(),
+        setError: vi.fn(),
+        clearSpeciesData: vi.fn(),
+      });
+
+      expect(() =>
+        getSeedIdByTaxonomy({
+          family: "Poaceae",
+          genus: "Triticum",
+          species: "aestivum",
+          nameCode: "WHEAT_001",
+        }),
+      ).toThrow("Multiple seeds match taxonomy");
     });
 
     it("should match exact taxonomy (case-sensitive)", () => {

@@ -45,28 +45,40 @@ export const TaxonomicFieldsGroup = (props: TaxonomicFieldsGroupProps) => {
 
   const { t } = useTranslation("popups");
 
-  // Cascading filter logic - Get unique values for each taxonomic field
+  // Bidirectional filter logic - Each field filters all other fields
+  // When ANY field is selected, all other field options are narrowed to matching seeds
   const availableFamilies = useMemo(() => {
     if (!speciesData || speciesData.length === 0) return [];
-    return Array.from(new Set(speciesData.map((seed) => seed.family))).sort();
-  }, [speciesData]);
+    const filtered = speciesData.filter(
+      (seed) =>
+        (!genus || seed.genus === genus) &&
+        (!species || seed.species === species) &&
+        (!nameCode || seed.nameCode === nameCode),
+    );
+    return Array.from(new Set(filtered.map((seed) => seed.family))).sort();
+  }, [speciesData, genus, species, nameCode]);
 
   const availableGenera = useMemo(() => {
     if (!speciesData || speciesData.length === 0) return [];
     const filtered = speciesData.filter(
-      (seed) => !family || seed.family === family,
+      (seed) =>
+        (!family || seed.family === family) &&
+        (!species || seed.species === species) &&
+        (!nameCode || seed.nameCode === nameCode),
     );
     return Array.from(new Set(filtered.map((seed) => seed.genus))).sort();
-  }, [speciesData, family]);
+  }, [speciesData, family, species, nameCode]);
 
   const availableSpecies = useMemo(() => {
     if (!speciesData || speciesData.length === 0) return [];
     const filtered = speciesData.filter(
       (seed) =>
-        (!family || seed.family === family) && (!genus || seed.genus === genus),
+        (!family || seed.family === family) &&
+        (!genus || seed.genus === genus) &&
+        (!nameCode || seed.nameCode === nameCode),
     );
     return Array.from(new Set(filtered.map((seed) => seed.species))).sort();
-  }, [speciesData, family, genus]);
+  }, [speciesData, family, genus, nameCode]);
 
   const availableNameCodes = useMemo(() => {
     if (!speciesData || speciesData.length === 0) return [];
@@ -78,40 +90,6 @@ export const TaxonomicFieldsGroup = (props: TaxonomicFieldsGroupProps) => {
     );
     return Array.from(new Set(filtered.map((seed) => seed.nameCode))).sort();
   }, [speciesData, family, genus, species]);
-
-  // Auto-fill logic: When name_code is selected, auto-populate all fields
-  const handleNameCodeChange = (value: string) => {
-    onNameCodeChange(value);
-
-    if (value && speciesData && speciesData.length > 0) {
-      const matchingSeed = speciesData.find((seed) => seed.nameCode === value);
-      if (matchingSeed) {
-        onFamilyChange(matchingSeed.family);
-        onGenusChange(matchingSeed.genus);
-        onSpeciesChange(matchingSeed.species);
-      }
-    }
-  };
-
-  // Auto-fill logic: When species is selected, auto-populate family/genus if unique match exists
-  const handleSpeciesChange = (value: string) => {
-    onSpeciesChange(value);
-
-    if (value && speciesData && speciesData.length > 0) {
-      const matchingSeeds = speciesData.filter(
-        (seed) => seed.species === value,
-      );
-      const uniqueFamilies = Array.from(
-        new Set(matchingSeeds.map((s) => s.family)),
-      );
-      const uniqueGenera = Array.from(
-        new Set(matchingSeeds.map((s) => s.genus)),
-      );
-
-      if (uniqueFamilies.length === 1) onFamilyChange(uniqueFamilies[0]);
-      if (uniqueGenera.length === 1) onGenusChange(uniqueGenera[0]);
-    }
-  };
 
   return (
     <Box
@@ -186,7 +164,7 @@ export const TaxonomicFieldsGroup = (props: TaxonomicFieldsGroupProps) => {
           options={availableSpecies}
           value={species}
           onChange={(_event, newValue) => {
-            handleSpeciesChange(newValue || "");
+            onSpeciesChange(newValue || "");
           }}
           sx={{
             width: "calc(50% - 5px)",
@@ -208,7 +186,7 @@ export const TaxonomicFieldsGroup = (props: TaxonomicFieldsGroupProps) => {
         options={availableNameCodes}
         value={nameCode}
         onChange={(_event, newValue) => {
-          handleNameCodeChange(newValue || "");
+          onNameCodeChange(newValue || "");
         }}
         sx={{
           width: sx?.width || "100%",
