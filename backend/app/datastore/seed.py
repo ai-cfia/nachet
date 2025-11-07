@@ -48,17 +48,17 @@ class SeedDataService(BaseCRUDDataService[Seed]):
         """
         Get seeds matching the provided labels (case-insensitive).
 
-        Matches labels against both name_code and full species name (genus + species).
+        Matches labels against full species name (genus + species) only.
         Returns a dictionary mapping lowercase labels to seed UUIDs.
 
         Args:
-            labels: List of label strings to match (e.g., ["Avena fatua", "AMBRO_PSI"])
+            labels: List of label strings to match (e.g., ["Avena fatua", "Bromus tectorum"])
 
         Returns:
             Dictionary mapping lowercase labels to seed UUIDs
-            Example: {"avena fatua": UUID("..."), "ambro_psi": UUID("...")}
+            Example: {"avena fatua": UUID("..."), "bromus tectorum": UUID("...")}
         """
-        from sqlalchemy import func, or_
+        from sqlalchemy import func
 
         if not labels:
             return {}
@@ -66,16 +66,12 @@ class SeedDataService(BaseCRUDDataService[Seed]):
         # Convert all labels to lowercase for case-insensitive matching
         lowercase_labels = [label.lower() for label in labels]
 
-        # Build query with case-insensitive matching on name_code and full species name
-        query = select(Seed.id, Seed.name_code, Seed.genus, Seed.species).where(
+        # Build query with case-insensitive matching on full species name only
+        query = select(Seed.id, Seed.genus, Seed.species).where(
             Seed.active.is_(True),
-            or_(
-                # Match on name_code (case-insensitive)
-                func.lower(Seed.name_code).in_(lowercase_labels),
-                # Match on full species name: "Genus species" (case-insensitive)
-                func.lower(func.concat(Seed.genus, " ", Seed.species)).in_(
-                    lowercase_labels
-                ),
+            # Match on full species name: "Genus species" (case-insensitive)
+            func.lower(func.concat(Seed.genus, " ", Seed.species)).in_(
+                lowercase_labels
             ),
         )
 
@@ -85,13 +81,8 @@ class SeedDataService(BaseCRUDDataService[Seed]):
         seed_lookup: dict[str, UUID] = {}
         for row in result.all():
             seed_id = row.id
-            name_code = row.name_code
             genus = row.genus or ""
             species = row.species or ""
-
-            # Add mapping by name_code
-            if name_code:
-                seed_lookup[name_code.lower()] = seed_id
 
             # Add mapping by full species name
             if genus and species:
