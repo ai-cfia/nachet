@@ -180,22 +180,38 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
   };
 
   const handleSubmit = () => {
-    // Find the matching seedId based on taxonomic fields
-    const matchingSeed = classList.find(
+    // Find the matching seedId based on taxonomic fields (family+genus+species only)
+    // nameCode is not unique and should not be used for matching
+    const matchingSeeds = classList.filter(
       (seed) =>
         seed.family === family &&
         seed.genus === genus &&
-        seed.species === species &&
-        seed.nameCode === nameCode,
+        seed.species === species,
     );
+
+    if (matchingSeeds.length === 0) {
+      // No matching seed found - show error
+      setFamilyError("No matching seed found for selected taxonomy");
+      return;
+    }
+
+    if (matchingSeeds.length > 1) {
+      // Multiple seeds match - should not happen if family+genus+species is unique
+      setFamilyError(
+        `Multiple seeds match this taxonomy (${matchingSeeds.length} matches). Please contact support.`,
+      );
+      return;
+    }
+
+    const matchingSeed = matchingSeeds[0];
 
     onSubmit({
       ...inference,
       boxes: [
         {
           ...inference.boxes[0],
-          classId: matchingSeed?.seedId || "",
-          label: matchingSeed?.label || "",
+          classId: matchingSeed.seedId,
+          label: matchingSeed.label || `${genus} ${species}`,
           family: family,
           genus: genus,
           species: species,

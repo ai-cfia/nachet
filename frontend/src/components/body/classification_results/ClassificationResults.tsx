@@ -309,159 +309,162 @@ const ClassificationResults: React.FC<params> = (props) => {
               ))}
 
             {!switchTable &&
-              savedImages.map((object: any, objectIndex: number) => {
-                if (object.index === imageIndex && object.annotated === true) {
-                  return object.classifications.map(
-                    (prediction: any, classificationIndex: number) => {
-                      const rowId = `${objectIndex}-${classificationIndex}`;
-                      const topN = object.topN[classificationIndex];
-                      const isExpanded = expandedRow === rowId;
-                      const labelMatchesSelection =
-                        selectedLabel === "all" || selectedLabel === prediction;
-
-                      if (labelMatchesSelection) {
-                        return (
-                          <React.Fragment key={rowId}>
-                            <TableRow
-                              key={rowId}
-                              sx={{
-                                "&:hover": {
-                                  backgroundColor: "#F5F5F5",
-                                  transition: "0.1s ease-in-out all",
-                                },
-                              }}
-                              onClick={() => {
-                                handleRowClick(rowId);
-                              }}
-                            >
-                              <TableCell
-                                align="left"
-                                sx={{
-                                  cursor: "pointer",
-                                  paddingRight: 0,
-                                  fontSize: "1.0vh",
-                                  paddingTop: "0.5vh",
-                                  paddingBottom: "0.5vh",
-                                  paddingLeft: "0.8vh",
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    flexWrap: "wrap",
-                                  }}
-                                >
-                                  <LabelIcon
-                                    style={{
-                                      color: colours.CFIA_Background_Blue,
-                                      fontSize: "1.8vh",
-                                      marginTop: 0,
-                                      marginBottom: 0,
-                                      paddingTop: 0,
-                                      paddingBottom: 0,
-                                      paddingRight: "0.3vw",
-                                    }}
-                                  />
-                                  <span
-                                    style={{
-                                      width: "0.7vw",
-                                      textAlign: "left",
-                                    }}
-                                  >
-                                    {classificationIndex + 1}
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell
-                                align="center"
-                                sx={{
-                                  cursor: "pointer",
-                                  paddingRight: 0,
-                                  fontSize: "1.0vh",
-                                  paddingLeft: 0,
-                                  paddingTop: "0.5vh",
-                                  paddingBottom: "0.5vh",
-                                }}
-                              >
-                                {prediction}
-                              </TableCell>
-                              <TableCell
-                                align="right"
-                                sx={{
-                                  cursor: "pointer",
-                                  paddingLeft: 0,
-                                  fontSize: "1.0vh",
-                                  paddingTop: "0.5vh",
-                                  paddingBottom: "0.5vh",
-                                  paddingRight: "0.8vh",
-                                }}
-                              >
-                                {(
-                                  object.scores[classificationIndex] * 100
-                                ).toFixed(0)}
-                                %
-                              </TableCell>
-                              <TableCell
-                                align="left"
-                                sx={{
-                                  fontSize: "1.0vh",
-                                  paddingTop: "0.5vh",
-                                  paddingBottom: "0.5vh",
-                                  paddingRight: "0.8vh",
-                                }}
-                              >
-                                {/* Content or modifications for this cell */}
-                              </TableCell>
-                              <TableCell
-                                align="right"
-                                sx={{
-                                  cursor: "pointer",
-                                  paddingLeft: 0,
-                                  fontSize: "1.0vh",
-                                  paddingTop: "0.5vh",
-                                  paddingBottom: "0.5vh",
-                                  paddingRight: "0.8vh",
-                                }}
-                              >
-                                <IconButton
-                                  onClick={() => {
-                                    // logic to handle more options
-                                  }}
-                                  sx={{ padding: 0 }}
-                                >
-                                  <MoreVertIcon
-                                    style={{
-                                      color: colours.CFIA_Background_Blue,
-                                      fontSize: "1.8vh",
-                                      marginTop: 0,
-                                      marginBottom: 0,
-                                      paddingTop: 0,
-                                      paddingBottom: 0,
-                                    }}
-                                  />
-                                </IconButton>
-                              </TableCell>
-                            </TableRow>
-                            {isExpanded && (
-                              <TableRow>
-                                <TableCell colSpan={6}>
-                                  <Box p={2}>
-                                    {topN?.length > 0 && renderTopResults(topN)}
-                                  </Box>
-                                </TableCell>
-                              </TableRow>
-                            )}
-                          </React.Fragment>
-                        );
-                      }
-                      return null;
-                    },
-                  );
-                } else {
+              (() => {
+                // Get current image and its active inference result
+                if (
+                  !activeResult ||
+                  !activeResult.classifications ||
+                  activeResult.classifications.length === 0
+                ) {
                   return null;
                 }
-              })}
+
+                // Map through classifications with corresponding topN data
+                return activeResult.classifications.map(
+                  (prediction: string, classificationIndex: number) => {
+                    const rowId = `${imageIndex}-${classificationIndex}`;
+                    const topN = activeResult.topN[classificationIndex];
+                    const score = activeResult.scores[classificationIndex];
+                    const isExpanded = expandedRow === rowId;
+                    const labelMatchesSelection =
+                      selectedLabel === "all" || selectedLabel === prediction;
+
+                    if (labelMatchesSelection) {
+                      return (
+                        <React.Fragment key={rowId}>
+                          <TableRow
+                            sx={{
+                              "&:hover": {
+                                backgroundColor: "#F5F5F5",
+                                transition: "0.1s ease-in-out all",
+                              },
+                            }}
+                            onClick={() => {
+                              handleRowClick(rowId);
+                            }}
+                          >
+                            <TableCell
+                              align="left"
+                              sx={{
+                                cursor: "pointer",
+                                paddingRight: 0,
+                                fontSize: "1.0vh",
+                                paddingTop: "0.5vh",
+                                paddingBottom: "0.5vh",
+                                paddingLeft: "0.8vh",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  flexWrap: "wrap",
+                                }}
+                              >
+                                <LabelIcon
+                                  style={{
+                                    color: colours.CFIA_Background_Blue,
+                                    fontSize: "1.8vh",
+                                    marginTop: 0,
+                                    marginBottom: 0,
+                                    paddingTop: 0,
+                                    paddingBottom: 0,
+                                    paddingRight: "0.3vw",
+                                  }}
+                                />
+                                <span
+                                  style={{
+                                    width: "0.7vw",
+                                    textAlign: "left",
+                                  }}
+                                >
+                                  {classificationIndex + 1}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell
+                              align="center"
+                              sx={{
+                                cursor: "pointer",
+                                paddingRight: 0,
+                                fontSize: "1.0vh",
+                                paddingLeft: 0,
+                                paddingTop: "0.5vh",
+                                paddingBottom: "0.5vh",
+                              }}
+                            >
+                              {prediction}
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{
+                                cursor: "pointer",
+                                paddingLeft: 0,
+                                fontSize: "1.0vh",
+                                paddingTop: "0.5vh",
+                                paddingBottom: "0.5vh",
+                                paddingRight: "0.8vh",
+                              }}
+                            >
+                              {(score * 100).toFixed(0)}%
+                            </TableCell>
+                            <TableCell
+                              align="left"
+                              sx={{
+                                fontSize: "1.0vh",
+                                paddingTop: "0.5vh",
+                                paddingBottom: "0.5vh",
+                                paddingRight: "0.8vh",
+                              }}
+                            >
+                              {/* Content or modifications for this cell */}
+                            </TableCell>
+                            <TableCell
+                              align="right"
+                              sx={{
+                                cursor: "pointer",
+                                paddingLeft: 0,
+                                fontSize: "1.0vh",
+                                paddingTop: "0.5vh",
+                                paddingBottom: "0.5vh",
+                                paddingRight: "0.8vh",
+                              }}
+                            >
+                              <IconButton
+                                onClick={() => {
+                                  // logic to handle more options
+                                }}
+                                sx={{ padding: 0 }}
+                              >
+                                <MoreVertIcon
+                                  style={{
+                                    color: colours.CFIA_Background_Blue,
+                                    fontSize: "1.8vh",
+                                    marginTop: 0,
+                                    marginBottom: 0,
+                                    paddingTop: 0,
+                                    paddingBottom: 0,
+                                  }}
+                                />
+                              </IconButton>
+                            </TableCell>
+                          </TableRow>
+                          {isExpanded && (
+                            <TableRow>
+                              <TableCell colSpan={6}>
+                                <Box p={2}>
+                                  {topN?.length > 0 && renderTopResults(topN)}
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
+                      );
+                    }
+                    return null;
+                  },
+                );
+              })()}
           </TableBody>
         </Table>
       </TableContainer>
