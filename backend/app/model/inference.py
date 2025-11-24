@@ -20,6 +20,22 @@ class TrayCode(str, Enum):
     E = "E"
 
 
+class PredictionLabelScore(BaseModel):
+    """
+    Universal prediction model for all inference results.
+
+    Represents a single prediction with a label (species name) and confidence score.
+    Used across all model types: SWIN classifiers, Triton inference, and ensemble models.
+
+    Consolidates TopNPredictionAPI, TopNPredictionCleaned, and SeedPrediction.
+    """
+
+    label: str = Field(description="Classification label or species name")
+    score: float = Field(
+        ge=0.0, le=1.0, description="Confidence score between 0.0 and 1.0"
+    )
+
+
 class InferenceRequest(BaseModel):
     """
     Request model for POST /inf endpoint.
@@ -245,18 +261,7 @@ class SeedDetectorAPIResponse(BaseModel):
     )
 
 
-class TopNPredictionAPI(BaseModel):
-    """
-    A single prediction in the top-N classification results from SWIN API.
-    """
-
-    label: str = Field(description="Classification label (species name)")
-    score: float = Field(
-        ge=0.0, le=1.0, description="Confidence score for this classification"
-    )
-
-
-class SwinClassificationAPIResponse(RootModel[list[TopNPredictionAPI]]):
+class SwinClassificationAPIResponse(RootModel[list[PredictionLabelScore]]):
     """
     Response model from SWIN classifier API for a single image.
 
@@ -272,7 +277,7 @@ class SwinClassificationAPIResponse(RootModel[list[TopNPredictionAPI]]):
     """
 
     @property
-    def predictions(self) -> list[TopNPredictionAPI]:
+    def predictions(self) -> list[PredictionLabelScore]:
         """Convenience property to access the root list."""
         return self.root
 
@@ -280,15 +285,6 @@ class SwinClassificationAPIResponse(RootModel[list[TopNPredictionAPI]]):
 # ============================================================================
 # Enhanced Classification Result Models (Post-Processing)
 # ============================================================================
-
-
-class TopNPredictionCleaned(BaseModel):
-    """
-    Top-N prediction with cleaned label (index prefix removed).
-    """
-
-    label: str = Field(description="Classification label without index prefix")
-    score: float = Field(ge=0.0, le=1.0, description="Confidence score")
 
 
 class ClassifiedBox(BaseModel):
@@ -304,7 +300,7 @@ class ClassifiedBox(BaseModel):
     score: float = Field(
         ge=0.0, le=1.0, description="Confidence score for primary classification"
     )
-    topN: list[TopNPredictionCleaned] = Field(
+    topN: list[PredictionLabelScore] = Field(
         description="Top-N classification predictions"
     )
 
@@ -334,7 +330,7 @@ class ProcessedClassifiedBox(BaseModel):
     box: PixelBoundingBox  # Coordinates in pixel values
     label: str = Field(description="Primary classification label")
     score: float = Field(ge=0.0, le=1.0, description="Confidence score")
-    topN: list[TopNPredictionCleaned] = Field(description="Top-N predictions")
+    topN: list[PredictionLabelScore] = Field(description="Top-N predictions")
     overlapping: bool = Field(description="Whether this box overlaps with others")
     overlappingIndices: list[int] = Field(
         description="Indices of boxes that overlap with this one"
@@ -412,7 +408,7 @@ class ApiInferenceBox(BaseModel):
     box: PixelBoundingBox  # Frontend expects pixel coordinates for rendering
     label: str = Field(description="Primary classification label")
     score: float = Field(ge=0.0, le=1.0, description="Confidence score")
-    topN: list[TopNPredictionCleaned] = Field(description="Top-N predictions")
+    topN: list[PredictionLabelScore] = Field(description="Top-N predictions")
     classId: str = Field(description="Unique identifier for this classification")
     object_type_id: str = Field(description="Type identifier for the detected object")
     box_id: str = Field(description="Unique identifier for this bounding box")
@@ -460,3 +456,285 @@ class ApiInferenceResponse(BaseModel):
         populate_by_name=True,
         serialize_by_alias=True,
     )
+
+
+# ============================================================================
+# Request Models (Triton v2 Inference Protocol)
+# ============================================================================
+
+
+class TritonInferenceInput(BaseModel):
+    """
+    Single input tensor for Triton inference request.
+
+    For the 27spp model, this represents the IMAGE input containing
+    base64-encoded image data.
+    """
+
+    name: str = Field(
+        ...,
+        description="Name of the input tensor. Must be 'IMAGE' for the 27spp model.",
+    )
+    shape: list[int] = Field(
+        ..., description="Shape of the input tensor. For single image: [1, 1]"
+    )
+    datatype: str = Field(
+        ...,
+        description="Data type of the input. Must be 'BYTES' for base64-encoded images.",
+    )
+    data: list[str] = Field(
+        ..., description="Array containing base64-encoded image data"
+    )
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        if v != "IMAGE":
+            raise ValueError("Input name must be 'IMAGE'")
+        return v
+
+    @field_validator("datatype")
+    @classmethod
+    def validate_datatype(cls, v: str) -> str:
+        if v.upper() != "BYTES":
+            raise ValueError("Datatype must be 'BYTES' for image data")
+        return v.upper()
+
+
+class TritonInferenceRequest(BaseModel):
+    """
+    Triton v2 inference request for the 27spp seed classification model.
+
+    Example:
+        {
+            "inputs": [
+                {
+                    "name": "IMAGE",
+                    "shape": [1, 1],
+                    "datatype": "BYTES",
+                    "data": ["<base64-encoded-image>"]
+                }
+            ]
+        }
+    """
+
+    inputs: list[TritonInferenceInput] = Field(
+        ..., description="Array of input tensors (single IMAGE input for 27spp model)"
+    )
+
+    @field_validator("inputs")
+    @classmethod
+    def validate_single_input(
+        cls, v: list[TritonInferenceInput]
+    ) -> list[TritonInferenceInput]:
+        if len(v) != 1:
+            raise ValueError("27spp model expects exactly one input (IMAGE)")
+        return v
+
+
+# ============================================================================
+# Response Models (Triton v2 Inference Protocol)
+# ============================================================================
+
+
+class TritonInferenceOutput(BaseModel):
+    """
+    Single output tensor from Triton inference response.
+
+    For the 27spp model, this represents the PREDICTIONS output containing
+    JSON-encoded top-5 predictions.
+    """
+
+    name: str = Field(
+        ..., description="Name of the output tensor. 'PREDICTIONS' for 27spp model."
+    )
+    shape: list[int] = Field(
+        ..., description="Shape of the output tensor. [1] for single prediction result."
+    )
+    datatype: str = Field(
+        ..., description="Data type of the output. 'BYTES' for JSON string."
+    )
+    data: list[str] = Field(
+        ..., description="Array containing JSON-encoded prediction results"
+    )
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        if v != "PREDICTIONS":
+            raise ValueError("Output name must be 'PREDICTIONS'")
+        return v
+
+
+class TritonInferenceResponse(BaseModel):
+    """
+    Triton v2 inference response for the 27spp seed classification model.
+
+    Example:
+        {
+            "outputs": [
+                {
+                    "name": "PREDICTIONS",
+                    "shape": [1],
+                    "datatype": "BYTES",
+                    "data": ["[[{\"label\": \"000 Brassica napus\", \"score\": 0.9234}, ...]]"]
+                }
+            ]
+        }
+    """
+
+    outputs: list[TritonInferenceOutput] = Field(
+        ...,
+        description="Array of output tensors (single PREDICTIONS output for 27spp model)",
+    )
+
+    @field_validator("outputs")
+    @classmethod
+    def validate_single_output(
+        cls, v: list[TritonInferenceOutput]
+    ) -> list[TritonInferenceOutput]:
+        if len(v) != 1:
+            raise ValueError("27spp model returns exactly one output (PREDICTIONS)")
+        return v
+
+
+class ParsedPredictions(BaseModel):
+    """
+    Parsed prediction results from the model output.
+
+    This is the result after parsing the JSON string from the PREDICTIONS output.
+    Contains a batch of predictions, where each batch item has top-5 predictions.
+
+    Example:
+        {
+            "predictions": [
+                [
+                    {"label": "000 Brassica napus", "score": 0.9234},
+                    {"label": "001 Brassica junsea", "score": 0.0456},
+                    {"label": "002 Cirsium arvense", "score": 0.0123},
+                    {"label": "003 Solanum nigrum", "score": 0.0089},
+                    {"label": "004 Ambrosia artemisiifolia", "score": 0.0067}
+                ]
+            ]
+        }
+    """
+
+    predictions: list[list[PredictionLabelScore]] = Field(
+        ...,
+        description="Batch of predictions. Each batch item contains top-5 seed predictions.",
+    )
+
+    @field_validator("predictions")
+    @classmethod
+    def validate_predictions(
+        cls, v: list[list[PredictionLabelScore]]
+    ) -> list[list[PredictionLabelScore]]:
+        for batch_idx, batch in enumerate(v):
+            if len(batch) != 5:
+                raise ValueError(
+                    f"Batch {batch_idx}: Expected exactly 5 predictions (top-5), got {len(batch)}"
+                )
+        return v
+
+
+# ============================================================================
+# Helper Models for Application Integration
+# ============================================================================
+
+
+class ModelEndpoint(BaseModel):
+    """
+    Configuration for connecting to the Triton model endpoint.
+    """
+
+    base_url: str = Field(
+        ...,
+        description="Base URL of the Triton server (e.g., 'http://localhost:28000')",
+    )
+    model_name: str = Field(
+        default="27spp_model_1", description="Name of the model to use for inference"
+    )
+    timeout_seconds: int = Field(
+        default=30, ge=1, description="Request timeout in seconds"
+    )
+
+    @property
+    def inference_url(self) -> str:
+        """Get the full inference endpoint URL."""
+        return f"{self.base_url}/v2/models/{self.model_name}/infer"
+
+    @property
+    def health_url(self) -> str:
+        """Get the health check endpoint URL."""
+        return f"{self.base_url}/v2/health/ready"
+
+    @property
+    def metadata_url(self) -> str:
+        """Get the model metadata endpoint URL."""
+        return f"{self.base_url}/v2/models/{self.model_name}"
+
+
+# ============================================================================
+# Example Usage
+# ============================================================================
+
+# if __name__ == "__main__":
+#     import json
+
+#     # Example: Create an inference request
+#     request = TritonInferenceRequest(
+#         inputs=[
+#             TritonInferenceInput(
+#                 name="IMAGE",
+#                 shape=[1, 1],
+#                 datatype="BYTES",
+#                 data=["<base64-encoded-image-here>"],
+#             )
+#         ]
+#     )
+#     print("Request:")
+#     print(request.model_dump_json(indent=2))
+#     print()
+
+#     # Example: Parse an inference response
+#     response_json = {
+#         "outputs": [
+#             {
+#                 "name": "PREDICTIONS",
+#                 "shape": [1],
+#                 "datatype": "BYTES",
+#                 "data": [
+#                     json.dumps(
+#                         [
+#                             [
+#                                 {"label": "000 Brassica napus", "score": 0.9234},
+#                                 {"label": "001 Brassica junsea", "score": 0.0456},
+#                                 {"label": "002 Cirsium arvense", "score": 0.0123},
+#                                 {"label": "003 Solanum nigrum", "score": 0.0089},
+#                                 {
+#                                     "label": "004 Ambrosia artemisiifolia",
+#                                     "score": 0.0067,
+#                                 },
+#                             ]
+#                         ]
+#                     )
+#                 ],
+#             }
+#         ]
+#     }
+
+#     response = TritonInferenceResponse(**response_json)
+#     print("Response:")
+#     print(response.model_dump_json(indent=2))
+#     print()
+
+#     # Parse the predictions from the response
+#     predictions_json = json.loads(response.outputs[0].data[0])
+#     parsed = ParsedPredictions(predictions=predictions_json)
+#     print("Parsed Predictions:")
+#     print(parsed.model_dump_json(indent=2))
+#     print()
+
+#     # Show top prediction
+#     top_pred = parsed.predictions[0][0]
+#     print(f"Top prediction: {top_pred.label} ({top_pred.score:.2%} confidence)")
