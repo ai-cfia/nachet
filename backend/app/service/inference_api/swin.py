@@ -14,7 +14,7 @@ from app.model.inference import (
     SwinClassificationAPIResponse,
     EnhancedClassificationResult,
     ClassifiedBox,
-    TopNPredictionCleaned,
+    PredictionLabelScore,
     BoundingBoxAPI,
 )
 from . import (
@@ -91,7 +91,7 @@ def process_swin_result(
 
         # Build topN predictions with cleaned labels using Pydantic model
         top_n_predictions = [
-            TopNPredictionCleaned(label=clean_label(pred.label), score=pred.score)
+            PredictionLabelScore(label=clean_label(pred.label), score=pred.score)
             for pred in classification.predictions
         ]
 

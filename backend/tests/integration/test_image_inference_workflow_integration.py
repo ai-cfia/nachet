@@ -738,7 +738,7 @@ class TestInferenceResultsDatabasePersistence:
             ApiInferenceResponse,
             ApiInferenceBox,
             PixelBoundingBox,
-            TopNPredictionCleaned,
+            PredictionLabelScore,
             ModelInfo,
         )
         from sqlalchemy import select
@@ -753,9 +753,9 @@ class TestInferenceResultsDatabasePersistence:
                 label="Chenopodium album",  # Using full species name (genus + species)
                 score=0.95,
                 topN=[
-                    TopNPredictionCleaned(label="Chenopodium album", score=0.95),
-                    TopNPredictionCleaned(label="Chenopodium ficifolium", score=0.03),
-                    TopNPredictionCleaned(label="Chenopodium pallidicaule", score=0.02),
+                    PredictionLabelScore(label="Chenopodium album", score=0.95),
+                    PredictionLabelScore(label="Chenopodium ficifolium", score=0.03),
+                    PredictionLabelScore(label="Chenopodium pallidicaule", score=0.02),
                 ],
                 classId="0",
                 object_type_id="seed",
@@ -859,7 +859,7 @@ class TestInferenceResultsDatabasePersistence:
             ApiInferenceResponse,
             ApiInferenceBox,
             PixelBoundingBox,
-            TopNPredictionCleaned,
+            PredictionLabelScore,
             ModelInfo,
         )
         from sqlalchemy import select
@@ -874,7 +874,7 @@ class TestInferenceResultsDatabasePersistence:
                 label="UNMAPPED_SPECIES_XYZ123",  # This species doesn't exist
                 score=0.95,
                 topN=[
-                    TopNPredictionCleaned(label="UNMAPPED_SPECIES_XYZ123", score=0.95),
+                    PredictionLabelScore(label="UNMAPPED_SPECIES_XYZ123", score=0.95),
                 ],
                 classId="0",
                 object_type_id="seed",
@@ -954,7 +954,7 @@ class TestInferenceResultsDatabasePersistence:
             ApiInferenceResponse,
             ApiInferenceBox,
             PixelBoundingBox,
-            TopNPredictionCleaned,
+            PredictionLabelScore,
             ModelInfo,
         )
         from sqlalchemy import select
@@ -968,7 +968,7 @@ class TestInferenceResultsDatabasePersistence:
                 box=PixelBoundingBox(topX=10, topY=20, bottomX=100, bottomY=200),
                 label="Chenopodium album",
                 score=0.95,
-                topN=[TopNPredictionCleaned(label="Chenopodium album", score=0.95)],
+                topN=[PredictionLabelScore(label="Chenopodium album", score=0.95)],
                 classId="0",
                 object_type_id="seed",
                 box_id="box-1",
@@ -980,9 +980,7 @@ class TestInferenceResultsDatabasePersistence:
                 box=PixelBoundingBox(topX=150, topY=50, bottomX=250, bottomY=150),
                 label="Chenopodium ficifolium",
                 score=0.88,
-                topN=[
-                    TopNPredictionCleaned(label="Chenopodium ficifolium", score=0.88)
-                ],
+                topN=[PredictionLabelScore(label="Chenopodium ficifolium", score=0.88)],
                 classId="1",
                 object_type_id="seed",
                 box_id="box-2",
@@ -995,7 +993,7 @@ class TestInferenceResultsDatabasePersistence:
                 label="Chenopodium pallidicaule",
                 score=0.92,
                 topN=[
-                    TopNPredictionCleaned(label="Chenopodium pallidicaule", score=0.92)
+                    PredictionLabelScore(label="Chenopodium pallidicaule", score=0.92)
                 ],
                 classId="2",
                 object_type_id="seed",

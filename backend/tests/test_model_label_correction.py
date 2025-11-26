@@ -141,7 +141,7 @@ class TestCleanLabelIntegrationSwin:
             SwinClassificationAPIResponse,
             DetectionBoxAPI,
             BoundingBoxAPI,
-            TopNPredictionAPI,
+            PredictionLabelScore,
         )
 
         # Create mock detection response with one box (using keyword arguments)
@@ -160,8 +160,8 @@ class TestCleanLabelIntegrationSwin:
         classification_results = [
             SwinClassificationAPIResponse(
                 [
-                    TopNPredictionAPI(label="0 brassica junsea", score=0.95),
-                    TopNPredictionAPI(label="1 Avena fatua", score=0.05),
+                    PredictionLabelScore(label="0 brassica junsea", score=0.95),
+                    PredictionLabelScore(label="1 Avena fatua", score=0.05),
                 ]
             )
         ]
@@ -184,7 +184,7 @@ class TestCleanLabelIntegrationSwin:
             SwinClassificationAPIResponse,
             DetectionBoxAPI,
             BoundingBoxAPI,
-            TopNPredictionAPI,
+            PredictionLabelScore,
         )
 
         # Create mock detection response (using keyword arguments)
@@ -203,8 +203,8 @@ class TestCleanLabelIntegrationSwin:
         classification_results = [
             SwinClassificationAPIResponse(
                 [
-                    TopNPredictionAPI(label="BRASSICA JUNSEA", score=0.95),
-                    TopNPredictionAPI(label="Avena fatua", score=0.05),
+                    PredictionLabelScore(label="BRASSICA JUNSEA", score=0.95),
+                    PredictionLabelScore(label="Avena fatua", score=0.05),
                 ]
             )
         ]
