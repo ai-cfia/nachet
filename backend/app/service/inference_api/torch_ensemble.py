@@ -14,7 +14,7 @@ from app.model.inference import (
     SwinClassificationAPIResponse,
     EnhancedClassificationResult,
     ClassifiedBox,
-    TopNPredictionCleaned,
+    PredictionLabelScore,
     BoundingBoxAPI,
 )
 from . import (
@@ -91,7 +91,7 @@ def process_swin_result(
         # Build topN predictions with cleaned labels using Pydantic model
         # Apply spelling corrections to all predictions (temporary shim)
         top_n_predictions = [
-            TopNPredictionCleaned(
+            PredictionLabelScore(
                 label=correct_model_label(pred.label), score=pred.score
             )
             for pred in classification.predictions
@@ -389,7 +389,7 @@ async def request_inference_ensemble_b(
                 # Build topN predictions with cleaned labels
                 # Apply spelling corrections to all predictions (temporary shim)
                 top_n_predictions = [
-                    TopNPredictionCleaned(
+                    PredictionLabelScore(
                         label=correct_model_label(
                             " ".join(pred.label.split(" ")[1:])
                             if pred.label.split(" ")[0].isdigit()
