@@ -783,197 +783,30 @@ export const zPixelBoundingBox = z
 export type PixelBoundingBoxZodType = z.infer<typeof zPixelBoundingBox>;
 
 /**
- * ProcessingStages
+ * PredictionLabelScore
  *
- * Processing pipeline stages completion status.
+ * Universal prediction model for all inference results.
+ *
+ * Represents a single prediction with a label (species name) and confidence score.
+ * Used across all model types: SWIN classifiers, Triton inference, and ensemble models.
+ *
+ * Consolidates TopNPredictionAPI, TopNPredictionCleaned, and SeedPrediction.
  */
-export const zProcessingStages = z
-  .object({
-    uploaded: z.boolean(),
-    defenderScanning: z.boolean(),
-    defenderScanned: z.boolean(),
-    sanitizing: z.boolean(),
-    sanitized: z.boolean(),
-  })
-  .register(z.globalRegistry, {
-    description: "Processing pipeline stages completion status.",
-  });
-
-export type ProcessingStagesZodType = z.infer<typeof zProcessingStages>;
-
-/**
- * ProcessingTimestamps
- *
- * Timestamps for each processing stage.
- */
-export const zProcessingTimestamps = z
-  .object({
-    uploadedAt: z.optional(z.union([z.string(), z.null()])),
-    defenderScanStartedAt: z.optional(z.union([z.string(), z.null()])),
-    defenderScanCompletedAt: z.optional(z.union([z.string(), z.null()])),
-    sanitizationStartedAt: z.optional(z.union([z.string(), z.null()])),
-    sanitizationCompletedAt: z.optional(z.union([z.string(), z.null()])),
-    completedAt: z.optional(z.union([z.string(), z.null()])),
-    failedAt: z.optional(z.union([z.string(), z.null()])),
-  })
-  .register(z.globalRegistry, {
-    description: "Timestamps for each processing stage.",
-  });
-
-export type ProcessingTimestampsZodType = z.infer<typeof zProcessingTimestamps>;
-
-/**
- * ProcessingWorkflowStatus
- *
- * Detailed status for image processing workflow.
- */
-export const zProcessingWorkflowStatus = z
-  .object({
-    status: z.string(),
-    stages: zProcessingStages,
-    timestamps: zProcessingTimestamps,
-    defenderScanResult: z.optional(z.union([zDefenderScanResult, z.null()])),
-    blobUrls: zBlobUrls,
-    errorMessage: z.optional(z.union([z.string(), z.null()])),
-    errorDetails: z.optional(z.union([z.string(), z.null()])),
-  })
-  .register(z.globalRegistry, {
-    description: "Detailed status for image processing workflow.",
-  });
-
-export type ProcessingWorkflowStatusZodType = z.infer<
-  typeof zProcessingWorkflowStatus
->;
-
-/**
- * RateLimitTestResponse
- *
- * Response model for GET /rate-limit-test endpoint.
- *
- * Tests rate limiting functionality.
- */
-export const zRateLimitTestResponse = z
-  .object({
-    message: z.string().register(z.globalRegistry, {
-      description: "Response message",
-    }),
-  })
-  .register(z.globalRegistry, {
-    description:
-      "Response model for GET /rate-limit-test endpoint.\n\nTests rate limiting functionality.",
-  });
-
-export type RateLimitTestResponseZodType = z.infer<
-  typeof zRateLimitTestResponse
->;
-
-/**
- * RegistrationStatusResponse
- *
- * Response model for GET /is-registered endpoint.
- *
- * Checks if the user is registered in the system.
- */
-export const zRegistrationStatusResponse = z
-  .object({
-    isRegistered: z.boolean().register(z.globalRegistry, {
-      description: "Whether the user is registered in the system",
-    }),
-  })
-  .register(z.globalRegistry, {
-    description:
-      "Response model for GET /is-registered endpoint.\n\nChecks if the user is registered in the system.",
-  });
-
-export type RegistrationStatusResponseZodType = z.infer<
-  typeof zRegistrationStatusResponse
->;
-
-/**
- * SeedItem
- *
- * Individual seed entry with taxonomic information.
- *
- * Represents a single seed species with identification metadata.
- */
-export const zSeedItem = z
-  .object({
-    seedId: z.string().register(z.globalRegistry, {
-      description: "UUID of the seed",
-    }),
-    nameCode: z.string().register(z.globalRegistry, {
-      description: "Short code name for the seed",
-    }),
-    family: z.string().register(z.globalRegistry, {
-      description: "Taxonomic family",
-    }),
-    genus: z.string().register(z.globalRegistry, {
-      description: "Taxonomic genus",
-    }),
-    species: z.string().register(z.globalRegistry, {
-      description: "Taxonomic species",
-    }),
-    seedMetadata: z.optional(
-      z.union([z.record(z.string(), z.unknown()), z.null()]),
-    ),
-  })
-  .register(z.globalRegistry, {
-    description:
-      "Individual seed entry with taxonomic information.\n\nRepresents a single seed species with identification metadata.",
-  });
-
-export type SeedItemZodType = z.infer<typeof zSeedItem>;
-
-/**
- * SeedData
- *
- * Wrapper for seed data list.
- */
-export const zSeedData = z
-  .object({
-    seeds: z.array(zSeedItem).register(z.globalRegistry, {
-      description: "List of seed species",
-    }),
-  })
-  .register(z.globalRegistry, {
-    description: "Wrapper for seed data list.",
-  });
-
-export type SeedDataZodType = z.infer<typeof zSeedData>;
-
-/**
- * SeedDataResponse
- *
- * Response model for GET /seeds endpoint.
- *
- * Returns seed species data for frontend selection.
- * Uses RootModel wrapping SeedData for proper camelCase serialization.
- */
-export const zSeedDataResponse = zSeedData;
-
-export type SeedDataResponseZodType = z.infer<typeof zSeedDataResponse>;
-
-/**
- * TopNPredictionCleaned
- *
- * Top-N prediction with cleaned label (index prefix removed).
- */
-export const zTopNPredictionCleaned = z
+export const zPredictionLabelScore = z
   .object({
     label: z.string().register(z.globalRegistry, {
-      description: "Classification label without index prefix",
+      description: "Classification label or species name",
     }),
     score: z.number().gte(0).lte(1).register(z.globalRegistry, {
-      description: "Confidence score",
+      description: "Confidence score between 0.0 and 1.0",
     }),
   })
   .register(z.globalRegistry, {
-    description: "Top-N prediction with cleaned label (index prefix removed).",
+    description:
+      "Universal prediction model for all inference results.\n\nRepresents a single prediction with a label (species name) and confidence score.\nUsed across all model types: SWIN classifiers, Triton inference, and ensemble models.\n\nConsolidates TopNPredictionAPI, TopNPredictionCleaned, and SeedPrediction.",
   });
 
-export type TopNPredictionCleanedZodType = z.infer<
-  typeof zTopNPredictionCleaned
->;
+export type PredictionLabelScoreZodType = z.infer<typeof zPredictionLabelScore>;
 
 /**
  * ApiInferenceBox
@@ -994,7 +827,7 @@ export const zApiInferenceBox = z
     score: z.number().gte(0).lte(1).register(z.globalRegistry, {
       description: "Confidence score",
     }),
-    topN: z.array(zTopNPredictionCleaned).register(z.globalRegistry, {
+    topN: z.array(zPredictionLabelScore).register(z.globalRegistry, {
       description: "Top-N predictions",
     }),
     classId: z.string().register(z.globalRegistry, {
@@ -1061,6 +894,159 @@ export const zApiInferenceResponse = z
   });
 
 export type ApiInferenceResponseZodType = z.infer<typeof zApiInferenceResponse>;
+
+/**
+ * ProcessingStages
+ *
+ * Processing pipeline stages completion status.
+ */
+export const zProcessingStages = z
+  .object({
+    uploaded: z.boolean(),
+    defenderScanning: z.boolean(),
+    defenderScanned: z.boolean(),
+    sanitizing: z.boolean(),
+    sanitized: z.boolean(),
+  })
+  .register(z.globalRegistry, {
+    description: "Processing pipeline stages completion status.",
+  });
+
+export type ProcessingStagesZodType = z.infer<typeof zProcessingStages>;
+
+/**
+ * ProcessingTimestamps
+ *
+ * Timestamps for each processing stage.
+ */
+export const zProcessingTimestamps = z
+  .object({
+    uploadedAt: z.optional(z.union([z.string(), z.null()])),
+    defenderScanStartedAt: z.optional(z.union([z.string(), z.null()])),
+    defenderScanCompletedAt: z.optional(z.union([z.string(), z.null()])),
+    sanitizationStartedAt: z.optional(z.union([z.string(), z.null()])),
+    sanitizationCompletedAt: z.optional(z.union([z.string(), z.null()])),
+    completedAt: z.optional(z.union([z.string(), z.null()])),
+    failedAt: z.optional(z.union([z.string(), z.null()])),
+  })
+  .register(z.globalRegistry, {
+    description: "Timestamps for each processing stage.",
+  });
+
+export type ProcessingTimestampsZodType = z.infer<typeof zProcessingTimestamps>;
+
+/**
+ * ProcessingWorkflowStatus
+ *
+ * Detailed status for image processing workflow.
+ */
+export const zProcessingWorkflowStatus = z
+  .object({
+    status: z.string(),
+    stages: zProcessingStages,
+    timestamps: zProcessingTimestamps,
+    defenderScanResult: z.optional(z.union([zDefenderScanResult, z.null()])),
+    blobUrls: zBlobUrls,
+    errorMessage: z.optional(z.union([z.string(), z.null()])),
+    errorDetails: z.optional(z.union([z.string(), z.null()])),
+  })
+  .register(z.globalRegistry, {
+    description: "Detailed status for image processing workflow.",
+  });
+
+export type ProcessingWorkflowStatusZodType = z.infer<
+  typeof zProcessingWorkflowStatus
+>;
+
+/**
+ * RegistrationStatusResponse
+ *
+ * Response model for GET /is-registered endpoint.
+ *
+ * Checks if the user is registered in the system.
+ */
+export const zRegistrationStatusResponse = z
+  .object({
+    isRegistered: z.boolean().register(z.globalRegistry, {
+      description: "Whether the user is registered in the system",
+    }),
+  })
+  .register(z.globalRegistry, {
+    description:
+      "Response model for GET /is-registered endpoint.\n\nChecks if the user is registered in the system.",
+  });
+
+export type RegistrationStatusResponseZodType = z.infer<
+  typeof zRegistrationStatusResponse
+>;
+
+/**
+ * SeedItem
+ *
+ * Individual seed entry with taxonomic information.
+ *
+ * Represents a single seed species with identification metadata.
+ */
+export const zSeedItem = z
+  .object({
+    seedId: z.string().register(z.globalRegistry, {
+      description: "UUID of the seed",
+    }),
+    nameCode: z.string().register(z.globalRegistry, {
+      description: "Short code name for the seed",
+    }),
+    family: z.string().register(z.globalRegistry, {
+      description: "Taxonomic family",
+    }),
+    genus: z.string().register(z.globalRegistry, {
+      description: "Taxonomic genus",
+    }),
+    species: z.string().register(z.globalRegistry, {
+      description: "Taxonomic species",
+    }),
+    subspecies: z.optional(z.union([z.string(), z.null()])),
+    variety: z.optional(z.union([z.string(), z.null()])),
+    author: z.optional(z.union([z.string(), z.null()])),
+    url: z.optional(z.union([z.string(), z.null()])),
+    seedMetadata: z.optional(
+      z.union([z.record(z.string(), z.unknown()), z.null()]),
+    ),
+  })
+  .register(z.globalRegistry, {
+    description:
+      "Individual seed entry with taxonomic information.\n\nRepresents a single seed species with identification metadata.",
+  });
+
+export type SeedItemZodType = z.infer<typeof zSeedItem>;
+
+/**
+ * SeedData
+ *
+ * Wrapper for seed data list.
+ */
+export const zSeedData = z
+  .object({
+    seeds: z.array(zSeedItem).register(z.globalRegistry, {
+      description: "List of seed species",
+    }),
+  })
+  .register(z.globalRegistry, {
+    description: "Wrapper for seed data list.",
+  });
+
+export type SeedDataZodType = z.infer<typeof zSeedData>;
+
+/**
+ * SeedDataResponse
+ *
+ * Response model for GET /seeds endpoint.
+ *
+ * Returns seed species data for frontend selection.
+ * Uses RootModel wrapping SeedData for proper camelCase serialization.
+ */
+export const zSeedDataResponse = zSeedData;
+
+export type SeedDataResponseZodType = z.infer<typeof zSeedDataResponse>;
 
 /**
  * TrayCode
@@ -1303,27 +1289,6 @@ export const zSubmitImageForProcessingAuthRequiredInfPostResponse =
 export type SubmitImageForProcessingAuthRequiredInfPostResponseZodType =
   z.infer<typeof zSubmitImageForProcessingAuthRequiredInfPostResponse>;
 
-export const zSubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostData =
-  z.object({
-    body: zInferenceRequest,
-    path: z.optional(z.never()),
-    query: z.optional(z.never()),
-  });
-
-export type SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostDataZodType =
-  z.infer<typeof zSubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostData>;
-
-/**
- * Successful Response
- */
-export const zSubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostResponse =
-  zApiInferenceResponse;
-
-export type SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostResponseZodType =
-  z.infer<
-    typeof zSubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostResponse
-  >;
-
 export const zGetWorkflowStatusAuthRequiredWorkflowWorkflowIdStatusGetData =
   z.object({
     body: z.optional(z.never()),
@@ -1371,25 +1336,6 @@ export type GetWorkflowResultsAuthRequiredWorkflowWorkflowIdResultsGetResponseZo
   z.infer<
     typeof zGetWorkflowResultsAuthRequiredWorkflowWorkflowIdResultsGetResponse
   >;
-
-export const zRateLimitTestNoAuthRequiredRateLimitTestGetData = z.object({
-  body: z.optional(z.never()),
-  path: z.optional(z.never()),
-  query: z.optional(z.never()),
-});
-
-export type RateLimitTestNoAuthRequiredRateLimitTestGetDataZodType = z.infer<
-  typeof zRateLimitTestNoAuthRequiredRateLimitTestGetData
->;
-
-/**
- * Successful Response
- */
-export const zRateLimitTestNoAuthRequiredRateLimitTestGetResponse =
-  zRateLimitTestResponse;
-
-export type RateLimitTestNoAuthRequiredRateLimitTestGetResponseZodType =
-  z.infer<typeof zRateLimitTestNoAuthRequiredRateLimitTestGetResponse>;
 
 export const zGetHealthStatusNoAuthRequiredHealthGetData = z.object({
   body: z.optional(z.never()),

@@ -33,7 +33,7 @@ export type ApiInferenceBox = {
    *
    * Top-N predictions
    */
-  topN: Array<TopNPredictionCleaned>;
+  topN: Array<PredictionLabelScore>;
   /**
    * Classid
    *
@@ -1156,6 +1156,31 @@ export type PixelBoundingBox = {
 };
 
 /**
+ * PredictionLabelScore
+ *
+ * Universal prediction model for all inference results.
+ *
+ * Represents a single prediction with a label (species name) and confidence score.
+ * Used across all model types: SWIN classifiers, Triton inference, and ensemble models.
+ *
+ * Consolidates TopNPredictionAPI, TopNPredictionCleaned, and SeedPrediction.
+ */
+export type PredictionLabelScore = {
+  /**
+   * Label
+   *
+   * Classification label or species name
+   */
+  label: string;
+  /**
+   * Score
+   *
+   * Confidence score between 0.0 and 1.0
+   */
+  score: number;
+};
+
+/**
  * ProcessingStages
  *
  * Processing pipeline stages completion status.
@@ -1244,22 +1269,6 @@ export type ProcessingWorkflowStatus = {
 };
 
 /**
- * RateLimitTestResponse
- *
- * Response model for GET /rate-limit-test endpoint.
- *
- * Tests rate limiting functionality.
- */
-export type RateLimitTestResponse = {
-  /**
-   * Message
-   *
-   * Response message
-   */
-  message: string;
-};
-
-/**
  * RegistrationStatusResponse
  *
  * Response model for GET /is-registered endpoint.
@@ -1338,6 +1347,30 @@ export type SeedItem = {
    */
   species: string;
   /**
+   * Subspecies
+   *
+   * Taxonomic subspecies
+   */
+  subspecies?: string | null;
+  /**
+   * Variety
+   *
+   * Taxonomic variety
+   */
+  variety?: string | null;
+  /**
+   * Author
+   *
+   * Author citation
+   */
+  author?: string | null;
+  /**
+   * Url
+   *
+   * Reference URL
+   */
+  url?: string | null;
+  /**
    * Seedmetadata
    *
    * Additional seed metadata
@@ -1345,26 +1378,6 @@ export type SeedItem = {
   seedMetadata?: {
     [key: string]: unknown;
   } | null;
-};
-
-/**
- * TopNPredictionCleaned
- *
- * Top-N prediction with cleaned label (index prefix removed).
- */
-export type TopNPredictionCleaned = {
-  /**
-   * Label
-   *
-   * Classification label without index prefix
-   */
-  label: string;
-  /**
-   * Score
-   *
-   * Confidence score
-   */
-  score: number;
 };
 
 /**
@@ -1590,34 +1603,6 @@ export type SubmitImageForProcessingAuthRequiredInfPostResponses = {
 export type SubmitImageForProcessingAuthRequiredInfPostResponse =
   SubmitImageForProcessingAuthRequiredInfPostResponses[keyof SubmitImageForProcessingAuthRequiredInfPostResponses];
 
-export type SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostData = {
-  body: InferenceRequest;
-  path?: never;
-  query?: never;
-  url: "/inf-direct";
-};
-
-export type SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
-};
-
-export type SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostError =
-  SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostErrors[keyof SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostErrors];
-
-export type SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostResponses =
-  {
-    /**
-     * Successful Response
-     */
-    200: ApiInferenceResponse;
-  };
-
-export type SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostResponse =
-  SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostResponses[keyof SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostResponses];
-
 export type GetWorkflowStatusAuthRequiredWorkflowWorkflowIdStatusGetData = {
   body?: never;
   path: {
@@ -1683,23 +1668,6 @@ export type GetWorkflowResultsAuthRequiredWorkflowWorkflowIdResultsGetResponses 
 
 export type GetWorkflowResultsAuthRequiredWorkflowWorkflowIdResultsGetResponse =
   GetWorkflowResultsAuthRequiredWorkflowWorkflowIdResultsGetResponses[keyof GetWorkflowResultsAuthRequiredWorkflowWorkflowIdResultsGetResponses];
-
-export type RateLimitTestNoAuthRequiredRateLimitTestGetData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/rate-limit-test";
-};
-
-export type RateLimitTestNoAuthRequiredRateLimitTestGetResponses = {
-  /**
-   * Successful Response
-   */
-  200: RateLimitTestResponse;
-};
-
-export type RateLimitTestNoAuthRequiredRateLimitTestGetResponse =
-  RateLimitTestNoAuthRequiredRateLimitTestGetResponses[keyof RateLimitTestNoAuthRequiredRateLimitTestGetResponses];
 
 export type GetHealthStatusNoAuthRequiredHealthGetData = {
   body?: never;
