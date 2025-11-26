@@ -69,6 +69,12 @@ class ModelInferenceClassifierResult:
 from .swin import request_inference_from_swin
 from .seed_detector import request_inference_from_seed_detector
 from .test import request_inference_from_test
+from .triton_detector import request_triton_detector
+from .triton_classifier import request_triton_classifier
+from .triton_classifier_ensemble import (
+    request_triton_ensemble_a,
+    request_triton_ensemble_b,
+)
 from .inference import (
     process_enhanced_classification_result as process_enhanced_classification_result,
     process_api_ready_classification_result as process_api_ready_classification_result,
@@ -138,6 +144,32 @@ class InferenceDispatchService:
                 if not isinstance(previous_result, ModelInferenceClassifierResult):
                     raise TypeError("ensemble_b expects ModelInferenceClassifierResult")
                 result = request_inference_ensemble_b(model_info, previous_result)
+            case "triton_detector":
+                # Triton seed detector expects a base64 string
+                if not isinstance(previous_result, str):
+                    raise TypeError("triton_detector expects a base64 string")
+                result = request_triton_detector(model_info, previous_result)
+            case "triton_classifier":
+                # Triton SWIN classifier expects ModelInferenceDetectorResult
+                if not isinstance(previous_result, ModelInferenceDetectorResult):
+                    raise TypeError(
+                        "triton_classifier expects ModelInferenceDetectorResult"
+                    )
+                result = request_triton_classifier(model_info, previous_result)
+            case "triton_ensemble_a":
+                # Triton Ensemble A expects ModelInferenceDetectorResult
+                if not isinstance(previous_result, ModelInferenceDetectorResult):
+                    raise TypeError(
+                        "triton_ensemble_a expects ModelInferenceDetectorResult"
+                    )
+                result = request_triton_ensemble_a(model_info, previous_result)
+            case "triton_ensemble_b":
+                # Triton Ensemble B expects ModelInferenceClassifierResult
+                if not isinstance(previous_result, ModelInferenceClassifierResult):
+                    raise TypeError(
+                        "triton_ensemble_b expects ModelInferenceClassifierResult"
+                    )
+                result = request_triton_ensemble_b(model_info, previous_result)
             case "request_inference_from_test":
                 # Test function expects a base64 string
                 if not isinstance(previous_result, str):

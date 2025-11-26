@@ -638,6 +638,92 @@ class ParsedPredictions(BaseModel):
 
 
 # ============================================================================
+# Detector Models (Triton v2 Inference Protocol)
+# ============================================================================
+
+
+class TritonDetectorOutput(BaseModel):
+    """
+    Single output tensor from Triton detector inference response.
+
+    For the seed-detector-rcnn model, this represents the DETECTIONS output
+    containing JSON-encoded bounding box predictions.
+
+    Example:
+        {
+            "name": "DETECTIONS",
+            "shape": [1],
+            "datatype": "BYTES",
+            "data": ["{\"boxes\": [...]}"]
+        }
+    """
+
+    name: str = Field(
+        ..., description="Name of the output tensor. 'DETECTIONS' for detector models."
+    )
+    shape: list[int] = Field(
+        ..., description="Shape of the output tensor. [1] for single detection result."
+    )
+    datatype: str = Field(
+        ..., description="Data type of the output. 'BYTES' for JSON string."
+    )
+    data: list[str] = Field(
+        ..., description="Array containing JSON-encoded detection results"
+    )
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        if v != "DETECTIONS":
+            raise ValueError("Output name must be 'DETECTIONS' for detector models")
+        return v
+
+    @field_validator("datatype")
+    @classmethod
+    def validate_datatype(cls, v: str) -> str:
+        if v.upper() != "BYTES":
+            raise ValueError("Datatype must be 'BYTES' for detection data")
+        return v.upper()
+
+
+class TritonDetectorResponse(BaseModel):
+    """
+    Triton v2 inference response for seed detector models.
+
+    Includes model metadata and detection outputs in Triton protocol format.
+
+    Example:
+        {
+            "model_name": "seed-detector-rcnn",
+            "model_version": "1",
+            "outputs": [
+                {
+                    "name": "DETECTIONS",
+                    "shape": [1],
+                    "datatype": "BYTES",
+                    "data": ["{\"boxes\": [{\"box\": {...}, \"label\": \"Seed\", \"score\": 0.99}]}"]
+                }
+            ]
+        }
+    """
+
+    model_name: str = Field(..., description="Name of the detector model")
+    model_version: str = Field(..., description="Version of the detector model")
+    outputs: list[TritonDetectorOutput] = Field(
+        ..., description="Array of output tensors (single DETECTIONS output)"
+    )
+
+    @field_validator("outputs")
+    @classmethod
+    def validate_single_output(
+        cls, v: list[TritonDetectorOutput]
+    ) -> list[TritonDetectorOutput]:
+        if len(v) != 1:
+            raise ValueError("Detector model returns exactly one output (DETECTIONS)")
+        return v
+
+
+# ============================================================================
 # Helper Models for Application Integration
 # ============================================================================
 
