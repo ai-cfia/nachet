@@ -768,7 +768,9 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         pipeline_model_triton_1 = PipelineModel(
             id=uuid.UUID("a5e48669-eff5-4f89-bdb8-4865c7659c1e"),
             pipeline_id=uuid.UUID("ca8da2b4-0e74-4537-9e1f-bde7728b4976"),
-            model_id=uuid.UUID("609e3a63-e5b5-4a41-af65-f452b7d4ca80"),  # detector-triton
+            model_id=uuid.UUID(
+                "609e3a63-e5b5-4a41-af65-f452b7d4ca80"
+            ),  # detector-triton
             step=1,
             request_function="triton_detector",
             active=True,
@@ -776,7 +778,9 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         pipeline_model_triton_2 = PipelineModel(
             id=uuid.UUID("c98a4565-9157-41f6-bf22-447cc6c92721"),
             pipeline_id=uuid.UUID("ca8da2b4-0e74-4537-9e1f-bde7728b4976"),
-            model_id=uuid.UUID("63a16dd9-3d0b-42f9-90cb-da14b9613527"),  # swin-27-triton
+            model_id=uuid.UUID(
+                "63a16dd9-3d0b-42f9-90cb-da14b9613527"
+            ),  # swin-27-triton
             step=2,
             request_function="triton_ensemble_a",
             active=True,
@@ -784,7 +788,9 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         pipeline_model_triton_3 = PipelineModel(
             id=uuid.UUID("4cab2a4a-9ef1-4d1d-8437-4ae6d56d6b1a"),
             pipeline_id=uuid.UUID("ca8da2b4-0e74-4537-9e1f-bde7728b4976"),
-            model_id=uuid.UUID("039eb952-3f3c-4511-a7f8-bde914da9045"),  # swin-15-triton
+            model_id=uuid.UUID(
+                "039eb952-3f3c-4511-a7f8-bde914da9045"
+            ),  # swin-15-triton
             step=3,
             request_function="triton_ensemble_b",
             active=True,
@@ -792,7 +798,9 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         pipeline_model_triton_4 = PipelineModel(
             id=uuid.UUID("e002afe5-953f-4219-9cf7-68ffec9a983b"),
             pipeline_id=uuid.UUID("d46bf2f6-51bd-45c9-91b5-46220ae7a5f3"),
-            model_id=uuid.UUID("609e3a63-e5b5-4a41-af65-f452b7d4ca80"),  # detector-triton
+            model_id=uuid.UUID(
+                "609e3a63-e5b5-4a41-af65-f452b7d4ca80"
+            ),  # detector-triton
             step=1,
             request_function="triton_detector",
             active=True,
@@ -800,7 +808,9 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         pipeline_model_triton_5 = PipelineModel(
             id=uuid.UUID("921e62af-82d0-4866-868f-9333897af5cd"),
             pipeline_id=uuid.UUID("d46bf2f6-51bd-45c9-91b5-46220ae7a5f3"),
-            model_id=uuid.UUID("039eb952-3f3c-4511-a7f8-bde914da9045"),  # swin-15-triton
+            model_id=uuid.UUID(
+                "039eb952-3f3c-4511-a7f8-bde914da9045"
+            ),  # swin-15-triton
             step=2,
             request_function="triton_classifier",
             active=True,
@@ -808,7 +818,9 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         pipeline_model_triton_6 = PipelineModel(
             id=uuid.UUID("8d72ec1e-8b16-4358-a939-6a671648c8e1"),
             pipeline_id=uuid.UUID("e9b506c9-c827-4276-ad1a-27649762ad44"),
-            model_id=uuid.UUID("609e3a63-e5b5-4a41-af65-f452b7d4ca80"),  # detector-triton
+            model_id=uuid.UUID(
+                "609e3a63-e5b5-4a41-af65-f452b7d4ca80"
+            ),  # detector-triton
             step=1,
             request_function="triton_detector",
             active=True,
@@ -816,7 +828,9 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         pipeline_model_triton_7 = PipelineModel(
             id=uuid.UUID("13dc7be8-9a02-4408-9d13-e3176c99987b"),
             pipeline_id=uuid.UUID("e9b506c9-c827-4276-ad1a-27649762ad44"),
-            model_id=uuid.UUID("63a16dd9-3d0b-42f9-90cb-da14b9613527"),  # swin-27-triton
+            model_id=uuid.UUID(
+                "63a16dd9-3d0b-42f9-90cb-da14b9613527"
+            ),  # swin-27-triton
             step=2,
             request_function="triton_classifier",
             active=True,
