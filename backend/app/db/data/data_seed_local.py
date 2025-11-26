@@ -278,6 +278,55 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
             active=True,
         )
 
+        # triton model deployments
+        swin_15_model_triton = Model(
+            id=uuid.UUID("039eb952-3f3c-4511-a7f8-bde914da9045"),
+            deployment_platform="on-prem",
+            name="swin-15spp-triton",
+            endpoint_name="swin-15spp-triton-endpoint",
+            task_id=2,
+            date_model_training=datetime(2025, 3, 4, 5, 44, 8, 393911),
+            # api_url="http://nachet-15spp-classifier-triton:8000/v2/models/15spp_model_120250130/infer",
+            api_url="http://127.0.0.1:12330/v2/models/15spp_model_120250130/infer",
+            api_key="gAAAAABnURjjQOZBtbUwSzIEoSYXF5TBldPMeajnzg",
+            created_by="Test User",
+            version="0.0.1",
+            description="15e-spp triton deployment",
+            active=True,
+        )
+
+        swin_27_model_triton = Model(
+            id=uuid.UUID("63a16dd9-3d0b-42f9-90cb-da14b9613527"),
+            deployment_platform="on-prem",
+            name="swin-27spp-triton",
+            endpoint_name="swin-27spp-triton-endpoint",
+            task_id=2,
+            date_model_training=datetime(2025, 3, 4, 5, 44, 8, 393911),
+            # api_url="http://nachet-27spp-classifier-triton:8000/v2/models/27spp_model_120250130/infer",
+            api_url="http://127.0.0.1:12340/v2/models/27spp_model_120250130/infer",
+            api_key="gAAAAABnURjjQOZBtbUwSzIEoSYXF5TBldPMeajnzg",
+            created_by="Test User",
+            version="0.0.1",
+            description="27spp triton deployment",
+            active=True,
+        )
+
+        seed_detector_model_triton = Model(
+            id=uuid.UUID("609e3a63-e5b5-4a41-af65-f452b7d4ca80"),
+            deployment_platform="on-prem",
+            name="detector-rcnn-15spp-triton",
+            endpoint_name="detector-rcnn-15spp-triton-endpoint",
+            task_id=1,
+            date_model_training=datetime(2024, 11, 13, 7, 40, 25, 867369),
+            # api_url="http://nachet-seed-detector-triton:8000/v2/models/rcnn-152-15spp/infer",
+            api_url="http://127.0.0.1:12350/v2/models/rcnn-152-15spp/infer",
+            api_key="gAAAAABnURjjQOZBtbUwSzIEoSYXF5TBldPMeajnzg",
+            created_by="Test User",
+            version="0.0.1",
+            description="Seed detector triton deployment",
+            active=True,
+        )
+
         session.add_all(
             [
                 swin_15_model,
@@ -286,6 +335,9 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
                 swin_15_model_local,
                 swin_27_model_local,
                 seed_detector_model_local,
+                swin_15_model_triton,
+                swin_27_model_triton,
+                seed_detector_model_triton,
             ]
         )
     _get_logger().info("Models added (including local test models)")
@@ -478,6 +530,90 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         session.add(pipeline_local_27spp_single)
     _get_logger().info("Local test pipeline added (27spp single)")
 
+    # triton pipelines
+    async with async_session.begin() as session:
+        from datetime import date
+
+        pipeline_triton = Pipeline(
+            id=uuid.UUID("ca8da2b4-0e74-4537-9e1f-bde7728b4976"),
+            name="27 spp RCNN SWIN ensemble (Triton)",
+            active=True,
+            created_by="Test User",
+            creation_date=date(2025, 1, 30),
+            description="Triton deployment pipeline - 27spp with detector and two classifiers",
+            job_name="",
+            version="1",
+            dataset="",
+            identifiable=[],
+            metrics=[],
+            default=False,
+            data={
+                "models": [
+                    "detector-rcnn-15spp-triton",
+                    "swin-27spp-triton",
+                    "swin-15spp-triton",
+                ],
+                "created_by": "Test User",
+                "creation_date": "2025-01-30",
+                "description": "Triton deployment pipeline - 27spp",
+                "job_name": "",
+                "version": "1",
+                "dataset": "",
+            },
+        )
+        session.add(pipeline_triton)
+
+        pipeline_triton_15spp = Pipeline(
+            id=uuid.UUID("d46bf2f6-51bd-45c9-91b5-46220ae7a5f3"),
+            name="15 spp RCNN SWIN (Triton)",
+            active=True,
+            created_by="Test User",
+            creation_date=date(2025, 1, 30),
+            description="Triton deployment pipeline - 15spp with detector and classifier",
+            job_name="",
+            version="1",
+            dataset="",
+            identifiable=[],
+            metrics=[],
+            default=False,
+            data={
+                "models": ["detector-rcnn-15spp-triton", "swin-15spp-triton"],
+                "created_by": "Test User",
+                "creation_date": "2025-01-30",
+                "description": "Triton deployment pipeline - 15spp",
+                "job_name": "",
+                "version": "1",
+                "dataset": "",
+            },
+        )
+        session.add(pipeline_triton_15spp)
+
+        pipeline_triton_27spp_single = Pipeline(
+            id=uuid.UUID("e9b506c9-c827-4276-ad1a-27649762ad44"),
+            name="27 spp RCNN SWIN Single (Triton)",
+            active=True,
+            created_by="Test User",
+            creation_date=date(2025, 1, 30),
+            description="Triton deployment pipeline - 27spp with detector only",
+            job_name="",
+            version="1",
+            dataset="",
+            identifiable=[],
+            metrics=[],
+            default=False,
+            data={
+                "models": ["detector-rcnn-15spp-triton", "swin-27spp-triton"],
+                "created_by": "Test User",
+                "creation_date": "2025-01-30",
+                "description": "Triton deployment pipeline - 27spp single",
+                "job_name": "",
+                "version": "1",
+                "dataset": "",
+            },
+        )
+        session.add(pipeline_triton_27spp_single)
+    _get_logger().info("Triton deployment pipelines added")
+
     # Add pipeline default
     async with async_session.begin() as session:
         pipeline_default = PipelineDefault(
@@ -628,6 +764,64 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
             active=True,
         )
 
+        # triton pipeline models
+        pipeline_model_triton_1 = PipelineModel(
+            id=uuid.UUID("a5e48669-eff5-4f89-bdb8-4865c7659c1e"),
+            pipeline_id=uuid.UUID("ca8da2b4-0e74-4537-9e1f-bde7728b4976"),
+            model_id=uuid.UUID("609e3a63-e5b5-4a41-af65-f452b7d4ca80"),  # detector-triton
+            step=1,
+            request_function="triton_detector",
+            active=True,
+        )
+        pipeline_model_triton_2 = PipelineModel(
+            id=uuid.UUID("c98a4565-9157-41f6-bf22-447cc6c92721"),
+            pipeline_id=uuid.UUID("ca8da2b4-0e74-4537-9e1f-bde7728b4976"),
+            model_id=uuid.UUID("63a16dd9-3d0b-42f9-90cb-da14b9613527"),  # swin-27-triton
+            step=2,
+            request_function="triton_ensemble_a",
+            active=True,
+        )
+        pipeline_model_triton_3 = PipelineModel(
+            id=uuid.UUID("4cab2a4a-9ef1-4d1d-8437-4ae6d56d6b1a"),
+            pipeline_id=uuid.UUID("ca8da2b4-0e74-4537-9e1f-bde7728b4976"),
+            model_id=uuid.UUID("039eb952-3f3c-4511-a7f8-bde914da9045"),  # swin-15-triton
+            step=3,
+            request_function="triton_ensemble_b",
+            active=True,
+        )
+        pipeline_model_triton_4 = PipelineModel(
+            id=uuid.UUID("e002afe5-953f-4219-9cf7-68ffec9a983b"),
+            pipeline_id=uuid.UUID("d46bf2f6-51bd-45c9-91b5-46220ae7a5f3"),
+            model_id=uuid.UUID("609e3a63-e5b5-4a41-af65-f452b7d4ca80"),  # detector-triton
+            step=1,
+            request_function="triton_detector",
+            active=True,
+        )
+        pipeline_model_triton_5 = PipelineModel(
+            id=uuid.UUID("921e62af-82d0-4866-868f-9333897af5cd"),
+            pipeline_id=uuid.UUID("d46bf2f6-51bd-45c9-91b5-46220ae7a5f3"),
+            model_id=uuid.UUID("039eb952-3f3c-4511-a7f8-bde914da9045"),  # swin-15-triton
+            step=2,
+            request_function="triton_classifier",
+            active=True,
+        )
+        pipeline_model_triton_6 = PipelineModel(
+            id=uuid.UUID("8d72ec1e-8b16-4358-a939-6a671648c8e1"),
+            pipeline_id=uuid.UUID("e9b506c9-c827-4276-ad1a-27649762ad44"),
+            model_id=uuid.UUID("609e3a63-e5b5-4a41-af65-f452b7d4ca80"),  # detector-triton
+            step=1,
+            request_function="triton_detector",
+            active=True,
+        )
+        pipeline_model_triton_7 = PipelineModel(
+            id=uuid.UUID("13dc7be8-9a02-4408-9d13-e3176c99987b"),
+            pipeline_id=uuid.UUID("e9b506c9-c827-4276-ad1a-27649762ad44"),
+            model_id=uuid.UUID("63a16dd9-3d0b-42f9-90cb-da14b9613527"),  # swin-27-triton
+            step=2,
+            request_function="triton_classifier",
+            active=True,
+        )
+
         session.add_all(
             [
                 pipeline_model_1,
@@ -644,6 +838,13 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
                 pipeline_model_local_5,
                 pipeline_model_local_6,
                 pipeline_model_local_7,
+                pipeline_model_triton_1,
+                pipeline_model_triton_2,
+                pipeline_model_triton_3,
+                pipeline_model_triton_4,
+                pipeline_model_triton_5,
+                pipeline_model_triton_6,
+                pipeline_model_triton_7,
             ]
         )
     _get_logger().info("Pipeline models added (including local test pipeline models)")
