@@ -43,45 +43,6 @@
         }
       }
     },
-    "/inf-direct": {
-      "post": {
-        "summary": "Submit Image For Direct Processing [Cfia Admin Only]",
-        "description": "Submit an image for direct processing (synchronous).\nDoes not store anything.\nDirect to the model endpoint and returns the classification result.\n\nReturns ApiInferenceResponse with boxes and classifications.\n\nAccess: CFIA admin only",
-        "operationId": "Submit_Image_for_Direct_Processing__CFIA_ADMIN_ONLY__inf_direct_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InferenceRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiInferenceResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/workflow/{workflow_id}/status": {
       "get": {
         "summary": "Get Workflow Status [Auth Required]",
@@ -155,24 +116,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/rate-limit-test": {
-      "get": {
-        "summary": "Rate Limit Test [No Auth Required]",
-        "operationId": "Rate_Limit_Test__NO_AUTH_REQUIRED__rate_limit_test_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RateLimitTestResponse"
                 }
               }
             }
@@ -642,7 +585,7 @@
           },
           "topN": {
             "items": {
-              "$ref": "#/components/schemas/TopNPredictionCleaned"
+              "$ref": "#/components/schemas/PredictionLabelScore"
             },
             "type": "array",
             "title": "Topn",
@@ -2046,6 +1989,29 @@
         "title": "PixelBoundingBox",
         "description": "Bounding box coordinates in pixel values.\n\nUsed after converting from normalized coordinates (0.0-1.0)\nto absolute pixel positions."
       },
+      "PredictionLabelScore": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "Classification label or species name"
+          },
+          "score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "description": "Confidence score between 0.0 and 1.0"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "score"
+        ],
+        "title": "PredictionLabelScore",
+        "description": "Universal prediction model for all inference results.\n\nRepresents a single prediction with a label (species name) and confidence score.\nUsed across all model types: SWIN classifiers, Triton inference, and ensemble models.\n\nConsolidates TopNPredictionAPI, TopNPredictionCleaned, and SeedPrediction."
+      },
       "ProcessingStages": {
         "properties": {
           "uploaded": {
@@ -2222,21 +2188,6 @@
         "title": "ProcessingWorkflowStatus",
         "description": "Detailed status for image processing workflow."
       },
-      "RateLimitTestResponse": {
-        "properties": {
-          "message": {
-            "type": "string",
-            "title": "Message",
-            "description": "Response message"
-          }
-        },
-        "type": "object",
-        "required": [
-          "message"
-        ],
-        "title": "RateLimitTestResponse",
-        "description": "Response model for GET /rate-limit-test endpoint.\n\nTests rate limiting functionality."
-      },
       "RegistrationStatusResponse": {
         "properties": {
           "isRegistered": {
@@ -2302,6 +2253,54 @@
             "title": "Species",
             "description": "Taxonomic species"
           },
+          "subspecies": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subspecies",
+            "description": "Taxonomic subspecies"
+          },
+          "variety": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variety",
+            "description": "Taxonomic variety"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author",
+            "description": "Author citation"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url",
+            "description": "Reference URL"
+          },
           "seedMetadata": {
             "anyOf": [
               {
@@ -2326,29 +2325,6 @@
         ],
         "title": "SeedItem",
         "description": "Individual seed entry with taxonomic information.\n\nRepresents a single seed species with identification metadata."
-      },
-      "TopNPredictionCleaned": {
-        "properties": {
-          "label": {
-            "type": "string",
-            "title": "Label",
-            "description": "Classification label without index prefix"
-          },
-          "score": {
-            "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Score",
-            "description": "Confidence score"
-          }
-        },
-        "type": "object",
-        "required": [
-          "label",
-          "score"
-        ],
-        "title": "TopNPredictionCleaned",
-        "description": "Top-N prediction with cleaned label (index prefix removed)."
       },
       "TrayCode": {
         "type": "string",

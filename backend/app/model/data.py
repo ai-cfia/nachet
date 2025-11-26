@@ -101,6 +101,15 @@ class SeedItem(BaseModel):
     family: str = Field(..., description="Taxonomic family")
     genus: str = Field(..., description="Taxonomic genus")
     species: str = Field(..., description="Taxonomic species")
+    subspecies: Optional[str] = Field(None, description="Taxonomic subspecies")
+    variety: Optional[str] = Field(None, description="Taxonomic variety")
+    synonyms: Optional[str] = Field(None, description="Taxonomic synonyms")
+    author: Optional[str] = Field(None, description="Author citation")
+    subspecies_author: Optional[str] = Field(
+        None, description="Subspecies author citation"
+    )
+    variety_author: Optional[str] = Field(None, description="Variety author citation")
+    url: Optional[str] = Field(None, description="Reference URL")
     seed_metadata: Optional[Dict[str, Any]] = Field(
         None, description="Additional seed metadata"
     )

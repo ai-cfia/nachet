@@ -13,6 +13,13 @@ class SeedDataRow(TypedDict):
     family: str
     genus: str
     species: str
+    subspecies: Optional[str]
+    variety: Optional[str]
+    synonyms: Optional[str]
+    author: Optional[str]
+    subspecies_author: Optional[str]
+    variety_author: Optional[str]
+    url: Optional[str]
     seed_metadata: Optional[dict]
 
 
@@ -39,6 +46,13 @@ class SeedDataService(BaseCRUDDataService[Seed]):
             Seed.family,
             Seed.genus,
             Seed.species,
+            Seed.subspecies,
+            Seed.variety,
+            Seed.synonyms,
+            Seed.author,
+            Seed.subspecies_author,
+            Seed.variety_author,
+            Seed.url,
             Seed.seed_metadata,
         ).where(Seed.active.is_(True))
         result = await self.session.execute(query)

@@ -421,3 +421,17 @@ At this point you will have the full stack, you will be able to test integration
 - push the new build to blob storage `nachet/backend $ uv run app/scripts/push_frontend_to_blob.py --clean`
 - you can also debug by running the frontend in dev mode and connecting to the backend `nachet/frontend $ npm run dev -- --port 12438`
 - you can also run the frontend in a container `nachet $ docker compose -f docker-compose.yaml build nachet-frontend --no-cache && docker compose -f docker-compose.yaml up -d nachet-frontend --force-recreate`
+
+### Regenerating Frontend API Types
+
+When backend Pydantic models change (e.g., adding fields to API response models), you need to regenerate the frontend TypeScript types:
+
+```bash
+# 1. Dump the OpenAPI schema from the backend
+nachet/backend $ uv run app/scripts/dump_openapi_schema.py
+
+# 2. Regenerate the frontend client types (from repo root)
+nachet $ npm run openapi-ts
+```
+
+This uses the `@hey-api/openapi-ts` configuration at `openapi-ts.config.ts` in the repo root to generate TypeScript types in `frontend/src/client/`.
