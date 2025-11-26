@@ -31,7 +31,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@0d20755a2389f8ddbd3ad4f8a536309a4db22de9
+        uses: astral-sh/setup-uv@d500d41ebf45e2651f4a5be45a656d70774f18a7
 
       - name: Install dependencies and cyclone-x
         run: |
