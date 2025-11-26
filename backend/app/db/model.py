@@ -55,6 +55,13 @@ class Seed(Base):
     family: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     genus: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     species: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    subspecies: Mapped[Optional[str]] = mapped_column(Text)
+    variety: Mapped[Optional[str]] = mapped_column(Text)
+    synonyms: Mapped[Optional[str]] = mapped_column(Text)
+    author: Mapped[Optional[str]] = mapped_column(Text)
+    subspecies_author: Mapped[Optional[str]] = mapped_column(Text)
+    variety_author: Mapped[Optional[str]] = mapped_column(Text)
+    url: Mapped[Optional[str]] = mapped_column(Text)
     original_ista_2025: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Relationships
