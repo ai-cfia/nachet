@@ -43,11 +43,6 @@ import type {
   InitializeBatchUploadAuthRequiredNewBatchImportPostResponses,
   LogoutUserNoAuthRequiredLogoutGetData,
   LogoutUserNoAuthRequiredLogoutGetResponses,
-  RateLimitTestNoAuthRequiredRateLimitTestGetData,
-  RateLimitTestNoAuthRequiredRateLimitTestGetResponses,
-  SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostData,
-  SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostErrors,
-  SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostResponses,
   SubmitImageForProcessingAuthRequiredInfPostData,
   SubmitImageForProcessingAuthRequiredInfPostErrors,
   SubmitImageForProcessingAuthRequiredInfPostResponses,
@@ -92,10 +87,6 @@ import {
   zInitializeBatchUploadAuthRequiredNewBatchImportPostData,
   zInitializeBatchUploadAuthRequiredNewBatchImportPostResponse,
   zLogoutUserNoAuthRequiredLogoutGetData,
-  zRateLimitTestNoAuthRequiredRateLimitTestGetData,
-  zRateLimitTestNoAuthRequiredRateLimitTestGetResponse,
-  zSubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostData,
-  zSubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostResponse,
   zSubmitImageForProcessingAuthRequiredInfPostData,
   zSubmitImageForProcessingAuthRequiredInfPostResponse,
   zUpdateFolderAuthRequiredFoldersFolderIdPutData,
@@ -149,50 +140,6 @@ export const submitImageForProcessingAuthRequiredInfPost = <
       );
     },
     url: "/inf",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-};
-
-/**
- * Submit Image For Direct Processing [Cfia Admin Only]
- *
- * Submit an image for direct processing (synchronous).
- * Does not store anything.
- * Direct to the model endpoint and returns the classification result.
- *
- * Returns ApiInferenceResponse with boxes and classifications.
- *
- * Access: CFIA admin only
- */
-export const submitImageForDirectProcessingCfiaAdminOnlyInfDirectPost = <
-  ThrowOnError extends boolean = false,
->(
-  options: Options<
-    SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostData,
-    ThrowOnError
-  >,
-) => {
-  return (options.client ?? client).post<
-    SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostResponses,
-    SubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostErrors,
-    ThrowOnError
-  >({
-    requestValidator: async (data) => {
-      return await zSubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostData.parseAsync(
-        data,
-      );
-    },
-    responseType: "json",
-    responseValidator: async (data) => {
-      return await zSubmitImageForDirectProcessingCfiaAdminOnlyInfDirectPostResponse.parseAsync(
-        data,
-      );
-    },
-    url: "/inf-direct",
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -315,38 +262,6 @@ export const getWorkflowResultsAuthRequiredWorkflowWorkflowIdResultsGet = <
       );
     },
     url: "/workflow/{workflow_id}/results",
-    ...options,
-  });
-};
-
-/**
- * Rate Limit Test [No Auth Required]
- */
-export const rateLimitTestNoAuthRequiredRateLimitTestGet = <
-  ThrowOnError extends boolean = false,
->(
-  options?: Options<
-    RateLimitTestNoAuthRequiredRateLimitTestGetData,
-    ThrowOnError
-  >,
-) => {
-  return (options?.client ?? client).get<
-    RateLimitTestNoAuthRequiredRateLimitTestGetResponses,
-    unknown,
-    ThrowOnError
-  >({
-    requestValidator: async (data) => {
-      return await zRateLimitTestNoAuthRequiredRateLimitTestGetData.parseAsync(
-        data,
-      );
-    },
-    responseType: "json",
-    responseValidator: async (data) => {
-      return await zRateLimitTestNoAuthRequiredRateLimitTestGetResponse.parseAsync(
-        data,
-      );
-    },
-    url: "/rate-limit-test",
     ...options,
   });
 };
