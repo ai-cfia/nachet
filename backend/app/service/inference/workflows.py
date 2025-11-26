@@ -1258,7 +1258,7 @@ async def image_processing_workflow(
             progress_percentage=25,
         )
 
-        # Step 2: Wait for Azure Defender scan
+        # Step 2: Wait for Azure Defender scan (or skip if NO_AZURE_STORAGE mode)
         logger.debug(
             "Step 2: Starting Defender scan",
             workflow_id=DBOS.workflow_id,
@@ -1276,27 +1276,47 @@ async def image_processing_workflow(
 
         defender_scan_start = time.time()
 
-        # TODO: use the actual method when blob is unblocked
-        defender_result = {
-            "status": "clean",
-            "tags": {
-                "Malware scanning scan result": "No threats found",
-                "Malware scanning scan time UTC": datetime.now(
-                    timezone.utc
-                ).isoformat(),
-            },
-            "scan_timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-        logger.warning(
-            "MOCK MODE: Skipping real Defender scan (not for production)",
-            workflow_id=DBOS.workflow_id,
-            image_id=str(image_id),
-        )
-        # defender_result = await wait_for_defender_scan(
-        #     image_id=image_id,
-        #     org_prefix=org_prefix,
-        #     timeout_sec=300,
-        # )
+        # Check if NO_AZURE_STORAGE mode is enabled
+        from app.api.config import get_settings
+
+        settings = get_settings()
+
+        if getattr(settings, "no_azure_storage", False):
+            # NO_AZURE_STORAGE mode: Skip Defender scan, use S3-only storage
+            defender_result = {
+                "status": "skipped",
+                "reason": "NO_AZURE_STORAGE mode - Defender not available",
+                "tags": {},
+                "scan_timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+            logger.info(
+                "NO_AZURE_STORAGE mode: Skipping Defender scan (S3-only storage)",
+                workflow_id=DBOS.workflow_id,
+                image_id=str(image_id),
+            )
+        else:
+            # TODO: use the actual method when blob is unblocked
+            defender_result = {
+                "status": "clean",
+                "tags": {
+                    "Malware scanning scan result": "No threats found",
+                    "Malware scanning scan time UTC": datetime.now(
+                        timezone.utc
+                    ).isoformat(),
+                },
+                "scan_timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+            logger.warning(
+                "MOCK MODE: Skipping real Defender scan (not for production)",
+                workflow_id=DBOS.workflow_id,
+                image_id=str(image_id),
+            )
+            # defender_result = await wait_for_defender_scan(
+            #     image_id=image_id,
+            #     org_prefix=org_prefix,
+            #     timeout_sec=300,
+            # )
+
         await DBOS.set_event_async("defender_scan_complete", True)
         await DBOS.set_event_async("processing_status", "defender_scanned")
         await DBOS.set_event_async("defender_result", defender_result)
