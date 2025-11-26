@@ -251,6 +251,13 @@ ghcr.io/ai-cfia/nachet-backend:29-azureml-seed-detector                     nach
 mcr.microsoft.com/azure-storage/azurite:3.35.0                              nachet-blob                4 hours ago         Up 4 hours                  10001-10002/tcp, 0.0.0.0:12434->10000/tcp, [::]:12434->10000/tcp
 ```
 
+### Register your user in the backend
+
+```bash
+nachet$ cd backend
+nachet/backend$ uv run app/scripts/register_user.py ---register <azure_ad_oid> --org <organization_id> --admin <admin_user_id>
+```
+
 ## Useful Commands
 
 ```bash
