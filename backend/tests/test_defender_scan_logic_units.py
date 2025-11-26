@@ -137,3 +137,48 @@ class TestProcessDefenderScanResult:
 
         # Assert
         assert result is None
+
+
+class TestNoAzureStorageConfig:
+    """Unit tests for NO_AZURE_STORAGE configuration setting."""
+
+    def test_no_azure_storage_defaults_to_false(self):
+        """Test that no_azure_storage setting defaults to False."""
+        from app.api.config import Settings
+
+        settings = Settings()
+        assert settings.no_azure_storage is False
+
+    def test_no_azure_storage_can_be_enabled(self, monkeypatch):
+        """Test that no_azure_storage can be set to True via env var."""
+        from app.api.config import Settings
+
+        monkeypatch.setenv("NO_AZURE_STORAGE", "true")
+        settings = Settings()
+        assert settings.no_azure_storage is True
+
+    def test_no_azure_storage_accepts_various_true_values(self, monkeypatch):
+        """Test that various truthy values work for NO_AZURE_STORAGE."""
+        from app.api.config import Settings
+
+        # Test "True" (capitalized)
+        monkeypatch.setenv("NO_AZURE_STORAGE", "True")
+        settings = Settings()
+        assert settings.no_azure_storage is True
+
+        # Test "1"
+        monkeypatch.setenv("NO_AZURE_STORAGE", "1")
+        settings = Settings()
+        assert settings.no_azure_storage is True
+
+    def test_no_azure_storage_false_values(self, monkeypatch):
+        """Test that falsy values result in False."""
+        from app.api.config import Settings
+
+        monkeypatch.setenv("NO_AZURE_STORAGE", "false")
+        settings = Settings()
+        assert settings.no_azure_storage is False
+
+        monkeypatch.setenv("NO_AZURE_STORAGE", "0")
+        settings = Settings()
+        assert settings.no_azure_storage is False

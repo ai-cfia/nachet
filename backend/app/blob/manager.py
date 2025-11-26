@@ -391,9 +391,11 @@ async def initialize_blob_storage(settings: Optional[Any] = None):
     to ensure blob storage is properly configured and accessible.
 
     Initializes three storage accounts:
-    - 'cloud': Primary Azure Blob Storage
-    - 'external': External Azure Blob Storage
+    - 'cloud': Primary Azure Blob Storage (or S3 if NO_AZURE_STORAGE=true)
+    - 'external': External Azure Blob Storage (or S3 if NO_AZURE_STORAGE=true)
     - 'onprem': S3-compatible storage (Apache Ozone)
+
+    When NO_AZURE_STORAGE=true, all accounts use S3-compatible storage.
 
     Also ensures required containers exist for the environment.
 
@@ -406,11 +408,22 @@ async def initialize_blob_storage(settings: Optional[Any] = None):
         raise ValueError("Settings instance must be provided")
 
     # Build storage configs for all three accounts
-    storage_configs = {
-        "cloud": ("azure", settings.blob_storage_config),
-        "external": ("azure", settings.blob_storage_external_config),
-        "onprem": ("s3", settings.s3_storage_config),
-    }
+    # When NO_AZURE_STORAGE is set, all accounts use S3
+    if getattr(settings, "no_azure_storage", False):
+        _get_logger().info(
+            "NO_AZURE_STORAGE mode: All storage accounts will use S3-compatible storage"
+        )
+        storage_configs = {
+            "cloud": ("s3", settings.s3_storage_config),
+            "external": ("s3", settings.s3_storage_config),
+            "onprem": ("s3", settings.s3_storage_config),
+        }
+    else:
+        storage_configs = {
+            "cloud": ("azure", settings.blob_storage_config),
+            "external": ("azure", settings.blob_storage_external_config),
+            "onprem": ("s3", settings.s3_storage_config),
+        }
 
     # Initialize the BlobStorageManager with all storage clients
     await blob_storage_manager.init_multiple(storage_configs)

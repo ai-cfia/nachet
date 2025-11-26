@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     s3_use_ssl: bool = False
     s3_verify: bool = True
 
+    # S3-only mode: bypass Azure storage and Defender scanning
+    # When True, all storage accounts use S3 and Defender scan is skipped
+    no_azure_storage: bool = False
+
     cors_allow_origins: str | None = None
     trusted_hosts: str | None = None
 
