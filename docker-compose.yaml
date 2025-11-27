@@ -271,7 +271,7 @@ services:
 
   grafana:
     container_name: nachet-grafana
-    image: grafana/grafana:12.2.1
+    image: grafana/grafana:12.3.0
     ports:
       - "12300:3000"
     env_file:
