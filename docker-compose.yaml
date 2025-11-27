@@ -135,7 +135,7 @@ services:
   # Use these to test with mock model containers
   #######################################################################################
   nachet-detector:
-    image: wiremock/wiremock:3.13.1
+    image: wiremock/wiremock:3.13.2
     container_name: nachet-detector
     command: ["--port", "5001", "--verbose"]
     ports:
@@ -145,7 +145,7 @@ services:
     networks:
       - nachet-local-network
   nachet-15spp-classifier:
-    image: wiremock/wiremock:3.13.1
+    image: wiremock/wiremock:3.13.2
     container_name: nachet-15spp-classifier
     command: ["--port", "5001", "--verbose"]
     ports:
@@ -155,7 +155,7 @@ services:
     networks:
       - nachet-local-network
   nachet-27spp-classifier:
-    image: wiremock/wiremock:3.13.1
+    image: wiremock/wiremock:3.13.2
     container_name: nachet-27spp-classifier
     command: ["--port", "8080", "--verbose"]
     ports:
