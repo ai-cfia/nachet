@@ -153,12 +153,36 @@ jobs:
           fail-build: false
       - name: Check SBOM scan results
         run: cat ${{ steps.scan.outputs.sarif }}
+      - name: Fix SARIF artifact locations
+        # Grype SBOM scans don't include file locations, which causes GitHub Code Scanning
+        # to reject the SARIF file. This adds the SBOM file as the artifact location.
+        # See: https://github.com/microsoft/sarif-sdk/issues/2770
+        run: |
+          jq '
+            .runs[].results[] |= (
+              if .locations == null or .locations == [] then
+                .locations = [{
+                  "physicalLocation": {
+                    "artifactLocation": {
+                      "uri": "frontend/sbom.json",
+                      "uriBaseId": "%SRCROOT%"
+                    },
+                    "region": {
+                      "startLine": 1,
+                      "startColumn": 1,
+                      "endLine": 1,
+                      "endColumn": 1
+                    }
+                  }
+                }]
+              else .
+              end
+            )
+          ' "${{ steps.scan.outputs.sarif }}" > sarif-fixed.json
+          mv sarif-fixed.json "${{ steps.scan.outputs.sarif }}"
       - name: Upload SBOM scan results
         uses: github/codeql-action/upload-sarif@v4
-        # there is a bug https://github.com/microsoft/sarif-sdk/issues/2770
-        # grype probably needa to point to the vuln location for this to work properly
         continue-on-error: true
         with:
           sarif_file: ${{ steps.scan.outputs.sarif }}
           category: sbom-security-scan
-          checkout_path: ${{ github.workspace }}
