@@ -224,12 +224,30 @@ class BoundingBoxAPI(BaseModel):
 
 class DetectionBoxAPI(BaseModel):
     """
-    Single detection box from seed detector API response.
+    Single detection box from detector API response.
+
+    Supports both regular seed detectors and SAM3 segmentation.
+    Mask fields are optional and populated only by SAM3 segmentation model.
     """
 
     box: BoundingBoxAPI
     label: str = Field(description="Detected object label (e.g., 'seed')")
     score: float = Field(ge=0.0, le=1.0, description="Confidence score for detection")
+
+    # Optional SAM3 mask fields (None for regular detectors)
+    mask_available: Optional[bool] = Field(
+        default=None,
+        description="Indicates if segmentation mask exists (SAM3 only)",
+    )
+    mask_id: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description="Mask index for retrieval (SAM3 only)",
+    )
+    mask: Optional[str] = Field(
+        default=None,
+        description="Base64-encoded PNG mask data (SAM3 with RETURN_MASKS=true)",
+    )
 
 
 class SeedDetectorAPIResponse(BaseModel):

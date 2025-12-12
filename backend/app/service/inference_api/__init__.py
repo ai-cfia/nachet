@@ -37,7 +37,10 @@ class ModelDispatchInfo:
 @dataclass
 class ModelInferenceDetectorResult:
     """
-    Structure for the result returned by the seed detector model.
+    Structure for the result returned by detector models (seed detector or SAM3 segmentation).
+
+    Both use the same SeedDetectorAPIResponse with DetectionBoxAPI boxes.
+    SAM3 populates optional mask fields (mask_available, mask_id, mask) on each box.
 
     Attributes:
         result: The validated detection result from the API containing boxes with labels and scores.
@@ -71,10 +74,12 @@ from .seed_detector import request_inference_from_seed_detector
 from .test import request_inference_from_test
 from .triton_detector import request_triton_detector
 from .triton_classifier import request_triton_classifier
+from .triton_classifier_batch import request_triton_classifier_batch
 from .triton_classifier_ensemble import (
     request_triton_ensemble_a,
     request_triton_ensemble_b,
 )
+from .triton_segmentation import request_triton_sam3_segmentation
 from .inference import (
     process_enhanced_classification_result as process_enhanced_classification_result,
     process_api_ready_classification_result as process_api_ready_classification_result,
@@ -156,6 +161,13 @@ class InferenceDispatchService:
                         "triton_classifier expects ModelInferenceDetectorResult"
                     )
                 result = request_triton_classifier(model_info, previous_result)
+            case "triton_classifier_batch":
+                # Triton SWIN batch classifier (parallel requests, up to 6 at a time)
+                if not isinstance(previous_result, ModelInferenceDetectorResult):
+                    raise TypeError(
+                        "triton_classifier_batch expects ModelInferenceDetectorResult"
+                    )
+                result = request_triton_classifier_batch(model_info, previous_result)
             case "triton_ensemble_a":
                 # Triton Ensemble A expects ModelInferenceDetectorResult
                 if not isinstance(previous_result, ModelInferenceDetectorResult):
@@ -170,6 +182,11 @@ class InferenceDispatchService:
                         "triton_ensemble_b expects ModelInferenceClassifierResult"
                     )
                 result = request_triton_ensemble_b(model_info, previous_result)
+            case "triton_segmenter":
+                # Triton SAM3 segmentation expects a base64 string
+                if not isinstance(previous_result, str):
+                    raise TypeError("triton_segmenter expects a base64 string")
+                result = request_triton_sam3_segmentation(model_info, previous_result)
             case "request_inference_from_test":
                 # Test function expects a base64 string
                 if not isinstance(previous_result, str):
