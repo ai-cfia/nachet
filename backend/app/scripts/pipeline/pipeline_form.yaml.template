@@ -1,0 +1,69 @@
+# Pipeline Configuration Template
+# Copy this file to your desired location and fill in the values.
+#
+# Usage:
+#   uv run app/scripts/pipeline/pipeline_cli.py --create --file your_config.yaml
+#   uv run app/scripts/pipeline/pipeline_cli.py --create --file your_config.yaml --dry-run
+
+# Model Tasks (get existing or create new)
+# These categorize models by function (e.g., detection, classification)
+# Task ID Type
+#   1 Detection
+#   2 Classification
+#   3 Segmentation
+
+# Models to create
+# Each model represents an ML endpoint
+models:
+  - name: "rcnn-seed-detector-v1"
+    task: 1                       # Task ID: 1=Detection, 2=Classification, 3=Segmentation
+    endpoint_name: "seed-detector-endpoint"  # Endpoint identifier
+    api_url: "https://ml.example.com/detect" # Full API endpoint URL
+    api_key: "your-api-key-here"             # API authentication key
+    created_by: "admin@cfia.ca"              # Creator identifier
+    date_model_training: "2024-01-15"        # Training date (YYYY-MM-DD)
+    # Optional fields:
+    version: "1.0"
+    description: "RCNN seed detector model"
+    deployment_platform: "azureml-model-deployment"  # Default: "on-prem"
+    content_type: "application/json"                 # Default: "application/json"
+    job_name: "training-job-123"                     # Training job reference
+    dataset: "dataset-456"                           # Training dataset ID
+    artifacts_url: "https://storage.example.com/models/v1"  # Model artifacts URL
+    sha256: "abc123..."                              # Model checksum
+
+  - name: "swin-classifier-v1"
+    task: 2
+    endpoint_name: "swin-classifier-endpoint"
+    api_url: "https://ml.example.com/classify"
+    api_key: "your-classifier-api-key"
+    created_by: "admin@cfia.ca"
+    date_model_training: "2024-01-20"
+    version: "1.0"
+    description: "Swin transformer classifier"
+
+# Pipelines to create
+# A pipeline chains multiple models in sequence
+pipelines:
+  - name: "seed-detection-pipeline-v1"
+    created_by: "admin@cfia.ca"
+    description: "Production pipeline for seed detection and classification"
+    version: "1.0"
+    default: false  # Set to true to make this the default pipeline
+    # Optional fields:
+    creation_date: "2024-01-15"       # Pipeline creation date (YYYY-MM-DD)
+    job_name: "pipeline-training-job" # Training job reference
+    dataset: "training-dataset-id"    # Training dataset ID
+    identifiable: []                  # List of identifiable features (JSON array)
+    metrics: {}                       # Performance metrics (JSON object)
+    # Pipeline steps (executed in order)
+    # Valid request_function values:
+    #   triton_detector, triton_classifier, triton_segmenter
+    #   triton_ensemble_a, triton_ensemble_b
+    steps:
+      - model: "rcnn-seed-detector-v1"      # Must match a models.name above
+        step: 1                              # Execution order
+        request_function: "triton_detector"
+      - model: "swin-classifier-v1"
+        step: 2
+        request_function: "triton_classifier"
