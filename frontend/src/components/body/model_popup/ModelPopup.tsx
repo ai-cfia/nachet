@@ -48,7 +48,7 @@ const SwitchModel: React.FC = () => {
     <Dialog
       open={true}
       onClose={handleClose}
-      maxWidth="md"
+      maxWidth="xl"
       fullWidth
       slotProps={{
         paper: {
@@ -99,7 +99,10 @@ const SwitchModel: React.FC = () => {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, 1fr)",
+              gridTemplateColumns: {
+                xs: "repeat(2, 1fr)",
+                md: "repeat(4, 1fr)",
+              },
               gap: 1,
               maxHeight: "40vh",
               overflowY: "auto",
@@ -122,10 +125,7 @@ const SwitchModel: React.FC = () => {
                   "&:hover": {
                     backgroundColor: "#e0e0e0",
                   },
-                  width: "34vh",
-                  height: "24vh",
-                  maxWidth: "350px",
-                  maxHeight: "200px",
+                  minHeight: "180px",
                 }}
                 onClick={() => {
                   selectModel(data.pipelineId);
@@ -136,10 +136,7 @@ const SwitchModel: React.FC = () => {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "flex-start",
-                    width: "34vh",
-                    height: "16vh",
-                    maxWidth: "350px",
-                    maxHeight: "200px",
+                    marginBottom: 1,
                   }}
                 >
                   <Typography fontSize={20} variant="h6">
