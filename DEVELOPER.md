@@ -410,6 +410,7 @@ At this point you will have the full stack, you will be able to test integration
 - build your changes locally `nachet $ docker compose -f docker-compose.yaml build nachet-backend --no-cache`
 - deploy your changes locally `nachet $ docker compose -f docker-compose.yaml up -d nachet-backend --force-recreate`
 - quick check module imports are good `nachet/backend $  python -c "import app.main"`
+- you should update the DBOS version so existing workflows terminate.  
 
 ## Frontend changes
 
@@ -435,3 +436,10 @@ nachet $ npm run openapi-ts
 ```
 
 This uses the `@hey-api/openapi-ts` configuration at `openapi-ts.config.ts` in the repo root to generate TypeScript types in `frontend/src/client/`.
+
+## Updating the deployment (without CI/CD)
+
+- if there are database changes you should shut down any deployed backend instances first
+- run the alembic migrations against the production database
+- deploy the new backend container image
+- build the frontend and push to blob storage
