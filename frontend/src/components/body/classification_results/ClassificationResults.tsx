@@ -23,16 +23,18 @@ import { useInferenceResultsStore } from "@stores/useInferenceResultsStore";
 
 interface params {
   labelOccurrences: any;
+  switchTable: boolean;
+  onSwitchTableChange: (value: boolean) => void;
 }
 
 const ClassificationResults: React.FC<params> = (props) => {
+  const { labelOccurrences, switchTable, onSwitchTableChange } = props;
   const { t } = useTranslation("main");
 
   const { images: savedImages, currentIndex: imageIndex } = useImageStore();
   const getResult = useInferenceResultsStore((state) => state.getResult);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [selectedLabel, setSelectedLabel] = useState<string>("all");
-  const [switchTable, setSwitchTable] = useState<boolean>(true);
 
   // Get current image and its active inference result
   const currentImage = savedImages.find((img) => img.index === imageIndex);
@@ -137,7 +139,7 @@ const ClassificationResults: React.FC<params> = (props) => {
             <IconButton
               sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
               onClick={() => {
-                setSwitchTable(!switchTable);
+                onSwitchTableChange(!switchTable);
               }}
             >
               <SwitchLeftIcon
@@ -172,7 +174,7 @@ const ClassificationResults: React.FC<params> = (props) => {
         <Table sx={{ borderBottom: 0 }}>
           <TableBody sx={{ borderBottom: 0 }}>
             {switchTable &&
-              Object.keys(props.labelOccurrences).map((key, index) => (
+              Object.keys(labelOccurrences).map((key, index) => (
                 <TableRow
                   key={index}
                   sx={{
@@ -261,7 +263,7 @@ const ClassificationResults: React.FC<params> = (props) => {
                       }}
                     >
                       <span style={{ width: "0.7vw", textAlign: "right" }}>
-                        {props.labelOccurrences[key]}
+                        {labelOccurrences[key]}
                       </span>
                       <CropFreeIcon
                         style={{
