@@ -27,7 +27,7 @@ dbos_config = DBOSConfig(
     # otlp_traces_endpoints=["http://localhost:4318/v1/traces"]
     run_admin_server=True,
     admin_port=3001,
-    application_version="1.32.0",
+    application_version="2.8.0",
 )
 
 DBOS(fastapi=app, config=dbos_config)
