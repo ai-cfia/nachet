@@ -418,6 +418,7 @@ At this point you will have the full stack, you will be able to test integration
 - the first step should be to bump the version in the `frontend/package.json` file.
 - run the sbom generation script to update the software bill of materials `nachet $ ./generate_sbom.sh frontend`
 - run `npm run prestart`
+- ensure you have .env.config.local in frontend/ and .env.local in backend/
 - build your changes locally `nachet/frontend $ npm run build`
 - push the new build to blob storage `nachet/backend $ uv run app/scripts/push_frontend_to_blob.py --clean`
 - you can also debug by running the frontend in dev mode and connecting to the backend `nachet/frontend $ npm run dev -- --port 12438`
