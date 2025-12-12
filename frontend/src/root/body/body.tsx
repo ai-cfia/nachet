@@ -81,6 +81,7 @@ const Body: React.FC<params> = (props) => {
   const [isWebcamActive, setIsWebcamActive] = useState(true); // This state determines the visibility of the webcam
   const [isLoading, setIsLoading] = useState(false);
   const [showInference, setShowInference] = useState<boolean>(true);
+  const [switchTable, setSwitchTable] = useState<boolean>(true);
   const [registrationCheckComplete, setRegistrationCheckComplete] =
     useState(false);
   const [registrationModalOpen, setRegistrationModalOpen] = useState(false);
@@ -477,7 +478,7 @@ const Body: React.FC<params> = (props) => {
       inferenceResult,
       "all", // Always show all labels on canvas
       labelOccurrences,
-      true, // Always use label occurrence view on canvas
+      switchTable, // Sync with ClassificationResults toggle
       showInference,
       freeformBox,
       freeformDragEnabled,
@@ -489,6 +490,7 @@ const Body: React.FC<params> = (props) => {
     imageIndex,
     isWebcamActive,
     showInference,
+    switchTable,
     freeformBox,
     freeformDragEnabled,
   ]);
@@ -822,7 +824,11 @@ const Body: React.FC<params> = (props) => {
           >
             <StorageDirectory azureStorageDir={azureStorageDir} />
             <ImageCache />
-            <ClassificationResults labelOccurrences={labelOccurrences} />
+            <ClassificationResults
+              labelOccurrences={labelOccurrences}
+              switchTable={switchTable}
+              onSwitchTableChange={setSwitchTable}
+            />
           </Box>
         </Box>
       </Box>
