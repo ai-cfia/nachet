@@ -51,6 +51,27 @@ def validate_config(config: dict) -> list[str]:
     """Validate configuration structure. Returns list of errors."""
     errors = []
 
+    # Collect all model names to check for duplicates
+    all_model_names: set[str] = set()
+
+    # Validate existing_models (optional section)
+    for i, entry in enumerate(config.get("existing_models", [])):
+        prefix = f"existing_models[{i}]"
+        if "name" not in entry:
+            errors.append(f"{prefix}: missing required field 'name'")
+        if "id" not in entry:
+            errors.append(f"{prefix}: missing required field 'id'")
+        else:
+            # Validate UUID format
+            try:
+                UUID(entry["id"])
+            except ValueError:
+                errors.append(f"{prefix}: invalid UUID format for 'id': {entry['id']}")
+        if "name" in entry:
+            if entry["name"] in all_model_names:
+                errors.append(f"{prefix}: duplicate model name '{entry['name']}'")
+            all_model_names.add(entry["name"])
+
     # Validate models
     for i, model in enumerate(config.get("models", [])):
         prefix = f"models[{i}]"
@@ -65,6 +86,11 @@ def validate_config(config: dict) -> list[str]:
         ]:
             if field not in model:
                 errors.append(f"{prefix}: missing required field '{field}'")
+        # Check for duplicate names (including conflicts with existing_models)
+        if "name" in model:
+            if model["name"] in all_model_names:
+                errors.append(f"{prefix}: duplicate model name '{model['name']}'")
+            all_model_names.add(model["name"])
 
     # Validate pipelines
     for i, pipeline in enumerate(config.get("pipelines", [])):
@@ -91,6 +117,34 @@ def validate_config(config: dict) -> list[str]:
                     )
 
     return errors
+
+
+async def resolve_existing_models(
+    session, existing_models: list[dict], dry_run: bool
+) -> dict[str, UUID] | None:
+    """Resolve existing model UUIDs and return alias->UUID map."""
+    model_map: dict[str, UUID] = {}
+    for entry in existing_models:
+        alias = entry["name"]
+        model_id = UUID(entry["id"])
+
+        # Verify model exists and is active
+        stmt = select(Model).where(Model.id == model_id, Model.active.is_(True))
+        result = await session.execute(stmt)
+        model = result.scalar_one_or_none()
+
+        if model is None:
+            print(f"  Error: Model not found or inactive: {model_id}")
+            return None
+
+        if dry_run:
+            print(f"  Found existing model: {alias} -> {model.name} ({model_id})")
+        else:
+            print(f"  Using existing model: {alias} -> {model.name} ({model_id})")
+
+        model_map[alias] = model_id
+
+    return model_map
 
 
 async def create_model(session, model_config: dict, dry_run: bool) -> UUID | None:
@@ -215,14 +269,20 @@ async def create_pipeline(
 
 async def process_config(config: dict, dry_run: bool) -> bool:
     """Process YAML configuration and create entities."""
+    existing_model_aliases = [m["name"] for m in config.get("existing_models", [])]
     model_names = [m["name"] for m in config.get("models", [])]
     pipeline_names = [p["name"] for p in config.get("pipelines", [])]
 
     # Show summary and confirm
     if not dry_run:
         print("\nWill create:")
+        if existing_model_aliases:
+            print(
+                f"  Existing models to reference: {len(existing_model_aliases)} "
+                f"({', '.join(existing_model_aliases)})"
+            )
         if model_names:
-            print(f"  Models: {len(model_names)} ({', '.join(model_names)})")
+            print(f"  New models: {len(model_names)} ({', '.join(model_names)})")
         if pipeline_names:
             print(f"  Pipelines: {len(pipeline_names)} ({', '.join(pipeline_names)})")
         print()
@@ -233,10 +293,21 @@ async def process_config(config: dict, dry_run: bool) -> bool:
             return False
 
     async with sessionmanager.get_session() as session:
-        # Step 1: Create models
         model_map: dict[str, UUID] = {}
+
+        # Step 1: Resolve existing models by UUID
+        if config.get("existing_models"):
+            print("\nResolving existing models...")
+            existing_map = await resolve_existing_models(
+                session, config["existing_models"], dry_run
+            )
+            if existing_map is None:
+                return False
+            model_map.update(existing_map)
+
+        # Step 2: Create new models
         if config.get("models"):
-            print("\nProcessing models...")
+            print("\nProcessing new models...")
             for model_config in config["models"]:
                 model_id = await create_model(session, model_config, dry_run)
                 if model_id is not None:
@@ -256,7 +327,7 @@ async def process_config(config: dict, dry_run: bool) -> bool:
                         if existing:
                             model_map[model_name] = UUID(str(existing.id))
 
-        # Step 2: Create pipelines
+        # Step 3: Create pipelines
         if config.get("pipelines"):
             print("\nProcessing pipelines...")
             for pipeline_config in config["pipelines"]:
