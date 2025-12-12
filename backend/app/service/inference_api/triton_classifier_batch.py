@@ -93,7 +93,7 @@ async def classify_single_image(
             model.endpoint,
             headers=headers,
             json=request_data.model_dump(),
-            timeout=30.0,
+            timeout=60.0,
         )
         response.raise_for_status()
         api_call_ms = (time.time() - api_call_start) * 1000

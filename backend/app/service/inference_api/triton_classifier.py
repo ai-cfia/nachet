@@ -201,7 +201,7 @@ async def request_triton_classifier(
                 model.endpoint,
                 headers=headers,
                 json=request_data.model_dump(),
-                timeout=30,
+                timeout=60,
             )
             response.raise_for_status()
             api_call_ms = (time.time() - api_call_start) * 1000

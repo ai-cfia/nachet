@@ -142,7 +142,7 @@ async def request_triton_detector(
 
         api_call_start = time.time()
         response = requests.post(
-            model.endpoint, headers=headers, json=request_data.model_dump(), timeout=30
+            model.endpoint, headers=headers, json=request_data.model_dump(), timeout=60
         )
         response.raise_for_status()
         api_call_ms = (time.time() - api_call_start) * 1000
