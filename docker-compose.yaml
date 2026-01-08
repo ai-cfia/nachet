@@ -256,7 +256,7 @@ services:
 
   alloy:
     container_name: nachet-alloy
-    image: grafana/alloy:v1.12.0
+    image: grafana/alloy:v1.12.2
     ports:
       - "12317:4317" # OTLP gRPC receiver
       - "12318:4318" # OTLP HTTP receiver
