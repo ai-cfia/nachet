@@ -240,12 +240,27 @@ async def execute_sql_file(async_engine, sql_file_path):
     with open(sql_file_path, "r", encoding="utf-8") as file:
         sql_content = file.read()
 
-    # remove comments and split lines, removing semicolons
-    statements = [
-        line.strip()[:-1]
-        for line in sql_content.splitlines()
-        if not line.strip().startswith("--")
-    ]
+    # # remove comments and split lines
+    # sql_content = "\n".join(
+    #     line for line in sql_content.splitlines() if not line.strip().startswith("--")
+    # )
+    # # Split SQL statements (basic splitting on semicolons)
+    # statements = [stmt.strip() for stmt in sql_content.split(";") if stmt.strip()]
+
+    statements, buf = [], []
+    in_s, in_d = False, False
+    for c in sql_content:
+        if c == "'" and not in_d:
+            in_s = not in_s
+        elif c == '"' and not in_s:
+            in_d = not in_d
+        elif c == ";" and not in_s and not in_d:
+            statements.append("".join(buf).strip())
+            buf = []
+            continue
+        buf.append(c)
+    if buf:
+        statements.append("".join(buf).strip())
 
     async with async_engine.begin() as conn:
         with tqdm(
