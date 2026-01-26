@@ -325,15 +325,13 @@ async def validate_database_startup(
                     current_versions=list(current_heads),
                     expected_versions=list(expected_heads),
                 )
-                raise RuntimeError(
-                    f"""
+                raise RuntimeError(f"""
                 ❌ Target DB is NOT up to date
                 Current DB version(s) : {current_heads}
                 Expected DB version(s): {expected_heads}
                 ❌ Database startup validation failed
                 ❌ Application cannot start with invalid database state
-                """
-                )
+                """)
 
 
 def _alembic_upgrade(connection, cfg, target="head"):
