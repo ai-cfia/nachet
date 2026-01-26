@@ -240,12 +240,12 @@ async def execute_sql_file(async_engine, sql_file_path):
     with open(sql_file_path, "r", encoding="utf-8") as file:
         sql_content = file.read()
 
-    # remove comments
-    sql_content = "\n".join(
-        line for line in sql_content.splitlines() if not line.strip().startswith("--")
-    )
-    # Split SQL statements (basic splitting on semicolons)
-    statements = [stmt.strip() for stmt in sql_content.split(";") if stmt.strip()]
+    # remove comments and split lines, removing semicolons
+    statements = [
+        line.strip()[:-1]
+        for line in sql_content.splitlines()
+        if not line.strip().startswith("--")
+    ]
 
     async with async_engine.begin() as conn:
         with tqdm(
@@ -325,13 +325,15 @@ async def validate_database_startup(
                     current_versions=list(current_heads),
                     expected_versions=list(expected_heads),
                 )
-                raise RuntimeError(f"""
+                raise RuntimeError(
+                    f"""
                 ❌ Target DB is NOT up to date
                 Current DB version(s) : {current_heads}
                 Expected DB version(s): {expected_heads}
                 ❌ Database startup validation failed
                 ❌ Application cannot start with invalid database state
-                """)
+                """
+                )
 
 
 def _alembic_upgrade(connection, cfg, target="head"):
