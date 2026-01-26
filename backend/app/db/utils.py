@@ -240,28 +240,43 @@ async def execute_sql_file(async_engine, sql_file_path):
     with open(sql_file_path, "r", encoding="utf-8") as file:
         sql_content = file.read()
 
-    # # remove comments and split lines
-    # sql_content = "\n".join(
-    #     line for line in sql_content.splitlines() if not line.strip().startswith("--")
-    # )
-    # # Split SQL statements (basic splitting on semicolons)
-    # statements = [stmt.strip() for stmt in sql_content.split(";") if stmt.strip()]
+    # Remove full-line SQL comments
+    sql_content = "\n".join(
+        line for line in sql_content.splitlines() if not line.strip().startswith("--")
+    )
 
-    statements, buf = [], []
-    in_s, in_d = False, False
-    for c in sql_content:
-        if c == "'" and not in_d:
-            in_s = not in_s
-        elif c == '"' and not in_s:
-            in_d = not in_d
-        elif c == ";" and not in_s and not in_d:
-            statements.append("".join(buf).strip())
-            buf = []
+    # Split into statements (on semicolons outside of quotes)
+    statements = []
+    current_statement = []
+
+    inside_single = False
+    inside_double = False
+
+    for char in sql_content:
+        # Toggle single-quote context
+        if char == "'" and not inside_double:
+            inside_single = not inside_single
+
+        # Toggle double-quote context
+        elif char == '"' and not inside_single:
+            inside_double = not inside_double
+
+        # End of SQL statement
+        elif char == ";" and not inside_single and not inside_double:
+            statement = "".join(current_statement).strip()
+            if statement:
+                statements.append(statement)
+            current_statement = []
             continue
-        buf.append(c)
-    if buf:
-        statements.append("".join(buf).strip())
 
+        current_statement.append(char)
+
+    # Add last statement if file does not end with ;
+    final_statement = "".join(current_statement).strip()
+    if final_statement:
+        statements.append(final_statement)
+
+    # Execute statements
     async with async_engine.begin() as conn:
         with tqdm(
             total=len(statements), desc="   Executing SQL statements", unit="stmt"
@@ -340,8 +355,8 @@ async def validate_database_startup(
                     current_versions=list(current_heads),
                     expected_versions=list(expected_heads),
                 )
-                raise RuntimeError(f"""
-                ❌ Target DB is NOT up to date
+                raise RuntimeError(
+                    f"""❌ Target DB is NOT up to date
                 Current DB version(s) : {current_heads}
                 Expected DB version(s): {expected_heads}
                 ❌ Database startup validation failed
