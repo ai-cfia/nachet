@@ -241,7 +241,7 @@ async def execute_sql_file(async_engine, sql_file_path):
         sql_content = file.read()
 
     # Remove comments and end of statement semicolons
-    statements = [line[:-1] for line in sql_content.splitlines() if line and not line.strip().startswith("--")]
+    statements = [line[:-1] for line in sql_content.splitlines() if line.strip() and not line.strip().startswith("--")]
 
     # Execute statements
     async with async_engine.begin() as conn:
