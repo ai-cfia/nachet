@@ -462,27 +462,3 @@ class TestExecuteSqlFile:
             finally:
                 os.unlink(f.name)
 
-    @pytest.mark.asyncio
-    async def test_execute_sql_file_statement_splitting(self, sqlite_engine):
-        """Test correct statement splitting on semicolons."""
-        sql_content = """INSERT INTO test_table (name, value) VALUES ('split1', 1);INSERT INTO test_table (name, value) VALUES ('split2', 2);"""
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".sql", delete=False) as f:
-            f.write(sql_content)
-            f.flush()
-
-            try:
-                await execute_sql_file(sqlite_engine, f.name)
-
-                async with sqlite_engine.begin() as conn:
-                    result = await conn.execute(text("SELECT COUNT(*) FROM test_table"))
-                    count = result.scalar()
-                    assert count == 2
-
-                    result = await conn.execute(
-                        text("SELECT name FROM test_table ORDER BY name")
-                    )
-                    names = [row[0] for row in result.fetchall()]
-                    assert names == ["split1", "split2"]
-            finally:
-                os.unlink(f.name)

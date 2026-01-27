@@ -240,41 +240,8 @@ async def execute_sql_file(async_engine, sql_file_path):
     with open(sql_file_path, "r", encoding="utf-8") as file:
         sql_content = file.read()
 
-    # Remove full-line SQL comments
-    sql_content = "\n".join(
-        line for line in sql_content.splitlines() if not line.strip().startswith("--")
-    )
-
-    # Split into statements (on semicolons outside of quotes)
-    statements = []
-    current_statement = []
-
-    inside_single = False
-    inside_double = False
-
-    for char in sql_content:
-        # Toggle single-quote context
-        if char == "'" and not inside_double:
-            inside_single = not inside_single
-
-        # Toggle double-quote context
-        elif char == '"' and not inside_single:
-            inside_double = not inside_double
-
-        # End of SQL statement
-        elif char == ";" and not inside_single and not inside_double:
-            statement = "".join(current_statement).strip()
-            if statement:
-                statements.append(statement)
-            current_statement = []
-            continue
-
-        current_statement.append(char)
-
-    # Add last statement if file does not end with ;
-    final_statement = "".join(current_statement).strip()
-    if final_statement:
-        statements.append(final_statement)
+    # Remove comments and end of statement semicolons
+    statements = [line[:-1] for line in sql_content.splitlines() if not line.strip().startswith("--")]
 
     # Execute statements
     async with async_engine.begin() as conn:
@@ -361,7 +328,8 @@ async def validate_database_startup(
                 Expected DB version(s): {expected_heads}
                 ❌ Database startup validation failed
                 ❌ Application cannot start with invalid database state
-                """)
+                """
+                )
 
 
 def _alembic_upgrade(connection, cfg, target="head"):
