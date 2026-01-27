@@ -461,4 +461,3 @@ class TestExecuteSqlFile:
                     assert count == 2
             finally:
                 os.unlink(f.name)
-
