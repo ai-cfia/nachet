@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install uv
         uses: astral-sh/setup-uv@e8b52af86e46cb518daf4b47877e582bc9e37b8b
@@ -100,7 +100,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Ensure SBOM exists (skip scan if missing)
         run: |
           if [ ! -f backend/sbom.json ]; then
