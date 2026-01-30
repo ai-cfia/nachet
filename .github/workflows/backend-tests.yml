@@ -475,7 +475,7 @@ jobs:
 
       - name: Start Azurite Blob Storage Emulator
         shell: bash
-        run: azurite --loose --blobHost 127.0.0.1 --blobPort 10000 &
+        run: azurite --loose --blobHost 127.0.0.1 --blobPort 10000 --skipApiVersionCheck &
 
       # - name: Wait for Azurite to be ready
       #   run: |
