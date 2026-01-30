@@ -2886,12 +2886,12 @@
           "url": "https://youtype.github.io/boto3_stubs_docs/mypy_boto3_s3/"
         },
         {
-          "comment": "from packaging metadata Project-URL: Tracker",
+          "comment": "from packaging metadata Project-URL: tracker",
           "type": "issue-tracker",
           "url": "https://github.com/youtype/mypy_boto3_builder/issues"
         },
         {
-          "comment": "from packaging metadata Project-URL: Source",
+          "comment": "from packaging metadata Project-URL: source",
           "type": "other",
           "url": "https://github.com/youtype/mypy_boto3_builder"
         },
