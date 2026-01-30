@@ -50,19 +50,19 @@ jobs:
         ports:
           - 5432:5432
       nachet-detector:
-        image: wiremock/wiremock:3.13.1
+        image: wiremock/wiremock:3.13.2
         ports:
           - 5001:8080
         volumes:
           - ./e2e/mocks/nachet-detector:/home/wiremock/mappings
       nachet-15spp-classifier:
-        image: wiremock/wiremock:3.13.1
+        image: wiremock/wiremock:3.13.2
         ports:
           - 5003:8080
         volumes:
           - ./e2e/mocks/nachet-15spp-classifier:/home/wiremock/mappings
       nachet-27spp-classifier:
-        image: wiremock/wiremock:3.13.1
+        image: wiremock/wiremock:3.13.2
         ports:
           - 5002:8080
         volumes:
