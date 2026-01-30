@@ -1,7 +1,10 @@
 {
   "name": "nachet-frontend",
   "private": true,
-  "version": "0.9.23",
+  "version": "0.10.6",
+  "acia-cfia": {
+    "backend-version": "1.10.1"
+  },
   "type": "module",
   "scripts": {
     "update": "rm -r node_modules && npm install && npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo \"\" >> sbom.json",
@@ -84,6 +87,7 @@
     "@types/react-dom": "^19.1.9",
     "@types/sanitize-html": "^2.16.0",
     "@types/utif": "^3.0.5",
+    "@types/uuid": "^11.0.0",
     "@typescript-eslint/eslint-plugin": "^8.39.1",
     "@typescript-eslint/parser": "^8.39.1",
     "@vitejs/plugin-react-swc": "^4.0.0",

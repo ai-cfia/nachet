@@ -37400,10 +37400,12 @@
       "externalReferences": [
         {
           "url": "https://registry.npmjs.org/uuid/-/uuid-13.0.0.tgz",
+          "url": "https://registry.npmjs.org/uuid/-/uuid-13.0.0.tgz",
           "type": "distribution",
           "hashes": [
             {
               "alg": "SHA-512",
+              "content": "5d07a021a0535548d21e588aa9c9c5a98ca901de12f96098b79348791b3ac3f500af2ef3f18f63e59c1144be24ceaf54dec0fabfef397abf45be411a0698e2db"
               "content": "5d07a021a0535548d21e588aa9c9c5a98ca901de12f96098b79348791b3ac3f500af2ef3f18f63e59c1144be24ceaf54dec0fabfef397abf45be411a0698e2db"
             }
           ],
