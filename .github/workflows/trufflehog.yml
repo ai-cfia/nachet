@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Run Trufflehog
         uses: trufflesecurity/trufflehog@0fab92f434fcce5f8180716c5c6aeb0371929bf9

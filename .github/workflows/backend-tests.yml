@@ -52,7 +52,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -208,7 +208,7 @@ jobs:
           S3_ENDPOINT_URL: "http://127.0.0.1:12440"
 
       - name: Checkout OSHP validator
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: oshp/oshp-validator
           path: oshp-validator
@@ -354,7 +354,7 @@ jobs:
           fi
 
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Start WireMock containers
         working-directory: ${{ github.workspace }}
@@ -595,7 +595,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Trigger Release Workflow for Nachet backend
         run: |

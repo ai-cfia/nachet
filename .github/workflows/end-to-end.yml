@@ -68,7 +68,7 @@ jobs:
         volumes:
           - ./e2e/mocks/nachet-27spp-classifier:/home/wiremock/mappings
       nachet-frontend:
-        image: ghcr.io/ai-cfia/nachet-frontend:0.13.2
+        image: ghcr.io/ai-cfia/nachet-frontend:2.9.0
         env:
           PUBLIC_URL: "."
           VITE_BACKEND_URL: "http://localhost:12435"
@@ -83,7 +83,7 @@ jobs:
           sudo chown -R $USER:$USER $GITHUB_WORKSPACE
 
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -168,7 +168,7 @@ jobs:
 
       - name: Cache Node Modules
         id: cache-node-modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             node_modules
@@ -176,7 +176,7 @@ jobs:
 
       - name: Cache Playwright Binaries
         id: cache-playwright
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cache/ms-playwright
@@ -204,7 +204,7 @@ jobs:
           echo "=== detector mock logs ==="
           docker logs ${{ job.services.nachet-detector.id }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
