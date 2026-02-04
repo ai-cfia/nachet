@@ -39,25 +39,8 @@
       "version": "1.3.1"
     },
     {
-      "bom-ref": "Hypercorn==0.17.3",
+      "bom-ref": "Hypercorn==0.18.0",
       "description": "A ASGI Server based on Hyper libraries and inspired by Gunicorn",
-      "externalReferences": [
-        {
-          "comment": "from packaging metadata Project-URL: Documentation",
-          "type": "documentation",
-          "url": "https://hypercorn.readthedocs.io"
-        },
-        {
-          "comment": "from packaging metadata Project-URL: Repository",
-          "type": "vcs",
-          "url": "https://github.com/pgjones/hypercorn/"
-        },
-        {
-          "comment": "from packaging metadata: Home-page",
-          "type": "website",
-          "url": "https://github.com/pgjones/hypercorn/"
-        }
-      ],
       "licenses": [
         {
           "license": {
@@ -67,9 +50,9 @@
         }
       ],
       "name": "Hypercorn",
-      "purl": "pkg:pypi/hypercorn@0.17.3",
+      "purl": "pkg:pypi/hypercorn@0.18.0",
       "type": "library",
-      "version": "0.17.3"
+      "version": "0.18.0"
     },
     {
       "bom-ref": "Jinja2==3.1.6",
@@ -860,7 +843,7 @@
       "version": "1.25.1"
     },
     {
-      "bom-ref": "azure-storage-blob==12.26.0",
+      "bom-ref": "azure-storage-blob==12.28.0",
       "description": "Microsoft Azure Blob Storage Client Library for Python",
       "externalReferences": [
         {
@@ -884,9 +867,9 @@
           "value": "aio"
         }
       ],
-      "purl": "pkg:pypi/azure-storage-blob@12.26.0",
+      "purl": "pkg:pypi/azure-storage-blob@12.28.0",
       "type": "library",
-      "version": "12.26.0"
+      "version": "12.28.0"
     },
     {
       "bom-ref": "beartype==0.22.8",
@@ -1363,7 +1346,7 @@
       "version": "7.13.0"
     },
     {
-      "bom-ref": "cryptography==46.0.2",
+      "bom-ref": "cryptography==46.0.4",
       "description": "cryptography is a package which provides cryptographic recipes and primitives to Python developers.",
       "externalReferences": [
         {
@@ -1399,9 +1382,9 @@
         }
       ],
       "name": "cryptography",
-      "purl": "pkg:pypi/cryptography@46.0.2",
+      "purl": "pkg:pypi/cryptography@46.0.4",
       "type": "library",
-      "version": "46.0.2"
+      "version": "46.0.4"
     },
     {
       "bom-ref": "cyclonedx-bom==7.2.1",
@@ -2938,7 +2921,7 @@
       "version": "1.9.1"
     },
     {
-      "bom-ref": "numpy==2.3.3",
+      "bom-ref": "numpy==2.4.1",
       "description": "Fundamental package for array computing in Python",
       "externalReferences": [
         {
@@ -2974,16 +2957,14 @@
       ],
       "licenses": [
         {
-          "license": {
-            "acknowledgement": "declared",
-            "name": "License :: OSI Approved :: BSD License"
-          }
+          "acknowledgement": "declared",
+          "expression": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0"
         }
       ],
       "name": "numpy",
-      "purl": "pkg:pypi/numpy@2.3.3",
+      "purl": "pkg:pypi/numpy@2.4.1",
       "type": "library",
-      "version": "2.3.3"
+      "version": "2.4.1"
     },
     {
       "bom-ref": "opentelemetry-api==1.39.1",
@@ -3239,7 +3220,7 @@
       "version": "25.0"
     },
     {
-      "bom-ref": "pillow==12.0.0",
+      "bom-ref": "pillow==12.1.0",
       "description": "Python Imaging Library (fork)",
       "externalReferences": [
         {
@@ -3287,9 +3268,9 @@
         }
       ],
       "name": "pillow",
-      "purl": "pkg:pypi/pillow@12.0.0",
+      "purl": "pkg:pypi/pillow@12.1.0",
       "type": "library",
-      "version": "12.0.0"
+      "version": "12.1.0"
     },
     {
       "bom-ref": "pip-requirements-parser==32.0.1",
@@ -3746,7 +3727,7 @@
       "version": "2.23"
     },
     {
-      "bom-ref": "pydantic==2.11.10",
+      "bom-ref": "pydantic==2.12.5",
       "description": "Data validation using Python type hints",
       "externalReferences": [
         {
@@ -3784,9 +3765,9 @@
         }
       ],
       "name": "pydantic",
-      "purl": "pkg:pypi/pydantic@2.11.10",
+      "purl": "pkg:pypi/pydantic@2.12.5",
       "type": "library",
-      "version": "2.11.10"
+      "version": "2.12.5"
     },
     {
       "bom-ref": "pydantic-settings==2.12.0",
@@ -3832,7 +3813,7 @@
       "version": "2.12.0"
     },
     {
-      "bom-ref": "pydantic_core==2.33.2",
+      "bom-ref": "pydantic_core==2.41.5",
       "description": "Core functionality for Pydantic validation and serialization",
       "externalReferences": [
         {
@@ -3865,9 +3846,9 @@
         }
       ],
       "name": "pydantic_core",
-      "purl": "pkg:pypi/pydantic-core@2.33.2",
+      "purl": "pkg:pypi/pydantic-core@2.41.5",
       "type": "library",
-      "version": "2.33.2"
+      "version": "2.41.5"
     },
     {
       "bom-ref": "pydeps==3.0.1",
@@ -4170,12 +4151,12 @@
       "version": "2.9.0.post0"
     },
     {
-      "bom-ref": "python-dotenv==1.1.1",
+      "bom-ref": "python-dotenv==1.2.1",
       "description": "Read key-value pairs from a .env file and set them as environment variables",
       "externalReferences": [
         {
-          "comment": "from packaging metadata: Home-page",
-          "type": "website",
+          "comment": "from packaging metadata Project-URL: Source",
+          "type": "other",
           "url": "https://github.com/theskumar/python-dotenv"
         }
       ],
@@ -4185,18 +4166,12 @@
             "acknowledgement": "declared",
             "id": "BSD-3-Clause"
           }
-        },
-        {
-          "license": {
-            "acknowledgement": "declared",
-            "name": "License :: OSI Approved :: BSD License"
-          }
         }
       ],
       "name": "python-dotenv",
-      "purl": "pkg:pypi/python-dotenv@1.1.1",
+      "purl": "pkg:pypi/python-dotenv@1.2.1",
       "type": "library",
-      "version": "1.1.1"
+      "version": "1.2.1"
     },
     {
       "bom-ref": "python-magic==0.4.27",
@@ -5653,7 +5628,7 @@
         "uvloop==0.22.1",
         "wsproto==1.3.2"
       ],
-      "ref": "Hypercorn==0.17.3"
+      "ref": "Hypercorn==0.18.0"
     },
     {
       "dependsOn": [
@@ -5674,7 +5649,7 @@
     {
       "dependsOn": [
         "coverage==7.13.0",
-        "cryptography==46.0.2",
+        "cryptography==46.0.4",
         "pytest==9.0.2"
       ],
       "ref": "PyJWT==2.10.1"
@@ -5779,7 +5754,7 @@
     {
       "dependsOn": [
         "azure-core==1.37.0",
-        "cryptography==46.0.2",
+        "cryptography==46.0.4",
         "msal-extensions==1.3.1",
         "msal==1.34.0",
         "typing_extensions==4.15.0"
@@ -5789,11 +5764,11 @@
     {
       "dependsOn": [
         "azure-core==1.37.0",
-        "cryptography==46.0.2",
+        "cryptography==46.0.4",
         "isodate==0.7.2",
         "typing_extensions==4.15.0"
       ],
-      "ref": "azure-storage-blob==12.26.0"
+      "ref": "azure-storage-blob==12.28.0"
     },
     {
       "dependsOn": [
@@ -5801,7 +5776,7 @@
         "SQLAlchemy==2.0.45",
         "click==8.3.1",
         "coverage==7.13.0",
-        "numpy==2.3.3",
+        "numpy==2.4.1",
         "pyright==1.1.407",
         "pytest==9.0.2",
         "typer==0.20.0",
@@ -5880,7 +5855,7 @@
         "ruff==0.14.9",
         "typing_extensions==4.15.0"
       ],
-      "ref": "cryptography==46.0.2"
+      "ref": "cryptography==46.0.4"
     },
     {
       "dependsOn": [
@@ -5927,9 +5902,9 @@
     },
     {
       "dependsOn": [
-        "Hypercorn==0.17.3",
+        "Hypercorn==0.18.0",
         "coverage==7.13.0",
-        "cryptography==46.0.2",
+        "cryptography==46.0.4",
         "h2==4.3.0",
         "httpcore==1.0.9",
         "httpx==0.28.1",
@@ -5964,7 +5939,7 @@
         "fastapi-cli==0.0.16",
         "httpx==0.28.1",
         "pydantic-settings==2.12.0",
-        "pydantic==2.11.10",
+        "pydantic==2.12.5",
         "python-multipart==0.0.20",
         "starlette==0.50.0",
         "typing_extensions==4.15.0",
@@ -6152,7 +6127,7 @@
     {
       "dependsOn": [
         "PyJWT==2.10.1",
-        "cryptography==46.0.2",
+        "cryptography==46.0.4",
         "requests==2.32.5"
       ],
       "ref": "msal==1.34.0"
@@ -6173,7 +6148,7 @@
       "ref": "nodeenv==1.9.1"
     },
     {
-      "ref": "numpy==2.3.3"
+      "ref": "numpy==2.4.1"
     },
     {
       "dependsOn": [
@@ -6252,7 +6227,7 @@
         "pytest-cov==7.0.0",
         "pytest==9.0.2"
       ],
-      "ref": "pillow==12.0.0"
+      "ref": "pillow==12.1.0"
     },
     {
       "dependsOn": [
@@ -6329,8 +6304,8 @@
         "azure-identity==1.25.1",
         "boto3-stubs==1.42.8",
         "boto3==1.42.8",
-        "pydantic==2.11.10",
-        "python-dotenv==1.1.1",
+        "pydantic==2.12.5",
+        "python-dotenv==1.2.1",
         "typing-inspection==0.4.2"
       ],
       "ref": "pydantic-settings==2.12.0"
@@ -6339,18 +6314,18 @@
       "dependsOn": [
         "annotated-types==0.7.0",
         "email-validator==2.3.0",
-        "pydantic_core==2.33.2",
+        "pydantic_core==2.41.5",
         "typing-inspection==0.4.2",
         "typing_extensions==4.15.0",
         "tzdata==2025.2"
       ],
-      "ref": "pydantic==2.11.10"
+      "ref": "pydantic==2.12.5"
     },
     {
       "dependsOn": [
         "typing_extensions==4.15.0"
       ],
-      "ref": "pydantic_core==2.33.2"
+      "ref": "pydantic_core==2.41.5"
     },
     {
       "dependsOn": [
@@ -6420,7 +6395,7 @@
       "dependsOn": [
         "click==8.3.1"
       ],
-      "ref": "python-dotenv==1.1.1"
+      "ref": "python-dotenv==1.2.1"
     },
     {
       "ref": "python-magic==0.4.27"
@@ -6479,36 +6454,36 @@
     },
     {
       "dependsOn": [
-        "Hypercorn==0.17.3",
+        "Hypercorn==0.18.0",
         "PyJWT==2.10.1",
         "PyYAML==6.0.3",
         "SQLAlchemy==2.0.45",
         "aiosqlite==0.21.0",
         "alembic==1.17.2",
         "azure-identity==1.25.1",
-        "azure-storage-blob==12.26.0",
+        "azure-storage-blob==12.28.0",
         "beartype==0.22.8",
         "boto3-stubs==1.42.8",
         "boto3==1.42.8",
-        "cryptography==46.0.2",
+        "cryptography==46.0.4",
         "dbos==2.7.0",
         "fastapi==0.124.2",
         "h2==4.3.0",
         "httpx==0.28.1",
         "loguru==0.7.3",
-        "numpy==2.3.3",
+        "numpy==2.4.1",
         "opentelemetry-api==1.39.1",
         "opentelemetry-exporter-otlp-proto-grpc==1.39.1",
         "opentelemetry-exporter-otlp-proto-http==1.39.1",
         "opentelemetry-sdk==1.39.1",
-        "pillow==12.0.0",
+        "pillow==12.1.0",
         "psycopg-pool==3.3.0",
         "psycopg==3.3.2",
         "pydantic-settings==2.12.0",
-        "pydantic==2.11.10",
-        "pydantic_core==2.33.2",
+        "pydantic==2.12.5",
+        "pydantic_core==2.41.5",
         "pyright==1.1.407",
-        "python-dotenv==1.1.1",
+        "python-dotenv==1.2.1",
         "python-magic==0.4.27",
         "slowapi==0.1.9",
         "uuid6==2025.0.1"
@@ -6631,7 +6606,7 @@
         "click==8.3.1",
         "h11==0.16.0",
         "httptools==0.7.1",
-        "python-dotenv==1.1.1",
+        "python-dotenv==1.2.1",
         "typing_extensions==4.15.0",
         "uvloop==0.22.1",
         "watchfiles==1.1.1",
@@ -6721,7 +6696,7 @@
       ],
       "name": "nachet-backend",
       "type": "application",
-      "version": "2.9.1"
+      "version": "2.9.2"
     },
     "properties": [
       {

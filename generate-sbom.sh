@@ -76,5 +76,5 @@ else
       /root/.local/bin/uv run cyclonedx-py environment --output-reproducible -v --sv 1.6 --pyproject pyproject.toml -o sbom.json && \
       echo "" >> sbom.json"
     
-    sudo chown -R 1000:1000 "$PROJECT_DIR/"
+    sudo chown -R 1000:1000 "$PROJECT_DIR/.venv"
 fi

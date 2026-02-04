@@ -50,25 +50,25 @@ jobs:
         ports:
           - 5432:5432
       nachet-detector:
-        image: wiremock/wiremock:3.13.1
+        image: wiremock/wiremock:3.13.2
         ports:
           - 5001:8080
         volumes:
           - ./e2e/mocks/nachet-detector:/home/wiremock/mappings
       nachet-15spp-classifier:
-        image: wiremock/wiremock:3.13.1
+        image: wiremock/wiremock:3.13.2
         ports:
           - 5003:8080
         volumes:
           - ./e2e/mocks/nachet-15spp-classifier:/home/wiremock/mappings
       nachet-27spp-classifier:
-        image: wiremock/wiremock:3.13.1
+        image: wiremock/wiremock:3.13.2
         ports:
           - 5002:8080
         volumes:
           - ./e2e/mocks/nachet-27spp-classifier:/home/wiremock/mappings
       nachet-frontend:
-        image: ghcr.io/ai-cfia/nachet-frontend:0.13.2
+        image: ghcr.io/ai-cfia/nachet-frontend:2.9.0
         env:
           PUBLIC_URL: "."
           VITE_BACKEND_URL: "http://localhost:12435"
@@ -83,7 +83,7 @@ jobs:
           sudo chown -R $USER:$USER $GITHUB_WORKSPACE
 
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -102,7 +102,7 @@ jobs:
       #     timeout 30 bash -c 'until curl -f http://127.0.0.1:10000/ 2>/dev/null; do sleep 1; done'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@e8b52af86e46cb518daf4b47877e582bc9e37b8b
+        uses: astral-sh/setup-uv@2841f9f5c1f3a4d2fe660cb20a8910794bac0423
 
       - name: Install dependencies
         run: |
@@ -168,7 +168,7 @@ jobs:
 
       - name: Cache Node Modules
         id: cache-node-modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             node_modules
@@ -176,7 +176,7 @@ jobs:
 
       - name: Cache Playwright Binaries
         id: cache-playwright
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cache/ms-playwright
@@ -204,7 +204,7 @@ jobs:
           echo "=== detector mock logs ==="
           docker logs ${{ job.services.nachet-detector.id }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
           name: playwright-report

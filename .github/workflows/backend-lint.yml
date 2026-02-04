@@ -68,10 +68,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@e8b52af86e46cb518daf4b47877e582bc9e37b8b
+        uses: astral-sh/setup-uv@2841f9f5c1f3a4d2fe660cb20a8910794bac0423
         with:
           version: "latest"
 
@@ -100,7 +100,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Ensure SBOM exists (skip scan if missing)
         run: |
           if [ ! -f backend/sbom.json ]; then
@@ -108,7 +108,11 @@ jobs:
             echo "No SBOM file found" > sbom-scan-skip.log
             exit 0
           fi
-      - uses: anchore/scan-action@40a61b52209e9d50e87917c5b901783d546b12d0
+<<<<<<< HEAD
+      - uses: anchore/scan-action@9fc81f981091417fc121d71bf126326a2e74c493
+=======
+      - uses: anchore/scan-action@56e320f818c551f3f035fde89894504f269ad30b
+>>>>>>> origin/renovate/backend-bump-deps-20250929
         name: SBOM Security Scan
         id: scan
         with:

@@ -52,15 +52,15 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@e8b52af86e46cb518daf4b47877e582bc9e37b8b
+        uses: astral-sh/setup-uv@2841f9f5c1f3a4d2fe660cb20a8910794bac0423
 
       - name: Install dependencies
         run: |
@@ -142,7 +142,7 @@ jobs:
 
       - name: Start Azurite Blob Storage Emulator
         shell: bash
-        run: azurite --loose --blobHost 127.0.0.1 --blobPort 10000 &
+        run: azurite --loose --blobHost 127.0.0.1 --blobPort 10000 --skipApiVersionCheck &
 
       - name: Alembic migration to repo head
         working-directory: backend/app/db
@@ -208,7 +208,7 @@ jobs:
           S3_ENDPOINT_URL: "http://127.0.0.1:12440"
 
       - name: Checkout OSHP validator
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: oshp/oshp-validator
           path: oshp-validator
@@ -354,7 +354,7 @@ jobs:
           fi
 
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Start WireMock containers
         working-directory: ${{ github.workspace }}
@@ -390,10 +390,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@e8b52af86e46cb518daf4b47877e582bc9e37b8b
+        uses: astral-sh/setup-uv@2841f9f5c1f3a4d2fe660cb20a8910794bac0423
 
       - name: Install dependencies
         run: |
@@ -475,7 +475,7 @@ jobs:
 
       - name: Start Azurite Blob Storage Emulator
         shell: bash
-        run: azurite --loose --blobHost 127.0.0.1 --blobPort 10000 &
+        run: azurite --loose --blobHost 127.0.0.1 --blobPort 10000 --skipApiVersionCheck &
 
       # - name: Wait for Azurite to be ready
       #   run: |
@@ -595,7 +595,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Trigger Release Workflow for Nachet backend
         run: |

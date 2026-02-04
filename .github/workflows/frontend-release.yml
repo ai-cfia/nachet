@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -113,7 +113,7 @@ jobs:
           echo "Files and directories after cleanup:"
           find . -maxdepth 2 -type f -o -type d | head -20
 
-      - uses: EndBug/add-and-commit@90505514ff27f9bc2c0fa872c801038b7af010c7
+      - uses: EndBug/add-and-commit@2df77c10fb02f084460f06c7d7a576a43bd00b86
         with:
           message: "Release frontend nachet-frontend-v${{ steps.versions.outputs.app-version }}"
           add: "."
@@ -202,7 +202,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
-        uses: ncipollo/release-action@c266243d9d9695d413e7afd471bb1e2c3c32b601
+        uses: ncipollo/release-action@411d95d6a352b94952f1b6c64804b93c251f7db9
         with:
           tag: "nachet-frontend-v${{ steps.versions.outputs.app-version }}"
           name: "nachet-frontend v${{ steps.versions.outputs.app-version }}"
