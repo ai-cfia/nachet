@@ -1,10 +1,11 @@
-import { Button } from "@mui/material";
-import { MouseEvent, useState } from "react";
+import { Box, IconButton, Tooltip, Menu, MenuItem, ListItemIcon, ListItemText } from "@mui/material";
+import { MouseEvent, useCallback, useState } from "react";
 import { BoxCSS, InferenceBox } from "@common/types";
 import { SimpleFeedbackForm } from "../feedback_form";
 import { getScaledBounds } from "@common";
+import { LayersOutlined, ArrowUpward, ArrowDownward } from "@mui/icons-material";
 
-const ScaledInferenceBox = (props: {
+interface Props {
   index: number;
   imageWidth: number;
   imageHeight: number;
@@ -13,9 +14,37 @@ const ScaledInferenceBox = (props: {
   canvasHeight: number;
   label: string;
   visible: boolean;
+  totalBoxes: number;
   submitPositiveFeedback: (index: number) => void;
   handleNegativeFeedback: (index: number, boxPosition: BoxCSS) => void;
-}) => {
+}
+
+function computeBoxPosition(
+  canvasWidth: number,
+  canvasHeight: number,
+  imageWidth: number,
+  imageHeight: number,
+  box: InferenceBox,
+): BoxCSS {
+  const { scaledHeight, scaledWidth, scaledTopX, scaledTopY } = getScaledBounds(
+    canvasWidth,
+    canvasHeight,
+    imageWidth,
+    imageHeight,
+    box,
+  );
+
+  return {
+    minWidth: scaledWidth,
+    minHeight: scaledHeight,
+    maxWidth: scaledWidth,
+    maxHeight: scaledHeight,
+    left: scaledTopX,
+    top: scaledTopY,
+  };
+}
+
+const ScaledInferenceBox = (props: Props) => {
   const {
     index,
     box,
@@ -27,13 +56,43 @@ const ScaledInferenceBox = (props: {
     submitPositiveFeedback,
     handleNegativeFeedback,
   } = props;
-  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
 
-  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [layersAnchorEl, setLayersAnchorEl] = useState<HTMLElement | null>(null);
+
+  const handleBoxClick = useCallback((event: MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
-  };
+  }, []);
 
-  const { scaledHeight, scaledWidth, scaledTopX, scaledTopY } = getScaledBounds(
+  const sendBoxBackwards = useCallback(() => {
+    if (typeof box.z === "number") {
+      box.z = Math.max(0, box.z - 1);
+    } else {
+      box.z = Math.max(0, index + 10 - 1);
+    }
+    console.log("Box z-index after sending backwards: ", box.z);
+  }, [box]);
+
+  const sendBoxForward = useCallback(() => {
+    if (typeof box.z === "number") {
+      box.z = box.z + 1;
+    } else {
+      box.z = index + 10 + 1;
+    }
+    console.log("Box z-index after sending forward: ", box.z);
+  }, [box]);
+
+  const openLayersMenu = useCallback((event: MouseEvent<HTMLElement>) => {
+    // stop propagation to avoid opening the feedback form
+    event.stopPropagation();
+    setLayersAnchorEl(event.currentTarget);
+  }, []);
+
+  const closeLayersMenu = useCallback(() => {
+    setLayersAnchorEl(null);
+  }, []);
+
+  const boxPosition = computeBoxPosition(
     canvasWidth,
     canvasHeight,
     imageWidth,
@@ -41,33 +100,124 @@ const ScaledInferenceBox = (props: {
     box,
   );
 
-  const boxPosition: BoxCSS = {
-    minWidth: scaledWidth,
-    minHeight: scaledHeight,
-    maxWidth: scaledWidth,
-    maxHeight: scaledHeight,
-    left: scaledTopX,
-    top: scaledTopY,
-  };
+  const isLayersOpen = Boolean(layersAnchorEl);
 
-  const style = {
+  const sx = {
     ...boxPosition,
     position: "absolute",
     border: "none",
     borderRadius: 0,
     display: visible ? "block" : "none",
-    zIndex: 10,
+    zIndex: (box.z ?? 10) + 10,
+    // if the layers menu is open, keep the hover styles applied so the box looks active
+    ...(isLayersOpen
+      ? {
+          bgcolor: "rgba(11,157,235,0.12)",
+          border: "1px solid rgba(11,157,235,0.22)",
+          "& .layersBtn": {
+            opacity: 1,
+            pointerEvents: "auto",
+            transform: "scale(1.05)",
+            color: "primary.main",
+            bgcolor: "rgba(255,255,255,1)",
+            zIndex: 300,
+          },
+        }
+      : {}),
+    // hide layer icons by default; reveal on hover of the parent box
+    "& .layersBtn": {
+      opacity: 0,
+      pointerEvents: "none",
+      transition: "opacity 150ms ease, transform 150ms ease",
+      filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))",
+    },
     "&:hover": {
-      bgcolor: "#0b9deb",
-      opacity: 0.2,
+      // show a subtle highlight without dimming children
+      bgcolor: "rgba(11,157,235,0.12)",
+      border: "1px solid rgba(11,157,235,0.22)",
+      "& .layersBtn": {
+        opacity: 1,
+        pointerEvents: "auto",
+        transform: "scale(1.05)",
+        color: "primary.main",
+        bgcolor: "rgba(255,255,255,1)",
+      },
     },
   };
 
   return (
     <>
-      <Button sx={style} onClick={handleClick} />
+      <Box
+        component="div"
+        role="button"
+        tabIndex={0}
+        sx={sx}
+        onClick={handleBoxClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            handleBoxClick(e as unknown as MouseEvent<HTMLElement>);
+          }
+        }}
+      >
+        <Tooltip title="Layers" placement="top">
+          <IconButton
+            className="layersBtn"
+            size="small"
+            onClick={openLayersMenu}
+            sx={{
+              position: "absolute",
+              top: 6,
+              right: 6,
+              zIndex: 300,
+              bgcolor: "rgba(255,255,255,0.95)",
+              color: "primary.main",
+              width: 28,
+              height: 28,
+              minWidth: 28,
+              borderRadius: 1,
+            }}
+            aria-label="layers"
+            aria-controls={layersAnchorEl ? "layers-menu" : undefined}
+            aria-haspopup="true"
+          >
+            <LayersOutlined fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        <Menu
+          id="layers-menu"
+          anchorEl={layersAnchorEl}
+          open={Boolean(layersAnchorEl)}
+          onClose={closeLayersMenu}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
+          MenuListProps={{ onClick: (e) => e.stopPropagation() }}
+        >
+          <MenuItem
+            onClick={() => {
+              sendBoxForward();
+            }}
+          >
+            <ListItemIcon>
+              <ArrowUpward fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Send Forward</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              sendBoxBackwards();
+            }}
+          >
+            <ListItemIcon>
+              <ArrowDownward fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Send Backwards</ListItemText>
+          </MenuItem>
+        </Menu>
+      </Box>
+
       <SimpleFeedbackForm
-        anchorEl={anchorEl}
+        anchorEl={anchorEl as HTMLButtonElement | null}
         onClose={() => setAnchorEl(null)}
         submitPositiveFeedback={() => submitPositiveFeedback(index)}
         onNegativeFeedback={() => handleNegativeFeedback(index, boxPosition)}

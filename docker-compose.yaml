@@ -33,7 +33,7 @@ services:
     hostname: azurite
     restart: always
     # command: "azurite --blobHost 127.0.0.1 --blobPort 10000 --queueHost 127.0.0.1 --queuePort 10001"
-    command: "azurite --loose --blobHost 0.0.0.0 --blobPort 10000 --location /workspace --debug /workspace/debug.log"
+    command: "azurite --loose --blobHost 0.0.0.0 --blobPort 10000 --location /workspace --debug /workspace/debug.log --skipApiVersionCheck"
     volumes:
       - ./blob/azurite/data:/workspace
     ports:
@@ -48,7 +48,7 @@ services:
     # uncomment these to build backend from source
     build:
       context: ./backend
-      dockerfile: Dockerfile.local
+      dockerfile: Dockerfile
     image: local/nachet-backend:latest
 
     # uncomment these to use prebuilt image from ghcr

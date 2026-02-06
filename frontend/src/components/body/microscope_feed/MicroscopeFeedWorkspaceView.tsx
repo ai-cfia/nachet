@@ -454,7 +454,7 @@ export const MicroscopeFeedWorkspaceView = (
                     <ScaledInferenceBox
                       key={index}
                       index={index}
-                      box={box}
+                      box={{ ...box, z: index + 10 }}
                       label={
                         String((imageData.scores[index] * 100).toFixed(0)) + "%"
                       }
@@ -463,6 +463,7 @@ export const MicroscopeFeedWorkspaceView = (
                       canvasWidth={width}
                       canvasHeight={height}
                       visible={!feedbackMode}
+                      totalBoxes={imageData.boxes.length}
                       submitPositiveFeedback={submitPositiveFeedback}
                       handleNegativeFeedback={enterFeedbackMode}
                     />

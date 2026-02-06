@@ -102,6 +102,7 @@ export interface BoxCoordinates {
   topY: number;
   bottomX: number;
   bottomY: number;
+  z?: number;
 }
 
 export interface InferenceBox extends BoxCoordinates {
