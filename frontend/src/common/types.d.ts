@@ -110,6 +110,7 @@ export interface InferenceBox extends BoxCoordinates {
   classId: string;
   label: string;
   isVerified: boolean;
+  z?: number; // Optional z-index for rendering order (e.g., overlapping boxes)
 }
 
 export interface BoxCSS {

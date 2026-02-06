@@ -458,6 +458,7 @@ export const MicroscopeFeedWorkspaceView = (
                       label={
                         String((imageData.scores[index] * 100).toFixed(0)) + "%"
                       }
+                      totalBoxes={imageData.boxes.length}
                       imageWidth={imageData.imageDims[0]}
                       imageHeight={imageData.imageDims[1]}
                       canvasWidth={width}
