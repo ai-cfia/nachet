@@ -60,11 +60,21 @@ const ScaledInferenceBox = (props: Props) => {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [layersAnchorEl, setLayersAnchorEl] = useState<HTMLElement | null>(null);
 
+  const [zOffset, setZOffset] = useState<number>(0);
+
+  // Base z-index falls back to `index + 10` when unspecified.
+  const baseZ = typeof box.z === "number" ? box.z : index + 10;
+
+  const computeZIndex = (base: number, offset: number) => base + offset;
+
+  const zIndex = computeZIndex(baseZ, zOffset);
+
   const handleBoxClick = useCallback((event: MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   }, []);
 
   const sendBoxBackwards = useCallback(() => {
+<<<<<<< HEAD
     if (typeof box.z === "number") {
       box.z = Math.max(0, box.z - 1);
     } else {
@@ -81,6 +91,22 @@ const ScaledInferenceBox = (props: Props) => {
     }
     console.log("Box z-index after sending forward: ", box.z);
   }, [box]);
+=======
+    setZOffset((prev) => {
+      const currentZ = baseZ + prev;
+      const newZ = Math.max(0, currentZ - 1);
+      return newZ - baseZ;
+    });
+  }, [baseZ]);
+
+  const sendBoxForward = useCallback(() => {
+    setZOffset((prev) => {
+      const currentZ = baseZ + prev;
+      const newZ = currentZ + 1;
+      return newZ - baseZ;
+    });
+  }, [baseZ]);
+>>>>>>> 8362bc6 (functionnal z index changes)
 
   const openLayersMenu = useCallback((event: MouseEvent<HTMLElement>) => {
     // stop propagation to avoid opening the feedback form
@@ -108,7 +134,7 @@ const ScaledInferenceBox = (props: Props) => {
     border: "none",
     borderRadius: 0,
     display: visible ? "block" : "none",
-    zIndex: (box.z ?? 10) + 10,
+    zIndex: zIndex + 10,
     // if the layers menu is open, keep the hover styles applied so the box looks active
     ...(isLayersOpen
       ? {
