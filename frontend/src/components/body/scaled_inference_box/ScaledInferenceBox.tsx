@@ -1,11 +1,10 @@
-import { Box, IconButton, Tooltip, Menu, MenuItem, ListItemIcon, ListItemText } from "@mui/material";
-import { MouseEvent, useCallback, useState } from "react";
+import { Button } from "@mui/material";
+import { MouseEvent, useState } from "react";
 import { BoxCSS, InferenceBox } from "@common/types";
 import { SimpleFeedbackForm } from "../feedback_form";
 import { getScaledBounds } from "@common";
-import { LayersOutlined, ArrowUpward, ArrowDownward } from "@mui/icons-material";
 
-interface Props {
+const ScaledInferenceBox = (props: {
   index: number;
   imageWidth: number;
   imageHeight: number;
@@ -14,37 +13,9 @@ interface Props {
   canvasHeight: number;
   label: string;
   visible: boolean;
-  totalBoxes: number;
   submitPositiveFeedback: (index: number) => void;
   handleNegativeFeedback: (index: number, boxPosition: BoxCSS) => void;
-}
-
-function computeBoxPosition(
-  canvasWidth: number,
-  canvasHeight: number,
-  imageWidth: number,
-  imageHeight: number,
-  box: InferenceBox,
-): BoxCSS {
-  const { scaledHeight, scaledWidth, scaledTopX, scaledTopY } = getScaledBounds(
-    canvasWidth,
-    canvasHeight,
-    imageWidth,
-    imageHeight,
-    box,
-  );
-
-  return {
-    minWidth: scaledWidth,
-    minHeight: scaledHeight,
-    maxWidth: scaledWidth,
-    maxHeight: scaledHeight,
-    left: scaledTopX,
-    top: scaledTopY,
-  };
-}
-
-const ScaledInferenceBox = (props: Props) => {
+}) => {
   const {
     index,
     box,
@@ -56,23 +27,13 @@ const ScaledInferenceBox = (props: Props) => {
     submitPositiveFeedback,
     handleNegativeFeedback,
   } = props;
+  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
 
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const [layersAnchorEl, setLayersAnchorEl] = useState<HTMLElement | null>(null);
-
-  const [zOffset, setZOffset] = useState<number>(0);
-
-  // Base z-index falls back to `index + 10` when unspecified.
-  const baseZ = typeof box.z === "number" ? box.z : index + 10;
-
-  const computeZIndex = (base: number, offset: number) => base + offset;
-
-  const zIndex = computeZIndex(baseZ, zOffset);
-
-  const handleBoxClick = useCallback((event: MouseEvent<HTMLElement>) => {
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
-  }, []);
+  };
 
+<<<<<<< HEAD
   const sendBoxBackwards = useCallback(() => {
 <<<<<<< HEAD
     if (typeof box.z === "number") {
@@ -119,6 +80,9 @@ const ScaledInferenceBox = (props: Props) => {
   }, []);
 
   const boxPosition = computeBoxPosition(
+=======
+  const { scaledHeight, scaledWidth, scaledTopX, scaledTopY } = getScaledBounds(
+>>>>>>> parent of 1506747 (layer submenu)
     canvasWidth,
     canvasHeight,
     imageWidth,
@@ -126,14 +90,22 @@ const ScaledInferenceBox = (props: Props) => {
     box,
   );
 
-  const isLayersOpen = Boolean(layersAnchorEl);
+  const boxPosition: BoxCSS = {
+    minWidth: scaledWidth,
+    minHeight: scaledHeight,
+    maxWidth: scaledWidth,
+    maxHeight: scaledHeight,
+    left: scaledTopX,
+    top: scaledTopY,
+  };
 
-  const sx = {
+  const style = {
     ...boxPosition,
     position: "absolute",
     border: "none",
     borderRadius: 0,
     display: visible ? "block" : "none",
+<<<<<<< HEAD
     zIndex: zIndex + 10,
     // if the layers menu is open, keep the hover styles applied so the box looks active
     ...(isLayersOpen
@@ -157,93 +129,20 @@ const ScaledInferenceBox = (props: Props) => {
       transition: "opacity 150ms ease, transform 150ms ease",
       filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))",
     },
+=======
+    zIndex: 10,
+>>>>>>> parent of 1506747 (layer submenu)
     "&:hover": {
-      // show a subtle highlight without dimming children
-      bgcolor: "rgba(11,157,235,0.12)",
-      border: "1px solid rgba(11,157,235,0.22)",
-      "& .layersBtn": {
-        opacity: 1,
-        pointerEvents: "auto",
-        transform: "scale(1.05)",
-        color: "primary.main",
-        bgcolor: "rgba(255,255,255,1)",
-      },
+      bgcolor: "#0b9deb",
+      opacity: 0.2,
     },
   };
 
   return (
     <>
-      <Box
-        component="div"
-        role="button"
-        tabIndex={0}
-        sx={sx}
-        onClick={handleBoxClick}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            handleBoxClick(e as unknown as MouseEvent<HTMLElement>);
-          }
-        }}
-      >
-        <Tooltip title="Layers" placement="top">
-          <IconButton
-            className="layersBtn"
-            size="small"
-            onClick={openLayersMenu}
-            sx={{
-              position: "absolute",
-              top: 6,
-              right: 6,
-              zIndex: 300,
-              bgcolor: "rgba(255,255,255,0.95)",
-              color: "primary.main",
-              width: 28,
-              height: 28,
-              minWidth: 28,
-              borderRadius: 1,
-            }}
-            aria-label="layers"
-            aria-controls={layersAnchorEl ? "layers-menu" : undefined}
-            aria-haspopup="true"
-          >
-            <LayersOutlined fontSize="small" />
-          </IconButton>
-        </Tooltip>
-
-        <Menu
-          id="layers-menu"
-          anchorEl={layersAnchorEl}
-          open={Boolean(layersAnchorEl)}
-          onClose={closeLayersMenu}
-          anchorOrigin={{ vertical: "top", horizontal: "right" }}
-          transformOrigin={{ vertical: "top", horizontal: "right" }}
-          MenuListProps={{ onClick: (e) => e.stopPropagation() }}
-        >
-          <MenuItem
-            onClick={() => {
-              sendBoxForward();
-            }}
-          >
-            <ListItemIcon>
-              <ArrowUpward fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>Send Forward</ListItemText>
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              sendBoxBackwards();
-            }}
-          >
-            <ListItemIcon>
-              <ArrowDownward fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>Send Backwards</ListItemText>
-          </MenuItem>
-        </Menu>
-      </Box>
-
+      <Button sx={style} onClick={handleClick} />
       <SimpleFeedbackForm
-        anchorEl={anchorEl as HTMLButtonElement | null}
+        anchorEl={anchorEl}
         onClose={() => setAnchorEl(null)}
         submitPositiveFeedback={() => submitPositiveFeedback(index)}
         onNegativeFeedback={() => handleNegativeFeedback(index, boxPosition)}

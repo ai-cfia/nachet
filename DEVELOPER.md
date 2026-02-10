@@ -255,7 +255,7 @@ mcr.microsoft.com/azure-storage/azurite:3.35.0                              nach
 
 ```bash
 nachet$ cd backend
-nachet/backend$ uv run app/scripts/register_user.py --register <azure_ad_oid> --org <organization_id> --admin <admin_user_id>
+nachet/backend$ uv run app/scripts/register_user.py ---register <azure_ad_oid> --org <organization_id> --admin <admin_user_id>
 ```
 
 ## Useful Commands
