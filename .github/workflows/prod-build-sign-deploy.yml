@@ -152,7 +152,7 @@ jobs:
 
     steps:
       - name: Create Release
-        uses: softprops/action-gh-release@60cfd9a691d814dcf0d094598101c5cb61cd1646
+        uses: softprops/action-gh-release@e798e6a1ede8d07b74ac4cdac6bdfa4cc1653907
         with:
           body: |
             ## Release ${{ github.ref_name }}
