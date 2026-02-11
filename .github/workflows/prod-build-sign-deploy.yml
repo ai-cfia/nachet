@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
       - name: Login to Container Registry
-        uses: docker/login-action@28fdb31ff34708d19615a74d67103ddc2ea9725c
+        uses: docker/login-action@3227f5311cb93ffd14d13e65d8cc400d30f4dd8a
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -89,7 +89,7 @@ jobs:
         uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
       - name: Login to Container Registry
-        uses: docker/login-action@28fdb31ff34708d19615a74d67103ddc2ea9725c
+        uses: docker/login-action@3227f5311cb93ffd14d13e65d8cc400d30f4dd8a
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
