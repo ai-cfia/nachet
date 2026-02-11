@@ -183,7 +183,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
-        uses: ncipollo/release-action@411d95d6a352b94952f1b6c64804b93c251f7db9
+        uses: ncipollo/release-action@89bab4d0a786b1d8c582ff85606edc1d68164af5
         with:
           tag: "nachet-backend-v${{ steps.versions.outputs.app-version }}"
           name: "nachet-backend v${{ steps.versions.outputs.app-version }}"
