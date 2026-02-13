@@ -74,8 +74,8 @@ const ScaledInferenceBox = (props: Props) => {
 
   const [zOffset, setZOffset] = useState<number>(0);
 
-  // Base z-index falls back to `index + 10` when unspecified.
-  const baseZ = typeof box.z === "number" ? box.z : index + 10;
+  // Base z-index falls back to `index` when unspecified.
+  const baseZ = index;
 
   const computeZIndex = (base: number, offset: number) => base + offset;
 
@@ -126,7 +126,7 @@ const ScaledInferenceBox = (props: Props) => {
     border: "none",
     borderRadius: 0,
     display: visible ? "block" : "none",
-    zIndex: zIndex + 10,
+    zIndex: zIndex,
     // if the layers menu is open, keep the hover styles applied so the box looks active
     ...(isLayersOpen
       ? {
@@ -177,6 +177,27 @@ const ScaledInferenceBox = (props: Props) => {
           }
         }}
       >
+        {/* Small label badge (score + z-index) shown top-left */}
+        {/* <Box
+          aria-hidden
+          sx={{
+            position: "absolute",
+            top: 6,
+            left: 6,
+            zIndex: 310,
+            bgcolor: "rgba(255,255,255,0.95)",
+            color: "text.primary",
+            px: 0.6,
+            py: 0.2,
+            borderRadius: 0.5,
+            fontSize: "0.75rem",
+            pointerEvents: "none",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+          }}
+        >
+          {zIndex}
+        </Box> */}
+
         <Tooltip title="Layers" placement="top">
           <IconButton
             className="layersBtn"

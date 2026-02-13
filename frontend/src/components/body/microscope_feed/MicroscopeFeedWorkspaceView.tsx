@@ -454,7 +454,7 @@ export const MicroscopeFeedWorkspaceView = (
                     <ScaledInferenceBox
                       key={index}
                       index={index}
-                      box={box}
+                      box={{ ...box }}
                       label={
                         String((imageData.scores[index] * 100).toFixed(0)) + "%"
                       }
