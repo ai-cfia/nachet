@@ -80,3 +80,80 @@
 #   description = "Loki logs endpoint (if enabled)"
 #   value       = var.enable_observability_stack && length(module.monitoring) > 0 ? module.monitoring[0].loki_url : "Monitoring disabled"
 # }
+
+# Container Registry Outputs
+# output "container_registry_id" {
+#   description = "Container Registry ID"
+#   value       = module.container_registry.id
+# }
+
+# output "container_registry_name" {
+#   description = "Container Registry name"
+#   value       = module.container_registry.name
+# }
+
+# output "container_registry_login_server" {
+#   description = "Container Registry login server URL"
+#   value       = module.container_registry.login_server
+# }
+
+# output "container_registry_admin_username" {
+#   description = "Container Registry admin username"
+#   value       = module.container_registry.admin_username
+#   sensitive   = true
+# }
+
+# output "container_registry_admin_password" {
+#   description = "Container Registry admin password"
+#   value       = module.container_registry.admin_password
+#   sensitive   = true
+# }
+
+# output "container_registry_private_endpoint_ip" {
+#   description = "Container Registry private endpoint IP address"
+#   value       = module.container_registry.private_endpoint_ip
+# }
+
+# PgAdmin Container Instance Outputs
+# output "pgadmin_ip_address" {
+#   description = "PgAdmin container private IP address"
+#   value       = module.pgadmin.ip_address
+# }
+
+# output "pgadmin_fqdn" {
+#   description = "PgAdmin container FQDN"
+#   value       = module.pgadmin.fqdn
+# }
+
+# Storage Account Outputs
+# output "storage_account_id" {
+#   description = "Storage Account ID"
+#   value       = module.storage_account.id
+# }
+
+# output "storage_account_name" {
+#   description = "Storage Account name"
+#   value       = module.storage_account.name
+# }
+
+# output "storage_account_primary_blob_endpoint" {
+#   description = "Storage Account primary blob endpoint"
+#   value       = module.storage_account.primary_blob_endpoint
+# }
+
+# output "storage_account_primary_access_key" {
+#   description = "Storage Account primary access key"
+#   value       = module.storage_account.primary_access_key
+#   sensitive   = true
+# }
+
+# output "storage_account_primary_connection_string" {
+#   description = "Storage Account primary connection string"
+#   value       = module.storage_account.primary_connection_string
+#   sensitive   = true
+# }
+
+# output "storage_account_threat_protection_id" {
+#   description = "Storage Account threat protection ID"
+#   value       = module.storage_account.threat_protection_id
+# }

@@ -1,3 +1,5 @@
+# DEFAULT
+
 variable "project_name" {
   description = "Project name"
   type        = string
@@ -50,23 +52,11 @@ variable "container_apps_subnet_name" {
   default     = "nachet-container-apps-subnet-dev"
 }
 
-# variable "storage_subnet_cidr" {
-#   description = "CIDR block for Storage subnet - optional (e.g., 10.0.3.0/29)"
-#   type        = string
-#   default     = "" # Optional - leave empty if not using private endpoints
-# }
-
-variable "enable_public_access" {
-  description = "Enable public access for Container Apps (set to false for full private deployment)"
-  type        = bool
-  default     = false
+variable "private_endpoint_subnet_id" {
+  description = "CAE PE subnet id"
+  type        = string
 }
 
-variable "allowed_ip_addresses" {
-  description = "List of IP addresses allowed to access Container Apps (CIDR format)"
-  type        = list(string)
-  default     = ["0.0.0.0/0"] # Allow all for dev - restrict in prod
-}
 
 # variable "enable_observability_stack" {
 #   description = "Enable Grafana LGTM + Alloy observability stack"
@@ -186,10 +176,10 @@ variable "allowed_ip_addresses" {
 # }
 
 # # Container Images
-variable "backend_image" {
-  description = "Docker image for Nachet backend"
+variable "nachet_image" {
+  description = "Docker image for Nachet application (combined frontend + backend)"
   type        = string
-  default     = "ghcr.io/ai-cfia/nachet-backend:dev"
+  default     = "ghcr.io/ai-cfia/nachet:dev"
 }
 
 # variable "triton_image" {
@@ -199,19 +189,11 @@ variable "backend_image" {
 # }
 
 # # Container Apps Resources
-variable "container_app_cpu" {
-  description = "CPU for container apps"
-  type        = number
-  default     = 0.25 # Minimum CPU allocation
-}
 
-variable "container_app_memory" {
-  description = "Memory for container apps"
+variable "cae_infrastructure_resource_group_name" {
+  description = "Infra resource group name"
   type        = string
-  default     = "0.5Gi" # Minimum memory allocation
 }
-
-# infrastructure_resource_group_name is now created automatically as: {resource_group_name}-cae-infra
 
 # variable "triton_cpu" {
 #   description = "CPU for Triton server containers"
@@ -227,66 +209,6 @@ variable "container_app_memory" {
 
 # # Backend Environment Variables
 
-variable "backend_port" {
-  description = "Backend application port"
-  type        = string
-  default     = "8080"
-}
-
-# # ML Model Endpoints (if using external services instead of Triton)
-variable "ml_model_endpoint_rcnn" {
-  description = "RCNN model endpoint URL"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "ml_model_endpoint_swin" {
-  description = "Swin model endpoint URL"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "ml_model_endpoint_swin_22_spp" {
-  description = "Swin 22 SPP model endpoint URL"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "ml_model_endpoint_swin_27_spp" {
-  description = "Swin 27 SPP model endpoint URL"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-# ML Model API Keys
-variable "ml_api_key" {
-  description = "API key for ML model endpoints"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-# # Application Configuration
-variable "jwt_secret" {
-  description = "JWT secret for authentication"
-  type        = string
-  sensitive   = true
-}
-
-variable "cors_allowed_origins" {
-  description = "CORS allowed origins"
-  type        = string
-}
-
-variable "log_level" {
-  description = "Application log level"
-  type        = string
-  default     = "DEBUG"
-}
 
 # # Azure Storage for Triton Models
 # variable "azure_storage_account_key" {
@@ -297,28 +219,9 @@ variable "log_level" {
 # }
 
 
-variable "encryption_key" {
-  description = "Encryption key for sensitive data"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "session_secret" {
-  description = "Session secret for cookies"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "pgadmin_password" {
-  description = "PgAdmin admin password"
-  type        = string
-  sensitive   = true
-}
 
 # PostgreSQL Configuration
-variable "public_network_access_enabled" {
+variable "postgresql_public_network_access_enabled" {
   description = "Enable the db for public access"
   type        = bool
 }
@@ -362,9 +265,309 @@ variable "postgresql_version" {
   default     = "16"
 }
 
-# Database connection string (used by application modules)
-variable "database_url" {
-  description = "Database connection URL"
+
+# Container Registry Configuration
+variable "acr_allowed_ip_1" {
+  description = "First IP address allowed to access the Container Registry"
   type        = string
+}
+
+variable "acr_allowed_ip_2" {
+  description = "Second IP address allowed to access the Container Registry"
+  type        = string
+}
+
+# Storage Account Configuration
+variable "storage_account_tier" {
+  description = "The tier of the storage account"
+  type        = string
+  default     = "Standard"
+}
+
+variable "storage_replication_type" {
+  description = "The replication type of the storage account"
+  type        = string
+  default     = "LRS"
+}
+
+variable "storage_public_access_enabled" {
+  description = "Whether the public network access is enabled for storage account"
+  type        = bool
+  default     = true
+}
+
+variable "storage_allowed_ips" {
+  description = "List of IP addresses/CIDR blocks allowed to access the Storage Account"
+  type        = list(string)
+  default     = []
+}
+
+variable "storage_malware_scanning_enabled" {
+  description = "Enable malware scanning on upload for Storage Account"
+  type        = bool
+  default     = true
+}
+
+variable "storage_malware_scanning_cap_gb_per_month" {
+  description = "Monthly cap in GB for malware scanning"
+  type        = number
+  default     = 5000
+}
+
+variable "storage_sensitive_data_discovery_enabled" {
+  description = "Enable sensitive data discovery for Storage Account"
+  type        = bool
+  default     = true
+}
+
+variable "blob_delete_retention_days" {
+  description = "Number of days to retain deleted blobs"
+  type        = number
+  default     = 7
+}
+
+variable "container_delete_retention_days" {
+  description = "Number of days to retain deleted containers"
+  type        = number
+  default     = 7
+}
+
+variable "blob_versioning_enabled" {
+  description = "Enable blob versioning"
+  type        = bool
+  default     = false
+}
+
+variable "blob_change_feed_enabled" {
+  description = "Enable blob change feed"
+  type        = bool
+  default     = false
+}
+
+# Container Instance Configuration
+# variable "container_instances_subnet_name" {
+#   description = "Name of the subnet for container instances"
+#   type        = string
+#   default     = "nachet-containerinstances-subnet-dev"
+# }
+
+# variable "acr_login_server" {
+#   description = "Container Registry login server"
+#   type        = string
+# }
+
+# variable "acr_username" {
+#   description = "Container Registry username"
+#   type        = string
+# }
+
+# variable "acr_password" {
+#   description = "Container Registry password"
+#   type        = string
+#   sensitive   = true
+# }
+
+# variable "pgadmin_image" {
+#   description = "Docker image for PgAdmin container"
+#   type        = string
+#   default     = "nachetdev.azurecr.io/nachet/pgadmin"
+# }
+
+# variable "pgadmin_environment_variables" {
+#   description = "Environment variables for PgAdmin container"
+#   type        = map(string)
+#   default     = {}
+# }
+
+# variable "pgadmin_secure_environment_variables" {
+#   description = "Secure environment variables for PgAdmin container"
+#   type        = map(string)
+#   default     = {}
+#   sensitive   = true
+# }
+
+# Nachet Environment Variables (following var.env_ pattern)
+variable "env_azure_api_scope_claim" {
+  description = "Azure API scope claim"
+  type        = string
+  sensitive   = true
+}
+
+variable "env_azure_auth_enabled" {
+  description = "Azure authentication enabled flag"
+  type        = string
+  default     = "true"
+}
+
+variable "env_azure_client_id" {
+  description = "Azure client ID"
+  type        = string
+  sensitive   = true
+}
+
+variable "env_azure_tenant_id" {
+  description = "Azure tenant ID"
+  type        = string
+  sensitive   = true
+}
+
+variable "env_blob_storage_endpoint_base" {
+  description = "Blob storage endpoint base URL"
+  type        = string
+}
+
+variable "env_blob_storage_endpoint_protocol" {
+  description = "Blob storage endpoint protocol"
+  type        = string
+  default     = "https"
+}
+
+variable "env_blob_storage_endpoint_suffix" {
+  description = "Blob storage endpoint suffix"
+  type        = string
+  default     = "core.windows.net"
+}
+
+variable "env_blob_storage_key" {
+  description = "Blob storage access key"
+  type        = string
+  sensitive   = true
+}
+
+variable "env_blob_storage_name" {
+  description = "Blob storage account name"
+  type        = string
+}
+
+variable "env_blob_storage_provider" {
+  description = "Blob storage provider"
+  type        = string
+  default     = "azure"
+}
+
+variable "env_cors_allow_origins" {
+  description = "CORS allowed origins"
+  type        = string
+  default     = "*"
+}
+
+variable "env_db_host" {
+  description = "Database host"
+  type        = string
+}
+
+variable "env_db_name" {
+  description = "Database name"
+  type        = string
+}
+
+variable "env_db_password" {
+  description = "Database password"
+  type        = string
+  sensitive   = true
+}
+
+variable "env_db_port" {
+  description = "Database port"
+  type        = string
+  default     = "5432"
+}
+
+variable "env_db_user" {
+  description = "Database user"
+  type        = string
+}
+
+variable "env_frontend_blob_container" {
+  description = "Frontend blob container name"
+  type        = string
+  default     = "frontend"
+}
+
+variable "env_frontend_version_file" {
+  description = "Frontend version file name"
+  type        = string
+  default     = "version.json"
+}
+
+variable "env_minio_access_key" {
+  description = "MinIO access key (if using MinIO instead of Azure Blob)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "env_minio_secret_key" {
+  description = "MinIO secret key (if using MinIO instead of Azure Blob)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "env_nachet_schema" {
+  description = "Nachet database schema name"
+  type        = string
+  default     = "nachet"
+}
+
+variable "env_security_headers_preset" {
+  description = "Security headers preset configuration"
+  type        = string
+  default     = "strict"
+}
+
+variable "env_testing" {
+  description = "Testing mode flag"
+  type        = string
+  default     = "false"
+}
+
+variable "env_trusted_hosts" {
+  description = "Trusted hosts for the application"
+  type        = string
+  default     = "*"
+}
+
+# Proxy Configuration
+variable "container_instances_subnet_name" {
+  description = "Name of the subnet for container instances"
+  type        = string
+  default     = "nachet-containerinstances-subnet-dev"
+}
+
+variable "proxy_image" {
+  description = "Docker image for proxy container"
+  type        = string
+  default     = "ghcr.io/ai-cfia/nachet-proxy:latest"
+}
+
+variable "proxy_cpu" {
+  description = "CPU allocation for proxy container"
+  type        = number
+  default     = 1
+}
+
+variable "proxy_memory" {
+  description = "Memory allocation for proxy container (in GB)"
+  type        = number
+  default     = 2
+}
+
+variable "proxy_ssl_certificate_content" {
+  description = "SSL certificate content in PEM format (certificate + private key)"
+  type        = string
+  sensitive   = true
+}
+
+variable "proxy_environment_variables" {
+  description = "Environment variables for proxy container"
+  type        = map(string)
+  default     = {}
+}
+
+variable "proxy_secure_environment_variables" {
+  description = "Secure environment variables for proxy container"
+  type        = map(string)
+  default     = {}
   sensitive   = true
 }

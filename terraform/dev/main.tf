@@ -1,192 +1,198 @@
-data "azurerm_virtual_network" "existing" {
-  name                = var.vnet_name
-  resource_group_name = var.vnet_resource_group_name
+# Terraform State Storage Account Private Endpoint
+data "azurerm_storage_account" "tfstate" {
+  name                = "tfstatenachet"
+  resource_group_name = var.resource_group_name
 }
 
-data "azurerm_subnet" "container_apps" {
-  name                 = var.container_apps_subnet_name
-  virtual_network_name = var.vnet_name
-  resource_group_name  = var.vnet_resource_group_name
-}
-
-# Resource group for Container Apps Environment infrastructure
-resource "azurerm_resource_group" "container_apps_infra" {
-  name     = "${var.resource_group_name}-cae-infra"
-  location = var.location
-  tags     = var.tags
-}
-
-resource "azurerm_log_analytics_workspace" "nachet" {
-  name                = "${var.project_name}-law-${var.environment}"
+resource "azurerm_private_endpoint" "tfstate_storage" {
+  name                = "tfstatenachet-sa-pe"
   location            = var.location
   resource_group_name = var.resource_group_name
-  sku                 = "PerGB2018"
-  retention_in_days   = 30
-  tags                = var.tags
-}
+  subnet_id           = var.private_endpoint_subnet_id
 
-resource "azurerm_container_app_environment" "nachet" {
-  name                               = "${var.project_name}-cae-${var.environment}"
-  location                           = var.location
-  resource_group_name                = var.resource_group_name
-  log_analytics_workspace_id         = azurerm_log_analytics_workspace.nachet.id
-  infrastructure_subnet_id           = data.azurerm_subnet.container_apps.id
-  infrastructure_resource_group_name = azurerm_resource_group.container_apps_infra.name
-  internal_load_balancer_enabled     = true
-  tags                               = var.tags
-
-  depends_on = [azurerm_resource_group.container_apps_infra]
-
-  # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/container_app_environment#workload_profile_type-1
-  workload_profile {
-    name                  = "Consumption"
-    workload_profile_type = "Consumption"
-    maximum_count         = 10
-    minimum_count         = 0
+  private_service_connection {
+    name                           = "tfstatenachet-sa-connection"
+    is_manual_connection           = false
+    private_connection_resource_id = data.azurerm_storage_account.tfstate.id
+    subresource_names              = ["blob"]
   }
+
+  tags = var.tags
 }
 
-# PostgreSQL Database
-module "db" {
-  source = "../modules/db"
-
+# Container App Environment
+module "container_app_environment" {
+  source = "../modules/container-app-environment"
+  
+  # Default
   project_name        = var.project_name
   environment         = var.environment
   location            = var.location
   resource_group_name = var.resource_group_name
   tags                = var.tags
 
-  # Network (for private endpoint)
-  vnet_name                = var.vnet_name
-  vnet_resource_group_name = var.vnet_resource_group_name
-  postgresql_subnet_name   = var.postgresql_subnet_name
+  # Networking
+  vnet_name                  = var.vnet_name
+  vnet_resource_group_name   = var.vnet_resource_group_name
+  private_endpoint_subnet_id = var.private_endpoint_subnet_id
+  container_apps_subnet_name = var.container_apps_subnet_name
 
-  # PostgreSQL Configuration
-  postgresql_admin_username     = var.postgresql_admin_username
-  postgresql_admin_password     = var.postgresql_admin_password
-  postgresql_sku_name           = var.postgresql_sku_name
-  postgresql_storage_mb         = var.postgresql_storage_mb
-  postgresql_version            = var.postgresql_version
-  public_network_access_enabled = var.public_network_access_enabled
+  # CAE
+  infrastructure_resource_group_name = var.cae_infrastructure_resource_group_name
 }
 
-# module "pgadmin" {
-#   source = "../modules/pgadmin"
+# PostgreSQL Database
+# module "db" {
+#   source = "../modules/postgresql-flexible-server"
 
-#   project_name                 = var.project_name
-#   environment                  = var.environment
-#   resource_group_name          = var.resource_group_name
-#   container_app_environment_id = azurerm_container_app_environment.nachet.id
-#   pgadmin_password             = var.pgadmin_password
-#   tags                         = var.tags
-# }
-
-# Module 3: Nachet Application (Storage and Backend) - Commented out for now
-# module "nachet" {
-#   source = "../modules/nachet"
-
-#   project_name                 = var.project_name
-#   environment                  = var.environment
-#   location                     = var.location
-#   resource_group_name          = var.rg_nachet
-#   container_app_environment_id = azurerm_container_app_environment.nachet.id
-#   tags                         = var.tags
-
-#   # Container configuration
-#   backend_image        = var.backend_image
-#   container_app_cpu    = var.container_app_cpu
-#   container_app_memory = var.container_app_memory
-#   backend_port         = var.backend_port
-
-#   # Access control
-#   enable_public_access = var.enable_public_access
-#   allowed_ip_addresses = var.allowed_ip_addresses
-
-#   # Database connections from DB module
-#   database_url = module.db.nachet_connection_string
-
-#   # ML Model Endpoints - use external endpoints only (no cross-module references)
-#   ml_model_endpoint_rcnn        = var.ml_model_endpoint_rcnn
-#   ml_model_endpoint_swin        = var.ml_model_endpoint_swin
-#   ml_model_endpoint_swin_22_spp = var.ml_model_endpoint_swin_22_spp
-#   ml_model_endpoint_swin_27_spp = var.ml_model_endpoint_swin_27_spp
-#   ml_api_key                    = var.ml_api_key
-
-#   # Application Security
-#   jwt_secret     = var.jwt_secret
-#   session_secret = var.session_secret
-#   encryption_key = var.encryption_key
-
-#   # Application Configuration
-#   cors_allowed_origins = var.cors_allowed_origins
-#   log_level            = var.log_level
-# }
-
-# # Module 3: Inference Servers (Triton containers with their own storage)
-# module "nachet_inference" {
-#   source = "../modules/nachet-inference"
-#   count  = var.deploy_inference_servers ? 1 : 0
-
+#   # Default
 #   project_name        = var.project_name
 #   environment         = var.environment
 #   location            = var.location
-#   resource_group_name = var.rg_nachet
+#   resource_group_name = var.resource_group_name
 #   tags                = var.tags
 
-#   # Container App Environment from nachet module
-#   container_app_environment_id = module.nachet.container_app_environment_id
+#   # Network
+#   vnet_name                = var.vnet_name
+#   vnet_resource_group_name = var.vnet_resource_group_name
+#   postgresql_subnet_name   = var.postgresql_subnet_name
 
-#   # Triton configuration
-#   triton_image  = var.triton_image
-#   triton_cpu    = var.triton_cpu
-#   triton_memory = var.triton_memory
-
-#   # Storage key (optional)
-#   azure_storage_account_key = var.azure_storage_account_key
+#   # PostgreSQL Configuration
+#   postgresql_admin_username     = var.postgresql_admin_username
+#   postgresql_admin_password     = var.postgresql_admin_password
+#   postgresql_sku_name           = var.postgresql_sku_name
+#   postgresql_storage_mb         = var.postgresql_storage_mb
+#   postgresql_version            = var.postgresql_version
+#   public_network_access_enabled = var.postgresql_public_network_access_enabled
 # }
 
-# Module 4: Monitoring Stack (Grafana, Loki, Tempo, Mimir, Alloy)
-# module "monitoring" {
-#   source = "../modules/monitoring"
-#   count  = var.enable_observability_stack ? 1 : 0
+# Container Registry
+# module "container_registry" {
+#   source = "../modules/container-registry"
 
-#   project_name        = var.project_name
-#   environment         = var.environment
-#   resource_group_name = var.rg_nachet
+#   # Default
+#   name                = "${var.project_name}${var.environment}acr"
+#   resource_group_name = var.resource_group_name
+#   location            = var.location
 #   tags                = var.tags
 
-#   # Container App Environment from nachet module
-#   container_app_environment_id = module.nachet.container_app_environment_id
+#   # Network
+#   vnet_name                  = var.vnet_name
+#   vnet_resource_group_name   = var.vnet_resource_group_name
+#   private_endpoint_subnet_id = var.private_endpoint_subnet_id
 
-#   # Database connection from db module
-#   postgresql_server_fqdn    = module.db.postgresql_server_fqdn
-#   postgresql_admin_username = var.postgresql_admin_username
-#   postgresql_admin_password = var.postgresql_admin_password
+#   # ACR
+#   allowed_ip_1 = var.acr_allowed_ip_1
+#   allowed_ip_2 = var.acr_allowed_ip_2
+# }
 
-#   # Access control
-#   enable_public_access = var.enable_public_access
-#   allowed_ip_addresses = var.allowed_ip_addresses
+module "storage_account_nachet_external" {
+  source = "../modules/storage-account"
 
-#   # Observability Stack Images
-#   loki_image    = var.loki_image
-#   grafana_image = var.grafana_image
-#   tempo_image   = var.tempo_image
-#   mimir_image   = var.mimir_image
-#   alloy_image   = var.alloy_image
+  name                = "${var.project_name}external"
+  resource_group_name = var.resource_group_name
+  location            = var.location
+  tags                = var.tags
 
-#   # Observability Stack Resources
-#   loki_cpu       = var.loki_cpu
-#   loki_memory    = var.loki_memory
-#   grafana_cpu    = var.grafana_cpu
-#   grafana_memory = var.grafana_memory
-#   tempo_cpu      = var.tempo_cpu
-#   tempo_memory   = var.tempo_memory
-#   mimir_cpu      = var.mimir_cpu
-#   mimir_memory   = var.mimir_memory
-#   alloy_cpu      = var.alloy_cpu
-#   alloy_memory   = var.alloy_memory
+  # Storage Configuration
+  account_tier             = var.storage_account_tier
+  account_replication_type = var.storage_replication_type
 
-#   # Configuration
-#   grafana_admin_password = var.grafana_admin_password
-#   loki_auth_enabled      = var.loki_auth_enabled
+  # Network Security
+  public_network_access_enabled = var.storage_public_access_enabled
+  allowed_ips                   = var.storage_allowed_ips
+
+  # Security Features
+  malware_scanning_enabled          = var.storage_malware_scanning_enabled
+  malware_scanning_cap_gb_per_month = var.storage_malware_scanning_cap_gb_per_month
+  sensitive_data_discovery_enabled  = var.storage_sensitive_data_discovery_enabled
+
+  # Blob Properties
+  blob_delete_retention_days      = var.blob_delete_retention_days
+  container_delete_retention_days = var.container_delete_retention_days
+  blob_versioning_enabled         = var.blob_versioning_enabled
+  blob_change_feed_enabled        = var.blob_change_feed_enabled
+}
+
+# Nachet Application (Combined Frontend + Backend)
+# module "nachet" {
+#   source = "../modules/container-app-nachet"
+
+#   # Default
+#   project_name        = var.project_name
+#   environment         = var.environment
+#   location            = var.location
+#   resource_group_name = var.resource_group_name
+#   tags                = var.tags
+
+#   # Container App Environment
+#   container_app_environment_id = module.container_app_environment.container_app_environment_id
+
+#   # Container Registry
+#   acr_login_server    = module.container_registry.login_server
+#   acr_admin_username  = module.container_registry.admin_username
+#   acr_admin_password  = module.container_registry.admin_password
+
+#   # Container Image
+#   nachet_image = var.nachet_image
+
+#   # Environment variables
+#   env_azure_api_scope_claim           = var.env_azure_api_scope_claim
+#   env_azure_auth_enabled              = var.env_azure_auth_enabled
+#   env_azure_client_id                 = var.env_azure_client_id
+#   env_azure_tenant_id                 = var.env_azure_tenant_id
+#   env_blob_storage_endpoint_base      = var.env_blob_storage_endpoint_base
+#   env_blob_storage_endpoint_protocol  = var.env_blob_storage_endpoint_protocol
+#   env_blob_storage_endpoint_suffix    = var.env_blob_storage_endpoint_suffix
+#   env_blob_storage_key                = var.env_blob_storage_key
+#   env_blob_storage_name               = var.env_blob_storage_name
+#   env_blob_storage_provider           = var.env_blob_storage_provider
+#   env_cors_allow_origins              = var.env_cors_allow_origins
+#   env_db_host                         = var.env_db_host
+#   env_db_name                         = var.env_db_name
+#   env_db_password                     = var.env_db_password
+#   env_db_port                         = var.env_db_port
+#   env_db_user                         = var.env_db_user
+#   env_frontend_blob_container         = var.env_frontend_blob_container
+#   env_frontend_version_file           = var.env_frontend_version_file
+#   env_minio_access_key                = var.env_minio_access_key
+#   env_minio_secret_key                = var.env_minio_secret_key
+#   env_nachet_schema                   = var.env_nachet_schema
+#   env_security_headers_preset         = var.env_security_headers_preset
+#   env_testing                         = var.env_testing
+#   env_trusted_hosts                   = var.env_trusted_hosts
+# }
+
+# Proxy Container Instance
+# module "proxy" {
+#   source = "../modules/container-instance-proxy"
+
+#   # Default
+#   name                = "${var.project_name}-${var.environment}-proxy"
+#   location            = var.location
+#   resource_group_name = var.resource_group_name
+#   tags                = var.tags
+
+#   # Network
+#   vnet_name                 = var.vnet_name
+#   vnet_resource_group_name  = var.vnet_resource_group_name
+#   subnet_name              = var.container_instances_subnet_name
+
+#   # Container Registry
+#   registry_login_server = module.container_registry.login_server
+#   registry_username     = module.container_registry.admin_username
+#   registry_password     = module.container_registry.admin_password
+
+#   # Container Configuration
+#   container_name = "nachet-proxy"
+#   image         = var.proxy_image
+#   cpu           = var.proxy_cpu
+#   memory        = var.proxy_memory
+
+#   # SSL Certificate
+#   ssl_certificate_content = var.proxy_ssl_certificate_content
+
+#   # Environment variables
+#   environment_variables = var.proxy_environment_variables
+#   secure_environment_variables = var.proxy_secure_environment_variables
 # }

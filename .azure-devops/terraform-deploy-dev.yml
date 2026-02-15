@@ -6,7 +6,7 @@ trigger:
 pr: none
 
 pool:
-  vmImage: "ubuntu-latest"
+  name: linux-internal-vmss-agent
 
 variables:
   - group: nachet-dev
@@ -18,14 +18,7 @@ stages:
       - job: TerraformInitPlan
         displayName: "Terraform Init and Plan"
         steps:
-          - task: AzureCLI@2
-            displayName: "Azure CLI Login"
-            inputs:
-              azureSubscription: $(serviceConnectionName)
-              scriptType: "bash"
-              scriptLocation: "inlineScript"
-              inlineScript: |
-                echo "Successfully logged in with Azure CLI"
+          - checkout: self
 
           - task: DownloadSecureFile@1
             name: DownloadSecureVars
@@ -33,12 +26,38 @@ stages:
             inputs:
               secureFile: "nachet-dev.tfvars"
 
+          - task: TerraformTaskV4@4
+            displayName: "Terraform Init"
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform/dev'
+              backendServiceArm: '$(serviceConnectionName)'
+              backendAzureRmResourceGroupName: '$(resourceGroupName)'
+              backendAzureRmStorageAccountName: '$(storageAccountName)'
+              backendAzureRmContainerName: '$(containerName)'
+              backendAzureRmKey: '$(stateKey)'
+            env:
+              ARM_USE_AZUREAD: true
+
+          - task: TerraformTaskV4@4
+            displayName: "Terraform Plan"
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/terraform/dev'
+              commandOptions: '-var-file=$(DownloadSecureVars.SecureFilePath)'
+              environmentServiceNameAzureRM: '$(serviceConnectionName)'
+            env:
+              ARM_USE_AZUREAD: true
+
           - task: AzureCLI@2
             displayName: "Pre-create PostgreSQL Subnet"
             inputs:
               azureSubscription: $(serviceConnectionName)
               scriptType: "bash"
               scriptLocation: "inlineScript"
+              addSpnToEnvironment: true
               inlineScript: |
                 SUBNET_NAME="$(postgresqlSubnetName)"
                 VNET_NAME="$(vnetName)"
@@ -81,6 +100,7 @@ stages:
               azureSubscription: $(serviceConnectionName)
               scriptType: "bash"
               scriptLocation: "inlineScript"
+              addSpnToEnvironment: true  # Enable OIDC token access
               inlineScript: |
                 VNET_NAME="$(vnetName)"
                 VNET_RG="$(vnetResourceGroupName)"
@@ -97,13 +117,6 @@ stages:
                   --query "id" -o tsv 2>/dev/null; then
                   
                   echo "✓ Subnet '$CONTAINER_SUBNET_NAME' already exists"
-                  echo "Ensuring subnet delegation to Microsoft.App/environments..."
-                  az network vnet subnet update \
-                    --resource-group "$VNET_RG" \
-                    --vnet-name "$VNET_NAME" \
-                    --name "$CONTAINER_SUBNET_NAME" \
-                    --delegations "Microsoft.App/environments" \
-                    --output table
                 else
                   echo "Creating Container Apps subnet..."
                   az network vnet subnet create \
@@ -113,7 +126,6 @@ stages:
                     --address-prefixes "$CONTAINER_SUBNET_CIDR" \
                     --route-table "$ROUTE_TABLE_ID" \
                     --network-security-group "$NSG_ID" \
-                    --delegations "Microsoft.App/environments" \
                     --output table
                     
                   if [ $? -eq 0 ]; then
@@ -124,31 +136,48 @@ stages:
                   fi
                 fi
 
-          - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
-            displayName: "Install Terraform (latest)"
+          - task: AzureCLI@2
+            displayName: "Pre-create Private Endpoints Subnet"
             inputs:
-              terraformVersion: 'latest'
-
-          - task: TerraformTask@5
-            displayName: "Terraform Init"
-            inputs:
-              provider: "azurerm"
-              command: "init"
-              workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
-              backendServiceArm: "$(serviceConnectionName)"
-              backendAzureRmResourceGroupName: "$(resourceGroupName)"
-              backendAzureRmStorageAccountName: "$(storageAccountName)"
-              backendAzureRmContainerName: "$(containerName)"
-              backendAzureRmKey: "$(stateKey)"
-
-          - task: TerraformTask@5
-            displayName: "Terraform Plan"
-            inputs:
-              provider: "azurerm"
-              command: "plan"
-              commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath)"
-              workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
-              environmentServiceNameAzureRM: "$(serviceConnectionName)"
+              azureSubscription: $(serviceConnectionName)
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              addSpnToEnvironment: true
+              inlineScript: |
+                VNET_NAME="$(vnetName)"
+                VNET_RG="$(vnetResourceGroupName)"
+                ROUTE_TABLE_ID="$(routeTableId)"
+                NSG_ID="$(networkSecurityGroupId)"
+                PRIVATE_ENDPOINTS_SUBNET_NAME="$(privateEndpointsSubnetName)"
+                PRIVATE_ENDPOINTS_SUBNET_CIDR="$(privateEndpointsSubnetCidr)"
+                
+                echo "Checking if Private Endpoints subnet exists..."
+                if az network vnet subnet show \
+                  --resource-group "$VNET_RG" \
+                  --vnet-name "$VNET_NAME" \
+                  --name "$PRIVATE_ENDPOINTS_SUBNET_NAME" \
+                  --query "id" -o tsv 2>/dev/null; then
+                  
+                  echo "✓ Subnet '$PRIVATE_ENDPOINTS_SUBNET_NAME' already exists"
+                else
+                  echo "Creating Private Endpoints subnet..."
+                  az network vnet subnet create \
+                    --resource-group "$VNET_RG" \
+                    --vnet-name "$VNET_NAME" \
+                    --name "$PRIVATE_ENDPOINTS_SUBNET_NAME" \
+                    --address-prefixes "$PRIVATE_ENDPOINTS_SUBNET_CIDR" \
+                    --route-table "$ROUTE_TABLE_ID" \
+                    --network-security-group "$NSG_ID" \
+                    --disable-private-endpoint-network-policies true \
+                    --output table
+                    
+                  if [ $? -eq 0 ]; then
+                    echo "✓ Successfully created Private Endpoints subnet"
+                  else
+                    echo "✗ Failed to create Private Endpoints subnet"
+                    exit 1
+                  fi
+                fi
 
   - stage: Apply
     displayName: "Apply Terraform Plan"
@@ -158,7 +187,7 @@ stages:
       - deployment: TerraformApply
         displayName: "Terraform Apply"
         pool:
-          vmImage: "ubuntu-latest"
+          name: linux-internal-vmss-agent
         environment: "TFApproval"
         strategy:
           runOnce:
@@ -166,43 +195,33 @@ stages:
               steps:
                 - checkout: self
 
-                - task: AzureCLI@2
-                  displayName: "Azure CLI Login"
-                  inputs:
-                    azureSubscription: $(serviceConnectionName)
-                    scriptType: "bash"
-                    scriptLocation: "inlineScript"
-                    inlineScript: |
-                      echo "Successfully logged in with Azure CLI"
-
                 - task: DownloadSecureFile@1
                   name: DownloadSecureVars
                   displayName: "Download nachet-dev.tfvars"
                   inputs:
                     secureFile: "nachet-dev.tfvars"
 
-                - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@1
-                  displayName: "Install Terraform (latest)"
-                  inputs:
-                    terraformVersion: 'latest'
-
-                - task: TerraformTask@5
+                - task: TerraformTaskV4@4
                   displayName: "Terraform Init"
                   inputs:
-                    provider: "azurerm"
-                    command: "init"
-                    workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
-                    backendServiceArm: "$(serviceConnectionName)"
-                    backendAzureRmResourceGroupName: "$(resourceGroupName)"
-                    backendAzureRmStorageAccountName: "$(storageAccountName)"
-                    backendAzureRmContainerName: "$(containerName)"
-                    backendAzureRmKey: "$(stateKey)"
+                    provider: 'azurerm'
+                    command: 'init'
+                    workingDirectory: '$(System.DefaultWorkingDirectory)/terraform/dev'
+                    backendServiceArm: '$(serviceConnectionName)'
+                    backendAzureRmResourceGroupName: '$(resourceGroupName)'
+                    backendAzureRmStorageAccountName: '$(storageAccountName)'
+                    backendAzureRmContainerName: '$(containerName)'
+                    backendAzureRmKey: '$(stateKey)'
+                  env:
+                    ARM_USE_AZUREAD: true
 
-                - task: TerraformTask@5
+                - task: TerraformTaskV4@4
                   displayName: "Terraform Apply"
                   inputs:
-                    provider: "azurerm"
-                    command: "apply"
-                    commandOptions: "-var-file=$(DownloadSecureVars.SecureFilePath)"
-                    workingDirectory: "$(System.DefaultWorkingDirectory)/terraform/dev"
-                    environmentServiceNameAzureRM: "$(serviceConnectionName)"
+                    provider: 'azurerm'
+                    command: 'apply'
+                    workingDirectory: '$(System.DefaultWorkingDirectory)/terraform/dev'
+                    commandOptions: '-auto-approve -var-file=$(DownloadSecureVars.SecureFilePath)'
+                    environmentServiceNameAzureRM: '$(serviceConnectionName)'
+                  env:
+                    ARM_USE_AZUREAD: true

@@ -1,9 +1,31 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", ":dependencyDashboard"],
+  "terraform": {
+    "ignorePaths": []
+  },
   "packageRules": [
     {
       "matchDepTypes": ["*"],
+      "rangeStrategy": "bump"
+    },
+    
+    {
+      "matchManagers": ["terraform"],
+      "matchFileNames": ["terraform/**/*.tf"],
+      "commitMessageTopic": "Terraform {{depName}}",
+      "groupName": "Terraform providers",
+      "matchDepTypes": ["provider", "required_provider"]
+    },
+
+    {
+      "matchManagers": ["terraform"],
+      "matchFileNames": ["terraform/**/*.tf"],
+      "matchDepTypes": ["module"],
+      "groupName": "Terraform modules"
+    },
+
+    {
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "frontend non-major dependencies",
       "groupSlug": "frontend-minor-patch",

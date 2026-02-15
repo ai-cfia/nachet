@@ -1,23 +1,30 @@
-# PgAdmin Container App for database management
 resource "azurerm_container_app" "pgadmin" {
   name                         = "${var.project_name}-pgadmin-ca-${var.environment}"
   container_app_environment_id = var.container_app_environment_id
   resource_group_name          = var.resource_group_name
   revision_mode                = "Single"
 
-  # https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/container_app#workload_profile_name-1
-  # workload_profile_name = "Consumption"
+  registry {
+    server               = var.acr_login_server
+    username             = var.acr_admin_username
+    password_secret_name = "acr-password"
+  }
+
+  secret {
+    name  = "acr-password"
+    value = var.acr_admin_password
+  }
 
   template {
     container {
       name   = "pgadmin"
-      image  = "mcr.microsoft.com/oss/dpage/pgadmin4:latest"
+      image  = var.pgadmin_image
       cpu    = 0.25
       memory = "0.5Gi"
 
       env {
         name  = "PGADMIN_DEFAULT_EMAIL"
-        value = "admin@nachet.local"
+        value = "admin@example.com"
       }
 
       env {
@@ -27,7 +34,7 @@ resource "azurerm_container_app" "pgadmin" {
 
       env {
         name  = "PGADMIN_LISTEN_PORT"
-        value = "80"
+        value = "8080"
       }
 
       env {
@@ -42,7 +49,7 @@ resource "azurerm_container_app" "pgadmin" {
 
   ingress {
     external_enabled = false
-    target_port      = 80
+    target_port      = 8080
 
     traffic_weight {
       percentage      = 100
