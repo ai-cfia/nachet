@@ -12,8 +12,8 @@ import { SimpleFeedbackForm } from "../feedback_form";
 import { getScaledBounds } from "@common";
 import {
   LayersOutlined,
-  ArrowUpward,
-  ArrowDownward,
+  ArrowCircleDownRounded,
+  ArrowCircleUpRounded,
 } from "@mui/icons-material";
 interface Props {
   index: number;
@@ -25,6 +25,8 @@ interface Props {
   label: string;
   visible: boolean;
   totalBoxes: number;
+  isLayersOpen: boolean;
+  onLayersToggle: () => void;
   submitPositiveFeedback: (index: number) => void;
   handleNegativeFeedback: (index: number, boxPosition: BoxCSS) => void;
 }
@@ -63,6 +65,8 @@ const ScaledInferenceBox = (props: Props) => {
     imageHeight,
     canvasWidth,
     canvasHeight,
+    isLayersOpen,
+    onLayersToggle,
     submitPositiveFeedback,
     handleNegativeFeedback,
   } = props;
@@ -73,6 +77,8 @@ const ScaledInferenceBox = (props: Props) => {
   );
 
   const [zOffset, setZOffset] = useState<number>(0);
+
+  const [isSelected, setIsSelected] = useState(false);
 
   // Base z-index falls back to `index` when unspecified.
   const baseZ = index;
@@ -101,14 +107,21 @@ const ScaledInferenceBox = (props: Props) => {
     });
   }, [baseZ]);
 
-  const openLayersMenu = useCallback((event: MouseEvent<HTMLElement>) => {
-    event.stopPropagation();
-    setLayersAnchorEl(event.currentTarget);
-  }, []);
+  const openLayersMenu = useCallback(
+    (event: MouseEvent<HTMLElement>) => {
+      onLayersToggle();
+      event.stopPropagation();
+      setLayersAnchorEl(event.currentTarget);
+      setIsSelected(true);
+    },
+    [onLayersToggle],
+  );
 
   const closeLayersMenu = useCallback(() => {
+    onLayersToggle();
     setLayersAnchorEl(null);
-  }, []);
+    setIsSelected(false);
+  }, [onLayersToggle]);
 
   const boxPosition = computeBoxPosition(
     canvasWidth,
@@ -118,8 +131,6 @@ const ScaledInferenceBox = (props: Props) => {
     box,
   );
 
-  const isLayersOpen = Boolean(layersAnchorEl);
-
   const sx = {
     ...boxPosition,
     position: "absolute",
@@ -128,7 +139,7 @@ const ScaledInferenceBox = (props: Props) => {
     display: visible ? "block" : "none",
     zIndex: zIndex,
     // if the layers menu is open, keep the hover styles applied so the box looks active
-    ...(isLayersOpen
+    ...(isSelected
       ? {
           bgcolor: "rgba(11,157,235,0.12)",
           border: "1px solid rgba(11,157,235,0.22)",
@@ -178,7 +189,7 @@ const ScaledInferenceBox = (props: Props) => {
         }}
       >
         {/* Small label badge (score + z-index) shown top-left */}
-        {/* <Box
+        <Box
           aria-hidden
           sx={{
             position: "absolute",
@@ -193,10 +204,12 @@ const ScaledInferenceBox = (props: Props) => {
             fontSize: "0.75rem",
             pointerEvents: "none",
             boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+            display: "none",
+            ...(isLayersOpen && { display: "block" }),
           }}
         >
           {zIndex}
-        </Box> */}
+        </Box>
 
         <Tooltip title="Layers" placement="top">
           <IconButton
@@ -231,25 +244,28 @@ const ScaledInferenceBox = (props: Props) => {
           anchorOrigin={{ vertical: "top", horizontal: "right" }}
           transformOrigin={{ vertical: "top", horizontal: "right" }}
           slotProps={{
-            list: { onClick: (e: React.MouseEvent) => e.stopPropagation() },
+            list: { onClick: (e: React.MouseEvent) => e.stopPropagation(), sx: { padding: 0 } },
+            paper: { sx:{ borderRadius: 20, padding: 0 }}
           }}
         >
           <MenuItem
+            sx={{ padding: "0px !important", minWidth: 0 }}
             onClick={() => {
               sendBoxForward();
             }}
           >
-            <ListItemIcon>
-              <ArrowUpward />
+            <ListItemIcon sx={{ minWidth: "0px !important" }}>
+              <ArrowCircleUpRounded />
             </ListItemIcon>
           </MenuItem>
           <MenuItem
+            sx={{ padding: 0 }}
             onClick={() => {
               sendBoxBackwards();
             }}
           >
-            <ListItemIcon>
-              <ArrowDownward />
+            <ListItemIcon sx={{ minWidth: "0px !important" }}>
+              <ArrowCircleDownRounded />
             </ListItemIcon>
           </MenuItem>
         </Menu>
