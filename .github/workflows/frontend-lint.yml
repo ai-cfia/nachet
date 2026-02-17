@@ -145,7 +145,7 @@ jobs:
             echo "No SBOM file found" > sbom-scan-skip.log
             exit 0
           fi
-      - uses: anchore/scan-action@9fc81f981091417fc121d71bf126326a2e74c493
+      - uses: anchore/scan-action@e286cbc3c2c32c6b8bb4180b424e5b101f59e051
         name: SBOM Security Scan
         id: scan
         with:
