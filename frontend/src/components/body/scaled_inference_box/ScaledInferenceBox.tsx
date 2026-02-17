@@ -244,8 +244,11 @@ const ScaledInferenceBox = (props: Props) => {
           anchorOrigin={{ vertical: "top", horizontal: "right" }}
           transformOrigin={{ vertical: "top", horizontal: "right" }}
           slotProps={{
-            list: { onClick: (e: React.MouseEvent) => e.stopPropagation(), sx: { padding: 0 } },
-            paper: { sx:{ borderRadius: 20, padding: 0 }}
+            list: {
+              onClick: (e: React.MouseEvent) => e.stopPropagation(),
+              sx: { padding: 0 },
+            },
+            paper: { sx: { borderRadius: 20, padding: 0 } },
           }}
         >
           <MenuItem
