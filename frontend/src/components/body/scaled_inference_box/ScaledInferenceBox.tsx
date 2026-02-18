@@ -31,13 +31,13 @@ interface Props {
   handleNegativeFeedback: (index: number, boxPosition: BoxCSS) => void;
 }
 
-function computeBoxPosition(
+const computeBoxPosition = (
   canvasWidth: number,
   canvasHeight: number,
   imageWidth: number,
   imageHeight: number,
   box: InferenceBox,
-): BoxCSS {
+): BoxCSS => {
   const { scaledHeight, scaledWidth, scaledTopX, scaledTopY } = getScaledBounds(
     canvasWidth,
     canvasHeight,
@@ -54,7 +54,8 @@ function computeBoxPosition(
     left: scaledTopX,
     top: scaledTopY,
   };
-}
+};
+
 
 const ScaledInferenceBox = (props: Props) => {
   const {
