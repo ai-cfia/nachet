@@ -350,6 +350,8 @@ export const MicroscopeFeedWorkspaceView = (
     setResizeHandle("none");
   };
 
+  const [isLayersOpen, setIsLayersOpen] = useState(false);
+
   return (
     <Box
       sx={{
@@ -454,7 +456,7 @@ export const MicroscopeFeedWorkspaceView = (
                     <ScaledInferenceBox
                       key={index}
                       index={index}
-                      box={box}
+                      box={{ ...box }}
                       label={
                         String((imageData.scores[index] * 100).toFixed(0)) + "%"
                       }
@@ -463,6 +465,9 @@ export const MicroscopeFeedWorkspaceView = (
                       canvasWidth={width}
                       canvasHeight={height}
                       visible={!feedbackMode}
+                      totalBoxes={imageData.boxes.length}
+                      isLayersOpen={isLayersOpen}
+                      onLayersToggle={() => setIsLayersOpen((prev) => !prev)}
                       submitPositiveFeedback={submitPositiveFeedback}
                       handleNegativeFeedback={enterFeedbackMode}
                     />
