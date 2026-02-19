@@ -2,7 +2,7 @@
 name: uv venv sbom check
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 on:
@@ -24,6 +24,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -83,9 +86,38 @@ jobs:
           echo "Differences between current and expected SBOM:"
           diff sbom.json sbom-new.json || true
 
-      - name: Fail if SBOM needs update
+      
+      - name: Update SBOM if needed
         if: steps.sbom-check.outputs.needs_update == 'true'
         run: |
-          echo "SBOM file needs to be regenerated. Please run:"
-          echo "cd nachet && ./generate-sbom.sh ${{ inputs.working-directory }} "
-          exit 1
+          echo "Replacing sbom.json with sbom-new.json and committing"
+          mv sbom-new.json sbom.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sbom.json
+          git commit -m "chore(sbom): update backend sbom.json" || echo "No changes to commit"
+          # Determine target branch for push (handle detached HEAD)
+          if [ -n "${GITHUB_HEAD_REF:-}" ]; then
+            TARGET_BRANCH="$GITHUB_HEAD_REF"
+          elif [[ "${GITHUB_REF:-}" == refs/heads/* ]]; then
+            TARGET_BRANCH="${GITHUB_REF#refs/heads/}"
+          else
+            TARGET_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+            if [ "$TARGET_BRANCH" = "HEAD" ] || [ -z "$TARGET_BRANCH" ]; then
+              TARGET_BRANCH="${GITHUB_REF#refs/heads/}"
+            fi
+          fi
+          TARGET_BRANCH=${TARGET_BRANCH:-main}
+          echo "Pushing commit to branch: $TARGET_BRANCH"
+          if [ -n "${GITHUB_TOKEN:-}" ]; then
+            git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+            git push origin "HEAD:refs/heads/${TARGET_BRANCH}" || {
+            echo "Push failed" 
+            exit 126
+            }
+          else
+            GIT_TERMINAL_PROMPT=0 git push origin "HEAD:refs/heads/${TARGET_BRANCH}" || {
+              echo "Push skipped or failed (no token available)"
+              exit 126
+            }
+          fi
