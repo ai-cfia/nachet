@@ -86,7 +86,6 @@ jobs:
           echo "Differences between current and expected SBOM:"
           diff sbom.json sbom-new.json || true
 
-      
       - name: Update SBOM if needed
         if: steps.sbom-check.outputs.needs_update == 'true'
         run: |
