@@ -1,7 +1,7 @@
 ---
 name: backend lint
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
   actions: read
 
@@ -108,11 +108,7 @@ jobs:
             echo "No SBOM file found" > sbom-scan-skip.log
             exit 0
           fi
-<<<<<<< HEAD
       - uses: anchore/scan-action@e286cbc3c2c32c6b8bb4180b424e5b101f59e051
-=======
-      - uses: anchore/scan-action@e286cbc3c2c32c6b8bb4180b424e5b101f59e051
->>>>>>> origin/renovate/backend-bump-deps-20250929
         name: SBOM Security Scan
         id: scan
         with:

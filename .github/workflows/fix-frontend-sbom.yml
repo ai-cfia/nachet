@@ -1,0 +1,135 @@
+name: Fix Frontend SBOM
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Pull request number"
+        required: true
+      node-version:
+        description: "Node.js version"
+        required: false
+        default: "24.5.0"
+      npm-version:
+        description: "npm version"
+        required: false
+        default: "11.5.1"
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fix:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/fix-frontend-sbom'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve PR number
+        id: pr
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "number=${{ github.event.inputs.pr_number }}" >> $GITHUB_OUTPUT
+          else
+            echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Authorize maintainer
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.actor,
+            });
+            const allowed = new Set(["admin","maintain","write"]);
+            if (!allowed.has(data.permission)) {
+              core.setFailed(`Not authorized (permission: ${data.permission})`);
+            }
+
+      - name: Fetch PR metadata
+        id: prmeta
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = Number("${{ steps.pr.outputs.number }}");
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            core.setOutput("head_repo", pr.head.repo.full_name);
+            core.setOutput("head_ref", pr.head.ref);
+
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ steps.prmeta.outputs.head_repo }}
+          ref: ${{ steps.prmeta.outputs.head_ref }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ github.event.inputs.node-version || '24.5.0' }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install specific npm version
+        run: npm install -g npm@${{ github.event.inputs.npm-version || '11.5.1' }}
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Generate SBOM (same logic)
+        working-directory: frontend
+        run: |
+          npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo "" >> sbom.json
+
+      - name: Commit SBOM update
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/sbom.json
+          if git diff --cached --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          git commit -m "chore(sbom): update frontend sbom.json"
+          echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Try push
+        if: steps.commit.outputs.changed == 'true'
+        id: push
+        continue-on-error: true
+        env:
+          BRANCH: ${{ steps.prmeta.outputs.head_ref }}
+        run: |
+          git push origin "HEAD:refs/heads/${BRANCH}"
+
+      - name: Comment instructions on PR
+        if: steps.commit.outputs.changed == 'true' && steps.push.outcome != 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = Number("${{ steps.pr.outputs.number }}");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body:
+                [
+                  "I regenerated `frontend/sbom.json`, but I couldn't push it back to the PR branch.",
+                  "",
+                  `You can regenerate the SBOM locally by running \`cd nachet && ./generate-sbom.sh backend\.`,
+                ].join("\n"),
+            });

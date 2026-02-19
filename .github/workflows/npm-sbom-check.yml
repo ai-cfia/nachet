@@ -112,4 +112,5 @@ jobs:
         run: |
           echo "SBOM file needs to be regenerated. Please run:"
           echo 'npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo "" >> sbom.json'
+          echo 'Or a maintainer can run the Fix Frontend SBOM workflow throug github actions or by commenting "/fix-frontend-sbom" to regenerate and push the updated sbom.json.'
           exit 1
