@@ -1,13 +1,22 @@
 {
   "name": "nachet-mini",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "prestart": "ts-appversion",
+    "prebuild": "prettier \"src/**/*.{ts,tsx,js,jsx,json,css}\" -l --write ; eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 && tsc",
+    "build": "export $(grep -v '^#' .env.config.local | xargs) && tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --fix && tsc --noEmit",
+    "lint:md": "prettier \"docs/**/*.md\" -l --write && markdownlint-cli2 \"docs/**/*.md\" --fix --config ../.markdownlint-cli2.jsonc",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
+    "playwright:install-deps": "npx playwright install-deps"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -21,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@saithodev/ts-appversion": "^2.2.0",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
