@@ -1346,7 +1346,7 @@
       "version": "7.13.4"
     },
     {
-      "bom-ref": "cryptography==46.0.4",
+      "bom-ref": "cryptography==46.0.5",
       "description": "cryptography is a package which provides cryptographic recipes and primitives to Python developers.",
       "externalReferences": [
         {
@@ -1382,9 +1382,9 @@
         }
       ],
       "name": "cryptography",
-      "purl": "pkg:pypi/cryptography@46.0.4",
+      "purl": "pkg:pypi/cryptography@46.0.5",
       "type": "library",
-      "version": "46.0.4"
+      "version": "46.0.5"
     },
     {
       "bom-ref": "cyclonedx-bom==7.2.1",
@@ -3220,7 +3220,7 @@
       "version": "25.0"
     },
     {
-      "bom-ref": "pillow==12.1.0",
+      "bom-ref": "pillow==12.1.1",
       "description": "Python Imaging Library (fork)",
       "externalReferences": [
         {
@@ -3268,9 +3268,9 @@
         }
       ],
       "name": "pillow",
-      "purl": "pkg:pypi/pillow@12.1.0",
+      "purl": "pkg:pypi/pillow@12.1.1",
       "type": "library",
-      "version": "12.1.0"
+      "version": "12.1.1"
     },
     {
       "bom-ref": "pip-requirements-parser==32.0.1",
@@ -5666,7 +5666,7 @@
     {
       "dependsOn": [
         "coverage==7.13.4",
-        "cryptography==46.0.4",
+        "cryptography==46.0.5",
         "pytest==9.0.2"
       ],
       "ref": "PyJWT==2.10.1"
@@ -5770,7 +5770,7 @@
     {
       "dependsOn": [
         "azure-core==1.38.0",
-        "cryptography==46.0.4",
+        "cryptography==46.0.5",
         "msal-extensions==1.3.1",
         "msal==1.34.0",
         "typing_extensions==4.15.0"
@@ -5780,7 +5780,7 @@
     {
       "dependsOn": [
         "azure-core==1.38.0",
-        "cryptography==46.0.4",
+        "cryptography==46.0.5",
         "isodate==0.7.2",
         "typing_extensions==4.15.0"
       ],
@@ -5871,7 +5871,7 @@
         "ruff==0.15.0",
         "typing_extensions==4.15.0"
       ],
-      "ref": "cryptography==46.0.4"
+      "ref": "cryptography==46.0.5"
     },
     {
       "dependsOn": [
@@ -5920,7 +5920,7 @@
       "dependsOn": [
         "Hypercorn==0.18.0",
         "coverage==7.13.4",
-        "cryptography==46.0.4",
+        "cryptography==46.0.5",
         "h2==4.3.0",
         "httpcore==1.0.9",
         "httpx==0.28.1",
@@ -6144,7 +6144,7 @@
     {
       "dependsOn": [
         "PyJWT==2.10.1",
-        "cryptography==46.0.4",
+        "cryptography==46.0.5",
         "requests==2.32.5"
       ],
       "ref": "msal==1.34.0"
@@ -6244,7 +6244,7 @@
         "pytest-cov==7.0.0",
         "pytest==9.0.2"
       ],
-      "ref": "pillow==12.1.0"
+      "ref": "pillow==12.1.1"
     },
     {
       "dependsOn": [
@@ -6490,7 +6490,7 @@
         "beartype==0.22.9",
         "boto3-stubs==1.42.45",
         "boto3==1.42.45",
-        "cryptography==46.0.4",
+        "cryptography==46.0.5",
         "dbos==2.12.0",
         "fastapi==0.128.7",
         "h2==4.3.0",
@@ -6501,7 +6501,7 @@
         "opentelemetry-exporter-otlp-proto-grpc==1.39.1",
         "opentelemetry-exporter-otlp-proto-http==1.39.1",
         "opentelemetry-sdk==1.39.1",
-        "pillow==12.1.0",
+        "pillow==12.1.1",
         "psycopg-pool==3.3.0",
         "psycopg==3.3.2",
         "pydantic-settings==2.12.0",
