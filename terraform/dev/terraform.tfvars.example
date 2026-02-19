@@ -55,7 +55,7 @@ postgresql_sku_name           = "B_Standard_B1ms"  # 1 vCPU, 2GB RAM - Cheapest
 postgresql_storage_mb         = 32768              # 32GB - Minimum
 postgresql_version            = "16"
 public_network_access_enabled = true               # Enable public access
-database_url                  = "postgresql://nachetadmin:YourDevPasswordHere123!@nachet-psql-dev.postgres.database.azure.com:5432/nachet_db"
+database_url                  = "postgresql://nachetadmin:YourDevPasswordHere123!@nachet-psql-dev.postgres.database.azure.com:5432/nachet_db" # trufflehog:ignore
 
 # Container Apps Resources (Minimum configurations for cost optimization)
 container_app_cpu    = 0.25   # Minimum CPU
