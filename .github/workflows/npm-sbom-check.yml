@@ -2,12 +2,8 @@
 name: npm node sbom check
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
-
-# concurrency:
-#   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-#   cancel-in-progress: true
 
 on:
   workflow_call:
@@ -36,6 +32,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          # For PRs, checkout the PR branch so we can push fixes back.
+          ref: ${{ github.head_ref || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -60,14 +61,6 @@ jobs:
           if [ ! -f sbom.json ]; then
             echo "SBOM file does not exist and needs to be generated"
             echo "needs_update=true" >> $GITHUB_OUTPUT
-            echo "## SBOM Creation Required" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "The SBOM file (sbom.json) does not exist and needs to be generated." >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Run the following command to create it:" >> $GITHUB_STEP_SUMMARY
-            echo '```bash' >> $GITHUB_STEP_SUMMARY
-            echo 'npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo "" >> sbom.json' >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
           elif ! cmp -s sbom.json sbom-new.json; then
             # HACK: cyclonedx-npm --output-reproducible is not truly reproducible
             # due to non-deterministic BOM-REF generation and component ordering.
@@ -76,29 +69,13 @@ jobs:
             if [ "$diff_lines" -gt 100 ]; then
               echo "SBOM file is outdated and needs to be regenerated (significant changes: $diff_lines lines)"
               echo "needs_update=true" >> $GITHUB_OUTPUT
-              echo "## SBOM Update Required" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "The SBOM file (sbom.json) is outdated and " \
-                "needs to be regenerated." >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "Run the following command to update it:" \
-                >> $GITHUB_STEP_SUMMARY
-              echo '```bash' >> $GITHUB_STEP_SUMMARY
-              echo 'npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo "" >> sbom.json' >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
             else
               echo "SBOM file has minor differences ($diff_lines lines) within tolerance"
               echo "needs_update=false" >> $GITHUB_OUTPUT
-              echo "## SBOM Status" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "✅ SBOM file differences within acceptable tolerance ($diff_lines lines)" >> $GITHUB_STEP_SUMMARY
             fi
           else
             echo "SBOM file is up to date"
             echo "needs_update=false" >> $GITHUB_OUTPUT
-            echo "## SBOM Status" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "✅ SBOM file is up to date" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Show diff if needed
@@ -107,10 +84,35 @@ jobs:
           echo "Differences between current and expected SBOM:"
           diff sbom.json sbom-new.json || true
 
-      - name: Fail if SBOM needs update
+      - name: Update SBOM if needed (auto-fix for local PRs)
+        if: steps.sbom-check.outputs.needs_update == 'true'
+        env:
+          TARGET_BRANCH: ${{ github.head_ref }}
+        run: |
+          if [ -z "${TARGET_BRANCH}" ]; then
+            echo "SBOM needs update, but TARGET_BRANCH is empty (this job must run from a pull_request workflow)." >&2
+            exit 1
+          fi
+
+          echo "Replacing sbom.json with sbom-new.json and committing"
+          mv -f sbom-new.json sbom.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sbom.json
+
+          if git diff --cached --quiet; then
+            echo "No effective SBOM changes after regeneration."
+            exit 0
+          fi
+
+          git commit -m "chore(sbom): update sbom.json"
+          echo "Pushing commit to branch: ${TARGET_BRANCH}"
+          GIT_TERMINAL_PROMPT=0 git push origin "HEAD:refs/heads/${TARGET_BRANCH}"
+
+      - name: Fail if SBOM needs update but couldn't auto-fix
         if: steps.sbom-check.outputs.needs_update == 'true'
         run: |
-          echo "SBOM file needs to be regenerated. Please run:"
-          echo 'npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo "" >> sbom.json'
-          echo 'Or a maintainer can run the Fix Frontend SBOM workflow throug github actions or by commenting "/fix-frontend-sbom" to regenerate and push the updated sbom.json.'
-          exit 1
+          # If we got here, auto-fix happened (push succeeded) OR it failed earlier and exited.
+          # Keep this step so the called workflow remains a "gate" when needed.
+          echo "SBOM was out of date but should now be updated on the PR branch."

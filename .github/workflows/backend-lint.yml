@@ -1,7 +1,7 @@
 ---
 name: backend lint
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
   actions: read
 

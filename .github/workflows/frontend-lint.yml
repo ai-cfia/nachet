@@ -1,7 +1,7 @@
 name: Frontend Lint
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 concurrency:
@@ -74,7 +74,7 @@ jobs:
 
           # Compare the files
           if ! cmp -s package-lock.json package-lock.json.backup; then
-            echo "❌ package-lock.json is out of date!"
+            echo "package-lock.json is out of date!"
             echo ""
             echo "The package-lock.json file needs to be updated."
             echo "Please run 'npm install' locally and commit the updated package-lock.json file."
@@ -83,7 +83,7 @@ jobs:
             diff package-lock.json.backup package-lock.json || true
             exit 1
           else
-            echo "✅ package-lock.json is up to date!"
+            echo "package-lock.json is up to date!"
           fi
 
   frontend-lint-test:

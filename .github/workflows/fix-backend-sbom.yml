@@ -6,8 +6,6 @@ on:
       pr_number:
         description: "Pull request number"
         required: true
-  issue_comment:
-    types: [created]
 
 permissions:
   contents: write
@@ -15,41 +13,15 @@ permissions:
 
 jobs:
   fix:
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/fix-backend-sbom'))
     runs-on: ubuntu-latest
 
     steps:
-      - name: Resolve PR number
-        id: pr
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "number=${{ github.event.inputs.pr_number }}" >> $GITHUB_OUTPUT
-          else
-            echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Authorize maintainer
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              username: context.actor,
-            });
-            const allowed = new Set(["admin","maintain","write"]);
-            if (!allowed.has(data.permission)) {
-              core.setFailed(`Not authorized (permission: ${data.permission})`);
-            }
-
       - name: Fetch PR metadata
         id: prmeta
         uses: actions/github-script@v7
         with:
           script: |
-            const prNumber = Number("${{ steps.pr.outputs.number }}");
+            const prNumber = Number("${{ github.event.inputs.pr_number }}");
             const { data: pr } = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -58,7 +30,6 @@ jobs:
 
             core.setOutput("head_repo", pr.head.repo.full_name);
             core.setOutput("head_ref", pr.head.ref);
-            core.setOutput("is_fork", pr.head.repo.fork ? "true" : "false");
 
       - name: Checkout PR head
         uses: actions/checkout@v6
@@ -80,49 +51,24 @@ jobs:
         run: |
           uv sync --group dev --group sbom
 
-      - name: Generate SBOM (same logic)
+      - name: Generate SBOM
         working-directory: backend
         run: |
           uv run cyclonedx-py environment --output-reproducible -v --sv 1.6 \
             --pyproject pyproject.toml -o sbom.json && echo "" >> sbom.json
 
-      - name: Commit SBOM update
-        id: commit
+      - name: Commit & push
+        env:
+          BRANCH: ${{ steps.prmeta.outputs.head_ref }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add backend/sbom.json
+
           if git diff --cached --quiet; then
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No changes to commit."
             exit 0
           fi
+
           git commit -m "chore(sbom): update backend sbom.json"
-          echo "changed=true" >> $GITHUB_OUTPUT
-
-      - name: Try push (works for same-repo branches; may fail for forks)
-        if: steps.commit.outputs.changed == 'true'
-        id: push
-        continue-on-error: true
-        env:
-          BRANCH: ${{ steps.prmeta.outputs.head_ref }}
-        run: |
-          git push origin "HEAD:refs/heads/${BRANCH}"
-
-      - name: Comment instructions on PR
-        if: steps.commit.outputs.changed == 'true' && steps.push.outcome != 'success'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prNumber = Number("${{ steps.pr.outputs.number }}");
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body:
-                [
-                  "I regenerated `backend/sbom.json`, but I couldn't push it back to the PR branch.",
-                  "",
-                  `You can regenerate the SBOM locally by running \`cd nachet && ./generate-sbom.sh backend\`
-                ].join("\n"),
-            });
+          GIT_TERMINAL_PROMPT=0 git push origin "HEAD:refs/heads/${BRANCH}"
