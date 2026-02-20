@@ -106,7 +106,7 @@ jobs:
             exit 0
           fi
 
-          git commit -m "chore(sbom): update sbom.json"
+          git commit -m "chore(sbom): update frontend sbom.json"
           echo "Pushing commit to branch: ${TARGET_BRANCH}"
           GIT_TERMINAL_PROMPT=0 git push origin "HEAD:refs/heads/${TARGET_BRANCH}"
 
