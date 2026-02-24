@@ -43,7 +43,8 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
           cache: "npm"
-          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+          cache-dependency-path: >-
+            ${{ inputs.working-directory }}/package-lock.json
 
       - name: Install specific npm version
         run: npm install -g npm@${{ inputs.npm-version }}
@@ -53,7 +54,13 @@ jobs:
 
       - name: Generate new SBOM
         run: |
-          npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom-new.json && echo "" >> sbom-new.json
+          npx cyclonedx-npm package-lock.json \
+            --output-reproducible \
+            --package-lock-only \
+            -v \
+            --sv 1.6 \
+            -o sbom-new.json \
+          && echo "" >> sbom-new.json
 
       - name: Check if SBOM needs update
         id: sbom-check
@@ -62,15 +69,21 @@ jobs:
             echo "SBOM file does not exist and needs to be generated"
             echo "needs_update=true" >> $GITHUB_OUTPUT
           elif ! cmp -s sbom.json sbom-new.json; then
-            # HACK: cyclonedx-npm --output-reproducible is not truly reproducible
-            # due to non-deterministic BOM-REF generation and component ordering.
+            # HACK: cyclonedx-npm --output-reproducible is not reproducible
+            # due to non-deterministic BOM-REF generation and component ordering
             # Filter out BOM-REF differences and only count meaningful changes.
-            diff_lines=$(diff sbom.json sbom-new.json | grep -v "bom-ref\|BomRef\|content.*:" | wc -l)
+            diff_lines=$(
+              diff sbom.json sbom-new.json \
+                | grep -v "bom-ref\|BomRef\|content.*:" \
+                | wc -l
+            )
             if [ "$diff_lines" -gt 100 ]; then
-              echo "SBOM file is outdated and needs to be regenerated (significant changes: $diff_lines lines)"
+              echo "SBOM file is outdated and needs to be regenerated" \
+                "(significant changes: $diff_lines lines)"
               echo "needs_update=true" >> $GITHUB_OUTPUT
             else
-              echo "SBOM file has minor differences ($diff_lines lines) within tolerance"
+              echo "SBOM file has minor differences" \
+                "($diff_lines lines) within tolerance"
               echo "needs_update=false" >> $GITHUB_OUTPUT
             fi
           else
@@ -90,7 +103,8 @@ jobs:
           TARGET_BRANCH: ${{ github.head_ref }}
         run: |
           if [ -z "${TARGET_BRANCH}" ]; then
-            echo "SBOM needs update, but TARGET_BRANCH is empty (this job must run from a pull_request workflow)." >&2
+            echo "SBOM needs update, but TARGET_BRANCH is empty" \
+              "(this job must run from a pull_request workflow)." >&2
             exit 1
           fi
 
@@ -98,7 +112,9 @@ jobs:
           mv -f sbom-new.json sbom.json
 
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config \
+            user.email \
+              "41898282+github-actions[bot]@users.noreply.github.com"
           git add sbom.json
 
           if git diff --cached --quiet; then
@@ -108,11 +124,15 @@ jobs:
 
           git commit -m "chore(sbom): update frontend sbom.json"
           echo "Pushing commit to branch: ${TARGET_BRANCH}"
-          GIT_TERMINAL_PROMPT=0 git push origin "HEAD:refs/heads/${TARGET_BRANCH}"
+          GIT_TERMINAL_PROMPT=0 git push origin \
+            "HEAD:refs/heads/${TARGET_BRANCH}"
 
       - name: Fail if SBOM needs update but couldn't auto-fix
         if: steps.sbom-check.outputs.needs_update == 'true'
         run: |
-          # If we got here, auto-fix happened (push succeeded) OR it failed earlier and exited.
-          # Keep this step so the called workflow remains a "gate" when needed.
-          echo "SBOM was out of date but should now be updated on the PR branch."
+          # If we got here, auto-fix happened (push succeeded)
+          # OR it failed earlier and exited.
+          # Keep this step so the called workflow remains
+          # a "gate" when needed.
+          echo "SBOM was out of date but should now be updated" \
+              "on the PR branch."

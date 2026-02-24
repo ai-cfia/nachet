@@ -1,3 +1,4 @@
+---
 name: Fix Frontend SBOM
 
 on:
@@ -63,14 +64,22 @@ jobs:
       - name: Generate SBOM
         working-directory: frontend
         run: |
-          npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo "" >> sbom.json
+          npx cyclonedx-npm package-lock.json \
+            --output-reproducible \
+            --package-lock-only \
+            -v \
+            --sv 1.6 \
+            -o sbom.json \
+          && printf "\n" >> sbom.json
 
       - name: Commit & push
         env:
           BRANCH: ${{ steps.prmeta.outputs.head_ref }}
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config \
+            user.email \
+              "41898282+github-actions[bot]@users.noreply.github.com"
           git add frontend/sbom.json
 
           if git diff --cached --quiet; then
