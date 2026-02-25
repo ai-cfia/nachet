@@ -24,7 +24,7 @@ on:
 jobs:
   check-sbom:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
