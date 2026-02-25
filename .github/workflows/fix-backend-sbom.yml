@@ -17,6 +17,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Apply latest patches
+        run: |
+          sudo apt update && sudo apt upgrade -y
+
       - name: Fetch PR metadata
         id: prmeta
         uses: actions/github-script@v7
