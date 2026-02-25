@@ -20,12 +20,6 @@ jobs:
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
-
-    steps:
-      - name: Apply latest patches
-        run: |
-          sudo apt update && sudo apt upgrade -y
-
       - name: Checkout code
         uses: actions/checkout@v6
         with:
@@ -33,6 +27,11 @@ jobs:
           persist-credentials: true
           # For PRs, checkout the PR branch so we can push fixes back.
           ref: ${{ github.head_ref || github.ref }}
+
+    steps:
+      - name: Apply latest patches
+        run: |
+          sudo apt update && sudo apt upgrade -y
 
       - name: Set up Python
         uses: actions/setup-python@v6
