@@ -131,12 +131,11 @@ jobs:
           GIT_TERMINAL_PROMPT=0 git push origin \
             "HEAD:refs/heads/${TARGET_BRANCH}"
 
+          echo "updated=true" >> $GITHUB_OUTPUT
+
       - name: Fail if SBOM needs update but couldn't auto-fix
-        if: steps.sbom-check.outputs.needs_update == 'true'
+        if: steps.sbom-check.outputs.needs_update == 'true' && steps.sbom-check.outputs.updated != 'true'
         run: |
-          # If we got here, auto-fix happened (push succeeded)
-          # OR it failed earlier and exited.
-          # Keep this step so the called workflow remains
-          # a "gate" when needed.
-          echo "SBOM was out of date but should now be updated" \
-              "on the PR branch."
+          echo "SBOM file is outdated and needs to be regenerated, but auto-fix failed." \
+            "Please run the SBOM generation script locally and push the updated sbom.json." >&2
+          exit 1

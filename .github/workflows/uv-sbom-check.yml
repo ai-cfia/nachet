@@ -138,3 +138,12 @@ jobs:
           echo "Regenerated and pushed an updated sbom.json to" \
               "**${TARGET_BRANCH}**." \
             >> "$GITHUB_STEP_SUMMARY"
+
+          echo "updated=true" >> $GITHUB_OUTPUT
+
+      - name: Fail if SBOM needs update but couldn't auto-fix
+        if: steps.sbom-check.outputs.needs_update == 'true' && steps.sbom-check.outputs.updated != 'true'
+        run: |
+          echo "SBOM file is outdated and needs to be regenerated, but auto-fix failed." \
+            "Please run the SBOM generation script locally and push the updated sbom.json." >&2
+          exit 1
