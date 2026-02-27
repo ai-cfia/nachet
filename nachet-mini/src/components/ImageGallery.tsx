@@ -114,7 +114,9 @@ const ImageGallery = ({
                     color: "text.primary",
                   }}
                   align="left"
-                  onClick={() => { onSelect(item.index); }}
+                  onClick={() => {
+                    onSelect(item.index);
+                  }}
                 >
                   <div
                     style={{
@@ -124,7 +126,9 @@ const ImageGallery = ({
                       gap: "0.3vw",
                     }}
                   >
-                    <ImageIcon style={{ color: "#1565c0", fontSize: "1.8vh" }} />
+                    <ImageIcon
+                      style={{ color: "#1565c0", fontSize: "1.8vh" }}
+                    />
                     <span>Image {item.index + 1}</span>
                     {done && (
                       <CheckCircleIcon
@@ -145,7 +149,9 @@ const ImageGallery = ({
                   }}
                 >
                   <IconButton
-                    onClick={() => { onRemove(item.index); }}
+                    onClick={() => {
+                      onRemove(item.index);
+                    }}
                     sx={{ padding: 0 }}
                     aria-label={`remove image ${item.index + 1}`}
                   >

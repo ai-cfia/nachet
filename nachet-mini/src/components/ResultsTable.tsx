@@ -33,9 +33,7 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
     setExpandedRow(expandedRow === rowId ? null : rowId);
   };
 
-  const renderTopResults = (
-    topN: Array<{ score: number; label: string }>,
-  ) => (
+  const renderTopResults = (topN: Array<{ score: number; label: string }>) => (
     <>
       <Typography
         variant="subtitle2"
@@ -58,7 +56,11 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
           <Typography
             key={i}
             variant="body2"
-            style={{ fontSize: "0.75em", paddingTop: "1px", paddingBottom: "1px" }}
+            style={{
+              fontSize: "0.75em",
+              paddingTop: "1px",
+              paddingBottom: "1px",
+            }}
           >
             {`${i + 1}. ${item.label}: ${pct}`}
           </Typography>
@@ -96,7 +98,9 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
         action={
           <IconButton
             sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
-            onClick={() => { onSwitchTableChange(!switchTable); }}
+            onClick={() => {
+              onSwitchTableChange(!switchTable);
+            }}
             aria-label="switch table view"
           >
             <SwitchLeftIcon
@@ -127,7 +131,6 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
       >
         <Table sx={{ borderBottom: 0 }}>
           <TableBody sx={{ borderBottom: 0 }}>
-
             {/* Label occurrence table */}
             {switchTable &&
               Object.keys(labelOccurrence).map((key, i) => (
@@ -153,11 +156,27 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                       paddingLeft: "0.8vh",
                       color: "text.primary",
                     }}
-                    onClick={() => { handleSelect(key); }}
+                    onClick={() => {
+                      handleSelect(key);
+                    }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
-                      <LabelIcon style={{ color: "#1565c0", fontSize: "1.8vh", paddingRight: "0.3vw" }} />
-                      <span style={{ width: "0.7vw", textAlign: "left" }}>{i + 1}</span>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <LabelIcon
+                        style={{
+                          color: "#1565c0",
+                          fontSize: "1.8vh",
+                          paddingRight: "0.3vw",
+                        }}
+                      />
+                      <span style={{ width: "0.7vw", textAlign: "left" }}>
+                        {i + 1}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell
@@ -171,7 +190,9 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                       paddingBottom: "0.5vh",
                       color: "text.primary",
                     }}
-                    onClick={() => { handleSelect(key); }}
+                    onClick={() => {
+                      handleSelect(key);
+                    }}
                   >
                     {key}
                   </TableCell>
@@ -186,9 +207,24 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                       color: "text.primary",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", flexWrap: "wrap" }}>
-                      <span style={{ width: "0.7vw", textAlign: "right" }}>{labelOccurrence[key]}</span>
-                      <CropFreeIcon style={{ color: "#1565c0", fontSize: "1.7vh", paddingLeft: "0.3vw" }} />
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "flex-end",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <span style={{ width: "0.7vw", textAlign: "right" }}>
+                        {labelOccurrence[key]}
+                      </span>
+                      <CropFreeIcon
+                        style={{
+                          color: "#1565c0",
+                          fontSize: "1.7vh",
+                          paddingLeft: "0.3vw",
+                        }}
+                      />
                     </div>
                   </TableCell>
                 </TableRow>
@@ -215,7 +251,9 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                           transition: "0.1s ease-in-out all",
                         },
                       }}
-                      onClick={() => { handleRowClick(rowId); }}
+                      onClick={() => {
+                        handleRowClick(rowId);
+                      }}
                     >
                       <TableCell
                         align="left"
@@ -228,9 +266,23 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                           paddingLeft: "0.8vh",
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
-                          <LabelIcon style={{ color: "#1565c0", fontSize: "1.8vh", paddingRight: "0.3vw" }} />
-                          <span style={{ width: "0.7vw", textAlign: "left" }}>{classIdx + 1}</span>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <LabelIcon
+                            style={{
+                              color: "#1565c0",
+                              fontSize: "1.8vh",
+                              paddingRight: "0.3vw",
+                            }}
+                          />
+                          <span style={{ width: "0.7vw", textAlign: "left" }}>
+                            {classIdx + 1}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell
@@ -272,7 +324,6 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                   </React.Fragment>
                 );
               })}
-
           </TableBody>
         </Table>
       </TableContainer>

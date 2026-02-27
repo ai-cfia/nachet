@@ -17,6 +17,7 @@ export function useInference() {
 
   const setStatus = useInferenceStore((s) => s.setStatus);
   const setResult = useInferenceStore((s) => s.setResult);
+  const setModelLoaded = useInferenceStore((s) => s.setModelLoaded);
   const setModelLoadProgress = useInferenceStore((s) => s.setModelLoadProgress);
   const setError = useInferenceStore((s) => s.setError);
 
@@ -36,6 +37,7 @@ export function useInference() {
           isModelLoadedRef.current = true;
           setStatus("idle");
           setModelLoadProgress(null);
+          setModelLoaded(true);
           break;
         case "status":
           setStatus(msg.status);
@@ -62,7 +64,7 @@ export function useInference() {
       workerRef.current = null;
       isModelLoadedRef.current = false;
     };
-  }, [setStatus, setResult, setModelLoadProgress, setError]);
+  }, [setStatus, setResult, setModelLoaded, setModelLoadProgress, setError]);
 
   /** Download and warm up both pipelines for the given model config. */
   const loadModels = useCallback(
@@ -70,10 +72,11 @@ export function useInference() {
       if (!workerRef.current) return;
       isModelLoadedRef.current = false;
       setStatus("loading-model");
+      setModelLoaded(false);
       const msg: WorkerInMessage = { type: "load-models", config };
       workerRef.current.postMessage(msg);
     },
-    [setStatus],
+    [setStatus, setModelLoaded],
   );
 
   /**
@@ -82,7 +85,11 @@ export function useInference() {
    */
   const runInference = useCallback((imageSrc: string, imageIndex: number) => {
     if (!workerRef.current || !isModelLoadedRef.current) return;
-    const msg: WorkerInMessage = { type: "run-inference", imageSrc, imageIndex };
+    const msg: WorkerInMessage = {
+      type: "run-inference",
+      imageSrc,
+      imageIndex,
+    };
     workerRef.current.postMessage(msg);
   }, []);
 

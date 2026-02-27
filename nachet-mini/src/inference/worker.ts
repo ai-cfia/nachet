@@ -134,9 +134,9 @@ addEventListener("message", async (event: MessageEvent) => {
 
       detector = (await pipeline("object-detection", config.detectorModel, {
         device,
-        progress_callback: makeProgressCallback(
-          "detector",
-        ) as unknown as (progress: unknown) => void,
+        progress_callback: makeProgressCallback("detector") as unknown as (
+          progress: unknown,
+        ) => void,
       })) as unknown as CallablePipeline;
 
       classifier = (await pipeline(
@@ -144,9 +144,9 @@ addEventListener("message", async (event: MessageEvent) => {
         config.classifierModel,
         {
           device,
-          progress_callback: makeProgressCallback(
-            "classifier",
-          ) as unknown as (progress: unknown) => void,
+          progress_callback: makeProgressCallback("classifier") as unknown as (
+            progress: unknown,
+          ) => void,
         },
       )) as unknown as CallablePipeline;
 

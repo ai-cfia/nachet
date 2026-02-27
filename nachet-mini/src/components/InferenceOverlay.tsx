@@ -121,11 +121,7 @@ const InferenceOverlay = ({
   };
 
   return (
-    <Box
-      component="div"
-      aria-label={label}
-      sx={sx}
-    >
+    <Box component="div" aria-label={label} sx={sx}>
       {/* z-index badge — visible while layers menu is open */}
       <Box
         aria-hidden

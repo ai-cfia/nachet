@@ -17,12 +17,14 @@ export interface ModelLoadProgress {
 interface InferenceState {
   results: Map<number, InferenceResult>;
   status: InferenceStatus;
+  modelLoaded: boolean;
   modelLoadProgress: ModelLoadProgress | null;
   error: string | null;
 
   setResult: (imageIndex: number, result: InferenceResult) => void;
   getResult: (imageIndex: number) => InferenceResult | undefined;
   setStatus: (status: InferenceStatus) => void;
+  setModelLoaded: (value: boolean) => void;
   setModelLoadProgress: (progress: ModelLoadProgress | null) => void;
   setError: (error: string | null) => void;
   clearResults: () => void;
@@ -31,6 +33,7 @@ interface InferenceState {
 export const useInferenceStore = create<InferenceState>()((set, get) => ({
   results: new Map(),
   status: "idle",
+  modelLoaded: false,
   modelLoadProgress: null,
   error: null,
 
@@ -48,6 +51,10 @@ export const useInferenceStore = create<InferenceState>()((set, get) => ({
 
   setStatus: (status: InferenceStatus) => {
     set({ status });
+  },
+
+  setModelLoaded: (value: boolean) => {
+    set({ modelLoaded: value });
   },
 
   setModelLoadProgress: (progress: ModelLoadProgress | null) => {

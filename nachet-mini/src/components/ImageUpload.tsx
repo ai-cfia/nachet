@@ -106,7 +106,9 @@ const ImageUpload = ({ open, onClose, onImageLoaded }: Props) => {
             />
             <Button
               variant="contained"
-              onClick={() => { fileInputRef.current?.click(); }}
+              onClick={() => {
+                fileInputRef.current?.click();
+              }}
               fullWidth
               sx={{ fontSize: "1.2vh", textTransform: "none" }}
             >
@@ -118,7 +120,12 @@ const ImageUpload = ({ open, onClose, onImageLoaded }: Props) => {
             <Typography
               variant="body2"
               color="error"
-              sx={{ px: "1vw", pb: "1vh", fontSize: "1.1vh", whiteSpace: "pre-line" }}
+              sx={{
+                px: "1vw",
+                pb: "1vh",
+                fontSize: "1.1vh",
+                whiteSpace: "pre-line",
+              }}
             >
               {error}
             </Typography>
