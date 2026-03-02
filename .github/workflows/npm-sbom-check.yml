@@ -101,41 +101,9 @@ jobs:
           echo "Differences between current and expected SBOM:"
           diff sbom.json sbom-new.json || true
 
-      - name: Update SBOM if needed (auto-fix for local PRs)
-        if: steps.sbom-check.outputs.needs_update == 'true'
-        env:
-          TARGET_BRANCH: ${{ github.head_ref }}
-        run: |
-          if [ -z "${TARGET_BRANCH}" ]; then
-            echo "SBOM needs update, but TARGET_BRANCH is empty" \
-              "(this job must run from a pull_request workflow)." >&2
-            exit 1
-          fi
-
-          echo "Replacing sbom.json with sbom-new.json and committing"
-          mv -f sbom-new.json sbom.json
-
-          git config user.name "github-actions[bot]"
-          git config \
-            user.email \
-              "41898282+github-actions[bot]@users.noreply.github.com"
-          git add sbom.json
-
-          if git diff --cached --quiet; then
-            echo "No effective SBOM changes after regeneration."
-            exit 0
-          fi
-
-          git commit -m "chore(sbom): update frontend sbom.json"
-          echo "Pushing commit to branch: ${TARGET_BRANCH}"
-          GIT_TERMINAL_PROMPT=0 git push origin \
-            "HEAD:refs/heads/${TARGET_BRANCH}"
-
-          echo "updated=true" >> $GITHUB_OUTPUT
-
       - name: Fail if SBOM needs update but couldn't auto-fix
         if: steps.sbom-check.outputs.needs_update == 'true' && steps.sbom-check.outputs.updated != 'true'
         run: |
-          echo "SBOM file is outdated and needs to be regenerated, but auto-fix failed." \
+          echo "SBOM file is outdated and needs to be regenerated." \
             "Please run the SBOM generation script locally and push the updated sbom.json." >&2
           exit 1
