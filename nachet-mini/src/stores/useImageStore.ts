@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { Images } from "@common/types";
+import type { Images } from "@common/types";
 
 interface ImageState {
   images: Images[];

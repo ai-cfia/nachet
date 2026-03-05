@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { InferenceResult } from "@common/types";
+import type { InferenceResult } from "@common/types";
 
 export type InferenceStatus =
   | "idle"
