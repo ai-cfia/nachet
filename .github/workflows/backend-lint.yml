@@ -86,40 +86,43 @@ jobs:
           uv lock --check
         working-directory: backend
 
-  uv-sbom-check:
-    name: Check SBOM is up to date
-    uses: ./.github/workflows/uv-sbom-check.yml
-    secrets: inherit
-    with:
-      working-directory: backend
-
   sbom-security-scan:
-    needs: uv-sbom-check
     runs-on: ubuntu-latest
     permissions:
       security-events: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      - name: Ensure SBOM exists (skip scan if missing)
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@04224aa8caab79e9c08d41c1ef06d6394aafe6a0
+
+      - name: Install dependencies and cyclone-x
         run: |
-          if [ ! -f backend/sbom.json ]; then
-            echo "SBOM not present (likely failed validation job); skipping scan.";
-            echo "No SBOM file found" > sbom-scan-skip.log
-            exit 0
-          fi
-<<<<<<< HEAD
+          uv sync --group dev --group sbom
+        working-directory: backend
+
+      - name: Generate SBOM
+        run: |
+          uv run cyclonedx-py environment --output-reproducible -v --sv 1.6 \
+            --pyproject pyproject.toml -o sbom.json && echo "" > sbom.json
+        working-directory: backend
+
       - uses: anchore/scan-action@e286cbc3c2c32c6b8bb4180b424e5b101f59e051
-=======
-      - uses: anchore/scan-action@e286cbc3c2c32c6b8bb4180b424e5b101f59e051
->>>>>>> origin/renovate/backend-bump-deps-20250929
         name: SBOM Security Scan
         id: scan
         with:
           sbom: backend/sbom.json
           fail-build: false
+
       - name: Check SBOM scan results
         run: cat ${{ steps.scan.outputs.sarif }}
+
       - name: Fix SARIF artifact locations
         # Grype SBOM scans don't include file locations, which causes GitHub Code Scanning
         # to reject the SARIF file. This adds the SBOM file as the artifact location.
@@ -147,6 +150,7 @@ jobs:
             )
           ' "${{ steps.scan.outputs.sarif }}" > sarif-fixed.json
           mv sarif-fixed.json "${{ steps.scan.outputs.sarif }}"
+
       - name: Upload SBOM scan results
         uses: github/codeql-action/upload-sarif@v4
         continue-on-error: true
