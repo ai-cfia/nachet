@@ -110,8 +110,7 @@ jobs:
       - name: Generate SBOM
         run: |
           uv run cyclonedx-py environment --output-reproducible -v --sv 1.6 \
-            --pyproject pyproject.toml -o sbom.json && echo "" > sbom.json
-        working-directory: backend
+            --pyproject pyproject.toml -o sbom.json && echo "" >> sbom.json && pwd && ls -la sbom.json
 
       - uses: anchore/scan-action@e286cbc3c2c32c6b8bb4180b424e5b101f59e051
         name: SBOM Security Scan
@@ -119,6 +118,7 @@ jobs:
         with:
           sbom: backend/sbom.json
           fail-build: false
+          working-directory: .
 
       - name: Check SBOM scan results
         run: cat ${{ steps.scan.outputs.sarif }}

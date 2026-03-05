@@ -121,6 +121,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   sbom-security-scan:
+    needs: [versions]
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -131,21 +132,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ inputs.node-version }}
+          node-version: ${{ needs.versions.outputs.node-version }}
           cache: "npm"
-          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
+          working-directory: frontend
 
       - name: Install specific npm version
-        run: npm install -g npm@${{ inputs.npm-version }}
+        run: npm install -g npm@${{ needs.versions.outputs.npm-version }}
 
       - name: Install dependencies
         run: npm ci
-        working-directory: frontend
 
       - name: Generate new SBOM
         run: |
-          npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo "" > sbom.json
-        working-directory: frontend
+          npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo "" >> sbom.json
 
       - uses: anchore/scan-action@e286cbc3c2c32c6b8bb4180b424e5b101f59e051
         name: SBOM Security Scan
@@ -153,6 +153,7 @@ jobs:
         with:
           sbom: frontend/sbom.json
           fail-build: false
+          working-directory: frontend
       - name: Check SBOM scan results
         run: cat ${{ steps.scan.outputs.sarif }}
       - name: Fix SARIF artifact locations
