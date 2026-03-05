@@ -135,13 +135,13 @@ jobs:
           node-version: ${{ needs.versions.outputs.node-version }}
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
-          working-directory: frontend
 
       - name: Install specific npm version
         run: npm install -g npm@${{ needs.versions.outputs.npm-version }}
 
       - name: Install dependencies
         run: npm ci
+        working-directory: frontend
 
       - name: Generate new SBOM
         run: |
@@ -153,7 +153,7 @@ jobs:
         with:
           sbom: frontend/sbom.json
           fail-build: false
-          working-directory: frontend
+
       - name: Check SBOM scan results
         run: cat ${{ steps.scan.outputs.sarif }}
       - name: Fix SARIF artifact locations
