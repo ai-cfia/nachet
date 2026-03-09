@@ -50,7 +50,7 @@ jobs:
           labels: ${{ steps.meta-backend.outputs.labels }}
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@430b6a704fe0c92f1b1261d84376a900f38d90ff
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22
         with:
           cosign-release: "v2.2.3"
 
@@ -117,7 +117,7 @@ jobs:
           labels: ${{ steps.meta-frontend.outputs.labels }}
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@430b6a704fe0c92f1b1261d84376a900f38d90ff
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22
         with:
           cosign-release: "v2.2.3"
 
