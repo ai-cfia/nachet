@@ -109,9 +109,9 @@ jobs:
             exit 0
           fi
 <<<<<<< HEAD
-      - uses: anchore/scan-action@e286cbc3c2c32c6b8bb4180b424e5b101f59e051
+      - uses: anchore/scan-action@f63dc5910033de4782c37de5c6d7c7767852844e
 =======
-      - uses: anchore/scan-action@e286cbc3c2c32c6b8bb4180b424e5b101f59e051
+      - uses: anchore/scan-action@f63dc5910033de4782c37de5c6d7c7767852844e
 >>>>>>> origin/renovate/backend-bump-deps-20250929
         name: SBOM Security Scan
         id: scan
