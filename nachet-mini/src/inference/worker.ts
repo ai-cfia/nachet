@@ -11,8 +11,9 @@ import type { InferenceResult, InferenceBox } from "@common/types";
 // Environment
 // ---------------------------------------------------------------------------
 
-env.useBrowserCache = true;
-env.allowLocalModels = false;
+env.useBrowserCache = false;
+env.allowRemoteModels = true;
+env.allowLocalModels = true;
 
 // ---------------------------------------------------------------------------
 // Types for transformers.js output
@@ -176,6 +177,8 @@ addEventListener("message", async (event: MessageEvent) => {
       const rawDetections = (await detector(imageSrc, {
         threshold: config.detectorThreshold,
       })) as DetectionItem[];
+
+      console.log("Raw detections:", rawDetections);
 
       if (!rawDetections || rawDetections.length === 0) {
         send({

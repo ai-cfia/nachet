@@ -196,3 +196,4 @@ db/postgres-data/
 
 # nachet-mini build output
 nachet-mini/dist/
+nachet-mini/public/models/*

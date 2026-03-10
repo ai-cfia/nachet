@@ -39,6 +39,14 @@ export const MODEL_PRESETS: ModelConfig[] = [
     detectorThreshold: 0.5,
     classifierTopK: 5,
   },
+  {
+    id: "rtdetrv2-general",
+    detectorModel: "rtdetrv2-checkpoint-7616",
+    classifierModel: "swin-checkpoint-42368",
+    detectorThreshold: 0,
+    classifierTopK: 5,
+    // public/models/rtdetrv2-checkpoint-7616/config.json
+  },
 ];
 
 export const DEFAULT_MODEL = MODEL_PRESETS[0];

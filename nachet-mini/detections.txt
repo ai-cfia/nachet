@@ -1,0 +1,20 @@
+Inputs:
+pixel_values ['batch_size', 3, 'height', 'width'] tensor(float)
+
+Outputs:
+logits ['batch_size', 'num_queries', 1] tensor(float)
+pred_boxes ['batch_size', 'num_queries', 4] tensor(float)
+Output 0: shape=(1, 300, 1)
+Output 1: shape=(1, 300, 4)
+
+Decoded boxes in 640x640 model space:
+Box 0: [497.49637 234.10527 537.7813  300.41162], Score: 0.9642
+Box 1: [308.31793 468.82388 353.82098 539.90594], Score: 0.8954
+Box 2: [309.2348  229.96457 420.6225  298.71   ], Score: 0.7846
+Box 3: [337.61115   30.929466 430.27405  185.08939 ], Score: 0.7471
+Box 4: [375.2615  417.98596 472.47745 578.7543 ], Score: 0.6483
+Box 5: [210.79448 400.69086 289.7707  467.27094], Score: 0.6607
+Box 6: [220.74008 296.0818  278.91745 359.36188], Score: 0.9158
+Box 7: [212.38013 103.15246 269.91864 135.74155], Score: 0.7361
+Box 8: [154.9508  142.26973 191.39978 200.6415 ], Score: 0.6211
+Box 9: [206.8024  429.1979  237.46149 471.60092], Score: 0.6561
