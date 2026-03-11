@@ -11,7 +11,7 @@ import type { InferenceResult, InferenceBox } from "@common/types";
 // Environment
 // ---------------------------------------------------------------------------
 
-env.useBrowserCache = false;
+env.useBrowserCache = true;
 env.allowRemoteModels = true;
 env.allowLocalModels = true;
 

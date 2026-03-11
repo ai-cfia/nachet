@@ -88,7 +88,8 @@ def main():
 
     input_name = detector_session.get_inputs()[0].name
     outputs = detector_session.run(None, {input_name: x})
-
+    
+    print("\n", outputs)
     decoded_boxes, scores = decode_outputs(
         outputs[0],
         outputs[1],

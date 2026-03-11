@@ -43,7 +43,7 @@ export const MODEL_PRESETS: ModelConfig[] = [
     id: "rtdetrv2-general",
     detectorModel: "rtdetrv2-checkpoint-7616",
     classifierModel: "swin-checkpoint-42368",
-    detectorThreshold: 0,
+    detectorThreshold: 0.5,
     classifierTopK: 5,
     // public/models/rtdetrv2-checkpoint-7616/config.json
   },
