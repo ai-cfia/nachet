@@ -41,8 +41,8 @@ export const MODEL_PRESETS: ModelConfig[] = [
   },
   {
     id: "rtdetrv2-general",
-    detectorModel: "rtdetrv2-checkpoint-7616",
-    classifierModel: "swin-checkpoint-42368",
+    detectorModel: "cfia-ai-lab/rtdetr_v2_r50vd-64spp-ft",
+    classifierModel: "cfia-ai-lab/swin-large-patch4-window12-384-in22k-64spp-ft",
     detectorThreshold: 0.5,
     classifierTopK: 5,
     // public/models/rtdetrv2-checkpoint-7616/config.json

@@ -135,6 +135,7 @@ addEventListener("message", async (event: MessageEvent) => {
 
       detector = (await pipeline("object-detection", config.detectorModel, {
         device,
+        dtype: "fp32",
         progress_callback: makeProgressCallback("detector") as unknown as (
           progress: unknown,
         ) => void,
@@ -145,6 +146,7 @@ addEventListener("message", async (event: MessageEvent) => {
         config.classifierModel,
         {
           device,
+          dtype: "fp32",
           progress_callback: makeProgressCallback("classifier") as unknown as (
             progress: unknown,
           ) => void,
