@@ -95,6 +95,11 @@ jobs:
       npm-version: ${{ needs.versions.outputs.npm-version }}
     secrets: inherit
 
+  sbom-security-scan:
+    needs: [versions]
+    uses: ai-cfia/github-workflows/.github/workflows/workflow-generate-frontend-sbom.yml@main
+    secrets: inherit
+
   markdown-check:
     needs: [versions]
     uses: ai-cfia/github-workflows/.github/workflows/workflow-markdown-check-mono.yml@main
@@ -119,70 +124,3 @@ jobs:
           --ref main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  npm-sbom-check:
-    name: Check SBOM is up to date
-    needs: [versions]
-    uses: ./.github/workflows/npm-sbom-check.yml
-    secrets: inherit
-    with:
-      working-directory: frontend
-      node-version: ${{ needs.versions.outputs.node-version }}
-      npm-version: ${{ needs.versions.outputs.npm-version }}
-
-  sbom-security-scan:
-    needs: npm-sbom-check
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-      - name: Ensure SBOM exists (skip scan if missing)
-        run: |
-          if [ ! -f frontend/sbom.json ]; then
-            echo "SBOM not present (likely failed validation job); skipping scan.";
-            echo "No SBOM file found" > sbom-scan-skip.log
-            exit 0
-          fi
-      - uses: anchore/scan-action@e286cbc3c2c32c6b8bb4180b424e5b101f59e051
-        name: SBOM Security Scan
-        id: scan
-        with:
-          sbom: frontend/sbom.json
-          fail-build: false
-      - name: Check SBOM scan results
-        run: cat ${{ steps.scan.outputs.sarif }}
-      - name: Fix SARIF artifact locations
-        # Grype SBOM scans don't include file locations, which causes GitHub Code Scanning
-        # to reject the SARIF file. This adds the SBOM file as the artifact location.
-        # See: https://github.com/microsoft/sarif-sdk/issues/2770
-        run: |
-          jq '
-            .runs[].results[] |= (
-              if .locations == null or .locations == [] then
-                .locations = [{
-                  "physicalLocation": {
-                    "artifactLocation": {
-                      "uri": "frontend/sbom.json",
-                      "uriBaseId": "%SRCROOT%"
-                    },
-                    "region": {
-                      "startLine": 1,
-                      "startColumn": 1,
-                      "endLine": 1,
-                      "endColumn": 1
-                    }
-                  }
-                }]
-              else .
-              end
-            )
-          ' "${{ steps.scan.outputs.sarif }}" > sarif-fixed.json
-          mv sarif-fixed.json "${{ steps.scan.outputs.sarif }}"
-      - name: Upload SBOM scan results
-        uses: github/codeql-action/upload-sarif@v4
-        continue-on-error: true
-        with:
-          sarif_file: ${{ steps.scan.outputs.sarif }}
-          category: sbom-security-scan
