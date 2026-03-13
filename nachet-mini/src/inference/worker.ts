@@ -107,8 +107,13 @@ type ProgressInfo = {
 };
 
 function makeProgressCallback(phase: "detector" | "classifier") {
+  let lastSent = 0;
   return (info: ProgressInfo): void => {
     if (info.status === "progress" && info.progress !== undefined) {
+      const now = Date.now();
+      // Throttle to ~10 updates/sec; always send 100% completion
+      if (now - lastSent < 100 && info.progress < 100) return;
+      lastSent = now;
       send({
         type: "model-progress",
         name: `${phase}: ${info.file ?? info.name ?? ""}`,
