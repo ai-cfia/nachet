@@ -155,7 +155,14 @@ function App() {
           }}
         >
           {/* Left: Image Viewer */}
-          <Box sx={{ flex: 1, overflow: "hidden", minWidth: 0 }}>
+          <Box
+            sx={{
+              minWidth: "65vw",
+              minHeight: "84vh",
+              maxHeight: "84vh",
+              overflow: "hidden",
+            }}
+          >
             <ImageViewer
               src={currentImage?.src}
               imageDims={currentImage?.imageDims ?? []}
