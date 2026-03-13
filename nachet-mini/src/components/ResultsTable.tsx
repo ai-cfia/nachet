@@ -7,6 +7,7 @@ import {
   TableContainer,
   Box,
   CardHeader,
+  CircularProgress,
   IconButton,
   Typography,
 } from "@mui/material";
@@ -237,8 +238,11 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                 const boxTopN = topN[classIdx] ?? [];
                 const score = scores[classIdx] ?? 0;
                 const isExpanded = expandedRow === rowId;
+                const isBoxClassifying = prediction === "";
                 const visible =
-                  selectedLabel === "all" || selectedLabel === prediction;
+                  selectedLabel === "all" ||
+                  selectedLabel === prediction ||
+                  isBoxClassifying;
 
                 if (!visible) return null;
 
@@ -252,13 +256,13 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                         },
                       }}
                       onClick={() => {
-                        handleRowClick(rowId);
+                        if (!isBoxClassifying) handleRowClick(rowId);
                       }}
                     >
                       <TableCell
                         align="left"
                         sx={{
-                          cursor: "pointer",
+                          cursor: isBoxClassifying ? "default" : "pointer",
                           paddingRight: 0,
                           fontSize: "1.0vh",
                           paddingTop: "0.5vh",
@@ -275,7 +279,7 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                         >
                           <LabelIcon
                             style={{
-                              color: "#1565c0",
+                              color: isBoxClassifying ? "#9e9e9e" : "#1565c0",
                               fontSize: "1.8vh",
                               paddingRight: "0.3vw",
                             }}
@@ -288,31 +292,56 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                       <TableCell
                         align="center"
                         sx={{
-                          cursor: "pointer",
+                          cursor: isBoxClassifying ? "default" : "pointer",
                           paddingRight: 0,
                           fontSize: "1.0vh",
                           paddingLeft: 0,
                           paddingTop: "0.5vh",
                           paddingBottom: "0.5vh",
+                          color: isBoxClassifying
+                            ? "text.secondary"
+                            : "inherit",
                         }}
                       >
-                        {prediction}
+                        {isBoxClassifying ? (
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 0.5,
+                            }}
+                          >
+                            <CircularProgress
+                              size={12}
+                              sx={{ color: "text.secondary" }}
+                            />
+                            <span>Classifying...</span>
+                          </Box>
+                        ) : (
+                          prediction
+                        )}
                       </TableCell>
                       <TableCell
                         align="right"
                         sx={{
-                          cursor: "pointer",
+                          cursor: isBoxClassifying ? "default" : "pointer",
                           paddingLeft: 0,
                           fontSize: "1.0vh",
                           paddingTop: "0.5vh",
                           paddingBottom: "0.5vh",
                           paddingRight: "0.8vh",
+                          color: isBoxClassifying
+                            ? "text.secondary"
+                            : "inherit",
                         }}
                       >
-                        {(score * 100).toFixed(0)}%
+                        {isBoxClassifying
+                          ? "..."
+                          : `${(score * 100).toFixed(0)}%`}
                       </TableCell>
                     </TableRow>
-                    {isExpanded && (
+                    {isExpanded && !isBoxClassifying && (
                       <TableRow>
                         <TableCell colSpan={3}>
                           <Box p={2}>

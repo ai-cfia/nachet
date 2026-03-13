@@ -42,7 +42,7 @@ function App() {
   const modelLoaded = useInferenceStore((s) => s.modelLoaded);
   const modelLoadProgress = useInferenceStore((s) => s.modelLoadProgress);
   const error = useInferenceStore((s) => s.error);
-  const getResult = useInferenceStore((s) => s.getResult);
+  const results = useInferenceStore((s) => s.results);
   const clearResults = useInferenceStore((s) => s.clearResults);
   const setError = useInferenceStore((s) => s.setError);
 
@@ -60,7 +60,7 @@ function App() {
 
   const currentImage = getCurrentImage();
   const currentResult = currentImage
-    ? (getResult(currentImage.index) ?? null)
+    ? (results.get(currentImage.index) ?? null)
     : null;
 
   const handleImageLoaded = (src: string, dims: number[]) => {
@@ -88,7 +88,7 @@ function App() {
     clearResults();
   };
 
-  const hasResult = (index: number): boolean => getResult(index) !== undefined;
+  const hasResult = (index: number): boolean => results.has(index);
 
   const isInferring = status === "detecting" || status === "classifying";
   const isLoading = status === "loading-model";

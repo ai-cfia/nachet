@@ -42,6 +42,9 @@ export function useInference() {
         case "status":
           setStatus(msg.status);
           break;
+        case "partial-result":
+          setResult(msg.imageIndex, msg.result);
+          break;
         case "result":
           setResult(msg.imageIndex, msg.result);
           setStatus("complete");

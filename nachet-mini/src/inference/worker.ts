@@ -17,7 +17,7 @@ import type { InferenceResult, InferenceBox } from "@common/types";
 // Environment
 // ---------------------------------------------------------------------------
 
-env.useBrowserCache = false; // TODO: set back to true after confirming patched model works
+env.useBrowserCache = true;
 env.allowRemoteModels = true;
 env.allowLocalModels = true;
 
@@ -184,7 +184,10 @@ addEventListener("message", async (event: MessageEvent) => {
       patchProcessorSize(detProc);
       detectorProcessor = detProc;
       detectorModel = detMod;
-      console.log("[worker] Detector id2label:", JSON.stringify(detMod.config?.id2label ?? {}));
+      console.log(
+        "[worker] Detector id2label:",
+        JSON.stringify(detMod.config?.id2label ?? {}),
+      );
 
       // Load classifier processor + model
       const [clsProc, clsMod] = await Promise.all([
@@ -250,22 +253,35 @@ addEventListener("message", async (event: MessageEvent) => {
       const detInputs = await detectorProcessor(rawImage);
       console.log("[worker] Detector inputs keys:", Object.keys(detInputs));
       for (const [key, val] of Object.entries(detInputs)) {
-        const t = val as { dims?: number[]; type?: string; data?: Float32Array };
+        const t = val as {
+          dims?: number[];
+          type?: string;
+          data?: Float32Array;
+        };
         if (t?.dims) {
-          console.log(`[worker]   ${key}: dims=${JSON.stringify(t.dims)} dtype=${t.type}`);
+          console.log(
+            `[worker]   ${key}: dims=${JSON.stringify(t.dims)} dtype=${t.type}`,
+          );
         }
         if (key === "pixel_values" && t?.data) {
           const d = t.data;
-          let min = Infinity, max = -Infinity, sum = 0;
+          let min = Infinity,
+            max = -Infinity,
+            sum = 0;
           for (let i = 0; i < d.length; i++) {
             if (d[i] < min) min = d[i];
             if (d[i] > max) max = d[i];
             sum += d[i];
           }
           const mean = sum / d.length;
-          console.log(`[worker] pixel_values stats: min=${min.toFixed(4)} max=${max.toFixed(4)} mean=${mean.toFixed(4)} length=${d.length}`);
+          console.log(
+            `[worker] pixel_values stats: min=${min.toFixed(4)} max=${max.toFixed(4)} mean=${mean.toFixed(4)} length=${d.length}`,
+          );
           // First 10 values for comparison with Python
-          console.log("[worker] pixel_values first 10:", Array.from(d.slice(0, 10)).map(v => v.toFixed(4)));
+          console.log(
+            "[worker] pixel_values first 10:",
+            Array.from(d.slice(0, 10)).map((v) => v.toFixed(4)),
+          );
         }
       }
 
@@ -274,15 +290,26 @@ addEventListener("message", async (event: MessageEvent) => {
       const detOutputs = await detectorModel(detInputs);
       console.log("[worker] Detector output keys:", Object.keys(detOutputs));
       for (const [key, val] of Object.entries(detOutputs)) {
-        const t = val as { dims?: number[]; type?: string; data?: Float32Array };
+        const t = val as {
+          dims?: number[];
+          type?: string;
+          data?: Float32Array;
+        };
         if (t?.dims) {
-          console.log(`[worker]   ${key}: dims=${JSON.stringify(t.dims)} dtype=${t.type}`);
+          console.log(
+            `[worker]   ${key}: dims=${JSON.stringify(t.dims)} dtype=${t.type}`,
+          );
         }
         if (key === "logits" && t?.data) {
-          const scores = Array.from(t.data).map((v: number) => 1 / (1 + Math.exp(-v))); // sigmoid
+          const scores = Array.from(t.data).map(
+            (v: number) => 1 / (1 + Math.exp(-v)),
+          ); // sigmoid
           const sorted = [...scores].sort((a, b) => b - a);
           console.log("[worker] Top 10 sigmoid scores:", sorted.slice(0, 10));
-          console.log("[worker] Scores > 0.01:", scores.filter((s: number) => s > 0.01).length);
+          console.log(
+            "[worker] Scores > 0.01:",
+            scores.filter((s: number) => s > 0.01).length,
+          );
         }
       }
 
@@ -294,7 +321,12 @@ addEventListener("message", async (event: MessageEvent) => {
       // Get boxes in model input space (640x640), then scale to original
       // image dimensions ourselves — matching the Python CLI approach.
       // post_process with null target_sizes returns normalized [0,1] boxes.
-      console.log("[worker] Post-processing with threshold:", config.detectorThreshold, "sigmoid:", useSigmoid);
+      console.log(
+        "[worker] Post-processing with threshold:",
+        config.detectorThreshold,
+        "sigmoid:",
+        useSigmoid,
+      );
       const processed = (
         detectorProcessor.image_processor ?? detectorProcessor
       ).post_process_object_detection(
@@ -309,15 +341,29 @@ addEventListener("message", async (event: MessageEvent) => {
       // aspect ratio, so we need to scale through the resized dimensions.
       const modelW = detInputs.pixel_values.dims[3];
       const modelH = detInputs.pixel_values.dims[2];
-      const resizeScale = Math.min(modelW / rawImage.width, modelH / rawImage.height);
+      const resizeScale = Math.min(
+        modelW / rawImage.width,
+        modelH / rawImage.height,
+      );
       const resizedW = rawImage.width * resizeScale;
       const resizedH = rawImage.height * resizeScale;
       const scaleX = rawImage.width / resizedW;
       const scaleY = rawImage.height / resizedH;
 
-      console.log("[worker] Model input:", modelW, "x", modelH,
-        "resized:", resizedW.toFixed(0), "x", resizedH.toFixed(0),
-        "scale:", scaleX.toFixed(3), "x", scaleY.toFixed(3));
+      console.log(
+        "[worker] Model input:",
+        modelW,
+        "x",
+        modelH,
+        "resized:",
+        resizedW.toFixed(0),
+        "x",
+        resizedH.toFixed(0),
+        "scale:",
+        scaleX.toFixed(3),
+        "x",
+        scaleY.toFixed(3),
+      );
 
       // Convert normalized boxes to original image pixel coordinates
       for (const det of processed) {
@@ -332,17 +378,21 @@ addEventListener("message", async (event: MessageEvent) => {
         }
       }
 
-      console.log("[worker] Post-processed detections:", JSON.stringify(processed));
+      console.log(
+        "[worker] Post-processed detections:",
+        JSON.stringify(processed),
+      );
 
       const id2label = detectorModel.config?.id2label ?? {};
       const detections = processed[0];
-      console.log("[worker] Detections count:", detections?.boxes?.length ?? 0, "id2label keys:", Object.keys(id2label).length);
+      console.log(
+        "[worker] Detections count:",
+        detections?.boxes?.length ?? 0,
+        "id2label keys:",
+        Object.keys(id2label).length,
+      );
 
-      if (
-        !detections ||
-        !detections.boxes ||
-        detections.boxes.length === 0
-      ) {
+      if (!detections || !detections.boxes || detections.boxes.length === 0) {
         console.log("[worker] No detections above threshold");
         send({
           type: "result",
@@ -354,30 +404,70 @@ addEventListener("message", async (event: MessageEvent) => {
 
       console.log("[worker] Found", detections.boxes.length, "detections");
 
+      const inferenceId = `mini-${Date.now()}`;
+
+      // Build all boxes from detection results (before any classification)
+      const boxes: InferenceBox[] = [];
+      const scores: number[] = [];
+      const classifications: string[] = [];
+      const topNResults: Array<Array<{ score: number; label: string }>> = [];
+
+      for (let i = 0; i < detections.boxes.length; i++) {
+        const [xmin, ymin, xmax, ymax] = detections.boxes[i];
+        const score = detections.scores[i];
+        const classIdx = detections.classes[i];
+        const detLabel = id2label[classIdx] ?? `class_${classIdx}`;
+
+        console.log(
+          `[worker] Detection ${i}: label=${detLabel} score=${score.toFixed(3)} box=[${xmin.toFixed(0)},${ymin.toFixed(0)},${xmax.toFixed(0)},${ymax.toFixed(0)}]`,
+        );
+
+        boxes.push({
+          topX: xmin,
+          topY: ymin,
+          bottomX: xmax,
+          bottomY: ymax,
+          inferenceId,
+          boxId: String(i),
+          classId: detLabel,
+          label: detLabel,
+          isVerified: false,
+        });
+        scores.push(score);
+        classifications.push(""); // sentinel: not yet classified
+        topNResults.push([]);
+      }
+
+      // Send partial result: all boxes visible, no classifications yet
+      send({
+        type: "partial-result",
+        imageIndex,
+        result: {
+          scores: [...scores],
+          classifications: [...classifications],
+          boxes: [...boxes],
+          topN: [...topNResults],
+          overlapping: boxes.map(() => false),
+          overlappingIndices: boxes.map(() => 0),
+          labelOccurrence: {},
+          totalBoxes: boxes.length,
+          models: [
+            { name: config.detectorModel, version: "1.0" },
+            { name: config.classifierModel, version: "1.0" },
+          ],
+          completedAt: "",
+          isActive: true,
+        },
+      });
+
       send({ type: "status", status: "classifying" });
 
       // Decode the full image once for region cropping
       const imageBlob = await (await fetch(imageSrc)).blob();
       const bitmap = await createImageBitmap(imageBlob);
 
-      const boxes: InferenceBox[] = [];
-      const scores: number[] = [];
-      const classifications: string[] = [];
-      const topNResults: Array<Array<{ score: number; label: string }>> = [];
-      const inferenceId = `mini-${Date.now()}`;
-
       for (let i = 0; i < detections.boxes.length; i++) {
-        const box = detections.boxes[i];
-        const score = detections.scores[i];
-        const classIdx = detections.classes[i];
-        const detLabel =
-          id2label[classIdx] ?? `class_${classIdx}`;
-
-        // box format from post_process: [xmin, ymin, xmax, ymax]
-        const [xmin, ymin, xmax, ymax] = box;
-        console.log(
-          `[worker] Detection ${i}: label=${detLabel} score=${score.toFixed(3)} box=[${xmin.toFixed(0)},${ymin.toFixed(0)},${xmax.toFixed(0)},${ymax.toFixed(0)}]`,
-        );
+        const [xmin, ymin, xmax, ymax] = detections.boxes[i];
 
         let cropUrl: string | null = null;
         try {
@@ -404,43 +494,48 @@ addEventListener("message", async (event: MessageEvent) => {
           const topValList = topValues.tolist() as number[];
           const topIdxList = topIndices.tolist() as number[];
 
-          const classResults = topIdxList.map(
-            (idx: number, j: number) => ({
-              label: clsId2label[idx] ?? `LABEL_${idx}`,
-              score: topValList[j],
-            }),
-          );
+          const classResults = topIdxList.map((idx: number, j: number) => ({
+            label: clsId2label[idx] ?? `LABEL_${idx}`,
+            score: topValList[j],
+          }));
 
-          const topLabel = classResults[0]?.label ?? detLabel;
+          const topLabel = classResults[0]?.label ?? boxes[i].classId;
           console.log(
             `[worker] Classification ${i}: top=${topLabel} (${classResults[0]?.score.toFixed(3)})`,
           );
 
-          boxes.push({
-            topX: xmin,
-            topY: ymin,
-            bottomX: xmax,
-            bottomY: ymax,
-            inferenceId,
-            boxId: String(i),
-            classId: detLabel,
-            label: topLabel,
-            isVerified: false,
+          // Update arrays in place
+          classifications[i] = topLabel;
+          topNResults[i] = classResults;
+          boxes[i] = { ...boxes[i], label: topLabel };
+
+          // Send partial result after each classification
+          send({
+            type: "partial-result",
+            imageIndex,
+            result: {
+              scores: [...scores],
+              classifications: [...classifications],
+              boxes: [...boxes],
+              topN: [...topNResults],
+              overlapping: boxes.map(() => false),
+              overlappingIndices: boxes.map(() => 0),
+              labelOccurrence: buildLabelOccurrence(classifications),
+              totalBoxes: boxes.length,
+              models: [
+                { name: config.detectorModel, version: "1.0" },
+                { name: config.classifierModel, version: "1.0" },
+              ],
+              completedAt: "",
+              isActive: true,
+            },
           });
-          scores.push(score);
-          classifications.push(topLabel);
-          topNResults.push(classResults);
         } finally {
           if (cropUrl) URL.revokeObjectURL(cropUrl);
         }
       }
 
       bitmap.close();
-
-      const labelOccurrence: { [key: string]: number } = {};
-      for (const label of classifications) {
-        labelOccurrence[label] = (labelOccurrence[label] ?? 0) + 1;
-      }
 
       const result: InferenceResult = {
         scores,
@@ -449,7 +544,7 @@ addEventListener("message", async (event: MessageEvent) => {
         topN: topNResults,
         overlapping: boxes.map(() => false),
         overlappingIndices: boxes.map(() => 0),
-        labelOccurrence,
+        labelOccurrence: buildLabelOccurrence(classifications),
         totalBoxes: boxes.length,
         models: [
           { name: config.detectorModel, version: "1.0" },
@@ -474,6 +569,18 @@ addEventListener("message", async (event: MessageEvent) => {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function buildLabelOccurrence(classifications: string[]): {
+  [key: string]: number;
+} {
+  const labelOccurrence: { [key: string]: number } = {};
+  for (const label of classifications) {
+    if (label !== "") {
+      labelOccurrence[label] = (labelOccurrence[label] ?? 0) + 1;
+    }
+  }
+  return labelOccurrence;
+}
 
 function emptyResult(config: ModelConfig): InferenceResult {
   return {

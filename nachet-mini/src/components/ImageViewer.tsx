@@ -74,6 +74,7 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
                 label={result.classifications[i] ?? ""}
                 visible={true}
                 totalBoxes={result.totalBoxes}
+                isClassifying={result.classifications[i] === ""}
               />
             ))}
         </>

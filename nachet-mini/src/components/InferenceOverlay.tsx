@@ -1,5 +1,6 @@
 import {
   Box,
+  CircularProgress,
   IconButton,
   Tooltip,
   Menu,
@@ -25,6 +26,7 @@ interface Props {
   label: string;
   visible: boolean;
   totalBoxes: number;
+  isClassifying: boolean;
 }
 
 const InferenceOverlay = ({
@@ -36,6 +38,7 @@ const InferenceOverlay = ({
   canvasWidth,
   canvasHeight,
   label,
+  isClassifying,
 }: Props) => {
   const [layersAnchorEl, setLayersAnchorEl] = useState<HTMLElement | null>(
     null,
@@ -122,20 +125,26 @@ const InferenceOverlay = ({
 
   return (
     <Box component="div" aria-label={label} sx={sx}>
-      {/* box number — always visible above top-left corner */}
+      {/* box number (+ spinner when classifying) — above top-left corner */}
       <Box
         sx={{
           position: "absolute",
-          top: -18,
+          top: -23,
           left: -2,
           color: "rgba(128,0,128,0.9)",
-          fontSize: "15px",
+          fontSize: "20px",
           fontWeight: 700,
           lineHeight: 1,
           pointerEvents: "none",
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
         }}
       >
         {index + 1}
+        {isClassifying && (
+          <CircularProgress size={20} sx={{ color: "rgba(128,0,128,0.7)" }} />
+        )}
       </Box>
 
       {/* z-index badge — visible while layers menu is open */}

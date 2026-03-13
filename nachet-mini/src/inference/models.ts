@@ -49,6 +49,7 @@ export type WorkerOutMessage =
   | { type: "model-loaded" }
   | { type: "status"; status: "loading-model" | "detecting" | "classifying" }
   | { type: "result"; imageIndex: number; result: InferenceResult }
+  | { type: "partial-result"; imageIndex: number; result: InferenceResult }
   | { type: "error"; message: string };
 
 // ---------------------------------------------------------------------------
