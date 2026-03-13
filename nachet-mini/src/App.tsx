@@ -38,7 +38,6 @@ function App() {
   const error = useInferenceStore((s) => s.error);
   const getResult = useInferenceStore((s) => s.getResult);
   const clearResults = useInferenceStore((s) => s.clearResults);
-  const setModelLoaded = useInferenceStore((s) => s.setModelLoaded);
   const setError = useInferenceStore((s) => s.setError);
 
   const { loadModels, runInference } = useInference();
@@ -61,7 +60,6 @@ function App() {
   const handleLoadModel = () => {
     const config = MODEL_PRESETS.find((p) => p.id === selectedModelId);
     if (!config) return;
-    setModelLoaded(false);
     setError(null);
     loadModels(config);
   };

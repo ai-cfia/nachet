@@ -85,13 +85,13 @@ const InferenceOverlay = ({
     maxHeight: scaledHeight,
     left: scaledTopX,
     top: scaledTopY,
-    border: "none",
+    border: "2px solid rgba(128,0,128,0.7)",
     borderRadius: 0,
     display: visible ? "block" : "none",
     zIndex,
     ...(isSelected && {
-      bgcolor: "rgba(11,157,235,0.12)",
-      border: "1px solid rgba(11,157,235,0.22)",
+      bgcolor: "rgba(128,0,128,0.12)",
+      border: "2px solid rgba(128,0,128,0.7)",
     }),
     "& .layersBtn": {
       opacity: 0,
@@ -108,8 +108,8 @@ const InferenceOverlay = ({
       }),
     },
     "&:hover": {
-      bgcolor: "rgba(11,157,235,0.12)",
-      border: "1px solid rgba(11,157,235,0.22)",
+      bgcolor: "rgba(128,0,128,0.12)",
+      border: "2px solid rgba(128,0,128,0.7)",
       "& .layersBtn": {
         opacity: 1,
         pointerEvents: "auto",
@@ -122,6 +122,22 @@ const InferenceOverlay = ({
 
   return (
     <Box component="div" aria-label={label} sx={sx}>
+      {/* box number — always visible above top-left corner */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: -18,
+          left: -2,
+          color: "rgba(128,0,128,0.9)",
+          fontSize: "15px",
+          fontWeight: 700,
+          lineHeight: 1,
+          pointerEvents: "none",
+        }}
+      >
+        {index + 1}
+      </Box>
+
       {/* z-index badge — visible while layers menu is open */}
       <Box
         aria-hidden
