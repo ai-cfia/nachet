@@ -9,22 +9,31 @@ import {
   Typography,
 } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
-import type { ModelConfig } from "@inference/models";
+import type {
+  DetectorModelEntry,
+  ClassifierModelEntry,
+} from "@inference/models";
 import type { ModelLoadProgress } from "@stores/useInferenceStore";
 
 interface Props {
-  presets: ModelConfig[];
-  selectedId: string;
-  onSelectId: (id: string) => void;
+  detectors: DetectorModelEntry[];
+  classifiers: ClassifierModelEntry[];
+  selectedDetectorId: string;
+  selectedClassifierId: string;
+  onSelectDetector: (id: string) => void;
+  onSelectClassifier: (id: string) => void;
   onLoad: () => void;
   isLoading: boolean;
   progress: ModelLoadProgress | null;
 }
 
 const ModelLoader = ({
-  presets,
-  selectedId,
-  onSelectId,
+  detectors,
+  classifiers,
+  selectedDetectorId,
+  selectedClassifierId,
+  onSelectDetector,
+  onSelectClassifier,
   onLoad,
   isLoading,
   progress,
@@ -46,20 +55,39 @@ const ModelLoader = ({
       </Box>
     )}
 
-    <FormControl size="small" sx={{ minWidth: "14vw" }}>
-      <InputLabel sx={{ fontSize: "1.2vh" }}>Model</InputLabel>
+    <FormControl size="small" sx={{ minWidth: "11vw" }}>
+      <InputLabel sx={{ fontSize: "1.2vh" }}>Detector</InputLabel>
       <Select
-        value={selectedId}
-        label="Model"
+        value={selectedDetectorId}
+        label="Detector"
         onChange={(e: SelectChangeEvent<string>) => {
-          onSelectId(e.target.value);
+          onSelectDetector(e.target.value);
         }}
         disabled={isLoading}
         sx={{ fontSize: "1.2vh" }}
       >
-        {presets.map((p) => (
-          <MenuItem key={p.id} value={p.id} sx={{ fontSize: "1.2vh" }}>
-            {p.id}
+        {detectors.map((d) => (
+          <MenuItem key={d.id} value={d.id} sx={{ fontSize: "1.2vh" }}>
+            {d.id}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+
+    <FormControl size="small" sx={{ minWidth: "11vw" }}>
+      <InputLabel sx={{ fontSize: "1.2vh" }}>Classifier</InputLabel>
+      <Select
+        value={selectedClassifierId}
+        label="Classifier"
+        onChange={(e: SelectChangeEvent<string>) => {
+          onSelectClassifier(e.target.value);
+        }}
+        disabled={isLoading}
+        sx={{ fontSize: "1.2vh" }}
+      >
+        {classifiers.map((c) => (
+          <MenuItem key={c.id} value={c.id} sx={{ fontSize: "1.2vh" }}>
+            {c.id}
           </MenuItem>
         ))}
       </Select>

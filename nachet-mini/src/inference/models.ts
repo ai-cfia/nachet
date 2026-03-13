@@ -13,6 +13,26 @@ export interface ModelConfig {
 }
 
 // ---------------------------------------------------------------------------
+// Individual model entry types
+// ---------------------------------------------------------------------------
+
+export interface DetectorModelEntry {
+  id: string;
+  /** HuggingFace model ID for object detection (must have ONNX weights) */
+  model: string;
+  /** Minimum detection confidence score [0, 1] */
+  threshold: number;
+}
+
+export interface ClassifierModelEntry {
+  id: string;
+  /** HuggingFace model ID for image classification (must have ONNX weights) */
+  model: string;
+  /** Number of top classification labels to keep per detected region */
+  topK: number;
+}
+
+// ---------------------------------------------------------------------------
 // Worker message protocol
 // ---------------------------------------------------------------------------
 
@@ -28,26 +48,52 @@ export type WorkerOutMessage =
   | { type: "error"; message: string };
 
 // ---------------------------------------------------------------------------
-// Model registry
+// Model registries
 // ---------------------------------------------------------------------------
 
-export const MODEL_PRESETS: ModelConfig[] = [
+export const DETECTOR_MODELS: DetectorModelEntry[] = [
   {
-    id: "detr-vit-general",
-    detectorModel: "Xenova/detr-resnet-50",
-    classifierModel: "Xenova/vit-base-patch16-224",
-    detectorThreshold: 0.5,
-    classifierTopK: 5,
+    id: "detr-resnet-50",
+    model: "Xenova/detr-resnet-50",
+    threshold: 0.5,
   },
   {
-    id: "rtdetrv2-general",
-    detectorModel: "cfia-ai-lab/rtdetr_v2_r50vd-64spp-ft",
-    classifierModel:
-      "cfia-ai-lab/swin-large-patch4-window12-384-in22k-64spp-ft",
-    detectorThreshold: 0.5,
-    classifierTopK: 5,
-    // public/models/rtdetrv2-checkpoint-7616/config.json
+    id: "rtdetrv2-cfia",
+    model: "cfia-ai-lab/rtdetr_v2_r50vd-64spp-ft",
+    threshold: 0.5,
   },
 ];
 
-export const DEFAULT_MODEL = MODEL_PRESETS[0];
+export const CLASSIFIER_MODELS: ClassifierModelEntry[] = [
+  {
+    id: "vit-base-224",
+    model: "Xenova/vit-base-patch16-224",
+    topK: 5,
+  },
+  {
+    id: "swin-large-cfia",
+    model: "cfia-ai-lab/swin-large-patch4-window12-384-in22k-64spp-ft",
+    topK: 5,
+  },
+];
+
+export const DEFAULT_DETECTOR = DETECTOR_MODELS[0];
+export const DEFAULT_CLASSIFIER = CLASSIFIER_MODELS[0];
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Assemble a ModelConfig from independent detector and classifier selections. */
+export function buildModelConfig(
+  detector: DetectorModelEntry,
+  classifier: ClassifierModelEntry,
+): ModelConfig {
+  return {
+    id: `${detector.id}+${classifier.id}`,
+    detectorModel: detector.model,
+    classifierModel: classifier.model,
+    detectorThreshold: detector.threshold,
+    classifierTopK: classifier.topK,
+  };
+}

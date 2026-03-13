@@ -12,7 +12,13 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import { useImageStore } from "@stores/useImageStore";
 import { useInferenceStore } from "@stores/useInferenceStore";
 import { useInference } from "@inference/useInference";
-import { MODEL_PRESETS, DEFAULT_MODEL } from "@inference/models";
+import {
+  DETECTOR_MODELS,
+  CLASSIFIER_MODELS,
+  DEFAULT_DETECTOR,
+  DEFAULT_CLASSIFIER,
+  buildModelConfig,
+} from "@inference/models";
 import ImageUpload from "@components/ImageUpload";
 import ImageGallery from "@components/ImageGallery";
 import ResultsTable from "@components/ResultsTable";
@@ -44,7 +50,12 @@ function App() {
 
   // Local state
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [selectedModelId, setSelectedModelId] = useState(DEFAULT_MODEL.id);
+  const [selectedDetectorId, setSelectedDetectorId] = useState(
+    DEFAULT_DETECTOR.id,
+  );
+  const [selectedClassifierId, setSelectedClassifierId] = useState(
+    DEFAULT_CLASSIFIER.id,
+  );
   const [switchTable, setSwitchTable] = useState(true);
 
   const currentImage = getCurrentImage();
@@ -58,10 +69,13 @@ function App() {
   };
 
   const handleLoadModel = () => {
-    const config = MODEL_PRESETS.find((p) => p.id === selectedModelId);
-    if (!config) return;
+    const detector = DETECTOR_MODELS.find((d) => d.id === selectedDetectorId);
+    const classifier = CLASSIFIER_MODELS.find(
+      (c) => c.id === selectedClassifierId,
+    );
+    if (!detector || !classifier) return;
     setError(null);
-    loadModels(config);
+    loadModels(buildModelConfig(detector, classifier));
   };
 
   const handleRunInference = () => {
@@ -117,9 +131,12 @@ function App() {
             Nachet Mini
           </Typography>
           <ModelLoader
-            presets={MODEL_PRESETS}
-            selectedId={selectedModelId}
-            onSelectId={setSelectedModelId}
+            detectors={DETECTOR_MODELS}
+            classifiers={CLASSIFIER_MODELS}
+            selectedDetectorId={selectedDetectorId}
+            selectedClassifierId={selectedClassifierId}
+            onSelectDetector={setSelectedDetectorId}
+            onSelectClassifier={setSelectedClassifierId}
             onLoad={handleLoadModel}
             isLoading={isLoading}
             progress={modelLoadProgress}
