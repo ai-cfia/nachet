@@ -58,27 +58,27 @@ export type WorkerOutMessage =
 
 export const DETECTOR_MODELS: DetectorModelEntry[] = [
   {
-    id: "detr-resnet-50",
-    model: "Xenova/detr-resnet-50",
-    threshold: 0.5,
-  },
-  {
     id: "rtdetrv2-cfia",
     model: "cfia-ai-lab/rtdetr_v2_r50vd-64spp-ft",
     threshold: 0.3,
     modelFileName: "model_patched",
   },
+  {
+    id: "detr-resnet-50",
+    model: "Xenova/detr-resnet-50",
+    threshold: 0.5,
+  },
 ];
 
 export const CLASSIFIER_MODELS: ClassifierModelEntry[] = [
   {
-    id: "vit-base-224",
-    model: "Xenova/vit-base-patch16-224",
+    id: "swin-large-cfia",
+    model: "cfia-ai-lab/swin-large-patch4-window12-384-in22k-64spp-ft",
     topK: 5,
   },
   {
-    id: "swin-large-cfia",
-    model: "cfia-ai-lab/swin-large-patch4-window12-384-in22k-64spp-ft",
+    id: "vit-base-224",
+    model: "Xenova/vit-base-patch16-224",
     topK: 5,
   },
 ];

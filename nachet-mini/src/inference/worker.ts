@@ -19,7 +19,11 @@ import type { InferenceResult, InferenceBox } from "@common/types";
 
 env.useBrowserCache = true;
 env.allowRemoteModels = true;
-env.allowLocalModels = true;
+// In dev, the vite models-404 middleware returns proper 404s for missing local
+// model files so transformers.js can fall back to HuggingFace Hub. In prod the
+// static server returns an HTML 404 page which transformers.js tries to parse
+// as JSON and fails. Disable local model lookup in production.
+env.allowLocalModels = import.meta.env.DEV;
 
 // ---------------------------------------------------------------------------
 // Types for post-processing output
@@ -46,13 +50,13 @@ type DeviceType = "webgpu" | "wasm";
 
 /** Detect whether WebGPU is available in this worker context. */
 function getDevice(): DeviceType {
-  // try {
-  //   if (typeof navigator !== "undefined" && "gpu" in (navigator as object)) {
-  //     return "webgpu";
-  //   }
-  // } catch {
-  //   // navigator not available — fall through to WASM
-  // }
+  try {
+    if (typeof navigator !== "undefined" && "gpu" in (navigator as object)) {
+      return "webgpu";
+    }
+  } catch {
+    // navigator not available — fall through to WASM
+  }
   return "wasm";
 }
 
@@ -157,21 +161,33 @@ addEventListener("message", async (event: MessageEvent) => {
   if (data.type === "load-models") {
     const config = data.config;
     const device = getDevice();
+    // WebGPU has precision issues with detection models — use WASM for detector
+    const detectorDevice: DeviceType = "wasm";
+    const classifierDevice = device;
     const progressDetector = makeProgressCallback("detector");
     const progressClassifier = makeProgressCallback("classifier");
 
     try {
       send({ type: "status", status: "loading-model" });
 
-      console.log("[worker] Loading detector model:", config.detectorModel);
-      console.log("[worker] Loading classifier model:", config.classifierModel);
-      console.log("[worker] Device:", device);
+      console.log(
+        "[worker] Loading detector model:",
+        config.detectorModel,
+        "device:",
+        detectorDevice,
+      );
+      console.log(
+        "[worker] Loading classifier model:",
+        config.classifierModel,
+        "device:",
+        classifierDevice,
+      );
 
-      // Load detector processor + model
+      // Load detector processor + model (always WASM for precision)
       const [detProc, detMod] = await Promise.all([
         AutoProcessor.from_pretrained(config.detectorModel),
         AutoModelForObjectDetection.from_pretrained(config.detectorModel, {
-          device,
+          device: detectorDevice,
           dtype: "fp32" as const,
           model_file_name: config.detectorModelFileName ?? "model",
           progress_callback: progressDetector as unknown as (
@@ -189,13 +205,13 @@ addEventListener("message", async (event: MessageEvent) => {
         JSON.stringify(detMod.config?.id2label ?? {}),
       );
 
-      // Load classifier processor + model
+      // Load classifier processor + model (WebGPU if available)
       const [clsProc, clsMod] = await Promise.all([
         AutoProcessor.from_pretrained(config.classifierModel),
         AutoModelForImageClassification.from_pretrained(
           config.classifierModel,
           {
-            device,
+            device: classifierDevice,
             dtype: "fp32" as const,
             progress_callback: progressClassifier as unknown as (
               progress: unknown,
