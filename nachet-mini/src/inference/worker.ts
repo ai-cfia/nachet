@@ -1,9 +1,15 @@
 // This file runs as a Web Worker module bundled by Vite.
-// The tsconfig targets DOM lib; Vite correctly re-targets the Worker runtime.
-// Worker-specific globals (postMessage, addEventListener) are typed via the
-// DOM lib, which is close enough — small casts are isolated to helpers below.
 
-import { pipeline, env } from "@huggingface/transformers";
+import {
+  AutoProcessor,
+  AutoModelForObjectDetection,
+  AutoModelForImageClassification,
+  RawImage,
+  Tensor,
+  softmax,
+  topk,
+  env,
+} from "@huggingface/transformers";
 import type { ModelConfig, WorkerInMessage, WorkerOutMessage } from "./models";
 import type { InferenceResult, InferenceBox } from "@common/types";
 
@@ -11,36 +17,18 @@ import type { InferenceResult, InferenceBox } from "@common/types";
 // Environment
 // ---------------------------------------------------------------------------
 
-env.useBrowserCache = true;
+env.useBrowserCache = false; // TODO: set back to true after confirming patched model works
 env.allowRemoteModels = true;
 env.allowLocalModels = true;
 
 // ---------------------------------------------------------------------------
-// Types for transformers.js output
+// Types for post-processing output
 // ---------------------------------------------------------------------------
 
-interface DetectionBox {
-  xmin: number;
-  ymin: number;
-  xmax: number;
-  ymax: number;
-}
-
-interface DetectionItem {
-  label: string;
-  score: number;
-  box: DetectionBox;
-}
-
-interface ClassificationItem {
-  label: string;
-  score: number;
-}
-
-// Callable pipeline interface — the object returned by pipeline() is callable.
-// We use this narrow type instead of `any` to preserve call-site safety.
-interface CallablePipeline {
-  (input: string, options?: Record<string, unknown>): Promise<unknown>;
+interface PostProcessedDetection {
+  boxes: number[][];
+  classes: number[];
+  scores: number[];
 }
 
 // ---------------------------------------------------------------------------
@@ -49,23 +37,22 @@ interface CallablePipeline {
 
 /** Send a typed message from the worker to the main thread. */
 function send(msg: WorkerOutMessage): void {
-  // DOM lib types globalThis.postMessage as Window.postMessage (requiring targetOrigin).
-  // In a worker context the signature is postMessage(msg, transfer?).
-  // We cast through the narrow interface matching the worker's actual API.
   (
     globalThis as unknown as { postMessage(msg: WorkerOutMessage): void }
   ).postMessage(msg);
 }
 
+type DeviceType = "webgpu" | "wasm";
+
 /** Detect whether WebGPU is available in this worker context. */
-function getDevice(): string {
-  try {
-    if (typeof navigator !== "undefined" && "gpu" in (navigator as object)) {
-      return "webgpu";
-    }
-  } catch {
-    // navigator not available — fall through to WASM
-  }
+function getDevice(): DeviceType {
+  // try {
+  //   if (typeof navigator !== "undefined" && "gpu" in (navigator as object)) {
+  //     return "webgpu";
+  //   }
+  // } catch {
+  //   // navigator not available — fall through to WASM
+  // }
   return "wasm";
 }
 
@@ -88,11 +75,48 @@ async function cropRegion(
 }
 
 // ---------------------------------------------------------------------------
+// Processor size patching
+// ---------------------------------------------------------------------------
+
+/**
+ * Some HuggingFace models (e.g. RT-DETR from cfia-ai-lab) use
+ * `{ max_height, max_width }` in their preprocessor_config.json `size` field.
+ * transformers.js doesn't support this format, so we convert it to
+ * `{ longest_edge }` which preserves aspect ratio.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function patchProcessorSize(processor: any): void {
+  // AutoProcessor wraps an image_processor; try both paths
+  const imageProcessor = processor?.image_processor ?? processor;
+  if (!imageProcessor?.size) {
+    console.log("[worker] No image processor size to patch");
+    return;
+  }
+
+  const size = imageProcessor.size;
+  console.log("[worker] Processor size config:", JSON.stringify(size));
+
+  if (size.max_height !== undefined && size.max_width !== undefined) {
+    const longest = Math.min(size.max_height, size.max_width);
+    console.log(
+      `[worker] Patching processor size: {max_height: ${size.max_height}, max_width: ${size.max_width}} → {longest_edge: ${longest}}`,
+    );
+    imageProcessor.size = { longest_edge: longest };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Pipeline state
 // ---------------------------------------------------------------------------
 
-let detector: CallablePipeline | null = null;
-let classifier: CallablePipeline | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let detectorModel: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let detectorProcessor: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let classifierModel: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let classifierProcessor: any = null;
 let loadedConfig: ModelConfig | null = null;
 
 // ---------------------------------------------------------------------------
@@ -111,7 +135,6 @@ function makeProgressCallback(phase: "detector" | "classifier") {
   return (info: ProgressInfo): void => {
     if (info.status === "progress" && info.progress !== undefined) {
       const now = Date.now();
-      // Throttle to ~10 updates/sec; always send 100% completion
       if (now - lastSent < 100 && info.progress < 100) return;
       lastSent = now;
       send({
@@ -134,33 +157,60 @@ addEventListener("message", async (event: MessageEvent) => {
   if (data.type === "load-models") {
     const config = data.config;
     const device = getDevice();
+    const progressDetector = makeProgressCallback("detector");
+    const progressClassifier = makeProgressCallback("classifier");
 
     try {
       send({ type: "status", status: "loading-model" });
 
-      detector = (await pipeline("object-detection", config.detectorModel, {
-        device,
-        dtype: "fp32",
-        progress_callback: makeProgressCallback("detector") as unknown as (
-          progress: unknown,
-        ) => void,
-      })) as unknown as CallablePipeline;
+      console.log("[worker] Loading detector model:", config.detectorModel);
+      console.log("[worker] Loading classifier model:", config.classifierModel);
+      console.log("[worker] Device:", device);
 
-      classifier = (await pipeline(
-        "image-classification",
-        config.classifierModel,
-        {
+      // Load detector processor + model
+      const [detProc, detMod] = await Promise.all([
+        AutoProcessor.from_pretrained(config.detectorModel),
+        AutoModelForObjectDetection.from_pretrained(config.detectorModel, {
           device,
-          dtype: "fp32",
-          progress_callback: makeProgressCallback("classifier") as unknown as (
+          dtype: "fp32" as const,
+          model_file_name: config.detectorModelFileName ?? "model",
+          progress_callback: progressDetector as unknown as (
             progress: unknown,
           ) => void,
-        },
-      )) as unknown as CallablePipeline;
+        }),
+      ]);
+
+      console.log("[worker] Detector loaded, patching processor...");
+      patchProcessorSize(detProc);
+      detectorProcessor = detProc;
+      detectorModel = detMod;
+      console.log("[worker] Detector id2label:", JSON.stringify(detMod.config?.id2label ?? {}));
+
+      // Load classifier processor + model
+      const [clsProc, clsMod] = await Promise.all([
+        AutoProcessor.from_pretrained(config.classifierModel),
+        AutoModelForImageClassification.from_pretrained(
+          config.classifierModel,
+          {
+            device,
+            dtype: "fp32" as const,
+            progress_callback: progressClassifier as unknown as (
+              progress: unknown,
+            ) => void,
+          },
+        ),
+      ]);
+
+      console.log("[worker] Classifier loaded, patching processor...");
+      patchProcessorSize(clsProc);
+      classifierProcessor = clsProc;
+      classifierModel = clsMod;
 
       loadedConfig = config;
+      console.log("[worker] All models loaded successfully");
       send({ type: "model-loaded" });
     } catch (err) {
+      console.error("[worker] Model loading error:", err);
       send({
         type: "error",
         message: err instanceof Error ? err.message : String(err),
@@ -170,7 +220,13 @@ addEventListener("message", async (event: MessageEvent) => {
 
   // ── Run inference ────────────────────────────────────────────────────────
   if (data.type === "run-inference") {
-    if (!detector || !classifier || !loadedConfig) {
+    if (
+      !detectorModel ||
+      !detectorProcessor ||
+      !classifierModel ||
+      !classifierProcessor ||
+      !loadedConfig
+    ) {
       send({ type: "error", message: "Models not loaded" });
       return;
     }
@@ -181,13 +237,113 @@ addEventListener("message", async (event: MessageEvent) => {
     try {
       send({ type: "status", status: "detecting" });
 
-      const rawDetections = (await detector(imageSrc, {
-        threshold: config.detectorThreshold,
-      })) as DetectionItem[];
+      // Load & preprocess image for detection
+      console.log("[worker] Loading image for detection...");
+      const rawImage = await RawImage.read(imageSrc);
+      console.log(
+        "[worker] Image loaded:",
+        rawImage.width,
+        "x",
+        rawImage.height,
+      );
 
-      console.log("Raw detections:", rawDetections);
+      const detInputs = await detectorProcessor(rawImage);
+      console.log("[worker] Detector inputs keys:", Object.keys(detInputs));
+      for (const [key, val] of Object.entries(detInputs)) {
+        const t = val as { dims?: number[]; type?: string; data?: Float32Array };
+        if (t?.dims) {
+          console.log(`[worker]   ${key}: dims=${JSON.stringify(t.dims)} dtype=${t.type}`);
+        }
+        if (key === "pixel_values" && t?.data) {
+          const d = t.data;
+          let min = Infinity, max = -Infinity, sum = 0;
+          for (let i = 0; i < d.length; i++) {
+            if (d[i] < min) min = d[i];
+            if (d[i] > max) max = d[i];
+            sum += d[i];
+          }
+          const mean = sum / d.length;
+          console.log(`[worker] pixel_values stats: min=${min.toFixed(4)} max=${max.toFixed(4)} mean=${mean.toFixed(4)} length=${d.length}`);
+          // First 10 values for comparison with Python
+          console.log("[worker] pixel_values first 10:", Array.from(d.slice(0, 10)).map(v => v.toFixed(4)));
+        }
+      }
 
-      if (!rawDetections || rawDetections.length === 0) {
+      // Run detector model
+      console.log("[worker] Running detector model...");
+      const detOutputs = await detectorModel(detInputs);
+      console.log("[worker] Detector output keys:", Object.keys(detOutputs));
+      for (const [key, val] of Object.entries(detOutputs)) {
+        const t = val as { dims?: number[]; type?: string; data?: Float32Array };
+        if (t?.dims) {
+          console.log(`[worker]   ${key}: dims=${JSON.stringify(t.dims)} dtype=${t.type}`);
+        }
+        if (key === "logits" && t?.data) {
+          const scores = Array.from(t.data).map((v: number) => 1 / (1 + Math.exp(-v))); // sigmoid
+          const sorted = [...scores].sort((a, b) => b - a);
+          console.log("[worker] Top 10 sigmoid scores:", sorted.slice(0, 10));
+          console.log("[worker] Scores > 0.01:", scores.filter((s: number) => s > 0.01).length);
+        }
+      }
+
+      // Post-process detections
+      // RT-DETR uses sigmoid (no background class), so pass is_zero_shot=true
+      const numClasses = detOutputs.logits.dims[2];
+      const useSigmoid = numClasses === 1;
+
+      // Get boxes in model input space (640x640), then scale to original
+      // image dimensions ourselves — matching the Python CLI approach.
+      // post_process with null target_sizes returns normalized [0,1] boxes.
+      console.log("[worker] Post-processing with threshold:", config.detectorThreshold, "sigmoid:", useSigmoid);
+      const processed = (
+        detectorProcessor.image_processor ?? detectorProcessor
+      ).post_process_object_detection(
+        detOutputs,
+        config.detectorThreshold,
+        null, // get normalized boxes
+        useSigmoid,
+      ) as PostProcessedDetection[];
+
+      // Scale normalized boxes from padded model space to original image coords.
+      // The model input is 640x640 (padded). The image was resized preserving
+      // aspect ratio, so we need to scale through the resized dimensions.
+      const modelW = detInputs.pixel_values.dims[3];
+      const modelH = detInputs.pixel_values.dims[2];
+      const resizeScale = Math.min(modelW / rawImage.width, modelH / rawImage.height);
+      const resizedW = rawImage.width * resizeScale;
+      const resizedH = rawImage.height * resizeScale;
+      const scaleX = rawImage.width / resizedW;
+      const scaleY = rawImage.height / resizedH;
+
+      console.log("[worker] Model input:", modelW, "x", modelH,
+        "resized:", resizedW.toFixed(0), "x", resizedH.toFixed(0),
+        "scale:", scaleX.toFixed(3), "x", scaleY.toFixed(3));
+
+      // Convert normalized boxes to original image pixel coordinates
+      for (const det of processed) {
+        for (let i = 0; i < det.boxes.length; i++) {
+          const [x0, y0, x1, y1] = det.boxes[i];
+          det.boxes[i] = [
+            x0 * modelW * scaleX,
+            y0 * modelH * scaleY,
+            x1 * modelW * scaleX,
+            y1 * modelH * scaleY,
+          ];
+        }
+      }
+
+      console.log("[worker] Post-processed detections:", JSON.stringify(processed));
+
+      const id2label = detectorModel.config?.id2label ?? {};
+      const detections = processed[0];
+      console.log("[worker] Detections count:", detections?.boxes?.length ?? 0, "id2label keys:", Object.keys(id2label).length);
+
+      if (
+        !detections ||
+        !detections.boxes ||
+        detections.boxes.length === 0
+      ) {
+        console.log("[worker] No detections above threshold");
         send({
           type: "result",
           imageIndex,
@@ -195,6 +351,8 @@ addEventListener("message", async (event: MessageEvent) => {
         });
         return;
       }
+
+      console.log("[worker] Found", detections.boxes.length, "detections");
 
       send({ type: "status", status: "classifying" });
 
@@ -205,21 +363,59 @@ addEventListener("message", async (event: MessageEvent) => {
       const boxes: InferenceBox[] = [];
       const scores: number[] = [];
       const classifications: string[] = [];
-      const topN: Array<Array<{ score: number; label: string }>> = [];
+      const topNResults: Array<Array<{ score: number; label: string }>> = [];
       const inferenceId = `mini-${Date.now()}`;
 
-      for (let i = 0; i < rawDetections.length; i++) {
-        const det = rawDetections[i];
-        const { xmin, ymin, xmax, ymax } = det.box;
+      for (let i = 0; i < detections.boxes.length; i++) {
+        const box = detections.boxes[i];
+        const score = detections.scores[i];
+        const classIdx = detections.classes[i];
+        const detLabel =
+          id2label[classIdx] ?? `class_${classIdx}`;
+
+        // box format from post_process: [xmin, ymin, xmax, ymax]
+        const [xmin, ymin, xmax, ymax] = box;
+        console.log(
+          `[worker] Detection ${i}: label=${detLabel} score=${score.toFixed(3)} box=[${xmin.toFixed(0)},${ymin.toFixed(0)},${xmax.toFixed(0)},${ymax.toFixed(0)}]`,
+        );
 
         let cropUrl: string | null = null;
         try {
           cropUrl = await cropRegion(bitmap, xmin, ymin, xmax, ymax);
-          const rawClass = (await classifier(cropUrl, {
-            topk: config.classifierTopK,
-          })) as ClassificationItem[];
 
-          const topLabel = rawClass[0]?.label ?? det.label;
+          // Classify the cropped region
+          const cropImage = await RawImage.read(cropUrl);
+          const clsInputs = await classifierProcessor(cropImage);
+          const clsOutputs = await classifierModel(clsInputs);
+
+          // Get top-k classification results via softmax + topk
+          const logits = clsOutputs.logits[0];
+          const probs = new Tensor(
+            "float32",
+            softmax(logits.data as Float32Array),
+            logits.dims,
+          );
+          const [topValues, topIndices] = await topk(
+            probs,
+            config.classifierTopK,
+          );
+
+          const clsId2label = classifierModel.config?.id2label ?? {};
+          const topValList = topValues.tolist() as number[];
+          const topIdxList = topIndices.tolist() as number[];
+
+          const classResults = topIdxList.map(
+            (idx: number, j: number) => ({
+              label: clsId2label[idx] ?? `LABEL_${idx}`,
+              score: topValList[j],
+            }),
+          );
+
+          const topLabel = classResults[0]?.label ?? detLabel;
+          console.log(
+            `[worker] Classification ${i}: top=${topLabel} (${classResults[0]?.score.toFixed(3)})`,
+          );
+
           boxes.push({
             topX: xmin,
             topY: ymin,
@@ -227,13 +423,13 @@ addEventListener("message", async (event: MessageEvent) => {
             bottomY: ymax,
             inferenceId,
             boxId: String(i),
-            classId: det.label,
+            classId: detLabel,
             label: topLabel,
             isVerified: false,
           });
-          scores.push(det.score);
+          scores.push(score);
           classifications.push(topLabel);
-          topN.push(rawClass.map((r) => ({ score: r.score, label: r.label })));
+          topNResults.push(classResults);
         } finally {
           if (cropUrl) URL.revokeObjectURL(cropUrl);
         }
@@ -250,7 +446,7 @@ addEventListener("message", async (event: MessageEvent) => {
         scores,
         classifications,
         boxes,
-        topN,
+        topN: topNResults,
         overlapping: boxes.map(() => false),
         overlappingIndices: boxes.map(() => 0),
         labelOccurrence,
@@ -263,8 +459,10 @@ addEventListener("message", async (event: MessageEvent) => {
         isActive: true,
       };
 
+      console.log("[worker] Inference complete:", boxes.length, "boxes");
       send({ type: "result", imageIndex, result });
     } catch (err) {
+      console.error("[worker] Inference error:", err);
       send({
         type: "error",
         message: err instanceof Error ? err.message : String(err),

@@ -10,6 +10,8 @@ export interface ModelConfig {
   detectorThreshold: number;
   /** Number of top classification labels to keep per detected region */
   classifierTopK: number;
+  /** Optional ONNX filename for the detector (without .onnx), defaults to "model" */
+  detectorModelFileName?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -22,6 +24,8 @@ export interface DetectorModelEntry {
   model: string;
   /** Minimum detection confidence score [0, 1] */
   threshold: number;
+  /** Optional ONNX filename (without .onnx extension), defaults to "model" */
+  modelFileName?: string;
 }
 
 export interface ClassifierModelEntry {
@@ -60,7 +64,8 @@ export const DETECTOR_MODELS: DetectorModelEntry[] = [
   {
     id: "rtdetrv2-cfia",
     model: "cfia-ai-lab/rtdetr_v2_r50vd-64spp-ft",
-    threshold: 0.5,
+    threshold: 0.3,
+    modelFileName: "model_patched",
   },
 ];
 
@@ -95,5 +100,6 @@ export function buildModelConfig(
     classifierModel: classifier.model,
     detectorThreshold: detector.threshold,
     classifierTopK: classifier.topK,
+    detectorModelFileName: detector.modelFileName,
   };
 }
