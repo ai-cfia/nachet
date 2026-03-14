@@ -39,7 +39,7 @@ dependencies = [
     "pydantic==2.12.5",
     "pydantic-core>=2.33.2",
     "python-magic==0.4.27",
-    "PyJWT==2.10.1",
+    "PyJWT==2.12.0",
     "fastapi[standard-no-fastapi-cloud-cli]>=0.116.1",
     "beartype>=0.21.0",
     "psycopg>=3.2.10",
