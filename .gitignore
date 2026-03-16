@@ -193,3 +193,7 @@ db/postgres-data/
 .vscode/settings.json
 
 **/eac/
+
+# nachet-mini build output
+nachet-mini/dist/
+nachet-mini/public/models/*
