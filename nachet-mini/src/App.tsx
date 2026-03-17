@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import SaveIcon from "@mui/icons-material/Save";
 import { useImageStore } from "@stores/useImageStore";
 import { useInferenceStore } from "@stores/useInferenceStore";
 import { useInference } from "@inference/useInference";
@@ -20,6 +21,7 @@ import {
   buildModelConfig,
 } from "@inference/models";
 import ImageUpload from "@components/ImageUpload";
+import SaveDialog from "@components/SaveDialog";
 import ImageGallery from "@components/ImageGallery";
 import ResultsTable from "@components/ResultsTable";
 import ImageViewer from "@components/ImageViewer";
@@ -111,6 +113,7 @@ function App() {
 
   // Local state
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
   const [selectedDetectorId, setSelectedDetectorId] = useState(
     DEFAULT_DETECTOR.id,
   );
@@ -225,6 +228,12 @@ function App() {
                   setUploadOpen(true);
                 }}
               />
+              <ControlBarButton
+                label="Save"
+                icon={<SaveIcon color="inherit" style={iconStyle} />}
+                disabled={images.length === 0}
+                onClick={() => setSaveOpen(true)}
+              />
               <ModelLoader
                 detectors={DETECTOR_MODELS}
                 classifiers={CLASSIFIER_MODELS}
@@ -302,6 +311,10 @@ function App() {
           setUploadOpen(false);
         }}
         onImageLoaded={handleImageLoaded}
+      />
+      <SaveDialog
+        open={saveOpen}
+        onClose={() => setSaveOpen(false)}
       />
     </ThemeProvider>
   );
