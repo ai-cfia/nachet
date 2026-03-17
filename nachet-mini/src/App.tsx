@@ -254,7 +254,10 @@ function App() {
               }}
             >
               {/* Webcam toggle */}
-              <FormControl size="small" sx={{ minWidth: "8vw", maxWidth: "8vw" }}>
+              <FormControl
+                size="small"
+                sx={{ minWidth: "8vw", maxWidth: "8vw" }}
+              >
                 <InputLabel sx={{ fontSize: "1.2vh" }}>Camera</InputLabel>
                 <Select
                   value={activeDeviceId ?? ""}

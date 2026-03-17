@@ -90,6 +90,11 @@ export const DEFAULT_CLASSIFIER = CLASSIFIER_MODELS[0];
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Build the Hugging Face model page URL from a model ID. */
+export function huggingFaceUrl(modelId: string): string {
+  return `https://huggingface.co/${modelId}`;
+}
+
 /** Assemble a ModelConfig from independent detector and classifier selections. */
 export function buildModelConfig(
   detector: DetectorModelEntry,

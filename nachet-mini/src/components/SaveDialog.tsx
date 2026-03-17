@@ -57,7 +57,9 @@ const SaveDialog = ({ open, onClose }: Props) => {
           return;
         }
         if (!/^[a-zA-Z0-9 _.-]+$/.test(trimmed)) {
-          setLabelError("Only letters, numbers, spaces, dashes, underscores, and periods");
+          setLabelError(
+            "Only letters, numbers, spaces, dashes, underscores, and periods",
+          );
           return;
         }
 
@@ -68,10 +70,7 @@ const SaveDialog = ({ open, onClose }: Props) => {
       } else {
         const zip = new JSZip();
         images.forEach((image) => {
-          const base64Data = image.src.replace(
-            /^data:image\/\w+;base64,/,
-            "",
-          );
+          const base64Data = image.src.replace(/^data:image\/\w+;base64,/, "");
           zip.file(`Capture-${image.index}-${dateStr}.${ext}`, base64Data, {
             base64: true,
           });
@@ -134,10 +133,16 @@ const SaveDialog = ({ open, onClose }: Props) => {
             }}
             sx={{ marginBottom: "2vh", height: "3vh" }}
           >
-            <ToggleButton value="individual" sx={{ textTransform: "none", fontSize: "1.1vh" }}>
+            <ToggleButton
+              value="individual"
+              sx={{ textTransform: "none", fontSize: "1.1vh" }}
+            >
               Current Image
             </ToggleButton>
-            <ToggleButton value="cache" sx={{ textTransform: "none", fontSize: "1.1vh" }}>
+            <ToggleButton
+              value="cache"
+              sx={{ textTransform: "none", fontSize: "1.1vh" }}
+            >
               All Images (ZIP)
             </ToggleButton>
           </ToggleButtonGroup>
