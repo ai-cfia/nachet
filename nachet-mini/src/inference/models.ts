@@ -58,13 +58,13 @@ export type WorkerOutMessage =
 
 export const DETECTOR_MODELS: DetectorModelEntry[] = [
   {
-    id: "rtdetrv2-cfia",
+    id: "rt-detr-v2 64spp",
     model: "cfia-ai-lab/rtdetr_v2_r50vd-64spp-ft",
     threshold: 0.3,
     modelFileName: "model_patched",
   },
   {
-    id: "detr-resnet-50",
+    id: "detr-resnet-50 0spp",
     model: "Xenova/detr-resnet-50",
     threshold: 0.5,
   },
@@ -72,12 +72,12 @@ export const DETECTOR_MODELS: DetectorModelEntry[] = [
 
 export const CLASSIFIER_MODELS: ClassifierModelEntry[] = [
   {
-    id: "swin-large-cfia",
+    id: "swin-L 64spp",
     model: "cfia-ai-lab/swin-large-patch4-window12-384-in22k-64spp-ft",
     topK: 5,
   },
   {
-    id: "vit-base-224",
+    id: "vit-base-224 0spp",
     model: "Xenova/vit-base-patch16-224",
     topK: 5,
   },
@@ -89,6 +89,11 @@ export const DEFAULT_CLASSIFIER = CLASSIFIER_MODELS[0];
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Build the Hugging Face model page URL from a model ID. */
+export function huggingFaceUrl(modelId: string): string {
+  return `https://huggingface.co/${modelId}`;
+}
 
 /** Assemble a ModelConfig from independent detector and classifier selections. */
 export function buildModelConfig(

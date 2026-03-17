@@ -128,7 +128,7 @@ function App() {
   // Local state
   const [uploadOpen, setUploadOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
-  const [isWebcamActive, setIsWebcamActive] = useState(false);
+  const [isWebcamActive, setIsWebcamActive] = useState(true);
   const [webcamError, setWebcamError] = useState("");
   const webcamRef = useRef<Webcam | null>(null);
   const [selectedDetectorId, setSelectedDetectorId] = useState(
@@ -254,7 +254,10 @@ function App() {
               }}
             >
               {/* Webcam toggle */}
-              <FormControl size="small" sx={{ minWidth: "8vw", maxWidth: "8vw" }}>
+              <FormControl
+                size="small"
+                sx={{ minWidth: "8vw", maxWidth: "8vw" }}
+              >
                 <InputLabel sx={{ fontSize: "1.2vh" }}>Camera</InputLabel>
                 <Select
                   value={activeDeviceId ?? ""}
@@ -262,6 +265,7 @@ function App() {
                   label="Camera"
                   displayEmpty
                   sx={{ fontSize: "1.2vh" }}
+                  disabled={!isWebcamActive}
                 >
                   {devices.length === 0 ? (
                     <MenuItem value="" disabled sx={{ fontSize: "1.2vh" }}>

@@ -2,17 +2,20 @@ import {
   Box,
   Button,
   FormControl,
+  IconButton,
   InputLabel,
   LinearProgress,
   MenuItem,
   Select,
   Typography,
 } from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import type { SelectChangeEvent } from "@mui/material";
 import type {
   DetectorModelEntry,
   ClassifierModelEntry,
 } from "@inference/models";
+import { huggingFaceUrl } from "@inference/models";
 import type { ModelLoadProgress } from "@stores/useInferenceStore";
 
 interface Props {
@@ -37,87 +40,118 @@ const ModelLoader = ({
   onLoad,
   isLoading,
   progress,
-}: Props) => (
-  <Box sx={{ display: "flex", alignItems: "center", gap: "0.4vh" }}>
-    {isLoading && progress && (
-      <Box sx={{ minWidth: "12vw" }}>
-        <Typography
-          variant="caption"
-          sx={{ fontSize: "1vh", color: "text.secondary" }}
+}: Props) => {
+  const selectedDetector = detectors.find((d) => d.id === selectedDetectorId);
+  const selectedClassifier = classifiers.find(
+    (c) => c.id === selectedClassifierId,
+  );
+
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: "0.4vh" }}>
+      {isLoading && progress && (
+        <Box sx={{ minWidth: "12vw" }}>
+          <Typography
+            variant="caption"
+            sx={{ fontSize: "1vh", color: "text.secondary" }}
+          >
+            {progress.name} {Math.round(progress.progress)}%
+          </Typography>
+          <LinearProgress
+            variant="determinate"
+            value={progress.progress}
+            sx={{ height: "0.6vh", borderRadius: "0.3vh" }}
+          />
+        </Box>
+      )}
+
+      <FormControl size="small" sx={{ minWidth: "9vw", maxWidth: "9vw" }}>
+        <InputLabel sx={{ fontSize: "1.2vh" }}>Detector</InputLabel>
+        <Select
+          value={selectedDetectorId}
+          label="Detector"
+          onChange={(e: SelectChangeEvent<string>) => {
+            onSelectDetector(e.target.value);
+          }}
+          disabled={isLoading}
+          sx={{ fontSize: "1.2vh" }}
         >
-          {progress.name} {Math.round(progress.progress)}%
-        </Typography>
-        <LinearProgress
-          variant="determinate"
-          value={progress.progress}
-          sx={{ height: "0.6vh", borderRadius: "0.3vh" }}
-        />
-      </Box>
-    )}
+          {detectors.map((d) => (
+            <MenuItem key={d.id} value={d.id} sx={{ fontSize: "1.2vh" }}>
+              {d.id}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      {selectedDetector && (
+        <IconButton
+          component="a"
+          href={huggingFaceUrl(selectedDetector.model)}
+          target="_blank"
+          rel="noopener noreferrer"
+          size="small"
+          sx={{ paddingRight: "0.6vh", paddingLeft: "0vh" }}
+        >
+          <InfoOutlinedIcon sx={{ fontSize: "1.6vh" }} />
+        </IconButton>
+      )}
 
-    <FormControl size="small" sx={{ minWidth: "11vw" }}>
-      <InputLabel sx={{ fontSize: "1.2vh" }}>Detector</InputLabel>
-      <Select
-        value={selectedDetectorId}
-        label="Detector"
-        onChange={(e: SelectChangeEvent<string>) => {
-          onSelectDetector(e.target.value);
-        }}
+      <FormControl size="small" sx={{ minWidth: "9vw", maxWidth: "9vw" }}>
+        <InputLabel sx={{ fontSize: "1.2vh" }}>Classifier</InputLabel>
+        <Select
+          value={selectedClassifierId}
+          label="Classifier"
+          onChange={(e: SelectChangeEvent<string>) => {
+            onSelectClassifier(e.target.value);
+          }}
+          disabled={isLoading}
+          sx={{ fontSize: "1.2vh" }}
+        >
+          {classifiers.map((c) => (
+            <MenuItem key={c.id} value={c.id} sx={{ fontSize: "1.2vh" }}>
+              {c.id}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      {selectedClassifier && (
+        <IconButton
+          component="a"
+          href={huggingFaceUrl(selectedClassifier.model)}
+          target="_blank"
+          rel="noopener noreferrer"
+          size="small"
+          sx={{ paddingRight: "0.6vh", paddingLeft: "0vh" }}
+        >
+          <InfoOutlinedIcon sx={{ fontSize: "1.6vh" }} />
+        </IconButton>
+      )}
+
+      <Button
+        color="inherit"
+        variant="outlined"
+        onClick={onLoad}
         disabled={isLoading}
-        sx={{ fontSize: "1.2vh" }}
-      >
-        {detectors.map((d) => (
-          <MenuItem key={d.id} value={d.id} sx={{ fontSize: "1.2vh" }}>
-            {d.id}
-          </MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-
-    <FormControl size="small" sx={{ minWidth: "11vw" }}>
-      <InputLabel sx={{ fontSize: "1.2vh" }}>Classifier</InputLabel>
-      <Select
-        value={selectedClassifierId}
-        label="Classifier"
-        onChange={(e: SelectChangeEvent<string>) => {
-          onSelectClassifier(e.target.value);
+        sx={{
+          borderRadius: "0.4vh",
+          paddingTop: "0.3vh",
+          paddingBottom: "0.3vh",
+          paddingLeft: "0.7vh",
+          paddingRight: "0.7vh",
+          fontSize: "1.17vh",
+          width: "fit-content",
+          border: "0.01vh solid LightGrey",
+          textTransform: "none",
+          whiteSpace: "nowrap",
+          "&:hover": {
+            backgroundColor: "#F5F5F5",
+            transition: "0.1s ease-in-out all",
+          },
         }}
-        disabled={isLoading}
-        sx={{ fontSize: "1.2vh" }}
       >
-        {classifiers.map((c) => (
-          <MenuItem key={c.id} value={c.id} sx={{ fontSize: "1.2vh" }}>
-            {c.id}
-          </MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-
-    <Button
-      color="inherit"
-      variant="outlined"
-      onClick={onLoad}
-      disabled={isLoading}
-      sx={{
-        borderRadius: "0.4vh",
-        paddingTop: "0.3vh",
-        paddingBottom: "0.3vh",
-        paddingLeft: "0.7vh",
-        paddingRight: "0.7vh",
-        fontSize: "1.17vh",
-        width: "fit-content",
-        border: "0.01vh solid LightGrey",
-        textTransform: "none",
-        whiteSpace: "nowrap",
-        "&:hover": {
-          backgroundColor: "#F5F5F5",
-          transition: "0.1s ease-in-out all",
-        },
-      }}
-    >
-      {isLoading ? "Loading…" : "Load Model"}
-    </Button>
-  </Box>
-);
+        {isLoading ? "Loading…" : "Load Model"}
+      </Button>
+    </Box>
+  );
+};
 
 export default ModelLoader;
