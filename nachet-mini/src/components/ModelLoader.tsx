@@ -94,11 +94,26 @@ const ModelLoader = ({
     </FormControl>
 
     <Button
-      variant="contained"
-      size="small"
+      color="inherit"
+      variant="outlined"
       onClick={onLoad}
       disabled={isLoading}
-      sx={{ fontSize: "1.1vh", textTransform: "none", whiteSpace: "nowrap" }}
+      sx={{
+        borderRadius: "0.4vh",
+        paddingTop: "0.3vh",
+        paddingBottom: "0.3vh",
+        paddingLeft: "0.7vh",
+        paddingRight: "0.7vh",
+        fontSize: "1.17vh",
+        width: "fit-content",
+        border: "0.01vh solid LightGrey",
+        textTransform: "none",
+        whiteSpace: "nowrap",
+        "&:hover": {
+          backgroundColor: "#F5F5F5",
+          transition: "0.1s ease-in-out all",
+        },
+      }}
     >
       {isLoading ? "Loading…" : "Load Model"}
     </Button>
