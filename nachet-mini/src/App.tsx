@@ -39,6 +39,7 @@ import ModelLoader from "@components/ModelLoader";
 import Navbar from "@components/Navbar";
 import AppBar from "@components/AppBar";
 import Footer from "@components/Footer";
+import { useTranslation } from "react-i18next";
 
 const theme = createTheme();
 
@@ -101,6 +102,8 @@ const iconStyle = {
 };
 
 function App() {
+  const { t } = useTranslation("main");
+
   // Webcam
   const { devices, activeDeviceId } = useWebcamDevices();
   const setActiveDeviceId = useWebcamStore((s) => s.setActiveDeviceId);
@@ -162,7 +165,7 @@ function App() {
 
   const handleWebcamError = (err: string | DOMException) => {
     const message = err instanceof DOMException ? err.message : String(err);
-    setWebcamError(`Camera error: ${message}`);
+    setWebcamError(t("status.cameraError", { message }));
   };
 
   const handleLoadModel = () => {
@@ -194,13 +197,13 @@ function App() {
 
   const statusText = (() => {
     if (webcamError && isWebcamActive) return webcamError;
-    if (error) return `Error: ${error}`;
-    if (status === "loading-model") return "Loading model…";
-    if (status === "detecting") return "Detecting objects…";
-    if (status === "classifying") return "Classifying detections…";
-    if (status === "complete") return "Inference complete";
-    if (modelLoaded) return "Model ready";
-    return "No model loaded";
+    if (error) return t("status.error", { error });
+    if (status === "loading-model") return t("status.loadingModel");
+    if (status === "detecting") return t("status.detecting");
+    if (status === "classifying") return t("status.classifying");
+    if (status === "complete") return t("status.inferenceComplete");
+    if (modelLoaded) return t("status.modelReady");
+    return t("status.noModelLoaded");
   })();
 
   return (
@@ -258,18 +261,20 @@ function App() {
                 size="small"
                 sx={{ minWidth: "8vw", maxWidth: "8vw" }}
               >
-                <InputLabel sx={{ fontSize: "1.2vh" }}>Camera</InputLabel>
+                <InputLabel sx={{ fontSize: "1.2vh" }}>
+                  {t("controls.camera")}
+                </InputLabel>
                 <Select
                   value={activeDeviceId ?? ""}
                   onChange={(e) => setActiveDeviceId(e.target.value)}
-                  label="Camera"
+                  label={t("controls.camera")}
                   displayEmpty
                   sx={{ fontSize: "1.2vh" }}
                   disabled={!isWebcamActive}
                 >
                   {devices.length === 0 ? (
                     <MenuItem value="" disabled sx={{ fontSize: "1.2vh" }}>
-                      No camera
+                      {t("controls.noCamera")}
                     </MenuItem>
                   ) : (
                     devices.map((device) => (
@@ -279,14 +284,16 @@ function App() {
                         sx={{ fontSize: "1.2vh" }}
                       >
                         {device.label ||
-                          `Camera ${device.deviceId.slice(0, 8)}`}
+                          t("controls.cameraDevice", {
+                            id: device.deviceId.slice(0, 8),
+                          })}
                       </MenuItem>
                     ))
                   )}
                 </Select>
               </FormControl>
               <ControlBarButton
-                label="Capture"
+                label={t("controls.capture")}
                 icon={<AddAPhotoIcon color="inherit" style={iconStyle} />}
                 disabled={!isWebcamActive}
                 onClick={handleCaptureFeed}
@@ -302,7 +309,7 @@ function App() {
 
               {/* Capture (webcam active only) */}
               <ControlBarButton
-                label="Upload"
+                label={t("controls.upload")}
                 icon={
                   <AddPhotoAlternateIcon color="inherit" style={iconStyle} />
                 }
@@ -312,7 +319,7 @@ function App() {
                 }}
               />
               <ControlBarButton
-                label="Save"
+                label={t("controls.save")}
                 icon={<SaveIcon color="inherit" style={iconStyle} />}
                 disabled={isWebcamActive || images.length === 0}
                 onClick={() => setSaveOpen(true)}
@@ -329,7 +336,7 @@ function App() {
                 progress={modelLoadProgress}
               />
               <ControlBarButton
-                label="Run Inference"
+                label={t("controls.runInference")}
                 icon={<PlayArrowIcon color="inherit" style={iconStyle} />}
                 disabled={!canRunInference}
                 onClick={handleRunInference}

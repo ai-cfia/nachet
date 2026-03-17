@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { validateImageFile } from "@common/imageutils";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   open: boolean;
@@ -18,6 +19,7 @@ interface Props {
 }
 
 const ImageUpload = ({ open, onClose, onImageLoaded }: Props) => {
+  const { t } = useTranslation("main");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string>("");
 
@@ -31,8 +33,9 @@ const ImageUpload = ({ open, onClose, onImageLoaded }: Props) => {
     const validation = await validateImageFile(file);
 
     if (!validation.isValid) {
-      setError(validation.errors.join("\n"));
-      // Reset so the same file can be re-selected after fixing the issue
+      setError(
+        validation.errorKeys.map((key) => t(`validation.${key}`)).join("\n"),
+      );
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -80,7 +83,7 @@ const ImageUpload = ({ open, onClose, onImageLoaded }: Props) => {
               variant="h6"
               sx={{ fontWeight: 600, fontSize: "1.8vh", color: "text.primary" }}
             >
-              Upload Image
+              {t("imageUpload.title")}
             </Typography>
             <IconButton onClick={handleClose} size="small" aria-label="close">
               <CloseIcon />
@@ -112,7 +115,7 @@ const ImageUpload = ({ open, onClose, onImageLoaded }: Props) => {
               fullWidth
               sx={{ fontSize: "1.2vh", textTransform: "none" }}
             >
-              Choose File
+              {t("imageUpload.chooseFile")}
             </Button>
           </Box>
 

@@ -1,7 +1,7 @@
 {
   "name": "nachet-mini",
   "private": true,
-  "version": "0.0.5",
+  "version": "0.0.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -25,9 +25,12 @@
     "@mui/icons-material": "^7.3.8",
     "@mui/material": "^7.3.8",
     "file-saver": "^2.0.5",
+    "i18next": "^25.8.18",
+    "i18next-browser-languagedetector": "^8.2.1",
     "jszip": "^3.10.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-i18next": "^16.5.8",
     "react-webcam": "^7.2.0",
     "zustand": "^5.0.11"
   },

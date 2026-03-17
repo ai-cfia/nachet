@@ -2,7 +2,7 @@ import type { BoxCoordinates } from "./types";
 
 interface ImageValidationResult {
   isValid: boolean;
-  errors: string[];
+  errorKeys: string[];
   dimensions?: {
     width: number;
     height: number;
@@ -15,36 +15,36 @@ interface ImageValidationResult {
 export const validateImageFile = async (
   file: File,
 ): Promise<ImageValidationResult> => {
-  const errors: string[] = [];
+  const errorKeys: string[] = [];
 
   // Accept PNG and JPEG (broader format support for demos)
   if (file.type !== "image/png" && file.type !== "image/jpeg") {
-    errors.push("File must be a PNG or JPEG image");
+    errorKeys.push("invalidType");
   }
 
   const maxSize = 10 * 1024 * 1024;
   if (file.size > maxSize) {
-    errors.push("File size must be less than 10MB");
+    errorKeys.push("fileTooLarge");
   }
 
   try {
     const dimensions = await getImageDimensions(file);
 
     if (dimensions.width > 1920 || dimensions.height > 1080) {
-      errors.push("Image dimensions must not exceed 1920x1080 pixels");
+      errorKeys.push("dimensionsTooLarge");
     }
 
     return {
-      isValid: errors.length === 0,
-      errors,
+      isValid: errorKeys.length === 0,
+      errorKeys,
       dimensions,
     };
   } catch (error) {
-    errors.push("Unable to read image dimensions");
+    errorKeys.push("unreadableDimensions");
     console.error("Error getting image dimensions:", error);
     return {
       isValid: false,
-      errors,
+      errorKeys,
     };
   }
 };

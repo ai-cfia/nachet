@@ -15,6 +15,7 @@ import SwitchLeftIcon from "@mui/icons-material/SwitchLeft";
 import CropFreeIcon from "@mui/icons-material/CropFree";
 import LabelIcon from "@mui/icons-material/Label";
 import type { InferenceResult } from "@common/types";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   result: InferenceResult | null;
@@ -23,6 +24,7 @@ interface Props {
 }
 
 const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
+  const { t } = useTranslation("main");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [selectedLabel, setSelectedLabel] = useState<string>("all");
 
@@ -46,7 +48,7 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
           fontSize: "0.75em",
         }}
       >
-        Top results
+        {t("resultsTable.topResults")}
       </Typography>
       {topN.map((item, i) => {
         const pct =
@@ -90,7 +92,7 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
       data-testid="results-table-component"
     >
       <CardHeader
-        title="Classification Results"
+        title={t("resultsTable.title")}
         titleTypographyProps={{
           variant: "h6",
           align: "left",
@@ -320,7 +322,7 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                               size={12}
                               sx={{ color: "text.secondary" }}
                             />
-                            <span>Classifying...</span>
+                            <span>{t("resultsTable.classifying")}</span>
                           </Box>
                         ) : (
                           prediction

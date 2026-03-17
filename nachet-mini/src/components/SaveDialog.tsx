@@ -17,6 +17,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { saveAs } from "file-saver";
 import JSZip from "jszip";
 import { useImageStore } from "@stores/useImageStore";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   open: boolean;
@@ -24,6 +25,8 @@ interface Props {
 }
 
 const SaveDialog = ({ open, onClose }: Props) => {
+  const { t } = useTranslation("main");
+  const { t: tCommon } = useTranslation("common");
   const images = useImageStore((s) => s.images);
   const getCurrentImage = useImageStore((s) => s.getCurrentImage);
 
@@ -53,13 +56,11 @@ const SaveDialog = ({ open, onClose }: Props) => {
       if (mode === "individual") {
         const trimmed = imageLabel.trim();
         if (!trimmed) {
-          setLabelError("Label is required");
+          setLabelError(t("saveDialog.labelRequired"));
           return;
         }
         if (!/^[a-zA-Z0-9 _.-]+$/.test(trimmed)) {
-          setLabelError(
-            "Only letters, numbers, spaces, dashes, underscores, and periods",
-          );
+          setLabelError(t("saveDialog.labelInvalid"));
           return;
         }
 
@@ -117,7 +118,7 @@ const SaveDialog = ({ open, onClose }: Props) => {
                 color: "text.primary",
               }}
             >
-              Save Image
+              {t("saveDialog.title")}
             </Typography>
             <IconButton onClick={handleClose} size="small" aria-label="close">
               <CloseIcon />
@@ -137,19 +138,19 @@ const SaveDialog = ({ open, onClose }: Props) => {
               value="individual"
               sx={{ textTransform: "none", fontSize: "1.1vh" }}
             >
-              Current Image
+              {t("saveDialog.currentImage")}
             </ToggleButton>
             <ToggleButton
               value="cache"
               sx={{ textTransform: "none", fontSize: "1.1vh" }}
             >
-              All Images (ZIP)
+              {t("saveDialog.allImages")}
             </ToggleButton>
           </ToggleButtonGroup>
 
           {mode === "individual" && (
             <TextField
-              label="Image name"
+              label={t("saveDialog.imageName")}
               variant="outlined"
               value={imageLabel}
               onChange={(e) => {
@@ -187,7 +188,7 @@ const SaveDialog = ({ open, onClose }: Props) => {
               onClick={handleClose}
               sx={{ fontSize: "1.1vh", textTransform: "none" }}
             >
-              Cancel
+              {tCommon("actions.cancel")}
             </Button>
             <Button
               variant="contained"
@@ -195,7 +196,7 @@ const SaveDialog = ({ open, onClose }: Props) => {
               disabled={images.length === 0}
               sx={{ fontSize: "1.1vh", textTransform: "none" }}
             >
-              Save
+              {tCommon("actions.save")}
             </Button>
           </Box>
         </Box>
