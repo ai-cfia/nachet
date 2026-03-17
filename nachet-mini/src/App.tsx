@@ -27,6 +27,64 @@ import ModelLoader from "@components/ModelLoader";
 
 const theme = createTheme();
 
+const ControlBarButton = (props: {
+  label: string;
+  icon: React.ReactNode;
+  disabled: boolean;
+  onClick: () => void;
+  sx?: object;
+}) => {
+  const { label, icon, onClick, disabled, sx } = props;
+  const buttonStyle = {
+    borderRadius: "0.4vh",
+    paddingTop: "0.3vh",
+    paddingBottom: "0.3vh",
+    paddingLeft: "0.7vh",
+    paddingRight: "0.7vh",
+    fontSize: "1.17vh",
+    width: "fit-content",
+    border: "0.01vh solid LightGrey",
+    textTransform: "none",
+    "&:hover": {
+      backgroundColor: "#F5F5F5",
+      transition: "0.1s ease-in-out all",
+    },
+    ...sx,
+  };
+  return (
+    <Button
+      color="inherit"
+      variant="outlined"
+      disabled={disabled}
+      onClick={onClick}
+      sx={buttonStyle}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        {icon}
+        <span>{label}</span>
+      </div>
+    </Button>
+  );
+};
+
+const iconStyle = {
+  fontSize: "1.7vh",
+  paddingRight: "0.4vh",
+  marginTop: 0,
+  marginBottom: 0,
+  marginRight: 0,
+  marginLeft: 0,
+  paddingTop: 0,
+  paddingBottom: 0,
+  paddingLeft: 0,
+};
+
 function App() {
   // Image store
   const images = useImageStore((s) => s.images);
@@ -104,22 +162,6 @@ function App() {
     return "No model loaded";
   })();
 
-  const controlButtonSx = {
-    borderRadius: "0.4vh",
-    paddingTop: "0.3vh",
-    paddingBottom: "0.3vh",
-    paddingLeft: "0.7vh",
-    paddingRight: "0.7vh",
-    fontSize: "1.17vh",
-    width: "fit-content",
-    border: "0.01vh solid LightGrey",
-    textTransform: "none",
-    "&:hover": {
-      backgroundColor: "#F5F5F5",
-      transition: "0.1s ease-in-out all",
-    },
-  } as const;
-
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -182,6 +224,16 @@ function App() {
                 flexShrink: 0,
               }}
             >
+              <ControlBarButton
+                label="Upload"
+                icon={
+                  <AddPhotoAlternateIcon color="inherit" style={iconStyle} />
+                }
+                disabled={false}
+                onClick={() => {
+                  setUploadOpen(true);
+                }}
+              />
               <ModelLoader
                 detectors={DETECTOR_MODELS}
                 classifiers={CLASSIFIER_MODELS}
@@ -193,31 +245,6 @@ function App() {
                 isLoading={isLoading}
                 progress={modelLoadProgress}
               />
-              <Button
-                color="inherit"
-                variant="outlined"
-                size="small"
-                onClick={() => {
-                  setUploadOpen(true);
-                }}
-                sx={controlButtonSx}
-              >
-                <AddPhotoAlternateIcon
-                  sx={{ fontSize: "1.7vh", pr: "0.4vh" }}
-                />
-                <span>Upload</span>
-              </Button>
-              <Button
-                color="inherit"
-                variant="outlined"
-                size="small"
-                onClick={handleRunInference}
-                disabled={!canRunInference}
-                sx={controlButtonSx}
-              >
-                <PlayArrowIcon sx={{ fontSize: "1.7vh", pr: "0.4vh" }} />
-                <span>Run Inference</span>
-              </Button>
               <Typography
                 variant="body2"
                 sx={{
@@ -226,6 +253,12 @@ function App() {
                   ml: "0.4vh",
                 }}
               >
+              <ControlBarButton
+                label="Run Inference"
+                icon={<PlayArrowIcon color="inherit" style={iconStyle} />}
+                disabled={!canRunInference}
+                onClick={handleRunInference}
+              />
                 {statusText}
               </Typography>
             </Box>
