@@ -24,6 +24,9 @@ import ImageGallery from "@components/ImageGallery";
 import ResultsTable from "@components/ResultsTable";
 import ImageViewer from "@components/ImageViewer";
 import ModelLoader from "@components/ModelLoader";
+import Navbar from "@components/Navbar";
+import AppBar from "@components/AppBar";
+import Footer from "@components/Footer";
 
 const theme = createTheme();
 
@@ -174,20 +177,8 @@ function App() {
         }}
       >
         {/* Header */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            px: "1.5vw",
-            height: "4vh",
-            flexShrink: 0,
-            borderBottom: "0.01vh solid LightGrey",
-          }}
-        >
-          <Typography sx={{ fontWeight: 700, fontSize: "2vh" }}>
-            Nachet Mini
-          </Typography>
-        </Box>
+        <Navbar />
+        <AppBar />
 
         {/* Main content */}
         <Box
@@ -300,6 +291,9 @@ function App() {
             />
           </Box>
         </Box>
+
+        {/* Footer */}
+        <Footer />
       </Box>
 
       <ImageUpload
