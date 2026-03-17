@@ -51,9 +51,7 @@ const Footer: React.FC = () => {
             fontSize: "1rem",
           }}
         >
-          {versions.version
-            ? t("version", { version: versions.version })
-            : ""}
+          {versions.version ? t("version", { version: versions.version }) : ""}
         </Box>
         <Box
           component="img"

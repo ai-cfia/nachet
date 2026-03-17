@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -178,6 +178,12 @@ function App() {
     loadModels(buildModelConfig(detector, classifier));
   };
 
+  // Auto-load models on startup and whenever selection changes
+  useEffect(() => {
+    handleLoadModel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDetectorId, selectedClassifierId]);
+
   const handleRunInference = () => {
     if (!currentImage) return;
     runInference(currentImage.src, currentImage.index);
@@ -331,7 +337,6 @@ function App() {
                 selectedClassifierId={selectedClassifierId}
                 onSelectDetector={setSelectedDetectorId}
                 onSelectClassifier={setSelectedClassifierId}
-                onLoad={handleLoadModel}
                 isLoading={isLoading}
                 progress={modelLoadProgress}
               />
