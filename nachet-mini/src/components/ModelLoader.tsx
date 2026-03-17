@@ -38,7 +38,7 @@ const ModelLoader = ({
   isLoading,
   progress,
 }: Props) => (
-  <Box sx={{ display: "flex", alignItems: "center", gap: "1vw" }}>
+  <Box sx={{ display: "flex", alignItems: "center", gap: "0.4vh" }}>
     {isLoading && progress && (
       <Box sx={{ minWidth: "12vw" }}>
         <Typography
