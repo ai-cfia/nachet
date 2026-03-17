@@ -245,6 +245,12 @@ function App() {
                 isLoading={isLoading}
                 progress={modelLoadProgress}
               />
+              <ControlBarButton
+                label="Run Inference"
+                icon={<PlayArrowIcon color="inherit" style={iconStyle} />}
+                disabled={!canRunInference}
+                onClick={handleRunInference}
+              />
               <Typography
                 variant="body2"
                 sx={{
@@ -253,12 +259,6 @@ function App() {
                   ml: "0.4vh",
                 }}
               >
-              <ControlBarButton
-                label="Run Inference"
-                icon={<PlayArrowIcon color="inherit" style={iconStyle} />}
-                disabled={!canRunInference}
-                onClick={handleRunInference}
-              />
                 {statusText}
               </Typography>
             </Box>
