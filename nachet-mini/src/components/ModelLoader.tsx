@@ -64,7 +64,7 @@ const ModelLoader = ({
         </Box>
       )}
 
-      <FormControl size="small" sx={{ minWidth: "8vw", maxWidth: "8vw" }}>
+      <FormControl size="small" sx={{ minWidth: "9vw", maxWidth: "9vw" }}>
         <InputLabel sx={{ fontSize: "1.2vh" }}>Detector</InputLabel>
         <Select
           value={selectedDetectorId}
@@ -95,7 +95,7 @@ const ModelLoader = ({
         </IconButton>
       )}
 
-      <FormControl size="small" sx={{ minWidth: "8vw", maxWidth: "8vw" }}>
+      <FormControl size="small" sx={{ minWidth: "9vw", maxWidth: "9vw" }}>
         <InputLabel sx={{ fontSize: "1.2vh" }}>Classifier</InputLabel>
         <Select
           value={selectedClassifierId}
