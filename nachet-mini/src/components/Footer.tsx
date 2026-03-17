@@ -2,8 +2,11 @@ import { Box, Link } from "@mui/material";
 import CanadaLogo from "../assets/Canada_logo.png";
 import { colours } from "../styles/colours";
 import { versions } from "../_versions";
+import { useTranslation } from "react-i18next";
 
 const Footer: React.FC = () => {
+  const { t } = useTranslation("footer");
+
   return (
     <Box
       component="footer"
@@ -39,7 +42,7 @@ const Footer: React.FC = () => {
             cursor: "pointer",
           }}
         >
-          Developed by AI Lab
+          {t("developedBy")}
         </Link>
         <Box
           component="span"
@@ -48,12 +51,14 @@ const Footer: React.FC = () => {
             fontSize: "1rem",
           }}
         >
-          {versions.version ? `Version: ${versions.version}` : ""}
+          {versions.version
+            ? t("version", { version: versions.version })
+            : ""}
         </Box>
         <Box
           component="img"
           src={CanadaLogo}
-          alt="Canada Logo"
+          alt={t("canadaLogoAlt")}
           sx={{
             width: "6vw",
             zIndex: 0,

@@ -1,7 +1,18 @@
 import { colours } from "../styles/colours";
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, Switch, Stack } from "@mui/material";
+import { useTranslation } from "react-i18next";
 
 const AppBar: React.FC = () => {
+  const { t, i18n } = useTranslation("header");
+
+  const currentLanguage = i18n.language;
+  const isFrench = currentLanguage === "fr";
+
+  const handleLanguageChange = () => {
+    const newLanguage = isFrench ? "en" : "fr";
+    i18n.changeLanguage(newLanguage);
+  };
+
   return (
     <Box
       sx={{
@@ -40,8 +51,49 @@ const AppBar: React.FC = () => {
             zIndex: 3,
           }}
         >
-          Nachet Mini
+          {t("appBar.title")}
         </Typography>
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          sx={{ height: "100%" }}
+        >
+          <Typography
+            sx={{
+              fontSize: "1.2vh",
+              color: colours.CFIA_Font_White,
+              fontWeight: isFrench ? "normal" : "bold",
+            }}
+          >
+            {t("appBar.languageToggle.en")}
+          </Typography>
+          <Switch
+            checked={isFrench}
+            onChange={handleLanguageChange}
+            size="small"
+            sx={{
+              "& .MuiSwitch-switchBase.Mui-checked": {
+                color: colours.CFIA_Font_White,
+              },
+              "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                backgroundColor: colours.CFIA_Font_White,
+              },
+              "& .MuiSwitch-track": {
+                backgroundColor: colours.CFIA_Font_White,
+              },
+            }}
+          />
+          <Typography
+            sx={{
+              fontSize: "1.2vh",
+              color: colours.CFIA_Font_White,
+              fontWeight: isFrench ? "bold" : "normal",
+            }}
+          >
+            {t("appBar.languageToggle.fr")}
+          </Typography>
+        </Stack>
       </Box>
     </Box>
   );

@@ -17,6 +17,7 @@ import type {
 } from "@inference/models";
 import { huggingFaceUrl } from "@inference/models";
 import type { ModelLoadProgress } from "@stores/useInferenceStore";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   detectors: DetectorModelEntry[];
@@ -41,6 +42,8 @@ const ModelLoader = ({
   isLoading,
   progress,
 }: Props) => {
+  const { t } = useTranslation("main");
+
   const selectedDetector = detectors.find((d) => d.id === selectedDetectorId);
   const selectedClassifier = classifiers.find(
     (c) => c.id === selectedClassifierId,
@@ -65,10 +68,12 @@ const ModelLoader = ({
       )}
 
       <FormControl size="small" sx={{ minWidth: "9vw", maxWidth: "9vw" }}>
-        <InputLabel sx={{ fontSize: "1.2vh" }}>Detector</InputLabel>
+        <InputLabel sx={{ fontSize: "1.2vh" }}>
+          {t("modelLoader.detector")}
+        </InputLabel>
         <Select
           value={selectedDetectorId}
-          label="Detector"
+          label={t("modelLoader.detector")}
           onChange={(e: SelectChangeEvent<string>) => {
             onSelectDetector(e.target.value);
           }}
@@ -96,10 +101,12 @@ const ModelLoader = ({
       )}
 
       <FormControl size="small" sx={{ minWidth: "9vw", maxWidth: "9vw" }}>
-        <InputLabel sx={{ fontSize: "1.2vh" }}>Classifier</InputLabel>
+        <InputLabel sx={{ fontSize: "1.2vh" }}>
+          {t("modelLoader.classifier")}
+        </InputLabel>
         <Select
           value={selectedClassifierId}
-          label="Classifier"
+          label={t("modelLoader.classifier")}
           onChange={(e: SelectChangeEvent<string>) => {
             onSelectClassifier(e.target.value);
           }}
@@ -148,7 +155,7 @@ const ModelLoader = ({
           },
         }}
       >
-        {isLoading ? "Loading…" : "Load Model"}
+        {isLoading ? t("modelLoader.loading") : t("modelLoader.loadModel")}
       </Button>
     </Box>
   );

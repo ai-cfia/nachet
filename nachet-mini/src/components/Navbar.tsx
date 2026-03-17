@@ -1,8 +1,11 @@
 import { Box } from "@mui/material";
 import CFIALogo from "../assets/CFIA_blackfont.png";
 import { colours } from "../styles/colours";
+import { useTranslation } from "react-i18next";
 
 const Navbar: React.FC = () => {
+  const { t } = useTranslation("header");
+
   return (
     <Box
       component="nav"
@@ -32,7 +35,7 @@ const Navbar: React.FC = () => {
         <Box
           component="img"
           src={CFIALogo}
-          alt="CFIA Logo"
+          alt={t("navbar.logoAlt")}
           sx={{
             width: "27vh",
             height: "fit-content",
