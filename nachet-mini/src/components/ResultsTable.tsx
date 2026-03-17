@@ -105,6 +105,7 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
             onClick={() => {
               onSwitchTableChange(!switchTable);
             }}
+            disabled
             aria-label="switch table view"
           >
             <SwitchLeftIcon
