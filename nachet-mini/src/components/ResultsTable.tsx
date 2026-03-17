@@ -79,7 +79,10 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
     <Box
       sx={{
         width: "100%",
-        height: "22.23vh",
+        flex: 1,
+        minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
         border: "0.01vh solid LightGrey",
         borderRadius: "0.4vh",
       }}
@@ -95,7 +98,7 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
           fontSize: "1.3vh",
           color: "text.primary",
         }}
-        sx={{ padding: "0.8vh 1vh 0.8vh 0.8vh" }}
+        sx={{ padding: "0.8vh 1vh 0.8vh 0.8vh", flexShrink: 0 }}
         action={
           <IconButton
             sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
@@ -120,8 +123,8 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
       <TableContainer
         sx={{
           overflow: "auto",
-          height: "18.465vh",
-          maxHeight: "18.465vh",
+          flex: 1,
+          minHeight: 0,
           border: 0,
           borderTopRightRadius: 0,
           borderTopLeftRadius: 0,

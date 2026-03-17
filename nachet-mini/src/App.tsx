@@ -281,7 +281,8 @@ function App() {
               display: "flex",
               flexDirection: "column",
               gap: "1vh",
-              overflowY: "auto",
+              overflow: "hidden",
+              marginTop: "5vh",
             }}
           >
             <ImageGallery
