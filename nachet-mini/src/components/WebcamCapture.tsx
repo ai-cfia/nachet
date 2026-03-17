@@ -33,6 +33,7 @@ const WebcamCapture = ({ webcamRef, onUserMediaError }: Props) => {
           width="100%"
           height="100%"
           style={{ objectFit: "contain", display: "block" }}
+          forceScreenshotSourceSize
           videoConstraints={{
             width: 1920,
             height: 1080,

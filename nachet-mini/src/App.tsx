@@ -137,7 +137,7 @@ function App() {
   const [selectedClassifierId, setSelectedClassifierId] = useState(
     DEFAULT_CLASSIFIER.id,
   );
-  const [switchTable, setSwitchTable] = useState(true);
+  const [switchTable, setSwitchTable] = useState(false);
 
   const currentImage = getCurrentImage();
   const currentResult = currentImage
