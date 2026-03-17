@@ -104,6 +104,22 @@ function App() {
     return "No model loaded";
   })();
 
+  const controlButtonSx = {
+    borderRadius: "0.4vh",
+    paddingTop: "0.3vh",
+    paddingBottom: "0.3vh",
+    paddingLeft: "0.7vh",
+    paddingRight: "0.7vh",
+    fontSize: "1.17vh",
+    width: "fit-content",
+    border: "0.01vh solid LightGrey",
+    textTransform: "none",
+    "&:hover": {
+      backgroundColor: "#F5F5F5",
+      transition: "0.1s ease-in-out all",
+    },
+  } as const;
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -120,9 +136,8 @@ function App() {
           sx={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
             px: "1.5vw",
-            height: "6vh",
+            height: "4vh",
             flexShrink: 0,
             borderBottom: "0.01vh solid LightGrey",
           }}
@@ -130,17 +145,6 @@ function App() {
           <Typography sx={{ fontWeight: 700, fontSize: "2vh" }}>
             Nachet Mini
           </Typography>
-          <ModelLoader
-            detectors={DETECTOR_MODELS}
-            classifiers={CLASSIFIER_MODELS}
-            selectedDetectorId={selectedDetectorId}
-            selectedClassifierId={selectedClassifierId}
-            onSelectDetector={setSelectedDetectorId}
-            onSelectClassifier={setSelectedClassifierId}
-            onLoad={handleLoadModel}
-            isLoading={isLoading}
-            progress={modelLoadProgress}
-          />
         </Box>
 
         {/* Main content */}
@@ -154,20 +158,86 @@ function App() {
             py: "1vh",
           }}
         >
-          {/* Left: Image Viewer */}
+          {/* Left: Controls toolbar + Image Viewer */}
           <Box
             sx={{
               minWidth: "65vw",
-              minHeight: "84vh",
-              maxHeight: "84vh",
+              display: "flex",
+              flexDirection: "column",
               overflow: "hidden",
             }}
           >
-            <ImageViewer
-              src={currentImage?.src}
-              imageDims={currentImage?.imageDims ?? []}
-              result={currentResult}
-            />
+            {/* Controls toolbar */}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "row",
+                justifyContent: "flex-start",
+                flexWrap: "wrap",
+                alignItems: "center",
+                padding: "0.8vh",
+                rowGap: "0.8vh",
+                columnGap: "0.4vh",
+                borderBottom: "0.01vh solid LightGrey",
+                flexShrink: 0,
+              }}
+            >
+              <ModelLoader
+                detectors={DETECTOR_MODELS}
+                classifiers={CLASSIFIER_MODELS}
+                selectedDetectorId={selectedDetectorId}
+                selectedClassifierId={selectedClassifierId}
+                onSelectDetector={setSelectedDetectorId}
+                onSelectClassifier={setSelectedClassifierId}
+                onLoad={handleLoadModel}
+                isLoading={isLoading}
+                progress={modelLoadProgress}
+              />
+              <Button
+                color="inherit"
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setUploadOpen(true);
+                }}
+                sx={controlButtonSx}
+              >
+                <AddPhotoAlternateIcon
+                  sx={{ fontSize: "1.7vh", pr: "0.4vh" }}
+                />
+                <span>Upload</span>
+              </Button>
+              <Button
+                color="inherit"
+                variant="outlined"
+                size="small"
+                onClick={handleRunInference}
+                disabled={!canRunInference}
+                sx={controlButtonSx}
+              >
+                <PlayArrowIcon sx={{ fontSize: "1.7vh", pr: "0.4vh" }} />
+                <span>Run Inference</span>
+              </Button>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontSize: "1.1vh",
+                  color: error ? "error.main" : "text.secondary",
+                  ml: "0.4vh",
+                }}
+              >
+                {statusText}
+              </Typography>
+            </Box>
+
+            {/* Image Viewer */}
+            <Box sx={{ flex: 1, overflow: "hidden" }}>
+              <ImageViewer
+                src={currentImage?.src}
+                imageDims={currentImage?.imageDims ?? []}
+                result={currentResult}
+              />
+            </Box>
           </Box>
 
           {/* Right: Gallery + Results */}
@@ -195,52 +265,6 @@ function App() {
               onSwitchTableChange={setSwitchTable}
             />
           </Box>
-        </Box>
-
-        {/* Footer */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            px: "1.5vw",
-            height: "7vh",
-            flexShrink: 0,
-            borderTop: "0.01vh solid LightGrey",
-          }}
-        >
-          <Box sx={{ display: "flex", gap: "1vw" }}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<AddPhotoAlternateIcon />}
-              onClick={() => {
-                setUploadOpen(true);
-              }}
-              sx={{ fontSize: "1.1vh", textTransform: "none" }}
-            >
-              Upload Image
-            </Button>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<PlayArrowIcon />}
-              onClick={handleRunInference}
-              disabled={!canRunInference}
-              sx={{ fontSize: "1.1vh", textTransform: "none" }}
-            >
-              Run Inference
-            </Button>
-          </Box>
-          <Typography
-            variant="body2"
-            sx={{
-              fontSize: "1.1vh",
-              color: error ? "error.main" : "text.secondary",
-            }}
-          >
-            {statusText}
-          </Typography>
         </Box>
       </Box>
 
