@@ -1,15 +1,24 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Box,
   Button,
   CssBaseline,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Switch,
   ThemeProvider,
   Typography,
   createTheme,
 } from "@mui/material";
+import AddAPhotoIcon from "@mui/icons-material/AddAPhoto";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import SaveIcon from "@mui/icons-material/Save";
+import type Webcam from "react-webcam";
+import { useWebcamDevices } from "@hooks/useWebcamDevices";
+import { useWebcamStore } from "@stores/useWebcamStore";
 import { useImageStore } from "@stores/useImageStore";
 import { useInferenceStore } from "@stores/useInferenceStore";
 import { useInference } from "@inference/useInference";
@@ -21,6 +30,7 @@ import {
   buildModelConfig,
 } from "@inference/models";
 import ImageUpload from "@components/ImageUpload";
+import WebcamCapture from "@components/WebcamCapture";
 import SaveDialog from "@components/SaveDialog";
 import ImageGallery from "@components/ImageGallery";
 import ResultsTable from "@components/ResultsTable";
@@ -91,6 +101,10 @@ const iconStyle = {
 };
 
 function App() {
+  // Webcam
+  const { devices, activeDeviceId } = useWebcamDevices();
+  const setActiveDeviceId = useWebcamStore((s) => s.setActiveDeviceId);
+
   // Image store
   const images = useImageStore((s) => s.images);
   const currentIndex = useImageStore((s) => s.currentIndex);
@@ -114,6 +128,9 @@ function App() {
   // Local state
   const [uploadOpen, setUploadOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [isWebcamActive, setIsWebcamActive] = useState(false);
+  const [webcamError, setWebcamError] = useState("");
+  const webcamRef = useRef<Webcam | null>(null);
   const [selectedDetectorId, setSelectedDetectorId] = useState(
     DEFAULT_DETECTOR.id,
   );
@@ -130,6 +147,22 @@ function App() {
   const handleImageLoaded = (src: string, dims: number[]) => {
     addImage(src, dims);
     setUploadOpen(false);
+  };
+
+  const handleCaptureFeed = () => {
+    const screenshot = webcamRef.current?.getScreenshot();
+    if (!screenshot) return;
+
+    const video = webcamRef.current?.video;
+    const width = video?.videoWidth ?? 1920;
+    const height = video?.videoHeight ?? 1080;
+
+    addImage(screenshot, [width, height]);
+  };
+
+  const handleWebcamError = (err: string | DOMException) => {
+    const message = err instanceof DOMException ? err.message : String(err);
+    setWebcamError(`Camera error: ${message}`);
   };
 
   const handleLoadModel = () => {
@@ -156,9 +189,11 @@ function App() {
 
   const isInferring = status === "detecting" || status === "classifying";
   const isLoading = status === "loading-model";
-  const canRunInference = !!currentImage && modelLoaded && !isInferring;
+  const canRunInference =
+    !isWebcamActive && !!currentImage && modelLoaded && !isInferring;
 
   const statusText = (() => {
+    if (webcamError && isWebcamActive) return webcamError;
     if (error) return `Error: ${error}`;
     if (status === "loading-model") return "Loading model…";
     if (status === "detecting") return "Detecting objects…";
@@ -194,7 +229,7 @@ function App() {
             py: "1vh",
           }}
         >
-          {/* Left: Controls toolbar + Image Viewer */}
+          {/* Left: Controls toolbar + Image Viewer / Webcam */}
           <Box
             sx={{
               minWidth: "65vw",
@@ -218,12 +253,56 @@ function App() {
                 flexShrink: 0,
               }}
             >
+              {/* Webcam toggle */}
+              <FormControl size="small" sx={{ minWidth: "8vw", maxWidth: "8vw" }}>
+                <InputLabel sx={{ fontSize: "1.2vh" }}>Camera</InputLabel>
+                <Select
+                  value={activeDeviceId ?? ""}
+                  onChange={(e) => setActiveDeviceId(e.target.value)}
+                  label="Camera"
+                  displayEmpty
+                  sx={{ fontSize: "1.2vh" }}
+                >
+                  {devices.length === 0 ? (
+                    <MenuItem value="" disabled sx={{ fontSize: "1.2vh" }}>
+                      No camera
+                    </MenuItem>
+                  ) : (
+                    devices.map((device) => (
+                      <MenuItem
+                        key={device.deviceId}
+                        value={device.deviceId}
+                        sx={{ fontSize: "1.2vh" }}
+                      >
+                        {device.label ||
+                          `Camera ${device.deviceId.slice(0, 8)}`}
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+              <ControlBarButton
+                label="Capture"
+                icon={<AddAPhotoIcon color="inherit" style={iconStyle} />}
+                disabled={!isWebcamActive}
+                onClick={handleCaptureFeed}
+              />
+              <Switch
+                checked={!isWebcamActive}
+                onChange={() => {
+                  setWebcamError("");
+                  setIsWebcamActive(!isWebcamActive);
+                }}
+                size="small"
+              />
+
+              {/* Capture (webcam active only) */}
               <ControlBarButton
                 label="Upload"
                 icon={
                   <AddPhotoAlternateIcon color="inherit" style={iconStyle} />
                 }
-                disabled={false}
+                disabled={isWebcamActive}
                 onClick={() => {
                   setUploadOpen(true);
                 }}
@@ -231,7 +310,7 @@ function App() {
               <ControlBarButton
                 label="Save"
                 icon={<SaveIcon color="inherit" style={iconStyle} />}
-                disabled={images.length === 0}
+                disabled={isWebcamActive || images.length === 0}
                 onClick={() => setSaveOpen(true)}
               />
               <ModelLoader
@@ -255,7 +334,7 @@ function App() {
                 variant="body2"
                 sx={{
                   fontSize: "1.1vh",
-                  color: error ? "error.main" : "text.secondary",
+                  color: error || webcamError ? "error.main" : "text.secondary",
                   ml: "0.4vh",
                 }}
               >
@@ -263,13 +342,20 @@ function App() {
               </Typography>
             </Box>
 
-            {/* Image Viewer */}
+            {/* Workspace: Webcam feed or Image Viewer */}
             <Box sx={{ flex: 1, overflow: "hidden" }}>
-              <ImageViewer
-                src={currentImage?.src}
-                imageDims={currentImage?.imageDims ?? []}
-                result={currentResult}
-              />
+              {isWebcamActive ? (
+                <WebcamCapture
+                  webcamRef={webcamRef}
+                  onUserMediaError={handleWebcamError}
+                />
+              ) : (
+                <ImageViewer
+                  src={currentImage?.src}
+                  imageDims={currentImage?.imageDims ?? []}
+                  result={currentResult}
+                />
+              )}
             </Box>
           </Box>
 
@@ -312,10 +398,7 @@ function App() {
         }}
         onImageLoaded={handleImageLoaded}
       />
-      <SaveDialog
-        open={saveOpen}
-        onClose={() => setSaveOpen(false)}
-      />
+      <SaveDialog open={saveOpen} onClose={() => setSaveOpen(false)} />
     </ThemeProvider>
   );
 }
