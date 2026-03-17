@@ -34,11 +34,12 @@ const ImageGallery = ({
   <Box
     sx={{
       width: "100%",
-      height: "22.23vh",
+      flex: 1,
+      minHeight: 0,
+      display: "flex",
+      flexDirection: "column",
       border: "0.01vh solid LightGrey",
       borderRadius: "0.4vh",
-      marginTop: "0.95vh",
-      marginBottom: "0.95vh",
     }}
     boxShadow={0}
     data-testid="image-gallery-component"
@@ -52,7 +53,7 @@ const ImageGallery = ({
         fontSize: "1.3vh",
         color: "text.primary",
       }}
-      sx={{ padding: "0.8vh 1vh 0.8vh 0.8vh" }}
+      sx={{ padding: "0.8vh 1vh 0.8vh 0.8vh", flexShrink: 0 }}
       action={
         <IconButton
           sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
@@ -76,8 +77,8 @@ const ImageGallery = ({
     <TableContainer
       sx={{
         overflow: "auto",
-        height: "18.465vh",
-        maxHeight: "18.465vh",
+        flex: 1,
+        minHeight: 0,
         border: 0,
         borderTopRightRadius: 0,
         borderTopLeftRadius: 0,
