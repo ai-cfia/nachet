@@ -36,7 +36,7 @@ const Footer: React.FC = () => {
         <Link
           href="https://github.com/ai-cfia/nachet"
           sx={{
-            color: colours.CFIA_Font_Black,
+            color: colours.CFIA_Background_Blue,
             fontSize: "1rem",
             textDecoration: "none",
             cursor: "pointer",

@@ -48,8 +48,13 @@ const ModelLoader = ({
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: "0.4vh" }}>
-
-      <FormControl size="small" sx={{ minWidth: "9vw", maxWidth: "9vw" }}>
+      <FormControl
+        size="small"
+        sx={{
+          minWidth: { xs: "fit-content", md: "8vw" },
+          maxWidth: { xs: "fit-content", md: "8vw" },
+        }}
+      >
         <InputLabel sx={{ fontSize: "1.2vh" }}>
           {t("modelLoader.detector")}
         </InputLabel>
@@ -82,7 +87,13 @@ const ModelLoader = ({
         </IconButton>
       )}
 
-      <FormControl size="small" sx={{ minWidth: "9vw", maxWidth: "9vw" }}>
+      <FormControl
+        size="small"
+        sx={{
+          minWidth: { xs: "fit-content", md: "8vw" },
+          maxWidth: { xs: "fit-content", md: "8vw" },
+        }}
+      >
         <InputLabel sx={{ fontSize: "1.2vh" }}>
           {t("modelLoader.classifier")}
         </InputLabel>

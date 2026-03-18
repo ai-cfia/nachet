@@ -231,8 +231,9 @@ function App() {
         <Box
           sx={{
             display: "flex",
+            flexDirection: { xs: "column", md: "row" },
             flex: 1,
-            overflow: "hidden",
+            overflow: { xs: "auto", md: "hidden" },
             gap: "1vw",
             px: "1.5vw",
             py: "1vh",
@@ -241,7 +242,7 @@ function App() {
           {/* Left: Controls toolbar + Image Viewer / Webcam */}
           <Box
             sx={{
-              minWidth: "65vw",
+              minWidth: { xs: "100%", md: "65vw" },
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
@@ -265,7 +266,10 @@ function App() {
               {/* Webcam toggle */}
               <FormControl
                 size="small"
-                sx={{ minWidth: "8vw", maxWidth: "8vw" }}
+                sx={{
+                  minWidth: { xs: "fit-content", md: "8vw" },
+                  maxWidth: { xs: "fit-content", md: "8vw" },
+                }}
               >
                 <InputLabel sx={{ fontSize: "1.2vh" }}>
                   {t("controls.camera")}
@@ -359,7 +363,13 @@ function App() {
             </Box>
 
             {/* Workspace: Webcam feed or Image Viewer */}
-            <Box sx={{ flex: 1, overflow: "hidden" }}>
+            <Box
+              sx={{
+                flex: 1,
+                overflow: "hidden",
+                minHeight: { xs: "30vh", md: 0 },
+              }}
+            >
               {isWebcamActive ? (
                 <WebcamCapture
                   webcamRef={webcamRef}
@@ -375,16 +385,17 @@ function App() {
             </Box>
           </Box>
 
-          {/* Right: Gallery + Results */}
+          {/* Right: Gallery + Results (below on mobile) */}
           <Box
             sx={{
-              width: "30vw",
+              width: { xs: "100%", md: "30vw" },
               flexShrink: 0,
               display: "flex",
               flexDirection: "column",
               gap: "1vh",
               overflow: "hidden",
-              marginTop: "5vh",
+              marginTop: { xs: "1vh", md: "5vh" },
+              minHeight: { xs: "35vh", md: 0 },
             }}
           >
             <ImageGallery
