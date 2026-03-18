@@ -36,7 +36,9 @@ export const useWebcamDevices = () => {
         setDevices(videoDevices);
 
         if (activeDeviceId === "" || activeDeviceId === undefined) {
-          setActiveDeviceId(videoDevices[0]?.deviceId);
+          // Default to second camera on mobile (rear camera), fall back to first
+          const defaultDevice = videoDevices[1] ?? videoDevices[0];
+          setActiveDeviceId(defaultDevice?.deviceId);
         }
       } catch (error) {
         console.error("Failed to enumerate devices:", error);
