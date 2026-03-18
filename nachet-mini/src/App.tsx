@@ -14,7 +14,7 @@ import {
 } from "@mui/material";
 import AddAPhotoIcon from "@mui/icons-material/AddAPhoto";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import SaveIcon from "@mui/icons-material/Save";
 import type Webcam from "react-webcam";
 import { useWebcamDevices } from "@hooks/useWebcamDevices";
@@ -385,7 +385,7 @@ function App() {
               />
               <ControlBarButton
                 label={t("controls.runInference")}
-                icon={<PlayArrowIcon color="inherit" style={iconStyle} />}
+                icon={<VisibilityIcon color="inherit" style={iconStyle} />}
                 disabled={!canRunInference}
                 onClick={handleRunInference}
               />

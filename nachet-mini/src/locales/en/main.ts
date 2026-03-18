@@ -6,7 +6,7 @@ const main = {
     capture: "Capture",
     upload: "Upload",
     save: "Save",
-    runInference: "Run Inference",
+    runInference: "Identify",
   },
   status: {
     loadingModel: "Loading model\u2026",
