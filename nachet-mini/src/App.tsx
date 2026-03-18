@@ -53,11 +53,11 @@ const ControlBarButton = (props: {
   const { label, icon, onClick, disabled, sx } = props;
   const buttonStyle = {
     borderRadius: "0.4vh",
-    paddingTop: "0.3vh",
-    paddingBottom: "0.3vh",
-    paddingLeft: "0.7vh",
-    paddingRight: "0.7vh",
-    fontSize: "1.17vh",
+    paddingTop: { xs: "1vh", md: "0.3vh" },
+    paddingBottom: { xs: "1vh", md: "0.3vh" },
+    paddingLeft: { xs: "1.5vh", md: "0.7vh" },
+    paddingRight: { xs: "1.5vh", md: "0.7vh" },
+    fontSize: { xs: "1.8vh", md: "1.17vh" },
     width: "fit-content",
     border: "0.01vh solid LightGrey",
     textTransform: "none",
@@ -90,7 +90,7 @@ const ControlBarButton = (props: {
 };
 
 const iconStyle = {
-  fontSize: "1.7vh",
+  fontSize: "2.4vh",
   paddingRight: "0.4vh",
   marginTop: 0,
   marginBottom: 0,
