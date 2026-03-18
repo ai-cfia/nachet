@@ -47,7 +47,7 @@ const WebcamCapture = ({ webcamRef, onUserMediaError }: Props) => {
             objectFit: "contain",
             display: "block",
             ...(isPortrait
-              ? { transform: "rotate(90deg)", maxWidth: "100%", maxHeight: "100%" }
+              ? { transform: "rotate(-90deg)", maxWidth: "100%", maxHeight: "100%" }
               : {}),
           }}
           forceScreenshotSourceSize
