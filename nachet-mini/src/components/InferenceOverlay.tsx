@@ -93,6 +93,7 @@ const InferenceOverlay = ({
   const small = isSmallBox(box, minBoxSize);
   const borderColor = small ? "rgba(255,0,0,0.7)" : "rgba(128,0,128,0.7)";
   const hoverBg = small ? "rgba(255,0,0,0.12)" : "rgba(128,0,128,0.12)";
+  const labelAtBottom = box.topY < 40;
 
   const sx = {
     position: "absolute",
@@ -139,12 +140,13 @@ const InferenceOverlay = ({
 
   return (
     <Box component="div" aria-label={label} sx={sx}>
-      {/* box number (+ spinner when classifying) — above top-left corner */}
+      {/* box number (+ spinner when classifying) — above top-left or below bottom-left corner */}
       <Box
         sx={{
           position: "absolute",
-          top: -23,
-          left: -2,
+          ...(labelAtBottom
+            ? { bottom: -23, left: -2 }
+            : { top: -23, left: -2 }),
           color: small ? "rgba(255,0,0,0.9)" : "rgba(128,0,128,0.9)",
           fontSize: "20px",
           fontWeight: 700,
