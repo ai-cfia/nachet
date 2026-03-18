@@ -49,13 +49,18 @@ function send(msg: WorkerOutMessage): void {
 type DeviceType = "webgpu" | "wasm";
 
 /** Detect whether WebGPU is available in this worker context. */
-function getDevice(): DeviceType {
+async function getDevice(): Promise<DeviceType> {
   try {
     if (typeof navigator !== "undefined" && "gpu" in (navigator as object)) {
-      return "webgpu";
+      const adapter = await (navigator as unknown as { gpu: { requestAdapter(): Promise<unknown | null> } }).gpu.requestAdapter();
+      if (adapter) {
+        console.log("[worker] WebGPU adapter available");
+        return "webgpu";
+      }
+      console.warn("[worker] WebGPU API present but no adapter available, falling back to WASM");
     }
-  } catch {
-    // navigator not available — fall through to WASM
+  } catch (err) {
+    console.warn("[worker] WebGPU detection failed, falling back to WASM:", err);
   }
   return "wasm";
 }
@@ -160,7 +165,7 @@ addEventListener("message", async (event: MessageEvent) => {
   // ── Load models ──────────────────────────────────────────────────────────
   if (data.type === "load-models") {
     const config = data.config;
-    const device = getDevice();
+    const device = await getDevice();
     // WebGPU has precision issues with detection models — use WASM for detector
     const detectorDevice: DeviceType = "wasm";
     const classifierDevice = device;
