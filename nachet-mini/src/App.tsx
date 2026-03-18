@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   Box,
   Button,
@@ -20,7 +20,7 @@ import type Webcam from "react-webcam";
 import { useWebcamDevices } from "@hooks/useWebcamDevices";
 import { useWebcamStore } from "@stores/useWebcamStore";
 import { useImageStore } from "@stores/useImageStore";
-import { useInferenceStore } from "@stores/useInferenceStore";
+import { useInferenceStore, resultKey } from "@stores/useInferenceStore";
 import { useInference } from "@inference/useInference";
 import {
   DETECTOR_MODELS,
@@ -123,6 +123,12 @@ function App() {
   const modelLoadProgress = useInferenceStore((s) => s.modelLoadProgress);
   const error = useInferenceStore((s) => s.error);
   const results = useInferenceStore((s) => s.results);
+  const activeResultKey = useInferenceStore((s) => s.activeResultKey);
+  const setActiveResultKey = useInferenceStore((s) => s.setActiveResultKey);
+  const getResultsForImage = useInferenceStore((s) => s.getResultsForImage);
+  const removeResultsForImage = useInferenceStore(
+    (s) => s.removeResultsForImage,
+  );
   const clearResults = useInferenceStore((s) => s.clearResults);
   const setError = useInferenceStore((s) => s.setError);
 
@@ -143,12 +149,13 @@ function App() {
   const [switchTable, setSwitchTable] = useState(false);
 
   const currentImage = getCurrentImage();
-  const currentResult = currentImage
-    ? (results.get(currentImage.index) ?? null)
+  const currentResult = activeResultKey
+    ? (results.get(activeResultKey) ?? null)
     : null;
 
   const handleImageLoaded = (src: string, dims: number[]) => {
     addImage(src, dims);
+    setActiveResultKey(null);
     setUploadOpen(false);
   };
 
@@ -161,6 +168,7 @@ function App() {
     const height = video?.videoHeight ?? 1080;
 
     addImage(screenshot, [width, height]);
+    setActiveResultKey(null);
   };
 
   const handleWebcamError = (err: string | DOMException) => {
@@ -194,7 +202,38 @@ function App() {
     clearResults();
   };
 
-  const hasResult = (index: number): boolean => results.has(index);
+  const handleSelectImage = useCallback(
+    (index: number) => {
+      setCurrentIndex(index);
+      const imageResults = getResultsForImage(index);
+      if (imageResults.length > 0) {
+        const latest = imageResults[imageResults.length - 1];
+        setActiveResultKey(resultKey(index, latest.modelConfigId));
+      } else {
+        setActiveResultKey(null);
+      }
+    },
+    [setCurrentIndex, getResultsForImage, setActiveResultKey],
+  );
+
+  const handleSelectResult = useCallback(
+    (key: string) => {
+      setActiveResultKey(key);
+      const imageIndex = parseInt(key.split(":")[0], 10);
+      if (!isNaN(imageIndex)) {
+        setCurrentIndex(imageIndex);
+      }
+    },
+    [setActiveResultKey, setCurrentIndex],
+  );
+
+  const handleRemoveImage = useCallback(
+    (index: number) => {
+      removeResultsForImage(index);
+      removeImage(index);
+    },
+    [removeImage, removeResultsForImage],
+  );
 
   const isInferring = status === "detecting" || status === "classifying";
   const isLoading = status === "loading-model";
@@ -380,11 +419,6 @@ function App() {
                   src={currentImage?.src}
                   imageDims={currentImage?.imageDims ?? []}
                   result={currentResult}
-                  minBoxSize={
-                    CLASSIFIER_MODELS.find(
-                      (c) => c.id === selectedClassifierId,
-                    )?.minBoxSize ?? DEFAULT_CLASSIFIER.minBoxSize
-                  }
                 />
               )}
             </Box>
@@ -406,10 +440,12 @@ function App() {
             <ImageGallery
               images={images}
               currentIndex={currentIndex}
-              onSelect={setCurrentIndex}
-              onRemove={removeImage}
+              activeResultKey={activeResultKey}
+              onSelectImage={handleSelectImage}
+              onSelectResult={handleSelectResult}
+              onRemoveImage={handleRemoveImage}
               onClear={handleClearImages}
-              hasResult={hasResult}
+              getResultsForImage={getResultsForImage}
             />
             <ResultsTable
               result={currentResult}

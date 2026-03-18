@@ -12,6 +12,8 @@ export interface ModelConfig {
   classifierTopK: number;
   /** Optional ONNX filename for the detector (without .onnx), defaults to "model" */
   detectorModelFileName?: string;
+  /** Minimum bounding-box size (longest dimension, px) for reliable classification */
+  minBoxSize: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -50,8 +52,18 @@ export type WorkerOutMessage =
   | { type: "model-progress"; name: string; progress: number }
   | { type: "model-loaded" }
   | { type: "status"; status: "loading-model" | "detecting" | "classifying" }
-  | { type: "result"; imageIndex: number; result: InferenceResult }
-  | { type: "partial-result"; imageIndex: number; result: InferenceResult }
+  | {
+      type: "result";
+      imageIndex: number;
+      modelConfigId: string;
+      result: InferenceResult;
+    }
+  | {
+      type: "partial-result";
+      imageIndex: number;
+      modelConfigId: string;
+      result: InferenceResult;
+    }
   | { type: "error"; message: string };
 
 // ---------------------------------------------------------------------------
@@ -111,5 +123,6 @@ export function buildModelConfig(
     detectorThreshold: detector.threshold,
     classifierTopK: classifier.topK,
     detectorModelFileName: detector.modelFileName,
+    minBoxSize: classifier.minBoxSize,
   };
 }

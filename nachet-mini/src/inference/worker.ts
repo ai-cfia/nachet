@@ -413,6 +413,7 @@ addEventListener("message", async (event: MessageEvent) => {
         send({
           type: "result",
           imageIndex,
+          modelConfigId: config.id,
           result: emptyResult(config),
         });
         return;
@@ -458,6 +459,7 @@ addEventListener("message", async (event: MessageEvent) => {
       send({
         type: "partial-result",
         imageIndex,
+        modelConfigId: config.id,
         result: {
           scores: [...scores],
           classifications: [...classifications],
@@ -473,6 +475,7 @@ addEventListener("message", async (event: MessageEvent) => {
           ],
           completedAt: "",
           isActive: true,
+          minBoxSize: config.minBoxSize,
         },
       });
 
@@ -529,6 +532,7 @@ addEventListener("message", async (event: MessageEvent) => {
           send({
             type: "partial-result",
             imageIndex,
+            modelConfigId: config.id,
             result: {
               scores: [...scores],
               classifications: [...classifications],
@@ -544,6 +548,7 @@ addEventListener("message", async (event: MessageEvent) => {
               ],
               completedAt: "",
               isActive: true,
+              minBoxSize: config.minBoxSize,
             },
           });
         } finally {
@@ -568,10 +573,11 @@ addEventListener("message", async (event: MessageEvent) => {
         ],
         completedAt: new Date().toISOString(),
         isActive: true,
+        minBoxSize: config.minBoxSize,
       };
 
       console.log("[worker] Inference complete:", boxes.length, "boxes");
-      send({ type: "result", imageIndex, result });
+      send({ type: "result", imageIndex, modelConfigId: config.id, result });
     } catch (err) {
       console.error("[worker] Inference error:", err);
       send({
@@ -614,5 +620,6 @@ function emptyResult(config: ModelConfig): InferenceResult {
     ],
     completedAt: new Date().toISOString(),
     isActive: true,
+    minBoxSize: config.minBoxSize,
   };
 }

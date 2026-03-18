@@ -153,7 +153,9 @@ const InferenceOverlay = ({
           display: "flex",
           alignItems: "center",
           gap: "4px",
-          ...(isPortrait ? { transform: "rotate(90deg)", transformOrigin: "bottom right" } : {}),
+          ...(isPortrait
+            ? { transform: "rotate(90deg)", transformOrigin: "bottom right" }
+            : {}),
         }}
       >
         {index + 1}

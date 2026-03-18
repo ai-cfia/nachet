@@ -8,10 +8,9 @@ interface Props {
   src: string | undefined;
   imageDims: number[];
   result: InferenceResult | null;
-  minBoxSize: number;
 }
 
-const ImageViewer = ({ src, imageDims, result, minBoxSize }: Props) => {
+const ImageViewer = ({ src, imageDims, result }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const isPortrait = useIsPortrait();
@@ -58,7 +57,11 @@ const ImageViewer = ({ src, imageDims, result, minBoxSize }: Props) => {
             width: "100%",
             height: "100%",
             ...(isPortrait
-              ? { transform: "rotate(-90deg)", maxWidth: "100%", maxHeight: "100%" }
+              ? {
+                  transform: "rotate(-90deg)",
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                }
               : {}),
           }}
         >
@@ -87,7 +90,7 @@ const ImageViewer = ({ src, imageDims, result, minBoxSize }: Props) => {
                 visible={true}
                 totalBoxes={result.totalBoxes}
                 isClassifying={result.classifications[i] === ""}
-                minBoxSize={minBoxSize}
+                minBoxSize={result.minBoxSize}
               />
             ))}
         </Box>
