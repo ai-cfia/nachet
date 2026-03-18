@@ -46,6 +46,8 @@ const main = {
     title: "Images",
     image: "Image {{number}}",
     resultsAvailable: "R\u00e9sultats disponibles",
+    resultEntry: "{{modelId}}",
+    boxes: "{{count}} bo\u00eetes",
   },
   validation: {
     invalidType: "Le fichier doit \u00eatre une image PNG ou JPEG",

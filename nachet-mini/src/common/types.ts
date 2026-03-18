@@ -34,6 +34,7 @@ export interface InferenceResult {
   models: Array<{ name: string; version: string }>;
   completedAt: string;
   isActive: boolean;
+  minBoxSize: number;
 }
 
 export interface Images {

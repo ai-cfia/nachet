@@ -1,6 +1,7 @@
 import { useRef, useCallback, useEffect } from "react";
 import type { ModelConfig, WorkerInMessage, WorkerOutMessage } from "./models";
 import { useInferenceStore } from "@stores/useInferenceStore";
+import { resultKey } from "@stores/useInferenceStore";
 
 /**
  * React hook that manages the inference Web Worker lifecycle.
@@ -17,6 +18,7 @@ export function useInference() {
 
   const setStatus = useInferenceStore((s) => s.setStatus);
   const setResult = useInferenceStore((s) => s.setResult);
+  const setActiveResultKey = useInferenceStore((s) => s.setActiveResultKey);
   const setModelLoaded = useInferenceStore((s) => s.setModelLoaded);
   const setModelLoadProgress = useInferenceStore((s) => s.setModelLoadProgress);
   const setError = useInferenceStore((s) => s.setError);
@@ -43,10 +45,12 @@ export function useInference() {
           setStatus(msg.status);
           break;
         case "partial-result":
-          setResult(msg.imageIndex, msg.result);
+          setResult(msg.imageIndex, msg.modelConfigId, msg.result);
+          setActiveResultKey(resultKey(msg.imageIndex, msg.modelConfigId));
           break;
         case "result":
-          setResult(msg.imageIndex, msg.result);
+          setResult(msg.imageIndex, msg.modelConfigId, msg.result);
+          setActiveResultKey(resultKey(msg.imageIndex, msg.modelConfigId));
           setStatus("complete");
           break;
         case "error":
@@ -67,7 +71,14 @@ export function useInference() {
       workerRef.current = null;
       isModelLoadedRef.current = false;
     };
-  }, [setStatus, setResult, setModelLoaded, setModelLoadProgress, setError]);
+  }, [
+    setStatus,
+    setResult,
+    setActiveResultKey,
+    setModelLoaded,
+    setModelLoadProgress,
+    setError,
+  ]);
 
   /** Download and warm up both pipelines for the given model config. */
   const loadModels = useCallback(
