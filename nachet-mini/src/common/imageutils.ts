@@ -10,7 +10,7 @@ interface ImageValidationResult {
 }
 
 /**
- * Validates an image file for MIME type (PNG or JPEG), file size (max 10MB), and dimensions (max 1920x1080)
+ * Validates an image file for MIME type (PNG or JPEG), file size (max 10MB), and dimensions (max 4608x2592)
  */
 export const validateImageFile = async (
   file: File,
@@ -30,7 +30,7 @@ export const validateImageFile = async (
   try {
     const dimensions = await getImageDimensions(file);
 
-    if (dimensions.width > 1920 || dimensions.height > 1080) {
+    if (dimensions.width > 4608 || dimensions.height > 2592) {
       errorKeys.push("dimensionsTooLarge");
     }
 
