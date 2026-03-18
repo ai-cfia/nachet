@@ -380,6 +380,11 @@ function App() {
                   src={currentImage?.src}
                   imageDims={currentImage?.imageDims ?? []}
                   result={currentResult}
+                  minBoxSize={
+                    CLASSIFIER_MODELS.find(
+                      (c) => c.id === selectedClassifierId,
+                    )?.minBoxSize ?? DEFAULT_CLASSIFIER.minBoxSize
+                  }
                 />
               )}
             </Box>

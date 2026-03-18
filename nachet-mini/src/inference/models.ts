@@ -34,6 +34,8 @@ export interface ClassifierModelEntry {
   model: string;
   /** Number of top classification labels to keep per detected region */
   topK: number;
+  /** Minimum bounding-box size (longest dimension, px) for reliable classification */
+  minBoxSize: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,11 +77,13 @@ export const CLASSIFIER_MODELS: ClassifierModelEntry[] = [
     id: "swin-L 64spp",
     model: "cfia-ai-lab/swin-large-patch4-window12-384-in22k-64spp-ft",
     topK: 5,
+    minBoxSize: 384,
   },
   {
     id: "vit-base-224 0spp",
     model: "Xenova/vit-base-patch16-224",
     topK: 5,
+    minBoxSize: 224,
   },
 ];
 

@@ -28,7 +28,14 @@ interface Props {
   visible: boolean;
   totalBoxes: number;
   isClassifying: boolean;
+  minBoxSize: number;
 }
+
+const isSmallBox = (box: InferenceBox, minBoxSize: number): boolean => {
+  const width = Math.abs(box.bottomX - box.topX);
+  const height = Math.abs(box.bottomY - box.topY);
+  return Math.max(width, height) < minBoxSize;
+};
 
 const InferenceOverlay = ({
   index,
@@ -40,6 +47,7 @@ const InferenceOverlay = ({
   canvasHeight,
   label,
   isClassifying,
+  minBoxSize,
 }: Props) => {
   const [layersAnchorEl, setLayersAnchorEl] = useState<HTMLElement | null>(
     null,
@@ -82,6 +90,10 @@ const InferenceOverlay = ({
     setIsSelected(false);
   }, []);
 
+  const small = isSmallBox(box, minBoxSize);
+  const borderColor = small ? "rgba(255,0,0,0.7)" : "rgba(128,0,128,0.7)";
+  const hoverBg = small ? "rgba(255,0,0,0.12)" : "rgba(128,0,128,0.12)";
+
   const sx = {
     position: "absolute",
     minWidth: scaledWidth,
@@ -90,13 +102,13 @@ const InferenceOverlay = ({
     maxHeight: scaledHeight,
     left: scaledTopX,
     top: scaledTopY,
-    border: "2px solid rgba(128,0,128,0.7)",
+    border: `2px solid ${borderColor}`,
     borderRadius: 0,
     display: visible ? "block" : "none",
     zIndex,
     ...(isSelected && {
-      bgcolor: "rgba(128,0,128,0.12)",
-      border: "2px solid rgba(128,0,128,0.7)",
+      bgcolor: hoverBg,
+      border: `2px solid ${borderColor}`,
     }),
     "& .layersBtn": {
       opacity: 0,
@@ -107,19 +119,19 @@ const InferenceOverlay = ({
         opacity: 1,
         pointerEvents: "auto",
         transform: "scale(1.05)",
-        color: "primary.main",
+        color: small ? "error.main" : "primary.main",
         bgcolor: "rgba(255,255,255,1)",
         zIndex: 300,
       }),
     },
     "&:hover": {
-      bgcolor: "rgba(128,0,128,0.12)",
-      border: "2px solid rgba(128,0,128,0.7)",
+      bgcolor: hoverBg,
+      border: `2px solid ${borderColor}`,
       "& .layersBtn": {
         opacity: 1,
         pointerEvents: "auto",
         transform: "scale(1.05)",
-        color: "primary.main",
+        color: small ? "error.main" : "primary.main",
         bgcolor: "rgba(255,255,255,1)",
       },
     },
@@ -133,7 +145,7 @@ const InferenceOverlay = ({
           position: "absolute",
           top: -23,
           left: -2,
-          color: "rgba(128,0,128,0.9)",
+          color: small ? "rgba(255,0,0,0.9)" : "rgba(128,0,128,0.9)",
           fontSize: "20px",
           fontWeight: 700,
           lineHeight: 1,
@@ -146,7 +158,7 @@ const InferenceOverlay = ({
       >
         {index + 1}
         {isClassifying && (
-          <CircularProgress size={20} sx={{ color: "rgba(128,0,128,0.7)" }} />
+          <CircularProgress size={20} sx={{ color: borderColor }} />
         )}
       </Box>
 
