@@ -51,7 +51,16 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
       data-testid="image-viewer-component"
     >
       {src ? (
-        <>
+        <Box
+          sx={{
+            position: "relative",
+            width: "100%",
+            height: "100%",
+            ...(isPortrait
+              ? { transform: "rotate(-90deg)", maxWidth: "100%", maxHeight: "100%" }
+              : {}),
+          }}
+        >
           <img
             src={src}
             alt="Uploaded image"
@@ -60,9 +69,6 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
               height: "100%",
               objectFit: "contain",
               display: "block",
-              ...(isPortrait
-                ? { transform: "rotate(-90deg)", maxWidth: "100%", maxHeight: "100%" }
-                : {}),
             }}
           />
           {result &&
@@ -74,15 +80,15 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
                 imageWidth={imgW}
                 imageHeight={imgH}
                 box={box}
-                canvasWidth={containerSize.width}
-                canvasHeight={containerSize.height}
+                canvasWidth={isPortrait ? containerSize.height : containerSize.width}
+                canvasHeight={isPortrait ? containerSize.width : containerSize.height}
                 label={result.classifications[i] ?? ""}
                 visible={true}
                 totalBoxes={result.totalBoxes}
                 isClassifying={result.classifications[i] === ""}
               />
             ))}
-        </>
+        </Box>
       ) : (
         <Typography
           variant="body2"
