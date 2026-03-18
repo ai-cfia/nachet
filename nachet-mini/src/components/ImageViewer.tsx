@@ -80,8 +80,8 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
                 imageWidth={imgW}
                 imageHeight={imgH}
                 box={box}
-                canvasWidth={isPortrait ? containerSize.height : containerSize.width}
-                canvasHeight={isPortrait ? containerSize.width : containerSize.height}
+                canvasWidth={containerSize.width}
+                canvasHeight={containerSize.height}
                 label={result.classifications[i] ?? ""}
                 visible={true}
                 totalBoxes={result.totalBoxes}
