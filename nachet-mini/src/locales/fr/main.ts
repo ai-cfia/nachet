@@ -6,7 +6,7 @@ const main = {
     capture: "Capturer",
     upload: "T\u00e9l\u00e9verser",
     save: "Enregistrer",
-    runInference: "Lancer l\u2019inf\u00e9rence",
+    runInference: "Identifier",
   },
   status: {
     loadingModel: "Chargement du mod\u00e8le\u2026",

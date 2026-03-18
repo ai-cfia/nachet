@@ -9,8 +9,8 @@ export interface TsAppVersion {
     gitTag?: string;
 };
 export const versions: TsAppVersion = {
-    version: '0.2.2',
+    version: '0.2.3',
     name: 'nachet-mini',
-    versionDate: '2026-03-18T16:14:54.653Z',
+    versionDate: '2026-03-18T18:25:37.735Z',
 };
 export default versions;
