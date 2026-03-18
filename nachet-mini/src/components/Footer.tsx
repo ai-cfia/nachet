@@ -1,8 +1,11 @@
 import { Box, Link } from "@mui/material";
 import CanadaLogo from "../assets/Canada_logo.png";
+import HfLogo from "../assets/hf-logo.svg";
 import { colours } from "../styles/colours";
 import { versions } from "../_versions";
 import { useTranslation } from "react-i18next";
+import GitHubIcon from '@mui/icons-material/GitHub';
+
 
 const Footer: React.FC = () => {
   const { t } = useTranslation("footer");
@@ -33,25 +36,61 @@ const Footer: React.FC = () => {
           paddingRight: "1.5vw",
         }}
       >
-        <Link
-          href="https://github.com/ai-cfia/nachet"
-          sx={{
-            color: colours.CFIA_Background_Blue,
-            fontSize: "1rem",
-            textDecoration: "none",
-            cursor: "pointer",
-          }}
-        >
-          {t("developedBy")}
-        </Link>
-        <Box
-          component="span"
-          sx={{
-            color: colours.CFIA_Font_Black,
-            fontSize: "1rem",
-          }}
-        >
-          {versions.version ? t("version", { version: versions.version }) : ""}
+        <Box sx={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <Box
+            component="span"
+            sx={{
+              color: colours.CFIA_Background_Blue,
+              fontSize: "1rem",
+            }}
+          >
+            {t("developedBy")}
+          </Box>
+          <Link
+            href="https://huggingface.co/cfia-ai-lab"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            <Box
+              component="img"
+              src={HfLogo}
+              alt="Hugging Face"
+              sx={{ width: "1.5rem", height: "1.5rem" }}
+            />
+          </Link>
+          <Link
+            href="https://github.com/ai-cfia"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ display: "flex", alignItems: "center", color: colours.CFIA_Font_Black }}
+          >
+            <GitHubIcon sx={{ fontSize: "1.5rem" }} />
+          </Link>
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <Box
+            component="span"
+            sx={{
+              color: colours.CFIA_Font_Black,
+              fontSize: "1rem",
+            }}
+          >
+            {versions.version ? t("version", { version: versions.version }) : ""}
+          </Box>
+          <Link
+            href="https://github.com/ai-cfia/nachet/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{
+              color: colours.CFIA_Background_Blue,
+              fontSize: "1rem",
+              textDecoration: "none",
+              cursor: "pointer",
+            }}
+          >
+            {t("reportIssue")}
+          </Link>
         </Box>
         <Box
           component="img"
