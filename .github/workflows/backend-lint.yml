@@ -42,6 +42,40 @@ jobs:
       package-name: "nachet-backend"
       working-directory: backend
 
+  bump-version-renovate:
+    needs: [nachet-pyproject-version-bump]
+    # Failure of nachet-pyproject-version-bump indicates that version in pyproject.toml has not been updated.
+    if: ${{ github.event.pull_request.user.login == 'renovate[bot]' && needs.nachet-pyproject-version-bump.result == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          version: "latest"
+
+      - name: Bump version for Renovate PRs
+        run: |
+          uv version --bump patch
+
+      - name: Commit & push changes
+        uses: actions-js/push@5a7cbd780d82c0c937b5977586e641b2fd94acc5
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          message: "chore: bump backend version"
+          branch: ${{ github.head_ref || github.ref_name }}
+          rebase: true
+
   backend-lint:
     name: backend-lint-test-python
     uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-python-mono.yml@main
