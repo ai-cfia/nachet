@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Webcam from "react-webcam";
 import { Box, Typography } from "@mui/material";
 import { useWebcamDevices } from "@hooks/useWebcamDevices";
@@ -9,6 +10,16 @@ interface Props {
 
 const WebcamCapture = ({ webcamRef, onUserMediaError }: Props) => {
   const { devices, activeDeviceId } = useWebcamDevices();
+  const [isPortrait, setIsPortrait] = useState(
+    () => window.matchMedia("(orientation: portrait)").matches,
+  );
+
+  useEffect(() => {
+    const mql = window.matchMedia("(orientation: portrait)");
+    const handler = (e: MediaQueryListEvent) => setIsPortrait(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
 
   return (
     <Box
@@ -32,7 +43,13 @@ const WebcamCapture = ({ webcamRef, onUserMediaError }: Props) => {
           mirrored={false}
           width="100%"
           height="100%"
-          style={{ objectFit: "contain", display: "block" }}
+          style={{
+            objectFit: "contain",
+            display: "block",
+            ...(isPortrait
+              ? { transform: "rotate(90deg)", maxWidth: "100%", maxHeight: "100%" }
+              : {}),
+          }}
           forceScreenshotSourceSize
           videoConstraints={{
             width: 1920,
