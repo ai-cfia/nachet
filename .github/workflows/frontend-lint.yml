@@ -42,8 +42,41 @@ jobs:
       package-name: nachet-frontend
       skip-version-check: false
 
-  check-package-lock:
+  bump-version-renovate:
+    if: ${{ github.event.pull_request.user.login == 'renovate[bot]' && needs.versions.result == 'failure' }}
     needs: [versions]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ needs.versions.outputs.node-version }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Increment version for Renovate PRs
+        run: |
+          echo "current version: ${{ needs.versions.outputs.app-version }}"
+          npm version "$(jq -r '.version' package.json | awk -F. -v OFS=. '{ $NF++; print }')" --no-git-tag-version
+          echo "new version: $(jq -r '.version' package.json)"
+
+      - name: Commit & push changes
+        uses: EndBug/add-and-commit@62806537b45381f4b1475ec463d5e2106d9d3110
+        with:
+          message: "chore: bump frontend version for Renovate PRs"
+          add: "."
+          author_name: "github-actions"
+          author_email: "actions@github.com"
+
+
+  check-package-lock:
+    needs: [versions, bump-version-renovate]
     runs-on: ubuntu-latest
     defaults:
       run:
