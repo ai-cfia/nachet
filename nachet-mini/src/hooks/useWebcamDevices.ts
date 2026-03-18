@@ -16,6 +16,18 @@ export const useWebcamDevices = () => {
 
     const updateDevices = async (): Promise<void> => {
       try {
+        // Request camera permission first — required on mobile browsers
+        // to get device labels and IDs from enumerateDevices()
+        const tempStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+        tempStream.getTracks().forEach((track) => track.stop());
+      } catch (error) {
+        console.error("Camera permission denied or unavailable:", error);
+        return;
+      }
+
+      try {
         const availableDevices =
           await navigator.mediaDevices.enumerateDevices();
         const videoDevices = availableDevices.filter(

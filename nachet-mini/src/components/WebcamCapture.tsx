@@ -37,7 +37,9 @@ const WebcamCapture = ({ webcamRef, onUserMediaError }: Props) => {
           videoConstraints={{
             width: 1920,
             height: 1080,
-            deviceId: activeDeviceId ? { exact: activeDeviceId } : undefined,
+            ...(activeDeviceId
+              ? { deviceId: { exact: activeDeviceId } }
+              : { facingMode: "environment" }),
           }}
           screenshotFormat="image/png"
           screenshotQuality={1}
