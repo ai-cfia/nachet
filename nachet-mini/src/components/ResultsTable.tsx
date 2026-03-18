@@ -242,7 +242,7 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
               classifications.map((prediction, classIdx) => {
                 const rowId = `box-${classIdx}`;
                 const boxTopN = topN[classIdx] ?? [];
-                const score = scores[classIdx] ?? 0;
+                const score = boxTopN[0]?.score ?? scores[classIdx] ?? 0;
                 const isExpanded = expandedRow === rowId;
                 const isBoxClassifying = prediction === "";
                 const visible =
