@@ -69,12 +69,12 @@ jobs:
           uv version --bump patch
 
       - name: Commit & push changes
-        uses: actions-js/push@5a7cbd780d82c0c937b5977586e641b2fd94acc5
+        uses: EndBug/add-and-commit@62806537b45381f4b1475ec463d5e2106d9d3110
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          message: "chore: bump backend version"
-          branch: ${{ github.head_ref || github.ref_name }}
-          rebase: true
+          message: "chore: bump backend version for Renovate PRs"
+          add: "."
+          author_name: "github-actions"
+          author_email: "actions@github.com"
 
   backend-lint:
     name: backend-lint-test-python
