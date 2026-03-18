@@ -16,6 +16,18 @@ export const useWebcamDevices = () => {
 
     const updateDevices = async (): Promise<void> => {
       try {
+        // Request camera permission first — required on mobile browsers
+        // to get device labels and IDs from enumerateDevices()
+        const tempStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+        tempStream.getTracks().forEach((track) => track.stop());
+      } catch (error) {
+        console.error("Camera permission denied or unavailable:", error);
+        return;
+      }
+
+      try {
         const availableDevices =
           await navigator.mediaDevices.enumerateDevices();
         const videoDevices = availableDevices.filter(
@@ -24,7 +36,9 @@ export const useWebcamDevices = () => {
         setDevices(videoDevices);
 
         if (activeDeviceId === "" || activeDeviceId === undefined) {
-          setActiveDeviceId(videoDevices[0]?.deviceId);
+          // Default to second camera on mobile (rear camera), fall back to first
+          const defaultDevice = videoDevices[1] ?? videoDevices[0];
+          setActiveDeviceId(defaultDevice?.deviceId);
         }
       } catch (error) {
         console.error("Failed to enumerate devices:", error);

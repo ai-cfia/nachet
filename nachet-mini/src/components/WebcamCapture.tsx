@@ -1,6 +1,7 @@
 import Webcam from "react-webcam";
 import { Box, Typography } from "@mui/material";
 import { useWebcamDevices } from "@hooks/useWebcamDevices";
+import { useIsPortrait } from "@hooks/useIsPortrait";
 
 interface Props {
   webcamRef: React.RefObject<Webcam | null>;
@@ -9,6 +10,7 @@ interface Props {
 
 const WebcamCapture = ({ webcamRef, onUserMediaError }: Props) => {
   const { devices, activeDeviceId } = useWebcamDevices();
+  const isPortrait = useIsPortrait();
 
   return (
     <Box
@@ -32,12 +34,20 @@ const WebcamCapture = ({ webcamRef, onUserMediaError }: Props) => {
           mirrored={false}
           width="100%"
           height="100%"
-          style={{ objectFit: "contain", display: "block" }}
+          style={{
+            objectFit: "contain",
+            display: "block",
+            ...(isPortrait
+              ? { transform: "rotate(-90deg)", maxWidth: "100%", maxHeight: "100%" }
+              : {}),
+          }}
           forceScreenshotSourceSize
           videoConstraints={{
             width: 1920,
             height: 1080,
-            deviceId: activeDeviceId ? { exact: activeDeviceId } : undefined,
+            ...(activeDeviceId
+              ? { deviceId: { exact: activeDeviceId } }
+              : { facingMode: "environment" }),
           }}
           screenshotFormat="image/png"
           screenshotQuality={1}

@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { Box, Typography } from "@mui/material";
 import type { InferenceResult } from "@common/types";
 import InferenceOverlay from "@components/InferenceOverlay";
+import { useIsPortrait } from "@hooks/useIsPortrait";
 
 interface Props {
   src: string | undefined;
@@ -12,6 +13,7 @@ interface Props {
 const ImageViewer = ({ src, imageDims, result }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const isPortrait = useIsPortrait();
 
   useEffect(() => {
     const el = containerRef.current;
@@ -49,7 +51,16 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
       data-testid="image-viewer-component"
     >
       {src ? (
-        <>
+        <Box
+          sx={{
+            position: "relative",
+            width: "100%",
+            height: "100%",
+            ...(isPortrait
+              ? { transform: "rotate(-90deg)", maxWidth: "100%", maxHeight: "100%" }
+              : {}),
+          }}
+        >
           <img
             src={src}
             alt="Uploaded image"
@@ -77,7 +88,7 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
                 isClassifying={result.classifications[i] === ""}
               />
             ))}
-        </>
+        </Box>
       ) : (
         <Typography
           variant="body2"

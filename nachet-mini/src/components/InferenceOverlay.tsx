@@ -10,6 +10,7 @@ import {
 import { type MouseEvent, useCallback, useState } from "react";
 import type { InferenceBox } from "@common/types";
 import { getScaledBounds } from "@common/imageutils";
+import { useIsPortrait } from "@hooks/useIsPortrait";
 import {
   LayersOutlined,
   ArrowCircleDownRounded,
@@ -45,6 +46,7 @@ const InferenceOverlay = ({
   );
   const [zOffset, setZOffset] = useState(0);
   const [isSelected, setIsSelected] = useState(false);
+  const isPortrait = useIsPortrait();
 
   const baseZ = index;
   const zIndex = baseZ + zOffset;
@@ -139,6 +141,7 @@ const InferenceOverlay = ({
           display: "flex",
           alignItems: "center",
           gap: "4px",
+          ...(isPortrait ? { transform: "rotate(90deg)", transformOrigin: "bottom right" } : {}),
         }}
       >
         {index + 1}

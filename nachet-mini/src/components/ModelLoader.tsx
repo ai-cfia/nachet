@@ -1,6 +1,5 @@
 import {
   Box,
-  Button,
   FormControl,
   IconButton,
   InputLabel,
@@ -26,7 +25,6 @@ interface Props {
   selectedClassifierId: string;
   onSelectDetector: (id: string) => void;
   onSelectClassifier: (id: string) => void;
-  onLoad: () => void;
   isLoading: boolean;
   progress: ModelLoadProgress | null;
 }
@@ -38,7 +36,6 @@ const ModelLoader = ({
   selectedClassifierId,
   onSelectDetector,
   onSelectClassifier,
-  onLoad,
   isLoading,
   progress,
 }: Props) => {
@@ -51,23 +48,13 @@ const ModelLoader = ({
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: "0.4vh" }}>
-      {isLoading && progress && (
-        <Box sx={{ minWidth: "12vw" }}>
-          <Typography
-            variant="caption"
-            sx={{ fontSize: "1vh", color: "text.secondary" }}
-          >
-            {progress.name} {Math.round(progress.progress)}%
-          </Typography>
-          <LinearProgress
-            variant="determinate"
-            value={progress.progress}
-            sx={{ height: "0.6vh", borderRadius: "0.3vh" }}
-          />
-        </Box>
-      )}
-
-      <FormControl size="small" sx={{ minWidth: "9vw", maxWidth: "9vw" }}>
+      <FormControl
+        size="small"
+        sx={{
+          minWidth: { xs: "fit-content", md: "8vw" },
+          maxWidth: { xs: "fit-content", md: "8vw" },
+        }}
+      >
         <InputLabel sx={{ fontSize: "1.2vh" }}>
           {t("modelLoader.detector")}
         </InputLabel>
@@ -100,7 +87,13 @@ const ModelLoader = ({
         </IconButton>
       )}
 
-      <FormControl size="small" sx={{ minWidth: "9vw", maxWidth: "9vw" }}>
+      <FormControl
+        size="small"
+        sx={{
+          minWidth: { xs: "fit-content", md: "8vw" },
+          maxWidth: { xs: "fit-content", md: "8vw" },
+        }}
+      >
         <InputLabel sx={{ fontSize: "1.2vh" }}>
           {t("modelLoader.classifier")}
         </InputLabel>
@@ -132,31 +125,21 @@ const ModelLoader = ({
           <InfoOutlinedIcon sx={{ fontSize: "1.6vh" }} />
         </IconButton>
       )}
-
-      <Button
-        color="inherit"
-        variant="outlined"
-        onClick={onLoad}
-        disabled={isLoading}
-        sx={{
-          borderRadius: "0.4vh",
-          paddingTop: "0.3vh",
-          paddingBottom: "0.3vh",
-          paddingLeft: "0.7vh",
-          paddingRight: "0.7vh",
-          fontSize: "1.17vh",
-          width: "fit-content",
-          border: "0.01vh solid LightGrey",
-          textTransform: "none",
-          whiteSpace: "nowrap",
-          "&:hover": {
-            backgroundColor: "#F5F5F5",
-            transition: "0.1s ease-in-out all",
-          },
-        }}
-      >
-        {isLoading ? t("modelLoader.loading") : t("modelLoader.loadModel")}
-      </Button>
+      {isLoading && progress && (
+        <Box sx={{ minWidth: "12vw" }}>
+          <Typography
+            variant="caption"
+            sx={{ fontSize: "1vh", color: "text.secondary" }}
+          >
+            {progress.name} {Math.round(progress.progress)}%
+          </Typography>
+          <LinearProgress
+            variant="determinate"
+            value={progress.progress}
+            sx={{ height: "0.6vh", borderRadius: "0.3vh" }}
+          />
+        </Box>
+      )}
     </Box>
   );
 };
