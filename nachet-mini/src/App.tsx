@@ -18,6 +18,9 @@ import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import TuneIcon from "@mui/icons-material/Tune";
 import SaveIcon from "@mui/icons-material/Save";
+import EditIcon from "@mui/icons-material/Edit";
+import AddBoxIcon from "@mui/icons-material/AddBox";
+import CloseIcon from "@mui/icons-material/Close";
 import type Webcam from "react-webcam";
 import { useWebcamDevices } from "@hooks/useWebcamDevices";
 import { useWebcamStore } from "@stores/useWebcamStore";
@@ -25,6 +28,7 @@ import { useMetadataDefaultsStore } from "@stores/useMetadataDefaultsStore";
 import { useImageStore } from "@stores/useImageStore";
 import { useInferenceStore, resultKey } from "@stores/useInferenceStore";
 import { useInference } from "@inference/useInference";
+import { useBoxEditStore } from "@stores/useBoxEditStore";
 import {
   DETECTOR_MODELS,
   CLASSIFIER_MODELS,
@@ -171,7 +175,15 @@ function App() {
   const clearResults = useInferenceStore((s) => s.clearResults);
   const setError = useInferenceStore((s) => s.setError);
 
-  const { loadModels, runInference } = useInference();
+  const { loadModels, runInference, runClassifyOnly } = useInference();
+
+  // Box edit store
+  const isEditing = useBoxEditStore((s) => s.isEditing);
+  const editedBoxes = useBoxEditStore((s) => s.editedBoxes);
+  const isDrawingBox = useBoxEditStore((s) => s.isDrawing);
+  const enterEditMode = useBoxEditStore((s) => s.enterEditMode);
+  const exitEditMode = useBoxEditStore((s) => s.exitEditMode);
+  const setIsDrawing = useBoxEditStore((s) => s.setIsDrawing);
 
   // Local state
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -248,6 +260,39 @@ function App() {
     runInference(currentImage.src, currentImage.index);
   };
 
+  const handleEnterEditMode = () => {
+    if (!activeResultKey || !currentResult) return;
+    enterEditMode(activeResultKey, currentResult.boxes);
+  };
+
+  const handleDiscardEdits = () => {
+    exitEditMode();
+  };
+
+  const handleClassifyEdited = () => {
+    if (!currentImage || editedBoxes.length === 0) return;
+    const detector = DETECTOR_MODELS.find((d) => d.id === selectedDetectorId);
+    const classifier = CLASSIFIER_MODELS.find(
+      (c) => c.id === selectedClassifierId,
+    );
+    if (!detector || !classifier) return;
+    const configId = `${detector.id}+${classifier.id}`;
+    const editedConfigId = `${configId}:edited-${Date.now()}`;
+    const boxes = editedBoxes.map((b) => ({
+      topX: b.topX,
+      topY: b.topY,
+      bottomX: b.bottomX,
+      bottomY: b.bottomY,
+    }));
+    exitEditMode();
+    runClassifyOnly(
+      currentImage.src,
+      currentImage.index,
+      boxes,
+      editedConfigId,
+    );
+  };
+
   const handleEditMetadata = useCallback((index: number) => {
     setMetadataMode("image");
     setMetadataImageIndex(index);
@@ -295,7 +340,15 @@ function App() {
   const isInferring = status === "detecting" || status === "classifying";
   const isLoading = status === "loading-model";
   const canRunInference =
-    !isWebcamActive && !!currentImage && modelLoaded && !isInferring;
+    !isWebcamActive &&
+    !!currentImage &&
+    modelLoaded &&
+    !isInferring &&
+    !isEditing;
+  const canEditBoxes =
+    !isWebcamActive && !!currentResult && !isInferring && !isEditing;
+  const canClassifyEdited =
+    isEditing && editedBoxes.length > 0 && modelLoaded && !isInferring;
 
   const statusText = (() => {
     if (webcamError && isWebcamActive) return webcamError;
@@ -485,11 +538,36 @@ function App() {
                 onSelectClassifier={setSelectedClassifierId}
                 isLoading={isLoading}
               />
+              {!isEditing && (
+                <ControlBarButton
+                  label={t("controls.editBoxes")}
+                  icon={<EditIcon color="inherit" style={iconStyle} />}
+                  disabled={!canEditBoxes}
+                  onClick={handleEnterEditMode}
+                />
+              )}
+              {isEditing && (
+                <>
+                  <ControlBarButton
+                    label={t("controls.addBox")}
+                    icon={<AddBoxIcon color="inherit" style={iconStyle} />}
+                    disabled={false}
+                    onClick={() => setIsDrawing(!isDrawingBox)}
+                    sx={isDrawingBox ? { backgroundColor: "#e3f2fd" } : {}}
+                  />
+                  <ControlBarButton
+                    label={t("controls.discardEdits")}
+                    icon={<CloseIcon color="inherit" style={iconStyle} />}
+                    disabled={false}
+                    onClick={handleDiscardEdits}
+                  />
+                </>
+              )}
               <ControlBarButton
                 label={t("controls.runInference")}
                 icon={<VisibilityIcon color="inherit" style={iconStyle} />}
-                disabled={!canRunInference}
-                onClick={handleRunInference}
+                disabled={isEditing ? !canClassifyEdited : !canRunInference}
+                onClick={isEditing ? handleClassifyEdited : handleRunInference}
               />
             </Box>
 
