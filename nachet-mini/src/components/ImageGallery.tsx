@@ -231,6 +231,32 @@ const ImageGallery = ({
                       {imageResults.map(({ modelConfigId, result }) => {
                         const key = resultKey(item.index, modelConfigId);
                         const isActive = activeResultKey === key;
+                        // Strip timestamp or edited suffix for display
+                        const displayModelId = modelConfigId.replace(
+                          /:(edited-)?\d+$/,
+                          "",
+                        );
+                        const timeLabel = result.completedAt
+                          ? (() => {
+                              const d = new Date(result.completedAt);
+                              const yy = String(d.getFullYear()).slice(2);
+                              const mo = String(d.getMonth() + 1).padStart(
+                                2,
+                                "0",
+                              );
+                              const dd = String(d.getDate()).padStart(2, "0");
+                              const hh = String(d.getHours()).padStart(2, "0");
+                              const mm = String(d.getMinutes()).padStart(
+                                2,
+                                "0",
+                              );
+                              const ss = String(d.getSeconds()).padStart(
+                                2,
+                                "0",
+                              );
+                              return `${yy}${mo}${dd}${hh}${mm}${ss}`;
+                            })()
+                          : "";
                         return (
                           <Box
                             key={key}
@@ -268,7 +294,8 @@ const ImageGallery = ({
                               }}
                             >
                               {t("imageGallery.resultEntry", {
-                                modelId: modelConfigId,
+                                modelId: displayModelId,
+                                time: timeLabel,
                               })}
                             </Box>
                             <Box

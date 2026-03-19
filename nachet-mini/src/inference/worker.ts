@@ -266,6 +266,7 @@ addEventListener("message", async (event: MessageEvent) => {
 
     const { imageSrc, imageIndex } = data;
     const config = loadedConfig;
+    const timestampedId = `${config.id}:${Date.now()}`;
 
     try {
       send({ type: "status", status: "detecting" });
@@ -427,7 +428,7 @@ addEventListener("message", async (event: MessageEvent) => {
         send({
           type: "result",
           imageIndex,
-          modelConfigId: config.id,
+          modelConfigId: timestampedId,
           result: emptyResult(config),
         });
         return;
@@ -473,7 +474,7 @@ addEventListener("message", async (event: MessageEvent) => {
       send({
         type: "partial-result",
         imageIndex,
-        modelConfigId: config.id,
+        modelConfigId: timestampedId,
         result: {
           scores: [...scores],
           classifications: [...classifications],
@@ -507,7 +508,7 @@ addEventListener("message", async (event: MessageEvent) => {
         topNResults,
         config,
         imageIndex,
-        config.id,
+        timestampedId,
       );
 
       bitmap.close();
@@ -531,7 +532,12 @@ addEventListener("message", async (event: MessageEvent) => {
       };
 
       console.log("[worker] Inference complete:", boxes.length, "boxes");
-      send({ type: "result", imageIndex, modelConfigId: config.id, result });
+      send({
+        type: "result",
+        imageIndex,
+        modelConfigId: timestampedId,
+        result,
+      });
     } catch (err) {
       console.error("[worker] Inference error:", err);
       send({
