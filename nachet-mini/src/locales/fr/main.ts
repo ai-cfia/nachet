@@ -53,7 +53,7 @@ const main = {
     title: "Images",
     image: "Image {{number}}",
     resultsAvailable: "R\u00e9sultats disponibles",
-    resultEntry: "{{modelId}}",
+    resultEntry: "{{time}} \u2014 {{modelId}}",
     boxes: "{{count}} bo\u00eetes",
   },
   metadata: {
