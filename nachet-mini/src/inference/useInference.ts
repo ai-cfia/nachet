@@ -1,4 +1,5 @@
 import { useRef, useCallback, useEffect } from "react";
+import type { BoxCoordinates } from "@common/types";
 import type { ModelConfig, WorkerInMessage, WorkerOutMessage } from "./models";
 import { useInferenceStore } from "@stores/useInferenceStore";
 import { resultKey } from "@stores/useInferenceStore";
@@ -107,9 +108,34 @@ export function useInference() {
     workerRef.current.postMessage(msg);
   }, []);
 
+  /**
+   * Run classification only on user-provided boxes (skip detection).
+   * Used for re-classifying edited bounding boxes.
+   */
+  const runClassifyOnly = useCallback(
+    (
+      imageSrc: string,
+      imageIndex: number,
+      boxes: BoxCoordinates[],
+      modelConfigId: string,
+    ) => {
+      if (!workerRef.current || !isModelLoadedRef.current) return;
+      const msg: WorkerInMessage = {
+        type: "run-classify-only",
+        imageSrc,
+        imageIndex,
+        boxes,
+        modelConfigId,
+      };
+      workerRef.current.postMessage(msg);
+    },
+    [],
+  );
+
   return {
     loadModels,
     runInference,
+    runClassifyOnly,
     /** True after `model-loaded` is received from the worker. */
     get isModelLoaded() {
       return isModelLoadedRef.current;

@@ -46,7 +46,14 @@ export interface ClassifierModelEntry {
 
 export type WorkerInMessage =
   | { type: "load-models"; config: ModelConfig }
-  | { type: "run-inference"; imageSrc: string; imageIndex: number };
+  | { type: "run-inference"; imageSrc: string; imageIndex: number }
+  | {
+      type: "run-classify-only";
+      imageSrc: string;
+      imageIndex: number;
+      boxes: import("@common/types").BoxCoordinates[];
+      modelConfigId: string;
+    };
 
 export type WorkerOutMessage =
   | { type: "model-progress"; name: string; progress: number }

@@ -499,76 +499,16 @@ addEventListener("message", async (event: MessageEvent) => {
       const imageBlob = await (await fetch(imageSrc)).blob();
       const bitmap = await createImageBitmap(imageBlob);
 
-      for (let i = 0; i < detections.boxes.length; i++) {
-        const [xmin, ymin, xmax, ymax] = detections.boxes[i];
-
-        let cropUrl: string | null = null;
-        try {
-          cropUrl = await cropRegion(bitmap, xmin, ymin, xmax, ymax);
-
-          // Classify the cropped region
-          const cropImage = await RawImage.read(cropUrl);
-          const clsInputs = await classifierProcessor(cropImage);
-          const clsOutputs = await classifierModel(clsInputs);
-
-          // Get top-k classification results via softmax + topk
-          const logits = clsOutputs.logits[0];
-          const probs = new Tensor(
-            "float32",
-            softmax(logits.data as Float32Array),
-            logits.dims,
-          );
-          const [topValues, topIndices] = await topk(
-            probs,
-            config.classifierTopK,
-          );
-
-          const clsId2label = classifierModel.config?.id2label ?? {};
-          const topValList = topValues.tolist() as number[];
-          const topIdxList = topIndices.tolist() as number[];
-
-          const classResults = topIdxList.map((idx: number, j: number) => ({
-            label: clsId2label[idx] ?? `LABEL_${idx}`,
-            score: topValList[j],
-          }));
-
-          const topLabel = classResults[0]?.label ?? boxes[i].classId;
-          console.log(
-            `[worker] Classification ${i}: top=${topLabel} (${classResults[0]?.score.toFixed(3)})`,
-          );
-
-          // Update arrays in place
-          classifications[i] = topLabel;
-          topNResults[i] = classResults;
-          boxes[i] = { ...boxes[i], label: topLabel };
-
-          // Send partial result after each classification
-          send({
-            type: "partial-result",
-            imageIndex,
-            modelConfigId: config.id,
-            result: {
-              scores: [...scores],
-              classifications: [...classifications],
-              boxes: [...boxes],
-              topN: [...topNResults],
-              overlapping: boxes.map(() => false),
-              overlappingIndices: boxes.map(() => 0),
-              labelOccurrence: buildLabelOccurrence(classifications),
-              totalBoxes: boxes.length,
-              models: [
-                { name: config.detectorModel, version: "1.0" },
-                { name: config.classifierModel, version: "1.0" },
-              ],
-              completedAt: "",
-              isActive: true,
-              minBoxSize: config.minBoxSize,
-            },
-          });
-        } finally {
-          if (cropUrl) URL.revokeObjectURL(cropUrl);
-        }
-      }
+      await classifyBoxes(
+        bitmap,
+        boxes,
+        scores,
+        classifications,
+        topNResults,
+        config,
+        imageIndex,
+        config.id,
+      );
 
       bitmap.close();
 
@@ -600,7 +540,185 @@ addEventListener("message", async (event: MessageEvent) => {
       });
     }
   }
+
+  // ── Classify only (edited boxes) ─────────────────────────────────────────
+  if (data.type === "run-classify-only") {
+    if (!classifierModel || !classifierProcessor || !loadedConfig) {
+      send({ type: "error", message: "Models not loaded" });
+      return;
+    }
+
+    const { imageSrc, imageIndex, boxes: inputBoxes, modelConfigId } = data;
+    const config = loadedConfig;
+
+    try {
+      send({ type: "status", status: "classifying" });
+
+      const inferenceId = `mini-edited-${Date.now()}`;
+      const boxes: InferenceBox[] = inputBoxes.map((b, i) => ({
+        topX: b.topX,
+        topY: b.topY,
+        bottomX: b.bottomX,
+        bottomY: b.bottomY,
+        inferenceId,
+        boxId: `edited-${i}`,
+        classId: "",
+        label: "",
+        isVerified: false,
+      }));
+      const scores = boxes.map(() => 1);
+      const classifications = boxes.map(() => "");
+      const topNResults: Array<Array<{ score: number; label: string }>> =
+        boxes.map(() => []);
+
+      // Send partial result showing boxes before classification
+      send({
+        type: "partial-result",
+        imageIndex,
+        modelConfigId,
+        result: {
+          scores: [...scores],
+          classifications: [...classifications],
+          boxes: [...boxes],
+          topN: [...topNResults],
+          overlapping: boxes.map(() => false),
+          overlappingIndices: boxes.map(() => 0),
+          labelOccurrence: {},
+          totalBoxes: boxes.length,
+          models: [
+            { name: config.detectorModel, version: "1.0" },
+            { name: config.classifierModel, version: "1.0" },
+          ],
+          completedAt: "",
+          isActive: true,
+          minBoxSize: config.minBoxSize,
+        },
+      });
+
+      const imageBlob = await (await fetch(imageSrc)).blob();
+      const bitmap = await createImageBitmap(imageBlob);
+
+      await classifyBoxes(
+        bitmap,
+        boxes,
+        scores,
+        classifications,
+        topNResults,
+        config,
+        imageIndex,
+        modelConfigId,
+      );
+
+      bitmap.close();
+
+      const result: InferenceResult = {
+        scores,
+        classifications,
+        boxes,
+        topN: topNResults,
+        overlapping: boxes.map(() => false),
+        overlappingIndices: boxes.map(() => 0),
+        labelOccurrence: buildLabelOccurrence(classifications),
+        totalBoxes: boxes.length,
+        models: [
+          { name: config.detectorModel, version: "1.0" },
+          { name: config.classifierModel, version: "1.0" },
+        ],
+        completedAt: new Date().toISOString(),
+        isActive: true,
+        minBoxSize: config.minBoxSize,
+      };
+
+      console.log("[worker] Classify-only complete:", boxes.length, "boxes");
+      send({ type: "result", imageIndex, modelConfigId, result });
+    } catch (err) {
+      console.error("[worker] Classify-only error:", err);
+      send({
+        type: "error",
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 });
+
+// ---------------------------------------------------------------------------
+// Shared classification helper
+// ---------------------------------------------------------------------------
+
+async function classifyBoxes(
+  bitmap: ImageBitmap,
+  boxes: InferenceBox[],
+  scores: number[],
+  classifications: string[],
+  topNResults: Array<Array<{ score: number; label: string }>>,
+  config: ModelConfig,
+  imageIndex: number,
+  modelConfigId: string,
+): Promise<void> {
+  for (let i = 0; i < boxes.length; i++) {
+    const { topX: xmin, topY: ymin, bottomX: xmax, bottomY: ymax } = boxes[i];
+
+    let cropUrl: string | null = null;
+    try {
+      cropUrl = await cropRegion(bitmap, xmin, ymin, xmax, ymax);
+
+      const cropImage = await RawImage.read(cropUrl);
+      const clsInputs = await classifierProcessor(cropImage);
+      const clsOutputs = await classifierModel(clsInputs);
+
+      const logits = clsOutputs.logits[0];
+      const probs = new Tensor(
+        "float32",
+        softmax(logits.data as Float32Array),
+        logits.dims,
+      );
+      const [topValues, topIndices] = await topk(probs, config.classifierTopK);
+
+      const clsId2label = classifierModel.config?.id2label ?? {};
+      const topValList = topValues.tolist() as number[];
+      const topIdxList = topIndices.tolist() as number[];
+
+      const classResults = topIdxList.map((idx: number, j: number) => ({
+        label: clsId2label[idx] ?? `LABEL_${idx}`,
+        score: topValList[j],
+      }));
+
+      const topLabel = classResults[0]?.label ?? boxes[i].classId;
+      console.log(
+        `[worker] Classification ${i}: top=${topLabel} (${classResults[0]?.score.toFixed(3)})`,
+      );
+
+      classifications[i] = topLabel;
+      topNResults[i] = classResults;
+      boxes[i] = { ...boxes[i], label: topLabel };
+
+      send({
+        type: "partial-result",
+        imageIndex,
+        modelConfigId,
+        result: {
+          scores: [...scores],
+          classifications: [...classifications],
+          boxes: [...boxes],
+          topN: [...topNResults],
+          overlapping: boxes.map(() => false),
+          overlappingIndices: boxes.map(() => 0),
+          labelOccurrence: buildLabelOccurrence(classifications),
+          totalBoxes: boxes.length,
+          models: [
+            { name: config.detectorModel, version: "1.0" },
+            { name: config.classifierModel, version: "1.0" },
+          ],
+          completedAt: "",
+          isActive: true,
+          minBoxSize: config.minBoxSize,
+        },
+      });
+    } finally {
+      if (cropUrl) URL.revokeObjectURL(cropUrl);
+    }
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
