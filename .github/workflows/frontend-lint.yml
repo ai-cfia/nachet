@@ -43,7 +43,7 @@ jobs:
       skip-version-check: false
 
   bump-version-renovate:
-    if: ${{ github.event.pull_request.user.login == 'renovate[bot]' && needs.versions.result == 'failure' }}
+    if: ${{ !cancelled() && github.event.pull_request.user.login == 'renovate[bot]' && needs.versions.result == 'failure' }}
     needs: [versions]
     runs-on: ubuntu-latest
     steps:
