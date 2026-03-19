@@ -1,7 +1,7 @@
 {
   "name": "nachet-mini",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -36,7 +36,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "@saithodev/ts-appversion": "^2.2.0",
     "@types/file-saver": "^2.0.7",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
