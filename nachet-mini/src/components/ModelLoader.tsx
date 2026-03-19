@@ -5,6 +5,7 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Skeleton,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import type { SelectChangeEvent } from "@mui/material";
@@ -41,15 +42,29 @@ const ModelLoader = ({
     (c) => c.id === selectedClassifierId,
   );
 
+  const dropdownSx = {
+    minWidth: { xs: "fit-content", md: "8vw" },
+    maxWidth: { xs: "fit-content", md: "8vw" },
+  };
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: "flex", alignItems: "center", gap: "0.4vh" }}>
+        <Skeleton
+          variant="rounded"
+          sx={{ ...dropdownSx, height: "4vh", minWidth: "8vw" }}
+        />
+        <Skeleton
+          variant="rounded"
+          sx={{ ...dropdownSx, height: "4vh", minWidth: "8vw" }}
+        />
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: "0.4vh" }}>
-      <FormControl
-        size="small"
-        sx={{
-          minWidth: { xs: "fit-content", md: "8vw" },
-          maxWidth: { xs: "fit-content", md: "8vw" },
-        }}
-      >
+      <FormControl size="small" sx={dropdownSx}>
         <InputLabel sx={{ fontSize: "1.2vh" }}>
           {t("modelLoader.detector")}
         </InputLabel>
@@ -59,7 +74,6 @@ const ModelLoader = ({
           onChange={(e: SelectChangeEvent<string>) => {
             onSelectDetector(e.target.value);
           }}
-          disabled={isLoading}
           sx={{ fontSize: "1.2vh" }}
         >
           {detectors.map((d) => (
@@ -82,13 +96,7 @@ const ModelLoader = ({
         </IconButton>
       )}
 
-      <FormControl
-        size="small"
-        sx={{
-          minWidth: { xs: "fit-content", md: "8vw" },
-          maxWidth: { xs: "fit-content", md: "8vw" },
-        }}
-      >
+      <FormControl size="small" sx={dropdownSx}>
         <InputLabel sx={{ fontSize: "1.2vh" }}>
           {t("modelLoader.classifier")}
         </InputLabel>
@@ -98,7 +106,6 @@ const ModelLoader = ({
           onChange={(e: SelectChangeEvent<string>) => {
             onSelectClassifier(e.target.value);
           }}
-          disabled={isLoading}
           sx={{ fontSize: "1.2vh" }}
         >
           {classifiers.map((c) => (
