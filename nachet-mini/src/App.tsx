@@ -47,7 +47,37 @@ import AppBar from "@components/AppBar";
 import Footer from "@components/Footer";
 import { useTranslation } from "react-i18next";
 
-const theme = createTheme();
+const theme = createTheme({
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        outlined: {
+          borderColor: "#1565c0",
+          "&:hover": { borderColor: "#1565c0" },
+          "&.Mui-disabled": { borderColor: "LightGrey" },
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        notchedOutline: {
+          borderColor: "#1565c0",
+        },
+        root: {
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#1565c0",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#1565c0",
+          },
+          "&.Mui-disabled .MuiOutlinedInput-notchedOutline": {
+            borderColor: "LightGrey",
+          },
+        },
+      },
+    },
+  },
+});
 
 const ControlBarButton = (props: {
   label: string;
@@ -65,7 +95,6 @@ const ControlBarButton = (props: {
     paddingRight: { xs: "1.5vh", md: "0.7vh" },
     fontSize: { xs: "1.8vh", md: "1.17vh" },
     width: "fit-content",
-    border: "0.01vh solid LightGrey",
     textTransform: "none",
     "&:hover": {
       backgroundColor: "#F5F5F5",
