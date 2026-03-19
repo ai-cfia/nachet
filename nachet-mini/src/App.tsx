@@ -220,7 +220,6 @@ function App() {
     const name = fileName ? normalizeFileName(fileName) : undefined;
     addImage(src, dims, name);
     setActiveResultKey(null);
-    setUploadOpen(false);
   };
 
   const handleCaptureFeed = () => {

@@ -1,21 +1,22 @@
 /**
  * Normalizes a filename for use as an image name.
- * - Strips the extension
+ * - Preserves the file extension
  * - Replaces any character not in A-Za-z0-9._- with a dash
  * - Collapses consecutive dashes
  * - Trims leading/trailing dashes
  * - Truncates to 256 characters
  */
 export function normalizeFileName(fileName: string): string {
-  // Remove extension
+  const extMatch = fileName.match(/\.[^.]+$/);
+  const ext = extMatch ? extMatch[0].toLowerCase() : "";
   const base = fileName.replace(/\.[^.]+$/, "");
-  return (
+  const normalized =
     base
       .replace(/[^A-Za-zÀ-ÖØ-öø-ÿ0-9._-]/g, "-")
       .replace(/-{2,}/g, "-")
       .replace(/^-+|-+$/g, "")
-      .slice(0, 256) || "image"
-  );
+      .slice(0, 256) || "image";
+  return normalized + ext;
 }
 
 /**

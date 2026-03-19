@@ -32,8 +32,8 @@ const main = {
     loading: "Chargement\u2026",
   },
   imageUpload: {
-    title: "T\u00e9l\u00e9verser une image",
-    chooseFile: "Choisir un fichier",
+    title: "T\u00e9l\u00e9verser des images",
+    chooseFile: "Choisir des fichiers",
   },
   saveDialog: {
     title: "Enregistrer l\u2019image",

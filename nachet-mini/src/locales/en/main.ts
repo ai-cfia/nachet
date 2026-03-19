@@ -32,8 +32,8 @@ const main = {
     loading: "Loading\u2026",
   },
   imageUpload: {
-    title: "Upload Image",
-    chooseFile: "Choose File",
+    title: "Upload Image(s)",
+    chooseFile: "Choose File(s)",
   },
   saveDialog: {
     title: "Save Image",
