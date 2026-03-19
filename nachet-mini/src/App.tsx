@@ -9,7 +9,6 @@ import {
   Select,
   Switch,
   ThemeProvider,
-  Typography,
   Tooltip,
   Badge,
   createTheme,
@@ -485,7 +484,6 @@ function App() {
                 onSelectDetector={setSelectedDetectorId}
                 onSelectClassifier={setSelectedClassifierId}
                 isLoading={isLoading}
-                progress={modelLoadProgress}
               />
               <ControlBarButton
                 label={t("controls.runInference")}
@@ -493,16 +491,6 @@ function App() {
                 disabled={!canRunInference}
                 onClick={handleRunInference}
               />
-              <Typography
-                variant="body2"
-                sx={{
-                  fontSize: "1.1vh",
-                  color: error || webcamError ? "error.main" : "text.secondary",
-                  ml: "0.4vh",
-                }}
-              >
-                {statusText}
-              </Typography>
             </Box>
 
             {/* Workspace: Webcam feed or Image Viewer */}
@@ -561,7 +549,12 @@ function App() {
         </Box>
 
         {/* Footer */}
-        <Footer />
+        <Footer
+          statusText={statusText}
+          isError={!!(error || webcamError)}
+          isLoading={isLoading}
+          loadProgress={modelLoadProgress}
+        />
       </Box>
 
       <ImageUpload

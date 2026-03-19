@@ -3,10 +3,8 @@ import {
   FormControl,
   IconButton,
   InputLabel,
-  LinearProgress,
   MenuItem,
   Select,
-  Typography,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import type { SelectChangeEvent } from "@mui/material";
@@ -15,7 +13,6 @@ import type {
   ClassifierModelEntry,
 } from "@inference/models";
 import { huggingFaceUrl } from "@inference/models";
-import type { ModelLoadProgress } from "@stores/useInferenceStore";
 import { useTranslation } from "react-i18next";
 
 interface Props {
@@ -26,7 +23,6 @@ interface Props {
   onSelectDetector: (id: string) => void;
   onSelectClassifier: (id: string) => void;
   isLoading: boolean;
-  progress: ModelLoadProgress | null;
 }
 
 const ModelLoader = ({
@@ -37,7 +33,6 @@ const ModelLoader = ({
   onSelectDetector,
   onSelectClassifier,
   isLoading,
-  progress,
 }: Props) => {
   const { t } = useTranslation("main");
 
@@ -124,21 +119,6 @@ const ModelLoader = ({
         >
           <InfoOutlinedIcon sx={{ fontSize: "1.6vh" }} />
         </IconButton>
-      )}
-      {isLoading && progress && (
-        <Box sx={{ minWidth: "12vw" }}>
-          <Typography
-            variant="caption"
-            sx={{ fontSize: "1vh", color: "text.secondary" }}
-          >
-            {progress.name} {Math.round(progress.progress)}%
-          </Typography>
-          <LinearProgress
-            variant="determinate"
-            value={progress.progress}
-            sx={{ height: "0.6vh", borderRadius: "0.3vh" }}
-          />
-        </Box>
       )}
     </Box>
   );

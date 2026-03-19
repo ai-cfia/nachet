@@ -1,12 +1,25 @@
-import { Box, Link } from "@mui/material";
+import { Box, LinearProgress, Link, Typography } from "@mui/material";
 import CanadaLogo from "../assets/Canada_logo.png";
 import HfLogo from "../assets/hf-logo.svg";
 import { colours } from "../styles/colours";
 import { versions } from "../_versions";
 import { useTranslation } from "react-i18next";
 import GitHubIcon from "@mui/icons-material/GitHub";
+import type { ModelLoadProgress } from "@stores/useInferenceStore";
 
-const Footer: React.FC = () => {
+interface FooterProps {
+  statusText?: string;
+  isError?: boolean;
+  isLoading?: boolean;
+  loadProgress?: ModelLoadProgress | null;
+}
+
+const Footer: React.FC<FooterProps> = ({
+  statusText,
+  isError,
+  isLoading,
+  loadProgress,
+}) => {
   const { t } = useTranslation("footer");
 
   return (
@@ -97,6 +110,42 @@ const Footer: React.FC = () => {
             {t("reportIssue")}
           </Link>
         </Box>
+        {statusText && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              minWidth: 0,
+            }}
+          >
+            <Typography
+              variant="body2"
+              noWrap
+              sx={{
+                fontSize: "1rem",
+                color: isError ? "error.main" : colours.CFIA_Background_Blue,
+              }}
+            >
+              {statusText}
+            </Typography>
+            {isLoading && loadProgress && (
+              <Box sx={{ minWidth: "8vw", maxWidth: "12vw" }}>
+                <Typography
+                  variant="caption"
+                  sx={{ fontSize: "0.75rem", color: "text.secondary" }}
+                >
+                  {loadProgress.name} {Math.round(loadProgress.progress)}%
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={loadProgress.progress}
+                  sx={{ height: "0.4rem", borderRadius: "0.2rem" }}
+                />
+              </Box>
+            )}
+          </Box>
+        )}
         <Box
           component="img"
           src={CanadaLogo}
