@@ -6,6 +6,7 @@ const main = {
     capture: "Capture",
     upload: "Upload",
     save: "Save",
+    export: "Export",
     meta: "Meta",
     metadataRequired: "Set metadata defaults first",
     runInference: "Identify",
@@ -43,6 +44,17 @@ const main = {
     labelRequired: "Label is required",
     labelInvalid:
       "Only letters, numbers, spaces, dashes, underscores, and periods",
+  },
+  exportDialog: {
+    title: "Export Data",
+    summary: "{{imageCount}} images, {{resultCount}} inference results",
+    nothingSelected: "No images or results selected",
+    includeImages: "Include images",
+    includeResults: "Include results JSON",
+    includeCsv: "Include CSV",
+    humanReadable: "Human readable filenames",
+    duplicateNameError:
+      "Duplicate image name: {{name}}. Rename before exporting.",
   },
   resultsTable: {
     title: "Classification Results",

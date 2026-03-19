@@ -464,6 +464,7 @@ addEventListener("message", async (event: MessageEvent) => {
           classId: detLabel,
           label: detLabel,
           isVerified: false,
+          bboxSource: "model",
         });
         scores.push(score);
         classifications.push(""); // sentinel: not yet classified
@@ -571,6 +572,7 @@ addEventListener("message", async (event: MessageEvent) => {
         classId: "",
         label: "",
         isVerified: false,
+        bboxSource: "model" as const,
       }));
       const scores = boxes.map(() => 1);
       const classifications = boxes.map(() => "");

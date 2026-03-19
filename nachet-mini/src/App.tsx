@@ -17,7 +17,8 @@ import AddAPhotoIcon from "@mui/icons-material/AddAPhoto";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import TuneIcon from "@mui/icons-material/Tune";
-import SaveIcon from "@mui/icons-material/Save";
+// import SaveIcon from "@mui/icons-material/Save";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import EditIcon from "@mui/icons-material/Edit";
 import AddBoxIcon from "@mui/icons-material/AddBox";
 import CloseIcon from "@mui/icons-material/Close";
@@ -40,6 +41,7 @@ import { normalizeFileName } from "@common/validation";
 import ImageUpload from "@components/ImageUpload";
 import WebcamCapture from "@components/WebcamCapture";
 import SaveDialog from "@components/SaveDialog";
+import ExportDialog from "@components/ExportDialog";
 import MetadataDialog from "@components/MetadataDialog";
 import ImageGallery from "@components/ImageGallery";
 import ResultsTable from "@components/ResultsTable";
@@ -49,6 +51,7 @@ import Navbar from "@components/Navbar";
 import AppBar from "@components/AppBar";
 import Footer from "@components/Footer";
 import { useTranslation } from "react-i18next";
+import { computeSha256 } from "@common/hash";
 
 const theme = createTheme({
   components: {
@@ -186,9 +189,14 @@ function App() {
   const exitEditMode = useBoxEditStore((s) => s.exitEditMode);
   const setIsDrawing = useBoxEditStore((s) => s.setIsDrawing);
 
+  // Checked state (lifted from ImageGallery for export)
+  const [checkedImages, setCheckedImages] = useState<Set<number>>(new Set());
+  const [checkedResults, setCheckedResults] = useState<Set<string>>(new Set());
+
   // Local state
   const [uploadOpen, setUploadOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [isWebcamActive, setIsWebcamActive] = useState(true);
   const [webcamError, setWebcamError] = useState("");
   const webcamRef = useRef<Webcam | null>(null);
@@ -212,17 +220,19 @@ function App() {
     ? (results.get(activeResultKey) ?? null)
     : null;
 
-  const handleImageLoaded = (
+  const handleImageLoaded = async (
     src: string,
     dims: number[],
     fileName?: string,
   ) => {
     const name = fileName ? normalizeFileName(fileName) : undefined;
-    addImage(src, dims, name);
+    const hash = await computeSha256(src);
+    const added = addImage(src, dims, name, hash);
+    if (!added) return;
     setActiveResultKey(null);
   };
 
-  const handleCaptureFeed = () => {
+  const handleCaptureFeed = async () => {
     const screenshot = webcamRef.current?.getScreenshot();
     if (!screenshot) return;
 
@@ -230,7 +240,9 @@ function App() {
     const width = video?.videoWidth ?? 1920;
     const height = video?.videoHeight ?? 1080;
 
-    addImage(screenshot, [width, height]);
+    const hash = await computeSha256(screenshot);
+    const added = addImage(screenshot, [width, height], undefined, hash);
+    if (!added) return;
     setActiveResultKey(null);
   };
 
@@ -302,6 +314,8 @@ function App() {
   const handleClearImages = () => {
     clearImages();
     clearResults();
+    setCheckedImages(new Set());
+    setCheckedResults(new Set());
   };
 
   const handleSelectImage = useCallback(
@@ -333,6 +347,20 @@ function App() {
     (index: number) => {
       removeResultsForImage(index);
       removeImage(index);
+      setCheckedImages((prev) => {
+        const next = new Set(prev);
+        next.delete(index);
+        return next;
+      });
+      // Remove any checked results for this image
+      setCheckedResults((prev) => {
+        const prefix = `${index}:`;
+        const next = new Set(prev);
+        for (const key of prev) {
+          if (key.startsWith(prefix)) next.delete(key);
+        }
+        return next;
+      });
     },
     [removeImage, removeResultsForImage],
   );
@@ -530,11 +558,20 @@ function App() {
                   setUploadOpen(true);
                 }}
               />
-              <ControlBarButton
+              {/* <ControlBarButton
                 label={t("controls.save")}
                 icon={<SaveIcon color="inherit" style={iconStyle} />}
                 disabled={isWebcamActive || images.length === 0}
                 onClick={() => setSaveOpen(true)}
+              /> */}
+              <ControlBarButton
+                label={t("controls.export")}
+                icon={<FileDownloadIcon color="inherit" style={iconStyle} />}
+                disabled={
+                  isWebcamActive ||
+                  (checkedImages.size === 0 && checkedResults.size === 0)
+                }
+                onClick={() => setExportOpen(true)}
               />
               <ModelLoader
                 detectors={DETECTOR_MODELS}
@@ -618,6 +655,10 @@ function App() {
               images={images}
               currentIndex={currentIndex}
               activeResultKey={activeResultKey}
+              checkedImages={checkedImages}
+              checkedResults={checkedResults}
+              onCheckedImagesChange={setCheckedImages}
+              onCheckedResultsChange={setCheckedResults}
               onSelectImage={handleSelectImage}
               onSelectResult={handleSelectResult}
               onRemoveImage={handleRemoveImage}
@@ -651,6 +692,16 @@ function App() {
         onImageLoaded={handleImageLoaded}
       />
       <SaveDialog open={saveOpen} onClose={() => setSaveOpen(false)} />
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        checkedImages={checkedImages}
+        checkedResults={checkedResults}
+        onExportComplete={() => {
+          setCheckedImages(new Set());
+          setCheckedResults(new Set());
+        }}
+      />
       <MetadataDialog
         open={metadataOpen}
         onClose={() => setMetadataOpen(false)}

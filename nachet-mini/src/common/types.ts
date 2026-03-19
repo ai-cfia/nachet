@@ -11,6 +11,7 @@ export interface InferenceBox extends BoxCoordinates {
   classId: string;
   label: string;
   isVerified: boolean;
+  bboxSource: "model" | "user";
 }
 
 export interface BoxCSS {
@@ -61,6 +62,7 @@ export interface Images {
   src: string;
   imageDims: number[];
   metadata: ImageMetadata;
+  sha256: string;
 }
 
 export interface LabelOccurrences {
