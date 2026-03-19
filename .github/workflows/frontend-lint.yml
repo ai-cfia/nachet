@@ -43,7 +43,7 @@ jobs:
       skip-version-check: false
 
   bump-version-renovate:
-    if: ${{ !cancelled() && github.event.pull_request.user.login == 'renovate[bot]' && needs.versions.result == 'failure' }}
+    if: ${{ !cancelled() && (github.event.pull_request.user.login == 'renovate[bot]' || github.event.pull_request.user.login == 'github-actions[bot]') && needs.nachet-pyproject-version-bump.result == 'failure' }}
     needs: [versions]
     runs-on: ubuntu-latest
     steps:
@@ -72,7 +72,7 @@ jobs:
         with:
           message: "chore: bump frontend version for Renovate PRs"
           add: "."
-          author_name: "github-actions"
+          author_name: "github-actions[bot]"
           author_email: "actions@github.com"
 
 
