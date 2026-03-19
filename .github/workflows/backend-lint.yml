@@ -45,7 +45,7 @@ jobs:
   bump-version-renovate:
     needs: [nachet-pyproject-version-bump]
     # Failure of nachet-pyproject-version-bump indicates that version in pyproject.toml has not been updated.
-    if: ${{ github.event.pull_request.user.login == 'renovate[bot]' && needs.nachet-pyproject-version-bump.result == 'failure' }}
+    if: ${{ !cancelled() && github.event.pull_request.user.login == 'renovate[bot]' && needs.nachet-pyproject-version-bump.result == 'failure' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
