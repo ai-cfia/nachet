@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import ImageIcon from "@mui/icons-material/Image";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ScienceIcon from "@mui/icons-material/Science";
@@ -28,6 +29,7 @@ interface Props {
   onSelectImage: (index: number) => void;
   onSelectResult: (resultKey: string) => void;
   onRemoveImage: (index: number) => void;
+  onEditMetadata: (index: number) => void;
   onClear: () => void;
   getResultsForImage: (
     index: number,
@@ -41,6 +43,7 @@ const ImageGallery = ({
   onSelectImage,
   onSelectResult,
   onRemoveImage,
+  onEditMetadata,
   onClear,
   getResultsForImage,
 }: Props) => {
@@ -184,9 +187,10 @@ const ImageGallery = ({
                           style={{ color: "#1565c0", fontSize: "1.8vh" }}
                         />
                         <span>
-                          {t("imageGallery.image", {
-                            number: item.index + 1,
-                          })}
+                          {item.metadata.imageName ||
+                            t("imageGallery.image", {
+                              number: item.index + 1,
+                            })}
                         </span>
                         {hasResults && (
                           <CheckCircleIcon
@@ -199,9 +203,21 @@ const ImageGallery = ({
                       <IconButton
                         onClick={(e) => {
                           e.stopPropagation();
+                          onEditMetadata(item.index);
+                        }}
+                        sx={{ padding: 0, paddingRight: "30px" }}
+                        aria-label={`edit metadata image ${item.index + 1}`}
+                      >
+                        <EditIcon
+                          style={{ color: "#1565c0", fontSize: "1.8vh" }}
+                        />
+                      </IconButton>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
                           onRemoveImage(item.index);
                         }}
-                        sx={{ padding: 0 }}
+                        sx={{ padding: 0, paddingRight: "30px" }}
                         aria-label={`remove image ${item.index + 1}`}
                       >
                         <CloseIcon

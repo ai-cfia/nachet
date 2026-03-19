@@ -10,15 +10,19 @@ import {
   Switch,
   ThemeProvider,
   Typography,
+  Tooltip,
+  Badge,
   createTheme,
 } from "@mui/material";
 import AddAPhotoIcon from "@mui/icons-material/AddAPhoto";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
-import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import TuneIcon from "@mui/icons-material/Tune";
 import SaveIcon from "@mui/icons-material/Save";
 import type Webcam from "react-webcam";
 import { useWebcamDevices } from "@hooks/useWebcamDevices";
 import { useWebcamStore } from "@stores/useWebcamStore";
+import { useMetadataDefaultsStore } from "@stores/useMetadataDefaultsStore";
 import { useImageStore } from "@stores/useImageStore";
 import { useInferenceStore, resultKey } from "@stores/useInferenceStore";
 import { useInference } from "@inference/useInference";
@@ -29,9 +33,11 @@ import {
   DEFAULT_CLASSIFIER,
   buildModelConfig,
 } from "@inference/models";
+import { normalizeFileName } from "@common/validation";
 import ImageUpload from "@components/ImageUpload";
 import WebcamCapture from "@components/WebcamCapture";
 import SaveDialog from "@components/SaveDialog";
+import MetadataDialog from "@components/MetadataDialog";
 import ImageGallery from "@components/ImageGallery";
 import ResultsTable from "@components/ResultsTable";
 import ImageViewer from "@components/ImageViewer";
@@ -108,6 +114,11 @@ function App() {
   const { devices, activeDeviceId } = useWebcamDevices();
   const setActiveDeviceId = useWebcamStore((s) => s.setActiveDeviceId);
 
+  // Metadata defaults
+  const metaDefaults = useMetadataDefaultsStore((s) => s.defaults);
+  const metadataNotSet =
+    !metaDefaults.deviceBrandId || !metaDefaults.deviceModelId;
+
   // Image store
   const images = useImageStore((s) => s.images);
   const currentIndex = useImageStore((s) => s.currentIndex);
@@ -147,14 +158,26 @@ function App() {
     DEFAULT_CLASSIFIER.id,
   );
   const [switchTable, setSwitchTable] = useState(false);
+  const [metadataOpen, setMetadataOpen] = useState(false);
+  const [metadataMode, setMetadataMode] = useState<"defaults" | "image">(
+    "defaults",
+  );
+  const [metadataImageIndex, setMetadataImageIndex] = useState<
+    number | undefined
+  >(undefined);
 
   const currentImage = getCurrentImage();
   const currentResult = activeResultKey
     ? (results.get(activeResultKey) ?? null)
     : null;
 
-  const handleImageLoaded = (src: string, dims: number[]) => {
-    addImage(src, dims);
+  const handleImageLoaded = (
+    src: string,
+    dims: number[],
+    fileName?: string,
+  ) => {
+    const name = fileName ? normalizeFileName(fileName) : undefined;
+    addImage(src, dims, name);
     setActiveResultKey(null);
     setUploadOpen(false);
   };
@@ -196,6 +219,12 @@ function App() {
     if (!currentImage) return;
     runInference(currentImage.src, currentImage.index);
   };
+
+  const handleEditMetadata = useCallback((index: number) => {
+    setMetadataMode("image");
+    setMetadataImageIndex(index);
+    setMetadataOpen(true);
+  }, []);
 
   const handleClearImages = () => {
     clearImages();
@@ -342,19 +371,65 @@ function App() {
                 </Select>
               </FormControl>
               <ControlBarButton
+                label={t("controls.meta")}
+                icon={
+                  <Badge
+                    color="warning"
+                    variant="dot"
+                    invisible={!metadataNotSet}
+                    overlap="circular"
+                  >
+                    <TuneIcon color="inherit" style={iconStyle} />
+                  </Badge>
+                }
+                disabled={false}
+                onClick={() => {
+                  setMetadataMode("defaults");
+                  setMetadataImageIndex(undefined);
+                  setMetadataOpen(true);
+                }}
+              />
+              <ControlBarButton
                 label={t("controls.capture")}
                 icon={<AddAPhotoIcon color="inherit" style={iconStyle} />}
                 disabled={!isWebcamActive}
                 onClick={handleCaptureFeed}
               />
-              <Switch
-                checked={!isWebcamActive}
-                onChange={() => {
-                  setWebcamError("");
-                  setIsWebcamActive(!isWebcamActive);
-                }}
-                size="small"
-              />
+              <Tooltip
+                title={metadataNotSet ? t("controls.metadataRequired") : ""}
+                arrow
+              >
+                <span>
+                  <Switch
+                    checked={!isWebcamActive}
+                    onChange={() => {
+                      setWebcamError("");
+                      setIsWebcamActive(!isWebcamActive);
+                    }}
+                    size="small"
+                    disabled={metadataNotSet}
+                    sx={
+                      metadataNotSet
+                        ? {}
+                        : {
+                            "& .MuiSwitch-switchBase": {
+                              color: "#1565c0",
+                            },
+                            "& .MuiSwitch-switchBase.Mui-checked": {
+                              color: "#1565c0",
+                            },
+                            "& .MuiSwitch-track": {
+                              backgroundColor: "#1565c0",
+                            },
+                            "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
+                              {
+                                backgroundColor: "#1565c0",
+                              },
+                          }
+                    }
+                  />
+                </span>
+              </Tooltip>
 
               {/* Capture (webcam active only) */}
               <ControlBarButton
@@ -444,6 +519,7 @@ function App() {
               onSelectImage={handleSelectImage}
               onSelectResult={handleSelectResult}
               onRemoveImage={handleRemoveImage}
+              onEditMetadata={handleEditMetadata}
               onClear={handleClearImages}
               getResultsForImage={getResultsForImage}
             />
@@ -467,6 +543,12 @@ function App() {
         onImageLoaded={handleImageLoaded}
       />
       <SaveDialog open={saveOpen} onClose={() => setSaveOpen(false)} />
+      <MetadataDialog
+        open={metadataOpen}
+        onClose={() => setMetadataOpen(false)}
+        mode={metadataMode}
+        imageIndex={metadataImageIndex}
+      />
     </ThemeProvider>
   );
 }

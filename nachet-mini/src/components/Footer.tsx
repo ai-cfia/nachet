@@ -4,8 +4,7 @@ import HfLogo from "../assets/hf-logo.svg";
 import { colours } from "../styles/colours";
 import { versions } from "../_versions";
 import { useTranslation } from "react-i18next";
-import GitHubIcon from '@mui/icons-material/GitHub';
-
+import GitHubIcon from "@mui/icons-material/GitHub";
 
 const Footer: React.FC = () => {
   const { t } = useTranslation("footer");
@@ -63,7 +62,11 @@ const Footer: React.FC = () => {
             href="https://github.com/ai-cfia"
             target="_blank"
             rel="noopener noreferrer"
-            sx={{ display: "flex", alignItems: "center", color: colours.CFIA_Font_Black }}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              color: colours.CFIA_Font_Black,
+            }}
           >
             <GitHubIcon sx={{ fontSize: "1.5rem" }} />
           </Link>
@@ -76,7 +79,9 @@ const Footer: React.FC = () => {
               fontSize: "1rem",
             }}
           >
-            {versions.version ? t("version", { version: versions.version }) : ""}
+            {versions.version
+              ? t("version", { version: versions.version })
+              : ""}
           </Box>
           <Link
             href="https://github.com/ai-cfia/nachet/issues"

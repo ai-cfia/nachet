@@ -14,8 +14,8 @@ import { useTranslation } from "react-i18next";
 interface Props {
   open: boolean;
   onClose: () => void;
-  /** Called with the data URL and [width, height] once a valid file is read. */
-  onImageLoaded: (src: string, dims: number[]) => void;
+  /** Called with the data URL, [width, height], and original filename once a valid file is read. */
+  onImageLoaded: (src: string, dims: number[], fileName: string) => void;
 }
 
 const ImageUpload = ({ open, onClose, onImageLoaded }: Props) => {
@@ -46,7 +46,7 @@ const ImageUpload = ({ open, onClose, onImageLoaded }: Props) => {
       const dims = validation.dimensions
         ? [validation.dimensions.width, validation.dimensions.height]
         : [0, 0];
-      onImageLoaded(reader.result, dims);
+      onImageLoaded(reader.result, dims, file.name);
       onClose();
     };
     reader.readAsDataURL(file);
