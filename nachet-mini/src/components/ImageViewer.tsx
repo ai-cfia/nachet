@@ -112,6 +112,7 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
           classId: "",
           label: "",
           isVerified: false,
+          bboxSource: "user",
         });
       }
 

@@ -6,6 +6,7 @@ const main = {
     capture: "Capturer",
     upload: "T\u00e9l\u00e9verser",
     save: "Enregistrer",
+    export: "Exporter",
     meta: "Méta",
     metadataRequired: "Définir les métadonnées par défaut d\u2019abord",
     runInference: "Identifier",
@@ -43,6 +44,15 @@ const main = {
     labelRequired: "Le libell\u00e9 est obligatoire",
     labelInvalid:
       "Seuls les lettres, chiffres, espaces, tirets, traits de soulignement et points sont autoris\u00e9s",
+  },
+  exportDialog: {
+    title: "Exporter les donn\u00e9es",
+    summary:
+      "{{imageCount}} images, {{resultCount}} r\u00e9sultats d\u2019inf\u00e9rence",
+    nothingSelected: "Aucune image ou r\u00e9sultat s\u00e9lectionn\u00e9",
+    includeImages: "Inclure les images",
+    includeResults: "Inclure les r\u00e9sultats JSON",
+    includeCsv: "Inclure le CSV",
   },
   resultsTable: {
     title: "R\u00e9sultats de classification",

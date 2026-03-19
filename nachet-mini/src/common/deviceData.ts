@@ -20,4 +20,10 @@ export const DEVICE_BRANDS: DeviceBrand[] = [
       { id: "10x", name: "10x" },
     ],
   },
+  {
+    id: "none",
+    name: "None",
+    models: [{ id: "none", name: "None" }],
+    lenses: [{ id: "none", name: "None" }],
+  },
 ];

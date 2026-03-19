@@ -26,6 +26,10 @@ interface Props {
   images: Images[];
   currentIndex: number;
   activeResultKey: string | null;
+  checkedImages: Set<number>;
+  checkedResults: Set<string>;
+  onCheckedImagesChange: (value: Set<number>) => void;
+  onCheckedResultsChange: (value: Set<string>) => void;
   onSelectImage: (index: number) => void;
   onSelectResult: (resultKey: string) => void;
   onRemoveImage: (index: number) => void;
@@ -41,6 +45,10 @@ const ImageGallery = ({
   images,
   currentIndex,
   activeResultKey,
+  checkedImages,
+  checkedResults,
+  onCheckedImagesChange,
+  onCheckedResultsChange,
   onSelectImage,
   onSelectResult,
   onRemoveImage,
@@ -53,8 +61,9 @@ const ImageGallery = ({
   const [collapsedIndices, setCollapsedIndices] = useState<Set<number>>(
     new Set(),
   );
-  const [checkedImages, setCheckedImages] = useState<Set<number>>(new Set());
-  const [checkedResults, setCheckedResults] = useState<Set<string>>(new Set());
+
+  const setCheckedImages = onCheckedImagesChange;
+  const setCheckedResults = onCheckedResultsChange;
 
   const hasChecked = checkedImages.size > 0 || checkedResults.size > 0;
 
@@ -184,12 +193,10 @@ const ImageGallery = ({
                           checked={checkedImages.has(item.index)}
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) => {
-                            setCheckedImages((prev) => {
-                              const next = new Set(prev);
-                              if (e.target.checked) next.add(item.index);
-                              else next.delete(item.index);
-                              return next;
-                            });
+                            const next = new Set(checkedImages);
+                            if (e.target.checked) next.add(item.index);
+                            else next.delete(item.index);
+                            setCheckedImages(next);
                           }}
                           sx={{
                             padding: 0,
@@ -307,12 +314,10 @@ const ImageGallery = ({
                               checked={checkedResults.has(key)}
                               onClick={(e) => e.stopPropagation()}
                               onChange={(e) => {
-                                setCheckedResults((prev) => {
-                                  const next = new Set(prev);
-                                  if (e.target.checked) next.add(key);
-                                  else next.delete(key);
-                                  return next;
-                                });
+                                const next = new Set(checkedResults);
+                                if (e.target.checked) next.add(key);
+                                else next.delete(key);
+                                setCheckedResults(next);
                               }}
                               sx={{
                                 padding: 0,
