@@ -152,7 +152,10 @@ function escapeCsvField(value: string): string {
  * Generate a flat CSV string from the manifest.
  * One row per bounding box across all images and inference results.
  */
-export function generateCsvFromManifest(manifest: ExportManifest): string {
+export function generateCsvFromManifest(
+  manifest: ExportManifest,
+  options?: { humanReadable?: boolean },
+): string {
   const header =
     "filename,datetime,model,topX,topY,botX,botY,bbox_source,top1,conf1,top2,conf2,top3,conf3,top4,conf4,top5,conf5";
   const rows: string[] = [header];
@@ -161,8 +164,12 @@ export function generateCsvFromManifest(manifest: ExportManifest): string {
     for (const inf of img.inferenceResults) {
       for (const box of inf.boxes) {
         const topN = box.topNClassifications;
+        const csvFileName =
+          options?.humanReadable && img.metadata.imageName
+            ? `images/${img.metadata.imageName}`
+            : img.fileName;
         const fields: string[] = [
-          escapeCsvField(img.fileName),
+          escapeCsvField(csvFileName),
           escapeCsvField(inf.completedAt),
           escapeCsvField(inf.modelConfigId),
           String(box.coordinates.topX),
@@ -198,16 +205,32 @@ export async function generateExportZip(
     includeImages?: boolean;
     includeResults?: boolean;
     includeCsv?: boolean;
+    humanReadable?: boolean;
   },
 ): Promise<void> {
   const zip = new JSZip();
   const includeImages = options?.includeImages ?? true;
   const includeResults = options?.includeResults ?? true;
   const includeCsv = options?.includeCsv ?? true;
+  const humanReadable = options?.humanReadable ?? false;
 
   // Add manifest only when results JSON is requested
   if (includeResults) {
     zip.file("manifest.json", JSON.stringify(manifest, null, 2));
+  }
+
+  // Check for duplicate image names when human-readable is enabled
+  if (humanReadable && includeImages) {
+    const nameCounts = new Map<string, number>();
+    for (const entry of manifest.images) {
+      const name = entry.metadata.imageName;
+      nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
+    }
+    for (const [name, count] of nameCounts) {
+      if (count > 1) {
+        throw new Error(`DUPLICATE_NAME:${name}`);
+      }
+    }
   }
 
   // Add images
@@ -224,14 +247,17 @@ export async function generateExportZip(
       if (!img) continue;
 
       const base64Data = img.src.replace(/^data:image\/\w+;base64,/, "");
-      const baseName = entry.fileName.replace("images/", "");
+      const baseName =
+        humanReadable && entry.metadata.imageName
+          ? entry.metadata.imageName
+          : entry.fileName.replace("images/", "");
       imagesFolder.file(baseName, base64Data, { base64: true });
     }
   }
 
   // Add CSV
   if (includeCsv) {
-    const csv = generateCsvFromManifest(manifest);
+    const csv = generateCsvFromManifest(manifest, { humanReadable });
     zip.file("results.csv", csv);
   }
 

@@ -53,6 +53,9 @@ const main = {
     includeImages: "Inclure les images",
     includeResults: "Inclure les r\u00e9sultats JSON",
     includeCsv: "Inclure le CSV",
+    humanReadable: "Noms de fichiers lisibles",
+    duplicateNameError:
+      "Nom d'image en double : {{name}}. Renommez avant d'exporter.",
   },
   resultsTable: {
     title: "R\u00e9sultats de classification",

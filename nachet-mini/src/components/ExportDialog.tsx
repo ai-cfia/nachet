@@ -41,6 +41,8 @@ const ExportDialog = ({
   const [includeImages, setIncludeImages] = useState(true);
   const [includeResults, setIncludeResults] = useState(true);
   const [includeCsv, setIncludeCsv] = useState(true);
+  const [humanReadable, setHumanReadable] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   // Count what will be exported
   const imageIndices = new Set<number>(checkedImages);
@@ -67,6 +69,7 @@ const ExportDialog = ({
 
   const handleExport = async () => {
     setExporting(true);
+    setExportError("");
     try {
       const manifest = buildExportManifest(
         images,
@@ -79,14 +82,18 @@ const ExportDialog = ({
         includeImages,
         includeResults,
         includeCsv,
+        humanReadable,
       });
       onExportComplete();
       onClose();
     } catch (error) {
-      console.error(
-        "Export error:",
-        error instanceof Error ? error.message : String(error),
-      );
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.startsWith("DUPLICATE_NAME:")) {
+        const name = message.slice("DUPLICATE_NAME:".length);
+        setExportError(t("exportDialog.duplicateNameError", { name }));
+      } else {
+        console.error("Export error:", message);
+      }
     } finally {
       setExporting(false);
     }
@@ -181,7 +188,29 @@ const ExportDialog = ({
                 typography: { sx: { fontSize: "1.3vh" } },
               }}
             />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={humanReadable}
+                  onChange={(e) => {
+                    setHumanReadable(e.target.checked);
+                    setExportError("");
+                  }}
+                  size="small"
+                />
+              }
+              label={t("exportDialog.humanReadable")}
+              slotProps={{
+                typography: { sx: { fontSize: "1.3vh" } },
+              }}
+            />
           </Box>
+
+          {exportError && (
+            <Typography color="error" sx={{ fontSize: "1.2vh", mb: "1vh" }}>
+              {exportError}
+            </Typography>
+          )}
 
           <Box
             sx={{
