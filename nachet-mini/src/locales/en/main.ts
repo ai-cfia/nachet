@@ -32,8 +32,8 @@ const main = {
     loading: "Loading\u2026",
   },
   imageUpload: {
-    title: "Upload Image",
-    chooseFile: "Choose File",
+    title: "Upload Image(s)",
+    chooseFile: "Choose File(s)",
   },
   saveDialog: {
     title: "Save Image",
@@ -55,6 +55,7 @@ const main = {
     resultsAvailable: "Results available",
     resultEntry: "{{time}} \u2014 {{modelId}}",
     boxes: "{{count}} boxes",
+    removeResult: "Delete selected results",
   },
   metadata: {
     defaultsTitle: "Default Metadata",

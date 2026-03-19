@@ -8,8 +8,8 @@ import {
   Box,
   CardHeader,
   Collapse,
+  Checkbox,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import ImageIcon from "@mui/icons-material/Image";
@@ -29,6 +29,7 @@ interface Props {
   onSelectImage: (index: number) => void;
   onSelectResult: (resultKey: string) => void;
   onRemoveImage: (index: number) => void;
+  onRemoveResult: (resultKey: string) => void;
   onEditMetadata: (index: number) => void;
   onClear: () => void;
   getResultsForImage: (
@@ -43,6 +44,7 @@ const ImageGallery = ({
   onSelectImage,
   onSelectResult,
   onRemoveImage,
+  onRemoveResult,
   onEditMetadata,
   onClear,
   getResultsForImage,
@@ -51,6 +53,10 @@ const ImageGallery = ({
   const [collapsedIndices, setCollapsedIndices] = useState<Set<number>>(
     new Set(),
   );
+  const [checkedImages, setCheckedImages] = useState<Set<number>>(new Set());
+  const [checkedResults, setCheckedResults] = useState<Set<string>>(new Set());
+
+  const hasChecked = checkedImages.size > 0 || checkedResults.size > 0;
 
   const handleImageClick = (index: number) => {
     onSelectImage(index);
@@ -92,13 +98,24 @@ const ImageGallery = ({
         action={
           <IconButton
             sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
-            onClick={onClear}
-            aria-label="clear all images"
+            onClick={() => {
+              if (hasChecked) {
+                checkedResults.forEach((key) => onRemoveResult(key));
+                checkedImages.forEach((index) => onRemoveImage(index));
+                setCheckedResults(new Set());
+                setCheckedImages(new Set());
+              } else {
+                onClear();
+              }
+            }}
+            aria-label={
+              hasChecked ? t("imageGallery.removeResult") : "clear all images"
+            }
             disabled={images.length === 0}
           >
             <DeleteIcon
               style={{
-                color: "#1565c0",
+                color: hasChecked ? "#d32f2f" : "#1565c0",
                 fontSize: "2vh",
                 marginTop: "0.1vh",
                 marginBottom: "0.1vh",
@@ -151,40 +168,36 @@ const ImageGallery = ({
                       }}
                       onClick={() => handleImageClick(item.index)}
                     >
-                      {/* Expand icon */}
-                      {hasResults && (
-                        <Box
-                          sx={{
-                            mr: "0.3vw",
-                            display: "flex",
-                            alignItems: "center",
-                          }}
-                        >
-                          {isExpanded ? (
-                            <ExpandLessIcon
-                              sx={{ fontSize: "1.8vh", color: "#1565c0" }}
-                            />
-                          ) : (
-                            <ExpandMoreIcon
-                              sx={{ fontSize: "1.8vh", color: "#1565c0" }}
-                            />
-                          )}
-                        </Box>
-                      )}
-
                       <Box
                         sx={{
                           display: "flex",
                           alignItems: "center",
                           gap: "0.3vw",
                           flex: 1,
-                          fontSize: "1.1vh",
+                          fontSize: "1.3vh",
                           color: "text.primary",
-                          ...(!hasResults && { pl: "2.1vh" }),
+                          // ...(!hasResults && { pl: "2.1vh" }),
                         }}
                       >
+                        <Checkbox
+                          size="small"
+                          checked={checkedImages.has(item.index)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            setCheckedImages((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(item.index);
+                              else next.delete(item.index);
+                              return next;
+                            });
+                          }}
+                          sx={{
+                            padding: 0,
+                            "& .MuiSvgIcon-root": { fontSize: "2.4vh" },
+                          }}
+                        />
                         <ImageIcon
-                          style={{ color: "#1565c0", fontSize: "1.8vh" }}
+                          style={{ color: "#1565c0", fontSize: "2.4vh" }}
                         />
                         <span>
                           {item.metadata.imageName ||
@@ -194,7 +207,7 @@ const ImageGallery = ({
                         </span>
                         {hasResults && (
                           <CheckCircleIcon
-                            sx={{ color: "#4caf50", fontSize: "1.6vh" }}
+                            sx={{ color: "#4caf50", fontSize: "2.4vh" }}
                             titleAccess={t("imageGallery.resultsAvailable")}
                           />
                         )}
@@ -205,25 +218,32 @@ const ImageGallery = ({
                           e.stopPropagation();
                           onEditMetadata(item.index);
                         }}
-                        sx={{ padding: 0, paddingRight: "30px" }}
+                        sx={{ padding: 0, pr: "5px", pl: "25px" }}
                         aria-label={`edit metadata image ${item.index + 1}`}
                       >
                         <EditIcon
-                          style={{ color: "#1565c0", fontSize: "1.8vh" }}
+                          style={{ color: "#1565c0", fontSize: "2.4vh" }}
                         />
                       </IconButton>
-                      <IconButton
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRemoveImage(item.index);
+                      {/* Expand icon */}
+
+                      <Box
+                        sx={{
+                          mr: "0.3vw",
+                          display: "flex",
+                          alignItems: "center",
                         }}
-                        sx={{ padding: 0, paddingRight: "30px" }}
-                        aria-label={`remove image ${item.index + 1}`}
                       >
-                        <CloseIcon
-                          style={{ color: "#1565c0", fontSize: "1.8vh" }}
-                        />
-                      </IconButton>
+                        {isExpanded ? (
+                          <ExpandLessIcon
+                            sx={{ fontSize: "2.4vh", color: "#1565c0" }}
+                          />
+                        ) : (
+                          <ExpandMoreIcon
+                            sx={{ fontSize: "2.4vh", color: "#1565c0" }}
+                          />
+                        )}
+                      </Box>
                     </Box>
 
                     {/* Expandable sub-entries for inference results */}
@@ -267,7 +287,7 @@ const ImageGallery = ({
                               pl: "3.5vh",
                               pr: "0.8vh",
                               py: "0.4vh",
-                              fontSize: "1vh",
+                              fontSize: "1.3vh",
                               cursor: "pointer",
                               backgroundColor: isActive
                                 ? "#E3F2FD"
@@ -282,8 +302,27 @@ const ImageGallery = ({
                             }}
                             onClick={() => onSelectResult(key)}
                           >
+                            <Checkbox
+                              size="small"
+                              checked={checkedResults.has(key)}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                setCheckedResults((prev) => {
+                                  const next = new Set(prev);
+                                  if (e.target.checked) next.add(key);
+                                  else next.delete(key);
+                                  return next;
+                                });
+                              }}
+                              sx={{
+                                padding: 0,
+                                pl: "0px",
+                                ml: "0px",
+                                "& .MuiSvgIcon-root": { fontSize: "2.1vh" },
+                              }}
+                            />
                             <ScienceIcon
-                              sx={{ fontSize: "1.4vh", color: "#7b1fa2" }}
+                              sx={{ fontSize: "1.8vh", color: "#7b1fa2" }}
                             />
                             <Box
                               sx={{
@@ -300,7 +339,7 @@ const ImageGallery = ({
                             </Box>
                             <Box
                               sx={{
-                                fontSize: "0.9vh",
+                                fontSize: "1.35vh",
                                 color: "text.disabled",
                                 whiteSpace: "nowrap",
                               }}

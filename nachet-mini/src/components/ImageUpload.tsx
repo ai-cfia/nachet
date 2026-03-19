@@ -26,30 +26,44 @@ const ImageUpload = ({ open, onClose, onImageLoaded }: Props) => {
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ): Promise<void> => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
     setError("");
-    const validation = await validateImageFile(file);
+    const errors: string[] = [];
 
-    if (!validation.isValid) {
-      setError(
-        validation.errorKeys.map((key) => t(`validation.${key}`)).join("\n"),
-      );
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
+    for (const file of Array.from(files)) {
+      const validation = await validateImageFile(file);
+
+      if (!validation.isValid) {
+        errors.push(
+          `${file.name}: ${validation.errorKeys.map((key) => t(`validation.${key}`)).join(", ")}`,
+        );
+        continue;
+      }
+
+      await new Promise<void>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === "string") {
+            const dims = validation.dimensions
+              ? [validation.dimensions.width, validation.dimensions.height]
+              : [0, 0];
+            onImageLoaded(reader.result, dims, file.name);
+          }
+          resolve();
+        };
+        reader.readAsDataURL(file);
+      });
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result !== "string") return;
-      const dims = validation.dimensions
-        ? [validation.dimensions.width, validation.dimensions.height]
-        : [0, 0];
-      onImageLoaded(reader.result, dims, file.name);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    if (errors.length > 0) {
+      setError(errors.join("\n"));
+    } else {
       onClose();
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleClose = (): void => {
@@ -104,6 +118,7 @@ const ImageUpload = ({ open, onClose, onImageLoaded }: Props) => {
               ref={fileInputRef}
               type="file"
               accept="image/png,image/jpeg"
+              multiple
               onChange={handleFileChange}
               style={{ display: "none" }}
             />

@@ -172,6 +172,7 @@ function App() {
   const removeResultsForImage = useInferenceStore(
     (s) => s.removeResultsForImage,
   );
+  const removeResult = useInferenceStore((s) => s.removeResult);
   const clearResults = useInferenceStore((s) => s.clearResults);
   const setError = useInferenceStore((s) => s.setError);
 
@@ -219,7 +220,6 @@ function App() {
     const name = fileName ? normalizeFileName(fileName) : undefined;
     addImage(src, dims, name);
     setActiveResultKey(null);
-    setUploadOpen(false);
   };
 
   const handleCaptureFeed = () => {
@@ -335,6 +335,13 @@ function App() {
       removeImage(index);
     },
     [removeImage, removeResultsForImage],
+  );
+
+  const handleRemoveResult = useCallback(
+    (key: string) => {
+      removeResult(key);
+    },
+    [removeResult],
   );
 
   const isInferring = status === "detecting" || status === "classifying";
@@ -614,6 +621,7 @@ function App() {
               onSelectImage={handleSelectImage}
               onSelectResult={handleSelectResult}
               onRemoveImage={handleRemoveImage}
+              onRemoveResult={handleRemoveResult}
               onEditMetadata={handleEditMetadata}
               onClear={handleClearImages}
               getResultsForImage={getResultsForImage}
