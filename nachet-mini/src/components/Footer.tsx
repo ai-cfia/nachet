@@ -109,6 +109,19 @@ const Footer: React.FC<FooterProps> = ({
           >
             {t("reportIssue")}
           </Link>
+          <Link
+            href="https://github.com/ai-cfia/nachet/blob/main/nachet-mini/src/common/privacy.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{
+              color: colours.CFIA_Background_Blue,
+              fontSize: "1rem",
+              textDecoration: "none",
+              cursor: "pointer",
+            }}
+          >
+            {t("privacyPolicy")}
+          </Link>
         </Box>
         {statusText && (
           <Box
