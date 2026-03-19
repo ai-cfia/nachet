@@ -1,4 +1,4 @@
-import { Box } from "@mui/material";
+import { Box, Link } from "@mui/material";
 import CFIALogo from "../assets/CFIA_blackfont.png";
 import { colours } from "../styles/colours";
 import { useTranslation } from "react-i18next";
@@ -32,19 +32,26 @@ const Navbar: React.FC = () => {
           padding: "0 1.5vw",
         }}
       >
-        <Box
-          component="img"
-          src={CFIALogo}
-          alt={t("navbar.logoAlt")}
-          sx={{
-            width: "27vh",
-            height: "fit-content",
-            objectFit: "contain",
-            margin: "auto",
-            marginLeft: 0,
-            marginRight: 0,
-          }}
-        />
+        <Link
+          href="https://inspection.canada.ca"
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{ display: "flex", alignItems: "center" }}
+        >
+          <Box
+            component="img"
+            src={CFIALogo}
+            alt={t("navbar.logoAlt")}
+            sx={{
+              width: "27vh",
+              height: "fit-content",
+              objectFit: "contain",
+              margin: "auto",
+              marginLeft: 0,
+              marginRight: 0,
+            }}
+          />
+        </Link>
       </Box>
     </Box>
   );

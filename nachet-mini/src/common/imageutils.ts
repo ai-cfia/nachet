@@ -1,5 +1,42 @@
 import type { BoxCoordinates } from "./types";
 
+/**
+ * Converts display (mouse) coordinates back to original image-space coordinates.
+ * Reverse of getScaledBounds() — accounts for objectFit: "contain" letterboxing.
+ */
+export const getUnscaledCoordinates = (
+  containerWidth: number,
+  containerHeight: number,
+  itemWidth: number,
+  itemHeight: number,
+  displayX: number,
+  displayY: number,
+): { imageX: number; imageY: number } => {
+  const scaleFactorWidth = containerWidth / itemWidth;
+  const scaleFactorHeight = containerHeight / itemHeight;
+  const scaleFactor = Math.min(scaleFactorWidth, scaleFactorHeight);
+
+  if (
+    !isFinite(scaleFactor) ||
+    scaleFactor === 0 ||
+    isNaN(scaleFactor) ||
+    itemWidth === 0 ||
+    itemHeight === 0
+  ) {
+    return { imageX: 0, imageY: 0 };
+  }
+
+  const displayedWidth = itemWidth * scaleFactor;
+  const displayedHeight = itemHeight * scaleFactor;
+  const offsetX = (containerWidth - displayedWidth) / 2;
+  const offsetY = (containerHeight - displayedHeight) / 2;
+
+  return {
+    imageX: (displayX - offsetX) / scaleFactor,
+    imageY: (displayY - offsetY) / scaleFactor,
+  };
+};
+
 interface ImageValidationResult {
   isValid: boolean;
   errorKeys: string[];
@@ -10,7 +47,7 @@ interface ImageValidationResult {
 }
 
 /**
- * Validates an image file for MIME type (PNG or JPEG), file size (max 10MB), and dimensions (max 1920x1080)
+ * Validates an image file for MIME type (PNG or JPEG), file size (max 10MB), and dimensions (max 4608x2592)
  */
 export const validateImageFile = async (
   file: File,
@@ -30,7 +67,7 @@ export const validateImageFile = async (
   try {
     const dimensions = await getImageDimensions(file);
 
-    if (dimensions.width > 1920 || dimensions.height > 1080) {
+    if (dimensions.width > 4608 || dimensions.height > 2592) {
       errorKeys.push("dimensionsTooLarge");
     }
 

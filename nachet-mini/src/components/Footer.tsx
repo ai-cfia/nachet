@@ -1,10 +1,25 @@
-import { Box, Link } from "@mui/material";
+import { Box, LinearProgress, Link, Typography } from "@mui/material";
 import CanadaLogo from "../assets/Canada_logo.png";
+import HfLogo from "../assets/hf-logo.svg";
 import { colours } from "../styles/colours";
 import { versions } from "../_versions";
 import { useTranslation } from "react-i18next";
+import GitHubIcon from "@mui/icons-material/GitHub";
+import type { ModelLoadProgress } from "@stores/useInferenceStore";
 
-const Footer: React.FC = () => {
+interface FooterProps {
+  statusText?: string;
+  isError?: boolean;
+  isLoading?: boolean;
+  loadProgress?: ModelLoadProgress | null;
+}
+
+const Footer: React.FC<FooterProps> = ({
+  statusText,
+  isError,
+  isLoading,
+  loadProgress,
+}) => {
   const { t } = useTranslation("footer");
 
   return (
@@ -33,26 +48,104 @@ const Footer: React.FC = () => {
           paddingRight: "1.5vw",
         }}
       >
-        <Link
-          href="https://github.com/ai-cfia/nachet"
-          sx={{
-            color: colours.CFIA_Background_Blue,
-            fontSize: "1rem",
-            textDecoration: "none",
-            cursor: "pointer",
-          }}
-        >
-          {t("developedBy")}
-        </Link>
-        <Box
-          component="span"
-          sx={{
-            color: colours.CFIA_Font_Black,
-            fontSize: "1rem",
-          }}
-        >
-          {versions.version ? t("version", { version: versions.version }) : ""}
+        <Box sx={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <Box
+            component="span"
+            sx={{
+              color: colours.CFIA_Background_Blue,
+              fontSize: "1rem",
+            }}
+          >
+            {t("developedBy")}
+          </Box>
+          <Link
+            href="https://huggingface.co/cfia-ai-lab"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ display: "flex", alignItems: "center" }}
+          >
+            <Box
+              component="img"
+              src={HfLogo}
+              alt="Hugging Face"
+              sx={{ width: "1.5rem", height: "1.5rem" }}
+            />
+          </Link>
+          <Link
+            href="https://github.com/ai-cfia"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              color: colours.CFIA_Font_Black,
+            }}
+          >
+            <GitHubIcon sx={{ fontSize: "1.5rem" }} />
+          </Link>
         </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <Box
+            component="span"
+            sx={{
+              color: colours.CFIA_Font_Black,
+              fontSize: "1rem",
+            }}
+          >
+            {versions.version
+              ? t("version", { version: versions.version })
+              : ""}
+          </Box>
+          <Link
+            href="https://github.com/ai-cfia/nachet/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{
+              color: colours.CFIA_Background_Blue,
+              fontSize: "1rem",
+              textDecoration: "none",
+              cursor: "pointer",
+            }}
+          >
+            {t("reportIssue")}
+          </Link>
+        </Box>
+        {statusText && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              minWidth: 0,
+            }}
+          >
+            <Typography
+              variant="body2"
+              noWrap
+              sx={{
+                fontSize: "1rem",
+                color: isError ? "error.main" : colours.CFIA_Background_Blue,
+              }}
+            >
+              {statusText}
+            </Typography>
+            {isLoading && loadProgress && (
+              <Box sx={{ minWidth: "8vw", maxWidth: "12vw" }}>
+                <Typography
+                  variant="caption"
+                  sx={{ fontSize: "0.75rem", color: "text.secondary" }}
+                >
+                  {loadProgress.name} {Math.round(loadProgress.progress)}%
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={loadProgress.progress}
+                  sx={{ height: "0.4rem", borderRadius: "0.2rem" }}
+                />
+              </Box>
+            )}
+          </Box>
+        )}
         <Box
           component="img"
           src={CanadaLogo}

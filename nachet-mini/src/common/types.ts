@@ -37,10 +37,30 @@ export interface InferenceResult {
   minBoxSize: number;
 }
 
+export type TrayCode = "A" | "B" | "C" | "D" | "E" | "None";
+
+export interface DeviceBrand {
+  id: string;
+  name: string;
+  models: { id: string; name: string }[];
+  lenses: { id: string; name: string }[];
+}
+
+export interface ImageMetadata {
+  imageName: string;
+  deviceBrandId: string;
+  deviceModelId: string;
+  deviceLensId: string;
+  trayCode: TrayCode | "";
+  magnification: number;
+  description: string;
+}
+
 export interface Images {
   index: number;
   src: string;
   imageDims: number[];
+  metadata: ImageMetadata;
 }
 
 export interface LabelOccurrences {

@@ -9,19 +9,26 @@ import {
   Select,
   Switch,
   ThemeProvider,
-  Typography,
+  Tooltip,
+  Badge,
   createTheme,
 } from "@mui/material";
 import AddAPhotoIcon from "@mui/icons-material/AddAPhoto";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import TuneIcon from "@mui/icons-material/Tune";
 import SaveIcon from "@mui/icons-material/Save";
+import EditIcon from "@mui/icons-material/Edit";
+import AddBoxIcon from "@mui/icons-material/AddBox";
+import CloseIcon from "@mui/icons-material/Close";
 import type Webcam from "react-webcam";
 import { useWebcamDevices } from "@hooks/useWebcamDevices";
 import { useWebcamStore } from "@stores/useWebcamStore";
+import { useMetadataDefaultsStore } from "@stores/useMetadataDefaultsStore";
 import { useImageStore } from "@stores/useImageStore";
 import { useInferenceStore, resultKey } from "@stores/useInferenceStore";
 import { useInference } from "@inference/useInference";
+import { useBoxEditStore } from "@stores/useBoxEditStore";
 import {
   DETECTOR_MODELS,
   CLASSIFIER_MODELS,
@@ -29,9 +36,11 @@ import {
   DEFAULT_CLASSIFIER,
   buildModelConfig,
 } from "@inference/models";
+import { normalizeFileName } from "@common/validation";
 import ImageUpload from "@components/ImageUpload";
 import WebcamCapture from "@components/WebcamCapture";
 import SaveDialog from "@components/SaveDialog";
+import MetadataDialog from "@components/MetadataDialog";
 import ImageGallery from "@components/ImageGallery";
 import ResultsTable from "@components/ResultsTable";
 import ImageViewer from "@components/ImageViewer";
@@ -41,7 +50,37 @@ import AppBar from "@components/AppBar";
 import Footer from "@components/Footer";
 import { useTranslation } from "react-i18next";
 
-const theme = createTheme();
+const theme = createTheme({
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        outlined: {
+          borderColor: "#1565c0",
+          "&:hover": { borderColor: "#1565c0" },
+          "&.Mui-disabled": { borderColor: "LightGrey" },
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        notchedOutline: {
+          borderColor: "#1565c0",
+        },
+        root: {
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#1565c0",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#1565c0",
+          },
+          "&.Mui-disabled .MuiOutlinedInput-notchedOutline": {
+            borderColor: "LightGrey",
+          },
+        },
+      },
+    },
+  },
+});
 
 const ControlBarButton = (props: {
   label: string;
@@ -59,7 +98,6 @@ const ControlBarButton = (props: {
     paddingRight: { xs: "1.5vh", md: "0.7vh" },
     fontSize: { xs: "1.8vh", md: "1.17vh" },
     width: "fit-content",
-    border: "0.01vh solid LightGrey",
     textTransform: "none",
     "&:hover": {
       backgroundColor: "#F5F5F5",
@@ -108,6 +146,11 @@ function App() {
   const { devices, activeDeviceId } = useWebcamDevices();
   const setActiveDeviceId = useWebcamStore((s) => s.setActiveDeviceId);
 
+  // Metadata defaults
+  const metaDefaults = useMetadataDefaultsStore((s) => s.defaults);
+  const metadataNotSet =
+    !metaDefaults.deviceBrandId || !metaDefaults.deviceModelId;
+
   // Image store
   const images = useImageStore((s) => s.images);
   const currentIndex = useImageStore((s) => s.currentIndex);
@@ -132,7 +175,15 @@ function App() {
   const clearResults = useInferenceStore((s) => s.clearResults);
   const setError = useInferenceStore((s) => s.setError);
 
-  const { loadModels, runInference } = useInference();
+  const { loadModels, runInference, runClassifyOnly } = useInference();
+
+  // Box edit store
+  const isEditing = useBoxEditStore((s) => s.isEditing);
+  const editedBoxes = useBoxEditStore((s) => s.editedBoxes);
+  const isDrawingBox = useBoxEditStore((s) => s.isDrawing);
+  const enterEditMode = useBoxEditStore((s) => s.enterEditMode);
+  const exitEditMode = useBoxEditStore((s) => s.exitEditMode);
+  const setIsDrawing = useBoxEditStore((s) => s.setIsDrawing);
 
   // Local state
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -147,14 +198,26 @@ function App() {
     DEFAULT_CLASSIFIER.id,
   );
   const [switchTable, setSwitchTable] = useState(false);
+  const [metadataOpen, setMetadataOpen] = useState(false);
+  const [metadataMode, setMetadataMode] = useState<"defaults" | "image">(
+    "defaults",
+  );
+  const [metadataImageIndex, setMetadataImageIndex] = useState<
+    number | undefined
+  >(undefined);
 
   const currentImage = getCurrentImage();
   const currentResult = activeResultKey
     ? (results.get(activeResultKey) ?? null)
     : null;
 
-  const handleImageLoaded = (src: string, dims: number[]) => {
-    addImage(src, dims);
+  const handleImageLoaded = (
+    src: string,
+    dims: number[],
+    fileName?: string,
+  ) => {
+    const name = fileName ? normalizeFileName(fileName) : undefined;
+    addImage(src, dims, name);
     setActiveResultKey(null);
     setUploadOpen(false);
   };
@@ -197,6 +260,45 @@ function App() {
     runInference(currentImage.src, currentImage.index);
   };
 
+  const handleEnterEditMode = () => {
+    if (!activeResultKey || !currentResult) return;
+    enterEditMode(activeResultKey, currentResult.boxes);
+  };
+
+  const handleDiscardEdits = () => {
+    exitEditMode();
+  };
+
+  const handleClassifyEdited = () => {
+    if (!currentImage || editedBoxes.length === 0) return;
+    const detector = DETECTOR_MODELS.find((d) => d.id === selectedDetectorId);
+    const classifier = CLASSIFIER_MODELS.find(
+      (c) => c.id === selectedClassifierId,
+    );
+    if (!detector || !classifier) return;
+    const configId = `${detector.id}+${classifier.id}`;
+    const editedConfigId = `${configId}:edited-${Date.now()}`;
+    const boxes = editedBoxes.map((b) => ({
+      topX: b.topX,
+      topY: b.topY,
+      bottomX: b.bottomX,
+      bottomY: b.bottomY,
+    }));
+    exitEditMode();
+    runClassifyOnly(
+      currentImage.src,
+      currentImage.index,
+      boxes,
+      editedConfigId,
+    );
+  };
+
+  const handleEditMetadata = useCallback((index: number) => {
+    setMetadataMode("image");
+    setMetadataImageIndex(index);
+    setMetadataOpen(true);
+  }, []);
+
   const handleClearImages = () => {
     clearImages();
     clearResults();
@@ -238,7 +340,15 @@ function App() {
   const isInferring = status === "detecting" || status === "classifying";
   const isLoading = status === "loading-model";
   const canRunInference =
-    !isWebcamActive && !!currentImage && modelLoaded && !isInferring;
+    !isWebcamActive &&
+    !!currentImage &&
+    modelLoaded &&
+    !isInferring &&
+    !isEditing;
+  const canEditBoxes =
+    !isWebcamActive && !!currentResult && !isInferring && !isEditing;
+  const canClassifyEdited =
+    isEditing && editedBoxes.length > 0 && modelLoaded && !isInferring;
 
   const statusText = (() => {
     if (webcamError && isWebcamActive) return webcamError;
@@ -342,19 +452,65 @@ function App() {
                 </Select>
               </FormControl>
               <ControlBarButton
+                label={t("controls.meta")}
+                icon={
+                  <Badge
+                    color="warning"
+                    variant="dot"
+                    invisible={!metadataNotSet}
+                    overlap="circular"
+                  >
+                    <TuneIcon color="inherit" style={iconStyle} />
+                  </Badge>
+                }
+                disabled={false}
+                onClick={() => {
+                  setMetadataMode("defaults");
+                  setMetadataImageIndex(undefined);
+                  setMetadataOpen(true);
+                }}
+              />
+              <ControlBarButton
                 label={t("controls.capture")}
                 icon={<AddAPhotoIcon color="inherit" style={iconStyle} />}
                 disabled={!isWebcamActive}
                 onClick={handleCaptureFeed}
               />
-              <Switch
-                checked={!isWebcamActive}
-                onChange={() => {
-                  setWebcamError("");
-                  setIsWebcamActive(!isWebcamActive);
-                }}
-                size="small"
-              />
+              <Tooltip
+                title={metadataNotSet ? t("controls.metadataRequired") : ""}
+                arrow
+              >
+                <span>
+                  <Switch
+                    checked={!isWebcamActive}
+                    onChange={() => {
+                      setWebcamError("");
+                      setIsWebcamActive(!isWebcamActive);
+                    }}
+                    size="small"
+                    disabled={metadataNotSet}
+                    sx={
+                      metadataNotSet
+                        ? {}
+                        : {
+                            "& .MuiSwitch-switchBase": {
+                              color: "#1565c0",
+                            },
+                            "& .MuiSwitch-switchBase.Mui-checked": {
+                              color: "#1565c0",
+                            },
+                            "& .MuiSwitch-track": {
+                              backgroundColor: "#1565c0",
+                            },
+                            "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
+                              {
+                                backgroundColor: "#1565c0",
+                              },
+                          }
+                    }
+                  />
+                </span>
+              </Tooltip>
 
               {/* Capture (webcam active only) */}
               <ControlBarButton
@@ -381,24 +537,38 @@ function App() {
                 onSelectDetector={setSelectedDetectorId}
                 onSelectClassifier={setSelectedClassifierId}
                 isLoading={isLoading}
-                progress={modelLoadProgress}
               />
+              {!isEditing && (
+                <ControlBarButton
+                  label={t("controls.editBoxes")}
+                  icon={<EditIcon color="inherit" style={iconStyle} />}
+                  disabled={!canEditBoxes}
+                  onClick={handleEnterEditMode}
+                />
+              )}
+              {isEditing && (
+                <>
+                  <ControlBarButton
+                    label={t("controls.addBox")}
+                    icon={<AddBoxIcon color="inherit" style={iconStyle} />}
+                    disabled={false}
+                    onClick={() => setIsDrawing(!isDrawingBox)}
+                    sx={isDrawingBox ? { backgroundColor: "#e3f2fd" } : {}}
+                  />
+                  <ControlBarButton
+                    label={t("controls.discardEdits")}
+                    icon={<CloseIcon color="inherit" style={iconStyle} />}
+                    disabled={false}
+                    onClick={handleDiscardEdits}
+                  />
+                </>
+              )}
               <ControlBarButton
                 label={t("controls.runInference")}
-                icon={<PlayArrowIcon color="inherit" style={iconStyle} />}
-                disabled={!canRunInference}
-                onClick={handleRunInference}
+                icon={<VisibilityIcon color="inherit" style={iconStyle} />}
+                disabled={isEditing ? !canClassifyEdited : !canRunInference}
+                onClick={isEditing ? handleClassifyEdited : handleRunInference}
               />
-              <Typography
-                variant="body2"
-                sx={{
-                  fontSize: "1.1vh",
-                  color: error || webcamError ? "error.main" : "text.secondary",
-                  ml: "0.4vh",
-                }}
-              >
-                {statusText}
-              </Typography>
             </Box>
 
             {/* Workspace: Webcam feed or Image Viewer */}
@@ -444,6 +614,7 @@ function App() {
               onSelectImage={handleSelectImage}
               onSelectResult={handleSelectResult}
               onRemoveImage={handleRemoveImage}
+              onEditMetadata={handleEditMetadata}
               onClear={handleClearImages}
               getResultsForImage={getResultsForImage}
             />
@@ -456,7 +627,12 @@ function App() {
         </Box>
 
         {/* Footer */}
-        <Footer />
+        <Footer
+          statusText={statusText}
+          isError={!!(error || webcamError)}
+          isLoading={isLoading}
+          loadProgress={modelLoadProgress}
+        />
       </Box>
 
       <ImageUpload
@@ -467,6 +643,12 @@ function App() {
         onImageLoaded={handleImageLoaded}
       />
       <SaveDialog open={saveOpen} onClose={() => setSaveOpen(false)} />
+      <MetadataDialog
+        open={metadataOpen}
+        onClose={() => setMetadataOpen(false)}
+        mode={metadataMode}
+        imageIndex={metadataImageIndex}
+      />
     </ThemeProvider>
   );
 }

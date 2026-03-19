@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import ImageIcon from "@mui/icons-material/Image";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ScienceIcon from "@mui/icons-material/Science";
@@ -28,6 +29,7 @@ interface Props {
   onSelectImage: (index: number) => void;
   onSelectResult: (resultKey: string) => void;
   onRemoveImage: (index: number) => void;
+  onEditMetadata: (index: number) => void;
   onClear: () => void;
   getResultsForImage: (
     index: number,
@@ -41,6 +43,7 @@ const ImageGallery = ({
   onSelectImage,
   onSelectResult,
   onRemoveImage,
+  onEditMetadata,
   onClear,
   getResultsForImage,
 }: Props) => {
@@ -184,9 +187,10 @@ const ImageGallery = ({
                           style={{ color: "#1565c0", fontSize: "1.8vh" }}
                         />
                         <span>
-                          {t("imageGallery.image", {
-                            number: item.index + 1,
-                          })}
+                          {item.metadata.imageName ||
+                            t("imageGallery.image", {
+                              number: item.index + 1,
+                            })}
                         </span>
                         {hasResults && (
                           <CheckCircleIcon
@@ -199,9 +203,21 @@ const ImageGallery = ({
                       <IconButton
                         onClick={(e) => {
                           e.stopPropagation();
+                          onEditMetadata(item.index);
+                        }}
+                        sx={{ padding: 0, paddingRight: "30px" }}
+                        aria-label={`edit metadata image ${item.index + 1}`}
+                      >
+                        <EditIcon
+                          style={{ color: "#1565c0", fontSize: "1.8vh" }}
+                        />
+                      </IconButton>
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
                           onRemoveImage(item.index);
                         }}
-                        sx={{ padding: 0 }}
+                        sx={{ padding: 0, paddingRight: "30px" }}
                         aria-label={`remove image ${item.index + 1}`}
                       >
                         <CloseIcon
@@ -215,6 +231,32 @@ const ImageGallery = ({
                       {imageResults.map(({ modelConfigId, result }) => {
                         const key = resultKey(item.index, modelConfigId);
                         const isActive = activeResultKey === key;
+                        // Strip timestamp or edited suffix for display
+                        const displayModelId = modelConfigId.replace(
+                          /:(edited-)?\d+$/,
+                          "",
+                        );
+                        const timeLabel = result.completedAt
+                          ? (() => {
+                              const d = new Date(result.completedAt);
+                              const yy = String(d.getFullYear()).slice(2);
+                              const mo = String(d.getMonth() + 1).padStart(
+                                2,
+                                "0",
+                              );
+                              const dd = String(d.getDate()).padStart(2, "0");
+                              const hh = String(d.getHours()).padStart(2, "0");
+                              const mm = String(d.getMinutes()).padStart(
+                                2,
+                                "0",
+                              );
+                              const ss = String(d.getSeconds()).padStart(
+                                2,
+                                "0",
+                              );
+                              return `${yy}${mo}${dd}${hh}${mm}${ss}`;
+                            })()
+                          : "";
                         return (
                           <Box
                             key={key}
@@ -252,7 +294,8 @@ const ImageGallery = ({
                               }}
                             >
                               {t("imageGallery.resultEntry", {
-                                modelId: modelConfigId,
+                                modelId: displayModelId,
+                                time: timeLabel,
                               })}
                             </Box>
                             <Box
