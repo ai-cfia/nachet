@@ -74,6 +74,7 @@ jobs:
         with:
           message: "chore: bump backend version for Renovate PRs"
           add: "."
+          pull: "--rebase --autostash"
           author_name: "github-actions[bot]"
           author_email: "actions@github.com"
 
