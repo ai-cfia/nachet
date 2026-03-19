@@ -43,8 +43,8 @@ jobs:
       skip-version-check: false
 
   bump-version-renovate:
-    if: ${{ !cancelled() && (github.event.pull_request.user.login == 'renovate[bot]' || github.event.pull_request.user.login == 'github-actions[bot]') && needs.nachet-pyproject-version-bump.result == 'failure' }}
     needs: [versions]
+    if: ${{ !cancelled() && (github.event.pull_request.user.login == 'renovate[bot]' || github.event.pull_request.user.login == 'github-actions[bot]') && needs.versions.result == 'failure' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
