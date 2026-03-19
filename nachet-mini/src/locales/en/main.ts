@@ -55,6 +55,7 @@ const main = {
     resultsAvailable: "Results available",
     resultEntry: "{{time}} \u2014 {{modelId}}",
     boxes: "{{count}} boxes",
+    removeResult: "Delete selected results",
   },
   metadata: {
     defaultsTitle: "Default Metadata",

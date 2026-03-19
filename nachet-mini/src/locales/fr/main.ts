@@ -55,6 +55,7 @@ const main = {
     resultsAvailable: "R\u00e9sultats disponibles",
     resultEntry: "{{time}} \u2014 {{modelId}}",
     boxes: "{{count}} bo\u00eetes",
+    removeResult: "Supprimer les r\u00e9sultats s\u00e9lectionn\u00e9s",
   },
   metadata: {
     defaultsTitle: "Métadonnées par défaut",

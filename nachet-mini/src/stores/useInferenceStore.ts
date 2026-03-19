@@ -43,6 +43,7 @@ interface InferenceState {
   ) => Array<{ modelConfigId: string; result: InferenceResult }>;
   setActiveResultKey: (key: string | null) => void;
   removeResultsForImage: (imageIndex: number) => void;
+  removeResult: (key: string) => void;
   setStatus: (status: InferenceStatus) => void;
   setModelLoaded: (value: boolean) => void;
   setModelLoadProgress: (progress: ModelLoadProgress | null) => void;
@@ -104,6 +105,16 @@ export const useInferenceStore = create<InferenceState>()((set, get) => ({
         state.activeResultKey?.startsWith(prefix) === true
           ? null
           : state.activeResultKey;
+      return { results: newMap, activeResultKey: activeKey };
+    });
+  },
+
+  removeResult: (key: string) => {
+    set((state) => {
+      const newMap = new Map(state.results);
+      newMap.delete(key);
+      const activeKey =
+        state.activeResultKey === key ? null : state.activeResultKey;
       return { results: newMap, activeResultKey: activeKey };
     });
   },
