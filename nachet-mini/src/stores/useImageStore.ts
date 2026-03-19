@@ -37,7 +37,7 @@ export const useImageStore = create<ImageState>()((set, get) => ({
         ? Math.max(...state.images.map((img) => img.index)) + 1
         : 0;
     const resolvedName =
-      imageName ?? `${prefix}-${String(nextIndex + 1).padStart(4, "0")}`;
+      imageName ?? `${prefix}-${String(nextIndex + 1).padStart(4, "0")}.png`;
 
     // Skip duplicate: same sha256 and imageName already exists
     if (
