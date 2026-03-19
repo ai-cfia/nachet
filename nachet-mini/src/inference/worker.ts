@@ -52,15 +52,24 @@ type DeviceType = "webgpu" | "wasm";
 async function getDevice(): Promise<DeviceType> {
   try {
     if (typeof navigator !== "undefined" && "gpu" in (navigator as object)) {
-      const adapter = await (navigator as unknown as { gpu: { requestAdapter(): Promise<unknown | null> } }).gpu.requestAdapter();
+      const adapter = await (
+        navigator as unknown as {
+          gpu: { requestAdapter(): Promise<unknown | null> };
+        }
+      ).gpu.requestAdapter();
       if (adapter) {
         console.log("[worker] WebGPU adapter available");
         return "webgpu";
       }
-      console.warn("[worker] WebGPU API present but no adapter available, falling back to WASM");
+      console.warn(
+        "[worker] WebGPU API present but no adapter available, falling back to WASM",
+      );
     }
   } catch (err) {
-    console.warn("[worker] WebGPU detection failed, falling back to WASM:", err);
+    console.warn(
+      "[worker] WebGPU detection failed, falling back to WASM:",
+      err,
+    );
   }
   return "wasm";
 }

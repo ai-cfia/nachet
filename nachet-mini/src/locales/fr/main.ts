@@ -6,6 +6,8 @@ const main = {
     capture: "Capturer",
     upload: "T\u00e9l\u00e9verser",
     save: "Enregistrer",
+    meta: "Méta",
+    metadataRequired: "Définir les métadonnées par défaut d\u2019abord",
     runInference: "Identifier",
   },
   status: {
@@ -48,6 +50,38 @@ const main = {
     resultsAvailable: "R\u00e9sultats disponibles",
     resultEntry: "{{modelId}}",
     boxes: "{{count}} bo\u00eetes",
+  },
+  metadata: {
+    defaultsTitle: "Métadonnées par défaut",
+    imageTitle: "Métadonnées de l\u2019image",
+    namePrefix: "Préfixe du nom",
+    namePrefixHint: "Les captures seront nommées préfixe-1, préfixe-2, etc.",
+    imageName: "Nom de l\u2019image",
+    deviceBrand: "Marque de l\u2019appareil",
+    deviceModel: "Modèle de l\u2019appareil",
+    deviceLens: "Lentille de l\u2019appareil",
+    trayCode: "Code du plateau",
+    magnification: "Grossissement",
+    description: "Description",
+    selectBrand: "Sélectionner la marque",
+    selectModel: "Sélectionner le modèle",
+    selectLens: "Sélectionner la lentille",
+    selectTrayCode: "Sélectionner le code du plateau",
+    save: "Enregistrer",
+    cancel: "Annuler",
+    validation: {
+      imageNameRequired: "Le nom de l\u2019image est obligatoire",
+      imageNameTooLong:
+        "Le nom de l\u2019image ne doit pas dépasser 100 caractères",
+      imageNameInvalid:
+        "Seuls les lettres minuscules, chiffres et tirets sont autorisés",
+      descriptionTooLong: "La description ne doit pas dépasser 1000 caractères",
+      descriptionInvalid:
+        "Seuls les lettres, chiffres, espaces et points sont autorisés",
+      magnificationInvalid: "Le grossissement doit être un nombre",
+      magnificationTooSmall: "Le grossissement doit être d\u2019au moins 0,1",
+      magnificationTooLarge: "Le grossissement ne doit pas dépasser 1000",
+    },
   },
   validation: {
     invalidType: "Le fichier doit \u00eatre une image PNG ou JPEG",
