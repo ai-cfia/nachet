@@ -8,7 +8,6 @@ export interface MetadataDefaults {
   deviceModelId: string;
   deviceLensId: string;
   trayCode: TrayCode | "";
-  magnification: number;
   description: string;
 }
 
@@ -24,7 +23,6 @@ const initialDefaults: MetadataDefaults = {
   deviceModelId: "",
   deviceLensId: "",
   trayCode: "",
-  magnification: 1,
   description: "",
 };
 

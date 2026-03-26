@@ -15,11 +15,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { DEVICE_BRANDS } from "@common/deviceData";
 import type { TrayCode, ImageMetadata } from "@common/types";
-import {
-  validateImageName,
-  validateDescription,
-  validateMagnification,
-} from "@common/validation";
+import { validateImageName, validateDescription } from "@common/validation";
 import { useMetadataDefaultsStore } from "@stores/useMetadataDefaultsStore";
 import { useImageStore } from "@stores/useImageStore";
 
@@ -59,7 +55,6 @@ const MetadataForm = ({ onClose, mode, imageIndex }: Omit<Props, "open">) => {
           deviceModelId: metaDefaults.deviceModelId,
           deviceLensId: metaDefaults.deviceLensId,
           trayCode: metaDefaults.trayCode,
-          magnification: metaDefaults.magnification,
           description: metaDefaults.description,
         };
 
@@ -69,9 +64,6 @@ const MetadataForm = ({ onClose, mode, imageIndex }: Omit<Props, "open">) => {
   const [deviceModelId, setDeviceModelId] = useState(initial.deviceModelId);
   const [deviceLensId, setDeviceLensId] = useState(initial.deviceLensId);
   const [trayCode, setTrayCode] = useState<TrayCode | "">(initial.trayCode);
-  const [magnification, setMagnification] = useState(
-    String(initial.magnification),
-  );
   const [description, setDescription] = useState(initial.description);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -88,7 +80,6 @@ const MetadataForm = ({ onClose, mode, imageIndex }: Omit<Props, "open">) => {
 
   const handleSave = () => {
     const newErrors: Record<string, string> = {};
-    const mag = parseFloat(magnification);
 
     if (mode === "defaults") {
       const prefixErr = validateImageName(namePrefix);
@@ -103,9 +94,6 @@ const MetadataForm = ({ onClose, mode, imageIndex }: Omit<Props, "open">) => {
     const descErr = validateDescription(description);
     if (descErr) newErrors.description = t(descErr);
 
-    const magErr = validateMagnification(mag);
-    if (magErr) newErrors.magnification = t(magErr);
-
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -118,7 +106,6 @@ const MetadataForm = ({ onClose, mode, imageIndex }: Omit<Props, "open">) => {
         deviceModelId,
         deviceLensId,
         trayCode,
-        magnification: mag,
         description,
       });
     } else if (imageIndex !== undefined) {
@@ -128,7 +115,6 @@ const MetadataForm = ({ onClose, mode, imageIndex }: Omit<Props, "open">) => {
         deviceModelId,
         deviceLensId,
         trayCode,
-        magnification: mag,
         description,
       };
       updateImageMetadata(imageIndex, metadata);
@@ -240,41 +226,24 @@ const MetadataForm = ({ onClose, mode, imageIndex }: Omit<Props, "open">) => {
             </FormControl>
           </Box>
 
-          {/* Tray code + magnification side by side */}
-          <Box sx={{ display: "flex", gap: 2 }}>
-            <FormControl size="small" sx={{ flex: 1 }}>
-              <InputLabel>{t("metadata.trayCode")}</InputLabel>
-              <Select
-                value={trayCode}
-                onChange={(e) => setTrayCode(e.target.value as TrayCode | "")}
-                label={t("metadata.trayCode")}
-              >
-                <MenuItem value="">
-                  <em>{t("metadata.selectTrayCode")}</em>
+          {/* Tray code */}
+          <FormControl size="small" sx={{ width: "48%" }}>
+            <InputLabel>{t("metadata.trayCode")}</InputLabel>
+            <Select
+              value={trayCode}
+              onChange={(e) => setTrayCode(e.target.value as TrayCode | "")}
+              label={t("metadata.trayCode")}
+            >
+              <MenuItem value="">
+                <em>{t("metadata.selectTrayCode")}</em>
+              </MenuItem>
+              {TRAY_CODES.map((code) => (
+                <MenuItem key={code} value={code}>
+                  {code}
                 </MenuItem>
-                {TRAY_CODES.map((code) => (
-                  <MenuItem key={code} value={code}>
-                    {code}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <TextField
-              label={t("metadata.magnification")}
-              type="number"
-              value={magnification}
-              onChange={(e) => {
-                setMagnification(e.target.value);
-                setErrors((prev) => ({ ...prev, magnification: "" }));
-              }}
-              error={!!errors.magnification}
-              helperText={errors.magnification}
-              size="small"
-              sx={{ flex: 1 }}
-              slotProps={{ htmlInput: { min: 0.1, max: 1000, step: 0.1 } }}
-            />
-          </Box>
+              ))}
+            </Select>
+          </FormControl>
 
           {/* Description */}
           <TextField

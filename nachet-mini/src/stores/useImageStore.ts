@@ -56,7 +56,6 @@ export const useImageStore = create<ImageState>()((set, get) => ({
       deviceModelId: defaults.deviceModelId,
       deviceLensId: defaults.deviceLensId,
       trayCode: defaults.trayCode,
-      magnification: defaults.magnification,
       description: defaults.description,
     };
     const newImage: Images = {

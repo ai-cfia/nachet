@@ -80,7 +80,6 @@ const main = {
     deviceModel: "Modèle de l\u2019appareil",
     deviceLens: "Lentille de l\u2019appareil",
     trayCode: "Code du plateau",
-    magnification: "Grossissement",
     description: "Description",
     selectBrand: "Sélectionner la marque",
     selectModel: "Sélectionner le modèle",
@@ -97,9 +96,6 @@ const main = {
       descriptionTooLong: "La description ne doit pas dépasser 1000 caractères",
       descriptionInvalid:
         "Seuls les lettres, chiffres, espaces et points sont autorisés",
-      magnificationInvalid: "Le grossissement doit être un nombre",
-      magnificationTooSmall: "Le grossissement doit être d\u2019au moins 0,1",
-      magnificationTooLarge: "Le grossissement ne doit pas dépasser 1000",
     },
   },
   validation: {

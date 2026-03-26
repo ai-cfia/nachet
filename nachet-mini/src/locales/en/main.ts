@@ -79,7 +79,6 @@ const main = {
     deviceModel: "Device model",
     deviceLens: "Device lens",
     trayCode: "Tray code",
-    magnification: "Magnification",
     description: "Description",
     selectBrand: "Select brand",
     selectModel: "Select model",
@@ -95,9 +94,6 @@ const main = {
       descriptionTooLong: "Description must be 1000 characters or less",
       descriptionInvalid:
         "Only letters, numbers, spaces, and periods are allowed",
-      magnificationInvalid: "Magnification must be a number",
-      magnificationTooSmall: "Magnification must be at least 0.1",
-      magnificationTooLarge: "Magnification must be at most 1000",
     },
   },
   validation: {
