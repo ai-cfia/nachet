@@ -28,6 +28,8 @@ export interface ExportInferenceEntry {
   totalBoxes: number;
   labelOccurrence: Record<string, number>;
   boxes: ExportBoxEntry[];
+  minBoxSize: number;
+  annotatedFileName?: string;
 }
 
 export interface ExportBoxEntry {
