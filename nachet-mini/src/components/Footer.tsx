@@ -1,5 +1,5 @@
 import { Box, LinearProgress, Link, Typography } from "@mui/material";
-import CanadaLogo from "../assets/Canada_logo.png";
+// import CanadaLogo from "../assets/Canada_logo.png";
 import HfLogo from "../assets/hf-logo.svg";
 import { colours } from "../styles/colours";
 import { versions } from "../_versions";
@@ -159,7 +159,7 @@ const Footer: React.FC<FooterProps> = ({
             )}
           </Box>
         )}
-        <Box
+        {/* <Box
           component="img"
           src={CanadaLogo}
           alt={t("canadaLogoAlt")}
@@ -169,7 +169,7 @@ const Footer: React.FC<FooterProps> = ({
             alignSelf: "center",
             height: "fit-content",
           }}
-        />
+        /> */}
       </Box>
     </Box>
   );
