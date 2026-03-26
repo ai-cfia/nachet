@@ -1,4 +1,4 @@
-name: Frontend Lint
+name: Nachet Mini Lint
 permissions:
   contents: write
   pull-requests: write
@@ -11,8 +11,8 @@ concurrency:
 on:
   pull_request:
     paths:
-      - "frontend/**"
-      - ".github/workflows/frontend-*.yml"
+      - "nachet-mini/**"
+      - ".github/workflows/nachet-mini-*.yml"
     types:
       - opened
       - closed
@@ -21,25 +21,25 @@ on:
     branches:
       - main
     paths:
-      - "frontend/**"
-      - ".github/workflows/frontend-*.yml"
+      - "nachet-mini/**"
+      - ".github/workflows/nachet-mini-*.yml"
 
 env:
   IS_MONOREPO: true
-  FRONTEND_PATH: frontend
+  FRONTEND_PATH: nachet-mini
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/nachet-frontend
+  IMAGE_NAME: ${{ github.repository }}/nachet-mini
 
 defaults:
   run:
-    working-directory: frontend
+    working-directory: nachet-mini
 
 jobs:
   versions:
     uses: ./.github/workflows/reusable-frontend-versions.yml
     with:
-      working-directory: frontend
-      package-name: nachet-frontend
+      working-directory: nachet-mini
+      package-name: nachet-mini
       skip-version-check: false
 
   bump-version-renovate:
@@ -50,7 +50,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.ref }}
           fetch-depth: 0
           persist-credentials: true
 
@@ -59,7 +59,7 @@ jobs:
         with:
           node-version: ${{ needs.versions.outputs.node-version }}
           cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: nachet-mini/package-lock.json
 
       - name: Increment version for Renovate PRs
         run: |
@@ -70,7 +70,7 @@ jobs:
       - name: Commit & push changes
         uses: EndBug/add-and-commit@ebe9b51bb11d033d228e1a1c3f23ad5bd4110c81
         with:
-          message: "chore: bump frontend version for Renovate PRs"
+          message: "chore: bump nachet-mini version for Renovate PRs"
           add: "."
           pull: "--rebase --autostash"
           author_name: "github-actions[bot]"
@@ -83,7 +83,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: nachet-mini
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -93,7 +93,7 @@ jobs:
         with:
           node-version: ${{ needs.versions.outputs.node-version }}
           cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: nachet-mini/package-lock.json
 
       - name: Install specific npm version
         run: npm install -g npm@${{ needs.versions.outputs.npm-version }}
@@ -122,11 +122,11 @@ jobs:
             echo "✅ package-lock.json is up to date!"
           fi
 
-  frontend-lint-test:
+  nachet-mini-lint-test:
     needs: [versions, check-package-lock]
     uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-test-node-mono.yml@main
     with:
-      working-directory: frontend
+      working-directory: nachet-mini
       node-version: ${{ needs.versions.outputs.node-version }}
       npm-version: ${{ needs.versions.outputs.npm-version }}
     secrets: inherit
@@ -134,29 +134,29 @@ jobs:
   sbom-security-scan:
     needs: [versions]
     uses: ai-cfia/github-workflows/.github/workflows/workflow-generate-frontend-sbom.yml@main
+    with:
+      working-directory: nachet-mini
     secrets: inherit
 
   markdown-check:
     needs: [versions]
     uses: ai-cfia/github-workflows/.github/workflows/workflow-markdown-check-mono.yml@main
     with:
-      working-directory: frontend
+      working-directory: nachet-mini
       md-link-config-file-path: ".mlc_config.json"
     secrets: inherit
 
   trigger-release:
     name: Trigger release workflow
-    # This job triggers the publish workflow automatically when a PR is merged to main
-    # The publish workflow can also be triggered manually via workflow_dispatch
     if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Trigger Release Workflow for Nachet Frontend
+      - name: Trigger Release Workflow for Nachet Mini
         run: |
-          gh workflow run frontend-release.yml \
+          gh workflow run nachet-mini-release.yml \
           --ref main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

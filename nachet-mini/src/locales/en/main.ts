@@ -90,8 +90,7 @@ const main = {
     validation: {
       imageNameRequired: "Image name is required",
       imageNameTooLong: "Image name must be 100 characters or less",
-      imageNameInvalid:
-        "Only lowercase letters, numbers, and dashes are allowed",
+      imageNameInvalid: "Only letters, numbers, dots, and dashes are allowed",
       descriptionTooLong: "Description must be 1000 characters or less",
       descriptionInvalid:
         "Only letters, numbers, spaces, and periods are allowed",

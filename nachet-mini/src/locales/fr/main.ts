@@ -93,7 +93,7 @@ const main = {
       imageNameTooLong:
         "Le nom de l\u2019image ne doit pas dépasser 100 caractères",
       imageNameInvalid:
-        "Seuls les lettres minuscules, chiffres et tirets sont autorisés",
+        "Seuls les lettres, chiffres, points et tirets sont autorisés",
       descriptionTooLong: "La description ne doit pas dépasser 1000 caractères",
       descriptionInvalid:
         "Seuls les lettres, chiffres, espaces et points sont autorisés",
