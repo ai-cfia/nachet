@@ -32,7 +32,7 @@ server-backed system for laboratory use.
 
 ![Nachet Mini](docs/images/nachet-mini-interface.png)
 
-**[DEMO on Cloudflare](https://www.nachetproject.com)**
+**[DEMO on Cloudflare](https://www.nachetproject.com)**  
 **[DEMO on Github Pages](https://ai-cfia.github.io/nachet/)**
 
 Nachet Mini runs entirely in your browser. Your images never leave your device;
@@ -51,6 +51,15 @@ inference directly on your machine via WebGPU or WASM.
 
 Read the [privacy statement](nachet-mini/privacy.md) |
 [Models on Hugging Face](https://huggingface.co/cfia-ai-lab)
+
+### Deploy locally in 4 steps
+
+```baah
+git clone https://github.com/ai-cfia/nachet.git 
+cd nachet/nachet-mini
+npm install
+npm run dev
+```
 
 ---
 
@@ -229,7 +238,7 @@ dans votre navigateur.**
 
 ![Nachet Mini](docs/images/nachet-mini-interface.png)
 
-**[DEMO sur Cloudflare](https://www.nachetproject.com)**
+**[DEMO sur Cloudflare](https://www.nachetproject.com)**  
 **[DEMO sur les pages Github](https://ai-cfia.github.io/nachet/)**
 
 Nachet Mini fonctionne entierement dans votre navigateur. Vos images ne quittent
@@ -251,6 +260,15 @@ l'inference ML directement sur votre machine via WebGPU ou WASM.
 
 Lire la [declaration de confidentialite](nachet-mini/privacy.md) |
 [Modeles sur Hugging Face](https://huggingface.co/cfia-ai-lab)
+
+### Déploiement local en 4 étapes
+
+```baah
+git clone https://github.com/ai-cfia/nachet.git 
+cd nachet/nachet-mini
+npm install
+npm run dev
+```
 
 ---
 
