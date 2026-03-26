@@ -1,5 +1,6 @@
 import { Box, Link } from "@mui/material";
-import CFIALogo from "../assets/CFIA_blackfont.png";
+// import CFIALogo from "../assets/CFIA_blackfont.png";
+import NachetLogo from "../assets/microscope.png";
 import { colours } from "../styles/colours";
 import { useTranslation } from "react-i18next";
 
@@ -40,10 +41,11 @@ const Navbar: React.FC = () => {
         >
           <Box
             component="img"
-            src={CFIALogo}
+            // src={CFIALogo}
+            src={NachetLogo}
             alt={t("navbar.logoAlt")}
             sx={{
-              width: "27vh",
+              width: "3vh",
               height: "fit-content",
               objectFit: "contain",
               margin: "auto",
