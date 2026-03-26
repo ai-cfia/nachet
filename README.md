@@ -32,7 +32,8 @@ server-backed system for laboratory use.
 
 ![Nachet Mini](docs/images/nachet-mini-interface.png)
 
-**[Try it now at nachetproject.com](https://www.nachetproject.com)**
+**[DEMO on Cloudflare](https://www.nachetproject.com)**
+**[DEMO on Github Pages](https://ai-cfia.github.io/nachet/)**
 
 Nachet Mini runs entirely in your browser. Your images never leave your device;
 there is no server, no account, and no cloud infrastructure involved. It uses
@@ -145,7 +146,7 @@ Storage for images.
 
 ### Try Nachet Mini
 
-Visit **[nachetproject.com](https://www.nachetproject.com)** — no installation
+Visit **[DEMO on Github Pages](https://ai-cfia.github.io/nachet/)** — no installation
 needed.
 
 ### Run the Full Platform Locally
@@ -228,7 +229,8 @@ dans votre navigateur.**
 
 ![Nachet Mini](docs/images/nachet-mini-interface.png)
 
-**[Essayez-le maintenant sur nachetproject.com](https://www.nachetproject.com)**
+**[DEMO sur Cloudflare](https://www.nachetproject.com)**
+**[DEMO sur les pages Github](https://ai-cfia.github.io/nachet/)**
 
 Nachet Mini fonctionne entierement dans votre navigateur. Vos images ne quittent
 jamais votre appareil — il n'y a ni serveur, ni compte, ni infrastructure
@@ -349,7 +351,7 @@ metadonnees et Azure Blob Storage pour les images.
 
 ### Essayer Nachet Mini
 
-Visitez **[nachetproject.com](https://www.nachetproject.com)** — aucune
+Visitez **[DEMO sur les pages Github](https://ai-cfia.github.io/nachet/)** — aucune
 installation requise.
 
 ### Executer la plateforme complete localement
