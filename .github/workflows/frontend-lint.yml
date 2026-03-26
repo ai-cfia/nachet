@@ -68,7 +68,7 @@ jobs:
           echo "new version: $(jq -r '.version' package.json)"
 
       - name: Commit & push changes
-        uses: EndBug/add-and-commit@62806537b45381f4b1475ec463d5e2106d9d3110
+        uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321
         with:
           message: "chore: bump frontend version for Renovate PRs"
           add: "."
