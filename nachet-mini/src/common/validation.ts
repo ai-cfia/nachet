@@ -25,7 +25,7 @@ export function normalizeFileName(fileName: string): string {
 export function validateImageName(value: string): string | null {
   if (!value) return "metadata.validation.imageNameRequired";
   if (value.length > 100) return "metadata.validation.imageNameTooLong";
-  if (!/^[a-z0-9.-]+$/.test(value))
+  if (!/^[a-zA-Z0-9.-]+$/.test(value))
     return "metadata.validation.imageNameInvalid";
   return null;
 }
