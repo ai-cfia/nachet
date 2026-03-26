@@ -188,7 +188,7 @@ const { data: status } = await getWorkflowStatus({
 ## Timeline Estimate
 
 | Phase | Task | Estimated Time |
-|-------|------|----------------|
+| ------- | ------ | ---------------- |
 | **Phase 1** | SDK Configuration Module | 45 mins |
 | | Initialize in main.tsx | 15 mins |
 | | Convenience re-exports | 30 mins |
