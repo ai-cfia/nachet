@@ -36,10 +36,3 @@ export function validateDescription(value: string): string | null {
     return "metadata.validation.descriptionInvalid";
   return null;
 }
-
-export function validateMagnification(value: number): string | null {
-  if (isNaN(value)) return "metadata.validation.magnificationInvalid";
-  if (value < 0.1) return "metadata.validation.magnificationTooSmall";
-  if (value > 1000) return "metadata.validation.magnificationTooLarge";
-  return null;
-}

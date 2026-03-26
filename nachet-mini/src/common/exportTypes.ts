@@ -14,7 +14,6 @@ export interface ExportImageEntry {
     deviceModelId: string;
     deviceLensId: string;
     trayCode: string;
-    magnification: number;
     description: string;
   };
   dimensions: { width: number; height: number };

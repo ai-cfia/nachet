@@ -53,7 +53,6 @@ export interface ImageMetadata {
   deviceModelId: string;
   deviceLensId: string;
   trayCode: TrayCode | "";
-  magnification: number;
   description: string;
 }
 

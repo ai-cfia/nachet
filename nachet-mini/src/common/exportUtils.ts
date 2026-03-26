@@ -119,7 +119,6 @@ export function buildExportManifest(
         deviceModelId: img.metadata.deviceModelId,
         deviceLensId: img.metadata.deviceLensId,
         trayCode: img.metadata.trayCode,
-        magnification: img.metadata.magnification,
         description: img.metadata.description,
       },
       dimensions: {
