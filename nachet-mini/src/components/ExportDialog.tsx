@@ -41,6 +41,7 @@ const ExportDialog = ({
   const [includeImages, setIncludeImages] = useState(true);
   const [includeResults, setIncludeResults] = useState(true);
   const [includeCsv, setIncludeCsv] = useState(true);
+  const [includeAnnotatedImages, setIncludeAnnotatedImages] = useState(false);
   const [humanReadable, setHumanReadable] = useState(false);
   const [exportError, setExportError] = useState("");
 
@@ -82,6 +83,7 @@ const ExportDialog = ({
         includeImages,
         includeResults,
         includeCsv,
+        includeAnnotatedImages,
         humanReadable,
       });
       onExportComplete();
@@ -191,6 +193,19 @@ const ExportDialog = ({
             <FormControlLabel
               control={
                 <Checkbox
+                  checked={includeAnnotatedImages}
+                  onChange={(e) => setIncludeAnnotatedImages(e.target.checked)}
+                  size="small"
+                />
+              }
+              label={t("exportDialog.includeAnnotatedImages")}
+              slotProps={{
+                typography: { sx: { fontSize: "1.3vh" } },
+              }}
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
                   checked={humanReadable}
                   onChange={(e) => {
                     setHumanReadable(e.target.checked);
@@ -232,7 +247,10 @@ const ExportDialog = ({
               disabled={
                 nothingSelected ||
                 exporting ||
-                (!includeImages && !includeResults && !includeCsv)
+                (!includeImages &&
+                  !includeResults &&
+                  !includeCsv &&
+                  !includeAnnotatedImages)
               }
               sx={{ fontSize: "1.1vh", textTransform: "none" }}
               startIcon={exporting ? <CircularProgress size={14} /> : undefined}
