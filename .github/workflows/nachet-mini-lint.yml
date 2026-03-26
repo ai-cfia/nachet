@@ -133,6 +133,8 @@ jobs:
   sbom-security-scan:
     needs: [versions]
     uses: ai-cfia/github-workflows/.github/workflows/workflow-generate-frontend-sbom.yml@main
+    with:
+      working-directory: nachet-mini
     secrets: inherit
 
   markdown-check:
