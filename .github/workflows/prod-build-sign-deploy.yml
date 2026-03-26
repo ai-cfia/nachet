@@ -30,7 +30,7 @@ jobs:
 
       - name: Extract metadata for backend
         id: meta-backend
-        uses: docker/metadata-action@d24d429af23073facc066506898a0eae1f24b9ad
+        uses: docker/metadata-action@4378dc6be7f72231dfe78ac7e0364a44f1c9f54b
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/nachet-backend
           tags: |
@@ -97,7 +97,7 @@ jobs:
 
       - name: Extract metadata for frontend
         id: meta-frontend
-        uses: docker/metadata-action@d24d429af23073facc066506898a0eae1f24b9ad
+        uses: docker/metadata-action@4378dc6be7f72231dfe78ac7e0364a44f1c9f54b
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/nachet-frontend
           tags: |
