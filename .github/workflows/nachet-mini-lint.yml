@@ -79,6 +79,7 @@ jobs:
 
   check-package-lock:
     needs: [versions, bump-version-renovate]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     defaults:
       run:
