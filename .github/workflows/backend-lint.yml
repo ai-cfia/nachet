@@ -70,7 +70,7 @@ jobs:
           uv version --bump patch
 
       - name: Commit & push changes
-        uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321
+        uses: EndBug/add-and-commit@ebe9b51bb11d033d228e1a1c3f23ad5bd4110c81
         with:
           message: "chore: bump backend version for Renovate PRs"
           add: "."
