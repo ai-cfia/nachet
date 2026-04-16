@@ -68,7 +68,7 @@ jobs:
         volumes:
           - ./e2e/mocks/nachet-27spp-classifier:/home/wiremock/mappings
       nachet-frontend:
-        image: ghcr.io/ai-cfia/nachet-frontend:2.9.0
+        image: ghcr.io/ai-cfia/nachet-frontend:2.9.8
         env:
           PUBLIC_URL: "."
           VITE_BACKEND_URL: "http://localhost:12435"
