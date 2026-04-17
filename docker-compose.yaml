@@ -292,7 +292,7 @@ services:
 
   # Garage S3 compatible storage
   nachet-op-blob:
-    image: dxflrs/garage:v2.2.0
+    image: dxflrs/garage:v2.3.0
     container_name: nachet-op-blob
     restart: unless-stopped
     environment:
