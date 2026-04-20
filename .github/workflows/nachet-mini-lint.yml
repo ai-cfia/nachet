@@ -43,7 +43,7 @@ jobs:
       skip-version-check: false
 
   bump-version-renovate:
-    needs: [versions]
+    needs: [ versions ]
     if: ${{ !cancelled() && (github.event.pull_request.user.login == 'renovate[bot]' || github.event.pull_request.user.login == 'github-actions[bot]') && needs.versions.result == 'failure' }}
     runs-on: ubuntu-latest
     steps:
@@ -67,6 +67,9 @@ jobs:
           npm version "$(jq -r '.version' package.json | awk -F. -v OFS=. '{ $NF++; print }')" --no-git-tag-version
           echo "new version: $(jq -r '.version' package.json)"
 
+      - name: Update lock file for Renovate PRs
+        run: npm install --package-lock-only
+
       - name: Commit & push changes
         uses: EndBug/add-and-commit@ebe9b51bb11d033d228e1a1c3f23ad5bd4110c81
         with:
@@ -76,9 +79,8 @@ jobs:
           author_name: "github-actions[bot]"
           author_email: "actions@github.com"
 
-
   check-package-lock:
-    needs: [versions, bump-version-renovate]
+    needs: [ versions, bump-version-renovate ]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     defaults:
@@ -123,7 +125,7 @@ jobs:
           fi
 
   nachet-mini-lint-test:
-    needs: [versions, check-package-lock]
+    needs: [ versions, check-package-lock ]
     uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-test-node-mono.yml@main
     with:
       working-directory: nachet-mini
@@ -132,14 +134,14 @@ jobs:
     secrets: inherit
 
   sbom-security-scan:
-    needs: [versions]
+    needs: [ versions ]
     uses: ai-cfia/github-workflows/.github/workflows/workflow-generate-frontend-sbom.yml@main
     with:
       working-directory: nachet-mini
     secrets: inherit
 
   markdown-check:
-    needs: [versions]
+    needs: [ versions ]
     uses: ai-cfia/github-workflows/.github/workflows/workflow-markdown-check-mono.yml@main
     with:
       working-directory: nachet-mini
