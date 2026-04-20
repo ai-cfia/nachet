@@ -45,7 +45,7 @@ module.exports = [
       "@typescript-eslint": typescriptPlugin,
       react: reactPlugin,
       "react-hooks": reactHooksPlugin,
-      "react-refresh": reactRefreshPlugin,
+      "react-refresh": reactRefreshPlugin.default ?? reactRefreshPlugin,
       prettier: prettierPlugin,
     },
     rules: {
