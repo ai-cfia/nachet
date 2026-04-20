@@ -68,7 +68,7 @@ jobs:
           echo "new version: $(jq -r '.version' package.json)"
 
       - name: Update lock file for Renovate PRs
-        run: npm install --package-lock-only
+        run: npm install --package-lock-only && npm audit fix --package-lock-only
 
       - name: Commit & push changes
         uses: EndBug/add-and-commit@ebe9b51bb11d033d228e1a1c3f23ad5bd4110c81
