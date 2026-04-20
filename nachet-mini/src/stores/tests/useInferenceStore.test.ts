@@ -2,7 +2,9 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { useInferenceStore, resultKey } from "../useInferenceStore";
 import type { InferenceResult } from "@common/types";
 
-const makeResult = (overrides: Partial<InferenceResult> = {}): InferenceResult => ({
+const makeResult = (
+  overrides: Partial<InferenceResult> = {},
+): InferenceResult => ({
   scores: [0.9],
   classifications: ["wheat"],
   boxes: [],
@@ -58,35 +60,60 @@ describe("useInferenceStore", () => {
     it("stores and retrieves a result", () => {
       const result = makeResult();
       useInferenceStore.getState().setResult(0, "model-a", result);
-      expect(useInferenceStore.getState().getResult(0, "model-a")).toEqual(result);
+      expect(useInferenceStore.getState().getResult(0, "model-a")).toEqual(
+        result,
+      );
     });
 
     it("overwrites existing result for the same key", () => {
-      useInferenceStore.getState().setResult(1, "model-a", makeResult({ totalBoxes: 1 }));
-      useInferenceStore.getState().setResult(1, "model-a", makeResult({ totalBoxes: 5 }));
-      expect(useInferenceStore.getState().getResult(1, "model-a")?.totalBoxes).toBe(5);
+      useInferenceStore
+        .getState()
+        .setResult(1, "model-a", makeResult({ totalBoxes: 1 }));
+      useInferenceStore
+        .getState()
+        .setResult(1, "model-a", makeResult({ totalBoxes: 5 }));
+      expect(
+        useInferenceStore.getState().getResult(1, "model-a")?.totalBoxes,
+      ).toBe(5);
     });
 
     it("returns undefined for a missing key", () => {
-      expect(useInferenceStore.getState().getResult(99, "none")).toBeUndefined();
+      expect(
+        useInferenceStore.getState().getResult(99, "none"),
+      ).toBeUndefined();
     });
 
     it("stores results for multiple image/model combinations independently", () => {
-      useInferenceStore.getState().setResult(0, "model-a", makeResult({ totalBoxes: 1 }));
-      useInferenceStore.getState().setResult(0, "model-b", makeResult({ totalBoxes: 2 }));
-      useInferenceStore.getState().setResult(1, "model-a", makeResult({ totalBoxes: 3 }));
+      useInferenceStore
+        .getState()
+        .setResult(0, "model-a", makeResult({ totalBoxes: 1 }));
+      useInferenceStore
+        .getState()
+        .setResult(0, "model-b", makeResult({ totalBoxes: 2 }));
+      useInferenceStore
+        .getState()
+        .setResult(1, "model-a", makeResult({ totalBoxes: 3 }));
       expect(useInferenceStore.getState().results.size).toBe(3);
     });
   });
 
   describe("getResultsForImage", () => {
     it("returns all results for a given image index", () => {
-      useInferenceStore.getState().setResult(2, "model-a", makeResult({ totalBoxes: 1 }));
-      useInferenceStore.getState().setResult(2, "model-b", makeResult({ totalBoxes: 2 }));
-      useInferenceStore.getState().setResult(3, "model-a", makeResult({ totalBoxes: 9 }));
+      useInferenceStore
+        .getState()
+        .setResult(2, "model-a", makeResult({ totalBoxes: 1 }));
+      useInferenceStore
+        .getState()
+        .setResult(2, "model-b", makeResult({ totalBoxes: 2 }));
+      useInferenceStore
+        .getState()
+        .setResult(3, "model-a", makeResult({ totalBoxes: 9 }));
       const results = useInferenceStore.getState().getResultsForImage(2);
       expect(results).toHaveLength(2);
-      expect(results.map((r) => r.modelConfigId).sort()).toEqual(["model-a", "model-b"]);
+      expect(results.map((r) => r.modelConfigId).sort()).toEqual([
+        "model-a",
+        "model-b",
+      ]);
     });
 
     it("returns empty array when no results exist for the image", () => {
@@ -123,7 +150,9 @@ describe("useInferenceStore", () => {
       useInferenceStore.getState().setResult(2, "model-a", makeResult());
       useInferenceStore.getState().removeResultsForImage(1);
       expect(useInferenceStore.getState().results.size).toBe(1);
-      expect(useInferenceStore.getState().getResult(2, "model-a")).toBeDefined();
+      expect(
+        useInferenceStore.getState().getResult(2, "model-a"),
+      ).toBeDefined();
     });
 
     it("clears activeResultKey when it belongs to the removed image", () => {
@@ -153,8 +182,12 @@ describe("useInferenceStore", () => {
       useInferenceStore.getState().setResult(0, "model-a", makeResult());
       useInferenceStore.getState().setResult(0, "model-b", makeResult());
       useInferenceStore.getState().removeResult("0:model-a");
-      expect(useInferenceStore.getState().getResult(0, "model-a")).toBeUndefined();
-      expect(useInferenceStore.getState().getResult(0, "model-b")).toBeDefined();
+      expect(
+        useInferenceStore.getState().getResult(0, "model-a"),
+      ).toBeUndefined();
+      expect(
+        useInferenceStore.getState().getResult(0, "model-b"),
+      ).toBeDefined();
     });
 
     it("clears activeResultKey when it matches the removed key", () => {
@@ -208,7 +241,9 @@ describe("useInferenceStore", () => {
     });
 
     it("accepts null to clear progress", () => {
-      useInferenceStore.setState({ modelLoadProgress: { name: "m", progress: 1 } });
+      useInferenceStore.setState({
+        modelLoadProgress: { name: "m", progress: 1 },
+      });
       useInferenceStore.getState().setModelLoadProgress(null);
       expect(useInferenceStore.getState().modelLoadProgress).toBeNull();
     });

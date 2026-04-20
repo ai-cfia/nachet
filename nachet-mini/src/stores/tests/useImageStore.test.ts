@@ -35,7 +35,9 @@ describe("useImageStore", () => {
 
   describe("addImage", () => {
     it("adds the first image with index 0 and returns true", () => {
-      const added = useImageStore.getState().addImage("data:image/png;base64,abc", [640, 480]);
+      const added = useImageStore
+        .getState()
+        .addImage("data:image/png;base64,abc", [640, 480]);
       expect(added).toBe(true);
       const { images, currentIndex } = useImageStore.getState();
       expect(images).toHaveLength(1);
@@ -45,30 +47,43 @@ describe("useImageStore", () => {
 
     it("auto-generates name from prefix and 1-based padded index", () => {
       useImageStore.getState().addImage("src", [100, 100]);
-      expect(useImageStore.getState().images[0].metadata.imageName).toBe("image-0001.png");
+      expect(useImageStore.getState().images[0].metadata.imageName).toBe(
+        "image-0001.png",
+      );
     });
 
     it("uses a custom name when provided", () => {
       useImageStore.getState().addImage("src", [100, 100], "my-photo.jpg");
-      expect(useImageStore.getState().images[0].metadata.imageName).toBe("my-photo.jpg");
+      expect(useImageStore.getState().images[0].metadata.imageName).toBe(
+        "my-photo.jpg",
+      );
     });
 
     it("assigns sequential indices to multiple images", () => {
       useImageStore.getState().addImage("src0", [100, 100]);
       useImageStore.getState().addImage("src1", [200, 200]);
       useImageStore.getState().addImage("src2", [300, 300]);
-      expect(useImageStore.getState().images.map((img) => img.index)).toEqual([0, 1, 2]);
+      expect(useImageStore.getState().images.map((img) => img.index)).toEqual([
+        0, 1, 2,
+      ]);
     });
 
     it("generates names based on next index (not array length)", () => {
       useImageStore.getState().addImage("src0", [100, 100]);
       useImageStore.getState().addImage("src1", [100, 100]);
-      expect(useImageStore.getState().images[1].metadata.imageName).toBe("image-0002.png");
+      expect(useImageStore.getState().images[1].metadata.imageName).toBe(
+        "image-0002.png",
+      );
     });
 
     it("applies metadata from MetadataDefaultsStore", () => {
       useMetadataDefaultsStore.setState({
-        defaults: { ...defaultDefaults, namePrefix: "seed", deviceBrandId: "brand-1", description: "scan" },
+        defaults: {
+          ...defaultDefaults,
+          namePrefix: "seed",
+          deviceBrandId: "brand-1",
+          description: "scan",
+        },
       });
       useImageStore.getState().addImage("src", [100, 100]);
       const img = useImageStore.getState().images[0];
@@ -78,7 +93,9 @@ describe("useImageStore", () => {
     });
 
     it("stores sha256 and imageDims", () => {
-      useImageStore.getState().addImage("src", [640, 480], undefined, "deadbeef");
+      useImageStore
+        .getState()
+        .addImage("src", [640, 480], undefined, "deadbeef");
       const img = useImageStore.getState().images[0];
       expect(img.sha256).toBe("deadbeef");
       expect(img.imageDims).toEqual([640, 480]);
@@ -90,35 +107,51 @@ describe("useImageStore", () => {
     });
 
     it("rejects duplicate with same sha256 and same name, returns false", () => {
-      useImageStore.getState().addImage("src1", [100, 100], "img.png", "abc123");
-      const result = useImageStore.getState().addImage("src2", [100, 100], "img.png", "abc123");
+      useImageStore
+        .getState()
+        .addImage("src1", [100, 100], "img.png", "abc123");
+      const result = useImageStore
+        .getState()
+        .addImage("src2", [100, 100], "img.png", "abc123");
       expect(result).toBe(false);
       expect(useImageStore.getState().images).toHaveLength(1);
     });
 
     it("allows same sha256 with a different name", () => {
-      useImageStore.getState().addImage("src1", [100, 100], "img-a.png", "abc123");
-      const result = useImageStore.getState().addImage("src2", [100, 100], "img-b.png", "abc123");
+      useImageStore
+        .getState()
+        .addImage("src1", [100, 100], "img-a.png", "abc123");
+      const result = useImageStore
+        .getState()
+        .addImage("src2", [100, 100], "img-b.png", "abc123");
       expect(result).toBe(true);
       expect(useImageStore.getState().images).toHaveLength(2);
     });
 
     it("allows same name with a different sha256", () => {
       useImageStore.getState().addImage("src1", [100, 100], "img.png", "hash1");
-      const result = useImageStore.getState().addImage("src2", [100, 100], "img.png", "hash2");
+      const result = useImageStore
+        .getState()
+        .addImage("src2", [100, 100], "img.png", "hash2");
       expect(result).toBe(true);
     });
 
     it("skips duplicate check entirely when sha256 is not provided", () => {
       useImageStore.getState().addImage("src1", [100, 100], "img.png");
-      const result = useImageStore.getState().addImage("src2", [100, 100], "img.png");
+      const result = useImageStore
+        .getState()
+        .addImage("src2", [100, 100], "img.png");
       expect(result).toBe(true);
       expect(useImageStore.getState().images).toHaveLength(2);
     });
 
     it("sets src on the stored image", () => {
-      useImageStore.getState().addImage("data:image/png;base64,XYZ", [100, 100]);
-      expect(useImageStore.getState().images[0].src).toBe("data:image/png;base64,XYZ");
+      useImageStore
+        .getState()
+        .addImage("data:image/png;base64,XYZ", [100, 100]);
+      expect(useImageStore.getState().images[0].src).toBe(
+        "data:image/png;base64,XYZ",
+      );
     });
   });
 
@@ -210,7 +243,11 @@ describe("useImageStore", () => {
   describe("updateImageMetadata", () => {
     it("updates metadata for the image at the given index", () => {
       useImageStore.getState().addImage("src0", [100, 100]);
-      const newMeta: ImageMetadata = { ...defaultMeta, imageName: "updated.png", description: "new" };
+      const newMeta: ImageMetadata = {
+        ...defaultMeta,
+        imageName: "updated.png",
+        description: "new",
+      };
       useImageStore.getState().updateImageMetadata(0, newMeta);
       expect(useImageStore.getState().images[0].metadata).toEqual(newMeta);
     });
@@ -219,8 +256,12 @@ describe("useImageStore", () => {
       useImageStore.getState().addImage("src0", [100, 100]);
       useImageStore.getState().addImage("src1", [100, 100]);
       const original1Meta = { ...useImageStore.getState().images[1].metadata };
-      useImageStore.getState().updateImageMetadata(0, { ...defaultMeta, description: "changed" });
-      expect(useImageStore.getState().images[1].metadata).toEqual(original1Meta);
+      useImageStore
+        .getState()
+        .updateImageMetadata(0, { ...defaultMeta, description: "changed" });
+      expect(useImageStore.getState().images[1].metadata).toEqual(
+        original1Meta,
+      );
     });
   });
 
@@ -233,7 +274,9 @@ describe("useImageStore", () => {
 
     it("does not affect other images", () => {
       useImageStore.getState().addImage("src0", [100, 100]);
-      useImageStore.getState().addImage("src1", [100, 100], undefined, "original");
+      useImageStore
+        .getState()
+        .addImage("src1", [100, 100], undefined, "original");
       useImageStore.getState().updateImageHash(0, "changed");
       expect(useImageStore.getState().images[1].sha256).toBe("original");
     });

@@ -17,7 +17,9 @@ describe("useMetadataDefaultsStore", () => {
   });
 
   it("has correct initial defaults", () => {
-    expect(useMetadataDefaultsStore.getState().defaults).toEqual(initialDefaults);
+    expect(useMetadataDefaultsStore.getState().defaults).toEqual(
+      initialDefaults,
+    );
   });
 
   describe("setDefaults", () => {
@@ -35,8 +37,16 @@ describe("useMetadataDefaultsStore", () => {
     });
 
     it("replaces the previous defaults entirely", () => {
-      useMetadataDefaultsStore.getState().setDefaults({ ...initialDefaults, namePrefix: "first" });
-      useMetadataDefaultsStore.getState().setDefaults({ ...initialDefaults, namePrefix: "second", deviceBrandId: "brand-x" });
+      useMetadataDefaultsStore
+        .getState()
+        .setDefaults({ ...initialDefaults, namePrefix: "first" });
+      useMetadataDefaultsStore
+        .getState()
+        .setDefaults({
+          ...initialDefaults,
+          namePrefix: "second",
+          deviceBrandId: "brand-x",
+        });
       const { defaults } = useMetadataDefaultsStore.getState();
       expect(defaults.namePrefix).toBe("second");
       expect(defaults.deviceBrandId).toBe("brand-x");
@@ -44,8 +54,12 @@ describe("useMetadataDefaultsStore", () => {
 
     it("accepts all valid tray codes", () => {
       for (const code of ["A", "B", "C", "D", "E", "None", ""] as const) {
-        useMetadataDefaultsStore.getState().setDefaults({ ...initialDefaults, trayCode: code });
-        expect(useMetadataDefaultsStore.getState().defaults.trayCode).toBe(code);
+        useMetadataDefaultsStore
+          .getState()
+          .setDefaults({ ...initialDefaults, trayCode: code });
+        expect(useMetadataDefaultsStore.getState().defaults.trayCode).toBe(
+          code,
+        );
       }
     });
   });
@@ -61,12 +75,16 @@ describe("useMetadataDefaultsStore", () => {
         description: "some desc",
       });
       useMetadataDefaultsStore.getState().clearDefaults();
-      expect(useMetadataDefaultsStore.getState().defaults).toEqual(initialDefaults);
+      expect(useMetadataDefaultsStore.getState().defaults).toEqual(
+        initialDefaults,
+      );
     });
 
     it("is idempotent when already at initial state", () => {
       useMetadataDefaultsStore.getState().clearDefaults();
-      expect(useMetadataDefaultsStore.getState().defaults).toEqual(initialDefaults);
+      expect(useMetadataDefaultsStore.getState().defaults).toEqual(
+        initialDefaults,
+      );
     });
   });
 });

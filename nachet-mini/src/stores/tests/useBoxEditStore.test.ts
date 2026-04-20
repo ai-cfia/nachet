@@ -100,7 +100,11 @@ describe("useBoxEditStore", () => {
     });
 
     it("does not affect other boxes", () => {
-      const boxes = [makeBox({ boxId: "b1" }), makeBox({ boxId: "b2" }), makeBox({ boxId: "b3" })];
+      const boxes = [
+        makeBox({ boxId: "b1" }),
+        makeBox({ boxId: "b2" }),
+        makeBox({ boxId: "b3" }),
+      ];
       useBoxEditStore.setState({ editedBoxes: boxes });
       useBoxEditStore.getState().updateBox(1, makeBox({ boxId: "new" }));
       expect(useBoxEditStore.getState().editedBoxes[0].boxId).toBe("b1");
@@ -126,7 +130,11 @@ describe("useBoxEditStore", () => {
 
   describe("deleteBox", () => {
     it("removes the box at the given array index", () => {
-      const boxes = [makeBox({ boxId: "b1" }), makeBox({ boxId: "b2" }), makeBox({ boxId: "b3" })];
+      const boxes = [
+        makeBox({ boxId: "b1" }),
+        makeBox({ boxId: "b2" }),
+        makeBox({ boxId: "b3" }),
+      ];
       useBoxEditStore.setState({ editedBoxes: boxes });
       useBoxEditStore.getState().deleteBox(1);
       const { editedBoxes } = useBoxEditStore.getState();
@@ -142,14 +150,22 @@ describe("useBoxEditStore", () => {
     });
 
     it("decrements selectedBoxIndex when deleting a box before it", () => {
-      const boxes = [makeBox({ boxId: "b1" }), makeBox({ boxId: "b2" }), makeBox({ boxId: "b3" })];
+      const boxes = [
+        makeBox({ boxId: "b1" }),
+        makeBox({ boxId: "b2" }),
+        makeBox({ boxId: "b3" }),
+      ];
       useBoxEditStore.setState({ editedBoxes: boxes, selectedBoxIndex: 2 });
       useBoxEditStore.getState().deleteBox(0);
       expect(useBoxEditStore.getState().selectedBoxIndex).toBe(1);
     });
 
     it("keeps selectedBoxIndex when deleting a box after it", () => {
-      const boxes = [makeBox({ boxId: "b1" }), makeBox({ boxId: "b2" }), makeBox({ boxId: "b3" })];
+      const boxes = [
+        makeBox({ boxId: "b1" }),
+        makeBox({ boxId: "b2" }),
+        makeBox({ boxId: "b3" }),
+      ];
       useBoxEditStore.setState({ editedBoxes: boxes, selectedBoxIndex: 0 });
       useBoxEditStore.getState().deleteBox(2);
       expect(useBoxEditStore.getState().selectedBoxIndex).toBe(0);

@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useWebcamStore } from "../useWebcamStore";
 
-const initialState = { devices: [] as MediaDeviceInfo[], activeDeviceId: undefined };
+const initialState = {
+  devices: [] as MediaDeviceInfo[],
+  activeDeviceId: undefined,
+};
 
 describe("useWebcamStore", () => {
   beforeEach(() => {
@@ -16,21 +19,28 @@ describe("useWebcamStore", () => {
 
   describe("setDevices", () => {
     it("sets devices list", () => {
-      const mockDevices = [{ deviceId: "cam1", label: "Camera 1" }] as MediaDeviceInfo[];
+      const mockDevices = [
+        { deviceId: "cam1", label: "Camera 1" },
+      ] as MediaDeviceInfo[];
       useWebcamStore.getState().setDevices(mockDevices);
       expect(useWebcamStore.getState().devices).toEqual(mockDevices);
     });
 
     it("replaces previous devices entirely", () => {
       const first = [{ deviceId: "cam1" }] as MediaDeviceInfo[];
-      const second = [{ deviceId: "cam2" }, { deviceId: "cam3" }] as MediaDeviceInfo[];
+      const second = [
+        { deviceId: "cam2" },
+        { deviceId: "cam3" },
+      ] as MediaDeviceInfo[];
       useWebcamStore.getState().setDevices(first);
       useWebcamStore.getState().setDevices(second);
       expect(useWebcamStore.getState().devices).toEqual(second);
     });
 
     it("accepts empty array to clear devices", () => {
-      useWebcamStore.getState().setDevices([{ deviceId: "cam1" }] as MediaDeviceInfo[]);
+      useWebcamStore
+        .getState()
+        .setDevices([{ deviceId: "cam1" }] as MediaDeviceInfo[]);
       useWebcamStore.getState().setDevices([]);
       expect(useWebcamStore.getState().devices).toEqual([]);
     });
