@@ -40,13 +40,11 @@ describe("useMetadataDefaultsStore", () => {
       useMetadataDefaultsStore
         .getState()
         .setDefaults({ ...initialDefaults, namePrefix: "first" });
-      useMetadataDefaultsStore
-        .getState()
-        .setDefaults({
-          ...initialDefaults,
-          namePrefix: "second",
-          deviceBrandId: "brand-x",
-        });
+      useMetadataDefaultsStore.getState().setDefaults({
+        ...initialDefaults,
+        namePrefix: "second",
+        deviceBrandId: "brand-x",
+      });
       const { defaults } = useMetadataDefaultsStore.getState();
       expect(defaults.namePrefix).toBe("second");
       expect(defaults.deviceBrandId).toBe("brand-x");
