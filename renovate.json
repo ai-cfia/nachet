@@ -1,7 +1,10 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", ":dependencyDashboard"],
-  "gitIgnoredAuthors": ["github-actions[bot] <actions@github.com>", "actions-user"],
+  "gitIgnoredAuthors": [
+    "github-actions[bot] <actions@github.com>",
+    "actions-user"
+  ],
   "packageRules": [
     {
       "matchDepTypes": ["devDependencies"],
