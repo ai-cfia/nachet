@@ -81,7 +81,7 @@ jobs:
 
   check-package-lock:
     needs: [ versions, bump-version-renovate ]
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && (needs.versions.result == 'success' || needs.bump-version-renovate.result == 'success') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -126,6 +126,7 @@ jobs:
 
   nachet-mini-lint-test:
     needs: [ versions, check-package-lock ]
+    if: ${{ !cancelled() && needs.check-package-lock.result == 'success' }}
     uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-test-node-mono.yml@main
     with:
       working-directory: nachet-mini
