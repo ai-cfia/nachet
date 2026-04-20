@@ -19,9 +19,8 @@ interface BoxEditState {
 
 let userBoxCounter = 0;
 
-export function generateUserBoxId(): string {
-  return `user-${Date.now()}-${userBoxCounter++}`;
-}
+export const generateUserBoxId = (): string =>
+  `user-${Date.now()}-${userBoxCounter++}`;
 
 export const useBoxEditStore = create<BoxEditState>()((set) => ({
   isEditing: false,
