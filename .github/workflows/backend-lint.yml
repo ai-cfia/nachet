@@ -79,7 +79,7 @@ jobs:
           add: "."
           pull: "--rebase --autostash"
           author_name: "github-actions[bot]"
-          author_email: "actions@github.com"
+          author_email: "github-actions[bot]@users.noreply.github.com"
 
   backend-lint:
     name: backend-lint-test-python

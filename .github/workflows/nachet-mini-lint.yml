@@ -61,6 +61,9 @@ jobs:
           cache: "npm"
           cache-dependency-path: nachet-mini/package-lock.json
 
+      - name: Install specific npm version
+        run: npm install -g npm@${{ needs.versions.outputs.npm-version }}
+
       - name: Increment version for Renovate PRs
         run: |
           echo "current version: ${{ needs.versions.outputs.app-version }}"
@@ -70,7 +73,7 @@ jobs:
       - name: Update lock file for Renovate PRs
         run: |
           npm install --package-lock-only
-          npm audit fix --package-lock-only
+          npm audit fix --package-lock-only || true
 
       - name: Commit & push changes
         uses: EndBug/add-and-commit@ebe9b51bb11d033d228e1a1c3f23ad5bd4110c81
@@ -79,7 +82,7 @@ jobs:
           add: "."
           pull: "--rebase --autostash"
           author_name: "github-actions[bot]"
-          author_email: "actions@github.com"
+          author_email: "github-actions[bot]@users.noreply.github.com"
 
   check-package-lock:
     needs: [ versions, bump-version-renovate ]
