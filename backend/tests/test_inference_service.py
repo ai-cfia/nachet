@@ -192,10 +192,9 @@ class TestInferenceServiceUrlToBinary:
     async def test_dimensions_too_small(self, small_png_bytes, monkeypatch):
         """Should reject images smaller than 384x384 pixels."""
 
-        # Create base64 that's long enough but image is 1x1
-        small_base64 = base64.b64encode(small_png_bytes).decode("utf-8")
-        # Pad to meet minimum length requirement
-        small_base64 = small_base64 + "A" * (2049 - len(small_base64))
+        # Pad PNG bytes (not base64) so encoding stays valid; image is still 1x1
+        padded_png = small_png_bytes + b"\x00" * 64
+        small_base64 = base64.b64encode(padded_png).decode("utf-8")
         mock_user_role_id = uuid4()
 
         with pytest.raises(ImageProcessingError) as exc_info:
@@ -262,9 +261,9 @@ class TestInferenceServiceUrlToBinary:
         iend_chunk = b"\x00\x00\x00\x00IEND\xaeB`\x82"
 
         large_png = png_header + ihdr_chunk + idat_chunk + iend_chunk
+        # Pad PNG bytes (not base64) so encoding stays valid
+        large_png = large_png + b"\x00" * 64
         large_base64 = base64.b64encode(large_png).decode("utf-8")
-        # Pad to meet minimum length
-        large_base64 = large_base64 + "A" * (2049 - len(large_base64))
         mock_user_role_id = uuid4()
 
         # Note: May fail at mimetypes check first
