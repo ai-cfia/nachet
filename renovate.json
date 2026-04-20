@@ -4,7 +4,9 @@
   "gitIgnoredAuthors": [
     "github-actions[bot]",
     "actions-user@users.noreply.github.com",
-    "actions-user"
+    "actions-user",
+    "github-actions[bot]@users.noreply.github.com",
+    "41898282+github-actions[bot]@users.noreply.github.com"
   ],
   "packageRules": [
     {
