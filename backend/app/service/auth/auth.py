@@ -15,6 +15,7 @@ from jwt.exceptions import (
     InvalidTokenError,
     MissingRequiredClaimError,
 )
+from jwt.types import Options
 from starlette.requests import HTTPConnection
 
 from .exceptions import (
@@ -254,7 +255,7 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
                         required_claims.append("iss")
                     # _get_logger().debug(f"Required claims: {required_claims}")
 
-                    options = {
+                    options: Options = {
                         "verify_signature": True,
                         "verify_aud": True,
                         "verify_iat": True,
@@ -364,7 +365,7 @@ class AzureAuthorizationCodeBearerBase(SecurityBase):
         access_token: str,
         key: AllowedPublicKeys,
         iss: str,
-        options: dict[str, Any],
+        options: Options,
     ) -> dict[str, Any]:
         """
         Validates the token using the provided key and options.
