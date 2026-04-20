@@ -8,31 +8,23 @@
   ],
   "packageRules": [
     {
-      "matchDepTypes": ["devDependencies"],
+      "matchDepTypes": ["*"],
       "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "frontend non-major dev dependencies",
-      "groupSlug": "frontend-dev-minor-patch",
+      "groupName": "other minor dependencies",
+      "groupSlug": "other-minor",
       "matchPackageNames": ["*"],
-      "matchFileNames": ["frontend/**"]
+      "matchFileNames": ["*"]
     },
 
     {
-      "matchDepTypes": ["devDependencies"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "nachet-mini non-major dev dependencies",
-      "groupSlug": "nachet-mini-dev-minor-patch",
+      "matchDepTypes": ["*"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "other major dependencies",
+      "groupSlug": "other-major",
       "matchPackageNames": ["*"],
-      "matchFileNames": ["nachet-mini/**"]
+      "matchFileNames": ["*"]
     },
 
-    {
-      "matchDepTypes": ["dependency-groups.dev"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "backend non-major dev dependencies",
-      "groupSlug": "backend-dev-minor-patch",
-      "matchPackageNames": ["*"],
-      "matchFileNames": ["backend/**"]
-    },
     {
       "matchDepTypes": ["*"],
       "matchUpdateTypes": ["minor", "patch"],
@@ -41,6 +33,7 @@
       "matchPackageNames": ["*"],
       "matchFileNames": ["frontend/**"]
     },
+
     {
       "matchDepTypes": ["*"],
       "matchUpdateTypes": ["minor", "patch"],
@@ -78,6 +71,51 @@
     },
 
     {
+      "matchDepTypes": ["*"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "frontend major dependencies",
+      "groupSlug": "frontend-major",
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["frontend/**"]
+    },
+
+    {
+      "matchDepTypes": ["*"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "backend major dependencies",
+      "groupSlug": "backend-major",
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["backend/**"]
+    },
+
+    {
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "frontend non-major dev dependencies",
+      "groupSlug": "frontend-dev-minor-patch",
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["frontend/**"]
+    },
+
+    {
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "nachet-mini non-major dev dependencies",
+      "groupSlug": "nachet-mini-dev-minor-patch",
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["nachet-mini/**"]
+    },
+
+    {
+      "matchDepTypes": ["dependency-groups.dev"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "backend non-major dev dependencies",
+      "groupSlug": "backend-dev-minor-patch",
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["backend/**"]
+    },
+
+    {
       "matchDepTypes": ["devDependencies"],
       "matchUpdateTypes": ["major"],
       "groupName": "frontend major dev dependencies",
@@ -102,42 +140,6 @@
       "groupSlug": "backend-dev-major",
       "matchPackageNames": ["*"],
       "matchFileNames": ["backend/**"]
-    },
-
-    {
-      "matchDepTypes": ["*"],
-      "matchUpdateTypes": ["major"],
-      "groupName": "frontend major dependencies",
-      "groupSlug": "frontend-major",
-      "matchPackageNames": ["*"],
-      "matchFileNames": ["frontend/**"]
-    },
-
-    {
-      "matchDepTypes": ["*"],
-      "matchUpdateTypes": ["major"],
-      "groupName": "backend major dependencies",
-      "groupSlug": "backend-major",
-      "matchPackageNames": ["*"],
-      "matchFileNames": ["backend/**"]
-    },
-
-    {
-      "matchDepTypes": ["*"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "other minor dependencies",
-      "groupSlug": "other-minor",
-      "matchPackageNames": ["*"],
-      "matchFileNames": ["*"]
-    },
-
-    {
-      "matchDepTypes": ["*"],
-      "matchUpdateTypes": ["major"],
-      "groupName": "other major dependencies",
-      "groupSlug": "other-major",
-      "matchPackageNames": ["*"],
-      "matchFileNames": ["*"]
     }
   ],
 
