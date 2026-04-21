@@ -15,9 +15,8 @@ export interface ModelLoadProgress {
 }
 
 /** Build the composite key used to store results: "imageIndex:modelConfigId" */
-export function resultKey(imageIndex: number, modelConfigId: string): string {
-  return `${imageIndex}:${modelConfigId}`;
-}
+export const resultKey = (imageIndex: number, modelConfigId: string): string =>
+  `${imageIndex}:${modelConfigId}`;
 
 interface InferenceState {
   /** Results keyed by "imageIndex:modelConfigId" */
