@@ -24,7 +24,14 @@ const zipMock = vi.hoisted(() => {
   });
   const generateAsync = vi.fn();
   const instance = { file, folder, generateAsync };
-  return { file, imagesFolder, annotatedFolder, folder, generateAsync, instance };
+  return {
+    file,
+    imagesFolder,
+    annotatedFolder,
+    folder,
+    generateAsync,
+    instance,
+  };
 });
 
 // ---------------------------------------------------------------------------
@@ -90,7 +97,9 @@ const mockCanvas = {
 // ---------------------------------------------------------------------------
 // Test fixtures
 // ---------------------------------------------------------------------------
-const makeInferenceBox = (overrides: Partial<InferenceBox> = {}): InferenceBox => ({
+const makeInferenceBox = (
+  overrides: Partial<InferenceBox> = {},
+): InferenceBox => ({
   inferenceId: "inf-1",
   boxId: "box-1",
   classId: "cls-1",
@@ -104,7 +113,9 @@ const makeInferenceBox = (overrides: Partial<InferenceBox> = {}): InferenceBox =
   ...overrides,
 });
 
-const makeInferenceResult = (overrides: Partial<InferenceResult> = {}): InferenceResult => ({
+const makeInferenceResult = (
+  overrides: Partial<InferenceResult> = {},
+): InferenceResult => ({
   scores: [0.9],
   classifications: ["weed"],
   boxes: [makeInferenceBox()],
@@ -197,7 +208,9 @@ describe("buildExportManifest", () => {
       new Map(),
     );
     expect(manifest.images[0].inferenceResults).toHaveLength(1);
-    expect(manifest.images[0].inferenceResults[0].modelConfigId).toBe("model-a");
+    expect(manifest.images[0].inferenceResults[0].modelConfigId).toBe(
+      "model-a",
+    );
   });
 
   it("includes the parent image when only a result key is checked", () => {
@@ -211,7 +224,9 @@ describe("buildExportManifest", () => {
     );
     expect(manifest.images).toHaveLength(1);
     expect(manifest.images[0].inferenceResults).toHaveLength(1);
-    expect(manifest.images[0].inferenceResults[0].modelConfigId).toBe("model-a");
+    expect(manifest.images[0].inferenceResults[0].modelConfigId).toBe(
+      "model-a",
+    );
   });
 
   it("excludes an image not in either set", () => {
@@ -264,7 +279,9 @@ describe("buildExportManifest", () => {
 
   it("marks isEdited=true when modelConfigId contains ':edited-'", () => {
     const editedResult = makeInferenceResult();
-    const getEdited = () => [{ modelConfigId: "model-a:edited-abc", result: editedResult }];
+    const getEdited = () => [
+      { modelConfigId: "model-a:edited-abc", result: editedResult },
+    ];
     const manifest = buildExportManifest(
       [img0],
       new Set([0]),
@@ -292,7 +309,9 @@ describe("buildExportManifest", () => {
 // ---------------------------------------------------------------------------
 // generateCsvFromManifest
 // ---------------------------------------------------------------------------
-const makeExportBox = (overrides: Partial<ExportBoxEntry> = {}): ExportBoxEntry => ({
+const makeExportBox = (
+  overrides: Partial<ExportBoxEntry> = {},
+): ExportBoxEntry => ({
   boxId: "b1",
   label: "weed",
   classId: "cls-1",
@@ -307,7 +326,9 @@ const makeExportBox = (overrides: Partial<ExportBoxEntry> = {}): ExportBoxEntry 
   ...overrides,
 });
 
-const makeManifest = (overrides: Partial<ExportManifest> = {}): ExportManifest => ({
+const makeManifest = (
+  overrides: Partial<ExportManifest> = {},
+): ExportManifest => ({
   version: "1.0",
   exportedAt: "2026-01-01T00:00:00.000Z",
   application: "nachet-mini",
@@ -377,7 +398,9 @@ describe("generateCsvFromManifest", () => {
   });
 
   it("uses imageName as filename when humanReadable=true", () => {
-    const csv = generateCsvFromManifest(makeManifest(), { humanReadable: true });
+    const csv = generateCsvFromManifest(makeManifest(), {
+      humanReadable: true,
+    });
     expect(csv).toContain("images/my-image");
   });
 
@@ -390,7 +413,9 @@ describe("generateCsvFromManifest", () => {
     const manifest = makeManifest();
     manifest.images[0].inferenceResults[0].annotatedFileName =
       "annotated_images/sha0-00_model-a.png";
-    const csv = generateCsvFromManifest(manifest, { includeAnnotatedImages: true });
+    const csv = generateCsvFromManifest(manifest, {
+      includeAnnotatedImages: true,
+    });
     expect(csv).toContain("annotated_images/sha0-00_model-a.png");
   });
 
@@ -444,7 +469,11 @@ describe("drawAnnotatedImage", () => {
   });
 
   it("returns a Blob", async () => {
-    const blob = await drawAnnotatedImage("data:image/png;base64,abc", [normalBox], 50);
+    const blob = await drawAnnotatedImage(
+      "data:image/png;base64,abc",
+      [normalBox],
+      50,
+    );
     expect(blob).toBeInstanceOf(Blob);
   });
 
@@ -498,25 +527,39 @@ describe("generateExportZip", () => {
 
   it("does not add manifest.json when includeResults=false", async () => {
     await generateExportZip(makeManifest(), images, { includeResults: false });
-    const hasManifest = zipMock.file.mock.calls.some(([name]) => name === "manifest.json");
+    const hasManifest = zipMock.file.mock.calls.some(
+      ([name]) => name === "manifest.json",
+    );
     expect(hasManifest).toBe(false);
   });
 
   it("adds manifest.json when includeResults=true (default)", async () => {
-    await generateExportZip(makeManifest(), images, { includeResults: true, includeImages: false });
-    const hasManifest = zipMock.file.mock.calls.some(([name]) => name === "manifest.json");
+    await generateExportZip(makeManifest(), images, {
+      includeResults: true,
+      includeImages: false,
+    });
+    const hasManifest = zipMock.file.mock.calls.some(
+      ([name]) => name === "manifest.json",
+    );
     expect(hasManifest).toBe(true);
   });
 
   it("does not add results.csv when includeCsv=false", async () => {
     await generateExportZip(makeManifest(), images, { includeCsv: false });
-    const hasCsv = zipMock.file.mock.calls.some(([name]) => name === "results.csv");
+    const hasCsv = zipMock.file.mock.calls.some(
+      ([name]) => name === "results.csv",
+    );
     expect(hasCsv).toBe(false);
   });
 
   it("adds results.csv when includeCsv=true (default)", async () => {
-    await generateExportZip(makeManifest(), images, { includeCsv: true, includeImages: false });
-    const hasCsv = zipMock.file.mock.calls.some(([name]) => name === "results.csv");
+    await generateExportZip(makeManifest(), images, {
+      includeCsv: true,
+      includeImages: false,
+    });
+    const hasCsv = zipMock.file.mock.calls.some(
+      ([name]) => name === "results.csv",
+    );
     expect(hasCsv).toBe(true);
   });
 
@@ -525,12 +568,21 @@ describe("generateExportZip", () => {
     const dupManifest: ExportManifest = {
       ...base,
       images: [
-        { ...base.images[0], metadata: { ...base.images[0].metadata, imageName: "same" } },
-        { ...base.images[0], metadata: { ...base.images[0].metadata, imageName: "same" } },
+        {
+          ...base.images[0],
+          metadata: { ...base.images[0].metadata, imageName: "same" },
+        },
+        {
+          ...base.images[0],
+          metadata: { ...base.images[0].metadata, imageName: "same" },
+        },
       ],
     };
     await expect(
-      generateExportZip(dupManifest, images, { humanReadable: true, includeImages: true }),
+      generateExportZip(dupManifest, images, {
+        humanReadable: true,
+        includeImages: true,
+      }),
     ).rejects.toThrow("DUPLICATE_NAME:same");
   });
 
@@ -539,11 +591,17 @@ describe("generateExportZip", () => {
     const uniqueManifest: ExportManifest = {
       ...base,
       images: [
-        { ...base.images[0], metadata: { ...base.images[0].metadata, imageName: "unique-1" } },
+        {
+          ...base.images[0],
+          metadata: { ...base.images[0].metadata, imageName: "unique-1" },
+        },
       ],
     };
     await expect(
-      generateExportZip(uniqueManifest, images, { humanReadable: true, includeImages: true }),
+      generateExportZip(uniqueManifest, images, {
+        humanReadable: true,
+        includeImages: true,
+      }),
     ).resolves.toBeUndefined();
   });
 

@@ -17,7 +17,7 @@ export const normalizeFileName = (fileName: string): string => {
       .replace(/^-+|-+$/g, "")
       .slice(0, 256) || "image";
   return normalized + ext;
-}
+};
 
 /**
  * Returns null if valid, or a translation key string if invalid.
@@ -28,11 +28,11 @@ export const validateImageName = (value: string): string | null => {
   if (!/^[a-zA-Z0-9.-]+$/.test(value))
     return "metadata.validation.imageNameInvalid";
   return null;
-}
+};
 
 export const validateDescription = (value: string): string | null => {
   if (value.length > 1000) return "metadata.validation.descriptionTooLong";
   if (value && !/^[a-zA-Z0-9 .]+$/.test(value))
     return "metadata.validation.descriptionInvalid";
   return null;
-}
+};

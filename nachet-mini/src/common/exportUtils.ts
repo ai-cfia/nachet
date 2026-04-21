@@ -136,7 +136,7 @@ export const buildExportManifest = (
     application: "nachet-mini",
     images: exportImages,
   };
-}
+};
 
 /**
  * Escape a CSV field: wrap in double-quotes if it contains comma, quote, or newline.
@@ -146,7 +146,7 @@ const escapeCsvField = (value: string): string => {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
-}
+};
 
 /**
  * Generate a flat CSV string from the manifest.
@@ -200,14 +200,14 @@ export const generateCsvFromManifest = (
   }
 
   return rows.join("\n");
-}
+};
 
 /**
  * Sanitize a model config ID for use in filenames.
  */
 const sanitizeModelConfigId = (modelConfigId: string): string => {
   return modelConfigId.replace(/[^a-zA-Z0-9-]/g, "_");
-}
+};
 
 /**
  * Load a base64 data URL into an HTMLImageElement.
@@ -219,7 +219,7 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
     img.onerror = () => reject(new Error("Failed to load image"));
     img.src = src;
   });
-}
+};
 
 /**
  * Draw bounding boxes and box numbers onto an image, returning a PNG blob.
@@ -276,7 +276,7 @@ export const drawAnnotatedImage = async (
       else reject(new Error("Failed to create annotated image blob"));
     }, "image/png");
   });
-}
+};
 
 /**
  * Generate a ZIP file from the manifest and image data, then trigger download.
@@ -394,4 +394,4 @@ export const generateExportZip = async (
   const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const content = await zip.generateAsync({ type: "blob" });
   saveAs(content, `nachet-mini-export-${dateStr}.zip`);
-}
+};

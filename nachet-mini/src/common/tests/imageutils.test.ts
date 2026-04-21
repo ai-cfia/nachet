@@ -49,16 +49,21 @@ afterEach(() => {
 // getScaledBounds
 // ---------------------------------------------------------------------------
 describe("getScaledBounds", () => {
-  const box: BoxCoordinates = { topX: 100, topY: 50, bottomX: 300, bottomY: 150 };
+  const box: BoxCoordinates = {
+    topX: 100,
+    topY: 50,
+    bottomX: 300,
+    bottomY: 150,
+  };
 
   it("scales correctly when width is the limiting dimension", () => {
     // Container 800×600, image 1600×600 → scaleFactor = 800/1600 = 0.5
     // displayedWidth=800, displayedHeight=300, offsetX=0, offsetY=150
     const result = getScaledBounds(800, 600, 1600, 600, box);
-    expect(result.scaledWidth).toBeCloseTo(100);   // (300-100)*0.5
-    expect(result.scaledHeight).toBeCloseTo(50);    // (150-50)*0.5
-    expect(result.scaledTopX).toBeCloseTo(50);      // 100*0.5 + 0
-    expect(result.scaledTopY).toBeCloseTo(175);     // 50*0.5 + 150
+    expect(result.scaledWidth).toBeCloseTo(100); // (300-100)*0.5
+    expect(result.scaledHeight).toBeCloseTo(50); // (150-50)*0.5
+    expect(result.scaledTopX).toBeCloseTo(50); // 100*0.5 + 0
+    expect(result.scaledTopY).toBeCloseTo(175); // 50*0.5 + 150
   });
 
   it("scales correctly when height is the limiting dimension", () => {
@@ -67,23 +72,38 @@ describe("getScaledBounds", () => {
     const result = getScaledBounds(800, 600, 800, 1200, box);
     expect(result.scaledWidth).toBeCloseTo(100);
     expect(result.scaledHeight).toBeCloseTo(50);
-    expect(result.scaledTopX).toBeCloseTo(250);    // 100*0.5 + 200
-    expect(result.scaledTopY).toBeCloseTo(25);     // 50*0.5 + 0
+    expect(result.scaledTopX).toBeCloseTo(250); // 100*0.5 + 200
+    expect(result.scaledTopY).toBeCloseTo(25); // 50*0.5 + 0
   });
 
   it("returns all zeros when itemWidth is 0", () => {
     const result = getScaledBounds(800, 600, 0, 600, box);
-    expect(result).toEqual({ scaledWidth: 0, scaledHeight: 0, scaledTopX: 0, scaledTopY: 0 });
+    expect(result).toEqual({
+      scaledWidth: 0,
+      scaledHeight: 0,
+      scaledTopX: 0,
+      scaledTopY: 0,
+    });
   });
 
   it("returns all zeros when itemHeight is 0", () => {
     const result = getScaledBounds(800, 600, 800, 0, box);
-    expect(result).toEqual({ scaledWidth: 0, scaledHeight: 0, scaledTopX: 0, scaledTopY: 0 });
+    expect(result).toEqual({
+      scaledWidth: 0,
+      scaledHeight: 0,
+      scaledTopX: 0,
+      scaledTopY: 0,
+    });
   });
 
   it("returns all zeros when container dimensions are 0 (infinite scale factor)", () => {
     const result = getScaledBounds(0, 0, 800, 600, box);
-    expect(result).toEqual({ scaledWidth: 0, scaledHeight: 0, scaledTopX: 0, scaledTopY: 0 });
+    expect(result).toEqual({
+      scaledWidth: 0,
+      scaledHeight: 0,
+      scaledTopX: 0,
+      scaledTopY: 0,
+    });
   });
 });
 
@@ -92,23 +112,38 @@ describe("getScaledBounds", () => {
 // ---------------------------------------------------------------------------
 describe("getUnscaledCoordinates", () => {
   it("inverts getScaledBounds — roundtrip returns original coords", () => {
-    const box: BoxCoordinates = { topX: 200, topY: 100, bottomX: 400, bottomY: 300 };
+    const box: BoxCoordinates = {
+      topX: 200,
+      topY: 100,
+      bottomX: 400,
+      bottomY: 300,
+    };
     const scaled = getScaledBounds(800, 600, 1600, 1200, box);
 
     const unscaled = getUnscaledCoordinates(
-      800, 600, 1600, 1200,
-      scaled.scaledTopX, scaled.scaledTopY,
+      800,
+      600,
+      1600,
+      1200,
+      scaled.scaledTopX,
+      scaled.scaledTopY,
     );
     expect(unscaled.imageX).toBeCloseTo(box.topX, 5);
     expect(unscaled.imageY).toBeCloseTo(box.topY, 5);
   });
 
   it("returns { imageX: 0, imageY: 0 } when itemWidth is 0", () => {
-    expect(getUnscaledCoordinates(800, 600, 0, 600, 100, 100)).toEqual({ imageX: 0, imageY: 0 });
+    expect(getUnscaledCoordinates(800, 600, 0, 600, 100, 100)).toEqual({
+      imageX: 0,
+      imageY: 0,
+    });
   });
 
   it("returns { imageX: 0, imageY: 0 } when itemHeight is 0", () => {
-    expect(getUnscaledCoordinates(800, 600, 800, 0, 100, 100)).toEqual({ imageX: 0, imageY: 0 });
+    expect(getUnscaledCoordinates(800, 600, 800, 0, 100, 100)).toEqual({
+      imageX: 0,
+      imageY: 0,
+    });
   });
 
   it("correctly subtracts letterbox offset", () => {
@@ -142,7 +177,9 @@ describe("getImageDimensions", () => {
   it("rejects with 'Failed to load image' when the image errors", async () => {
     mockImageShouldFail = true;
     const file = new File([""], "bad.png", { type: "image/png" });
-    await expect(getImageDimensions(file)).rejects.toThrow("Failed to load image");
+    await expect(getImageDimensions(file)).rejects.toThrow(
+      "Failed to load image",
+    );
   });
 
   it("calls revokeObjectURL even when load fails", async () => {
@@ -163,7 +200,9 @@ const makeJpeg = () =>
 const makeGif = () =>
   new File([new Uint8Array(100)], "test.gif", { type: "image/gif" });
 const makeLarge = () =>
-  new File([new Uint8Array(11 * 1024 * 1024)], "big.png", { type: "image/png" });
+  new File([new Uint8Array(11 * 1024 * 1024)], "big.png", {
+    type: "image/png",
+  });
 
 describe("validateImageFile", () => {
   it("accepts a valid PNG file", async () => {
@@ -212,11 +251,9 @@ describe("validateImageFile", () => {
   });
 
   it("accumulates multiple errors (wrong type + too large)", async () => {
-    const bigGif = new File(
-      [new Uint8Array(11 * 1024 * 1024)],
-      "big.gif",
-      { type: "image/gif" },
-    );
+    const bigGif = new File([new Uint8Array(11 * 1024 * 1024)], "big.gif", {
+      type: "image/gif",
+    });
     const result = await validateImageFile(bigGif);
     expect(result.errorKeys).toContain("invalidType");
     expect(result.errorKeys).toContain("fileTooLarge");
