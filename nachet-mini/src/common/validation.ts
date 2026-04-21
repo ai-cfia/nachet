@@ -6,7 +6,7 @@
  * - Trims leading/trailing dashes
  * - Truncates to 256 characters
  */
-export function normalizeFileName(fileName: string): string {
+export const normalizeFileName = (fileName: string): string => {
   const extMatch = fileName.match(/\.[^.]+$/);
   const ext = extMatch ? extMatch[0].toLowerCase() : "";
   const base = fileName.replace(/\.[^.]+$/, "");
@@ -22,7 +22,7 @@ export function normalizeFileName(fileName: string): string {
 /**
  * Returns null if valid, or a translation key string if invalid.
  */
-export function validateImageName(value: string): string | null {
+export const validateImageName = (value: string): string | null => {
   if (!value) return "metadata.validation.imageNameRequired";
   if (value.length > 100) return "metadata.validation.imageNameTooLong";
   if (!/^[a-zA-Z0-9.-]+$/.test(value))
@@ -30,7 +30,7 @@ export function validateImageName(value: string): string | null {
   return null;
 }
 
-export function validateDescription(value: string): string | null {
+export const validateDescription = (value: string): string | null => {
   if (value.length > 1000) return "metadata.validation.descriptionTooLong";
   if (value && !/^[a-zA-Z0-9 .]+$/.test(value))
     return "metadata.validation.descriptionInvalid";

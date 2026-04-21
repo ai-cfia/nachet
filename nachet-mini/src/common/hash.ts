@@ -2,7 +2,7 @@
  * Compute the SHA-256 hash of a base64 data-URL image.
  * Uses the Web Crypto API (crypto.subtle.digest).
  */
-export async function computeSha256(base64DataUrl: string): Promise<string> {
+export const computeSha256 = async (base64DataUrl: string): Promise<string> => {
   // Strip the data-URL prefix to get raw base64
   const base64 = base64DataUrl.replace(/^data:[^;]+;base64,/, "");
   const binary = atob(base64);
