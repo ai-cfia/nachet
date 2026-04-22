@@ -21,7 +21,7 @@ interface ResultEntry {
  * - Only specific results checked → export parent image + ONLY those checked results
  * - Images with no results → exported with inferenceResults: []
  */
-export function buildExportManifest(
+export const buildExportManifest = (
   images: Images[],
   checkedImages: Set<number>,
   checkedResults: Set<string>,
@@ -29,7 +29,7 @@ export function buildExportManifest(
     index: number,
   ) => Array<{ modelConfigId: string; result: InferenceResult }>,
   allResults: Map<string, InferenceResult>,
-): ExportManifest {
+): ExportManifest => {
   // Determine which images to include
   const imageIndices = new Set<number>();
   for (const idx of checkedImages) {
@@ -136,26 +136,26 @@ export function buildExportManifest(
     application: "nachet-mini",
     images: exportImages,
   };
-}
+};
 
 /**
  * Escape a CSV field: wrap in double-quotes if it contains comma, quote, or newline.
  */
-function escapeCsvField(value: string): string {
+const escapeCsvField = (value: string): string => {
   if (value.includes(",") || value.includes('"') || value.includes("\n")) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
-}
+};
 
 /**
  * Generate a flat CSV string from the manifest.
  * One row per bounding box across all images and inference results.
  */
-export function generateCsvFromManifest(
+export const generateCsvFromManifest = (
   manifest: ExportManifest,
   options?: { humanReadable?: boolean; includeAnnotatedImages?: boolean },
-): string {
+): string => {
   const header =
     "filename,box_number,annotated_image,datetime,model,topX,topY,botX,botY,bbox_source,top1,conf1,top2,conf2,top3,conf3,top4,conf4,top5,conf5";
   const rows: string[] = [header];
@@ -200,35 +200,35 @@ export function generateCsvFromManifest(
   }
 
   return rows.join("\n");
-}
+};
 
 /**
  * Sanitize a model config ID for use in filenames.
  */
-function sanitizeModelConfigId(modelConfigId: string): string {
+const sanitizeModelConfigId = (modelConfigId: string): string => {
   return modelConfigId.replace(/[^a-zA-Z0-9-]/g, "_");
-}
+};
 
 /**
  * Load a base64 data URL into an HTMLImageElement.
  */
-function loadImage(src: string): Promise<HTMLImageElement> {
+const loadImage = (src: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error("Failed to load image"));
     img.src = src;
   });
-}
+};
 
 /**
  * Draw bounding boxes and box numbers onto an image, returning a PNG blob.
  */
-export async function drawAnnotatedImage(
+export const drawAnnotatedImage = async (
   imageSrc: string,
   boxes: ExportBoxEntry[],
   minBoxSize: number,
-): Promise<Blob> {
+): Promise<Blob> => {
   const img = await loadImage(imageSrc);
   const canvas = document.createElement("canvas");
   canvas.width = img.naturalWidth;
@@ -276,12 +276,12 @@ export async function drawAnnotatedImage(
       else reject(new Error("Failed to create annotated image blob"));
     }, "image/png");
   });
-}
+};
 
 /**
  * Generate a ZIP file from the manifest and image data, then trigger download.
  */
-export async function generateExportZip(
+export const generateExportZip = async (
   manifest: ExportManifest,
   images: Images[],
   options?: {
@@ -291,7 +291,7 @@ export async function generateExportZip(
     humanReadable?: boolean;
     includeAnnotatedImages?: boolean;
   },
-): Promise<void> {
+): Promise<void> => {
   const zip = new JSZip();
   const includeImages = options?.includeImages ?? true;
   const includeResults = options?.includeResults ?? true;
@@ -394,4 +394,4 @@ export async function generateExportZip(
   const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const content = await zip.generateAsync({ type: "blob" });
   saveAs(content, `nachet-mini-export-${dateStr}.zip`);
-}
+};

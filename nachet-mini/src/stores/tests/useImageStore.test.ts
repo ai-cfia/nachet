@@ -164,14 +164,14 @@ describe("useImageStore", () => {
       expect(useImageStore.getState().images[0].index).toBe(1);
     });
 
-    it("switches currentIndex to first remaining index when removing the current image", () => {
+    it("switches currentIndex to the previous image when removing the last current image", () => {
       useImageStore.getState().addImage("src0", [100, 100]);
       useImageStore.getState().addImage("src1", [100, 100]);
       useImageStore.getState().addImage("src2", [100, 100]);
       // after 3 adds, currentIndex = 2
       useImageStore.getState().removeImage(2);
-      // remaining indices: [0, 1] → first sorted = 0
-      expect(useImageStore.getState().currentIndex).toBe(0);
+      // remaining indices: [0, 1], adjacent is 1
+      expect(useImageStore.getState().currentIndex).toBe(1);
     });
 
     it("preserves currentIndex when removing a non-current image", () => {
@@ -190,14 +190,14 @@ describe("useImageStore", () => {
       expect(useImageStore.getState().currentIndex).toBe(0);
     });
 
-    it("picks first sorted remaining index when removing mid-image with currentIndex above it", () => {
+    it("switches currentIndex to the next image when removing a mid-image that is currently selected", () => {
       useImageStore.getState().addImage("src0", [100, 100]);
       useImageStore.getState().addImage("src1", [100, 100]);
       useImageStore.getState().addImage("src2", [100, 100]);
       useImageStore.setState({ currentIndex: 1 });
       useImageStore.getState().removeImage(1);
-      // remaining: indices [0, 2], first sorted = 0
-      expect(useImageStore.getState().currentIndex).toBe(0);
+      // remaining: indices [0, 2], adjacent (next) is 2
+      expect(useImageStore.getState().currentIndex).toBe(2);
     });
   });
 

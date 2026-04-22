@@ -34,7 +34,7 @@ export const useImageStore = create<ImageState>()((set, get) => ({
     const prefix = defaults.namePrefix || "image";
     const nextIndex =
       state.images.length > 0
-        ? Math.max(...state.images.map((img) => img.index)) + 1
+        ? state.images.reduce((max, img) => Math.max(max, img.index), 0) + 1
         : 0;
     const resolvedName =
       imageName ?? `${prefix}-${String(nextIndex + 1).padStart(4, "0")}.png`;
@@ -71,13 +71,16 @@ export const useImageStore = create<ImageState>()((set, get) => ({
 
   removeImage: (index: number) => {
     const state = get();
+    const removeArrayPos = state.images.findIndex((img) => img.index === index);
+    if (removeArrayPos === -1) return;
+
     const newImages = state.images.filter((img) => img.index !== index);
 
     let nextIndex = 0;
     if (newImages.length > 0) {
       if (index === state.currentIndex) {
-        const indices = newImages.map((img) => img.index).sort((a, b) => a - b);
-        nextIndex = indices[0];
+        const nextTargetPos = Math.min(removeArrayPos, newImages.length - 1);
+        nextIndex = newImages[nextTargetPos].index;
       } else {
         nextIndex = state.currentIndex;
       }
