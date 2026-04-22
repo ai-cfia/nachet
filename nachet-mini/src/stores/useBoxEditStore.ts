@@ -82,6 +82,6 @@ export const useBoxEditStore = create<BoxEditState>()((set) => ({
   },
 
   setIsDrawing: (drawing: boolean) => {
-    set({ isDrawing: drawing, selectedBoxIndex: drawing ? null : null });
+    set({ isDrawing: drawing, selectedBoxIndex: null });
   },
 }));

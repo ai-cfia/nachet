@@ -35,7 +35,8 @@ export const useWebcamDevices = () => {
         );
         setDevices(videoDevices);
 
-        if (activeDeviceId === "" || activeDeviceId === undefined) {
+        const { activeDeviceId: currentId } = useWebcamStore.getState();
+        if (currentId === "" || currentId === undefined) {
           // Default to second camera on mobile (rear camera), fall back to first
           const defaultDevice = videoDevices[1] ?? videoDevices[0];
           setActiveDeviceId(defaultDevice?.deviceId);
@@ -52,7 +53,7 @@ export const useWebcamDevices = () => {
     return () => {
       navigator.mediaDevices.removeEventListener("devicechange", updateDevices);
     };
-  }, [activeDeviceId, setDevices, setActiveDeviceId]);
+  }, [setDevices, setActiveDeviceId]);
 
   return { devices, activeDeviceId };
 };
