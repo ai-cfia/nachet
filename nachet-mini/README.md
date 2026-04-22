@@ -1,73 +1,74 @@
-# React + TypeScript + Vite
+# nachet-mini
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A lightweight, offline-capable Progressive Web App (PWA) for weed seed identification. ML models run entirely in-browser via Web Workers — no backend connection required for local development.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- [Node.js](https://nodejs.org/) ^24.5.0
+- npm ^11.5.2
 
-## React Compiler
+## Installation
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+From the `nachet-mini/` directory:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm ci
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+npm run dev
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Opens the app at `http://localhost:5173` with hot-module replacement.
+
+## Building
+
+```bash
+npm run build
+```
+
+Output is written to `dist/`. To set a non-root base URL (e.g. for GitHub Pages), set `VITE_BASE_URL` before building:
+
+```bash
+VITE_BASE_URL=/nachet-mini/ npm run build
+```
+
+## Testing
+
+### Unit tests (jsdom)
+
+```bash
+npm test
+```
+
+### Unit tests with coverage
+
+```bash
+npm run test:coverage
+```
+
+### Browser tests (Playwright / Chromium)
+
+One-time setup — install the Chromium browser binary:
+
+```bash
+npx playwright install chromium --with-deps
+```
+
+Then run:
+
+```bash
+npm run test:browser
+```
+
+Browser tests cover the inference Web Worker integration and run in a real Chromium instance. They run separately from the unit tests and require the unit tests to pass first in CI.
+
+## Code quality
+
+```bash
+npm run lint          # ESLint + TypeScript type check
+npm run format        # Format all source files with Prettier
+npm run format:check  # Check formatting without writing changes
 ```
