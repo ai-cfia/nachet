@@ -44,7 +44,7 @@ describe("useWebcamStore", () => {
       useWebcamStore.getState().setDevices([]);
       expect(useWebcamStore.getState().devices).toEqual([]);
     });
-});
+  });
 
   describe("setActiveDeviceId", () => {
     it("sets active device id", () => {
