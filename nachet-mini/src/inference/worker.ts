@@ -732,7 +732,9 @@ const classifyBoxes = async (
 // Helpers
 // ---------------------------------------------------------------------------
 
-const buildLabelOccurrence = (classifications: string[]): {
+const buildLabelOccurrence = (
+  classifications: string[],
+): {
   [key: string]: number;
 } => {
   const labelOccurrence: { [key: string]: number } = {};
