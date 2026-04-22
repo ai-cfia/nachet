@@ -191,6 +191,8 @@ db/postgres-data/
 /blob-report/
 /playwright/.cache/
 .vscode/settings.json
+**/__screenshots__/
+**/.vitest-attachments/
 
 **/eac/
 
