@@ -38,6 +38,7 @@ beforeEach(() => {
   vi.stubGlobal("Image", MockImage);
   vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock-url");
   vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+  vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -105,6 +106,26 @@ describe("getScaledBounds", () => {
       scaledTopY: 0,
     });
   });
+
+  it("returns all zeros when dimensions are NaN", () => {
+    const result = getScaledBounds(NaN, 600, 800, 600, box);
+    expect(result).toEqual({
+      scaledWidth: 0,
+      scaledHeight: 0,
+      scaledTopX: 0,
+      scaledTopY: 0,
+    });
+  });
+
+  it("returns all zeros when scale factor is infinite", () => {
+    const result = getScaledBounds(Infinity, Infinity, 800, 600, box);
+    expect(result).toEqual({
+      scaledWidth: 0,
+      scaledHeight: 0,
+      scaledTopX: 0,
+      scaledTopY: 0,
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -153,6 +174,22 @@ describe("getUnscaledCoordinates", () => {
     expect(result.imageX).toBeCloseTo(100);
     expect(result.imageY).toBeCloseTo(50);
   });
+
+  it("returns { imageX: 0, imageY: 0 } when scale factor is NaN", () => {
+    expect(getUnscaledCoordinates(NaN, 600, 800, 600, 100, 100)).toEqual({
+      imageX: 0,
+      imageY: 0,
+    });
+  });
+
+  it("returns { imageX: 0, imageY: 0 } when scale factor is infinite", () => {
+    expect(
+      getUnscaledCoordinates(Infinity, Infinity, 800, 600, 100, 100),
+    ).toEqual({
+      imageX: 0,
+      imageY: 0,
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -199,10 +236,11 @@ const makeJpeg = () =>
   new File([new Uint8Array(100)], "test.jpg", { type: "image/jpeg" });
 const makeGif = () =>
   new File([new Uint8Array(100)], "test.gif", { type: "image/gif" });
-const makeLarge = () =>
-  new File([new Uint8Array(11 * 1024 * 1024)], "big.png", {
-    type: "image/png",
-  });
+const makeLarge = () => {
+  const file = new File([""], "big.png", { type: "image/png" });
+  Object.defineProperty(file, "size", { value: 11 * 1024 * 1024 });
+  return file;
+};
 
 describe("validateImageFile", () => {
   it("accepts a valid PNG file", async () => {
@@ -218,6 +256,25 @@ describe("validateImageFile", () => {
     mockNaturalWidth = 640;
     mockNaturalHeight = 480;
     const result = await validateImageFile(makeJpeg());
+    expect(result.isValid).toBe(true);
+    expect(result.errorKeys).toEqual([]);
+  });
+
+  it("accepts a file with exactly the maximum dimensions (4608x2592)", async () => {
+    mockNaturalWidth = 4608;
+    mockNaturalHeight = 2592;
+    const result = await validateImageFile(makePng());
+    expect(result.isValid).toBe(true);
+    expect(result.errorKeys).toEqual([]);
+    expect(result.dimensions).toEqual({ width: 4608, height: 2592 });
+  });
+
+  it("accepts a file with exactly the maximum size (10 MB)", async () => {
+    mockNaturalWidth = 1920;
+    mockNaturalHeight = 1080;
+    const exactSizeFile = new File([""], "exact.png", { type: "image/png" });
+    Object.defineProperty(exactSizeFile, "size", { value: 10 * 1024 * 1024 });
+    const result = await validateImageFile(exactSizeFile);
     expect(result.isValid).toBe(true);
     expect(result.errorKeys).toEqual([]);
   });
@@ -251,13 +308,24 @@ describe("validateImageFile", () => {
   });
 
   it("accumulates multiple errors (wrong type + too large)", async () => {
-    const bigGif = new File([new Uint8Array(11 * 1024 * 1024)], "big.gif", {
-      type: "image/gif",
-    });
+    const bigGif = new File([""], "big.gif", { type: "image/gif" });
+    Object.defineProperty(bigGif, "size", { value: 11 * 1024 * 1024 });
     const result = await validateImageFile(bigGif);
     expect(result.errorKeys).toContain("invalidType");
     expect(result.errorKeys).toContain("fileTooLarge");
     expect(result.isValid).toBe(false);
+  });
+
+  it("accumulates all three errors (wrong type + too large + dimensions too large)", async () => {
+    mockNaturalWidth = 5000; // Trigger dimensionsTooLarge
+    const trifectaFile = new File([""], "bad.gif", { type: "image/gif" });
+    Object.defineProperty(trifectaFile, "size", { value: 11 * 1024 * 1024 });
+
+    const result = await validateImageFile(trifectaFile);
+    expect(result.isValid).toBe(false);
+    expect(result.errorKeys).toContain("invalidType");
+    expect(result.errorKeys).toContain("fileTooLarge");
+    expect(result.errorKeys).toContain("dimensionsTooLarge");
   });
 
   it("returns unreadableDimensions when the image fails to load", async () => {

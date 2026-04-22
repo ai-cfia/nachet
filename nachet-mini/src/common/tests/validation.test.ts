@@ -38,15 +38,23 @@ describe("normalizeFileName", () => {
     expect(normalizeFileName("!!!")).toBe("image");
   });
 
-  it("truncates base to 256 characters", () => {
+  it("truncates base to fit within 100 characters total", () => {
     const longBase = "a".repeat(300);
     const result = normalizeFileName(longBase + ".png");
     const base = result.replace(".png", "");
-    expect(base.length).toBe(256);
+    expect(base.length).toBe(96);
   });
 
   it("replaces special chars (exclamation, hash) with dashes then collapses", () => {
     expect(normalizeFileName("a!b#c.jpg")).toBe("a-b-c.jpg");
+  });
+
+  it("handles filenames with multiple dots (e.g. archive.tar.gz)", () => {
+    expect(normalizeFileName("archive.tar.gz")).toBe("archive.tar.gz");
+  });
+
+  it("falls back to 'image' when trimming leaves an empty string", () => {
+    expect(normalizeFileName("---.jpg")).toBe("image.jpg");
   });
 });
 
@@ -79,16 +87,26 @@ describe("validateImageName", () => {
     );
   });
 
-  it("returns imageNameInvalid for a name containing an underscore", () => {
-    expect(validateImageName("my_photo")).toBe(
-      "metadata.validation.imageNameInvalid",
-    );
+  it("returns null for a name containing an underscore", () => {
+    expect(validateImageName("my_photo")).toBeNull();
   });
 
   it("returns imageNameInvalid for a name containing special symbols", () => {
     expect(validateImageName("photo!")).toBe(
       "metadata.validation.imageNameInvalid",
     );
+  });
+
+  it("returns null for a 1-character valid name", () => {
+    expect(validateImageName("a")).toBeNull();
+  });
+
+  it("returns null for an uppercase valid name", () => {
+    expect(validateImageName("MY-PHOTO.JPG")).toBeNull();
+  });
+
+  it("returns null for a name with accented characters", () => {
+    expect(validateImageName("café.jpg")).toBeNull();
   });
 });
 
@@ -111,15 +129,15 @@ describe("validateDescription", () => {
     );
   });
 
-  it("returns descriptionInvalid for a description with an underscore", () => {
-    expect(validateDescription("bad_underscore")).toBe(
-      "metadata.validation.descriptionInvalid",
-    );
+  it("returns null for a description with an underscore", () => {
+    expect(validateDescription("bad_underscore")).toBeNull();
   });
 
-  it("returns descriptionInvalid for a description with a comma", () => {
-    expect(validateDescription("hello, world")).toBe(
-      "metadata.validation.descriptionInvalid",
-    );
+  it("returns null for a description with a comma", () => {
+    expect(validateDescription("hello, world")).toBeNull();
+  });
+
+  it("returns null for a description with a newline", () => {
+    expect(validateDescription("Line 1\nLine 2")).toBeNull();
   });
 });

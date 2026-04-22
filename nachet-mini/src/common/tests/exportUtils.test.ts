@@ -304,6 +304,37 @@ describe("buildExportManifest", () => {
     expect(manifest.application).toBe("nachet-mini");
     expect(manifest.exportedAt).toBeTruthy();
   });
+  it('uses "unknown" prefix when sha256 is missing', () => {
+    const noShaImg = makeImage({ index: 0, sha256: "" });
+    const manifest = buildExportManifest(
+      [noShaImg],
+      new Set([0]),
+      new Set(),
+      () => [],
+      new Map(),
+    );
+    expect(manifest.images[0].fileName).toMatch(/^images\/unknown-00\./);
+  });
+
+  it("handles missing scores or topN gracefully", () => {
+    const incompleteResult = makeInferenceResult({
+      scores: [],
+      topN: [],
+    });
+    const getIncomplete = () => [
+      { modelConfigId: "model-a", result: incompleteResult },
+    ];
+    const manifest = buildExportManifest(
+      [img0],
+      new Set([0]),
+      new Set(),
+      getIncomplete,
+      new Map(),
+    );
+    const box = manifest.images[0].inferenceResults[0].boxes[0];
+    expect(box.score).toBe(0);
+    expect(box.topNClassifications).toEqual([]);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -432,6 +463,21 @@ describe("generateCsvFromManifest", () => {
     expect(fields[fields.length - 1]).toBe("");
     expect(fields[fields.length - 2]).toBe("");
   });
+
+  it("escapes fields containing newlines", () => {
+    const manifest = makeManifest();
+    manifest.images[0].inferenceResults[0].modelConfigId =
+      "model\nwith\nnewlines";
+    const csv = generateCsvFromManifest(manifest);
+    expect(csv).toContain('"model\nwith\nnewlines"');
+  });
+
+  it("falls back to sha-based filename if humanReadable=true but imageName is empty", () => {
+    const manifest = makeManifest();
+    manifest.images[0].metadata.imageName = ""; // Empty image name
+    const csv = generateCsvFromManifest(manifest, { humanReadable: true });
+    expect(csv).toContain("images/sha0-00.png");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -498,6 +544,22 @@ describe("drawAnnotatedImage", () => {
     await expect(
       drawAnnotatedImage("data:image/png;base64,abc", [normalBox], 50),
     ).rejects.toThrow("Failed to get canvas 2d context");
+  });
+
+  it("throws an error if the image fails to load", async () => {
+    mockImageShouldFail = true;
+    await expect(
+      drawAnnotatedImage("data:image/png;base64,bad", [normalBox], 50),
+    ).rejects.toThrow("Failed to load image");
+  });
+
+  it("throws an error if canvas toBlob fails to return a blob", async () => {
+    mockCanvas.toBlob.mockImplementationOnce((cb: (b: Blob | null) => void) =>
+      cb(null),
+    );
+    await expect(
+      drawAnnotatedImage("data:image/png;base64,abc", [normalBox], 50),
+    ).rejects.toThrow("Failed to create annotated image blob");
   });
 });
 
@@ -615,5 +677,12 @@ describe("generateExportZip", () => {
     expect(mfCopy.images[0].inferenceResults[0].annotatedFileName).toMatch(
       /^annotated_images\//,
     );
+  });
+
+  it("safely skips generating files for images that are in the manifest but missing from source array", async () => {
+    // Pass empty images array [] despite the manifest having an image entry
+    await generateExportZip(makeManifest(), [], { includeImages: true });
+    // It should not attempt to write the image file
+    expect(zipMock.imagesFolder.file).not.toHaveBeenCalled();
   });
 });
