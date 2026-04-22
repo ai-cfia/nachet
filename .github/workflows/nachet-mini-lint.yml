@@ -139,6 +139,38 @@ jobs:
       npm-version: ${{ needs.versions.outputs.npm-version }}
     secrets: inherit
 
+  nachet-mini-browser-tests:
+    # TODO: make this reusable in the github workflows repo and use it in other frontend repos as well
+    name: Nachet Mini Browser Tests
+    needs: [ versions, nachet-mini-lint-test ]
+    if: ${{ !cancelled() && needs.nachet-mini-lint-test.result == 'success' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nachet-mini
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ needs.versions.outputs.node-version }}
+          cache: "npm"
+          cache-dependency-path: nachet-mini/package-lock.json
+
+      - name: Install specific npm version
+        run: npm install -g npm@${{ needs.versions.outputs.npm-version }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run browser tests
+        run: npm run test:browser
+
   sbom-security-scan:
     needs: [ versions ]
     uses: ai-cfia/github-workflows/.github/workflows/workflow-generate-frontend-sbom.yml@main
