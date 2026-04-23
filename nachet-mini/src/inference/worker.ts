@@ -40,16 +40,16 @@ interface PostProcessedDetection {
 // ---------------------------------------------------------------------------
 
 /** Send a typed message from the worker to the main thread. */
-function send(msg: WorkerOutMessage): void {
+const send = (msg: WorkerOutMessage): void => {
   (
     globalThis as unknown as { postMessage(msg: WorkerOutMessage): void }
   ).postMessage(msg);
-}
+};
 
 type DeviceType = "webgpu" | "wasm";
 
 /** Detect whether WebGPU is available in this worker context. */
-async function getDevice(): Promise<DeviceType> {
+const getDevice = async (): Promise<DeviceType> => {
   try {
     if (typeof navigator !== "undefined" && "gpu" in (navigator as object)) {
       const adapter = await (
@@ -72,16 +72,16 @@ async function getDevice(): Promise<DeviceType> {
     );
   }
   return "wasm";
-}
+};
 
 /** Crop a rectangular region from an ImageBitmap using OffscreenCanvas. */
-async function cropRegion(
+const cropRegion = async (
   bitmap: ImageBitmap,
   xmin: number,
   ymin: number,
   xmax: number,
   ymax: number,
-): Promise<string> {
+): Promise<string> => {
   const w = Math.max(1, Math.round(xmax - xmin));
   const h = Math.max(1, Math.round(ymax - ymin));
   const canvas = new OffscreenCanvas(w, h);
@@ -90,7 +90,7 @@ async function cropRegion(
   ctx.drawImage(bitmap, Math.round(xmin), Math.round(ymin), w, h, 0, 0, w, h);
   const blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.9 });
   return URL.createObjectURL(blob);
-}
+};
 
 // ---------------------------------------------------------------------------
 // Processor size patching
@@ -103,7 +103,7 @@ async function cropRegion(
  * `{ longest_edge }` which preserves aspect ratio.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function patchProcessorSize(processor: any): void {
+const patchProcessorSize = (processor: any): void => {
   // AutoProcessor wraps an image_processor; try both paths
   const imageProcessor = processor?.image_processor ?? processor;
   if (!imageProcessor?.size) {
@@ -121,7 +121,7 @@ function patchProcessorSize(processor: any): void {
     );
     imageProcessor.size = { longest_edge: longest };
   }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Pipeline state
@@ -148,7 +148,7 @@ type ProgressInfo = {
   progress?: number;
 };
 
-function makeProgressCallback(phase: "detector" | "classifier") {
+const makeProgressCallback = (phase: "detector" | "classifier") => {
   let lastSent = 0;
   return (info: ProgressInfo): void => {
     if (info.status === "progress" && info.progress !== undefined) {
@@ -162,7 +162,7 @@ function makeProgressCallback(phase: "detector" | "classifier") {
       });
     }
   };
-}
+};
 
 // ---------------------------------------------------------------------------
 // Message handler
@@ -653,7 +653,7 @@ addEventListener("message", async (event: MessageEvent) => {
 // Shared classification helper
 // ---------------------------------------------------------------------------
 
-async function classifyBoxes(
+const classifyBoxes = async (
   bitmap: ImageBitmap,
   boxes: InferenceBox[],
   scores: number[],
@@ -662,7 +662,7 @@ async function classifyBoxes(
   config: ModelConfig,
   imageIndex: number,
   modelConfigId: string,
-): Promise<void> {
+): Promise<void> => {
   for (let i = 0; i < boxes.length; i++) {
     const { topX: xmin, topY: ymin, bottomX: xmax, bottomY: ymax } = boxes[i];
 
@@ -726,15 +726,17 @@ async function classifyBoxes(
       if (cropUrl) URL.revokeObjectURL(cropUrl);
     }
   }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function buildLabelOccurrence(classifications: string[]): {
+const buildLabelOccurrence = (
+  classifications: string[],
+): {
   [key: string]: number;
-} {
+} => {
   const labelOccurrence: { [key: string]: number } = {};
   for (const label of classifications) {
     if (label !== "") {
@@ -742,9 +744,9 @@ function buildLabelOccurrence(classifications: string[]): {
     }
   }
   return labelOccurrence;
-}
+};
 
-function emptyResult(config: ModelConfig): InferenceResult {
+const emptyResult = (config: ModelConfig): InferenceResult => {
   return {
     scores: [],
     classifications: [],
@@ -762,4 +764,4 @@ function emptyResult(config: ModelConfig): InferenceResult {
     isActive: true,
     minBoxSize: config.minBoxSize,
   };
-}
+};

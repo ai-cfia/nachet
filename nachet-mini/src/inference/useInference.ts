@@ -13,7 +13,7 @@ import { resultKey } from "@stores/useInferenceStore";
  * Usage:
  *   const { loadModels, runInference, isModelLoaded } = useInference();
  */
-export function useInference() {
+export const useInference = () => {
   const workerRef = useRef<Worker | null>(null);
   const isModelLoadedRef = useRef(false);
 
@@ -141,4 +141,4 @@ export function useInference() {
       return isModelLoadedRef.current;
     },
   };
-}
+};
