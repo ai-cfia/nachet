@@ -203,6 +203,7 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
           {/* Draw overlay */}
           {isEditing && isDrawing && (
             <div
+              data-testid="draw-overlay"
               onMouseDown={handleDrawMouseDown}
               style={{
                 position: "absolute",
@@ -216,7 +217,9 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
             />
           )}
           {/* Draw preview rectangle */}
-          {drawPreviewStyle && <div style={drawPreviewStyle} />}
+          {drawPreviewStyle && (
+            <div data-testid="draw-preview" style={drawPreviewStyle} />
+          )}
           {/* Boxes */}
           {containerSize.width > 0 &&
             displayBoxes.map((box, i) => (
