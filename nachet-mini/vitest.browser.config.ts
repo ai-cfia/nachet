@@ -12,10 +12,13 @@ export default mergeConfig(
         instances: [{ browser: "chromium" }],
         headless: true,
       },
-      include: ["src/inference/tests/**/*.test.ts"],
+      include: [
+        "src/inference/tests/**/*.test.ts",
+        "src/components/tests/**/*.test.tsx",
+      ],
       coverage: {
         provider: "v8",
-        include: ["src/inference/*.ts"],
+        include: ["src/inference/*.ts", "src/components/**/*.tsx"],
         // worker.ts runs in a Web Worker context (separate V8 isolate) and
         // cannot be instrumented by the main-thread coverage collector.
         exclude: ["src/inference/worker.ts", "src/inference/tests/**"],
