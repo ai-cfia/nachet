@@ -5,6 +5,7 @@ const header = {
   appBar: {
     title: "Nachet Mini",
     languageToggle: {
+      ariaLabel: "Toggle language between English and French",
       en: "EN",
       fr: "FR",
     },
