@@ -73,6 +73,7 @@ const Footer: React.FC<FooterProps> = ({
           </Link>
           <Link
             href="https://github.com/ai-cfia"
+            aria-label="GitHub"
             target="_blank"
             rel="noopener noreferrer"
             sx={{
@@ -135,6 +136,7 @@ const Footer: React.FC<FooterProps> = ({
             <Typography
               variant="body2"
               noWrap
+              role={isError ? "alert" : undefined}
               sx={{
                 fontSize: "1rem",
                 color: isError ? "error.main" : colours.CFIA_Background_Blue,
