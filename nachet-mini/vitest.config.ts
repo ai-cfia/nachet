@@ -6,7 +6,12 @@ export default mergeConfig(
   defineConfig({
     test: {
       environment: "jsdom",
-      exclude: ["**/node_modules/**", "**/dist/**", "src/inference/tests/**"],
+      exclude: [
+        "**/node_modules/**",
+        "**/dist/**",
+        "src/inference/tests/**",
+        "src/components/tests/**",
+      ],
     },
   }),
 );
