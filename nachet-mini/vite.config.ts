@@ -29,6 +29,9 @@ export default defineConfig({
       "@mui/icons-material/GitHub",
       "@mui/icons-material/Close",
       "react-webcam",
+      "file-saver",
+      "jszip",
+      "zustand/middleware",
     ],
   },
   resolve: {
