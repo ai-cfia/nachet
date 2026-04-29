@@ -27,6 +27,8 @@ vi.mock("jszip", async () => ({
 
 vi.mock("@stores/useImageStore", () => ({ useImageStore: vi.fn() }));
 
+type ImageStoreState = ReturnType<(typeof useImageStore)["getState"]>;
+
 const makeImage = (index: number, src = "data:image/png;base64,abc") => ({
   index,
   src,
@@ -39,22 +41,24 @@ const setStore = (
   images: ReturnType<typeof makeImage>[],
   currentImage?: ReturnType<typeof makeImage>,
 ) => {
-  vi.mocked(useImageStore).mockImplementation((selector: any) =>
-    selector({
-      images,
-      getCurrentImage: vi.fn().mockReturnValue(currentImage ?? images[0]),
-    }),
+  vi.mocked(useImageStore).mockImplementation(
+    (selector: (state: ImageStoreState) => unknown) =>
+      selector({
+        images,
+        getCurrentImage: vi.fn().mockReturnValue(currentImage ?? images[0]),
+      } as unknown as ImageStoreState),
   );
 };
 
 const setStoreWithoutCurrentImage = (
   images: ReturnType<typeof makeImage>[],
 ) => {
-  vi.mocked(useImageStore).mockImplementation((selector: any) =>
-    selector({
-      images,
-      getCurrentImage: vi.fn().mockReturnValue(undefined),
-    }),
+  vi.mocked(useImageStore).mockImplementation(
+    (selector: (state: ImageStoreState) => unknown) =>
+      selector({
+        images,
+        getCurrentImage: vi.fn().mockReturnValue(undefined),
+      } as unknown as ImageStoreState),
   );
 };
 
