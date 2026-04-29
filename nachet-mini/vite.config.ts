@@ -25,7 +25,11 @@ export default defineConfig({
       },
     },],
   optimizeDeps: {
-    include: ["@mui/icons-material/GitHub", "react-webcam"],
+    include: [
+      "@mui/icons-material/GitHub",
+      "@mui/icons-material/Close",
+      "react-webcam",
+    ],
   },
   resolve: {
     alias: {
