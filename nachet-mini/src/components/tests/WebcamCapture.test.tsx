@@ -24,9 +24,7 @@ type MockWebcamProps = {
   onUserMediaError?: (err: string | DOMException) => void;
 };
 
-const webcamMock = vi.hoisted(() => ({
-  lastProps: null as MockWebcamProps | null,
-}));
+const captureProps = vi.hoisted(() => vi.fn<[MockWebcamProps], void>());
 
 vi.mock("@hooks/useWebcamDevices", () => ({ useWebcamDevices: vi.fn() }));
 vi.mock("@hooks/useIsPortrait", () => ({ useIsPortrait: vi.fn() }));
@@ -37,7 +35,7 @@ vi.mock("react-webcam", async () => {
     props: MockWebcamProps,
     ref: React.ForwardedRef<{ getScreenshot: () => string | null }>,
   ) {
-    webcamMock.lastProps = props;
+    captureProps(props);
     React.useImperativeHandle(ref, () => ({
       getScreenshot: () => "mock-screenshot",
     }));
@@ -60,9 +58,10 @@ const makeDevice = (id: string): MediaDeviceInfo =>
     toJSON: () => ({}),
   }) as MediaDeviceInfo;
 
-const getLastWebcamProps = () => {
-  expect(webcamMock.lastProps).not.toBeNull();
-  return webcamMock.lastProps as MockWebcamProps;
+const getLastWebcamProps = (): MockWebcamProps => {
+  const lastCall = captureProps.mock.calls.at(-1);
+  expect(lastCall).not.toBeUndefined();
+  return lastCall![0];
 };
 
 describe("WebcamCapture", () => {
@@ -71,7 +70,7 @@ describe("WebcamCapture", () => {
 
   beforeEach(() => {
     webcamRef = createRef<Webcam | null>();
-    webcamMock.lastProps = null;
+    captureProps.mockClear();
     vi.mocked(useWebcamDevices).mockReturnValue({
       devices: [],
       activeDeviceId: undefined,
@@ -100,7 +99,7 @@ describe("WebcamCapture", () => {
           onUserMediaError={onUserMediaError}
         />,
       );
-      expect(webcamMock.lastProps).toBeNull();
+      expect(captureProps).not.toHaveBeenCalled();
       expect(await page.getByTestId("webcam-video").all()).toHaveLength(0);
     });
   });
