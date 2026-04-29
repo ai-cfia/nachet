@@ -66,6 +66,10 @@ const main = {
   imageGallery: {
     title: "Images",
     image: "Image {{number}}",
+    clearAllImages: "Effacer toutes les images",
+    editMetadataImage: "Modifier les métadonnées de l’image {{number}}",
+    selectImage: "Sélectionner l’image {{number}}",
+    selectResult: "Sélectionner le résultat {{modelId}}",
     resultsAvailable: "R\u00e9sultats disponibles",
     resultEntry: "{{time}} \u2014 {{modelId}}",
     boxes: "{{count}} bo\u00eetes",

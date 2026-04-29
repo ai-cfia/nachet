@@ -118,7 +118,9 @@ const ImageGallery = ({
               }
             }}
             aria-label={
-              hasChecked ? t("imageGallery.removeResult") : "clear all images"
+              hasChecked
+                ? t("imageGallery.removeResult")
+                : t("imageGallery.clearAllImages")
             }
             disabled={images.length === 0}
           >
@@ -175,6 +177,11 @@ const ImageGallery = ({
                         paddingLeft: "0.8vh",
                         paddingRight: "0.8vh",
                       }}
+                      data-expanded={isExpanded ? "true" : "false"}
+                      data-current={
+                        item.index === currentIndex ? "true" : "false"
+                      }
+                      data-testid={`image-row-${item.index}`}
                       onClick={() => handleImageClick(item.index)}
                     >
                       <Box
@@ -202,6 +209,13 @@ const ImageGallery = ({
                             padding: 0,
                             "& .MuiSvgIcon-root": { fontSize: "2.4vh" },
                           }}
+                          slotProps={{
+                            input: {
+                              "aria-label": t("imageGallery.selectImage", {
+                                number: item.index + 1,
+                              }),
+                            },
+                          }}
                         />
                         <ImageIcon
                           style={{ color: "#1565c0", fontSize: "2.4vh" }}
@@ -226,7 +240,9 @@ const ImageGallery = ({
                           onEditMetadata(item.index);
                         }}
                         sx={{ padding: 0, pr: "5px", pl: "25px" }}
-                        aria-label={`edit metadata image ${item.index + 1}`}
+                        aria-label={t("imageGallery.editMetadataImage", {
+                          number: item.index + 1,
+                        })}
                       >
                         <EditIcon
                           style={{ color: "#1565c0", fontSize: "2.4vh" }}
@@ -307,6 +323,9 @@ const ImageGallery = ({
                               color: "text.secondary",
                               borderTop: "1px solid #f0f0f0",
                             }}
+                            role="button"
+                            aria-pressed={isActive}
+                            data-testid={`result-row-${key}`}
                             onClick={() => onSelectResult(key)}
                           >
                             <Checkbox
@@ -324,6 +343,13 @@ const ImageGallery = ({
                                 pl: "0px",
                                 ml: "0px",
                                 "& .MuiSvgIcon-root": { fontSize: "2.1vh" },
+                              }}
+                              slotProps={{
+                                input: {
+                                  "aria-label": t("imageGallery.selectResult", {
+                                    modelId: displayModelId,
+                                  }),
+                                },
                               }}
                             />
                             <ScienceIcon
