@@ -3,6 +3,7 @@ import { render, cleanup } from "@testing-library/react";
 import { page } from "vitest/browser";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../../i18n";
+import { versions } from "../../_versions";
 import Footer from "../Footer";
 import type { ModelLoadProgress } from "@stores/useInferenceStore";
 
@@ -48,11 +49,10 @@ describe("Footer", () => {
 
     it("GitHub link points to the ai-cfia org", () => {
       renderFooter();
-      const link = page
-        .getByTestId("GitHubIcon")
-        .element()
-        .closest("a") as HTMLAnchorElement;
-      expect(link?.href).toContain("github.com/ai-cfia");
+      expect(
+        page.getByRole("link", { name: "GitHub" }).element()
+          .getAttribute("href"),
+      ).toBe("https://github.com/ai-cfia");
     });
 
     it('shows "Report an Issue" link', async () => {
@@ -88,14 +88,17 @@ describe("Footer", () => {
 
     it("shows the app version", async () => {
       renderFooter();
-      await expect.element(page.getByText("Version: 0.9.6")).toBeVisible();
+      await expect
+        .element(page.getByText(`Version: ${versions.version}`))
+        .toBeVisible();
     });
 
-    it("all external links open in a new tab", async () => {
+    it("all external links open in a new tab with safe rel attributes", async () => {
       renderFooter();
       const links = page.getByRole("link");
       for (const link of await links.all()) {
         await expect.element(link).toHaveAttribute("target", "_blank");
+        await expect.element(link).toHaveAttribute("rel", "noopener noreferrer");
       }
     });
   });
@@ -113,21 +116,28 @@ describe("Footer", () => {
   });
 
   describe("isError prop", () => {
-    it("statusText color differs between error and normal states", () => {
+    it("renders error status as an alert", async () => {
       renderFooter({ statusText: "Status", isError: true });
-      const errorColor = getComputedStyle(
-        page.getByText("Status").element(),
-      ).color;
-      cleanup();
+      await expect.element(page.getByRole("alert")).toBeVisible();
+      expect(page.getByRole("alert").element().textContent).toBe("Status");
+    });
+
+    it("does not render a normal status as an alert", async () => {
       renderFooter({ statusText: "Status", isError: false });
-      const normalColor = getComputedStyle(
-        page.getByText("Status").element(),
-      ).color;
-      expect(errorColor).not.toBe(normalColor);
+      expect(await page.getByRole("alert").all()).toHaveLength(0);
     });
   });
 
   describe("load progress", () => {
+    it("does not show progress UI when statusText is omitted", async () => {
+      renderFooter({
+        isLoading: true,
+        loadProgress: { name: "detector", progress: 50 },
+      });
+      expect(await page.getByRole("progressbar").all()).toHaveLength(0);
+      expect(await page.getByText(/detector/).all()).toHaveLength(0);
+    });
+
     it("does not show progress bar when isLoading is false", async () => {
       renderFooter({
         statusText: "Loading",
