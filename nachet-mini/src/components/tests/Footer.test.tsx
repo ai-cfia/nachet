@@ -7,12 +7,14 @@ import { versions } from "../../_versions";
 import Footer from "../Footer";
 import type { ModelLoadProgress } from "@stores/useInferenceStore";
 
-const renderFooter = (props: {
-  statusText?: string;
-  isError?: boolean;
-  isLoading?: boolean;
-  loadProgress?: ModelLoadProgress | null;
-} = {}) =>
+const renderFooter = (
+  props: {
+    statusText?: string;
+    isError?: boolean;
+    isLoading?: boolean;
+    loadProgress?: ModelLoadProgress | null;
+  } = {},
+) =>
   render(
     <I18nextProvider i18n={i18n}>
       <Footer {...props} />
@@ -50,7 +52,9 @@ describe("Footer", () => {
     it("GitHub link points to the ai-cfia org", () => {
       renderFooter();
       expect(
-        page.getByRole("link", { name: "GitHub" }).element()
+        page
+          .getByRole("link", { name: "GitHub" })
+          .element()
           .getAttribute("href"),
       ).toBe("https://github.com/ai-cfia");
     });
@@ -98,7 +102,9 @@ describe("Footer", () => {
       const links = page.getByRole("link");
       for (const link of await links.all()) {
         await expect.element(link).toHaveAttribute("target", "_blank");
-        await expect.element(link).toHaveAttribute("rel", "noopener noreferrer");
+        await expect
+          .element(link)
+          .toHaveAttribute("rel", "noopener noreferrer");
       }
     });
   });
@@ -148,7 +154,11 @@ describe("Footer", () => {
     });
 
     it("does not show progress bar when loadProgress is null", async () => {
-      renderFooter({ statusText: "Loading", isLoading: true, loadProgress: null });
+      renderFooter({
+        statusText: "Loading",
+        isLoading: true,
+        loadProgress: null,
+      });
       expect(await page.getByRole("progressbar").all()).toHaveLength(0);
     });
 

@@ -90,9 +90,7 @@ describe("WebcamCapture", () => {
           onUserMediaError={onUserMediaError}
         />,
       );
-      await expect
-        .element(page.getByText("No camera detected"))
-        .toBeVisible();
+      await expect.element(page.getByText("No camera detected")).toBeVisible();
     });
 
     it("does not render the webcam component when no devices are available", async () => {
