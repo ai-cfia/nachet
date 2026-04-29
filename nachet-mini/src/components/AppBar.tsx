@@ -69,6 +69,11 @@ const AppBar: React.FC = () => {
             {t("appBar.languageToggle.en")}
           </Typography>
           <Switch
+            slotProps={{
+              input: {
+                "aria-label": t("appBar.languageToggle.ariaLabel"),
+              },
+            }}
             checked={isFrench}
             onChange={handleLanguageChange}
             size="small"

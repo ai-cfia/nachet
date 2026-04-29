@@ -14,8 +14,8 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "preview": "vite preview",
     "test": "vitest",
-    "test:browser": "vitest --config vitest.browser.config.ts",
-    "test:browser:coverage": "vitest --config vitest.browser.config.ts --coverage",
+    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "test:browser:coverage": "vitest run --config vitest.browser.config.ts --coverage",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "playwright:install-deps": "npx playwright install-deps"

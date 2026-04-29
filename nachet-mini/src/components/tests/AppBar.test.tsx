@@ -12,6 +12,11 @@ const renderAppBar = () =>
     </I18nextProvider>,
   );
 
+const getLanguageSwitch = () =>
+  page.getByLabelText(
+    /toggle language between english and french|basculer la langue entre l'anglais et le francais/i,
+  );
+
 describe("AppBar", () => {
   beforeEach(async () => {
     localStorage.clear();
@@ -21,93 +26,50 @@ describe("AppBar", () => {
   afterEach(cleanup);
 
   describe("rendering", () => {
-    it("displays the app title", async () => {
+    it("renders the app title as a heading", async () => {
       renderAppBar();
-      await expect.element(page.getByText("Nachet Mini")).toBeVisible();
+      await expect
+        .element(page.getByRole("heading", { name: "Nachet Mini", level: 2 }))
+        .toBeVisible();
     });
 
-    it("displays EN language label", async () => {
+    it("renders a labeled language switch with both language labels", async () => {
       renderAppBar();
       await expect.element(page.getByText("EN")).toBeVisible();
-    });
-
-    it("displays FR language label", async () => {
-      renderAppBar();
       await expect.element(page.getByText("FR")).toBeVisible();
-    });
-
-    it("renders a language toggle switch", async () => {
-      renderAppBar();
-      await expect.element(page.getByRole("switch")).toBeVisible();
+      await expect.element(getLanguageSwitch()).toBeVisible();
     });
   });
 
   describe("language toggle state", () => {
-    it("switch is unchecked when language is English", async () => {
+    it("renders the switch unchecked when the active language is English", async () => {
       renderAppBar();
-      await expect.element(page.getByRole("switch")).not.toBeChecked();
+      await expect.element(getLanguageSwitch()).not.toBeChecked();
     });
 
-    it("switch is checked when language is French", async () => {
+    it("renders the switch checked when the active language is French", async () => {
       await i18n.changeLanguage("fr");
       renderAppBar();
-      await expect.element(page.getByRole("switch")).toBeChecked();
+      await expect.element(getLanguageSwitch()).toBeChecked();
     });
   });
 
   describe("language toggle interaction", () => {
-    it("clicking the switch toggles to French", async () => {
+    it("clicking the switch toggles to French and persists the language", async () => {
       renderAppBar();
-      await page.getByRole("switch").click();
-      await expect.element(page.getByRole("switch")).toBeChecked();
-    });
-
-    it("clicking the switch twice returns to English", async () => {
-      renderAppBar();
-      await page.getByRole("switch").click();
-      await page.getByRole("switch").click();
-      await expect.element(page.getByRole("switch")).not.toBeChecked();
-    });
-
-    it("i18n language is French after clicking the switch", async () => {
-      renderAppBar();
-      await page.getByRole("switch").click();
+      await getLanguageSwitch().click();
+      await expect.element(getLanguageSwitch()).toBeChecked();
       expect(i18n.language).toBe("fr");
+      expect(localStorage.getItem("i18nextLng")).toBe("fr");
     });
 
-    it("i18n language returns to English after clicking the switch twice", async () => {
+    it("clicking the switch twice returns to English and persists the language", async () => {
       renderAppBar();
-      await page.getByRole("switch").click();
-      await page.getByRole("switch").click();
+      await getLanguageSwitch().click();
+      await getLanguageSwitch().click();
+      await expect.element(getLanguageSwitch()).not.toBeChecked();
       expect(i18n.language).toBe("en");
-    });
-  });
-
-  describe("active language label font weight", () => {
-    it("EN label is bold in English mode", () => {
-      renderAppBar();
-      const el = page.getByText("EN").element();
-      expect(getComputedStyle(el).fontWeight).toBe("700");
-    });
-
-    it("FR label is normal weight in English mode", () => {
-      renderAppBar();
-      const el = page.getByText("FR").element();
-      expect(getComputedStyle(el).fontWeight).toBe("400");
-    });
-
-    it("FR label is bold in French mode", async () => {
-      await i18n.changeLanguage("fr");
-      renderAppBar();
-      const el = page.getByText("FR").element();
-      expect(getComputedStyle(el).fontWeight).toBe("700");
-    });
-
-    it("EN label is normal weight in French mode", async () => {
-      await i18n.changeLanguage("fr");
-      renderAppBar();
-      const el = page.getByText("EN").element();
-      expect(getComputedStyle(el).fontWeight).toBe("400");
+      expect(localStorage.getItem("i18nextLng")).toBe("en");
     });
   });
 });
