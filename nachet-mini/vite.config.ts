@@ -24,6 +24,9 @@ export default defineConfig({
         });
       },
     },],
+  optimizeDeps: {
+    include: ["@mui/icons-material/GitHub"],
+  },
   resolve: {
     alias: {
       "@common": path.resolve(__dirname, "src/common"),
