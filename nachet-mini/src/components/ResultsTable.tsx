@@ -143,6 +143,7 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
               Object.keys(labelOccurrence).map((key, i) => (
                 <TableRow
                   key={i}
+                  aria-selected={selectedLabel === key}
                   sx={{
                     backgroundColor:
                       selectedLabel === key ? "#F5F5F5" : "#ffffff",
@@ -242,9 +243,11 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
               classifications.map((prediction, classIdx) => {
                 const rowId = `box-${classIdx}`;
                 const boxTopN = topN[classIdx] ?? [];
+                const hasTopResults = boxTopN.length > 0;
                 const score = boxTopN[0]?.score ?? scores[classIdx] ?? 0;
                 const isExpanded = expandedRow === rowId;
                 const isBoxClassifying = prediction === "";
+                const isExpandable = !isBoxClassifying && hasTopResults;
                 const visible =
                   selectedLabel === "all" ||
                   selectedLabel === prediction ||
@@ -255,6 +258,7 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                 return (
                   <React.Fragment key={rowId}>
                     <TableRow
+                      aria-expanded={isExpandable ? isExpanded : undefined}
                       sx={{
                         "&:hover": {
                           backgroundColor: "#F5F5F5",
@@ -262,13 +266,13 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                         },
                       }}
                       onClick={() => {
-                        if (!isBoxClassifying) handleRowClick(rowId);
+                        if (isExpandable) handleRowClick(rowId);
                       }}
                     >
                       <TableCell
                         align="left"
                         sx={{
-                          cursor: isBoxClassifying ? "default" : "pointer",
+                          cursor: isExpandable ? "pointer" : "default",
                           paddingRight: 0,
                           fontSize: "1.0vh",
                           paddingTop: "0.5vh",
@@ -298,7 +302,7 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                       <TableCell
                         align="center"
                         sx={{
-                          cursor: isBoxClassifying ? "default" : "pointer",
+                          cursor: isExpandable ? "pointer" : "default",
                           paddingRight: 0,
                           fontSize: "1.0vh",
                           paddingLeft: 0,
@@ -331,7 +335,7 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                       <TableCell
                         align="right"
                         sx={{
-                          cursor: isBoxClassifying ? "default" : "pointer",
+                          cursor: isExpandable ? "pointer" : "default",
                           paddingLeft: 0,
                           fontSize: "1.0vh",
                           paddingTop: "0.5vh",
@@ -347,7 +351,7 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                           : `${(score * 100).toFixed(0)}%`}
                       </TableCell>
                     </TableRow>
-                    {isExpanded && !isBoxClassifying && (
+                    {isExpanded && isExpandable && (
                       <TableRow>
                         <TableCell colSpan={3}>
                           <Box p={2}>
