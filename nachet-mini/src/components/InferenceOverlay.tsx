@@ -403,11 +403,13 @@ const InferenceOverlay = ({
     <Box
       component="div"
       aria-label={label}
+      data-testid={`inference-overlay-${index}`}
       sx={sx}
       onMouseDown={editMode ? handleBoxMouseDown : undefined}
     >
       {/* box number (+ spinner when classifying) */}
       <Box
+        data-testid={`inference-overlay-label-${index}`}
         sx={{
           position: "absolute",
           ...(labelAtBottom
@@ -437,6 +439,7 @@ const InferenceOverlay = ({
         resizeHandles.map(({ handle, style }) => (
           <div
             key={handle}
+            data-testid={`resize-handle-${handle}`}
             onMouseDown={(e) => handleResizeMouseDown(handle, e)}
             style={{
               position: "absolute",
@@ -483,6 +486,7 @@ const InferenceOverlay = ({
       {!editMode && (
         <Box
           aria-hidden
+          data-testid={`z-index-badge-${index}`}
           sx={{
             position: "absolute",
             top: 6,
@@ -548,13 +552,24 @@ const InferenceOverlay = ({
         >
           <MenuItem
             sx={{ padding: "0px !important", minWidth: 0 }}
-            onClick={sendBoxForward}
+            data-testid="layers-menu-forward"
+            onClick={() => {
+              sendBoxForward();
+              closeLayersMenu();
+            }}
           >
             <ListItemIcon sx={{ minWidth: "0px !important" }}>
               <ArrowCircleUpRounded />
             </ListItemIcon>
           </MenuItem>
-          <MenuItem sx={{ padding: 0 }} onClick={sendBoxBackwards}>
+          <MenuItem
+            sx={{ padding: 0 }}
+            data-testid="layers-menu-backward"
+            onClick={() => {
+              sendBoxBackwards();
+              closeLayersMenu();
+            }}
+          >
             <ListItemIcon sx={{ minWidth: "0px !important" }}>
               <ArrowCircleDownRounded />
             </ListItemIcon>
