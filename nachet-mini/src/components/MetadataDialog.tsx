@@ -167,6 +167,7 @@ const MetadataForm = ({ onClose, mode, imageIndex }: Omit<Props, "open">) => {
               value={deviceBrandId}
               onChange={(e) => handleBrandChange(e.target.value)}
               label={t("metadata.deviceBrand")}
+              SelectDisplayProps={{ "data-testid": "metadata-device-brand" }}
             >
               <MenuItem value="">
                 <em>{t("metadata.selectBrand")}</em>
@@ -191,6 +192,7 @@ const MetadataForm = ({ onClose, mode, imageIndex }: Omit<Props, "open">) => {
                 value={deviceModelId}
                 onChange={(e) => setDeviceModelId(e.target.value)}
                 label={t("metadata.deviceModel")}
+                SelectDisplayProps={{ "data-testid": "metadata-device-model" }}
               >
                 <MenuItem value="">
                   <em>{t("metadata.selectModel")}</em>
@@ -213,6 +215,7 @@ const MetadataForm = ({ onClose, mode, imageIndex }: Omit<Props, "open">) => {
                 value={deviceLensId}
                 onChange={(e) => setDeviceLensId(e.target.value)}
                 label={t("metadata.deviceLens")}
+                SelectDisplayProps={{ "data-testid": "metadata-device-lens" }}
               >
                 <MenuItem value="">
                   <em>{t("metadata.selectLens")}</em>
@@ -233,6 +236,7 @@ const MetadataForm = ({ onClose, mode, imageIndex }: Omit<Props, "open">) => {
               value={trayCode}
               onChange={(e) => setTrayCode(e.target.value as TrayCode | "")}
               label={t("metadata.trayCode")}
+              SelectDisplayProps={{ "data-testid": "metadata-tray-code" }}
             >
               <MenuItem value="">
                 <em>{t("metadata.selectTrayCode")}</em>
