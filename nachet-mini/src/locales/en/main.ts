@@ -29,6 +29,8 @@ const main = {
   modelLoader: {
     detector: "Detector",
     classifier: "Classifier",
+    detectorInfo: "View detector model info",
+    classifierInfo: "View classifier model info",
     loadModel: "Load Model",
     loading: "Loading\u2026",
   },

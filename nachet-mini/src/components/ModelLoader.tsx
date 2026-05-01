@@ -36,6 +36,8 @@ const ModelLoader = ({
   isLoading,
 }: Props) => {
   const { t } = useTranslation("main");
+  const detectorLabel = t("modelLoader.detector");
+  const classifierLabel = t("modelLoader.classifier");
 
   const selectedDetector = detectors.find((d) => d.id === selectedDetectorId);
   const selectedClassifier = classifiers.find(
@@ -49,12 +51,18 @@ const ModelLoader = ({
 
   if (isLoading) {
     return (
-      <Box sx={{ display: "flex", alignItems: "center", gap: "0.4vh" }}>
+      <Box
+        role="status"
+        aria-label={t("modelLoader.loading")}
+        sx={{ display: "flex", alignItems: "center", gap: "0.4vh" }}
+      >
         <Skeleton
+          data-testid="model-loader-skeleton"
           variant="rounded"
           sx={{ ...dropdownSx, height: "4vh", minWidth: "8vw" }}
         />
         <Skeleton
+          data-testid="model-loader-skeleton"
           variant="rounded"
           sx={{ ...dropdownSx, height: "4vh", minWidth: "8vw" }}
         />
@@ -65,12 +73,14 @@ const ModelLoader = ({
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: "0.4vh" }}>
       <FormControl size="small" sx={dropdownSx}>
-        <InputLabel sx={{ fontSize: "1.2vh" }}>
-          {t("modelLoader.detector")}
+        <InputLabel id="detector-model-label" sx={{ fontSize: "1.2vh" }}>
+          {detectorLabel}
         </InputLabel>
         <Select
+          id="detector-model-select"
+          labelId="detector-model-label"
           value={selectedDetectorId}
-          label={t("modelLoader.detector")}
+          label={detectorLabel}
           onChange={(e: SelectChangeEvent<string>) => {
             onSelectDetector(e.target.value);
           }}
@@ -87,6 +97,7 @@ const ModelLoader = ({
         <IconButton
           component="a"
           href={huggingFaceUrl(selectedDetector.model)}
+          aria-label={t("modelLoader.detectorInfo")}
           target="_blank"
           rel="noopener noreferrer"
           size="small"
@@ -97,12 +108,14 @@ const ModelLoader = ({
       )}
 
       <FormControl size="small" sx={dropdownSx}>
-        <InputLabel sx={{ fontSize: "1.2vh" }}>
-          {t("modelLoader.classifier")}
+        <InputLabel id="classifier-model-label" sx={{ fontSize: "1.2vh" }}>
+          {classifierLabel}
         </InputLabel>
         <Select
+          id="classifier-model-select"
+          labelId="classifier-model-label"
           value={selectedClassifierId}
-          label={t("modelLoader.classifier")}
+          label={classifierLabel}
           onChange={(e: SelectChangeEvent<string>) => {
             onSelectClassifier(e.target.value);
           }}
@@ -119,6 +132,7 @@ const ModelLoader = ({
         <IconButton
           component="a"
           href={huggingFaceUrl(selectedClassifier.model)}
+          aria-label={t("modelLoader.classifierInfo")}
           target="_blank"
           rel="noopener noreferrer"
           size="small"
