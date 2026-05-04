@@ -24,6 +24,7 @@ import AddBoxIcon from "@mui/icons-material/AddBox";
 import CloseIcon from "@mui/icons-material/Close";
 import type Webcam from "react-webcam";
 import { useWebcamDevices } from "@hooks/useWebcamDevices";
+import { useVersionCheck } from "@hooks/useVersionCheck";
 import { useWebcamStore } from "@stores/useWebcamStore";
 import { useMetadataDefaultsStore } from "@stores/useMetadataDefaultsStore";
 import { useImageStore } from "@stores/useImageStore";
@@ -43,6 +44,7 @@ import WebcamCapture from "@components/WebcamCapture";
 import SaveDialog from "@components/SaveDialog";
 import ExportDialog from "@components/ExportDialog";
 import MetadataDialog from "@components/MetadataDialog";
+import VersionCheckDialog from "@components/VersionCheckDialog";
 import ImageGallery from "@components/ImageGallery";
 import ResultsTable from "@components/ResultsTable";
 import ImageViewer from "@components/ImageViewer";
@@ -144,6 +146,8 @@ const iconStyle = {
 
 function App() {
   const { t } = useTranslation("main");
+
+  useVersionCheck();
 
   // Webcam
   const { devices, activeDeviceId } = useWebcamDevices();
@@ -708,6 +712,7 @@ function App() {
         mode={metadataMode}
         imageIndex={metadataImageIndex}
       />
+      <VersionCheckDialog />
     </ThemeProvider>
   );
 }
