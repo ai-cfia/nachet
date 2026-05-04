@@ -109,6 +109,14 @@ const main = {
     unreadableDimensions: "Unable to read image dimensions",
     loadFailed: "Failed to load image",
   },
+  versionDialog: {
+    title: "New version available",
+    message:
+      "A new version of nachet-mini is available. You are running {{current}}; the latest is {{remote}}.",
+    warning:
+      "Reloading will discard any unsaved progress. Export your data first if you want to keep it.",
+    reload: "Reload",
+  },
 } as const;
 
 export default main;

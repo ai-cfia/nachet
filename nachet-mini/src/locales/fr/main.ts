@@ -113,6 +113,14 @@ const main = {
     unreadableDimensions: "Impossible de lire les dimensions de l\u2019image",
     loadFailed: "Impossible de charger l\u2019image",
   },
+  versionDialog: {
+    title: "Nouvelle version disponible",
+    message:
+      "Une nouvelle version de nachet-mini est disponible. Vous utilisez la version {{current}}\u00a0; la derni\u00e8re est {{remote}}.",
+    warning:
+      "Le rechargement supprimera toute progression non enregistr\u00e9e. Exportez d\u2019abord vos donn\u00e9es si vous souhaitez les conserver.",
+    reload: "Recharger",
+  },
 } as const;
 
 export default main;
