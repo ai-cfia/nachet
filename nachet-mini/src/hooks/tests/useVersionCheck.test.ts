@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
-import { isRemoteVersionNewer } from "../useVersionCheck";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { versions } from "../../_versions";
+import { isRemoteVersionNewer, useVersionCheck } from "../useVersionCheck";
 
 describe("isRemoteVersionNewer", () => {
   it("returns true when the remote semver is greater than the current version", () => {
@@ -21,5 +23,58 @@ describe("isRemoteVersionNewer", () => {
     expect(isRemoteVersionNewer("0.10.0-beta.1", "0.10.0")).toBe(false);
     expect(isRemoteVersionNewer("0.10.0-beta.10", "0.10.0-beta.2")).toBe(true);
     expect(isRemoteVersionNewer("0.10.0+20260504", "0.10.0")).toBe(false);
+  });
+});
+
+describe("useVersionCheck", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        text: () =>
+          Promise.resolve(`export const versions = { version: "9.9.9" };`),
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("opens the dialog and stores the remote version when a newer version exists", async () => {
+    const { result } = renderHook(() => useVersionCheck());
+
+    await waitFor(() => expect(result.current.dialogOpen).toBe(true));
+
+    expect(result.current.remoteVersion).toBe("9.9.9");
+  });
+
+  it("does not open the dialog when the remote version matches the current version", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      text: () =>
+        Promise.resolve(
+          `export const versions = { version: "${versions.version}" };`,
+        ),
+    } as Response);
+
+    const { result } = renderHook(() => useVersionCheck());
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+
+    expect(result.current.dialogOpen).toBe(false);
+    expect(result.current.remoteVersion).toBeNull();
+  });
+
+  it("closes the dialog without clearing the remote version", async () => {
+    const { result } = renderHook(() => useVersionCheck());
+
+    await waitFor(() => expect(result.current.dialogOpen).toBe(true));
+
+    act(() => result.current.closeDialog());
+
+    expect(result.current.dialogOpen).toBe(false);
+    expect(result.current.remoteVersion).toBe("9.9.9");
   });
 });

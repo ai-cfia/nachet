@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { useVersionCheckStore } from "@stores/useVersionCheckStore";
+import { useCallback, useEffect, useState } from "react";
 import { versions } from "../_versions";
 
 const REMOTE_VERSIONS_URL =
@@ -71,8 +70,9 @@ export const isRemoteVersionNewer = (remote: string, current: string) => {
 };
 
 export const useVersionCheck = () => {
-  const setRemoteVersion = useVersionCheckStore((s) => s.setRemoteVersion);
-  const openDialog = useVersionCheckStore((s) => s.openDialog);
+  const [remoteVersion, setRemoteVersion] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const closeDialog = useCallback(() => setDialogOpen(false), []);
 
   useEffect(() => {
     const checkRemoteVersion = async () => {
@@ -94,7 +94,7 @@ export const useVersionCheck = () => {
         }
         if (isRemoteVersionNewer(remote, versions.version)) {
           setRemoteVersion(remote);
-          openDialog();
+          setDialogOpen(true);
         }
       } catch (error) {
         console.warn("Version check failed:", error);
@@ -113,5 +113,7 @@ export const useVersionCheck = () => {
       window.clearInterval(intervalId);
       window.removeEventListener("focus", onFocus);
     };
-  }, [setRemoteVersion, openDialog]);
+  }, []);
+
+  return { dialogOpen, remoteVersion, closeDialog };
 };

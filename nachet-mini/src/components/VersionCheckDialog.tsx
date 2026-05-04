@@ -8,28 +8,30 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useTranslation } from "react-i18next";
-import { useVersionCheckStore } from "@stores/useVersionCheckStore";
 import { versions } from "../_versions";
 
 type VersionCheckDialogProps = {
+  open: boolean;
+  remoteVersion: string | null;
+  onClose: () => void;
   onReload?: () => void;
 };
 
 const VersionCheckDialog = ({
+  open,
+  remoteVersion,
+  onClose,
   onReload = () => window.location.reload(),
 }: VersionCheckDialogProps) => {
   const { t } = useTranslation("main");
   const { t: tCommon } = useTranslation("common");
-  const dialogOpen = useVersionCheckStore((s) => s.dialogOpen);
-  const remoteVersion = useVersionCheckStore((s) => s.remoteVersion);
-  const closeDialog = useVersionCheckStore((s) => s.closeDialog);
   const titleId = "version-check-dialog-title";
   const descriptionId = "version-check-dialog-description";
 
   return (
     <Dialog
-      open={dialogOpen}
-      onClose={closeDialog}
+      open={open}
+      onClose={onClose}
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
       maxWidth="xs"
@@ -62,7 +64,7 @@ const VersionCheckDialog = ({
               {t("versionDialog.title")}
             </Typography>
             <IconButton
-              onClick={closeDialog}
+              onClick={onClose}
               size="small"
               aria-label={tCommon("actions.close")}
               data-testid="version-dialog-close-icon"
@@ -102,7 +104,7 @@ const VersionCheckDialog = ({
           >
             <Button
               variant="outlined"
-              onClick={closeDialog}
+              onClick={onClose}
               data-testid="version-dialog-close-button"
               sx={{ textTransform: "none" }}
             >
