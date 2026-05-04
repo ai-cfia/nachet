@@ -8,38 +8,27 @@ import enMain from "../../locales/en/main";
 import frMain from "../../locales/fr/main";
 import enCommon from "../../locales/en/common";
 import frCommon from "../../locales/fr/common";
-import { useVersionCheckStore } from "@stores/useVersionCheckStore";
 import { versions } from "../../_versions";
 import VersionCheckDialog from "../VersionCheckDialog";
 
-vi.mock("@stores/useVersionCheckStore", () => ({
-  useVersionCheckStore: vi.fn(),
-}));
-
-type VersionCheckState = ReturnType<(typeof useVersionCheckStore)["getState"]>;
-
 const mockCloseDialog = vi.fn();
-
-const setStore = (overrides: Partial<VersionCheckState> = {}) => {
-  const state: VersionCheckState = {
-    remoteVersion: null,
-    dialogOpen: true,
-    setRemoteVersion: vi.fn(),
-    openDialog: vi.fn(),
-    closeDialog: mockCloseDialog,
-    ...overrides,
-  };
-  vi.mocked(useVersionCheckStore).mockImplementation(
-    (selector: (s: VersionCheckState) => unknown) => selector(state),
-  );
-};
-
 const mockReload = vi.fn();
 
-const renderDialog = () =>
+const renderDialog = ({
+  open = true,
+  remoteVersion = null,
+}: {
+  open?: boolean;
+  remoteVersion?: string | null;
+} = {}) =>
   render(
     <I18nextProvider i18n={i18n}>
-      <VersionCheckDialog onReload={mockReload} />
+      <VersionCheckDialog
+        open={open}
+        remoteVersion={remoteVersion}
+        onClose={mockCloseDialog}
+        onReload={mockReload}
+      />
     </I18nextProvider>,
   );
 
@@ -56,52 +45,45 @@ describe("VersionCheckDialog", () => {
     await i18n.changeLanguage("en");
     mockCloseDialog.mockClear();
     mockReload.mockClear();
-    setStore();
   });
 
   afterEach(cleanup);
 
   describe("when closed", () => {
     it("does not render dialog content when dialogOpen is false", async () => {
-      setStore({ dialogOpen: false });
-      renderDialog();
+      renderDialog({ open: false });
       expect(await page.getByRole("dialog").all()).toHaveLength(0);
     });
   });
 
   describe("when open", () => {
     it("renders the dialog", async () => {
-      setStore({ dialogOpen: true, remoteVersion: "1.0.0" });
-      renderDialog();
+      renderDialog({ remoteVersion: "1.0.0" });
       await expect.element(page.getByRole("dialog")).toBeVisible();
     });
 
     it("renders the title", async () => {
-      setStore({ dialogOpen: true, remoteVersion: "1.0.0" });
-      renderDialog();
+      renderDialog({ remoteVersion: "1.0.0" });
       await expect
         .element(page.getByText(enMain.versionDialog.title))
         .toBeVisible();
     });
 
     it("renders the warning text", async () => {
-      setStore({ dialogOpen: true, remoteVersion: "1.0.0" });
-      renderDialog();
+      renderDialog({ remoteVersion: "1.0.0" });
       await expect
         .element(page.getByText(enMain.versionDialog.warning))
         .toBeVisible();
     });
 
     it("renders the message with current and remote versions", async () => {
-      setStore({ dialogOpen: true, remoteVersion: "9.9.9" });
-      renderDialog();
+      renderDialog({ remoteVersion: "9.9.9" });
       await expect
         .element(page.getByText(versionMessage("9.9.9")))
         .toBeVisible();
     });
 
     it("renders the message with empty remote when remoteVersion is null", async () => {
-      setStore({ dialogOpen: true, remoteVersion: null });
       renderDialog();
       await expect.element(page.getByText(versionMessage(""))).toBeVisible();
     });
@@ -173,8 +155,7 @@ describe("VersionCheckDialog", () => {
     });
 
     it("the dialog is described by the message element", async () => {
-      setStore({ dialogOpen: true, remoteVersion: "2.0.0" });
-      renderDialog();
+      renderDialog({ remoteVersion: "2.0.0" });
       const dialog = page.getByRole("dialog").element();
       const describedBy = dialog.getAttribute("aria-describedby");
       expect(describedBy).toBe("version-check-dialog-description");
@@ -196,8 +177,7 @@ describe("VersionCheckDialog", () => {
   describe("i18n", () => {
     it("renders the French title in French mode", async () => {
       await i18n.changeLanguage("fr");
-      setStore({ dialogOpen: true, remoteVersion: "1.0.0" });
-      renderDialog();
+      renderDialog({ remoteVersion: "1.0.0" });
       await expect
         .element(page.getByText(frMain.versionDialog.title))
         .toBeVisible();
@@ -205,8 +185,7 @@ describe("VersionCheckDialog", () => {
 
     it("renders the French warning in French mode", async () => {
       await i18n.changeLanguage("fr");
-      setStore({ dialogOpen: true, remoteVersion: "1.0.0" });
-      renderDialog();
+      renderDialog({ remoteVersion: "1.0.0" });
       await expect
         .element(page.getByText(frMain.versionDialog.warning))
         .toBeVisible();
@@ -233,8 +212,7 @@ describe("VersionCheckDialog", () => {
 
     it("interpolates the version values into the French message", async () => {
       await i18n.changeLanguage("fr");
-      setStore({ dialogOpen: true, remoteVersion: "3.2.1" });
-      renderDialog();
+      renderDialog({ remoteVersion: "3.2.1" });
       await expect
         .element(page.getByText(versionMessage("3.2.1")))
         .toBeVisible();

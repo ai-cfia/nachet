@@ -147,7 +147,11 @@ const iconStyle = {
 function App() {
   const { t } = useTranslation("main");
 
-  useVersionCheck();
+  const {
+    dialogOpen: versionDialogOpen,
+    remoteVersion,
+    closeDialog: closeVersionDialog,
+  } = useVersionCheck();
 
   // Webcam
   const { devices, activeDeviceId } = useWebcamDevices();
@@ -712,7 +716,11 @@ function App() {
         mode={metadataMode}
         imageIndex={metadataImageIndex}
       />
-      <VersionCheckDialog />
+      <VersionCheckDialog
+        open={versionDialogOpen}
+        remoteVersion={remoteVersion}
+        onClose={closeVersionDialog}
+      />
     </ThemeProvider>
   );
 }
