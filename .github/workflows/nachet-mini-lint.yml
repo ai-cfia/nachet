@@ -9,6 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "nachet-mini/**"
@@ -36,53 +37,12 @@ defaults:
 
 jobs:
   versions:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.user.login != 'renovate[bot]' }}
     uses: ./.github/workflows/reusable-frontend-versions.yml
     with:
       working-directory: nachet-mini
       package-name: nachet-mini
       skip-version-check: false
-
-  bump-version-renovate:
-    needs: [versions]
-    if: ${{ !cancelled() && (github.event.pull_request.user.login == 'renovate[bot]' || github.event.pull_request.user.login == 'github-actions[bot]') && needs.versions.result == 'failure' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ needs.versions.outputs.node-version }}
-          cache: "npm"
-          cache-dependency-path: nachet-mini/package-lock.json
-
-      - name: Install specific npm version
-        run: npm install -g npm@${{ needs.versions.outputs.npm-version }}
-
-      - name: Increment version for Renovate PRs
-        run: |
-          echo "current version: ${{ needs.versions.outputs.app-version }}"
-          npm version "$(jq -r '.version' package.json | awk -F. -v OFS=. '{ $NF++; print }')" --no-git-tag-version
-          echo "new version: $(jq -r '.version' package.json)"
-
-      - name: Update lock file for Renovate PRs
-        run: |
-          npm install --package-lock-only
-          npm audit fix --package-lock-only || true
-
-      - name: Commit & push changes
-        uses: EndBug/add-and-commit@ebe9b51bb11d033d228e1a1c3f23ad5bd4110c81
-        with:
-          message: "chore: bump nachet-mini version for Renovate PRs"
-          add: "."
-          pull: "--rebase --autostash"
-          author_name: "github-actions[bot]"
-          author_email: "github-actions[bot]@users.noreply.github.com"
 
   check-package-lock:
     needs: [versions]
