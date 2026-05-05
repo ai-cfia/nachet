@@ -234,8 +234,10 @@ const InferenceOverlay = ({
   );
 
   const handleResizeMouseDown = useCallback(
-    (handle: ResizeHandle, e: ReactMouseEvent) => {
+    (e: ReactMouseEvent<HTMLDivElement>) => {
       if (!editMode) return;
+      const handle = e.currentTarget.dataset.resizeHandle as ResizeHandle;
+      if (!handle) return;
       e.stopPropagation();
       e.preventDefault();
       onBoxSelect?.(index);
@@ -440,7 +442,8 @@ const InferenceOverlay = ({
           <div
             key={handle}
             data-testid={`resize-handle-${handle}`}
-            onMouseDown={(e) => handleResizeMouseDown(handle, e)}
+            data-resize-handle={handle}
+            onMouseDown={handleResizeMouseDown}
             style={{
               position: "absolute",
               width: HANDLE_SIZE,
