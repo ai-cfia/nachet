@@ -85,8 +85,8 @@ jobs:
           author_email: "github-actions[bot]@users.noreply.github.com"
 
   check-package-lock:
-    needs: [versions, bump-version-renovate]
-    if: ${{ !cancelled() && (needs.versions.result == 'success' || needs.bump-version-renovate.result == 'success') }}
+    needs: [versions]
+    if: ${{ !cancelled() && needs.versions.result == 'success' }}
     runs-on: ubuntu-latest
     defaults:
       run:
