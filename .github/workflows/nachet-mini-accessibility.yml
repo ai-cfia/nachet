@@ -1,0 +1,83 @@
+---
+name: Nachet Mini Accessibility
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    paths:
+      - "nachet-mini/**"
+      - ".github/workflows/nachet-mini-accessibility.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "nachet-mini/**"
+      - ".github/workflows/nachet-mini-accessibility.yml"
+
+defaults:
+  run:
+    working-directory: nachet-mini
+
+jobs:
+  versions:
+    uses: ./.github/workflows/reusable-frontend-versions.yml
+    with:
+      working-directory: nachet-mini
+      package-name: nachet-mini
+      skip-version-check: true
+
+  accessibility-check:
+    name: Accessibility Check
+    needs: [versions]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ needs.versions.outputs.node-version }}
+          cache: "npm"
+          cache-dependency-path: nachet-mini/package-lock.json
+
+      - name: Install specific npm version
+        run: npm install -g npm@${{ needs.versions.outputs.npm-version }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Nachet Mini
+        run: npm run build
+
+      - name: Run accessibility checker
+        run: |
+          trap 'if [ -f vite-preview.pid ]; then kill "$(cat vite-preview.pid)" || true; fi' EXIT
+
+          npm run preview -- --host 127.0.0.1 --port 4173 > vite-preview.log 2>&1 &
+          echo "$!" > vite-preview.pid
+
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:4173/ > /dev/null; then
+              npx achecker accessibility-urls.txt
+              exit $?
+            fi
+            sleep 2
+          done
+
+          cat vite-preview.log
+          exit 1
+
+      - name: Upload accessibility reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nachet-mini-accessibility-reports
+          path: nachet-mini/accessibility-results
+          if-no-files-found: ignore
