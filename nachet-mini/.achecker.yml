@@ -1,0 +1,20 @@
+---
+ruleArchive: latest
+
+policies:
+  - WCAG_2_2
+
+failLevels:
+  - violation
+
+reportLevels:
+  - violation
+  - potentialviolation
+  - recommendation
+  - potentialrecommendation
+
+outputFormat:
+  - html
+  - json
+
+outputFolder: accessibility-results
