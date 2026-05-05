@@ -16,6 +16,7 @@
     "test": "vitest",
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "test:browser:coverage": "vitest run --config vitest.browser.config.ts --coverage",
+    "test:a11y": "playwright test --config playwright.config.ts",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "playwright:install-deps": "npx playwright install-deps"

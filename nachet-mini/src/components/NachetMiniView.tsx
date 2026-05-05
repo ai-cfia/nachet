@@ -264,14 +264,17 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
                   maxWidth: { xs: "fit-content", md: "8vw" },
                 }}
               >
-                <InputLabel sx={{ fontSize: "1.2vh" }}>
+                <InputLabel id="camera-select-label" sx={{ fontSize: "1.2vh" }}>
                   {t("controls.camera")}
                 </InputLabel>
                 <Select
+                  id="camera-select"
+                  labelId="camera-select-label"
                   value={activeDeviceId ?? ""}
                   onChange={(e) => setActiveDeviceId(e.target.value)}
                   label={t("controls.camera")}
                   displayEmpty
+                  SelectDisplayProps={{ "aria-label": t("controls.camera") }}
                   sx={{ fontSize: "1.2vh" }}
                   disabled={!isWebcamActive}
                 >
@@ -319,6 +322,7 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
               <Tooltip
                 title={metadataNotSet ? t("controls.metadataRequired") : ""}
                 arrow
+                describeChild
               >
                 <span>
                   <Switch
@@ -329,6 +333,9 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
                     }}
                     size="small"
                     disabled={metadataNotSet}
+                    slotProps={{
+                      input: { "aria-label": t("controls.imageMode") },
+                    }}
                     sx={
                       metadataNotSet
                         ? {}

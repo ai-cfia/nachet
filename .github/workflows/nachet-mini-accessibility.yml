@@ -9,16 +9,8 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  pull_request:
-    paths:
-      - "nachet-mini/**"
-      - ".github/workflows/nachet-mini-accessibility.yml"
-  push:
-    branches:
-      - main
-    paths:
-      - "nachet-mini/**"
-      - ".github/workflows/nachet-mini-accessibility.yml"
+  workflow_call:
+  workflow_dispatch:
 
 defaults:
   run:
@@ -32,8 +24,8 @@ jobs:
       package-name: nachet-mini
       skip-version-check: true
 
-  accessibility-check:
-    name: Accessibility Check
+  a11y-check-ibm:
+    name: Accessibility Check (IBM)
     needs: [versions]
     runs-on: ubuntu-latest
     steps:
@@ -80,4 +72,41 @@ jobs:
         with:
           name: nachet-mini-accessibility-reports
           path: nachet-mini/accessibility-results
+          if-no-files-found: ignore
+
+  a11y-check-axe-core:
+    name: Accessibility Check (axe-core)
+    needs: [versions]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ needs.versions.outputs.node-version }}
+          cache: "npm"
+          cache-dependency-path: nachet-mini/package-lock.json
+
+      - name: Install specific npm version
+        run: npm install -g npm@${{ needs.versions.outputs.npm-version }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run axe-core accessibility tests
+        run: npm run test:a11y
+
+      - name: Upload axe-core accessibility reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nachet-mini-axe-core-accessibility-reports
+          path: |
+            nachet-mini/playwright-report
+            nachet-mini/test-results
           if-no-files-found: ignore

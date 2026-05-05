@@ -9,6 +9,7 @@ export default mergeConfig(
       exclude: [
         "**/node_modules/**",
         "**/dist/**",
+        "e2e/**",
         "src/inference/tests/**",
         "src/components/tests/**",
       ],

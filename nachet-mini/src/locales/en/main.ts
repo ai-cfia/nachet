@@ -5,6 +5,7 @@ const main = {
     cameraDevice: "Camera {{id}}",
     capture: "Capture",
     upload: "Upload",
+    imageMode: "Image upload mode",
     save: "Save",
     export: "Export",
     meta: "Meta",
