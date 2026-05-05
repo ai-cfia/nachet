@@ -351,7 +351,7 @@ describe("NachetMiniView", () => {
     await page.getByRole("button", { name: enMain.controls.capture }).click();
     expect(props.onCaptureFeed).toHaveBeenCalledTimes(1);
 
-    await page.getByRole("switch").click();
+    await page.getByLabelText(enMain.controls.imageMode).click();
     expect(props.setWebcamError).toHaveBeenCalledWith("");
     expect(props.setIsWebcamActive).toHaveBeenCalledWith(false);
 
@@ -364,7 +364,9 @@ describe("NachetMiniView", () => {
 
     renderView(props);
 
-    await expect.element(page.getByRole("switch")).toBeDisabled();
+    await expect
+      .element(page.getByLabelText(enMain.controls.imageMode))
+      .toBeDisabled();
     await expect
       .element(page.getByRole("button", { name: enMain.controls.upload }))
       .toBeDisabled();

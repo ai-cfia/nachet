@@ -43,7 +43,7 @@ jobs:
       skip-version-check: false
 
   bump-version-renovate:
-    needs: [ versions ]
+    needs: [versions]
     if: ${{ !cancelled() && (github.event.pull_request.user.login == 'renovate[bot]' || github.event.pull_request.user.login == 'github-actions[bot]') && needs.versions.result == 'failure' }}
     runs-on: ubuntu-latest
     steps:
@@ -85,7 +85,7 @@ jobs:
           author_email: "github-actions[bot]@users.noreply.github.com"
 
   check-package-lock:
-    needs: [ versions, bump-version-renovate ]
+    needs: [versions, bump-version-renovate]
     if: ${{ !cancelled() && (needs.versions.result == 'success' || needs.bump-version-renovate.result == 'success') }}
     runs-on: ubuntu-latest
     defaults:
@@ -130,7 +130,7 @@ jobs:
           fi
 
   nachet-mini-lint-test:
-    needs: [ versions, check-package-lock ]
+    needs: [versions, check-package-lock]
     if: ${{ !cancelled() && needs.check-package-lock.result == 'success' }}
     uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-test-node-mono.yml@main
     with:
@@ -142,7 +142,7 @@ jobs:
   nachet-mini-browser-tests:
     # TODO: make this reusable in the github workflows repo and use it in other frontend repos as well
     name: Nachet Mini Browser Tests
-    needs: [ versions, nachet-mini-lint-test ]
+    needs: [versions, nachet-mini-lint-test]
     if: ${{ !cancelled() && needs.nachet-mini-lint-test.result == 'success' }}
     runs-on: ubuntu-latest
     defaults:
@@ -171,15 +171,22 @@ jobs:
       - name: Run browser tests
         run: npm run test:browser
 
+  nachet-mini-accessibility:
+    name: Nachet Mini Accessibility
+    needs: [nachet-mini-browser-tests]
+    if: ${{ !cancelled() && needs.nachet-mini-browser-tests.result == 'success' }}
+    uses: ./.github/workflows/nachet-mini-accessibility.yml
+    secrets: inherit
+
   sbom-security-scan:
-    needs: [ versions ]
+    needs: [versions]
     uses: ai-cfia/github-workflows/.github/workflows/workflow-generate-frontend-sbom.yml@main
     with:
       working-directory: nachet-mini
     secrets: inherit
 
   markdown-check:
-    needs: [ versions ]
+    needs: [versions]
     uses: ai-cfia/github-workflows/.github/workflows/workflow-markdown-check-mono.yml@main
     with:
       working-directory: nachet-mini
