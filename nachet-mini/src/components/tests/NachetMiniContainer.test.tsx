@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, cleanup, act, screen, fireEvent } from "@testing-library/react";
+import {
+  render,
+  cleanup,
+  act,
+  screen,
+  fireEvent,
+} from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../../i18n";
 import enMain from "../../locales/en/main";

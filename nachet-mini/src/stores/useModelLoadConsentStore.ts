@@ -29,8 +29,7 @@ export const useModelLoadConsentStore = create<ModelLoadConsentState>()(
     {
       name: "nachet-mini-model-load-consent",
       partialize: (state) => ({
-        hasAcknowledgedModelLoadWarning:
-          state.hasAcknowledgedModelLoadWarning,
+        hasAcknowledgedModelLoadWarning: state.hasAcknowledgedModelLoadWarning,
       }),
     },
   ),

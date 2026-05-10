@@ -353,10 +353,7 @@ const NachetMiniContainer = () => {
   const isInferring = status === "detecting" || status === "classifying";
   const isLoading = status === "loading-model";
   const canRunInference =
-    !isWebcamActive &&
-    !!currentImage &&
-    !isInferring &&
-    !isEditing;
+    !isWebcamActive && !!currentImage && !isInferring && !isEditing;
   const canEditBoxes =
     !isWebcamActive && !!currentResult && !isInferring && !isEditing;
   const canClassifyEdited =
