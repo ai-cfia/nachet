@@ -608,7 +608,7 @@ describe("NachetMiniContainer", () => {
       });
       expect(
         screen.queryByText(enMain.modelLoadDialog.title),
-      ).not.toBeInTheDocument();
+      ).toBeInTheDocument();
       expect(mockLoadModels).not.toHaveBeenCalled();
     });
 
