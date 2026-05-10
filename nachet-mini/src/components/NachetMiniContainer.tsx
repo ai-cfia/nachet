@@ -5,6 +5,7 @@ import { useWebcamDevices } from "@hooks/useWebcamDevices";
 import { useVersionCheck } from "@hooks/useVersionCheck";
 import { useWebcamStore } from "@stores/useWebcamStore";
 import { useMetadataDefaultsStore } from "@stores/useMetadataDefaultsStore";
+import { useModelLoadConsentStore } from "@stores/useModelLoadConsentStore";
 import { useImageStore } from "@stores/useImageStore";
 import { useInferenceStore, resultKey } from "@stores/useInferenceStore";
 import { useInference } from "@inference/useInference";
@@ -18,6 +19,13 @@ import {
 } from "@inference/models";
 import { normalizeFileName } from "@common/validation";
 import { computeSha256 } from "@common/hash";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+} from "@mui/material";
 import NachetMiniView from "@components/NachetMiniView";
 
 const NachetMiniContainer = () => {
@@ -64,6 +72,22 @@ const NachetMiniContainer = () => {
   const setError = useInferenceStore((s) => s.setError);
 
   const { loadModels, runInference, runClassifyOnly } = useInference();
+
+  const hasAcknowledgedModelLoadWarning = useModelLoadConsentStore(
+    (s) => s.hasAcknowledgedModelLoadWarning,
+  );
+  const pendingInferenceRequest = useModelLoadConsentStore(
+    (s) => s.pendingInferenceRequest,
+  );
+  const acknowledgeModelLoadWarning = useModelLoadConsentStore(
+    (s) => s.acknowledgeModelLoadWarning,
+  );
+  const setPendingInferenceRequest = useModelLoadConsentStore(
+    (s) => s.setPendingInferenceRequest,
+  );
+
+  // ADD local dialog state
+  const [modelLoadDialogOpen, setModelLoadDialogOpen] = useState(false);
 
   // Box edit store
   const isEditing = useBoxEditStore((s) => s.isEditing);
@@ -145,15 +169,70 @@ const NachetMiniContainer = () => {
     loadModels(buildModelConfig(detector, classifier));
   };
 
-  // Auto-load models on startup and whenever selection changes
+  // When the user changes detector/classifier after models were already loaded,
+  // mark them as unloaded so the next Identify click reloads the correct config.
+  const prevDetectorId = useRef(selectedDetectorId);
+  const prevClassifierId = useRef(selectedClassifierId);
   useEffect(() => {
-    handleLoadModel();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDetectorId, selectedClassifierId]);
+    const detectorChanged = prevDetectorId.current !== selectedDetectorId;
+    const classifierChanged = prevClassifierId.current !== selectedClassifierId;
+    prevDetectorId.current = selectedDetectorId;
+    prevClassifierId.current = selectedClassifierId;
+
+    if ((detectorChanged || classifierChanged) && modelLoaded) {
+      useInferenceStore.getState().setModelLoaded(false);
+    }
+  }, [selectedDetectorId, selectedClassifierId, modelLoaded]);
 
   const handleRunInference = () => {
     if (!currentImage) return;
-    runInference(currentImage.src, currentImage.index);
+
+    if (modelLoaded) {
+      runInference(currentImage.src, currentImage.index);
+      return;
+    }
+
+    setPendingInferenceRequest({
+      imageSrc: currentImage.src,
+      imageIndex: currentImage.index,
+    });
+
+    if (!hasAcknowledgedModelLoadWarning) {
+      setModelLoadDialogOpen(true);
+      return;
+    }
+
+    handleLoadModel();
+  };
+
+  // When model finishes loading, run the pending inference request (if any).
+  const pendingRef = useRef(pendingInferenceRequest);
+
+  useEffect(() => {
+    pendingRef.current = pendingInferenceRequest;
+  }, [pendingInferenceRequest]);
+
+  useEffect(() => {
+    if (!modelLoaded) return;
+    const pending = pendingRef.current;
+    if (!pending) return;
+
+    const stillExists = images.some((img) => img.index === pending.imageIndex);
+    if (stillExists) {
+      runInference(pending.imageSrc, pending.imageIndex);
+    }
+    setPendingInferenceRequest(null);
+  }, [modelLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleModelLoadDialogCancel = () => {
+    setModelLoadDialogOpen(false);
+    setPendingInferenceRequest(null);
+  };
+
+  const handleModelLoadDialogContinue = () => {
+    acknowledgeModelLoadWarning();
+    setModelLoadDialogOpen(false);
+    handleLoadModel();
   };
 
   const handleEnterEditMode = () => {
@@ -276,7 +355,6 @@ const NachetMiniContainer = () => {
   const canRunInference =
     !isWebcamActive &&
     !!currentImage &&
-    modelLoaded &&
     !isInferring &&
     !isEditing;
   const canEditBoxes =
@@ -296,71 +374,85 @@ const NachetMiniContainer = () => {
   })();
 
   return (
-    <NachetMiniView
-      devices={devices}
-      activeDeviceId={activeDeviceId}
-      setActiveDeviceId={setActiveDeviceId}
-      isWebcamActive={isWebcamActive}
-      setIsWebcamActive={setIsWebcamActive}
-      webcamRef={webcamRef}
-      webcamError={webcamError}
-      setWebcamError={setWebcamError}
-      onWebcamError={handleWebcamError}
-      onCaptureFeed={handleCaptureFeed}
-      images={images}
-      currentIndex={currentIndex}
-      currentImage={currentImage}
-      currentResult={currentResult}
-      activeResultKey={activeResultKey}
-      getResultsForImage={getResultsForImage}
-      checkedImages={checkedImages}
-      checkedResults={checkedResults}
-      setCheckedImages={setCheckedImages}
-      setCheckedResults={setCheckedResults}
-      metadataNotSet={metadataNotSet}
-      metadataOpen={metadataOpen}
-      metadataMode={metadataMode}
-      metadataImageIndex={metadataImageIndex}
-      onOpenMetadataDefaults={handleOpenMetadataDefaults}
-      onCloseMetadata={handleCloseMetadata}
-      onEditMetadata={handleEditMetadata}
-      selectedDetectorId={selectedDetectorId}
-      selectedClassifierId={selectedClassifierId}
-      setSelectedDetectorId={setSelectedDetectorId}
-      setSelectedClassifierId={setSelectedClassifierId}
-      isEditing={isEditing}
-      isDrawingBox={isDrawingBox}
-      setIsDrawing={setIsDrawing}
-      onEnterEditMode={handleEnterEditMode}
-      onDiscardEdits={handleDiscardEdits}
-      onClassifyEdited={handleClassifyEdited}
-      onRunInference={handleRunInference}
-      canRunInference={canRunInference}
-      canEditBoxes={canEditBoxes}
-      canClassifyEdited={canClassifyEdited}
-      isLoading={isLoading}
-      modelLoadProgress={modelLoadProgress}
-      onSelectImage={handleSelectImage}
-      onSelectResult={handleSelectResult}
-      onRemoveImage={handleRemoveImage}
-      onRemoveResult={handleRemoveResult}
-      onClearImages={handleClearImages}
-      uploadOpen={uploadOpen}
-      setUploadOpen={setUploadOpen}
-      onImageLoaded={handleImageLoaded}
-      saveOpen={saveOpen}
-      setSaveOpen={setSaveOpen}
-      exportOpen={exportOpen}
-      setExportOpen={setExportOpen}
-      onExportComplete={handleExportComplete}
-      versionDialogOpen={versionDialogOpen}
-      remoteVersion={remoteVersion}
-      onCloseVersionDialog={closeVersionDialog}
-      statusText={statusText}
-      isError={!!(error || webcamError)}
-      switchTable={switchTable}
-      setSwitchTable={setSwitchTable}
-    />
+    <>
+      <Dialog open={modelLoadDialogOpen} onClose={handleModelLoadDialogCancel}>
+        <DialogTitle>{t("modelLoadDialog.title")}</DialogTitle>
+        <DialogContent>{t("modelLoadDialog.message")}</DialogContent>
+        <DialogActions>
+          <Button onClick={handleModelLoadDialogCancel}>
+            {t("modelLoadDialog.cancel")}
+          </Button>
+          <Button onClick={handleModelLoadDialogContinue} variant="contained">
+            {t("modelLoadDialog.continue")}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <NachetMiniView
+        devices={devices}
+        activeDeviceId={activeDeviceId}
+        setActiveDeviceId={setActiveDeviceId}
+        isWebcamActive={isWebcamActive}
+        setIsWebcamActive={setIsWebcamActive}
+        webcamRef={webcamRef}
+        webcamError={webcamError}
+        setWebcamError={setWebcamError}
+        onWebcamError={handleWebcamError}
+        onCaptureFeed={handleCaptureFeed}
+        images={images}
+        currentIndex={currentIndex}
+        currentImage={currentImage}
+        currentResult={currentResult}
+        activeResultKey={activeResultKey}
+        getResultsForImage={getResultsForImage}
+        checkedImages={checkedImages}
+        checkedResults={checkedResults}
+        setCheckedImages={setCheckedImages}
+        setCheckedResults={setCheckedResults}
+        metadataNotSet={metadataNotSet}
+        metadataOpen={metadataOpen}
+        metadataMode={metadataMode}
+        metadataImageIndex={metadataImageIndex}
+        onOpenMetadataDefaults={handleOpenMetadataDefaults}
+        onCloseMetadata={handleCloseMetadata}
+        onEditMetadata={handleEditMetadata}
+        selectedDetectorId={selectedDetectorId}
+        selectedClassifierId={selectedClassifierId}
+        setSelectedDetectorId={setSelectedDetectorId}
+        setSelectedClassifierId={setSelectedClassifierId}
+        isEditing={isEditing}
+        isDrawingBox={isDrawingBox}
+        setIsDrawing={setIsDrawing}
+        onEnterEditMode={handleEnterEditMode}
+        onDiscardEdits={handleDiscardEdits}
+        onClassifyEdited={handleClassifyEdited}
+        onRunInference={handleRunInference}
+        canRunInference={canRunInference}
+        canEditBoxes={canEditBoxes}
+        canClassifyEdited={canClassifyEdited}
+        isLoading={isLoading}
+        modelLoadProgress={modelLoadProgress}
+        onSelectImage={handleSelectImage}
+        onSelectResult={handleSelectResult}
+        onRemoveImage={handleRemoveImage}
+        onRemoveResult={handleRemoveResult}
+        onClearImages={handleClearImages}
+        uploadOpen={uploadOpen}
+        setUploadOpen={setUploadOpen}
+        onImageLoaded={handleImageLoaded}
+        saveOpen={saveOpen}
+        setSaveOpen={setSaveOpen}
+        exportOpen={exportOpen}
+        setExportOpen={setExportOpen}
+        onExportComplete={handleExportComplete}
+        versionDialogOpen={versionDialogOpen}
+        remoteVersion={remoteVersion}
+        onCloseVersionDialog={closeVersionDialog}
+        statusText={statusText}
+        isError={!!(error || webcamError)}
+        switchTable={switchTable}
+        setSwitchTable={setSwitchTable}
+      />
+    </>
   );
 };
 
