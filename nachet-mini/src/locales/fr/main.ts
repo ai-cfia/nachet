@@ -122,6 +122,13 @@ const main = {
       "Le rechargement supprimera toute progression non enregistr\u00e9e. Exportez d\u2019abord vos donn\u00e9es si vous souhaitez les conserver.",
     reload: "Recharger",
   },
+  modelLoadDialog: {
+    title: "Téléchargement du modèle requis",
+    message:
+      "Nachet Mini effectue l'identification dans votre navigateur. La première fois que vous identifiez une image, les fichiers du modèle doivent être téléchargés et initialisés, ce qui peut prendre un certain temps. Les visites ultérieures devraient être plus rapides, car votre navigateur réutilisera les fichiers en cache.",
+    cancel: "Annuler",
+    continue: "Continuer",
+  },
 } as const;
 
 export default main;

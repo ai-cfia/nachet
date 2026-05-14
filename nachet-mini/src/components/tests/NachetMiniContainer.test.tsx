@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, cleanup, act, waitFor } from "@testing-library/react";
+import {
+  render,
+  cleanup,
+  act,
+  screen,
+  fireEvent,
+} from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../../i18n";
 import enMain from "../../locales/en/main";
@@ -8,6 +14,7 @@ import { useInferenceStore, resultKey } from "@stores/useInferenceStore";
 import { useBoxEditStore } from "@stores/useBoxEditStore";
 import { useWebcamStore } from "@stores/useWebcamStore";
 import { useMetadataDefaultsStore } from "@stores/useMetadataDefaultsStore";
+import { useModelLoadConsentStore } from "@stores/useModelLoadConsentStore";
 import {
   DEFAULT_DETECTOR,
   DEFAULT_CLASSIFIER,
@@ -75,10 +82,6 @@ const renderContainer = () =>
       <NachetMini />
     </I18nextProvider>,
   );
-
-const waitForModelLoadAttempt = async () => {
-  await waitFor(() => expect(mockLoadModels).toHaveBeenCalled());
-};
 
 const makeResult = (
   overrides: Partial<InferenceResult> = {},
@@ -177,6 +180,10 @@ describe("NachetMiniContainer", () => {
       modelLoadProgress: null,
       error: null,
     });
+    useModelLoadConsentStore.setState({
+      hasAcknowledgedModelLoadWarning: false,
+      pendingInferenceRequest: null,
+    });
     useBoxEditStore.getState().exitEditMode();
     useWebcamStore.setState({ devices: [], activeDeviceId: undefined });
     useMetadataDefaultsStore.getState().clearDefaults();
@@ -214,13 +221,13 @@ describe("NachetMiniContainer", () => {
       expect(viewPropsRef.current).not.toBeNull();
     });
 
-    it("auto-loads default model config on mount", async () => {
+    // REMOVED: "auto-loads default model config on mount"
+    // The new behaviour is: no model loading on startup. Models load only
+    // after the user explicitly clicks Identify and confirms the dialog.
+
+    it("does not load models on mount", () => {
       renderContainer();
-      await waitForModelLoadAttempt();
-      expect(mockLoadModels).toHaveBeenCalledTimes(1);
-      expect(mockLoadModels).toHaveBeenCalledWith(
-        buildModelConfig(DEFAULT_DETECTOR, DEFAULT_CLASSIFIER),
-      );
+      expect(mockLoadModels).not.toHaveBeenCalled();
     });
 
     it("passes default selected model ids to the view", () => {
@@ -286,50 +293,107 @@ describe("NachetMiniContainer", () => {
   });
 
   describe("model selection", () => {
-    it("reloads models when the detector selection changes", async () => {
+    // REWRITTEN: changing the dropdown no longer calls loadModels immediately.
+    // It marks the current models as stale (modelLoaded → false), and the next
+    // Identify click will load the new config.
+
+    it("marks models as stale when the detector selection changes after loading", async () => {
+      useInferenceStore.setState({ modelLoaded: true });
       renderContainer();
-      await waitForModelLoadAttempt();
-      mockLoadModels.mockClear();
       const otherDetector = getAlternateDetector();
       await act(async () => {
         getProps().setSelectedDetectorId(otherDetector.id);
+      });
+      expect(useInferenceStore.getState().modelLoaded).toBe(false);
+      expect(mockLoadModels).not.toHaveBeenCalled();
+    });
+
+    it("marks models as stale when the classifier selection changes after loading", async () => {
+      useInferenceStore.setState({ modelLoaded: true });
+      renderContainer();
+      const otherClassifier = getAlternateClassifier();
+      await act(async () => {
+        getProps().setSelectedClassifierId(otherClassifier.id);
+      });
+      expect(useInferenceStore.getState().modelLoaded).toBe(false);
+      expect(mockLoadModels).not.toHaveBeenCalled();
+    });
+
+    it("does not mark models stale when selection changes but models were never loaded", async () => {
+      // modelLoaded is already false; changing selection should be a no-op
+      renderContainer();
+      const otherDetector = getAlternateDetector();
+      await act(async () => {
+        getProps().setSelectedDetectorId(otherDetector.id);
+      });
+      expect(useInferenceStore.getState().modelLoaded).toBe(false);
+      expect(mockLoadModels).not.toHaveBeenCalled();
+    });
+
+    it("loads the newly selected config on the next Identify click (acknowledged)", async () => {
+      // User has already acknowledged the warning in a previous session
+      useModelLoadConsentStore.setState({
+        hasAcknowledgedModelLoadWarning: true,
+      });
+      useInferenceStore.setState({ modelLoaded: true });
+      useImageStore.setState({
+        images: [makeImage({ index: 0, src: "data:image/png;base64,abc" })],
+        currentIndex: 0,
+      });
+
+      renderContainer();
+
+      // Switch detector → models go stale
+      const otherDetector = getAlternateDetector();
+      await act(async () => {
+        getProps().setSelectedDetectorId(otherDetector.id);
+        getProps().setIsWebcamActive(false);
+      });
+      expect(useInferenceStore.getState().modelLoaded).toBe(false);
+
+      // Next Identify click loads the new config without showing the dialog
+      await act(async () => {
+        getProps().onRunInference();
       });
       expect(mockLoadModels).toHaveBeenCalledTimes(1);
       expect(mockLoadModels).toHaveBeenCalledWith(
         buildModelConfig(otherDetector, DEFAULT_CLASSIFIER),
       );
-      expect(getProps().selectedDetectorId).toBe(otherDetector.id);
     });
 
-    it("reloads models when the classifier selection changes", async () => {
-      renderContainer();
-      await waitForModelLoadAttempt();
-      mockLoadModels.mockClear();
-      const otherClassifier = getAlternateClassifier();
-      await act(async () => {
-        getProps().setSelectedClassifierId(otherClassifier.id);
+    it("does not call loadModels when a non-existent detector id is selected", async () => {
+      useModelLoadConsentStore.setState({
+        hasAcknowledgedModelLoadWarning: true,
       });
-      expect(mockLoadModels).toHaveBeenCalledTimes(1);
-      expect(mockLoadModels).toHaveBeenCalledWith(
-        buildModelConfig(DEFAULT_DETECTOR, otherClassifier),
-      );
-      expect(getProps().selectedClassifierId).toBe(otherClassifier.id);
-    });
-
-    it("does not call loadModels when a non-existent id is selected", async () => {
+      useImageStore.setState({
+        images: [makeImage()],
+        currentIndex: 0,
+      });
       renderContainer();
-      await waitForModelLoadAttempt();
-      mockLoadModels.mockClear();
       await act(async () => {
         getProps().setSelectedDetectorId("does-not-exist");
+        getProps().setIsWebcamActive(false);
+      });
+      await act(async () => {
+        getProps().onRunInference();
       });
       expect(mockLoadModels).not.toHaveBeenCalled();
     });
 
-    it("clears any inference error when reloading models", async () => {
-      useInferenceStore.getState().setError("boom");
+    it("clears any inference error when handleLoadModel is called", async () => {
+      useInferenceStore.setState({ error: "boom" });
+      useModelLoadConsentStore.setState({
+        hasAcknowledgedModelLoadWarning: true,
+      });
+      useImageStore.setState({
+        images: [makeImage()],
+        currentIndex: 0,
+      });
       renderContainer();
-      await waitForModelLoadAttempt();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+        getProps().onRunInference();
+      });
       expect(useInferenceStore.getState().error).toBeNull();
     });
   });
@@ -338,7 +402,6 @@ describe("NachetMiniContainer", () => {
     it("computes the hash, normalizes the filename, and stores the image", async () => {
       mockComputeSha256.mockResolvedValueOnce("hash-1");
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         await getProps().onImageLoaded(
           "data:image/png;base64,abc",
@@ -359,7 +422,6 @@ describe("NachetMiniContainer", () => {
     it("clears the active result key after a new image is added", async () => {
       useInferenceStore.getState().setActiveResultKey("0:foo");
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         await getProps().onImageLoaded(
           "data:image/png;base64,abc",
@@ -373,7 +435,6 @@ describe("NachetMiniContainer", () => {
     it("does not clear the active result when the image is a duplicate", async () => {
       mockComputeSha256.mockResolvedValue("dup-hash");
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         await getProps().onImageLoaded(
           "data:image/png;base64,abc",
@@ -398,7 +459,6 @@ describe("NachetMiniContainer", () => {
     it("captures a screenshot and stores it as a new image", async () => {
       mockComputeSha256.mockResolvedValueOnce("cap-hash");
       renderContainer();
-      await waitForModelLoadAttempt();
       const props = getProps();
       props.webcamRef.current = {
         getScreenshot: () => "data:image/png;base64,SHOT",
@@ -416,7 +476,6 @@ describe("NachetMiniContainer", () => {
 
     it("falls back to default dims when the webcam video element is missing", async () => {
       renderContainer();
-      await waitForModelLoadAttempt();
       const props = getProps();
       props.webcamRef.current = {
         getScreenshot: () => "data:image/png;base64,SHOT",
@@ -431,7 +490,6 @@ describe("NachetMiniContainer", () => {
 
     it("does nothing when there is no webcam ref", async () => {
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         await getProps().onCaptureFeed();
       });
@@ -441,7 +499,6 @@ describe("NachetMiniContainer", () => {
 
     it("does nothing when the webcam returns no screenshot", async () => {
       renderContainer();
-      await waitForModelLoadAttempt();
       const props = getProps();
       props.webcamRef.current = {
         getScreenshot: () => null,
@@ -481,14 +538,16 @@ describe("NachetMiniContainer", () => {
   describe("running inference", () => {
     it("does nothing when there is no current image", async () => {
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().onRunInference();
       });
       expect(mockRunInference).not.toHaveBeenCalled();
+      expect(mockLoadModels).not.toHaveBeenCalled();
     });
 
-    it("calls runInference with the current image's src and index", async () => {
+    it("calls runInference with the current image when models are already loaded", async () => {
+      // Pre-load model state so the fast path executes without dialog
+      useInferenceStore.setState({ modelLoaded: true });
       useImageStore.setState({
         images: [
           makeImage({
@@ -500,8 +559,8 @@ describe("NachetMiniContainer", () => {
         currentIndex: 7,
       });
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
+        getProps().setIsWebcamActive(false);
         getProps().onRunInference();
       });
       expect(mockRunInference).toHaveBeenCalledWith(
@@ -511,10 +570,179 @@ describe("NachetMiniContainer", () => {
     });
   });
 
+  describe("model load dialog", () => {
+    const setupImageAndWebcamOff = () => {
+      useImageStore.setState({
+        images: [makeImage({ index: 0, src: "data:image/png;base64,abc" })],
+        currentIndex: 0,
+      });
+    };
+
+    it("does not load models on mount", () => {
+      renderContainer();
+      expect(mockLoadModels).not.toHaveBeenCalled();
+    });
+
+    it("opens the dialog on the first Identify click when warning has not been acknowledged", async () => {
+      setupImageAndWebcamOff();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+        getProps().onRunInference();
+      });
+      expect(
+        screen.getByText(enMain.modelLoadDialog.title),
+      ).toBeInTheDocument();
+      expect(mockLoadModels).not.toHaveBeenCalled();
+    });
+
+    it("Cancel closes the dialog and does not call loadModels", async () => {
+      setupImageAndWebcamOff();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+        getProps().onRunInference();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText(enMain.modelLoadDialog.cancel));
+      });
+      expect(
+        screen.queryByText(enMain.modelLoadDialog.title),
+      ).toBeInTheDocument();
+      expect(mockLoadModels).not.toHaveBeenCalled();
+    });
+
+    it("Cancel also clears the pending inference request", async () => {
+      setupImageAndWebcamOff();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+        getProps().onRunInference();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText(enMain.modelLoadDialog.cancel));
+      });
+      expect(
+        useModelLoadConsentStore.getState().pendingInferenceRequest,
+      ).toBeNull();
+    });
+
+    it("Continue calls loadModels with the selected config", async () => {
+      setupImageAndWebcamOff();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+        getProps().onRunInference();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText(enMain.modelLoadDialog.continue));
+      });
+      expect(mockLoadModels).toHaveBeenCalledTimes(1);
+      expect(mockLoadModels).toHaveBeenCalledWith(
+        buildModelConfig(DEFAULT_DETECTOR, DEFAULT_CLASSIFIER),
+      );
+    });
+
+    it("Continue persists the warning acknowledgement", async () => {
+      setupImageAndWebcamOff();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+        getProps().onRunInference();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText(enMain.modelLoadDialog.continue));
+      });
+      expect(
+        useModelLoadConsentStore.getState().hasAcknowledgedModelLoadWarning,
+      ).toBe(true);
+    });
+
+    it("does not show the dialog after acknowledgement — calls loadModels directly", async () => {
+      useModelLoadConsentStore.setState({
+        hasAcknowledgedModelLoadWarning: true,
+      });
+      setupImageAndWebcamOff();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+        getProps().onRunInference();
+      });
+      expect(
+        screen.queryByText(enMain.modelLoadDialog.title),
+      ).not.toBeInTheDocument();
+      expect(mockLoadModels).toHaveBeenCalledTimes(1);
+    });
+
+    it("runs inference automatically once models finish loading after Continue", async () => {
+      setupImageAndWebcamOff();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+        getProps().onRunInference();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText(enMain.modelLoadDialog.continue));
+      });
+
+      // Simulate the worker finishing model load
+      await act(async () => {
+        useInferenceStore.getState().setModelLoaded(true);
+      });
+
+      expect(mockRunInference).toHaveBeenCalledTimes(1);
+      expect(mockRunInference).toHaveBeenCalledWith(
+        "data:image/png;base64,abc",
+        0,
+      );
+    });
+
+    it("does not run inference for a pending image that was removed before loading completed", async () => {
+      setupImageAndWebcamOff();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+        getProps().onRunInference();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText(enMain.modelLoadDialog.continue));
+      });
+
+      // Remove the image before model finishes loading
+      await act(async () => {
+        getProps().onRemoveImage(0);
+      });
+
+      // Model finishes loading
+      await act(async () => {
+        useInferenceStore.getState().setModelLoaded(true);
+      });
+
+      expect(mockRunInference).not.toHaveBeenCalled();
+    });
+
+    it("clears the pending request after inference fires", async () => {
+      setupImageAndWebcamOff();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+        getProps().onRunInference();
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText(enMain.modelLoadDialog.continue));
+      });
+      await act(async () => {
+        useInferenceStore.getState().setModelLoaded(true);
+      });
+      expect(
+        useModelLoadConsentStore.getState().pendingInferenceRequest,
+      ).toBeNull();
+    });
+  });
+
   describe("box edit mode", () => {
     it("does not enter edit mode when there is no active result", async () => {
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().onEnterEditMode();
       });
@@ -528,7 +756,6 @@ describe("NachetMiniContainer", () => {
       useInferenceStore.getState().setActiveResultKey(resultKey(0, "model-a"));
 
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().onEnterEditMode();
       });
@@ -543,7 +770,6 @@ describe("NachetMiniContainer", () => {
     it("exits edit mode on discard", async () => {
       useBoxEditStore.getState().enterEditMode("k", [makeBox()]);
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().onDiscardEdits();
       });
@@ -568,7 +794,6 @@ describe("NachetMiniContainer", () => {
       useBoxEditStore.getState().enterEditMode("0:foo", editedBoxes);
 
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().onClassifyEdited();
       });
@@ -591,7 +816,6 @@ describe("NachetMiniContainer", () => {
       });
       useBoxEditStore.getState().enterEditMode("k", []);
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().onClassifyEdited();
       });
@@ -635,7 +859,6 @@ describe("NachetMiniContainer", () => {
   describe("view state setters", () => {
     it("toggles upload, save, export, and result table view state", async () => {
       renderContainer();
-      await waitForModelLoadAttempt();
 
       await act(async () => {
         getProps().setUploadOpen(true);
@@ -659,7 +882,6 @@ describe("NachetMiniContainer", () => {
       });
       useInferenceStore.getState().setResult(0, "m", makeResult());
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().setCheckedImages(new Set([0]));
         getProps().setCheckedResults(new Set(["0:m"]));
@@ -683,7 +905,6 @@ describe("NachetMiniContainer", () => {
         .getState()
         .setResult(0, "model-b", makeResult({ totalBoxes: 2 }));
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().onSelectImage(0);
       });
@@ -696,7 +917,6 @@ describe("NachetMiniContainer", () => {
     it("clears the active result key when the image has no results", async () => {
       useInferenceStore.getState().setActiveResultKey("0:something");
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().onSelectImage(5);
       });
@@ -708,7 +928,6 @@ describe("NachetMiniContainer", () => {
   describe("select result", () => {
     it("sets the active result key and parses the image index from the key", async () => {
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().onSelectResult("4:model-a:1234");
       });
@@ -721,7 +940,6 @@ describe("NachetMiniContainer", () => {
     it("does not change currentIndex when the key prefix is not numeric", async () => {
       useImageStore.setState({ images: [], currentIndex: 9 });
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().onSelectResult("abc:model");
       });
@@ -740,7 +958,6 @@ describe("NachetMiniContainer", () => {
       useInferenceStore.getState().setResult(1, "m-b", makeResult());
 
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().setCheckedImages(new Set([1]));
         getProps().setCheckedResults(new Set(["1:m-a", "1:m-b", "2:other"]));
@@ -760,7 +977,6 @@ describe("NachetMiniContainer", () => {
       useInferenceStore.getState().setResult(0, "m-a", makeResult());
       useInferenceStore.getState().setResult(0, "m-b", makeResult());
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().onRemoveResult(resultKey(0, "m-a"));
       });
@@ -776,7 +992,6 @@ describe("NachetMiniContainer", () => {
   describe("export complete", () => {
     it("clears checked images and checked results", async () => {
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().setCheckedImages(new Set([0, 1]));
         getProps().setCheckedResults(new Set(["0:m"]));
@@ -797,20 +1012,17 @@ describe("NachetMiniContainer", () => {
       });
     };
 
-    it("canRunInference is false while the webcam is active", async () => {
+    it("canRunInference is false while the webcam is active", () => {
       addOneImage();
-      useInferenceStore.getState().setModelLoaded(true);
       renderContainer();
-      await waitForModelLoadAttempt();
       expect(getProps().isWebcamActive).toBe(true);
       expect(getProps().canRunInference).toBe(false);
     });
 
-    it("canRunInference becomes true with image + model + webcam off + idle + not editing", async () => {
+    it("canRunInference becomes true with image + webcam off + idle + not editing (model not required)", async () => {
+      // Note: modelLoaded is no longer required for canRunInference
       addOneImage();
-      useInferenceStore.getState().setModelLoaded(true);
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().setIsWebcamActive(false);
       });
@@ -819,10 +1031,8 @@ describe("NachetMiniContainer", () => {
 
     it("canRunInference is false while inference is running", async () => {
       addOneImage();
-      useInferenceStore.getState().setModelLoaded(true);
       useInferenceStore.getState().setStatus("detecting");
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().setIsWebcamActive(false);
       });
@@ -833,7 +1043,6 @@ describe("NachetMiniContainer", () => {
       useInferenceStore.getState().setResult(0, "m", makeResult());
       useInferenceStore.getState().setActiveResultKey(resultKey(0, "m"));
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().setIsWebcamActive(false);
       });
@@ -845,82 +1054,71 @@ describe("NachetMiniContainer", () => {
       useInferenceStore.getState().setActiveResultKey(resultKey(0, "m"));
       useBoxEditStore.getState().enterEditMode("0:m", []);
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         getProps().setIsWebcamActive(false);
       });
       expect(getProps().canEditBoxes).toBe(false);
     });
 
-    it("canClassifyEdited requires editing + boxes + model loaded + not inferring", async () => {
+    it("canClassifyEdited requires editing + boxes + model loaded + not inferring", () => {
       useInferenceStore.getState().setModelLoaded(true);
       useBoxEditStore.getState().enterEditMode("k", [makeBox()]);
       renderContainer();
-      await waitForModelLoadAttempt();
       expect(getProps().canClassifyEdited).toBe(true);
     });
 
-    it("canClassifyEdited is false when no boxes are edited", async () => {
+    it("canClassifyEdited is false when no boxes are edited", () => {
       useInferenceStore.getState().setModelLoaded(true);
       useBoxEditStore.getState().enterEditMode("k", []);
       renderContainer();
-      await waitForModelLoadAttempt();
       expect(getProps().canClassifyEdited).toBe(false);
     });
 
-    it("isLoading mirrors the loading-model status", async () => {
+    it("isLoading mirrors the loading-model status", () => {
       useInferenceStore.getState().setStatus("loading-model");
       renderContainer();
-      await waitForModelLoadAttempt();
       expect(getProps().isLoading).toBe(true);
     });
   });
 
   describe("status text", () => {
-    it("shows 'no model loaded' by default", async () => {
+    it("shows 'no model loaded' by default", () => {
       renderContainer();
-      await waitForModelLoadAttempt();
       expect(getProps().statusText).toBe(enMain.status.noModelLoaded);
     });
 
-    it("shows 'model ready' once the model is loaded", async () => {
+    it("shows 'model ready' once the model is loaded", () => {
       useInferenceStore.getState().setModelLoaded(true);
       renderContainer();
-      await waitForModelLoadAttempt();
       expect(getProps().statusText).toBe(enMain.status.modelReady);
     });
 
-    it("shows the loading status while loading the model", async () => {
+    it("shows the loading status while loading the model", () => {
       useInferenceStore.getState().setStatus("loading-model");
       renderContainer();
-      await waitForModelLoadAttempt();
       expect(getProps().statusText).toBe(enMain.status.loadingModel);
     });
 
-    it("shows the detecting status while detecting", async () => {
+    it("shows the detecting status while detecting", () => {
       useInferenceStore.getState().setStatus("detecting");
       renderContainer();
-      await waitForModelLoadAttempt();
       expect(getProps().statusText).toBe(enMain.status.detecting);
     });
 
-    it("shows the classifying status while classifying", async () => {
+    it("shows the classifying status while classifying", () => {
       useInferenceStore.getState().setStatus("classifying");
       renderContainer();
-      await waitForModelLoadAttempt();
       expect(getProps().statusText).toBe(enMain.status.classifying);
     });
 
-    it("shows 'inference complete' when complete", async () => {
+    it("shows 'inference complete' when complete", () => {
       useInferenceStore.getState().setStatus("complete");
       renderContainer();
-      await waitForModelLoadAttempt();
       expect(getProps().statusText).toBe(enMain.status.inferenceComplete);
     });
 
     it("renders the formatted error status when an inference error is set", async () => {
       renderContainer();
-      await waitForModelLoadAttempt();
       await act(async () => {
         useInferenceStore.getState().setError("kaboom");
       });

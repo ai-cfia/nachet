@@ -118,6 +118,13 @@ const main = {
       "Reloading will discard any unsaved progress. Export your data first if you want to keep it.",
     reload: "Reload",
   },
+  modelLoadDialog: {
+    title: "Model download required",
+    message:
+      "Nachet Mini runs identification in your browser. The first time you identify an image, the model files must be downloaded and initialized, which can take a while. Later visits should be faster because your browser will reuse cached model files.",
+    cancel: "Cancel",
+    continue: "Continue",
+  },
 } as const;
 
 export default main;
