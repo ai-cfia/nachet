@@ -15,7 +15,10 @@ import numpy as np
 from PIL import Image
 import cv2
 import torch
-from transformers import AutoModel, AutoProcessor
+from transformers import AutoTokenizer
+from transformers.models.sam3.image_processing_sam3 import Sam3ImageProcessor
+from transformers.models.sam3.modeling_sam3 import Sam3Model
+from transformers.models.sam3.processing_sam3 import Sam3Processor
 
 MODEL_ID = "facebook/sam3"
 IMAGE_PATH = "test-image.png"
@@ -132,8 +135,14 @@ def main():
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Loading {args.model} on {device}...")
 
-    processor = AutoProcessor.from_pretrained(args.model)
-    model = AutoModel.from_pretrained(args.model).to(device).eval()
+    # Build Sam3Processor manually from its parts. AutoProcessor /
+    # Sam3Processor.from_pretrained on facebook/sam3 resolves to the *video*
+    # processor, which doesn't accept text=. Constructing it explicitly forces
+    # the image variant.
+    image_processor = Sam3ImageProcessor.from_pretrained(args.model)
+    tokenizer = AutoTokenizer.from_pretrained(args.model)
+    processor = Sam3Processor(image_processor=image_processor, tokenizer=tokenizer)
+    model = Sam3Model.from_pretrained(args.model).to(device).eval()
 
     pil_img = Image.open(args.image).convert("RGB")
     orig_w, orig_h = pil_img.size
