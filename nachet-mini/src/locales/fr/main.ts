@@ -34,6 +34,8 @@ const main = {
     classifierInfo: "Voir les informations du mod\u00e8le classificateur",
     loadModel: "Charger le mod\u00e8le",
     loading: "Chargement\u2026",
+    prompt: "Concept",
+    promptPlaceholder: "ex. graine",
   },
   imageUpload: {
     title: "T\u00e9l\u00e9verser des images",

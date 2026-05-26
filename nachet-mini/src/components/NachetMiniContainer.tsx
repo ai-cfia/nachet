@@ -114,6 +114,14 @@ const NachetMiniContainer = () => {
   const [selectedClassifierId, setSelectedClassifierId] = useState(
     DEFAULT_CLASSIFIER.id,
   );
+  // Text prompt for text-promptable detectors (e.g. SAM3).
+  // Ignored by closed-vocabulary detectors (RT-DETR, DETR) — those classify by
+  // their trained labels regardless of what's typed here.
+  const [detectorPrompt, setDetectorPrompt] = useState("seed");
+  const selectedDetector = DETECTOR_MODELS.find(
+    (d) => d.id === selectedDetectorId,
+  );
+  const detectorRequiresPrompt = !!selectedDetector?.requiresPrompt;
   const [switchTable, setSwitchTable] = useState(false);
   const [metadataOpen, setMetadataOpen] = useState(false);
   const [metadataMode, setMetadataMode] = useState<"defaults" | "image">(
@@ -187,8 +195,13 @@ const NachetMiniContainer = () => {
   const handleRunInference = () => {
     if (!currentImage) return;
 
+    // Only forward the prompt when the detector actually consumes it. Closed-
+    // vocabulary detectors (RT-DETR, DETR) ignore it but we keep it undefined
+    // for clarity in the worker logs.
+    const prompt = detectorRequiresPrompt ? detectorPrompt : undefined;
+
     if (modelLoaded) {
-      runInference(currentImage.src, currentImage.index);
+      runInference(currentImage.src, currentImage.index, prompt);
       return;
     }
 
@@ -219,7 +232,8 @@ const NachetMiniContainer = () => {
 
     const stillExists = images.some((img) => img.index === pending.imageIndex);
     if (stillExists) {
-      runInference(pending.imageSrc, pending.imageIndex);
+      const prompt = detectorRequiresPrompt ? detectorPrompt : undefined;
+      runInference(pending.imageSrc, pending.imageIndex, prompt);
     }
     setPendingInferenceRequest(null);
   }, [modelLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -416,6 +430,9 @@ const NachetMiniContainer = () => {
         selectedClassifierId={selectedClassifierId}
         setSelectedDetectorId={setSelectedDetectorId}
         setSelectedClassifierId={setSelectedClassifierId}
+        detectorPrompt={detectorPrompt}
+        setDetectorPrompt={setDetectorPrompt}
+        detectorRequiresPrompt={detectorRequiresPrompt}
         isEditing={isEditing}
         isDrawingBox={isDrawingBox}
         setIsDrawing={setIsDrawing}

@@ -30,6 +30,9 @@ interface RenderOptions {
   onSelectDetector?: (id: string) => void;
   onSelectClassifier?: (id: string) => void;
   isLoading?: boolean;
+  detectorPrompt?: string;
+  onDetectorPromptChange?: (v: string) => void;
+  detectorRequiresPrompt?: boolean;
 }
 
 const renderModelLoaderElement = ({
@@ -40,6 +43,9 @@ const renderModelLoaderElement = ({
   onSelectDetector = vi.fn(),
   onSelectClassifier = vi.fn(),
   isLoading = false,
+  detectorPrompt = "",
+  onDetectorPromptChange = vi.fn(),
+  detectorRequiresPrompt = false,
 }: RenderOptions = {}) => (
   <I18nextProvider i18n={i18n}>
     <ModelLoader
@@ -50,6 +56,9 @@ const renderModelLoaderElement = ({
       onSelectDetector={onSelectDetector}
       onSelectClassifier={onSelectClassifier}
       isLoading={isLoading}
+      detectorPrompt={detectorPrompt}
+      onDetectorPromptChange={onDetectorPromptChange}
+      detectorRequiresPrompt={detectorRequiresPrompt}
     />
   </I18nextProvider>
 );
