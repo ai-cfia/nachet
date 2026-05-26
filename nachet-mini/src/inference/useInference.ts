@@ -104,16 +104,23 @@ export const useInference = (currentIndex: number) => {
   /**
    * Run detection + classification on an image.
    * The result is written directly to the Zustand store keyed by imageIndex.
+   *
+   * @param prompt Optional text prompt for text-promptable detectors (SAM3).
+   *               Ignored by closed-vocabulary detectors (RT-DETR, DETR).
    */
-  const runInference = useCallback((imageSrc: string, imageIndex: number) => {
-    if (!workerRef.current || !isModelLoadedRef.current) return;
-    const msg: WorkerInMessage = {
-      type: "run-inference",
-      imageSrc,
-      imageIndex,
-    };
-    workerRef.current.postMessage(msg);
-  }, []);
+  const runInference = useCallback(
+    (imageSrc: string, imageIndex: number, prompt?: string) => {
+      if (!workerRef.current || !isModelLoadedRef.current) return;
+      const msg: WorkerInMessage = {
+        type: "run-inference",
+        imageSrc,
+        imageIndex,
+        prompt,
+      };
+      workerRef.current.postMessage(msg);
+    },
+    [],
+  );
 
   /**
    * Run classification only on user-provided boxes (skip detection).

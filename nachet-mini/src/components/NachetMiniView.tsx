@@ -100,6 +100,12 @@ export interface NachetMiniViewProps {
   selectedClassifierId: string;
   setSelectedDetectorId: (id: string) => void;
   setSelectedClassifierId: (id: string) => void;
+  // Text prompt for text-promptable detectors (SAM3).
+  // `detectorRequiresPrompt` is true when the currently selected detector
+  // expects a prompt; the UI shows a TextField only in that case.
+  detectorPrompt: string;
+  setDetectorPrompt: (value: string) => void;
+  detectorRequiresPrompt: boolean;
 
   // Edit mode
   isEditing: boolean;
@@ -180,6 +186,9 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
     selectedClassifierId,
     setSelectedDetectorId,
     setSelectedClassifierId,
+    detectorPrompt,
+    setDetectorPrompt,
+    detectorRequiresPrompt,
     isEditing,
     isDrawingBox,
     setIsDrawing,
@@ -414,6 +423,9 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
                 onSelectClassifier={setSelectedClassifierId}
                 isLoading={isLoading}
                 disabled={isWebcamActive}
+                detectorPrompt={detectorPrompt}
+                onDetectorPromptChange={setDetectorPrompt}
+                detectorRequiresPrompt={detectorRequiresPrompt}
               />
               {!isEditing && (
                 <ControlBarButton

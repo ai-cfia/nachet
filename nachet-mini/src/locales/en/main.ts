@@ -36,6 +36,8 @@ const main = {
     classifierInfo: "View classifier model info",
     loadModel: "Load Model",
     loading: "Loading\u2026",
+    prompt: "Concept prompt",
+    promptPlaceholder: "e.g. seed",
   },
   imageUpload: {
     title: "Upload Image(s)",
