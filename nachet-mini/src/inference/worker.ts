@@ -12,6 +12,11 @@ import {
 } from "@huggingface/transformers";
 import type { ModelConfig, WorkerInMessage, WorkerOutMessage } from "./models";
 import type { InferenceResult, InferenceBox } from "@common/types";
+// SAM 3 lives in its own module — see ./sam3.ts for the rationale.
+// It uses raw onnxruntime-web rather than the transformers.js AutoModel API
+// because it's a multi-component, text-promptable detector that doesn't fit
+// the AutoModel shape.
+import { loadSam3, runSam3, unloadSam3 } from "./sam3";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -197,27 +202,58 @@ addEventListener("message", async (event: MessageEvent) => {
         classifierDevice,
       );
 
-      // Load detector processor + model (always WASM for precision)
-      const [detProc, detMod] = await Promise.all([
-        AutoProcessor.from_pretrained(config.detectorModel),
-        AutoModelForObjectDetection.from_pretrained(config.detectorModel, {
-          device: detectorDevice,
-          dtype: "fp32" as const,
-          model_file_name: config.detectorModelFileName ?? "model",
-          progress_callback: progressDetector as unknown as (
-            progress: unknown,
-          ) => void,
-        }),
-      ]);
+      // Detector loading: two paths.
+      //
+      // 1. text-promptable-segmentation (SAM 3) — orchestrate 3 ONNX files
+      //    via raw onnxruntime-web. The transformers.js AutoModel APIs
+      //    can't represent this kind of multi-component, text-conditioned
+      //    detector. Delegated to the sam3 module.
+      //
+      // 2. object-detection (default) — single-file model loaded through
+      //    transformers.js's AutoModelForObjectDetection. The original
+      //    closed-vocabulary path (RT-DETR, DETR).
+      if (config.detectorKind === "text-promptable-segmentation") {
+        console.log("[worker] Loading SAM 3 detector via sam3 module");
+        // SAM 3's three components — vision encoder, text encoder, decoder —
+        // are loaded inside the sam3 module. We forward progress events.
+        await loadSam3(config, (info) => {
+          send({
+            type: "model-progress",
+            name: `detector: ${info.name}`,
+            progress: info.progress,
+          });
+        });
+        // Leave detectorModel/detectorProcessor as null — the SAM 3 code
+        // path doesn't go through them. The classifier still loads below.
+        detectorModel = null;
+        detectorProcessor = null;
+      } else {
+        // Closed-vocabulary detector path (existing behavior).
+        const [detProc, detMod] = await Promise.all([
+          AutoProcessor.from_pretrained(config.detectorModel),
+          AutoModelForObjectDetection.from_pretrained(config.detectorModel, {
+            device: detectorDevice,
+            dtype: "fp32" as const,
+            model_file_name: config.detectorModelFileName ?? "model",
+            progress_callback: progressDetector as unknown as (
+              progress: unknown,
+            ) => void,
+          }),
+        ]);
 
-      console.log("[worker] Detector loaded, patching processor...");
-      patchProcessorSize(detProc);
-      detectorProcessor = detProc;
-      detectorModel = detMod;
-      console.log(
-        "[worker] Detector id2label:",
-        JSON.stringify(detMod.config?.id2label ?? {}),
-      );
+        console.log("[worker] Detector loaded, patching processor...");
+        patchProcessorSize(detProc);
+        detectorProcessor = detProc;
+        detectorModel = detMod;
+        console.log(
+          "[worker] Detector id2label:",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          JSON.stringify((detMod.config as any)?.id2label ?? {}),
+        );
+        // Free any previously-loaded SAM 3 sessions if the user switched
+        // away from a text-promptable detector.
+        await unloadSam3();
+      }
 
       // Load classifier processor + model (WebGPU if available)
       const [clsProc, clsMod] = await Promise.all([
@@ -253,14 +289,18 @@ addEventListener("message", async (event: MessageEvent) => {
 
   // ── Run inference ────────────────────────────────────────────────────────
   if (data.type === "run-inference") {
-    if (
-      !detectorModel ||
-      !detectorProcessor ||
-      !classifierModel ||
-      !classifierProcessor ||
-      !loadedConfig
-    ) {
+    // Validation differs by detector kind. SAM 3 doesn't use the
+    // transformers.js detectorModel/Processor pair — its readiness is
+    // managed inside the sam3 module — so the check is config-driven.
+    if (!classifierModel || !classifierProcessor || !loadedConfig) {
       send({ type: "error", message: "Models not loaded" });
+      return;
+    }
+    if (
+      loadedConfig.detectorKind !== "text-promptable-segmentation" &&
+      (!detectorModel || !detectorProcessor)
+    ) {
+      send({ type: "error", message: "Detector not loaded" });
       return;
     }
 
@@ -281,147 +321,191 @@ addEventListener("message", async (event: MessageEvent) => {
         rawImage.height,
       );
 
-      const detInputs = await detectorProcessor(rawImage);
-      console.log("[worker] Detector inputs keys:", Object.keys(detInputs));
-      for (const [key, val] of Object.entries(detInputs)) {
-        const t = val as {
-          dims?: number[];
-          type?: string;
-          data?: Float32Array;
-        };
-        if (t?.dims) {
-          console.log(
-            `[worker]   ${key}: dims=${JSON.stringify(t.dims)} dtype=${t.type}`,
-          );
+      // Detector inference — branches by detector kind.
+      //
+      // Both branches end with a `detections` object of the same shape
+      // ({ boxes, scores, classes }) plus a `labelForClass` resolver so the
+      // box-building loop below can treat them uniformly.
+      let detections: PostProcessedDetection;
+      let labelForClass: (classIdx: number) => string;
+
+      if (config.detectorKind === "text-promptable-segmentation") {
+        // SAM 3 path: ignore the classic detector pipeline entirely. The
+        // sam3 module handles preprocessing, all 3 ONNX inferences, and
+        // post-processing internally. We just feed it the image + prompt.
+        const prompt = data.prompt?.trim() || "seed";
+        console.log(
+          `[worker] Running SAM 3 detector with prompt: "${prompt}", threshold: ${config.detectorThreshold}`,
+        );
+        const sam3Result = await runSam3(
+          imageSrc,
+          prompt,
+          config.detectorThreshold,
+          rawImage.width,
+          rawImage.height,
+        );
+        detections = sam3Result;
+        // SAM 3 produces a single concept per call (the prompt). Every
+        // detection gets the prompt text as its label — there's no
+        // id2label table for an open-vocabulary model.
+        labelForClass = () => prompt;
+        console.log(
+          `[worker] SAM 3 returned ${detections.boxes.length} detections`,
+        );
+      } else {
+        // Closed-vocabulary detector path (RT-DETR, DETR, etc.) — original
+        // transformers.js flow.
+        if (!detectorModel || !detectorProcessor) {
+          throw new Error("Detector model is null in non-SAM3 path");
         }
-        if (key === "pixel_values" && t?.data) {
-          const d = t.data;
-          let min = Infinity,
-            max = -Infinity,
-            sum = 0;
-          for (let i = 0; i < d.length; i++) {
-            if (d[i] < min) min = d[i];
-            if (d[i] > max) max = d[i];
-            sum += d[i];
+
+        const detInputs = await detectorProcessor(rawImage);
+        console.log("[worker] Detector inputs keys:", Object.keys(detInputs));
+        for (const [key, val] of Object.entries(detInputs)) {
+          const t = val as {
+            dims?: number[];
+            type?: string;
+            data?: Float32Array;
+          };
+          if (t?.dims) {
+            console.log(
+              `[worker]   ${key}: dims=${JSON.stringify(t.dims)} dtype=${t.type}`,
+            );
           }
-          const mean = sum / d.length;
-          console.log(
-            `[worker] pixel_values stats: min=${min.toFixed(4)} max=${max.toFixed(4)} mean=${mean.toFixed(4)} length=${d.length}`,
-          );
-          // First 10 values for comparison with Python
-          console.log(
-            "[worker] pixel_values first 10:",
-            Array.from(d.slice(0, 10)).map((v) => v.toFixed(4)),
-          );
+          if (key === "pixel_values" && t?.data) {
+            const d = t.data;
+            let min = Infinity,
+              max = -Infinity,
+              sum = 0;
+            for (let i = 0; i < d.length; i++) {
+              if (d[i] < min) min = d[i];
+              if (d[i] > max) max = d[i];
+              sum += d[i];
+            }
+            const mean = sum / d.length;
+            console.log(
+              `[worker] pixel_values stats: min=${min.toFixed(4)} max=${max.toFixed(4)} mean=${mean.toFixed(4)} length=${d.length}`,
+            );
+            // First 10 values for comparison with Python
+            console.log(
+              "[worker] pixel_values first 10:",
+              Array.from(d.slice(0, 10)).map((v) => v.toFixed(4)),
+            );
+          }
         }
+
+        // Run detector model
+        console.log("[worker] Running detector model...");
+        const detOutputs = await detectorModel(detInputs);
+        console.log("[worker] Detector output keys:", Object.keys(detOutputs));
+        for (const [key, val] of Object.entries(detOutputs)) {
+          const t = val as {
+            dims?: number[];
+            type?: string;
+            data?: Float32Array;
+          };
+          if (t?.dims) {
+            console.log(
+              `[worker]   ${key}: dims=${JSON.stringify(t.dims)} dtype=${t.type}`,
+            );
+          }
+          if (key === "logits" && t?.data) {
+            const scores = Array.from(t.data).map(
+              (v: number) => 1 / (1 + Math.exp(-v)),
+            ); // sigmoid
+            const sorted = [...scores].sort((a, b) => b - a);
+            console.log(
+              "[worker] Top 10 sigmoid scores:",
+              sorted.slice(0, 10),
+            );
+            console.log(
+              "[worker] Scores > 0.01:",
+              scores.filter((s: number) => s > 0.01).length,
+            );
+          }
+        }
+
+        // Post-process detections
+        // RT-DETR uses sigmoid (no background class), so pass is_zero_shot=true
+        const numClasses = detOutputs.logits.dims[2];
+        const useSigmoid = numClasses === 1;
+
+        // Get boxes in model input space (640x640), then scale to original
+        // image dimensions ourselves — matching the Python CLI approach.
+        // post_process with null target_sizes returns normalized [0,1] boxes.
+        console.log(
+          "[worker] Post-processing with threshold:",
+          config.detectorThreshold,
+          "sigmoid:",
+          useSigmoid,
+        );
+        const processed = (
+          detectorProcessor.image_processor ?? detectorProcessor
+        ).post_process_object_detection(
+          detOutputs,
+          config.detectorThreshold,
+          null, // get normalized boxes
+          useSigmoid,
+        ) as PostProcessedDetection[];
+
+        // Scale normalized boxes from padded model space to original image coords.
+        // The model input is 640x640 (padded). The image was resized preserving
+        // aspect ratio, so we need to scale through the resized dimensions.
+        const modelW = detInputs.pixel_values.dims[3];
+        const modelH = detInputs.pixel_values.dims[2];
+        const resizeScale = Math.min(
+          modelW / rawImage.width,
+          modelH / rawImage.height,
+        );
+        const resizedW = rawImage.width * resizeScale;
+        const resizedH = rawImage.height * resizeScale;
+        const scaleX = rawImage.width / resizedW;
+        const scaleY = rawImage.height / resizedH;
+
+        console.log(
+          "[worker] Model input:",
+          modelW,
+          "x",
+          modelH,
+          "resized:",
+          resizedW.toFixed(0),
+          "x",
+          resizedH.toFixed(0),
+          "scale:",
+          scaleX.toFixed(3),
+          "x",
+          scaleY.toFixed(3),
+        );
+
+        // Convert normalized boxes to original image pixel coordinates
+        for (const det of processed) {
+          for (let i = 0; i < det.boxes.length; i++) {
+            const [x0, y0, x1, y1] = det.boxes[i];
+            det.boxes[i] = [
+              x0 * modelW * scaleX,
+              y0 * modelH * scaleY,
+              x1 * modelW * scaleX,
+              y1 * modelH * scaleY,
+            ];
+          }
+        }
+
+        console.log(
+          "[worker] Post-processed detections:",
+          JSON.stringify(processed),
+        );
+
+        const id2label = detectorModel.config?.id2label ?? {};
+        detections = processed[0];
+        labelForClass = (classIdx: number) =>
+          id2label[classIdx] ?? `class_${classIdx}`;
+        console.log(
+          "[worker] Detections count:",
+          detections?.boxes?.length ?? 0,
+          "id2label keys:",
+          Object.keys(id2label).length,
+        );
       }
-
-      // Run detector model
-      console.log("[worker] Running detector model...");
-      const detOutputs = await detectorModel(detInputs);
-      console.log("[worker] Detector output keys:", Object.keys(detOutputs));
-      for (const [key, val] of Object.entries(detOutputs)) {
-        const t = val as {
-          dims?: number[];
-          type?: string;
-          data?: Float32Array;
-        };
-        if (t?.dims) {
-          console.log(
-            `[worker]   ${key}: dims=${JSON.stringify(t.dims)} dtype=${t.type}`,
-          );
-        }
-        if (key === "logits" && t?.data) {
-          const scores = Array.from(t.data).map(
-            (v: number) => 1 / (1 + Math.exp(-v)),
-          ); // sigmoid
-          const sorted = [...scores].sort((a, b) => b - a);
-          console.log("[worker] Top 10 sigmoid scores:", sorted.slice(0, 10));
-          console.log(
-            "[worker] Scores > 0.01:",
-            scores.filter((s: number) => s > 0.01).length,
-          );
-        }
-      }
-
-      // Post-process detections
-      // RT-DETR uses sigmoid (no background class), so pass is_zero_shot=true
-      const numClasses = detOutputs.logits.dims[2];
-      const useSigmoid = numClasses === 1;
-
-      // Get boxes in model input space (640x640), then scale to original
-      // image dimensions ourselves — matching the Python CLI approach.
-      // post_process with null target_sizes returns normalized [0,1] boxes.
-      console.log(
-        "[worker] Post-processing with threshold:",
-        config.detectorThreshold,
-        "sigmoid:",
-        useSigmoid,
-      );
-      const processed = (
-        detectorProcessor.image_processor ?? detectorProcessor
-      ).post_process_object_detection(
-        detOutputs,
-        config.detectorThreshold,
-        null, // get normalized boxes
-        useSigmoid,
-      ) as PostProcessedDetection[];
-
-      // Scale normalized boxes from padded model space to original image coords.
-      // The model input is 640x640 (padded). The image was resized preserving
-      // aspect ratio, so we need to scale through the resized dimensions.
-      const modelW = detInputs.pixel_values.dims[3];
-      const modelH = detInputs.pixel_values.dims[2];
-      const resizeScale = Math.min(
-        modelW / rawImage.width,
-        modelH / rawImage.height,
-      );
-      const resizedW = rawImage.width * resizeScale;
-      const resizedH = rawImage.height * resizeScale;
-      const scaleX = rawImage.width / resizedW;
-      const scaleY = rawImage.height / resizedH;
-
-      console.log(
-        "[worker] Model input:",
-        modelW,
-        "x",
-        modelH,
-        "resized:",
-        resizedW.toFixed(0),
-        "x",
-        resizedH.toFixed(0),
-        "scale:",
-        scaleX.toFixed(3),
-        "x",
-        scaleY.toFixed(3),
-      );
-
-      // Convert normalized boxes to original image pixel coordinates
-      for (const det of processed) {
-        for (let i = 0; i < det.boxes.length; i++) {
-          const [x0, y0, x1, y1] = det.boxes[i];
-          det.boxes[i] = [
-            x0 * modelW * scaleX,
-            y0 * modelH * scaleY,
-            x1 * modelW * scaleX,
-            y1 * modelH * scaleY,
-          ];
-        }
-      }
-
-      console.log(
-        "[worker] Post-processed detections:",
-        JSON.stringify(processed),
-      );
-
-      const id2label = detectorModel.config?.id2label ?? {};
-      const detections = processed[0];
-      console.log(
-        "[worker] Detections count:",
-        detections?.boxes?.length ?? 0,
-        "id2label keys:",
-        Object.keys(id2label).length,
-      );
 
       if (!detections || !detections.boxes || detections.boxes.length === 0) {
         console.log("[worker] No detections above threshold");
@@ -448,7 +532,7 @@ addEventListener("message", async (event: MessageEvent) => {
         const [xmin, ymin, xmax, ymax] = detections.boxes[i];
         const score = detections.scores[i];
         const classIdx = detections.classes[i];
-        const detLabel = id2label[classIdx] ?? `class_${classIdx}`;
+        const detLabel = labelForClass(classIdx);
 
         console.log(
           `[worker] Detection ${i}: label=${detLabel} score=${score.toFixed(3)} box=[${xmin.toFixed(0)},${ymin.toFixed(0)},${xmax.toFixed(0)},${ymax.toFixed(0)}]`,
