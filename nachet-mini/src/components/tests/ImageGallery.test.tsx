@@ -144,6 +144,17 @@ describe("ImageGallery", () => {
         )
         .not.toBeDisabled();
     });
+
+    it("disables the select-all checkbox when there are no images", async () => {
+      renderGallery();
+      await expect
+        .element(
+          page.getByRole("checkbox", {
+            name: enMain.imageGallery.selectAllImages,
+          }),
+        )
+        .toBeDisabled();
+    });
   });
 
   describe("image list", () => {
@@ -372,7 +383,9 @@ describe("ImageGallery", () => {
   describe("image checkboxes", () => {
     it("renders a checkbox for each image", async () => {
       renderGallery({ images: [makeImage(0), makeImage(1)] });
-      expect(await page.getByRole("checkbox").all()).toHaveLength(2);
+      expect(
+        await page.getByRole("checkbox", { name: /^Select image \d+$/ }).all(),
+      ).toHaveLength(2);
     });
 
     it("image checkbox is unchecked when not in checkedImages", async () => {
@@ -453,6 +466,46 @@ describe("ImageGallery", () => {
         .click();
       expect(onSelectImage).not.toHaveBeenCalled();
     });
+
+    it("selects all image checkboxes from the header checkbox", async () => {
+      const onCheckedImagesChange = vi.fn();
+      renderGallery({
+        images: [makeImage(0), makeImage(1)],
+        checkedImages: new Set<number>(),
+        onCheckedImagesChange,
+      });
+      await page
+        .getByRole("checkbox", { name: enMain.imageGallery.selectAllImages })
+        .click();
+      expect(onCheckedImagesChange).toHaveBeenCalledWith(new Set([0, 1]));
+    });
+
+    it("clears image checkbox selection from the header checkbox when all images are selected", async () => {
+      const onCheckedImagesChange = vi.fn();
+      renderGallery({
+        images: [makeImage(0), makeImage(1)],
+        checkedImages: new Set([0, 1]),
+        onCheckedImagesChange,
+      });
+      await page
+        .getByRole("checkbox", { name: enMain.imageGallery.deselectAllImages })
+        .click();
+      expect(onCheckedImagesChange).toHaveBeenCalledWith(new Set());
+    });
+
+    it("shows the header checkbox as indeterminate when some images are selected", async () => {
+      renderGallery({
+        images: [makeImage(0), makeImage(1)],
+        checkedImages: new Set([0]),
+      });
+      await expect
+        .element(
+          page.getByRole("checkbox", {
+            name: enMain.imageGallery.selectAllImages,
+          }),
+        )
+        .toHaveAttribute("data-indeterminate", "true");
+    });
   });
 
   describe("result checkboxes", () => {
@@ -461,7 +514,11 @@ describe("ImageGallery", () => {
     it("renders a checkbox for each result entry", async () => {
       const getResultsForImage = vi.fn().mockReturnValue([resultEntry]);
       renderGallery({ images: [makeImage(0)], getResultsForImage });
-      expect(await page.getByRole("checkbox").all()).toHaveLength(2);
+      expect(
+        await page
+          .getByRole("checkbox", { name: /Select result model-a/ })
+          .all(),
+      ).toHaveLength(1);
     });
 
     it("result checkbox is unchecked when not in checkedResults", async () => {

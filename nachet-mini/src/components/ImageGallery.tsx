@@ -66,6 +66,17 @@ const ImageGallery = ({
   const setCheckedResults = onCheckedResultsChange;
 
   const hasChecked = checkedImages.size > 0 || checkedResults.size > 0;
+  const imageIndices = images.map((image) => image.index);
+  const selectedImageCount = imageIndices.filter((index) =>
+    checkedImages.has(index),
+  ).length;
+  const allImagesSelected =
+    imageIndices.length > 0 && selectedImageCount === imageIndices.length;
+  const someImagesSelected = selectedImageCount > 0 && !allImagesSelected;
+
+  const handleSelectAllImages = (checked: boolean) => {
+    setCheckedImages(checked ? new Set(imageIndices) : new Set());
+  };
 
   const handleImageClick = (index: number) => {
     onSelectImage(index);
@@ -105,35 +116,55 @@ const ImageGallery = ({
         }}
         sx={{ padding: "0.8vh 1vh 0.8vh 0.8vh", flexShrink: 0 }}
         action={
-          <IconButton
-            sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
-            onClick={() => {
-              if (hasChecked) {
-                checkedResults.forEach((key) => onRemoveResult(key));
-                checkedImages.forEach((index) => onRemoveImage(index));
-                setCheckedResults(new Set());
-                setCheckedImages(new Set());
-              } else {
-                onClear();
-              }
-            }}
-            aria-label={
-              hasChecked
-                ? t("imageGallery.removeResult")
-                : t("imageGallery.clearAllImages")
-            }
-            disabled={images.length === 0}
-          >
-            <DeleteIcon
-              style={{
-                color: hasChecked ? "#d32f2f" : "#1565c0",
-                fontSize: "2vh",
-                marginTop: "0.1vh",
-                marginBottom: "0.1vh",
-                marginRight: "0.1vh",
+          <Box sx={{ display: "flex", alignItems: "center", gap: "0.5vh" }}>
+            <Checkbox
+              size="small"
+              checked={allImagesSelected}
+              indeterminate={someImagesSelected}
+              onChange={(e) => handleSelectAllImages(e.target.checked)}
+              disabled={images.length === 0}
+              sx={{
+                padding: 0,
+                "& .MuiSvgIcon-root": { fontSize: "2vh" },
+              }}
+              slotProps={{
+                input: {
+                  "aria-label": allImagesSelected
+                    ? t("imageGallery.deselectAllImages")
+                    : t("imageGallery.selectAllImages"),
+                },
               }}
             />
-          </IconButton>
+            <IconButton
+              sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
+              onClick={() => {
+                if (hasChecked) {
+                  checkedResults.forEach((key) => onRemoveResult(key));
+                  checkedImages.forEach((index) => onRemoveImage(index));
+                  setCheckedResults(new Set());
+                  setCheckedImages(new Set());
+                } else {
+                  onClear();
+                }
+              }}
+              aria-label={
+                hasChecked
+                  ? t("imageGallery.removeResult")
+                  : t("imageGallery.clearAllImages")
+              }
+              disabled={images.length === 0}
+            >
+              <DeleteIcon
+                style={{
+                  color: hasChecked ? "#d32f2f" : "#1565c0",
+                  fontSize: "2vh",
+                  marginTop: "0.1vh",
+                  marginBottom: "0.1vh",
+                  marginRight: "0.1vh",
+                }}
+              />
+            </IconButton>
+          </Box>
         }
       />
 

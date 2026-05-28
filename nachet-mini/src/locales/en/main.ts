@@ -70,6 +70,8 @@ const main = {
     image: "Image {{number}}",
     clearAllImages: "Clear all images",
     editMetadataImage: "Edit metadata image {{number}}",
+    selectAllImages: "Select all images",
+    deselectAllImages: "Deselect all images",
     selectImage: "Select image {{number}}",
     selectResult: "Select result {{modelId}}",
     resultsAvailable: "Results available",
