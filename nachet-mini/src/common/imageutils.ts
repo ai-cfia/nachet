@@ -46,8 +46,11 @@ interface ImageValidationResult {
   };
 }
 
+const MAX_IMAGE_WIDTH = 8000;
+const MAX_IMAGE_HEIGHT = 8000;
+
 /**
- * Validates an image file for MIME type (PNG or JPEG), file size (max 10MB), and dimensions (max 4608x2592)
+ * Validates an image file for MIME type (PNG or JPEG), file size (max 10MB), and dimensions (max 8000x8000)
  */
 export const validateImageFile = async (
   file: File,
@@ -67,7 +70,10 @@ export const validateImageFile = async (
   try {
     const dimensions = await getImageDimensions(file);
 
-    if (dimensions.width > 4608 || dimensions.height > 2592) {
+    if (
+      dimensions.width > MAX_IMAGE_WIDTH ||
+      dimensions.height > MAX_IMAGE_HEIGHT
+    ) {
       errorKeys.push("dimensionsTooLarge");
     }
 

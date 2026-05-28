@@ -106,7 +106,7 @@ const main = {
   validation: {
     invalidType: "File must be a PNG or JPEG image",
     fileTooLarge: "File size must be less than 10MB",
-    dimensionsTooLarge: "Image dimensions must not exceed 4608x2592 pixels",
+    dimensionsTooLarge: "Image dimensions must not exceed 8000x8000 pixels",
     unreadableDimensions: "Unable to read image dimensions",
     loadFailed: "Failed to load image",
   },
