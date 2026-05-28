@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { page } from "vitest/browser";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../../i18n";
@@ -19,6 +20,11 @@ const { mockBuildExportManifest, mockGenerateExportZip } = vi.hoisted(() => ({
 vi.mock("@common/exportUtils", () => ({
   buildExportManifest: mockBuildExportManifest,
   generateExportZip: mockGenerateExportZip,
+}));
+
+vi.mock("@common/exportSave", () => ({
+  ExportCancelledError: class ExportCancelledError extends Error {},
+  getDefaultExportFileName: () => "nachet-mini-export-test.zip",
 }));
 
 vi.mock("@stores/useImageStore", () => ({ useImageStore: vi.fn() }));
@@ -138,6 +144,15 @@ describe("ExportDialog", () => {
       await expect
         .element(page.getByRole("button", { name: enMain.exportDialog.title }))
         .toBeVisible();
+    });
+
+    it("renders the export filename field with the default filename", async () => {
+      renderDialog();
+      await expect
+        .element(
+          page.getByRole("textbox", { name: enMain.exportDialog.fileName }),
+        )
+        .toHaveValue("nachet-mini-export-test.zip");
     });
 
     it("shows nothingSelected text when no images or results are checked", async () => {
@@ -391,9 +406,49 @@ describe("ExportDialog", () => {
             includeCsv: true,
             includeAnnotatedImages: false,
             humanReadable: false,
+            fileName: "nachet-mini-export-test.zip",
           }),
         ),
       );
+    });
+
+    it("passes a custom filename to generateExportZip", async () => {
+      const user = userEvent.setup();
+      renderDialog({ checkedImages: new Set([0]) });
+
+      const filenameInput = page
+        .getByRole("textbox", { name: enMain.exportDialog.fileName })
+        .element() as HTMLElement;
+      await user.clear(filenameInput);
+      await user.type(filenameInput, "custom-export.zip");
+
+      await page
+        .getByRole("button", { name: enMain.exportDialog.title })
+        .click();
+
+      await vi.waitFor(() =>
+        expect(mockGenerateExportZip).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.anything(),
+          expect.objectContaining({
+            fileName: "custom-export.zip",
+          }),
+        ),
+      );
+    });
+
+    it("disables export when the filename is empty", async () => {
+      const user = userEvent.setup();
+      renderDialog({ checkedImages: new Set([0]) });
+
+      const filenameInput = page
+        .getByRole("textbox", { name: enMain.exportDialog.fileName })
+        .element() as HTMLElement;
+      await user.clear(filenameInput);
+
+      await expect
+        .element(page.getByRole("button", { name: enMain.exportDialog.title }))
+        .toBeDisabled();
     });
 
     it("passes updated options when checkboxes are changed", async () => {
