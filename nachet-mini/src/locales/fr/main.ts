@@ -110,7 +110,7 @@ const main = {
     invalidType: "Le fichier doit \u00eatre une image PNG ou JPEG",
     fileTooLarge: "La taille du fichier ne doit pas d\u00e9passer 10\u00a0Mo",
     dimensionsTooLarge:
-      "Les dimensions de l\u2019image ne doivent pas d\u00e9passer 4608\u00d72592 pixels",
+      "Les dimensions de l\u2019image ne doivent pas d\u00e9passer 8000\u00d78000 pixels",
     unreadableDimensions: "Impossible de lire les dimensions de l\u2019image",
     loadFailed: "Impossible de charger l\u2019image",
   },
