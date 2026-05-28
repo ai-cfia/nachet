@@ -71,6 +71,8 @@ const main = {
     image: "Image {{number}}",
     clearAllImages: "Effacer toutes les images",
     editMetadataImage: "Modifier les métadonnées de l’image {{number}}",
+    selectAllImages: "Sélectionner toutes les images",
+    deselectAllImages: "Désélectionner toutes les images",
     selectImage: "Sélectionner l’image {{number}}",
     selectResult: "Sélectionner le résultat {{modelId}}",
     resultsAvailable: "R\u00e9sultats disponibles",
