@@ -106,17 +106,8 @@ const ImageGallery = ({
       data-testid="image-gallery-component"
     >
       <CardHeader
-        title={t("imageGallery.title")}
-        titleTypographyProps={{
-          variant: "h6",
-          align: "left",
-          fontWeight: 600,
-          fontSize: "1.3vh",
-          color: "text.primary",
-        }}
-        sx={{ padding: "0.8vh 1vh 0.8vh 0.8vh", flexShrink: 0 }}
-        action={
-          <Box sx={{ display: "flex", alignItems: "center", gap: "0.5vh" }}>
+        title={
+          <Box sx={{ display: "flex", alignItems: "center", gap: "0.6vh" }}>
             <Checkbox
               size="small"
               checked={allImagesSelected}
@@ -125,7 +116,7 @@ const ImageGallery = ({
               disabled={images.length === 0}
               sx={{
                 padding: 0,
-                "& .MuiSvgIcon-root": { fontSize: "2vh" },
+                "& .MuiSvgIcon-root": { fontSize: "2.4vh" },
               }}
               slotProps={{
                 input: {
@@ -135,36 +126,49 @@ const ImageGallery = ({
                 },
               }}
             />
-            <IconButton
-              sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
-              onClick={() => {
-                if (hasChecked) {
-                  checkedResults.forEach((key) => onRemoveResult(key));
-                  checkedImages.forEach((index) => onRemoveImage(index));
-                  setCheckedResults(new Set());
-                  setCheckedImages(new Set());
-                } else {
-                  onClear();
-                }
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 600,
+                fontSize: "1.3vh",
+                color: "text.primary",
               }}
-              aria-label={
-                hasChecked
-                  ? t("imageGallery.removeResult")
-                  : t("imageGallery.clearAllImages")
-              }
-              disabled={images.length === 0}
             >
-              <DeleteIcon
-                style={{
-                  color: hasChecked ? "#d32f2f" : "#1565c0",
-                  fontSize: "2vh",
-                  marginTop: "0.1vh",
-                  marginBottom: "0.1vh",
-                  marginRight: "0.1vh",
-                }}
-              />
-            </IconButton>
+              {t("imageGallery.title")}
+            </Box>
           </Box>
+        }
+        sx={{ padding: "0.8vh 1vh 0.8vh 0.8vh", flexShrink: 0 }}
+        action={
+          <IconButton
+            sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
+            onClick={() => {
+              if (hasChecked) {
+                checkedResults.forEach((key) => onRemoveResult(key));
+                checkedImages.forEach((index) => onRemoveImage(index));
+                setCheckedResults(new Set());
+                setCheckedImages(new Set());
+              } else {
+                onClear();
+              }
+            }}
+            aria-label={
+              hasChecked
+                ? t("imageGallery.removeResult")
+                : t("imageGallery.clearAllImages")
+            }
+            disabled={images.length === 0}
+          >
+            <DeleteIcon
+              style={{
+                color: hasChecked ? "#d32f2f" : "#1565c0",
+                fontSize: "2vh",
+                marginTop: "0.1vh",
+                marginBottom: "0.1vh",
+                marginRight: "0.1vh",
+              }}
+            />
+          </IconButton>
         }
       />
 
