@@ -57,6 +57,8 @@ const main = {
     includeCsv: "Include CSV",
     includeAnnotatedImages: "Include annotated images",
     humanReadable: "Human readable filenames",
+    fileName: "Export filename",
+    fileNameRequired: "Export filename is required",
     duplicateNameError:
       "Duplicate image name: {{name}}. Rename before exporting.",
   },

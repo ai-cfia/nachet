@@ -8,12 +8,17 @@ import {
   DialogContent,
   FormControlLabel,
   IconButton,
+  TextField,
   Typography,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useImageStore } from "@stores/useImageStore";
 import { useInferenceStore } from "@stores/useInferenceStore";
 import { buildExportManifest, generateExportZip } from "@common/exportUtils";
+import {
+  ExportCancelledError,
+  getDefaultExportFileName,
+} from "@common/exportSave";
 import { useTranslation } from "react-i18next";
 
 interface Props {
@@ -44,6 +49,7 @@ const ExportDialog = ({
   const [includeAnnotatedImages, setIncludeAnnotatedImages] = useState(false);
   const [humanReadable, setHumanReadable] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [fileName, setFileName] = useState(() => getDefaultExportFileName());
 
   // Count what will be exported
   const imageIndices = new Set<number>(checkedImages);
@@ -67,8 +73,14 @@ const ExportDialog = ({
   }
 
   const nothingSelected = imageIndices.size === 0;
+  const fileNameRequired = fileName.trim().length === 0;
 
   const handleExport = async () => {
+    if (fileNameRequired) {
+      setExportError(t("exportDialog.fileNameRequired"));
+      return;
+    }
+
     setExporting(true);
     setExportError("");
     try {
@@ -85,6 +97,7 @@ const ExportDialog = ({
         includeCsv,
         includeAnnotatedImages,
         humanReadable,
+        fileName,
       });
       onExportComplete();
       onClose();
@@ -93,6 +106,8 @@ const ExportDialog = ({
       if (message.startsWith("DUPLICATE_NAME:")) {
         const name = message.slice("DUPLICATE_NAME:".length);
         setExportError(t("exportDialog.duplicateNameError", { name }));
+      } else if (error instanceof ExportCancelledError) {
+        setExportError("");
       } else {
         console.error("Export error:", message);
       }
@@ -151,6 +166,28 @@ const ExportDialog = ({
           </Typography>
 
           <Box sx={{ display: "flex", flexDirection: "column", mb: "1vh" }}>
+            <TextField
+              label={t("exportDialog.fileName")}
+              value={fileName}
+              onChange={(e) => {
+                setFileName(e.target.value);
+                setExportError("");
+              }}
+              error={fileNameRequired && exportError.length > 0}
+              helperText={
+                fileNameRequired && exportError
+                  ? t("exportDialog.fileNameRequired")
+                  : undefined
+              }
+              size="small"
+              fullWidth
+              sx={{
+                mb: "1vh",
+                "& .MuiInputBase-input": { fontSize: "1.3vh" },
+                "& .MuiInputLabel-root": { fontSize: "1.3vh" },
+                "& .MuiFormHelperText-root": { fontSize: "1.1vh" },
+              }}
+            />
             <FormControlLabel
               control={
                 <Checkbox
@@ -247,6 +284,7 @@ const ExportDialog = ({
               disabled={
                 nothingSelected ||
                 exporting ||
+                fileNameRequired ||
                 (!includeImages &&
                   !includeResults &&
                   !includeCsv &&
