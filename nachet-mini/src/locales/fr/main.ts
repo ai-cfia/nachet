@@ -2,6 +2,7 @@ const main = {
   controls: {
     camera: "Cam\u00e9ra",
     noCamera: "Aucune cam\u00e9ra",
+    selectCamera: "Sélectionner la cam\u00e9ra",
     cameraDevice: "Cam\u00e9ra {{id}}",
     capture: "Capturer",
     upload: "T\u00e9l\u00e9verser",

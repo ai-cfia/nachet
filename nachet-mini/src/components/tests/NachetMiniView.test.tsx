@@ -257,6 +257,7 @@ const makeProps = (
   setWebcamError: vi.fn(),
   onWebcamError: vi.fn(),
   onCaptureFeed: vi.fn(),
+  requestDevices: vi.fn().mockResolvedValue(undefined),
   images: [],
   currentIndex: 0,
   currentImage: undefined,
@@ -505,5 +506,68 @@ describe("NachetMiniView", () => {
 
     await page.getByTestId("version-dialog").click();
     expect(props.onCloseVersionDialog).toHaveBeenCalledTimes(1);
+  });
+  describe("camera select - requestDevices guard", () => {
+    it("calls requestDevices on first dropdown open", async () => {
+      const requestDevices = vi.fn().mockResolvedValue(undefined);
+      renderView(makeProps({ requestDevices, isWebcamActive: true }));
+
+      await page
+        .getByRole("combobox", { name: enMain.controls.camera })
+        .click();
+
+      expect(requestDevices).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not call requestDevices on subsequent opens", async () => {
+      const requestDevices = vi.fn().mockResolvedValue(undefined);
+      renderView(makeProps({ requestDevices, isWebcamActive: true }));
+
+      const combobox = page.getByRole("combobox", {
+        name: enMain.controls.camera,
+      });
+      await combobox.click();
+      // click outside to close
+      await page.getByRole("presentation").click({ position: { x: 0, y: 0 } });
+      await combobox.click();
+
+      expect(requestDevices).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls setActiveDeviceId with the selected value", async () => {
+      const setActiveDeviceId = vi.fn();
+      const requestDevices = vi.fn().mockResolvedValue(undefined);
+      const devices: MediaDeviceInfo[] = [
+        {
+          deviceId: "cam-0",
+          kind: "videoinput",
+          label: "Front",
+          groupId: "",
+          toJSON: () => ({}),
+        },
+        {
+          deviceId: "cam-1",
+          kind: "videoinput",
+          label: "Back",
+          groupId: "",
+          toJSON: () => ({}),
+        },
+      ];
+      renderView(
+        makeProps({
+          devices,
+          setActiveDeviceId,
+          requestDevices,
+          isWebcamActive: true,
+        }),
+      );
+
+      await page
+        .getByRole("combobox", { name: enMain.controls.camera })
+        .click();
+      await page.getByRole("option", { name: "Back" }).click();
+
+      expect(setActiveDeviceId).toHaveBeenCalledWith("cam-1");
+    });
   });
 });
