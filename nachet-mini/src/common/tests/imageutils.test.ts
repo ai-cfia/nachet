@@ -260,13 +260,13 @@ describe("validateImageFile", () => {
     expect(result.errorKeys).toEqual([]);
   });
 
-  it("accepts a file with exactly the maximum dimensions (4608x2592)", async () => {
-    mockNaturalWidth = 4608;
-    mockNaturalHeight = 2592;
+  it("accepts a file with exactly the maximum dimensions (8000x8000)", async () => {
+    mockNaturalWidth = 8000;
+    mockNaturalHeight = 8000;
     const result = await validateImageFile(makePng());
     expect(result.isValid).toBe(true);
     expect(result.errorKeys).toEqual([]);
-    expect(result.dimensions).toEqual({ width: 4608, height: 2592 });
+    expect(result.dimensions).toEqual({ width: 8000, height: 8000 });
   });
 
   it("accepts a file with exactly the maximum size (10 MB)", async () => {
@@ -291,17 +291,17 @@ describe("validateImageFile", () => {
     expect(result.errorKeys).toContain("fileTooLarge");
   });
 
-  it("rejects an image with width > 4608", async () => {
-    mockNaturalWidth = 4609;
+  it("rejects an image with width > 8000", async () => {
+    mockNaturalWidth = 8001;
     mockNaturalHeight = 1080;
     const result = await validateImageFile(makePng());
     expect(result.isValid).toBe(false);
     expect(result.errorKeys).toContain("dimensionsTooLarge");
   });
 
-  it("rejects an image with height > 2592", async () => {
+  it("rejects an image with height > 8000", async () => {
     mockNaturalWidth = 1920;
-    mockNaturalHeight = 2593;
+    mockNaturalHeight = 8001;
     const result = await validateImageFile(makePng());
     expect(result.isValid).toBe(false);
     expect(result.errorKeys).toContain("dimensionsTooLarge");
@@ -317,7 +317,7 @@ describe("validateImageFile", () => {
   });
 
   it("accumulates all three errors (wrong type + too large + dimensions too large)", async () => {
-    mockNaturalWidth = 5000; // Trigger dimensionsTooLarge
+    mockNaturalWidth = 8001; // Trigger dimensionsTooLarge
     const trifectaFile = new File([""], "bad.gif", { type: "image/gif" });
     Object.defineProperty(trifectaFile, "size", { value: 11 * 1024 * 1024 });
 
