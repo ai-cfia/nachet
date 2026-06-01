@@ -35,6 +35,14 @@ import {
 } from "./sam3Preprocess";
 import type { ModelConfig } from "./models";
 
+// Crank up ORT logging so wasm-level failures show up in the console.
+// `verbose` is the noisiest level; we can dial down once things are stable.
+// Without this, ORT throws bare numeric pointers (e.g. "25954464") that are
+// internal wasm memory references — useless without the inner message.
+ort.env.logLevel = "verbose";
+// Show wasm threading + memory diagnostics on init.
+ort.env.debug = true;
+
 // ---------------------------------------------------------------------------
 // Constants — these mirror the SAM 3 ONNX export's I/O contract.
 // ---------------------------------------------------------------------------
@@ -95,23 +103,103 @@ export interface Sam3Detections {
 
 /**
  * Build the full HF resolve URL for a component ONNX file.
- *
- * Some components ship with an external `.data` file alongside the `.onnx`
- * — onnxruntime-web auto-discovers it by appending `.data` to the URL, so
- * we don't need to fetch it manually.
  */
 const onnxUrl = (repo: string, fileName: string): string =>
   `https://huggingface.co/${repo}/resolve/main/${fileName}.onnx`;
 
+const onnxDataUrl = (repo: string, fileName: string): string =>
+  `https://huggingface.co/${repo}/resolve/main/${fileName}.onnx.data`;
+
 /**
- * Pick the best execution provider. Tries WebGPU first if available since
- * the vision encoder is heavy enough to benefit; falls back to wasm.
+ * Load an InferenceSession, fetching the external `.onnx.data` file
+ * separately if it exists. ORT-Web does NOT auto-fetch external data files
+ * — the `.onnx` graph references them by relative path, but the web runtime
+ * has no filesystem so it errors out (silently, with a wasm memory pointer)
+ * when those references can't be resolved.
  *
- * The decoder will be loaded with wasm only — on consumer GPUs (4 GB VRAM)
- * its attention layers need ~860 MB intermediate buffers that don't fit
- * alongside the vision encoder. Mirrors the Python validation finding.
+ * We do a HEAD on the candidate `.data` URL first; if it 200s, we fetch the
+ * full bytes and pass them via the `externalData` option. If it 404s, the
+ * model is self-contained (small enough to inline its weights) and we skip.
  */
-const detectExecutionProviders = async (): Promise<ort.InferenceSession.ExecutionProviderConfig[]> => {
+const createSessionWithExternalData = async (
+  repo: string,
+  fileName: string,
+  options: ort.InferenceSession.SessionOptions,
+): Promise<ort.InferenceSession> => {
+  const modelUrl = onnxUrl(repo, fileName);
+  const dataUrl = onnxDataUrl(repo, fileName);
+
+  // Probe for the .data file. If 200, we need to fetch it. If 404, the
+  // model has no external data (small enough to fit inline).
+  let externalDataBuffer: ArrayBuffer | null = null;
+  try {
+    const headResp = await fetch(dataUrl, { method: "HEAD" });
+    if (headResp.ok) {
+      const len = headResp.headers.get("content-length");
+      console.log(
+        `[sam3] External data file detected: ${fileName}.onnx.data (${len ?? "?"} bytes)`,
+      );
+      const dataResp = await fetch(dataUrl);
+      if (!dataResp.ok) {
+        throw new Error(
+          `Failed to fetch external data: ${dataResp.status} ${dataResp.statusText}`,
+        );
+      }
+      externalDataBuffer = await dataResp.arrayBuffer();
+      console.log(
+        `[sam3] External data downloaded: ${externalDataBuffer.byteLength} bytes`,
+      );
+    } else if (headResp.status === 404) {
+      console.log(
+        `[sam3] No external data file for ${fileName} (weights are inline)`,
+      );
+    } else {
+      console.warn(
+        `[sam3] Unexpected HEAD status for ${fileName}.onnx.data:`,
+        headResp.status,
+      );
+    }
+  } catch (err) {
+    console.warn(`[sam3] External data probe failed for ${fileName}:`, err);
+  }
+
+  // Pass external data via the SessionOptions when present. The `path` must
+  // match what the `.onnx` file references internally — for our exports
+  // that's exactly `<fileName>.onnx.data`.
+  const sessionOptions: ort.InferenceSession.SessionOptions = externalDataBuffer
+    ? {
+        ...options,
+        externalData: [
+          {
+            path: `${fileName}.onnx.data`,
+            data: new Uint8Array(externalDataBuffer),
+          },
+        ],
+      }
+    : options;
+
+  return ort.InferenceSession.create(modelUrl, sessionOptions);
+};
+
+/**
+ * Pick the best execution provider for the vision/text encoders.
+ *
+ * Tries WebGPU first, falls back to wasm. Caveats per variant:
+ *
+ *   - **int4**: WebGPU EP currently crashes during graph capture on the
+ *     MatMulNBits + Conv mixed graph. WASM works but hits the 4 GB
+ *     address space limit during ViT forward pass on consumer hardware.
+ *   - **fp32**: only standard ops (no MatMulNBits), so WebGPU EP can at
+ *     least *load* the model. Whether the activations fit in VRAM is
+ *     another question.
+ *   - **int8**: ConvInteger unsupported in either EP; not loadable.
+ *
+ * The decoder always uses wasm — its attention layers blow past 4 GB
+ * VRAM on consumer GPUs anyway (Python validation: 860 MB intermediate).
+ */
+const detectExecutionProviders = async (): Promise<
+  ort.InferenceSession.ExecutionProviderConfig[]
+> => {
   try {
     if (typeof navigator !== "undefined" && "gpu" in (navigator as object)) {
       const adapter = await (
@@ -127,6 +215,7 @@ const detectExecutionProviders = async (): Promise<ort.InferenceSession.Executio
   } catch (err) {
     console.warn("[sam3] WebGPU detection failed:", err);
   }
+  console.log("[sam3] WebGPU unavailable, using wasm");
   return ["wasm"];
 };
 
@@ -171,30 +260,30 @@ export const loadSam3 = async (
   const repo = config.detectorModel;
   const preprocessorRepo = config.detectorPreprocessorModel ?? repo;
 
-  // Vision encoder — try GPU first; the ViT benefits massively.
+  // Vision encoder.
   console.log("[sam3] Loading vision encoder from", repo, "/", vision);
   onProgress?.({ name: "sam3 vision encoder", progress: 0 });
-  visionSession = await ort.InferenceSession.create(onnxUrl(repo, vision), {
+  visionSession = await createSessionWithExternalData(repo, vision, {
     executionProviders: providers,
   });
   console.log("[sam3] Vision encoder loaded");
   onProgress?.({ name: "sam3 vision encoder", progress: 100 });
 
-  // Text encoder — small, runs anywhere.
+  // Text encoder.
   console.log("[sam3] Loading text encoder from", repo, "/", text);
   onProgress?.({ name: "sam3 text encoder", progress: 0 });
-  textSession = await ort.InferenceSession.create(onnxUrl(repo, text), {
+  textSession = await createSessionWithExternalData(repo, text, {
     executionProviders: providers,
   });
   console.log("[sam3] Text encoder loaded");
   onProgress?.({ name: "sam3 text encoder", progress: 100 });
 
-  // Decoder — WASM only. Its attention layers blow past 4 GB VRAM on
+  // Decoder — wasm only. Its attention layers blow past 4 GB VRAM on
   // consumer GPUs because of the 860 MB intermediate buffers. CPU is fine
   // anyway since the decoder is small (~100 MB at fp32, less for quantized).
   console.log("[sam3] Loading decoder from", repo, "/", decoder);
   onProgress?.({ name: "sam3 decoder", progress: 0 });
-  decoderSession = await ort.InferenceSession.create(onnxUrl(repo, decoder), {
+  decoderSession = await createSessionWithExternalData(repo, decoder, {
     executionProviders: ["wasm"],
   });
   console.log("[sam3] Decoder loaded");
@@ -276,6 +365,29 @@ export const runSam3 = async (
       SAM3_PIXEL_TENSOR_SHAPE as number[],
     );
     const visionFeed = { pixel_values: pixelTensor };
+
+    // Memory / state snapshot right before the failing call. If wasm is
+    // about to OOM during run() this is the last chance to capture state.
+    console.log(
+      `[sam3] About to run vision encoder. Input tensor: shape=${JSON.stringify(SAM3_PIXEL_TENSOR_SHAPE)}, ` +
+        `byteLength=${pixelValues.byteLength}`,
+    );
+    if (
+      typeof performance !== "undefined" &&
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (performance as any).memory
+    ) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const m = (performance as any).memory;
+      console.log(
+        `[sam3] JS heap: used=${Math.round(m.usedJSHeapSize / 1024 / 1024)}MB ` +
+          `total=${Math.round(m.totalJSHeapSize / 1024 / 1024)}MB ` +
+          `limit=${Math.round(m.jsHeapSizeLimit / 1024 / 1024)}MB`,
+      );
+    }
+    console.log("[sam3] Input names expected:", visionSession.inputNames);
+    console.log("[sam3] Output names expected:", visionSession.outputNames);
+
     const visionResult = await visionSession.run(visionFeed);
 
     // The export emits 8 outputs in order: fpn_hidden_state_0..3 then
