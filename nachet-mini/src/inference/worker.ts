@@ -279,11 +279,31 @@ addEventListener("message", async (event: MessageEvent) => {
       console.log("[worker] All models loaded successfully");
       send({ type: "model-loaded" });
     } catch (err) {
-      console.error("[worker] Model loading error:", err);
-      send({
-        type: "error",
-        message: err instanceof Error ? err.message : String(err),
-      });
+      // ORT-Web sometimes throws bare numeric pointers into wasm memory
+      // (e.g. `25954464`) instead of Error objects. When that happens, dump
+      // the raw value, its type, and any properties so we can at least see
+      // what we're dealing with — `String(err)` alone is useless.
+      console.error("[worker] Model loading error (raw):", err);
+      console.error("[worker]   typeof:", typeof err);
+      try {
+        const eAny = err as { name?: string; message?: string; stack?: string };
+        console.error("[worker]   err.name:", eAny?.name);
+        console.error("[worker]   err.message:", eAny?.message);
+        console.error("[worker]   err.stack:", eAny?.stack);
+        console.error(
+          "[worker]   keys:",
+          err && typeof err === "object" ? Object.keys(err) : "(not object)",
+        );
+      } catch {
+        // ignore — diagnostics only
+      }
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null && "message" in err
+            ? String((err as { message: unknown }).message)
+            : String(err);
+      send({ type: "error", message });
     }
   }
 
@@ -624,11 +644,30 @@ addEventListener("message", async (event: MessageEvent) => {
         result,
       });
     } catch (err) {
-      console.error("[worker] Inference error:", err);
-      send({
-        type: "error",
-        message: err instanceof Error ? err.message : String(err),
-      });
+      // Same dance as load-models: ORT-Web sometimes throws bare wasm
+      // pointers (e.g. `2397765560`) instead of Error objects. Dig out
+      // whatever we can.
+      console.error("[worker] Inference error (raw):", err);
+      console.error("[worker]   typeof:", typeof err);
+      try {
+        const eAny = err as { name?: string; message?: string; stack?: string };
+        console.error("[worker]   err.name:", eAny?.name);
+        console.error("[worker]   err.message:", eAny?.message);
+        console.error("[worker]   err.stack:", eAny?.stack);
+        console.error(
+          "[worker]   keys:",
+          err && typeof err === "object" ? Object.keys(err) : "(not object)",
+        );
+      } catch {
+        // ignore — diagnostics only
+      }
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null && "message" in err
+            ? String((err as { message: unknown }).message)
+            : String(err);
+      send({ type: "error", message });
     }
   }
 

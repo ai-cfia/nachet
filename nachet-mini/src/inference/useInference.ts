@@ -30,12 +30,31 @@ export const useInference = () => {
       type: "module",
     });
 
+    // Throttle model-progress events. When the worker forwards a big external-
+    // data fetch (e.g. SAM3's 1.75 GB vision_encoder.onnx.data), ORT-Web fires
+    // progress callbacks dozens of times per second. Pushing every one into
+    // the Zustand store re-renders subscribed components fast enough to trip
+    // React's "Maximum update depth exceeded" guard. We coalesce to one
+    // update per (name, integer-percent) combo and at most one per 50ms.
+    let lastProgressName = "";
+    let lastProgressPct = -1;
+    let lastProgressTime = 0;
     worker.onmessage = (event: MessageEvent) => {
       const msg = event.data as WorkerOutMessage;
       switch (msg.type) {
-        case "model-progress":
+        case "model-progress": {
+          const pct = Math.floor(msg.progress);
+          const now = Date.now();
+          const sameAsBefore =
+            msg.name === lastProgressName && pct === lastProgressPct;
+          const tooSoon = now - lastProgressTime < 50;
+          if (sameAsBefore || (tooSoon && pct < 100)) break;
+          lastProgressName = msg.name;
+          lastProgressPct = pct;
+          lastProgressTime = now;
           setModelLoadProgress({ name: msg.name, progress: msg.progress });
           break;
+        }
         case "model-loaded":
           isModelLoadedRef.current = true;
           setStatus("idle");
