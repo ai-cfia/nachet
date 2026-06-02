@@ -1,4 +1,9 @@
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import {
+  useRef,
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+} from "react";
 import {
   Box,
   FormControl,
@@ -9,6 +14,7 @@ import {
   Tooltip,
   Badge,
 } from "@mui/material";
+import { type SelectChangeEvent } from "@mui/material";
 import AddAPhotoIcon from "@mui/icons-material/AddAPhoto";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -47,7 +53,6 @@ const iconStyle = {
   paddingBottom: 0,
   paddingLeft: 0,
 };
-
 export interface NachetMiniViewProps {
   // Webcam
   devices: MediaDeviceInfo[];
@@ -60,6 +65,7 @@ export interface NachetMiniViewProps {
   setWebcamError: (v: string) => void;
   onWebcamError: (err: string | DOMException) => void;
   onCaptureFeed: () => void;
+  requestDevices: () => Promise<void>;
 
   // Images
   images: Images[];
@@ -151,6 +157,7 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
     setWebcamError,
     onWebcamError,
     onCaptureFeed,
+    requestDevices,
     images,
     currentIndex,
     currentImage,
@@ -205,6 +212,12 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
     switchTable,
     setSwitchTable,
   } = props;
+
+  const hasRequestedPermission = useRef(false);
+
+  const handleCameraChange = (e: SelectChangeEvent<string>) => {
+    setActiveDeviceId(e.target.value);
+  };
 
   return (
     <>
@@ -264,23 +277,35 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
                   maxWidth: { xs: "fit-content", md: "8vw" },
                 }}
               >
-                <InputLabel id="camera-select-label" sx={{ fontSize: "1.2vh" }}>
+                <InputLabel
+                  id="camera-select-label"
+                  sx={{ fontSize: "1.2vh" }}
+                  shrink
+                >
                   {t("controls.camera")}
                 </InputLabel>
                 <Select
                   id="camera-select"
                   labelId="camera-select-label"
                   value={activeDeviceId ?? ""}
-                  onChange={(e) => setActiveDeviceId(e.target.value)}
+                  onChange={handleCameraChange}
+                  onOpen={() => {
+                    if (!hasRequestedPermission.current) {
+                      hasRequestedPermission.current = true;
+                      void requestDevices();
+                    }
+                  }}
                   label={t("controls.camera")}
-                  displayEmpty
                   SelectDisplayProps={{ "aria-label": t("controls.camera") }}
+                  displayEmpty
                   sx={{ fontSize: "1.2vh" }}
                   disabled={!isWebcamActive}
+                  notched
                 >
                   {devices.length === 0 ? (
                     <MenuItem value="" disabled sx={{ fontSize: "1.2vh" }}>
-                      {t("controls.noCamera")}
+                      {/* {t("controls.noCamera")} */}
+                      {t("controls.selectCamera")}
                     </MenuItem>
                   ) : (
                     devices.map((device) => (
@@ -316,7 +341,7 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
               <ControlBarButton
                 label={t("controls.capture")}
                 icon={<AddAPhotoIcon color="inherit" style={iconStyle} />}
-                disabled={!isWebcamActive}
+                disabled={!isWebcamActive || devices.length === 0}
                 onClick={onCaptureFeed}
               />
               <Tooltip

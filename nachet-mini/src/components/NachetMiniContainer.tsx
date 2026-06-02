@@ -38,7 +38,7 @@ const NachetMiniContainer = () => {
   } = useVersionCheck();
 
   // Webcam
-  const { devices, activeDeviceId } = useWebcamDevices();
+  const { devices, activeDeviceId, requestDevices } = useWebcamDevices();
   const setActiveDeviceId = useWebcamStore((s) => s.setActiveDeviceId);
 
   // Metadata defaults
@@ -388,6 +388,7 @@ const NachetMiniContainer = () => {
         devices={devices}
         activeDeviceId={activeDeviceId}
         setActiveDeviceId={setActiveDeviceId}
+        requestDevices={requestDevices}
         isWebcamActive={isWebcamActive}
         setIsWebcamActive={setIsWebcamActive}
         webcamRef={webcamRef}

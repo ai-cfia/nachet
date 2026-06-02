@@ -2,6 +2,7 @@ const main = {
   controls: {
     camera: "Camera",
     noCamera: "No camera",
+    selectCamera: "Select Camera",
     cameraDevice: "Camera {{id}}",
     capture: "Capture",
     upload: "Upload",

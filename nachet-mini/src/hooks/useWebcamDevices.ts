@@ -1,59 +1,56 @@
-import { useEffect } from "react";
 import { useWebcamStore } from "@stores/useWebcamStore";
+import { useCallback, useEffect, useState } from "react";
 
 export const useWebcamDevices = () => {
   const { devices, activeDeviceId, setDevices, setActiveDeviceId } =
     useWebcamStore();
 
-  useEffect(() => {
-    if (
-      !navigator ||
-      !navigator.mediaDevices ||
-      typeof navigator.mediaDevices.enumerateDevices !== "function"
-    ) {
-      return;
+  const [listenerReady, setListenerReady] = useState(false);
+
+  const updateDevices = useCallback(async () => {
+    if (!navigator?.mediaDevices?.enumerateDevices) return;
+
+    try {
+      const availableDevices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = availableDevices.filter(
+        (i) => i.kind === "videoinput",
+      );
+      setDevices(videoDevices);
+
+      const { activeDeviceId: currentId } = useWebcamStore.getState();
+      if (!currentId) {
+        const defaultDevice = videoDevices[1] ?? videoDevices[0];
+        setActiveDeviceId(defaultDevice?.deviceId);
+      }
+    } catch (error) {
+      console.error("Failed to enumerate devices:", error);
     }
+  }, [setDevices, setActiveDeviceId]);
 
-    const updateDevices = async (): Promise<void> => {
-      try {
-        // Request camera permission first — required on mobile browsers
-        // to get device labels and IDs from enumerateDevices()
-        const tempStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
-        tempStream.getTracks().forEach((track) => track.stop());
-      } catch (error) {
-        console.error("Camera permission denied or unavailable:", error);
-        return;
-      }
-
-      try {
-        const availableDevices =
-          await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = availableDevices.filter(
-          (i) => i.kind === "videoinput",
-        );
-        setDevices(videoDevices);
-
-        const { activeDeviceId: currentId } = useWebcamStore.getState();
-        if (currentId === "" || currentId === undefined) {
-          // Default to second camera on mobile (rear camera), fall back to first
-          const defaultDevice = videoDevices[1] ?? videoDevices[0];
-          setActiveDeviceId(defaultDevice?.deviceId);
-        }
-      } catch (error) {
-        console.error("Failed to enumerate devices:", error);
-      }
-    };
-
-    void updateDevices();
-
+  useEffect(() => {
+    if (!listenerReady) return;
     navigator.mediaDevices.addEventListener("devicechange", updateDevices);
-
     return () => {
       navigator.mediaDevices.removeEventListener("devicechange", updateDevices);
     };
-  }, [setDevices, setActiveDeviceId]);
+  }, [listenerReady, updateDevices]);
 
-  return { devices, activeDeviceId };
+  const requestDevices = useCallback(async () => {
+    if (!navigator?.mediaDevices?.enumerateDevices) return;
+
+    try {
+      const tempStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+      });
+      tempStream.getTracks().forEach((track) => track.stop());
+    } catch (error) {
+      console.error("Camera permission denied or unavailable:", error);
+      return;
+    }
+
+    setListenerReady(true);
+    await updateDevices();
+  }, [updateDevices]);
+
+  return { devices, activeDeviceId, requestDevices };
 };

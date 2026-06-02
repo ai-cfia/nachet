@@ -62,7 +62,11 @@ describe("useWebcamDevices", () => {
       configurable: true,
     });
 
-    renderHook(() => useWebcamDevices());
+    const { result } = renderHook(() => useWebcamDevices());
+
+    await act(async () => {
+      await result.current.requestDevices();
+    });
 
     await waitFor(() => {
       expect(useWebcamStore.getState().devices).toHaveLength(2);
@@ -84,7 +88,11 @@ describe("useWebcamDevices", () => {
       configurable: true,
     });
 
-    renderHook(() => useWebcamDevices());
+    const { result } = renderHook(() => useWebcamDevices());
+
+    await act(async () => {
+      await result.current.requestDevices();
+    });
 
     await waitFor(() => {
       expect(useWebcamStore.getState().activeDeviceId).toBe("cam-rear");
@@ -101,7 +109,11 @@ describe("useWebcamDevices", () => {
       configurable: true,
     });
 
-    renderHook(() => useWebcamDevices());
+    const { result } = renderHook(() => useWebcamDevices());
+
+    await act(async () => {
+      await result.current.requestDevices();
+    });
 
     await waitFor(() => {
       expect(useWebcamStore.getState().activeDeviceId).toBe("cam-only");
@@ -120,7 +132,11 @@ describe("useWebcamDevices", () => {
       configurable: true,
     });
 
-    renderHook(() => useWebcamDevices());
+    const { result } = renderHook(() => useWebcamDevices());
+
+    await act(async () => {
+      await result.current.requestDevices();
+    });
 
     await waitFor(() => {
       expect(useWebcamStore.getState().devices).toHaveLength(2);
@@ -138,7 +154,11 @@ describe("useWebcamDevices", () => {
       configurable: true,
     });
 
-    renderHook(() => useWebcamDevices());
+    const { result } = renderHook(() => useWebcamDevices());
+
+    await act(async () => {
+      await result.current.requestDevices();
+    });
 
     await waitFor(() => {
       // give the async flow time to settle
@@ -159,7 +179,11 @@ describe("useWebcamDevices", () => {
     });
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    renderHook(() => useWebcamDevices());
+    const { result } = renderHook(() => useWebcamDevices());
+
+    await act(async () => {
+      await result.current.requestDevices();
+    });
 
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalled();
@@ -181,7 +205,11 @@ describe("useWebcamDevices", () => {
     });
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    renderHook(() => useWebcamDevices());
+    const { result } = renderHook(() => useWebcamDevices());
+
+    await act(async () => {
+      await result.current.requestDevices();
+    });
 
     await waitFor(() => {
       expect(consoleSpy).toHaveBeenCalled();
@@ -201,17 +229,28 @@ describe("useWebcamDevices", () => {
     expect(useWebcamStore.getState().devices).toHaveLength(0);
   });
 
-  it("registers a devicechange listener on mount", () => {
-    renderHook(() => useWebcamDevices());
+  it("registers a devicechange listener after requestDevices", async () => {
+    const { result } = renderHook(() => useWebcamDevices());
+
+    await act(async () => {
+      await result.current.requestDevices();
+    });
+
     expect(navigator.mediaDevices.addEventListener).toHaveBeenCalledWith(
       "devicechange",
       expect.any(Function),
     );
   });
 
-  it("removes the devicechange listener on unmount", () => {
-    const { unmount } = renderHook(() => useWebcamDevices());
+  it("removes the devicechange listener on unmount after requestDevices", async () => {
+    const { result, unmount } = renderHook(() => useWebcamDevices());
+
+    await act(async () => {
+      await result.current.requestDevices();
+    });
+
     unmount();
+
     expect(navigator.mediaDevices.removeEventListener).toHaveBeenCalledWith(
       "devicechange",
       expect.any(Function),
@@ -229,7 +268,11 @@ describe("useWebcamDevices", () => {
       configurable: true,
     });
 
-    renderHook(() => useWebcamDevices());
+    const { result } = renderHook(() => useWebcamDevices());
+
+    await act(async () => {
+      await result.current.requestDevices();
+    });
 
     await waitFor(() => {
       expect(useWebcamStore.getState().devices).toHaveLength(1);
@@ -237,6 +280,7 @@ describe("useWebcamDevices", () => {
 
     const cam2 = makeDevice({ deviceId: "cam-2" });
     mediaDevices.enumerateDevices.mockResolvedValue([cam1, cam2]);
+
     const [[, deviceChangeHandler]] = (
       mediaDevices.addEventListener as ReturnType<typeof vi.fn>
     ).mock.calls;
@@ -247,6 +291,91 @@ describe("useWebcamDevices", () => {
 
     await waitFor(() => {
       expect(useWebcamStore.getState().devices).toHaveLength(2);
+    });
+  });
+
+  describe("requestDevices", () => {
+    it("calls getUserMedia and enumerateDevices on demand", async () => {
+      const cam1 = makeDevice({ deviceId: "cam-1" });
+      const mediaDevices = makeMediaDevices({
+        enumerateDevices: vi.fn().mockResolvedValue([cam1]),
+      });
+      Object.defineProperty(global.navigator, "mediaDevices", {
+        value: mediaDevices,
+        writable: true,
+        configurable: true,
+      });
+
+      const { result } = renderHook(() => useWebcamDevices());
+
+      await act(async () => {
+        await result.current.requestDevices();
+      });
+
+      expect(mediaDevices.getUserMedia).toHaveBeenCalledWith({ video: true });
+      expect(mediaDevices.enumerateDevices).toHaveBeenCalled();
+    });
+
+    it("stops all tracks from the temporary stream", async () => {
+      const stop = vi.fn();
+      const mediaDevices = makeMediaDevices({
+        getUserMedia: vi.fn().mockResolvedValue({
+          getTracks: () => [{ stop }, { stop }],
+        }),
+        enumerateDevices: vi.fn().mockResolvedValue([]),
+      });
+      Object.defineProperty(global.navigator, "mediaDevices", {
+        value: mediaDevices,
+        writable: true,
+        configurable: true,
+      });
+
+      const { result } = renderHook(() => useWebcamDevices());
+
+      await act(async () => {
+        await result.current.requestDevices();
+      });
+
+      expect(stop).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not call enumerateDevices if getUserMedia rejects", async () => {
+      const mediaDevices = makeMediaDevices({
+        getUserMedia: vi
+          .fn()
+          .mockRejectedValue(new DOMException("NotAllowed", "NotAllowedError")),
+        enumerateDevices: vi.fn(),
+      });
+      Object.defineProperty(global.navigator, "mediaDevices", {
+        value: mediaDevices,
+        writable: true,
+        configurable: true,
+      });
+      vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const { result } = renderHook(() => useWebcamDevices());
+
+      await act(async () => {
+        await result.current.requestDevices();
+      });
+
+      expect(mediaDevices.enumerateDevices).not.toHaveBeenCalled();
+    });
+
+    it("does nothing if navigator.mediaDevices is absent", async () => {
+      Object.defineProperty(global.navigator, "mediaDevices", {
+        value: undefined,
+        writable: true,
+        configurable: true,
+      });
+
+      const { result } = renderHook(() => useWebcamDevices());
+
+      await act(async () => {
+        await expect(result.current.requestDevices()).resolves.toBeUndefined();
+      });
+
+      expect(useWebcamStore.getState().devices).toHaveLength(0);
     });
   });
 });
