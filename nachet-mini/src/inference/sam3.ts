@@ -68,13 +68,39 @@ export interface Sam3Detections {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Permitted character set for HF repo IDs and filenames. */
+const HF_ID_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+const HF_FILENAME_RE = /^[A-Za-z0-9_.-]+$/;
+
+/** Reject any repo/filename outside the HF naming allowlist before URL build. */
+const sanitizeHfIds = (repo: string, fileName: string): void => {
+  if (!HF_ID_RE.test(repo)) {
+    throw new Error(`[sam3] Rejected non-conforming HF repo id`);
+  }
+  if (!HF_FILENAME_RE.test(fileName)) {
+    throw new Error(`[sam3] Rejected non-conforming HF filename`);
+  }
+};
+
 /** HF resolve URL for a component ONNX file. */
-const onnxUrl = (repo: string, fileName: string): string =>
-  `https://huggingface.co/${repo}/resolve/main/${fileName}.onnx`;
+const onnxUrl = (repo: string, fileName: string): string => {
+  sanitizeHfIds(repo, fileName);
+  return `https://huggingface.co/${repo}/resolve/main/${fileName}.onnx`;
+};
 
 /** HF resolve URL for the matching external .data file. */
-const onnxDataUrl = (repo: string, fileName: string): string =>
-  `https://huggingface.co/${repo}/resolve/main/${fileName}.onnx.data`;
+const onnxDataUrl = (repo: string, fileName: string): string => {
+  sanitizeHfIds(repo, fileName);
+  return `https://huggingface.co/${repo}/resolve/main/${fileName}.onnx.data`;
+};
+
+/** Only allow image sources that are safe client-side (blob:, data:, or same-origin). */
+const sanitizeImageSrc = (src: string): string => {
+  if (!/^(blob:|data:|\/)/.test(src)) {
+    throw new Error(`[sam3] Rejected non-conforming image src scheme`);
+  }
+  return src;
+};
 
 /**
  * Load an InferenceSession, fetching the external `.onnx.data` file by hand
@@ -114,12 +140,13 @@ const createSessionWithExternalData = async (
       );
     } else {
       console.warn(
-        `[sam3] Unexpected HEAD status for ${fileName}.onnx.data:`,
+        "[sam3] Unexpected HEAD status for %s.onnx.data: %d",
+        fileName,
         headResp.status,
       );
     }
   } catch (err) {
-    console.warn(`[sam3] External data probe failed for ${fileName}:`, err);
+    console.warn("[sam3] External data probe failed for %s:", fileName, err);
   }
 
   // `path` must match the relative reference inside the .onnx graph.
@@ -269,7 +296,7 @@ export const runSam3 = async (
     const visionStart = performance.now();
 
     // Fetch + decode the image, preprocess to NCHW float32 [1, 3, 1008, 1008].
-    const blob = await (await fetch(imageSrc)).blob();
+    const blob = await (await fetch(sanitizeImageSrc(imageSrc))).blob();
     const bitmap = await createImageBitmap(blob);
     const pixelValues = preprocessImageForSam3(bitmap);
     bitmap.close();
