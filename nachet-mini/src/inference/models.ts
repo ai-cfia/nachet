@@ -1,21 +1,13 @@
 import type { InferenceResult } from "@common/types";
 
 /**
- * Detector "kind" — what flavor of detector this is.
- *
- * - `"object-detection"`: standard single-pass detector (RT-DETR, DETR). Image
- *   in → boxes out. Closed vocabulary (only knows the classes it was trained on).
- * - `"text-promptable-segmentation"`: multi-component detector that takes both
- *   an image and a free-text concept prompt (e.g. SAM3). Outputs instance masks
- *   and boxes for objects matching the prompt. Open vocabulary.
+ * Detector flavor. `object-detection` is the classic single-file closed-
+ * vocabulary shape (RT-DETR, DETR). `text-promptable-segmentation` is the
+ * SAM 3 shape — multi-component, takes a text prompt, open vocabulary.
  */
 export type DetectorKind = "object-detection" | "text-promptable-segmentation";
 
-/**
- * Component filenames for a multi-file detector. Used by
- * text-promptable-segmentation detectors that ship multiple ONNX files
- * (e.g. SAM3 has vision_encoder, text_encoder, decoder).
- */
+/** Filenames for a multi-file detector's components (e.g. SAM 3's three ONNX files). */
 export interface DetectorComponentFiles {
   /** Vision encoder ONNX filename (without `.onnx`) */
   vision: string;
@@ -39,30 +31,13 @@ export interface ModelConfig {
   detectorModelFileName?: string;
   /** Minimum bounding-box size (longest dimension, px) for reliable classification */
   minBoxSize: number;
-  /**
-   * What kind of detector this is. Defaults to `"object-detection"` (the
-   * original single-file pattern). Set to `"text-promptable-segmentation"`
-   * for SAM3-style detectors that take an additional text prompt.
-   */
+  /** Detector kind. Defaults to `"object-detection"`. */
   detectorKind?: DetectorKind;
-  /**
-   * If true, the worker expects a `prompt` field on `run-inference` messages.
-   * The UI should render a text input when a model with this flag is selected.
-   */
+  /** If true, UI shows a text-prompt input and worker expects `prompt` on run-inference. */
   detectorRequiresPrompt?: boolean;
-  /**
-   * For multi-file detectors: filenames of the component ONNX files within
-   * `detectorModel`'s HF repo. If set, the worker loads these instead of the
-   * single `detectorModelFileName`.
-   */
+  /** For multi-file detectors: ONNX filenames within `detectorModel`'s HF repo. */
   detectorComponentFiles?: DetectorComponentFiles;
-  /**
-   * Some detectors ship their ONNX weights in a separate HF repo from the
-   * tokenizer/processor config (e.g. our SAM3 ONNX is at
-   * `danilobukvic/sam3-text-onnx` but the processor lives at `facebook/sam3`).
-   * If set, the worker loads tokenizer/processor from this repo instead of
-   * `detectorModel`.
-   */
+  /** Alternate HF repo for tokenizer/processor when weights and config live separately (e.g. SAM 3). */
   detectorPreprocessorModel?: string;
 }
 
@@ -84,12 +59,7 @@ export interface DetectorModelEntry {
   requiresPrompt?: boolean;
   /** For multi-file detectors (e.g. SAM3): which ONNX files make up the model. */
   componentFiles?: DetectorComponentFiles;
-  /**
-   * Optional alternate HF repo for tokenizer/preprocessor. Use this when the
-   * ONNX weights live in one repo but the processor config lives in another
-   * (e.g. SAM3: weights at `danilobukvic/sam3-text-onnx`, processor at
-   * `facebook/sam3`).
-   */
+  /** Alternate HF repo for tokenizer/processor when weights and config live separately. */
   preprocessorModel?: string;
 }
 
@@ -168,41 +138,13 @@ export const DETECTOR_MODELS: DetectorModelEntry[] = [
     threshold: 0.5,
   },
   {
-    // SAM3 — Meta's text-promptable concept segmentation, int4-quantized for
-    // browser deployment. Unlike the closed-vocabulary detectors above, this
-    // takes a free-text prompt ("seed", "weed seed", "insect", etc.).
-    //
-    // Why int4, not int8: dynamic int8 quantization inserts `ConvInteger`
-    // nodes around the FPN Conv2d layers in the vision encoder. The web
-    // runtime (onnxruntime-web wasm + webgpu) doesn't ship implementations
-    // of ConvInteger — the model fails to load with "Could not find an
-    // implementation for ConvInteger(10)" once parsed.
-    //
-    // The int4 variant uses MatMulNBitsQuantizer, which only quantizes
-    // MatMul ops and leaves Conv ops at fp32. Larger weights, but every
-    // op has a web implementation.
-    //
-    // 654 MB total download (3 ONNX files: vision + text + decoder).
-    // See: https://huggingface.co/danilobukvic/sam3-text-onnx
-    id: "sam3 int4 (text-promptable)",
-    model: "danilobukvic/sam3-text-onnx",
-    threshold: 0.5,
-    kind: "text-promptable-segmentation",
-    requiresPrompt: true,
-    componentFiles: {
-      vision: "vision_encoder_int4",
-      text: "text_encoder_int4",
-      decoder: "decoder_int4",
-    },
-  },
-  {
-    // fp32 reference variant — same model, no quantization. 3.3 GB download.
-    // Likely too memory-heavy for browser execution on consumer hardware
-    // (~4 GB VRAM/RAM), but kept as an experimental option for WebGPU EP
-    // testing: the int4 variant trips the WebGPU EP's graph capture on
-    // MatMulNBits ops, but fp32 only has standard ops so it should at
-    // least *load* on WebGPU even if it OOMs during the forward pass.
-    id: "sam3 fp32 (text-promptable, experimental)",
+    // SAM 3 — text-promptable concept segmentation. Takes a free-text
+    // concept ("seed", "weed seed", etc.) and detects matching instances.
+    // fp32 unfused, 3.3 GB. Needs VRAM headroom (1.72 GB attention buffer
+    // per global-attention layer). Faster than MHA-fused below when memory
+    // isn't the bottleneck; fall back to MHA-fused on tighter hardware.
+    // https://huggingface.co/danilobukvic/sam3-text-onnx
+    id: "sam3 fp32",
     model: "danilobukvic/sam3-text-onnx",
     threshold: 0.5,
     kind: "text-promptable-segmentation",
@@ -214,30 +156,21 @@ export const DETECTOR_MODELS: DetectorModelEntry[] = [
     },
   },
   {
-    // fp32 with FUSED MultiHeadAttention — this is the breakthrough variant.
-    //
-    // The vision encoder's 32 attention blocks were collapsed from
-    // {QK MatMul → Softmax → V MatMul} into single com.microsoft.MultiHeadAttention
-    // contrib ops (with Transpose+Reshape around them for layout conversion).
-    // ORT-Web's WebGPU EP routes MultiHeadAttention to its FlashAttention-2
-    // kernel — O(N) memory tiles instead of materializing O(N²) score matrices.
-    // The fp32 variant materialized a 1.72 GB attention buffer per global
-    // attention layer; this one should use ~tens of MB.
-    //
-    // Parity-validated against the unfused fp32 model (max abs diff 4.3e-4 on
-    // FPN outputs — fp32 rounding noise). CPU inference 3.9x faster even
-    // without FlashAttention. Custom fusion built in fuse_vision_encoder.py
-    // since ORT's TryFuseMobileClipMHA matcher couldn't handle SAM 3's
-    // separate Q/K/V projections + RoPE pattern.
+    // SAM 3 with fused MultiHeadAttention — memory-constrained fallback.
+    // The 32 attention blocks are collapsed into com.microsoft.MultiHeadAttention
+    // ops that ORT-Web routes to its FlashAttention-2 kernel (O(N) tiles
+    // instead of the unfused variant's 1.72 GB O(N²) score matrices).
+    // Slower than unfused on GPUs with headroom; pick this when unfused OOMs.
+    // Parity-checked vs unfused (max abs diff 4.3e-4). Fused in custom_mha_fusion.py.
     id: "sam3 fp32 MHA-fused (browser-optimized)",
     model: "danilobukvic/sam3-text-onnx",
     threshold: 0.5,
     kind: "text-promptable-segmentation",
     requiresPrompt: true,
     componentFiles: {
-      vision: "vision_encoder_mhafused",  // ← the new fused vision encoder
-      text: "text_encoder",                 // unchanged (no attention to fuse there)
-      decoder: "decoder",                   // unchanged
+      vision: "vision_encoder_mhafused", // ← the new fused vision encoder
+      text: "text_encoder", // unchanged (no attention to fuse there)
+      decoder: "decoder", // unchanged
     },
   },
 ];

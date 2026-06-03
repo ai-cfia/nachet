@@ -12,10 +12,6 @@ import {
 } from "@huggingface/transformers";
 import type { ModelConfig, WorkerInMessage, WorkerOutMessage } from "./models";
 import type { InferenceResult, InferenceBox } from "@common/types";
-// SAM 3 lives in its own module — see ./sam3.ts for the rationale.
-// It uses raw onnxruntime-web rather than the transformers.js AutoModel API
-// because it's a multi-component, text-promptable detector that doesn't fit
-// the AutoModel shape.
 import { loadSam3, runSam3, unloadSam3 } from "./sam3";
 
 // ---------------------------------------------------------------------------
@@ -341,18 +337,13 @@ addEventListener("message", async (event: MessageEvent) => {
         rawImage.height,
       );
 
-      // Detector inference — branches by detector kind.
-      //
-      // Both branches end with a `detections` object of the same shape
-      // ({ boxes, scores, classes }) plus a `labelForClass` resolver so the
-      // box-building loop below can treat them uniformly.
+      // Detector inference — both branches produce `detections` + `labelForClass`
+      // so the box-building loop below can treat them uniformly.
       let detections: PostProcessedDetection;
       let labelForClass: (classIdx: number) => string;
 
       if (config.detectorKind === "text-promptable-segmentation") {
-        // SAM 3 path: ignore the classic detector pipeline entirely. The
-        // sam3 module handles preprocessing, all 3 ONNX inferences, and
-        // post-processing internally. We just feed it the image + prompt.
+        // SAM 3 path — sam3 module handles preprocessing, inference, post-processing.
         const prompt = data.prompt?.trim() || "seed";
         console.log(
           `[worker] Running SAM 3 detector with prompt: "${prompt}", threshold: ${config.detectorThreshold}`,
@@ -365,9 +356,7 @@ addEventListener("message", async (event: MessageEvent) => {
           rawImage.height,
         );
         detections = sam3Result;
-        // SAM 3 produces a single concept per call (the prompt). Every
-        // detection gets the prompt text as its label — there's no
-        // id2label table for an open-vocabulary model.
+        // Open-vocabulary — every detection gets the prompt as its label.
         labelForClass = () => prompt;
         console.log(
           `[worker] SAM 3 returned ${detections.boxes.length} detections`,
@@ -380,42 +369,6 @@ addEventListener("message", async (event: MessageEvent) => {
         }
 
         const detInputs = await detectorProcessor(rawImage);
-        console.log("[worker] Detector inputs keys:", Object.keys(detInputs));
-        for (const [key, val] of Object.entries(detInputs)) {
-          const t = val as {
-            dims?: number[];
-            type?: string;
-            data?: Float32Array;
-          };
-          if (t?.dims) {
-            console.log(
-              `[worker]   ${key}: dims=${JSON.stringify(t.dims)} dtype=${t.type}`,
-            );
-          }
-          if (key === "pixel_values" && t?.data) {
-            const d = t.data;
-            let min = Infinity,
-              max = -Infinity,
-              sum = 0;
-            for (let i = 0; i < d.length; i++) {
-              if (d[i] < min) min = d[i];
-              if (d[i] > max) max = d[i];
-              sum += d[i];
-            }
-            const mean = sum / d.length;
-            console.log(
-              `[worker] pixel_values stats: min=${min.toFixed(4)} max=${max.toFixed(4)} mean=${mean.toFixed(4)} length=${d.length}`,
-            );
-            // First 10 values for comparison with Python
-            console.log(
-              "[worker] pixel_values first 10:",
-              Array.from(d.slice(0, 10)).map((v) => v.toFixed(4)),
-            );
-          }
-        }
-
-        // Run detector model
-        console.log("[worker] Running detector model...");
         const detOutputs = await detectorModel(detInputs);
         console.log("[worker] Detector output keys:", Object.keys(detOutputs));
         for (const [key, val] of Object.entries(detOutputs)) {
@@ -434,10 +387,7 @@ addEventListener("message", async (event: MessageEvent) => {
               (v: number) => 1 / (1 + Math.exp(-v)),
             ); // sigmoid
             const sorted = [...scores].sort((a, b) => b - a);
-            console.log(
-              "[worker] Top 10 sigmoid scores:",
-              sorted.slice(0, 10),
-            );
+            console.log("[worker] Top 10 sigmoid scores:", sorted.slice(0, 10));
             console.log(
               "[worker] Scores > 0.01:",
               scores.filter((s: number) => s > 0.01).length,
