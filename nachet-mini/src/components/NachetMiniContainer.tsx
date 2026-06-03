@@ -195,13 +195,12 @@ const NachetMiniContainer = () => {
   const handleRunInference = () => {
     if (!currentImage) return;
 
-    // Only forward the prompt when the detector actually consumes it. Closed-
-    // vocabulary detectors (RT-DETR, DETR) ignore it but we keep it undefined
-    // for clarity in the worker logs.
-    const prompt = detectorRequiresPrompt ? detectorPrompt : undefined;
-
     if (modelLoaded) {
-      runInference(currentImage.src, currentImage.index, prompt);
+      if (detectorRequiresPrompt) {
+        runInference(currentImage.src, currentImage.index, detectorPrompt);
+      } else {
+        runInference(currentImage.src, currentImage.index);
+      }
       return;
     }
 
@@ -232,8 +231,11 @@ const NachetMiniContainer = () => {
 
     const stillExists = images.some((img) => img.index === pending.imageIndex);
     if (stillExists) {
-      const prompt = detectorRequiresPrompt ? detectorPrompt : undefined;
-      runInference(pending.imageSrc, pending.imageIndex, prompt);
+      if (detectorRequiresPrompt) {
+        runInference(pending.imageSrc, pending.imageIndex, detectorPrompt);
+      } else {
+        runInference(pending.imageSrc, pending.imageIndex);
+      }
     }
     setPendingInferenceRequest(null);
   }, [modelLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
