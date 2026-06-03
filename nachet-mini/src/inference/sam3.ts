@@ -68,31 +68,49 @@ export interface Sam3Detections {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Fixed, allow-listed origin for all model downloads. The hostname is a
+ * compile-time constant and is NEVER derived from the model registry, so
+ * there is no path from caller-controlled data into the request host.
+ */
+const HF_ORIGIN = "https://huggingface.co";
+
 /** Permitted character set for HF repo IDs and filenames. */
 const HF_ID_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const HF_FILENAME_RE = /^[A-Za-z0-9_.-]+$/;
 
-/** Reject any repo/filename outside the HF naming allowlist before URL build. */
-const sanitizeHfIds = (repo: string, fileName: string): void => {
+/**
+ * Build an HF resolve URL from the fixed `HF_ORIGIN` plus encoded path
+ * segments. Repo/file are validated against a strict allowlist and the final
+ * hostname is asserted to equal the constant origin — so the request target
+ * can only ever be huggingface.co regardless of registry contents.
+ */
+const buildHfUrl = (repo: string, fileName: string, suffix: string): string => {
   if (!HF_ID_RE.test(repo)) {
     throw new Error(`[sam3] Rejected non-conforming HF repo id`);
   }
   if (!HF_FILENAME_RE.test(fileName)) {
     throw new Error(`[sam3] Rejected non-conforming HF filename`);
   }
+  const [owner, name] = repo.split("/");
+  const path = `/${encodeURIComponent(owner)}/${encodeURIComponent(
+    name,
+  )}/resolve/main/${encodeURIComponent(fileName)}${suffix}`;
+  const url = new URL(path, HF_ORIGIN);
+  // Hard barrier: refuse anything that resolved off the allow-listed origin.
+  if (url.origin !== HF_ORIGIN) {
+    throw new Error(`[sam3] Rejected URL outside allow-listed origin`);
+  }
+  return url.href;
 };
 
 /** HF resolve URL for a component ONNX file. */
-const onnxUrl = (repo: string, fileName: string): string => {
-  sanitizeHfIds(repo, fileName);
-  return `https://huggingface.co/${repo}/resolve/main/${fileName}.onnx`;
-};
+const onnxUrl = (repo: string, fileName: string): string =>
+  buildHfUrl(repo, fileName, ".onnx");
 
 /** HF resolve URL for the matching external .data file. */
-const onnxDataUrl = (repo: string, fileName: string): string => {
-  sanitizeHfIds(repo, fileName);
-  return `https://huggingface.co/${repo}/resolve/main/${fileName}.onnx.data`;
-};
+const onnxDataUrl = (repo: string, fileName: string): string =>
+  buildHfUrl(repo, fileName, ".onnx.data");
 
 /** Only allow image sources that are safe client-side (blob:, data:, or same-origin). */
 const sanitizeImageSrc = (src: string): string => {
