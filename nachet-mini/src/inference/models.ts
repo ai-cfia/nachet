@@ -143,9 +143,9 @@ export const DETECTOR_MODELS: DetectorModelEntry[] = [
     // fp32 unfused, 3.3 GB. Needs VRAM headroom (1.72 GB attention buffer
     // per global-attention layer). Faster than MHA-fused below when memory
     // isn't the bottleneck; fall back to MHA-fused on tighter hardware.
-    // https://huggingface.co/danilobukvic/sam3-text-onnx
+    // https://huggingface.co/cfia-ai-lab/sam3-text-onnx
     id: "sam3 fp32",
-    model: "danilobukvic/sam3-text-onnx",
+    model: "cfia-ai-lab/sam3-text-onnx",
     threshold: 0.5,
     kind: "text-promptable-segmentation",
     requiresPrompt: true,
@@ -163,7 +163,7 @@ export const DETECTOR_MODELS: DetectorModelEntry[] = [
     // Slower than unfused on GPUs with headroom; pick this when unfused OOMs.
     // Parity-checked vs unfused (max abs diff 4.3e-4). Fused in custom_mha_fusion.py.
     id: "sam3 fp32 MHA-fused (browser-optimized)",
-    model: "danilobukvic/sam3-text-onnx",
+    model: "cfia-ai-lab/sam3-text-onnx",
     threshold: 0.5,
     kind: "text-promptable-segmentation",
     requiresPrompt: true,
