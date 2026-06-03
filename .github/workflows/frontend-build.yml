@@ -71,6 +71,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Sign frontend images
+        working-directory: .
         env:
           IMAGE: ghcr.io/ai-cfia/${{ github.event.repository.name }}-frontend
           RELEASE_VERSION: ${{ needs.get-version.outputs.app-version }}

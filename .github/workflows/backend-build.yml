@@ -118,6 +118,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Sign backend images
+        working-directory: .
         env:
           IMAGE: ghcr.io/ai-cfia/${{ github.event.repository.name }}-backend
           RELEASE_VERSION: ${{ needs.get-version.outputs.app-version }}
