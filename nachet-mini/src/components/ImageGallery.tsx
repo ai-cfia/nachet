@@ -66,6 +66,17 @@ const ImageGallery = ({
   const setCheckedResults = onCheckedResultsChange;
 
   const hasChecked = checkedImages.size > 0 || checkedResults.size > 0;
+  const imageIndices = images.map((image) => image.index);
+  const selectedImageCount = imageIndices.filter((index) =>
+    checkedImages.has(index),
+  ).length;
+  const allImagesSelected =
+    imageIndices.length > 0 && selectedImageCount === imageIndices.length;
+  const someImagesSelected = selectedImageCount > 0 && !allImagesSelected;
+
+  const handleSelectAllImages = (checked: boolean) => {
+    setCheckedImages(checked ? new Set(imageIndices) : new Set());
+  };
 
   const handleImageClick = (index: number) => {
     onSelectImage(index);
@@ -95,14 +106,38 @@ const ImageGallery = ({
       data-testid="image-gallery-component"
     >
       <CardHeader
-        title={t("imageGallery.title")}
-        titleTypographyProps={{
-          variant: "h6",
-          align: "left",
-          fontWeight: 600,
-          fontSize: "1.3vh",
-          color: "text.primary",
-        }}
+        title={
+          <Box sx={{ display: "flex", alignItems: "center", gap: "0.6vh" }}>
+            <Checkbox
+              size="small"
+              checked={allImagesSelected}
+              indeterminate={someImagesSelected}
+              onChange={(e) => handleSelectAllImages(e.target.checked)}
+              disabled={images.length === 0}
+              sx={{
+                padding: 0,
+                "& .MuiSvgIcon-root": { fontSize: "2.4vh" },
+              }}
+              slotProps={{
+                input: {
+                  "aria-label": allImagesSelected
+                    ? t("imageGallery.deselectAllImages")
+                    : t("imageGallery.selectAllImages"),
+                },
+              }}
+            />
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 600,
+                fontSize: "1.3vh",
+                color: "text.primary",
+              }}
+            >
+              {t("imageGallery.title")}
+            </Box>
+          </Box>
+        }
         sx={{ padding: "0.8vh 1vh 0.8vh 0.8vh", flexShrink: 0 }}
         action={
           <IconButton

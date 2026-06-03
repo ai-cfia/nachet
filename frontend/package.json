@@ -1,7 +1,7 @@
 {
   "name": "nachet-frontend",
   "private": true,
-  "version": "2.9.10",
+  "version": "2.9.12",
   "acia-cfia": {
     "backend-version": "2.9.4"
   },
@@ -109,7 +109,7 @@
     "markdownlint-cli2": "^0.22.0",
     "node-fetch": "^3.3.2",
     "playwright": "^1.54.2",
-    "prettier": "3.8.2",
+    "prettier": "3.8.3",
     "vite": "^7.1.1",
     "vite-plugin-environment": "^1.1.3",
     "vitest": "^4.0.0"

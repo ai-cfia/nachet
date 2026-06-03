@@ -1,5 +1,4 @@
 import JSZip from "jszip";
-import { saveAs } from "file-saver";
 import type { Images, InferenceResult } from "@common/types";
 import type {
   ExportManifest,
@@ -7,6 +6,11 @@ import type {
   ExportInferenceEntry,
   ExportBoxEntry,
 } from "@common/exportTypes";
+import {
+  getDefaultExportFileName,
+  normalizeExportFileName,
+  saveExportBlob,
+} from "@common/exportSave";
 
 interface ResultEntry {
   modelConfigId: string;
@@ -290,6 +294,7 @@ export const generateExportZip = async (
     includeCsv?: boolean;
     humanReadable?: boolean;
     includeAnnotatedImages?: boolean;
+    fileName?: string;
   },
 ): Promise<void> => {
   const zip = new JSZip();
@@ -390,8 +395,9 @@ export const generateExportZip = async (
     zip.file("results.csv", csv);
   }
 
-  const d = new Date();
-  const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const content = await zip.generateAsync({ type: "blob" });
-  saveAs(content, `nachet-mini-export-${dateStr}.zip`);
+  await saveExportBlob(
+    content,
+    normalizeExportFileName(options?.fileName ?? getDefaultExportFileName()),
+  );
 };

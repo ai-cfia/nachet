@@ -8,7 +8,6 @@ import {
 } from "../exportUtils";
 import type { Images, InferenceResult, InferenceBox } from "../types";
 import type { ExportManifest, ExportBoxEntry } from "../exportTypes";
-import { saveAs } from "file-saver";
 
 // ---------------------------------------------------------------------------
 // Hoisted mock state — must be available before vi.mock factories run
@@ -34,6 +33,12 @@ const zipMock = vi.hoisted(() => {
   };
 });
 
+const exportSaveMock = vi.hoisted(() => ({
+  getDefaultExportFileName: vi.fn(),
+  normalizeExportFileName: vi.fn(),
+  saveExportBlob: vi.fn(),
+}));
+
 // ---------------------------------------------------------------------------
 // Module mocks
 // ---------------------------------------------------------------------------
@@ -45,7 +50,7 @@ vi.mock("jszip", () => {
   return { default: MockJSZip };
 });
 
-vi.mock("file-saver", () => ({ saveAs: vi.fn() }));
+vi.mock("@common/exportSave", () => exportSaveMock);
 
 // ---------------------------------------------------------------------------
 // MockImage — triggers onload or onerror asynchronously
@@ -160,6 +165,13 @@ beforeEach(() => {
     // Fall through to real implementation for other elements
     return document.createElement.call(document, tag as "div");
   });
+  exportSaveMock.getDefaultExportFileName.mockReturnValue(
+    "nachet-mini-export-test.zip",
+  );
+  exportSaveMock.normalizeExportFileName.mockImplementation(
+    (fileName: string) => `normalized-${fileName}`,
+  );
+  exportSaveMock.saveExportBlob.mockResolvedValue(undefined);
   vi.clearAllMocks();
 });
 
@@ -580,11 +592,30 @@ describe("generateExportZip", () => {
     });
   });
 
-  it("calls saveAs with a correctly date-stamped filename", async () => {
+  it("saves with the default export filename", async () => {
     await generateExportZip(makeManifest(), images);
-    expect(saveAs).toHaveBeenCalled();
-    const filename = vi.mocked(saveAs).mock.calls[0][1] as string;
-    expect(filename).toMatch(/^nachet-mini-export-\d{4}-\d{2}-\d{2}\.zip$/);
+    expect(exportSaveMock.getDefaultExportFileName).toHaveBeenCalledOnce();
+    expect(exportSaveMock.normalizeExportFileName).toHaveBeenCalledWith(
+      "nachet-mini-export-test.zip",
+    );
+    expect(exportSaveMock.saveExportBlob).toHaveBeenCalledWith(
+      expect.any(Blob),
+      "normalized-nachet-mini-export-test.zip",
+    );
+  });
+
+  it("saves with a custom filename", async () => {
+    await generateExportZip(makeManifest(), images, {
+      fileName: "custom-export.zip",
+    });
+    expect(exportSaveMock.getDefaultExportFileName).not.toHaveBeenCalled();
+    expect(exportSaveMock.normalizeExportFileName).toHaveBeenCalledWith(
+      "custom-export.zip",
+    );
+    expect(exportSaveMock.saveExportBlob).toHaveBeenCalledWith(
+      expect.any(Blob),
+      "normalized-custom-export.zip",
+    );
   });
 
   it("does not add manifest.json when includeResults=false", async () => {

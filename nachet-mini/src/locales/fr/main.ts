@@ -2,6 +2,7 @@ const main = {
   controls: {
     camera: "Cam\u00e9ra",
     noCamera: "Aucune cam\u00e9ra",
+    selectCamera: "Sélectionner la cam\u00e9ra",
     cameraDevice: "Cam\u00e9ra {{id}}",
     capture: "Capturer",
     upload: "T\u00e9l\u00e9verser",
@@ -60,6 +61,8 @@ const main = {
     includeCsv: "Inclure le CSV",
     includeAnnotatedImages: "Inclure les images annotées",
     humanReadable: "Noms de fichiers lisibles",
+    fileName: "Nom du fichier d’exportation",
+    fileNameRequired: "Le nom du fichier d’exportation est obligatoire",
     duplicateNameError:
       "Nom d'image en double : {{name}}. Renommez avant d'exporter.",
   },
@@ -73,6 +76,8 @@ const main = {
     image: "Image {{number}}",
     clearAllImages: "Effacer toutes les images",
     editMetadataImage: "Modifier les métadonnées de l’image {{number}}",
+    selectAllImages: "Sélectionner toutes les images",
+    deselectAllImages: "Désélectionner toutes les images",
     selectImage: "Sélectionner l’image {{number}}",
     selectResult: "Sélectionner le résultat {{modelId}}",
     resultsAvailable: "R\u00e9sultats disponibles",
@@ -112,7 +117,7 @@ const main = {
     invalidType: "Le fichier doit \u00eatre une image PNG ou JPEG",
     fileTooLarge: "La taille du fichier ne doit pas d\u00e9passer 10\u00a0Mo",
     dimensionsTooLarge:
-      "Les dimensions de l\u2019image ne doivent pas d\u00e9passer 4608\u00d72592 pixels",
+      "Les dimensions de l\u2019image ne doivent pas d\u00e9passer 8000\u00d78000 pixels",
     unreadableDimensions: "Impossible de lire les dimensions de l\u2019image",
     loadFailed: "Impossible de charger l\u2019image",
   },

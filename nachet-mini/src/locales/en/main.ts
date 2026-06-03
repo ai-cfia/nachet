@@ -2,6 +2,7 @@ const main = {
   controls: {
     camera: "Camera",
     noCamera: "No camera",
+    selectCamera: "Select Camera",
     cameraDevice: "Camera {{id}}",
     capture: "Capture",
     upload: "Upload",
@@ -59,6 +60,8 @@ const main = {
     includeCsv: "Include CSV",
     includeAnnotatedImages: "Include annotated images",
     humanReadable: "Human readable filenames",
+    fileName: "Export filename",
+    fileNameRequired: "Export filename is required",
     duplicateNameError:
       "Duplicate image name: {{name}}. Rename before exporting.",
   },
@@ -72,6 +75,8 @@ const main = {
     image: "Image {{number}}",
     clearAllImages: "Clear all images",
     editMetadataImage: "Edit metadata image {{number}}",
+    selectAllImages: "Select all images",
+    deselectAllImages: "Deselect all images",
     selectImage: "Select image {{number}}",
     selectResult: "Select result {{modelId}}",
     resultsAvailable: "Results available",
@@ -108,7 +113,7 @@ const main = {
   validation: {
     invalidType: "File must be a PNG or JPEG image",
     fileTooLarge: "File size must be less than 10MB",
-    dimensionsTooLarge: "Image dimensions must not exceed 4608x2592 pixels",
+    dimensionsTooLarge: "Image dimensions must not exceed 8000x8000 pixels",
     unreadableDimensions: "Unable to read image dimensions",
     loadFailed: "Failed to load image",
   },
