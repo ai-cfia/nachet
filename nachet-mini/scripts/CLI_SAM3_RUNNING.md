@@ -85,6 +85,6 @@ Your `transformers` is too old. Reinstall from source (see Setup).
 
 Use `--device cpu`. SAM 3 needs significant VRAM for high-resolution inputs.
 
-## Out of scope
+## Relationship to the browser detector
 
-This script is a validation tool only. Wiring SAM 3 into `src/inference/worker.ts` and `models.ts` `DETECTOR_MODELS` will be a follow-up once we know it produces usable boxes on real seed images and once ONNX / transformers.js support is confirmed.
+The browser pipeline in `src/inference/sam3.ts` runs the same model with the same preprocessing recipe via onnxruntime-web. Use this CLI as a ground-truth oracle when the browser output looks off — if both produce the same boxes for a given image+prompt, the browser path is correct.

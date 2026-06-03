@@ -158,10 +158,34 @@ def main():
         outputs, processor, target_size=(orig_h, orig_w), threshold=args.threshold
     )
 
+    img_area = float(orig_w * orig_h)
+
     print(f"\nDetections ({len(boxes)}):")
+    print(f"  Image size: {orig_w}x{orig_h} ({int(img_area)} px^2)")
+    print(
+        f"  {'idx':>3} {'x1':>7} {'y1':>7} {'x2':>7} {'y2':>7} "
+        f"{'w':>6} {'h':>6} {'area':>9} {'%img':>6} {'aspect':>7} {'score':>7}  flags"
+    )
     for i, (box, score) in enumerate(zip(boxes, scores)):
         x1, y1, x2, y2 = box
-        print(f"  [{i}] xyxy=({x1:.1f}, {y1:.1f}, {x2:.1f}, {y2:.1f})  score={score:.4f}")
+        w, h = x2 - x1, y2 - y1
+        area = w * h
+        pct_img = 100.0 * area / img_area if img_area > 0 else 0.0
+        aspect = (w / h) if h > 0 else float("inf")
+        flags = []
+        if w <= 0 or h <= 0:
+            flags.append("INVALID")  # negative/zero dim — broken box
+        if area < 100:
+            flags.append("TINY")  # likely noise
+        if pct_img > 50:
+            flags.append("HUGE")  # likely hallucinated whole-image box
+        if x1 < 0 or y1 < 0 or x2 > orig_w or y2 > orig_h:
+            flags.append("OOB")  # out of bounds
+        flag_str = ",".join(flags) if flags else "ok"
+        print(
+            f"  [{i:>2}] {x1:>7.1f} {y1:>7.1f} {x2:>7.1f} {y2:>7.1f} "
+            f"{w:>6.1f} {h:>6.1f} {area:>9.0f} {pct_img:>5.1f}% {aspect:>7.2f} {score:>7.4f}  {flag_str}"
+        )
 
     if args.no_display or len(boxes) == 0:
         if len(boxes) == 0:
