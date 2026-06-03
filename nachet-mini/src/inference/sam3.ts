@@ -1,8 +1,3 @@
-// onnxruntime-web ships its module type declarations in `types.d.ts` rather
-// than via the usual package.json `types` field. Triple-slash here so TS
-// picks them up.
-/// <reference path="../../node_modules/onnxruntime-web/types.d.ts" />
-
 /**
  * SAM 3 detector — text-promptable concept segmentation. Loads three ONNX
  * components (vision encoder, text encoder, decoder) and runs them as a
