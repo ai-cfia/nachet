@@ -72,7 +72,7 @@ jobs:
           echo "${{ steps.meta-backend.outputs.tags }}" | while read -r tag; do
             echo "Verifying backend image: $tag"
             cosign verify \
-              --certificate-identity=https://github.com/${{ github.repository }}/.github/workflows/build-sign-deploy.yml@refs/tags/${{ github.ref_name }} \
+              --certificate-identity=https://github.com/${{ github.repository }}/.github/workflows/prod-build-sign-deploy.yml@refs/tags/${{ github.ref_name }} \
               --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
               "$tag"
           done
@@ -139,7 +139,7 @@ jobs:
           echo "${{ steps.meta-frontend.outputs.tags }}" | while read -r tag; do
             echo "Verifying frontend image: $tag"
             cosign verify \
-              --certificate-identity=https://github.com/${{ github.repository }}/.github/workflows/build-sign-deploy.yml@refs/tags/${{ github.ref_name }} \
+              --certificate-identity=https://github.com/${{ github.repository }}/.github/workflows/prod-build-sign-deploy.yml@refs/tags/${{ github.ref_name }} \
               --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
               "$tag"
           done
@@ -173,13 +173,13 @@ jobs:
 
             # Verify frontend signature
             cosign verify \
-              --certificate-identity=https://github.com/${{ github.repository }}/.github/workflows/build-sign-deploy.yml@refs/tags/${{ github.ref_name }} \
+              --certificate-identity=https://github.com/${{ github.repository }}/.github/workflows/prod-build-sign-deploy.yml@refs/tags/${{ github.ref_name }} \
               --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
               ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/nachet-frontend:${{ github.ref_name }}
 
             # Verify backend signature
             cosign verify \
-              --certificate-identity=https://github.com/${{ github.repository }}/.github/workflows/build-sign-deploy.yml@refs/tags/${{ github.ref_name }} \
+              --certificate-identity=https://github.com/${{ github.repository }}/.github/workflows/prod-build-sign-deploy.yml@refs/tags/${{ github.ref_name }} \
               --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
               ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/nachet-backend:${{ github.ref_name }}
             ```
