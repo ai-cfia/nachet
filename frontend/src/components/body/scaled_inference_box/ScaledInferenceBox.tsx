@@ -56,7 +56,6 @@ const computeBoxPosition = (
   };
 };
 
-
 const ScaledInferenceBox = (props: Props) => {
   const {
     index,
