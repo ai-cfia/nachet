@@ -5,6 +5,7 @@ on:
     paths:
       - "backend/**"
       - ".github/workflows/backend-build.yml"
+      - ".github/workflows/reusable-sign-container-images.yml"
     types:
       - opened
       - closed
@@ -98,58 +99,13 @@ jobs:
 
   sign-images:
     needs: [get-version, build-and-push-gcr]
-    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
       id-token: write
-
-    steps:
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@115e4ce455e573aa6e9ba51e8d040ddd5c1378af
-        with:
-          cosign-release: "v2.2.3"
-
-      - name: Log in to the github container registry (GCR)
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Sign backend images
-        working-directory: .
-        env:
-          IMAGE: ghcr.io/ai-cfia/${{ github.event.repository.name }}-backend
-          RELEASE_VERSION: ${{ needs.get-version.outputs.app-version }}
-        run: |
-          set -euo pipefail
-
-          tags=(
-            "${IMAGE}:${{ github.sha }}"
-            "${IMAGE}:${RELEASE_VERSION}"
-          )
-
-          if [ "${{ github.event.pull_request.merged }}" = "true" ]; then
-            tags+=("${IMAGE}:${{ github.event.pull_request.base.ref }}")
-          else
-            branch_name="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
-            clean_branch_name="$(echo "$branch_name" | sed 's/[\/\\]/-/g')"
-            tags+=(
-              "${IMAGE}:${{ github.event.number }}"
-              "${IMAGE}:${clean_branch_name}"
-            )
-          fi
-
-          for tag in "${tags[@]}"; do
-            echo "Signing backend image: $tag"
-            cosign sign --yes "$tag"
-          done
-
-          for tag in "${tags[@]}"; do
-            echo "Verifying backend image signature: $tag"
-            cosign verify \
-              --certificate-identity-regexp='^https://github.com/ai-cfia/.*$' \
-              --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
-              "$tag"
-          done
+    uses: ./.github/workflows/reusable-sign-container-images.yml
+    with:
+      image-name: ghcr.io/ai-cfia/${{ github.event.repository.name }}-backend
+      image-label: backend
+      release-version: ${{ needs.get-version.outputs.app-version }}
+    secrets: inherit
