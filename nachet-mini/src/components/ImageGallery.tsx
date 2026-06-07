@@ -9,6 +9,8 @@ import {
   CardHeader,
   Collapse,
   Checkbox,
+  CircularProgress,
+  Chip
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -19,9 +21,11 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import type { Images, InferenceResult } from "@common/types";
 import { resultKey } from "@stores/useInferenceStore";
+import {
+  useInferenceQueueStore,
+} from "@stores/useInferenceQueueStore";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
-
 interface Props {
   images: Images[];
   currentIndex: number;
@@ -58,6 +62,7 @@ const ImageGallery = ({
   getResultsForImage,
 }: Props) => {
   const { t } = useTranslation("main");
+  const queue = useInferenceQueueStore((s) => s.queue);
   const [collapsedIndices, setCollapsedIndices] = useState<Set<number>>(
     new Set(),
   );
@@ -191,6 +196,12 @@ const ImageGallery = ({
               const imageResults = getResultsForImage(item.index);
               const hasResults = imageResults.length > 0;
               const isExpanded = !collapsedIndices.has(item.index);
+              const queueEntry = queue.find((i) => i.imageIndex === item.index && (i.status === "pending" || i.status === "processing"));
+              const pendingItems = queue.filter((i) => i.status === "pending");
+              const queuePosition = queueEntry?.status === "pending"
+                ? pendingItems.indexOf(queueEntry) + 1
+                : null;
+              const isProcessing = queueEntry?.status === "processing";
 
               return (
                 <TableRow key={item.index} sx={{ display: "table-row" }}>
@@ -265,6 +276,30 @@ const ImageGallery = ({
                           <CheckCircleIcon
                             sx={{ color: "#4caf50", fontSize: "2.4vh" }}
                             titleAccess={t("imageGallery.resultsAvailable")}
+                          />
+                        )}
+                        {isProcessing && (
+                          <CircularProgress
+                            size="1.8vh"
+                            thickness={5}
+                            sx={{ color: "#1565c0", flexShrink: 0 }}
+                            aria-label={t("imageGallery.inferring")}
+                          />
+                        )}
+                        {!isProcessing && queuePosition !== null && queuePosition > 0 && (
+                          <Chip
+                            label={queuePosition}
+                            size="small"
+                            sx={{
+                              height: "2vh",
+                              fontSize: "1.1vh",
+                              bgcolor: "#E3F2FD",
+                              color: "#1565c0",
+                              fontWeight: 600,
+                              flexShrink: 0,
+                              "& .MuiChip-label": { px: "0.6vh" },
+                            }}
+                            aria-label={t("imageGallery.queuePosition", { position: queuePosition })}
                           />
                         )}
                       </Box>

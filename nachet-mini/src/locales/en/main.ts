@@ -81,6 +81,8 @@ const main = {
     resultEntry: "{{time}} \u2014 {{modelId}}",
     boxes: "{{count}} boxes",
     removeResult: "Delete selected results",
+    inferring: "Identifying...",
+    queuePosition: "Queue position {{position}}",
   },
   metadata: {
     defaultsTitle: "Default Metadata",

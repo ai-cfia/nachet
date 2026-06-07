@@ -82,6 +82,8 @@ const main = {
     resultEntry: "{{time}} \u2014 {{modelId}}",
     boxes: "{{count}} bo\u00eetes",
     removeResult: "Supprimer les r\u00e9sultats s\u00e9lectionn\u00e9s",
+    inferring: "Identification en cours...",
+    queuePosition: "Position dans la file : {{position}}",
   },
   metadata: {
     defaultsTitle: "Métadonnées par défaut",

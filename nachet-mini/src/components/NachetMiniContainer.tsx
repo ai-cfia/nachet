@@ -89,7 +89,12 @@ const NachetMiniContainer = () => {
   const markProcessing = useInferenceQueueStore((s) => s.markProcessing);
   const markDone = useInferenceQueueStore((s) => s.markDone);
   const cancel = useInferenceQueueStore((s) => s.cancel);
-  const nextPending = useInferenceQueueStore(selectNextPending);
+  const nextPendingId = useInferenceQueueStore(
+    (s) => s.queue.find((i) => i.status === "pending")?.id ?? null,
+  );
+  const nextPending = nextPendingId
+    ? useInferenceQueueStore.getState().queue.find((i) => i.id === nextPendingId) ?? null
+    : null;
 
   // ADD local dialog state
   const [modelLoadDialogOpen, setModelLoadDialogOpen] = useState(false);
@@ -200,7 +205,7 @@ const NachetMiniContainer = () => {
       return;
     }
 
-    if (!modelLoaded) {
+    if (!modelLoaded && !isLoading) {
       handleLoadModel();
     }
   };
@@ -372,7 +377,7 @@ const NachetMiniContainer = () => {
 
   const isLoading = status === "loading-model";
   const canRunInference =
-    !isWebcamActive && !!currentImage && !isInferring && !isEditing;
+    !isWebcamActive && !!currentImage && !isEditing;
   const canEditBoxes =
     !isWebcamActive && !!currentResult && !isInferring && !isEditing;
   const canClassifyEdited =

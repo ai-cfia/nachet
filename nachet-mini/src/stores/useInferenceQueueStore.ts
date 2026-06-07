@@ -66,8 +66,6 @@ export const useInferenceQueueStore = create<InferenceQueueState>()((set) => ({
     })),
 }));
 
-(window as any).__queueStore = useInferenceQueueStore;
-
 // Selectors
 export const selectActiveQueue = (state: InferenceQueueState) =>
   state.queue.filter(
