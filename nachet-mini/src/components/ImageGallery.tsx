@@ -12,6 +12,7 @@ import {
   CircularProgress,
   Chip
 } from "@mui/material";
+import CancelIcon from "@mui/icons-material/Cancel";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import ImageIcon from "@mui/icons-material/Image";
@@ -95,6 +96,8 @@ const ImageGallery = ({
       return next;
     });
   };
+
+  const cancel = useInferenceQueueStore((s) => s.cancel);
 
   return (
     <Box
@@ -303,6 +306,21 @@ const ImageGallery = ({
                           />
                         )}
                       </Box>
+
+                      {queueEntry && (
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            cancel(queueEntry.id);
+                          }}
+                          sx={{ padding: 0, pr: "5px" }}
+                          aria-label={t("imageGallery.cancelInference", { number: item.index + 1 })}
+                          title={t("imageGallery.cancelInference", { number: item.index + 1 })}
+                          size="small"
+                        >
+                          <CancelIcon style={{ color: "#d32f2f", fontSize: "2.4vh" }} />
+                        </IconButton>
+                      )}
 
                       <IconButton
                         onClick={(e) => {

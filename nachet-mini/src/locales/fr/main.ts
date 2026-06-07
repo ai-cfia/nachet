@@ -84,6 +84,7 @@ const main = {
     removeResult: "Supprimer les r\u00e9sultats s\u00e9lectionn\u00e9s",
     inferring: "Identification en cours...",
     queuePosition: "Position dans la file : {{position}}",
+    cancelInference: "Annuler l'identification de l'image {{number}}",
   },
   metadata: {
     defaultsTitle: "Métadonnées par défaut",

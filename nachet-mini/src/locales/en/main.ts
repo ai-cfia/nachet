@@ -81,6 +81,7 @@ const main = {
     resultEntry: "{{time}} \u2014 {{modelId}}",
     boxes: "{{count}} boxes",
     removeResult: "Delete selected results",
+    cancelInference: "Cancel inference for image {{number}}",
     inferring: "Identifying...",
     queuePosition: "Queue position {{position}}",
   },
