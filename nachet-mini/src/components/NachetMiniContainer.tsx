@@ -11,6 +11,10 @@ import { useInferenceStore, resultKey } from "@stores/useInferenceStore";
 import { useInference } from "@inference/useInference";
 import { useBoxEditStore } from "@stores/useBoxEditStore";
 import {
+  useInferenceQueueStore,
+  selectNextPending,
+} from "@stores/useInferenceQueueStore";
+import {
   DETECTOR_MODELS,
   CLASSIFIER_MODELS,
   DEFAULT_DETECTOR,
@@ -76,15 +80,16 @@ const NachetMiniContainer = () => {
   const hasAcknowledgedModelLoadWarning = useModelLoadConsentStore(
     (s) => s.hasAcknowledgedModelLoadWarning,
   );
-  const pendingInferenceRequest = useModelLoadConsentStore(
-    (s) => s.pendingInferenceRequest,
-  );
   const acknowledgeModelLoadWarning = useModelLoadConsentStore(
     (s) => s.acknowledgeModelLoadWarning,
   );
-  const setPendingInferenceRequest = useModelLoadConsentStore(
-    (s) => s.setPendingInferenceRequest,
-  );
+
+  // Inference queue store
+  const enqueue = useInferenceQueueStore((s) => s.enqueue);
+  const markProcessing = useInferenceQueueStore((s) => s.markProcessing);
+  const markDone = useInferenceQueueStore((s) => s.markDone);
+  const cancel = useInferenceQueueStore((s) => s.cancel);
+  const nextPending = useInferenceQueueStore(selectNextPending);
 
   // ADD local dialog state
   const [modelLoadDialogOpen, setModelLoadDialogOpen] = useState(false);
@@ -184,49 +189,64 @@ const NachetMiniContainer = () => {
     }
   }, [selectedDetectorId, selectedClassifierId, modelLoaded]);
 
+  const isInferring = status === "detecting" || status === "classifying";
   const handleRunInference = () => {
     if (!currentImage) return;
 
-    if (modelLoaded) {
-      runInference(currentImage.src, currentImage.index);
-      return;
-    }
-
-    setPendingInferenceRequest({
-      imageSrc: currentImage.src,
-      imageIndex: currentImage.index,
-    });
+    enqueue({ imageSrc: currentImage.src, imageIndex: currentImage.index });
 
     if (!hasAcknowledgedModelLoadWarning) {
       setModelLoadDialogOpen(true);
       return;
     }
 
-    handleLoadModel();
+    if (!modelLoaded) {
+      handleLoadModel();
+    }
   };
 
-  // When model finishes loading, run the pending inference request (if any).
-  const pendingRef = useRef(pendingInferenceRequest);
+  const startTimeRef = useRef<number | null>(null);
 
+  // Fire the next pending item when conditions are met
   useEffect(() => {
-    pendingRef.current = pendingInferenceRequest;
-  }, [pendingInferenceRequest]);
+    if (!modelLoaded || isInferring || !nextPending) return;
 
-  useEffect(() => {
-    if (!modelLoaded) return;
-    const pending = pendingRef.current;
-    if (!pending) return;
-
-    const stillExists = images.some((img) => img.index === pending.imageIndex);
-    if (stillExists) {
-      runInference(pending.imageSrc, pending.imageIndex);
+    const item = nextPending;
+    const stillExists = images.some((img) => img.index === item.imageIndex);
+    if (!stillExists) {
+      cancel(item.id);
+      return;
     }
-    setPendingInferenceRequest(null);
-  }, [modelLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    markProcessing(item.id);
+    startTimeRef.current = Date.now();
+    runInference(item.imageSrc, item.imageIndex);
+  }, [modelLoaded, isInferring, nextPending]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When inference completes, mark the processing item as done
+  useEffect(() => {
+    if (isInferring) {
+      startTimeRef.current ??= Date.now();
+      return;
+    }
+
+    if (status === "complete") {
+      const processingItem = useInferenceQueueStore
+        .getState()
+        .queue.find((i) => i.status === "processing");
+      if (!processingItem) return;
+
+      const duration = startTimeRef.current
+        ? Date.now() - startTimeRef.current
+        : 0;
+      markDone(processingItem.id, duration);
+      startTimeRef.current = null;
+    }
+  }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleModelLoadDialogCancel = () => {
     setModelLoadDialogOpen(false);
-    setPendingInferenceRequest(null);
+    if (nextPending) cancel(nextPending.id);
   };
 
   const handleModelLoadDialogContinue = () => {
@@ -350,7 +370,6 @@ const NachetMiniContainer = () => {
     setCheckedResults(new Set());
   }, []);
 
-  const isInferring = status === "detecting" || status === "classifying";
   const isLoading = status === "loading-model";
   const canRunInference =
     !isWebcamActive && !!currentImage && !isInferring && !isEditing;
