@@ -41,6 +41,7 @@ import Navbar from "@components/Navbar";
 import AppBar from "@components/AppBar";
 import Footer from "@components/Footer";
 import ControlBarButton from "@components/ControlBarButton";
+import QueueSummary from "@components/QueueSummary";
 
 const iconStyle = {
   fontSize: "2.4vh",
@@ -498,6 +499,7 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
               onClear={onClearImages}
               getResultsForImage={getResultsForImage}
             />
+            <QueueSummary />
             <ResultsTable
               result={currentResult}
               switchTable={switchTable}

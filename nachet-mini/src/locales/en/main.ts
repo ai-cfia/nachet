@@ -27,6 +27,7 @@ const main = {
     noModelLoaded: "No model loaded",
     cameraError: "Camera error: {{message}}",
     error: "Error: {{error}}",
+    queued: "Queued for inference",
   },
   modelLoader: {
     detector: "Detector",
@@ -84,6 +85,7 @@ const main = {
     cancelInference: "Cancel inference for image {{number}}",
     inferring: "Identifying...",
     queuePosition: "Queue position {{position}}",
+    inferring_: "Running",
   },
   metadata: {
     defaultsTitle: "Default Metadata",
@@ -132,6 +134,12 @@ const main = {
       "Nachet Mini runs identification in your browser. The first time you identify an image, the model files must be downloaded and initialized, which can take a while. Later visits should be faster because your browser will reuse cached model files.",
     cancel: "Cancel",
     continue: "Continue",
+  },
+  inferenceQueue: {
+    itemsQueued_one: "{{count}} item in queue",
+    itemsQueued_other: "{{count}} items in queue",
+    eta: "~{{time}}s remaining",
+    etaUnknown: "Estimating...",
   },
 } as const;
 

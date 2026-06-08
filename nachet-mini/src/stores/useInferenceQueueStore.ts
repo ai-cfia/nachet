@@ -12,10 +12,13 @@ interface InferenceQueueState {
   queue: QueuedInferenceItem[];
   lastInferenceDurationMs: number | null;
 
-  enqueue: (item: Omit<QueuedInferenceItem, "id" | "status" | "addedAt">) => void;
+  enqueue: (
+    item: Omit<QueuedInferenceItem, "id" | "status" | "addedAt">,
+  ) => void;
   cancel: (id: string) => void;
   markProcessing: (id: string) => void;
   markDone: (id: string, durationMs: number) => void;
+  setLastInferenceDuration: (durationMs: number) => void;
   clearCompleted: () => void;
 }
 
@@ -52,11 +55,18 @@ export const useInferenceQueueStore = create<InferenceQueueState>()((set) => ({
 
   markDone: (id, durationMs) =>
     set((state) => ({
-      queue: state.queue.map((item) =>
-        item.id === id ? { ...item, status: "done" } : item,
-      ),
+      queue: state.queue
+        .map(
+          (item): QueuedInferenceItem =>
+            item.id === id ? { ...item, status: "done" } : item,
+        )
+        .filter(
+          (item) => item.status !== "done" && item.status !== "cancelled",
+        ),
       lastInferenceDurationMs: durationMs,
     })),
+  setLastInferenceDuration: (durationMs: number) =>
+    set({ lastInferenceDurationMs: durationMs }),
 
   clearCompleted: () =>
     set((state) => ({
@@ -76,7 +86,19 @@ export const selectNextPending = (state: InferenceQueueState) =>
   state.queue.find((item) => item.status === "pending") ?? null;
 
 export const selectEtaMs = (state: InferenceQueueState) => {
-  const remaining = selectActiveQueue(state).length;
-  if (remaining === 0 || state.lastInferenceDurationMs === null) return null;
-  return remaining * state.lastInferenceDurationMs;
+  if (state.lastInferenceDurationMs === null) return null;
+
+  const pendingCount = state.queue.filter((i) => i.status === "pending").length;
+  const processingItem = state.queue.find((i) => i.status === "processing");
+
+  if (pendingCount === 0 && !processingItem) return null;
+
+  const processingEta = processingItem
+    ? Math.max(
+        0,
+        state.lastInferenceDurationMs - (Date.now() - processingItem.addedAt),
+      )
+    : 0;
+
+  return processingEta + pendingCount * state.lastInferenceDurationMs;
 };

@@ -13,7 +13,8 @@ import { resultKey } from "@stores/useInferenceStore";
  * Usage:
  *   const { loadModels, runInference, isModelLoaded } = useInference();
  */
-export const useInference = () => {
+
+export const useInference = (currentIndex: number) => {
   const workerRef = useRef<Worker | null>(null);
   const isModelLoadedRef = useRef(false);
 
@@ -23,6 +24,8 @@ export const useInference = () => {
   const setModelLoaded = useInferenceStore((s) => s.setModelLoaded);
   const setModelLoadProgress = useInferenceStore((s) => s.setModelLoadProgress);
   const setError = useInferenceStore((s) => s.setError);
+
+  const currentIndexRef = useRef<number | null>(null);
 
   // Create worker on mount, terminate on unmount
   useEffect(() => {
@@ -47,11 +50,15 @@ export const useInference = () => {
           break;
         case "partial-result":
           setResult(msg.imageIndex, msg.modelConfigId, msg.result);
-          setActiveResultKey(resultKey(msg.imageIndex, msg.modelConfigId));
+          if (msg.imageIndex === currentIndexRef.current) {
+            setActiveResultKey(resultKey(msg.imageIndex, msg.modelConfigId));
+          }
           break;
         case "result":
           setResult(msg.imageIndex, msg.modelConfigId, msg.result);
-          setActiveResultKey(resultKey(msg.imageIndex, msg.modelConfigId));
+          if (msg.imageIndex === currentIndexRef.current) {
+            setActiveResultKey(resultKey(msg.imageIndex, msg.modelConfigId));
+          }
           setStatus("complete");
           break;
         case "error":
@@ -131,6 +138,10 @@ export const useInference = () => {
     },
     [],
   );
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
 
   return {
     loadModels,

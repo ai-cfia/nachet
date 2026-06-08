@@ -10,7 +10,7 @@ import {
   Collapse,
   Checkbox,
   CircularProgress,
-  Chip
+  Chip,
 } from "@mui/material";
 import CancelIcon from "@mui/icons-material/Cancel";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -22,11 +22,9 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import type { Images, InferenceResult } from "@common/types";
 import { resultKey } from "@stores/useInferenceStore";
-import {
-  useInferenceQueueStore,
-} from "@stores/useInferenceQueueStore";
+import { useInferenceQueueStore } from "@stores/useInferenceQueueStore";
 import { useTranslation } from "react-i18next";
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 interface Props {
   images: Images[];
   currentIndex: number;
@@ -63,7 +61,14 @@ const ImageGallery = ({
   getResultsForImage,
 }: Props) => {
   const { t } = useTranslation("main");
-  const queue = useInferenceQueueStore((s) => s.queue);
+  const queueSnapshot = useInferenceQueueStore((s) =>
+    s.queue.map((i) => `${i.id}:${i.imageIndex}:${i.status}`).join(","),
+  );
+  const queue = useMemo(
+    () => useInferenceQueueStore.getState().queue,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [queueSnapshot],
+  );
   const [collapsedIndices, setCollapsedIndices] = useState<Set<number>>(
     new Set(),
   );
@@ -97,7 +102,10 @@ const ImageGallery = ({
     });
   };
 
-  const cancel = useInferenceQueueStore((s) => s.cancel);
+  const cancel = useCallback(
+    (id: string) => useInferenceQueueStore.getState().cancel(id),
+    [],
+  );
 
   return (
     <Box
@@ -199,11 +207,17 @@ const ImageGallery = ({
               const imageResults = getResultsForImage(item.index);
               const hasResults = imageResults.length > 0;
               const isExpanded = !collapsedIndices.has(item.index);
-              const queueEntry = queue.find((i) => i.imageIndex === item.index && (i.status === "pending" || i.status === "processing"));
+              const queueEntry = queue.find(
+                (i) =>
+                  i.imageIndex === item.index &&
+                  (i.status === "pending" || i.status === "processing"),
+              );
               const pendingItems = queue.filter((i) => i.status === "pending");
-              const queuePosition = queueEntry?.status === "pending"
-                ? pendingItems.indexOf(queueEntry) + 1
-                : null;
+              const queuePosition =
+                queueEntry?.status === "pending"
+                  ? pendingItems.indexOf(queueEntry) + 1
+                  : null;
+              const isPending = queueEntry?.status === "pending";
               const isProcessing = queueEntry?.status === "processing";
 
               return (
@@ -282,43 +296,73 @@ const ImageGallery = ({
                           />
                         )}
                         {isProcessing && (
-                          <CircularProgress
-                            size="1.8vh"
-                            thickness={5}
-                            sx={{ color: "#1565c0", flexShrink: 0 }}
-                            aria-label={t("imageGallery.inferring")}
-                          />
-                        )}
-                        {!isProcessing && queuePosition !== null && queuePosition > 0 && (
-                          <Chip
-                            label={queuePosition}
-                            size="small"
+                          <Box
                             sx={{
-                              height: "2vh",
-                              fontSize: "1.1vh",
-                              bgcolor: "#E3F2FD",
-                              color: "#1565c0",
-                              fontWeight: 600,
-                              flexShrink: 0,
-                              "& .MuiChip-label": { px: "0.6vh" },
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.4vh",
                             }}
-                            aria-label={t("imageGallery.queuePosition", { position: queuePosition })}
-                          />
+                          >
+                            <CircularProgress
+                              size="1.8vh"
+                              thickness={5}
+                              sx={{ color: "#1565c0", flexShrink: 0 }}
+                            />
+                            <Chip
+                              label={t("imageGallery.inferring_")}
+                              size="small"
+                              sx={{
+                                height: "2vh",
+                                fontSize: "1.1vh",
+                                bgcolor: "#E8F5E9",
+                                color: "#2e7d32",
+                                fontWeight: 600,
+                                flexShrink: 0,
+                                "& .MuiChip-label": { px: "0.6vh" },
+                              }}
+                            />
+                          </Box>
                         )}
+                        {!isProcessing &&
+                          queuePosition !== null &&
+                          queuePosition > 0 && (
+                            <Chip
+                              label={queuePosition}
+                              size="small"
+                              sx={{
+                                height: "2vh",
+                                fontSize: "1.1vh",
+                                bgcolor: "#E3F2FD",
+                                color: "#1565c0",
+                                fontWeight: 600,
+                                flexShrink: 0,
+                                "& .MuiChip-label": { px: "0.6vh" },
+                              }}
+                              aria-label={t("imageGallery.queuePosition", {
+                                position: queuePosition,
+                              })}
+                            />
+                          )}
                       </Box>
 
-                      {queueEntry && (
+                      {isPending && (
                         <IconButton
                           onClick={(e) => {
                             e.stopPropagation();
                             cancel(queueEntry.id);
                           }}
                           sx={{ padding: 0, pr: "5px" }}
-                          aria-label={t("imageGallery.cancelInference", { number: item.index + 1 })}
-                          title={t("imageGallery.cancelInference", { number: item.index + 1 })}
+                          aria-label={t("imageGallery.cancelInference", {
+                            number: item.index + 1,
+                          })}
+                          title={t("imageGallery.cancelInference", {
+                            number: item.index + 1,
+                          })}
                           size="small"
                         >
-                          <CancelIcon style={{ color: "#d32f2f", fontSize: "2.4vh" }} />
+                          <CancelIcon
+                            style={{ color: "#d32f2f", fontSize: "2.4vh" }}
+                          />
                         </IconButton>
                       )}
 
