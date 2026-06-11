@@ -6,6 +6,11 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { useTranslation } from "react-i18next";
+import {
+  getDevUserEmail,
+  isAppAuthenticated,
+  isAzureAuthEnabled,
+} from "@common/auth";
 
 interface params {
   windowSize: {
@@ -17,10 +22,16 @@ interface params {
 
 const Navbar: React.FC<params> = (props) => {
   const { instance, inProgress, accounts } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
+  const authEnabled = isAzureAuthEnabled();
+  const isMsalAuthenticated = useIsAuthenticated();
+  const isAuthenticated = isAppAuthenticated(isMsalAuthenticated);
   const { apiScopeClaim } = props;
   const { t } = useTranslation("header");
   const logout = async (): Promise<void> => {
+    if (!authEnabled) {
+      return;
+    }
+
     try {
       await instance.logoutRedirect();
     } catch (error) {
@@ -29,6 +40,10 @@ const Navbar: React.FC<params> = (props) => {
     }
   };
   const login = async (): Promise<void> => {
+    if (!authEnabled) {
+      return;
+    }
+
     try {
       if (inProgress !== InteractionStatus.None) {
         console.warn("Interaction already in progress, please wait");
@@ -43,6 +58,9 @@ const Navbar: React.FC<params> = (props) => {
       throw error;
     }
   };
+  const displayUsername = authEnabled
+    ? accounts[0]?.username
+    : getDevUserEmail();
   const buttonStyle = {
     marginRight: 0,
     marginLeft: 0,
@@ -129,15 +147,19 @@ const Navbar: React.FC<params> = (props) => {
             <Box sx={{ marginRight: "1.6vh" }}>
               <IconButton
                 sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
-                onClick={async () => {
-                  try {
-                    await logout();
-                  } catch (error) {
-                    console.error("Logout failed:", error);
-                  }
-                }}
+                onClick={
+                  authEnabled
+                    ? async () => {
+                        try {
+                          await logout();
+                        } catch (error) {
+                          console.error("Logout failed:", error);
+                        }
+                      }
+                    : undefined
+                }
               >
-                {accounts[0] && (
+                {displayUsername && (
                   <Box
                     component="span"
                     sx={{
@@ -146,7 +168,7 @@ const Navbar: React.FC<params> = (props) => {
                       marginRight: "1rem",
                     }}
                   >
-                    {accounts[0].username}
+                    {displayUsername}
                   </Box>
                 )}
                 <AccountCircleIcon

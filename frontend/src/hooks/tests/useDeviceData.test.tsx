@@ -3,7 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useDeviceData } from "../useDeviceData";
 import { useDeviceStore } from "@stores/useDeviceStore";
 import { fetchDevices } from "@common/api";
-import { acquireAccessToken } from "@common/auth";
+import { acquireAccessToken, isAppAuthenticated } from "@common/auth";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 
@@ -53,6 +53,9 @@ describe("useDeviceData", () => {
     (useIsAuthenticated as any).mockReturnValue(true);
 
     // Mock auth
+    (isAppAuthenticated as any).mockImplementation(
+      (isMsalAuthenticated: boolean) => isMsalAuthenticated,
+    );
     (acquireAccessToken as any).mockResolvedValue("test-token");
 
     // Mock fetchDevices

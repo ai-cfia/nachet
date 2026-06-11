@@ -7,11 +7,13 @@ import useBackendUrl from "@hooks/useBackendUrl";
 import { pingBackend } from "@common/api";
 import { colours } from "../../styles/colours";
 import { useTranslation } from "react-i18next";
+import { getDevUserId, isAzureAuthEnabled } from "../../common/auth";
 
 const Footer: React.FC = () => {
   const accountInfo = useAccount();
   const backendUrl = useBackendUrl();
   const { t } = useTranslation("footer");
+  const authEnabled = isAzureAuthEnabled();
   const [backendConnected, setBackendConnected] = useState<boolean | null>(
     null,
   );
@@ -23,7 +25,7 @@ const Footer: React.FC = () => {
       | { acct?: number }
       | undefined;
     const acctClaim = idTokenClaims?.acct;
-    return acctClaim !== 0;
+    return authEnabled ? acctClaim !== 0 : true;
   })();
 
   // Check backend connectivity for guest users
@@ -138,7 +140,11 @@ const Footer: React.FC = () => {
             zIndex: 0,
           }}
         >
-          {t("oid", { oid: accountInfo?.idTokenClaims?.oid || "" })}
+          {t("oid", {
+            oid:
+              accountInfo?.idTokenClaims?.oid ||
+              (!authEnabled ? getDevUserId() : ""),
+          })}
         </Box>
         <Box
           component="img"

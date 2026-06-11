@@ -169,6 +169,20 @@ backend to function, you will need to add the missing values:
   `client_max_body_size`
   [value](https://github.com/ai-cfia/howard/blob/dedee069f051ba743122084fcb5d5c97c2499359/kubernetes/aks/apps/nachet/base/nachet-ingress.yaml#L13)
   set from the deployment in Howard.
+- **AZURE_AUTH_ENABLED**: Enables Microsoft Entra JWT validation. Defaults to
+  `true`. Set to `false` only in local development to use a synthetic dev user.
+  The backend rejects disabled auth unless `NACHET_ENV` is `development` or
+  `local`, or `IS_TEST_ENVIRONMENT="true"`.
+- **NACHET_ENV**: Runtime environment name. Use `local` or `development` for
+  local disabled-auth development; staging and production must keep auth
+  enabled.
+- **IS_TEST_ENVIRONMENT**: Allows disabled-auth mode for automated tests when
+  set to `true`. Treat this as sensitive configuration; never set it in staging
+  or production.
+- **DEV_USER_ID**, **DEV_USER_EMAIL**, **DEV_USER_NAME**: Local development
+  identity used only when `AZURE_AUTH_ENABLED=false`. `DEV_USER_ID` must match a
+  user UUID in the local database, for example the user created by
+  `app/db/db_setup_local.py`.
 
 #### DEPRECATED
 

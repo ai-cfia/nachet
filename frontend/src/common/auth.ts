@@ -4,8 +4,40 @@ import {
   BrowserAuthError,
 } from "@azure/msal-browser";
 
+const DEV_ACCESS_TOKEN = "local-dev-auth-disabled";
+const DEV_USER_ID = "8ea46a6b-7d37-4fbb-a66f-775112376e16";
+const DEV_USER_EMAIL = "test.user@inspection.gc.ca";
+
 // Track if we're currently in a redirect flow to prevent loops
 let isRedirecting = false;
+
+function isFalseLike(value: unknown): boolean {
+  return ["false", "0", "no", "off"].includes(
+    String(value ?? "")
+      .trim()
+      .toLowerCase(),
+  );
+}
+
+export function isAzureAuthEnabled(): boolean {
+  return !isFalseLike(import.meta.env.VITE_AZURE_AUTH_ENABLED);
+}
+
+export function isAppAuthenticated(isMsalAuthenticated: boolean): boolean {
+  return !isAzureAuthEnabled() || isMsalAuthenticated;
+}
+
+export function getDevAccessToken(): string {
+  return import.meta.env.VITE_DEV_ACCESS_TOKEN || DEV_ACCESS_TOKEN;
+}
+
+export function getDevUserId(): string {
+  return import.meta.env.VITE_DEV_USER_ID || DEV_USER_ID;
+}
+
+export function getDevUserEmail(): string {
+  return import.meta.env.VITE_DEV_USER_EMAIL || DEV_USER_EMAIL;
+}
 
 /**
  * Checks if an error requires user interaction (redirect to login)
@@ -42,6 +74,10 @@ export async function acquireAccessToken(
   msalInstance: IPublicClientApplication,
   scopes: string[],
 ): Promise<string> {
+  if (!isAzureAuthEnabled()) {
+    return getDevAccessToken();
+  }
+
   const activeAccount = msalInstance.getActiveAccount();
   const accounts = msalInstance.getAllAccounts();
 
@@ -95,6 +131,10 @@ export async function acquireIdToken(
   msalInstance: IPublicClientApplication,
   scopes: string[],
 ): Promise<string> {
+  if (!isAzureAuthEnabled()) {
+    return getDevAccessToken();
+  }
+
   const activeAccount = msalInstance.getActiveAccount();
   const accounts = msalInstance.getAllAccounts();
 

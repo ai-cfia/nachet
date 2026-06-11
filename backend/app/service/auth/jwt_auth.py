@@ -1,4 +1,5 @@
 import os
+from time import time
 from uuid import UUID
 from beartype.typing import Optional
 from fastapi import HTTPException, status
@@ -51,6 +52,14 @@ class JWTAuthenticator:
         Raises:
             HTTPException: If user oid is missing or invalid
         """
+        settings = get_settings()
+
+        if not settings.azure_auth_enabled:
+            self._ensure_local_dev_auth_allowed(settings)
+            user = self._get_local_dev_user(settings)
+            request.state.user = user
+            return user
+
         auth_scheme = self._get_auth_scheme()
         user = await auth_scheme(request, security_scopes)
 
@@ -77,6 +86,54 @@ class JWTAuthenticator:
             ) from e
 
         return user
+
+    def _ensure_local_dev_auth_allowed(self, settings) -> None:
+        """Fail closed if disabled auth is configured outside local/test use."""
+        nachet_env = (settings.nachet_env or "").strip().lower()
+        if nachet_env in {"development", "local"} or settings.is_test_environment:
+            return
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="AZURE_AUTH_ENABLED=false is only allowed when "
+            'NACHET_ENV is "development" or "local", or IS_TEST_ENVIRONMENT=true.',
+        )
+
+    def _get_local_dev_user(self, settings) -> User:
+        """Return a synthetic authenticated user for local development."""
+        try:
+            user_id = UUID(settings.dev_user_id)
+        except (ValueError, TypeError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Invalid DEV_USER_ID format: {settings.dev_user_id}",
+            ) from e
+
+        now = int(time())
+        claims = {
+            "aud": "local-dev",
+            "iss": "local-dev",
+            "iat": now,
+            "nbf": now,
+            "exp": now + 86400,
+            "sub": str(user_id),
+            "oid": str(user_id),
+            "tid": "local-dev",
+            "ver": "2.0",
+            "name": settings.dev_user_name,
+            "email": settings.dev_user_email,
+            "preferred_username": settings.dev_user_email,
+            "scp": "",
+        }
+
+        return User(
+            **{
+                **claims,
+                "claims": claims,
+                "access_token": "local-dev-auth-disabled",
+                "is_guest": False,
+            }
+        )
 
 
 # Global authenticator instance

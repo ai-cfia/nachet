@@ -15,7 +15,7 @@ import { sendNegativeFeedback, sendPositiveFeedback } from "@common";
 import { useSpeciesData } from "@hooks";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
-import { acquireAccessToken } from "@common/auth";
+import { acquireAccessToken, isAppAuthenticated } from "@common/auth";
 import { getUnscaledCoordinates } from "@common/imageutils";
 import { useImageStore } from "@stores/useImageStore";
 import { useNotificationStore } from "@stores/useNotificationStore";
@@ -95,7 +95,8 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
   const [boxDragEnabled, setBoxDragEnabled] = useState<boolean>(true);
 
   const { instance: msalInstance, inProgress } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
+  const isMsalAuthenticated = useIsAuthenticated();
+  const isAuthenticated = isAppAuthenticated(isMsalAuthenticated);
   const { speciesData, isLoading: classListLoading } = useSpeciesData(
     backendUrl,
     apiScopeClaim,

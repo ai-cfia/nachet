@@ -11,7 +11,7 @@ import { colours } from "@styles/colours";
 import { useBackendUrl } from "@hooks";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
-import { acquireAccessToken } from "@common/auth";
+import { acquireAccessToken, isAppAuthenticated } from "@common/auth";
 import { createOrGetFolder, updateFolder, deleteFolder } from "@common/api";
 import { normalizedPathSchema, descriptionSchema } from "@common/validation";
 import { getZodErrorKey } from "@common/zodErrorMap";
@@ -58,7 +58,8 @@ const DirectoryPopup: React.FC<params> = (props) => {
   const [validationError, setValidationError] = useState<string>("");
   const [descriptionError, setDescriptionError] = useState<string>("");
   const { instance: msalInstance, inProgress } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
+  const isMsalAuthenticated = useIsAuthenticated();
+  const isAuthenticated = isAppAuthenticated(isMsalAuthenticated);
   const { addError, addWarning } = useNotificationStore();
 
   // Zod validation hook for auto-normalization on blur

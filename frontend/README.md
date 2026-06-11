@@ -200,10 +200,10 @@ For a consistent development environment, you can use Docker:
    ```bash
    # Stop the development container
    docker-compose -f docker-compose.dev.yml down
-   
+
    # Rebuild with fresh dependencies
    docker-compose -f docker-compose.dev.yml up --build --force-recreate
-   
+
    # Clean up development containers and images
    docker-compose -f docker-compose.dev.yml down --rmi all --volumes
    ```
@@ -262,11 +262,11 @@ can be found in our
 This documentation covers:
 
 - Overview and purpose of different environment files (`environment.ts`,
-`environment.staging.ts`, `environment.prod.ts`).
+  `environment.staging.ts`, `environment.prod.ts`).
 - The process for selecting and applying the correct environment configuration
-during the build and deployment.
+  during the build and deployment.
 - Best practices for maintaining clear, consistent, and secure configuration
-management across all frontend components.
+  management across all frontend components.
 
 Refer to this documentation to understand how to effectively manage and utilize
 environment configurations in your project.
@@ -280,10 +280,15 @@ different environments (development, staging, production).
 ### Required Variables
 
 1. `VITE_BACKEND_URL`: URL of the backend server. This is used to make API calls
-from the frontend.
+   from the frontend.
 2. `VITE_APP_MODE`: Determines the mode in which the application runs. Set to
-`"test"` for using test data, any other value will use real data from the
-backend.
+   `"test"` for using test data, any other value will use real data from the
+   backend.
+3. `VITE_AZURE_AUTH_ENABLED`: Enables Entra/MSAL authentication. Defaults to
+   `"true"`. Set to `"false"` only for local development, together with backend
+   `AZURE_AUTH_ENABLED="false"`.
+4. `VITE_DEV_USER_ID`, `VITE_DEV_USER_EMAIL`, `VITE_DEV_ACCESS_TOKEN`: Local
+   development identity values used only when `VITE_AZURE_AUTH_ENABLED="false"`.
 
 ### Setting Up Environment Variables
 

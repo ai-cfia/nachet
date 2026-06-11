@@ -43,6 +43,7 @@ Create a `.env` file in the frontend directory with the following variables:
 VITE_BACKEND_URL="http://localhost:8080"
 
 # OAuth 2.0 / Azure AD Configuration
+VITE_AZURE_AUTH_ENABLED="true"
 VITE_AZURE_CLIENT_ID="your-application-client-id"
 VITE_AZURE_AUTHORITY="https://login.microsoftonline.com/your-tenant-id"
 VITE_AZURE_REDIRECT_URI="http://localhost:5173"
@@ -55,6 +56,24 @@ VITE_AZURE_POST_LOGOUT_REDIRECT_URI="http://localhost:5173"
 - **VITE_AZURE_AUTHORITY**: The authority URL for your tenant. Replace `your-tenant-id` with your actual tenant ID, or use `common` for multi-tenant applications
 - **VITE_AZURE_REDIRECT_URI**: The URI where users will be redirected after authentication
 - **VITE_AZURE_POST_LOGOUT_REDIRECT_URI**: The URI where users will be redirected after logout
+- **VITE_AZURE_AUTH_ENABLED**: Keep `"true"` for normal Entra authentication.
+  Set to `"false"` only for local development when the backend also has
+  `AZURE_AUTH_ENABLED="false"` and `NACHET_ENV="local"` or `"development"`.
+
+### Local Development Bypass
+
+For local development without Entra access, set:
+
+```bash
+VITE_AZURE_AUTH_ENABLED="false"
+VITE_DEV_USER_ID="8ea46a6b-7d37-4fbb-a66f-775112376e16"
+VITE_DEV_USER_EMAIL="test.user@inspection.gc.ca"
+VITE_DEV_ACCESS_TOKEN="local-dev-auth-disabled"
+```
+
+The frontend will skip MSAL sign-in UI and send the placeholder bearer token.
+The backend must also disable auth, set `NACHET_ENV="local"` or
+`"development"`, and use the same `DEV_USER_ID`.
 
 ## Architecture
 

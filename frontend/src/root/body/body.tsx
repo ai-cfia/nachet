@@ -41,7 +41,13 @@ import { useInferenceResultsStore } from "@stores/useInferenceResultsStore";
 import { WorkflowQueueManager } from "../../services/WorkflowQueueManager";
 import { InteractionStatus } from "@azure/msal-browser";
 import { useMsal, useIsAuthenticated, useAccount } from "@azure/msal-react";
-import { acquireAccessToken } from "@common/auth";
+import {
+  acquireAccessToken,
+  getDevUserEmail,
+  getDevUserId,
+  isAppAuthenticated,
+  isAzureAuthEnabled,
+} from "@common/auth";
 import {
   getLabelOccurrence,
   loadToCanvas,
@@ -162,12 +168,15 @@ const Body: React.FC<params> = (props) => {
   const backendUrl = useBackendUrl();
   const apiScopeClaim = props.apiScopeClaim;
   const { instance: msalInstance, inProgress, accounts } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
+  const isMsalAuthenticated = useIsAuthenticated();
+  const isAuthenticated = isAppAuthenticated(isMsalAuthenticated);
+  const authEnabled = isAzureAuthEnabled();
   const accountInfo = useAccount();
 
   // Webcam devices hook
   useWebcamDevices();
-  const uuid = accountInfo?.idTokenClaims?.oid ?? "";
+  const uuid =
+    accountInfo?.idTokenClaims?.oid ?? (!authEnabled ? getDevUserId() : "");
   const { devicesData } = useDeviceData(backendUrl, apiScopeClaim);
 
   // Model metadata hook
@@ -631,7 +640,8 @@ const Body: React.FC<params> = (props) => {
     }
 
     // Extract username from email and convert to lowercase
-    const userEmail = accounts[0]?.username || "";
+    const userEmail =
+      accounts[0]?.username || (!authEnabled ? getDevUserEmail() : "");
     const username = userEmail.split("@")[0].toLowerCase();
 
     // Find matching folder

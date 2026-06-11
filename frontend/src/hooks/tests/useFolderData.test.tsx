@@ -3,7 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useFolderData } from "../useFolderData";
 import { useFolderStore, FolderData } from "@stores/useFolderStore";
 import { readAzureStorageDir } from "@common/api";
-import { acquireAccessToken } from "@common/auth";
+import { acquireAccessToken, isAppAuthenticated } from "@common/auth";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 
@@ -77,6 +77,9 @@ describe("useFolderData", () => {
     });
 
     (useIsAuthenticated as any).mockReturnValue(true);
+    (isAppAuthenticated as any).mockImplementation(
+      (isMsalAuthenticated: boolean) => isMsalAuthenticated,
+    );
     (acquireAccessToken as any).mockResolvedValue("test-token");
     (readAzureStorageDir as any).mockResolvedValue(mockApiResponse);
 

@@ -3,7 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useSpeciesData } from "../useSpeciesData";
 import { useSpeciesStore } from "@stores/useSpeciesStore";
 import { requestClassList } from "@common/api";
-import { acquireAccessToken } from "@common/auth";
+import { acquireAccessToken, isAppAuthenticated } from "@common/auth";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 
@@ -46,6 +46,9 @@ describe("useSpeciesData", () => {
     });
 
     (useIsAuthenticated as any).mockReturnValue(true);
+    (isAppAuthenticated as any).mockImplementation(
+      (isMsalAuthenticated: boolean) => isMsalAuthenticated,
+    );
     (acquireAccessToken as any).mockResolvedValue("test-token");
     (requestClassList as any).mockResolvedValue(mockSpeciesData);
 

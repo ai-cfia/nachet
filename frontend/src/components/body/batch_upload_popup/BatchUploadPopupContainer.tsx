@@ -10,7 +10,7 @@ import {
 } from "@hooks";
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
-import { acquireAccessToken } from "@common/auth";
+import { acquireAccessToken, isAppAuthenticated } from "@common/auth";
 import { getSeedIdByTaxonomy } from "../../../utils/seedLookup";
 import {
   folderNameSchema,
@@ -140,7 +140,8 @@ export const BatchUploadPopupContainer = (
   const { speciesData } = useSpeciesData(backendUrl, apiScopeClaim);
   const { devicesData } = useDeviceData(backendUrl, apiScopeClaim);
   const { instance: msalInstance, inProgress } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
+  const isMsalAuthenticated = useIsAuthenticated();
+  const isAuthenticated = isAppAuthenticated(isMsalAuthenticated);
 
   // Folder creation state
   const [createdFolderId, setCreatedFolderId] = useState<string>("");

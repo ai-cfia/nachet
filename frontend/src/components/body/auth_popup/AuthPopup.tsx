@@ -11,6 +11,7 @@ import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { InteractionStatus } from "@azure/msal-browser";
 import { colours } from "../../../styles/colours";
 import { useTranslation } from "react-i18next";
+import { isAppAuthenticated, isAzureAuthEnabled } from "@common/auth";
 
 interface AuthPopupProps {
   open: boolean;
@@ -25,9 +26,15 @@ const AuthPopup: React.FC<AuthPopupProps> = ({
 }) => {
   const { t } = useTranslation("popups");
   const { instance, inProgress } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
+  const authEnabled = isAzureAuthEnabled();
+  const isMsalAuthenticated = useIsAuthenticated();
+  const isAuthenticated = isAppAuthenticated(isMsalAuthenticated);
 
   const handleSignIn = async (): Promise<void> => {
+    if (!authEnabled) {
+      return;
+    }
+
     try {
       if (inProgress !== InteractionStatus.None) {
         console.warn("Interaction already in progress, please wait");

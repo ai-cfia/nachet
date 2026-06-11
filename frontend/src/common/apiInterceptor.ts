@@ -4,6 +4,7 @@ import {
   InteractionRequiredAuthError,
   BrowserAuthError,
 } from "@azure/msal-browser";
+import { getDevAccessToken, isAzureAuthEnabled } from "./auth";
 
 // Track if we're currently in a redirect flow to prevent loops
 let isRedirecting = false;
@@ -50,6 +51,13 @@ export function setupAxiosInterceptor(
       // Check if this is a 401 error and we haven't already retried
       if (error.response?.status === 401 && !originalRequest?._retry) {
         originalRequest._retry = true;
+
+        if (!isAzureAuthEnabled()) {
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${getDevAccessToken()}`;
+          }
+          return axios(originalRequest);
+        }
 
         // Prevent redirect loop
         if (isRedirecting) {

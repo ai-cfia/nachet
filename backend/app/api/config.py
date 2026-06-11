@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     azure_client_id: str | None = None
     azure_tenant_id: str | None = None
     azure_api_scope_claim: str | None = None
+    dev_user_id: str = "8ea46a6b-7d37-4fbb-a66f-775112376e16"
+    dev_user_email: str = "test.user@inspection.gc.ca"
+    dev_user_name: str = "Local Dev User"
 
     # database settings
     db_user: str | None = None
