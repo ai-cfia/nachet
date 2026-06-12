@@ -170,19 +170,14 @@ backend to function, you will need to add the missing values:
   [value](https://github.com/ai-cfia/howard/blob/dedee069f051ba743122084fcb5d5c97c2499359/kubernetes/aks/apps/nachet/base/nachet-ingress.yaml#L13)
   set from the deployment in Howard.
 - **AZURE_AUTH_ENABLED**: Enables Microsoft Entra JWT validation. Defaults to
-  `true`. Set to `false` only in local development to use a synthetic dev user.
-  The backend rejects disabled auth unless `NACHET_ENV` is `development` or
-  `local`, or `IS_TEST_ENVIRONMENT="true"`.
-- **NACHET_ENV**: Runtime environment name. Use `local` or `development` for
-  local disabled-auth development; staging and production must keep auth
-  enabled.
-- **IS_TEST_ENVIRONMENT**: Allows disabled-auth mode for automated tests when
-  set to `true`. Treat this as sensitive configuration; never set it in staging
-  or production.
-- **DEV_USER_ID**, **DEV_USER_EMAIL**, **DEV_USER_NAME**: Local development
-  identity used only when `AZURE_AUTH_ENABLED=false`. `DEV_USER_ID` must match a
-  user UUID in the local database, for example the user created by
-  `app/db/db_setup_local.py`.
+  `true`. Set to `false` only for local development.
+- **NACHET_ENV**: Runtime environment name. Disabled auth is accepted only when
+  this is `local` or `development`.
+- **IS_TEST_ENVIRONMENT**: Test-only override for disabled auth. Do not set this
+  in staging or production.
+- **DEV_USER_ID**, **DEV_USER_EMAIL**, **DEV_USER_NAME**: Local identity used
+  when `AZURE_AUTH_ENABLED=false`. `DEV_USER_ID` must match a user in the local
+  database, such as the one created by `app/db/db_setup_local.py`.
 
 #### DEPRECATED
 
@@ -349,6 +344,17 @@ que le backend fonctionne, vous devrez compléter les valeurs manquantes :
   `client_max_body_size`
   [définie](https://github.com/ai-cfia/howard/blob/dedee069f051ba743122084fcb5d5c97c2499359/kubernetes/aks/apps/nachet/base/nachet-ingress.yaml#L13)
   lors du déploiement dans Howard.
+- **AZURE_AUTH_ENABLED** : Active la validation des JWT Microsoft Entra. La
+  valeur par défaut est `true`. Utilisez `false` seulement en développement
+  local.
+- **NACHET_ENV** : Nom de l'environnement d'exécution. L'authentification
+  désactivée est acceptée seulement avec `local` ou `development`.
+- **IS_TEST_ENVIRONMENT** : Option réservée aux tests automatisés pour autoriser
+  l'authentification désactivée. Ne l'utilisez pas en staging ou en production.
+- **DEV_USER_ID**, **DEV_USER_EMAIL**, **DEV_USER_NAME** : Identité locale
+  utilisée quand `AZURE_AUTH_ENABLED=false`. `DEV_USER_ID` doit correspondre à
+  un utilisateur dans la base locale, par exemple celui créé par
+  `app/db/db_setup_local.py`.
 
 #### DÉPRÉCIÉES
 

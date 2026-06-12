@@ -229,13 +229,10 @@ nachet/frontend$ npm run dev -- --port 12438
 nachet/frontend$ unset $(grep -v '^#' .env.config.local | grep -v '^$' | cut -d= -f1)
 ```
 
-### Optional local development without Entra authentication
+### Run locally without Entra authentication
 
-Authentication is enabled by default. For local development only, you can bypass
-Microsoft Entra/MSAL while still exercising the backend's user, folder, and RBAC
-code paths with a seeded local user.
-
-Use matching frontend and backend settings:
+Authentication is enabled by default. To run the app locally without Microsoft
+Entra, use the same auth mode in the backend and frontend env files:
 
 ```bash
 # backend/.env.local or backend/.env.container.local
@@ -252,11 +249,10 @@ VITE_DEV_USER_EMAIL="test.user@inspection.gc.ca"
 VITE_DEV_ACCESS_TOKEN="local-dev-auth-disabled"
 ```
 
-The default dev user above is created by `backend/app/db/db_setup_local.py`.
-The backend rejects disabled auth unless `NACHET_ENV` is `development` or
-`local`, or `IS_TEST_ENVIRONMENT="true"`. Treat `IS_TEST_ENVIRONMENT` as
-sensitive configuration; do not set disabled-auth or test-environment settings
-in staging or production.
+The dev user above is created by `backend/app/db/db_setup_local.py`.
+Disabled auth is accepted only when `NACHET_ENV` is `local` or `development`, or
+when `IS_TEST_ENVIRONMENT="true"`. Do not use these settings in staging or
+production.
 
 ### Update the compose file as needed
 

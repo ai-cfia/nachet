@@ -56,13 +56,12 @@ VITE_AZURE_POST_LOGOUT_REDIRECT_URI="http://localhost:5173"
 - **VITE_AZURE_AUTHORITY**: The authority URL for your tenant. Replace `your-tenant-id` with your actual tenant ID, or use `common` for multi-tenant applications
 - **VITE_AZURE_REDIRECT_URI**: The URI where users will be redirected after authentication
 - **VITE_AZURE_POST_LOGOUT_REDIRECT_URI**: The URI where users will be redirected after logout
-- **VITE_AZURE_AUTH_ENABLED**: Keep `"true"` for normal Entra authentication.
-  Set to `"false"` only for local development when the backend also has
-  `AZURE_AUTH_ENABLED="false"` and `NACHET_ENV="local"` or `"development"`.
+- **VITE_AZURE_AUTH_ENABLED**: Defaults to `"true"`. Use `"false"` only for
+  local development with backend `AZURE_AUTH_ENABLED="false"`.
 
-### Local Development Bypass
+### Local Development Without Entra
 
-For local development without Entra access, set:
+If you do not have Entra credentials locally, set:
 
 ```bash
 VITE_AZURE_AUTH_ENABLED="false"
@@ -71,9 +70,9 @@ VITE_DEV_USER_EMAIL="test.user@inspection.gc.ca"
 VITE_DEV_ACCESS_TOKEN="local-dev-auth-disabled"
 ```
 
-The frontend will skip MSAL sign-in UI and send the placeholder bearer token.
-The backend must also disable auth, set `NACHET_ENV="local"` or
-`"development"`, and use the same `DEV_USER_ID`.
+The frontend skips the MSAL sign-in flow and sends the placeholder bearer token.
+The backend must also disable auth and run with `NACHET_ENV="local"` or
+`NACHET_ENV="development"`.
 
 ## Architecture
 

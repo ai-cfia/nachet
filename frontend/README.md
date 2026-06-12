@@ -284,11 +284,11 @@ different environments (development, staging, production).
 2. `VITE_APP_MODE`: Determines the mode in which the application runs. Set to
    `"test"` for using test data, any other value will use real data from the
    backend.
-3. `VITE_AZURE_AUTH_ENABLED`: Enables Entra/MSAL authentication. Defaults to
-   `"true"`. Set to `"false"` only for local development, together with backend
+3. `VITE_AZURE_AUTH_ENABLED`: Enables Microsoft Entra authentication. Defaults
+   to `"true"`. Use `"false"` only for local development, together with backend
    `AZURE_AUTH_ENABLED="false"`.
-4. `VITE_DEV_USER_ID`, `VITE_DEV_USER_EMAIL`, `VITE_DEV_ACCESS_TOKEN`: Local
-   development identity values used only when `VITE_AZURE_AUTH_ENABLED="false"`.
+4. `VITE_DEV_USER_ID`, `VITE_DEV_USER_EMAIL`, `VITE_DEV_ACCESS_TOKEN`: Local dev
+   values used only when `VITE_AZURE_AUTH_ENABLED="false"`.
 
 ### Setting Up Environment Variables
 
