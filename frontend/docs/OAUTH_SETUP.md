@@ -73,6 +73,7 @@ VITE_DEV_ACCESS_TOKEN="local-dev-auth-disabled"
 The frontend skips the MSAL sign-in flow and sends the placeholder bearer token.
 The backend must also disable auth and run with `NACHET_ENV="local"` or
 `NACHET_ENV="development"`.
+Use the same UUID for frontend `VITE_DEV_USER_ID` and backend `DEV_USER_ID`.
 
 ## Architecture
 
