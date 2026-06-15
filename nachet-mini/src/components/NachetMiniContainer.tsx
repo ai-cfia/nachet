@@ -222,12 +222,6 @@ const NachetMiniContainer = () => {
 
   // Fire the next pending item when conditions are met
   useEffect(() => {
-    console.log("drain fired", {
-      modelLoaded,
-      isInferring,
-      nextPendingId,
-      isFiring: isFiringRef.current,
-    });
     if (!modelLoaded || isInferring || !nextPendingId) return;
     if (isFiringRef.current) return;
 
@@ -262,14 +256,6 @@ const NachetMiniContainer = () => {
       const processingItem = useInferenceQueueStore
         .getState()
         .queue.find((i) => i.status === "processing");
-
-      console.log("finalization", {
-        duration,
-        processingItem,
-        queue: useInferenceQueueStore
-          .getState()
-          .queue.map((i) => ({ id: i.id.slice(0, 6), status: i.status })),
-      });
 
       if (processingItem) {
         markDone(processingItem.id, duration);
