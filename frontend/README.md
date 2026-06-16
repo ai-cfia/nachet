@@ -252,6 +252,15 @@ docker-compose up --build
 
 This enables preview of local frontend changes while connecting to the backend services.
 
+### Submodules
+
+The frontend includes the AI Lab fork of `oidc-client-ts` as a Git submodule.
+After cloning the repository, initialize submodules with:
+
+```bash
+git submodule update --init --recursive
+```
+
 ## Deployment Environment Configuration Management
 
 For managing and configuring different deployment environments (development,

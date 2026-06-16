@@ -6,6 +6,7 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: "./src/setupTests.ts",
+    exclude: ["node_modules/**", "dist/**", "vendor/**"],
     // Specify other Vitest options here
     coverage: {
       include: ["src/**/*.{ts,tsx}"],
