@@ -220,7 +220,6 @@ export const loadSam3 = async (
 ): Promise<void> => {
   if (
     !config.detectorComponentFiles ||
-    !config.detectorRequiresPrompt ||
     config.detectorKind !== "text-promptable-segmentation"
   ) {
     throw new Error(

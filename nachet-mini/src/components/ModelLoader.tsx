@@ -27,9 +27,9 @@ interface Props {
   isLoading: boolean;
   disabled: boolean;
   /**
-   * Text-promptable detector inputs. When the selected detector has
-   * `requiresPrompt=true` (e.g. SAM3), a TextField is rendered next to the
-   * dropdowns. Closed-vocabulary detectors (RT-DETR, DETR) hide it.
+   * Text-promptable detector inputs. When the selected detector's kind is
+   * `text-promptable-segmentation` (e.g. SAM3), a TextField is rendered next to
+   * the dropdowns. Closed-vocabulary detectors (RT-DETR, DETR) hide it.
    */
   detectorPrompt: string;
   onDetectorPromptChange: (value: string) => void;

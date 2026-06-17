@@ -311,4 +311,44 @@ describe("ModelLoader", () => {
       expect(onSelectClassifier).toHaveBeenCalledWith(TEST_CLASSIFIERS[1].id);
     });
   });
+
+  describe("concept prompt input", () => {
+    const getPromptInput = (name = enMain.modelLoader.prompt) =>
+      page.getByRole("textbox", { name });
+
+    it("is hidden when the detector does not require a prompt", async () => {
+      renderModelLoader({ detectorRequiresPrompt: false });
+      expect(await getPromptInput().all()).toHaveLength(0);
+    });
+
+    it("renders with the current prompt value when the detector requires one", async () => {
+      renderModelLoader({
+        detectorRequiresPrompt: true,
+        detectorPrompt: "ragweed",
+      });
+      await expect.element(getPromptInput()).toBeVisible();
+      await expect.element(getPromptInput()).toHaveValue("ragweed");
+    });
+
+    it("calls onDetectorPromptChange as the user types", async () => {
+      const onDetectorPromptChange = vi.fn();
+      renderModelLoader({
+        detectorRequiresPrompt: true,
+        detectorPrompt: "",
+        onDetectorPromptChange,
+      });
+      await getPromptInput().fill("seed");
+      expect(onDetectorPromptChange).toHaveBeenCalled();
+      // The handler receives the raw input value on each keystroke.
+      expect(onDetectorPromptChange).toHaveBeenLastCalledWith("seed");
+    });
+
+    it("uses the localized label in French", async () => {
+      await i18n.changeLanguage("fr");
+      renderModelLoader({ detectorRequiresPrompt: true });
+      await expect
+        .element(getPromptInput(frMain.modelLoader.prompt))
+        .toBeVisible();
+    });
+  });
 });

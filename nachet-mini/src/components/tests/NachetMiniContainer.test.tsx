@@ -570,6 +570,7 @@ describe("NachetMiniContainer", () => {
       expect(mockRunInference).toHaveBeenCalledWith(
         "data:image/png;base64,abc",
         7,
+        null,
       );
     });
   });
@@ -702,6 +703,7 @@ describe("NachetMiniContainer", () => {
       expect(mockRunInference).toHaveBeenCalledWith(
         "data:image/png;base64,abc",
         0,
+        null,
       );
     });
 

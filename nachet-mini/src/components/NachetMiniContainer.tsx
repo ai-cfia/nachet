@@ -129,7 +129,8 @@ const NachetMiniContainer = () => {
   const selectedDetector = DETECTOR_MODELS.find(
     (d) => d.id === selectedDetectorId,
   );
-  const detectorRequiresPrompt = !!selectedDetector?.requiresPrompt;
+  const detectorRequiresPrompt =
+    selectedDetector?.kind === "text-promptable-segmentation";
   const [switchTable, setSwitchTable] = useState(false);
   const [metadataOpen, setMetadataOpen] = useState(false);
   const [metadataMode, setMetadataMode] = useState<"defaults" | "image">(
@@ -250,10 +251,13 @@ const NachetMiniContainer = () => {
     startTimeRef.current = Date.now();
     detectionStartRef.current = Date.now();
     // Only forward the prompt when the detector actually consumes it. Closed-
-    // vocabulary detectors (RT-DETR, DETR) ignore it; we pass undefined so the
+    // vocabulary detectors (RT-DETR, DETR) ignore it; we pass null so the
     // worker logs stay clear.
-    const prompt = detectorRequiresPrompt ? detectorPrompt : undefined;
-    runInference(item.imageSrc, item.imageIndex, prompt);
+    runInference(
+      item.imageSrc,
+      item.imageIndex,
+      detectorRequiresPrompt ? detectorPrompt : null,
+    );
   }, [modelLoaded, isInferring, nextPendingId, drainTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const prevStatusRef = useRef<string>(status);

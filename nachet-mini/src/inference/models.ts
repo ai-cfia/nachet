@@ -31,10 +31,12 @@ export interface ModelConfig {
   detectorModelFileName?: string;
   /** Minimum bounding-box size (longest dimension, px) for reliable classification */
   minBoxSize: number;
-  /** Detector kind. Defaults to `"object-detection"`. */
+  /**
+   * Detector kind. Defaults to `"object-detection"`. The
+   * `text-promptable-segmentation` kind is what drives the prompt UI and the
+   * worker's `prompt` expectation — there's no separate boolean for it.
+   */
   detectorKind?: DetectorKind;
-  /** If true, UI shows a text-prompt input and worker expects `prompt` on run-inference. */
-  detectorRequiresPrompt?: boolean;
   /** For multi-file detectors: ONNX filenames within `detectorModel`'s HF repo. */
   detectorComponentFiles?: DetectorComponentFiles;
   /** Alternate HF repo for tokenizer/processor when weights and config live separately (e.g. SAM 3). */
@@ -53,10 +55,12 @@ export interface DetectorModelEntry {
   threshold: number;
   /** Optional ONNX filename (without .onnx extension), defaults to "model" */
   modelFileName?: string;
-  /** What kind of detector this is. Defaults to `"object-detection"`. */
+  /**
+   * What kind of detector this is. Defaults to `"object-detection"`.
+   * `text-promptable-segmentation` (e.g. SAM3) is what makes the UI show a
+   * text-prompt input — no separate `requiresPrompt` flag needed.
+   */
   kind?: DetectorKind;
-  /** True if the UI should show a text-prompt input when this detector is selected. */
-  requiresPrompt?: boolean;
   /** For multi-file detectors (e.g. SAM3): which ONNX files make up the model. */
   componentFiles?: DetectorComponentFiles;
   /** Alternate HF repo for tokenizer/processor when weights and config live separately. */
@@ -85,9 +89,10 @@ export type WorkerInMessage =
       imageIndex: number;
       /**
        * Text concept prompt for text-promptable detectors (e.g. SAM3). Required
-       * when the active detector has `requiresPrompt=true`; ignored otherwise.
+       * when the active detector's kind is `text-promptable-segmentation`;
+       * `null` (or omitted) for closed-vocabulary detectors that ignore it.
        */
-      prompt?: string;
+      prompt?: string | null;
     }
   | {
       type: "run-classify-only";
@@ -148,7 +153,6 @@ export const DETECTOR_MODELS: DetectorModelEntry[] = [
     model: "cfia-ai-lab/sam3-text-onnx",
     threshold: 0.5,
     kind: "text-promptable-segmentation",
-    requiresPrompt: true,
     componentFiles: {
       vision: "vision_encoder",
       text: "text_encoder",
@@ -166,7 +170,6 @@ export const DETECTOR_MODELS: DetectorModelEntry[] = [
     model: "cfia-ai-lab/sam3-text-onnx",
     threshold: 0.5,
     kind: "text-promptable-segmentation",
-    requiresPrompt: true,
     componentFiles: {
       vision: "vision_encoder_mhafused", // ← the new fused vision encoder
       text: "text_encoder", // unchanged (no attention to fuse there)
@@ -224,7 +227,6 @@ export const buildModelConfig = (
     // Multi-component / text-promptable detector fields. Undefined for the
     // standard single-file object-detection detectors.
     detectorKind: detector.kind,
-    detectorRequiresPrompt: detector.requiresPrompt,
     detectorComponentFiles: detector.componentFiles,
     detectorPreprocessorModel: detector.preprocessorModel,
   };
