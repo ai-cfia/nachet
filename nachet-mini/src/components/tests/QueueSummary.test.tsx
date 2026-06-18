@@ -20,6 +20,9 @@ const makePendingItem = (id: string, imageIndex: number) => ({
   imageIndex,
   status: "pending" as const,
   addedAt: Date.now(),
+  inferenceStartedAt: null,
+  detectionDoneAt: null,
+  detectedBoxCount: null,
 });
 
 const makeProcessingItem = (id: string, imageIndex: number) => ({
@@ -28,6 +31,9 @@ const makeProcessingItem = (id: string, imageIndex: number) => ({
   imageIndex,
   status: "processing" as const,
   addedAt: Date.now(),
+  inferenceStartedAt: Date.now(),
+  detectionDoneAt: null,
+  detectedBoxCount: null,
 });
 
 describe("QueueSummary", () => {
@@ -35,7 +41,8 @@ describe("QueueSummary", () => {
     await i18n.changeLanguage("en");
     useInferenceQueueStore.setState({
       queue: [],
-      lastInferenceDurationMs: null,
+      lastDetectionDurationMs: null,
+      lastClassificationPerBoxMs: null,
     });
   });
 
@@ -52,7 +59,6 @@ describe("QueueSummary", () => {
   it("shows item count chip when queue has pending items", async () => {
     useInferenceQueueStore.setState({
       queue: [makePendingItem("id-1", 0), makePendingItem("id-2", 1)],
-      lastInferenceDurationMs: null,
     });
     renderSummary();
     await expect.element(page.getByText(/2 items in queue/i)).toBeVisible();
@@ -61,7 +67,6 @@ describe("QueueSummary", () => {
   it("shows singular form for one item", async () => {
     useInferenceQueueStore.setState({
       queue: [makePendingItem("id-1", 0)],
-      lastInferenceDurationMs: null,
     });
     renderSummary();
     await expect.element(page.getByText(/1 item in queue/i)).toBeVisible();
@@ -70,7 +75,6 @@ describe("QueueSummary", () => {
   it("shows estimating when no inference has completed yet", async () => {
     useInferenceQueueStore.setState({
       queue: [makePendingItem("id-1", 0)],
-      lastInferenceDurationMs: null,
     });
     renderSummary();
     await expect
@@ -78,19 +82,29 @@ describe("QueueSummary", () => {
       .toBeVisible();
   });
 
-  it("shows ETA chip when lastInferenceDurationMs is set", async () => {
+  it("shows ETA chip when timing data is available", async () => {
+    const now = Date.now();
     useInferenceQueueStore.setState({
-      queue: [makePendingItem("id-1", 0)],
-      lastInferenceDurationMs: 5000,
+      queue: [{
+        id: "id-1",
+        imageSrc: "img-0.jpg",
+        imageIndex: 0,
+        status: "processing",
+        addedAt: now - 2000,
+        inferenceStartedAt: now - 2000,
+        detectionDoneAt: now - 1000,
+        detectedBoxCount: 4,
+      }],
+      lastDetectionDurationMs: 3000,
+      lastClassificationPerBoxMs: 500,
     });
     renderSummary();
-    await expect.element(page.getByText(/~\d+s remaining/i)).toBeVisible();
+    await expect.element(page.getByText(/~\d+s/i)).toBeVisible();
   });
 
   it("counts processing items toward the total", async () => {
     useInferenceQueueStore.setState({
       queue: [makeProcessingItem("id-1", 0), makePendingItem("id-2", 1)],
-      lastInferenceDurationMs: null,
     });
     renderSummary();
     await expect.element(page.getByText(/2 items in queue/i)).toBeVisible();
@@ -99,7 +113,6 @@ describe("QueueSummary", () => {
   it("hides when all items are done", async () => {
     useInferenceQueueStore.setState({
       queue: [{ ...makePendingItem("id-1", 0), status: "done" as const }],
-      lastInferenceDurationMs: 1000,
     });
     renderSummary();
     await expect

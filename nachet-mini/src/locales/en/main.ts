@@ -114,6 +114,8 @@ const main = {
     },
   },
   validation: {
+    etaTooltip:
+      "Estimated time remaining. Accuracy improves as more inferences are completed.",
     invalidType: "File must be a PNG or JPEG image",
     fileTooLarge: "File size must be less than 10MB",
     dimensionsTooLarge: "Image dimensions must not exceed 8000x8000 pixels",
@@ -140,6 +142,10 @@ const main = {
     itemsQueued_other: "{{count}} items in queue",
     eta: "~{{time}}s remaining",
     etaUnknown: "Estimating...",
+    etaDetecting: "~{{time}}s · detecting",
+    etaClassifying: "~{{time}}s · classifying",
+    etaTooltip:
+      "Estimated time remaining. Accuracy improves as more inferences are completed.",
   },
 } as const;
 

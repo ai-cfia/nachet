@@ -144,6 +144,10 @@ const main = {
     itemsQueued_other: "{{count}} éléments en file",
     eta: "~{{time}}s restantes",
     etaUnknown: "Estimation...",
+    etaDetecting: "~{{time}}s · détection",
+    etaClassifying: "~{{time}}s · classification",
+    etaTooltip:
+      "Temps restant estimé. La précision s'améliore avec chaque identification complétée.",
   },
 } as const;
 

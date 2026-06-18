@@ -93,6 +93,7 @@ const NachetMiniContainer = () => {
   );
   const [drainTick, setDrainTick] = useState(0);
   const clearCompleted = useInferenceQueueStore((s) => s.clearCompleted);
+  const markDetectionDone = useInferenceQueueStore((s) => s.markDetectionDone);
   // ADD local dialog state
   const [modelLoadDialogOpen, setModelLoadDialogOpen] = useState(false);
 
@@ -218,6 +219,7 @@ const NachetMiniContainer = () => {
   };
 
   const startTimeRef = useRef<number | null>(null);
+  const detectionStartRef = useRef<number | null>(null);
   const isFiringRef = useRef(false);
 
   // Fire the next pending item when conditions are met
@@ -238,18 +240,52 @@ const NachetMiniContainer = () => {
     isFiringRef.current = true;
     markProcessing(item.id);
     startTimeRef.current = Date.now();
+    detectionStartRef.current = Date.now();
     runInference(item.imageSrc, item.imageIndex);
   }, [modelLoaded, isInferring, nextPendingId, drainTick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const prevStatusRef = useRef<string>(status);
+
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
+
+    if (prev === "detecting" && status === "classifying") {
+      const processingItem = useInferenceQueueStore
+        .getState()
+        .queue.find((i) => i.status === "processing");
+      if (!processingItem) return;
+
+      const detectionDuration = detectionStartRef.current
+        ? Date.now() - detectionStartRef.current
+        : 0;
+
+      // Read box count from the partial result stored in useInferenceStore
+      const { results } = useInferenceStore.getState();
+      let boxCount = 0;
+      for (const [key, result] of results) {
+        if (key.startsWith(`${processingItem.imageIndex}:`)) {
+          boxCount = result.totalBoxes;
+          break;
+        }
+      }
+
+      markDetectionDone(processingItem.id, detectionDuration, boxCount);
+    }
+  }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // When inference completes, mark the processing item as done
   useEffect(() => {
     if (isInferring) {
+      if (status === "detecting") {
+        detectionStartRef.current ??= Date.now();
+      }
       startTimeRef.current ??= Date.now();
       return;
     }
 
     if (status === "complete") {
-      const duration = startTimeRef.current
+      const totalDuration = startTimeRef.current
         ? Date.now() - startTimeRef.current
         : 0;
 
@@ -258,9 +294,20 @@ const NachetMiniContainer = () => {
         .queue.find((i) => i.status === "processing");
 
       if (processingItem) {
-        markDone(processingItem.id, duration);
-      } else if (duration > 0) {
-        useInferenceQueueStore.getState().setLastInferenceDuration(duration);
+        // Classification duration = total - detection duration
+        const detectionDuration =
+          processingItem.detectionDoneAt && startTimeRef.current
+            ? processingItem.detectionDoneAt - startTimeRef.current
+            : 0;
+        const classificationDuration = Math.max(
+          0,
+          totalDuration - detectionDuration,
+        );
+        markDone(processingItem.id, classificationDuration);
+      } else if (totalDuration > 0) {
+        useInferenceQueueStore
+          .getState()
+          .setLastInferenceDuration(totalDuration);
       }
       isFiringRef.current = false;
       clearCompleted();

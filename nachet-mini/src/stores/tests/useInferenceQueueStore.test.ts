@@ -10,7 +10,8 @@ const getStore = () => useInferenceQueueStore.getState();
 const reset = () =>
   useInferenceQueueStore.setState({
     queue: [],
-    lastInferenceDurationMs: null,
+    lastDetectionDurationMs: null,
+    lastClassificationPerBoxMs: null,
   });
 
 describe("useInferenceQueueStore", () => {
@@ -50,6 +51,14 @@ describe("useInferenceQueueStore", () => {
       expect(getStore().queue[0].addedAt).toBeGreaterThanOrEqual(before);
       expect(getStore().queue[0].addedAt).toBeLessThanOrEqual(after);
     });
+
+    it("initializes timing fields to null", () => {
+      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      const item = getStore().queue[0];
+      expect(item.inferenceStartedAt).toBeNull();
+      expect(item.detectionDoneAt).toBeNull();
+      expect(item.detectedBoxCount).toBeNull();
+    });
   });
 
   // ─── cancel ─────────────────────────────────────────────────────────────────
@@ -87,12 +96,49 @@ describe("useInferenceQueueStore", () => {
       expect(getStore().queue[0].status).toBe("processing");
     });
 
+    it("sets inferenceStartedAt to a recent timestamp", () => {
+      const before = Date.now();
+      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      const id = getStore().queue[0].id;
+      getStore().markProcessing(id);
+      const after = Date.now();
+      const { inferenceStartedAt } = getStore().queue[0];
+      expect(inferenceStartedAt).not.toBeNull();
+      expect(inferenceStartedAt!).toBeGreaterThanOrEqual(before);
+      expect(inferenceStartedAt!).toBeLessThanOrEqual(after);
+    });
+
     it("does not affect other items", () => {
       getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
       getStore().enqueue({ imageSrc: "b.jpg", imageIndex: 1 });
       const firstId = getStore().queue[0].id;
       getStore().markProcessing(firstId);
       expect(getStore().queue[1].status).toBe("pending");
+    });
+  });
+
+  // ─── markDetectionDone ──────────────────────────────────────────────────────
+
+  describe("markDetectionDone", () => {
+    it("sets detectionDoneAt and detectedBoxCount", () => {
+      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      const id = getStore().queue[0].id;
+      getStore().markProcessing(id);
+      const before = Date.now();
+      getStore().markDetectionDone(id, 800, 5);
+      const after = Date.now();
+      const item = getStore().queue[0];
+      expect(item.detectedBoxCount).toBe(5);
+      expect(item.detectionDoneAt).not.toBeNull();
+      expect(item.detectionDoneAt!).toBeGreaterThanOrEqual(before);
+      expect(item.detectionDoneAt!).toBeLessThanOrEqual(after);
+    });
+
+    it("updates lastDetectionDurationMs", () => {
+      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      const id = getStore().queue[0].id;
+      getStore().markDetectionDone(id, 800, 5);
+      expect(getStore().lastDetectionDurationMs).toBe(800);
     });
   });
 
@@ -107,11 +153,23 @@ describe("useInferenceQueueStore", () => {
       expect(getStore().queue).toHaveLength(0);
     });
 
-    it("updates lastInferenceDurationMs", () => {
+    it("updates lastClassificationPerBoxMs when box count is known", () => {
       getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
       const id = getStore().queue[0].id;
-      getStore().markDone(id, 1234);
-      expect(getStore().lastInferenceDurationMs).toBe(1234);
+      getStore().markProcessing(id);
+      getStore().markDetectionDone(id, 500, 2);
+      // classification took 1000ms for 2 boxes = 500ms per box
+      getStore().markDone(id, 1000);
+      expect(getStore().lastClassificationPerBoxMs).toBe(500);
+    });
+
+    it("does not update lastClassificationPerBoxMs when box count is null", () => {
+      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      const id = getStore().queue[0].id;
+      getStore().markProcessing(id);
+      // no markDetectionDone called — detectedBoxCount stays null
+      getStore().markDone(id, 1000);
+      expect(getStore().lastClassificationPerBoxMs).toBeNull();
     });
 
     it("also removes cancelled items in the same update", () => {
@@ -121,7 +179,6 @@ describe("useInferenceQueueStore", () => {
       const [firstId, secondId] = getStore().queue.map((i) => i.id);
       getStore().cancel(secondId);
       getStore().markDone(firstId, 500);
-      // only the third item should remain
       expect(getStore().queue).toHaveLength(1);
       expect(getStore().queue[0].imageIndex).toBe(2);
     });
@@ -139,9 +196,9 @@ describe("useInferenceQueueStore", () => {
   // ─── setLastInferenceDuration ───────────────────────────────────────────────
 
   describe("setLastInferenceDuration", () => {
-    it("updates lastInferenceDurationMs", () => {
+    it("updates lastDetectionDurationMs", () => {
       getStore().setLastInferenceDuration(999);
-      expect(getStore().lastInferenceDurationMs).toBe(999);
+      expect(getStore().lastDetectionDurationMs).toBe(999);
     });
   });
 
@@ -196,24 +253,64 @@ describe("useInferenceQueueStore", () => {
   // ─── selectEtaMs ────────────────────────────────────────────────────────────
 
   describe("selectEtaMs", () => {
-    it("returns null when lastInferenceDurationMs is null", () => {
+    it("returns null when no timing data available", () => {
       getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
       expect(selectEtaMs(getStore())).toBeNull();
     });
 
     it("returns null when queue is empty", () => {
-      getStore().setLastInferenceDuration(1000);
+      useInferenceQueueStore.setState({
+        lastDetectionDurationMs: 1000,
+        lastClassificationPerBoxMs: 500,
+      });
       expect(selectEtaMs(getStore())).toBeNull();
     });
 
-    it("returns duration * pendingCount when no item is processing", () => {
-      getStore().setLastInferenceDuration(1000);
+    it("returns null when no item is processing", () => {
+      useInferenceQueueStore.setState({
+        lastDetectionDurationMs: 1000,
+        lastClassificationPerBoxMs: 500,
+      });
       getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
       getStore().enqueue({ imageSrc: "b.jpg", imageIndex: 1 });
+      expect(selectEtaMs(getStore())).toBeNull();
+    });
+
+    it("returns null on first inference before any timing is learned", () => {
+      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      const id = getStore().queue[0].id;
+      getStore().markProcessing(id);
+      expect(selectEtaMs(getStore())).toBeNull();
+    });
+
+    it("returns detection ETA when item is processing and timing is known", () => {
+      useInferenceQueueStore.setState({
+        lastDetectionDurationMs: 5000,
+        lastClassificationPerBoxMs: 100,
+      });
+      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      const id = getStore().queue[0].id;
+      getStore().markProcessing(id);
       const eta = selectEtaMs(getStore());
-      // 2 pending * 1000ms each
-      expect(eta).toBeGreaterThan(0);
-      expect(eta).toBeLessThanOrEqual(2000);
+      expect(eta).not.toBeNull();
+      expect(eta!).toBeGreaterThanOrEqual(1000);
+      expect(eta!).toBeLessThanOrEqual(5000);
+    });
+
+    it("returns classification ETA when detection is done", () => {
+      useInferenceQueueStore.setState({
+        lastDetectionDurationMs: 5000,
+        lastClassificationPerBoxMs: 500,
+      });
+      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      const id = getStore().queue[0].id;
+      getStore().markProcessing(id);
+      getStore().markDetectionDone(id, 5000, 4);
+      const eta = selectEtaMs(getStore());
+      // 4 boxes * 500ms = 2000ms total classification, minus elapsed
+      expect(eta).not.toBeNull();
+      expect(eta!).toBeGreaterThanOrEqual(1000);
+      expect(eta!).toBeLessThanOrEqual(2000);
     });
   });
 });
