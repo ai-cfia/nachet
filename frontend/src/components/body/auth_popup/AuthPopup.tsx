@@ -7,35 +7,22 @@ import {
   CircularProgress,
   Typography,
 } from "@mui/material";
-import { useMsal, useIsAuthenticated } from "@azure/msal-react";
-import { InteractionStatus } from "@azure/msal-browser";
 import { colours } from "../../../styles/colours";
 import { useTranslation } from "react-i18next";
+import { useNachetAuth } from "../../../auth";
 
 interface AuthPopupProps {
   open: boolean;
   onClose: () => void;
-  apiScopeClaim: string;
 }
 
-const AuthPopup: React.FC<AuthPopupProps> = ({
-  open,
-  onClose,
-  apiScopeClaim,
-}) => {
+const AuthPopup: React.FC<AuthPopupProps> = ({ open, onClose }) => {
   const { t } = useTranslation("popups");
-  const { instance, inProgress } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
+  const { isAuthenticated, isLoading, login } = useNachetAuth();
 
   const handleSignIn = async (): Promise<void> => {
     try {
-      if (inProgress !== InteractionStatus.None) {
-        console.warn("Interaction already in progress, please wait");
-        return;
-      }
-      await instance.loginRedirect({
-        scopes: [apiScopeClaim ?? ""],
-      });
+      await login();
     } catch (error) {
       console.error("Login failed:", error);
     }
@@ -45,8 +32,6 @@ const AuthPopup: React.FC<AuthPopupProps> = ({
   if (isAuthenticated) {
     return null;
   }
-
-  const isLoading = inProgress !== InteractionStatus.None;
 
   return (
     <Dialog

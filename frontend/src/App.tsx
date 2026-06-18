@@ -6,6 +6,7 @@ import Body from "./root/body";
 import Footer from "./components/footer";
 import { MsalProvider } from "@azure/msal-react";
 import { PublicClientApplication } from "@azure/msal-browser";
+import { NachetAuthProvider } from "./auth";
 
 interface AppProps {
   basename: string;
@@ -55,42 +56,44 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
   return (
     <Router basename={basename}>
       <MsalProvider instance={msalInstance}>
-        <Fragment>
-          <Navbar windowSize={windowSize} apiScopeClaim={apiScopeClaim} />
-          <Appbar windowSize={windowSize} />
-          <Routes>
-            <Route
-              path="/"
-              element={
-                <Body
-                  windowSize={windowSize}
-                  creativeCommonsPopupOpen={creativeCommonsPopupOpen}
-                  setCreativeCommonsPopupOpen={setCreativeCommonsPopupOpen}
-                  handleCreativeCommonsAgreement={
-                    handleCreativeCommonsAgreement
-                  }
-                  apiScopeClaim={apiScopeClaim}
-                />
-              }
-            />
-            {/* Catch-all route for OAuth callbacks and other paths */}
-            <Route
-              path="*"
-              element={
-                <Body
-                  windowSize={windowSize}
-                  creativeCommonsPopupOpen={creativeCommonsPopupOpen}
-                  setCreativeCommonsPopupOpen={setCreativeCommonsPopupOpen}
-                  handleCreativeCommonsAgreement={
-                    handleCreativeCommonsAgreement
-                  }
-                  apiScopeClaim={apiScopeClaim}
-                />
-              }
-            />
-          </Routes>
-          <Footer />
-        </Fragment>
+        <NachetAuthProvider apiScopeClaim={apiScopeClaim}>
+          <Fragment>
+            <Navbar />
+            <Appbar windowSize={windowSize} />
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <Body
+                    windowSize={windowSize}
+                    creativeCommonsPopupOpen={creativeCommonsPopupOpen}
+                    setCreativeCommonsPopupOpen={setCreativeCommonsPopupOpen}
+                    handleCreativeCommonsAgreement={
+                      handleCreativeCommonsAgreement
+                    }
+                    apiScopeClaim={apiScopeClaim}
+                  />
+                }
+              />
+              {/* Catch-all route for OAuth callbacks and other paths */}
+              <Route
+                path="*"
+                element={
+                  <Body
+                    windowSize={windowSize}
+                    creativeCommonsPopupOpen={creativeCommonsPopupOpen}
+                    setCreativeCommonsPopupOpen={setCreativeCommonsPopupOpen}
+                    handleCreativeCommonsAgreement={
+                      handleCreativeCommonsAgreement
+                    }
+                    apiScopeClaim={apiScopeClaim}
+                  />
+                }
+              />
+            </Routes>
+            <Footer />
+          </Fragment>
+        </NachetAuthProvider>
       </MsalProvider>
     </Router>
   );

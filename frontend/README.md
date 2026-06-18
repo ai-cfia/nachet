@@ -293,6 +293,8 @@ from the frontend.
 2. `VITE_APP_MODE`: Determines the mode in which the application runs. Set to
 `"test"` for using test data, any other value will use real data from the
 backend.
+3. `VITE_AUTH_PROVIDER`: Selects the frontend authentication provider at build
+time. The current supported value is `"msal"`.
 
 ### Setting Up Environment Variables
 

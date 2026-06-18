@@ -671,7 +671,6 @@ const Body: React.FC<params> = (props) => {
             onClose={() => {
               /* Auth popup closes automatically when user is authenticated */
             }}
-            apiScopeClaim={apiScopeClaim}
           />
         )}
         {registrationModalOpen && (
