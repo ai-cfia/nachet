@@ -50,6 +50,9 @@
       "@stores": [
         "src/stores"
       ],
+      "oidc-client-ts": [
+        "src/auth/oidc/oidc-client-ts.d.ts"
+      ],
     },
     /* Linting */
     "strict": true,

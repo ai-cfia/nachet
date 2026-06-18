@@ -294,7 +294,22 @@ from the frontend.
 `"test"` for using test data, any other value will use real data from the
 backend.
 3. `VITE_AUTH_PROVIDER`: Selects the frontend authentication provider at build
-time. The current supported value is `"msal"`.
+time. The current app-wide provider remains `"msal"` while the provider-neutral
+OIDC adapter is prepared.
+
+The OIDC adapter uses these settings in the next integration slice:
+
+- `VITE_OIDC_AUTHORITY`
+- `VITE_OIDC_CLIENT_ID`
+
+`VITE_OIDC_SCOPE`, `VITE_OIDC_REDIRECT_URI`, and
+`VITE_OIDC_POST_LOGOUT_REDIRECT_URI` can be set to override the defaults. The
+default OIDC scope is `openid profile email` plus the configured API scope, and
+the default redirect URLs use the current local app URL.
+
+`VITE_OIDC_API_SCOPE_CLAIM` can be set when the backend API needs a specific
+access-token scope for the selected provider. If it is omitted, the frontend
+uses the Azure API scope value as a fallback for compatibility during migration.
 
 ### Setting Up Environment Variables
 
