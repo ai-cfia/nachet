@@ -4,7 +4,7 @@
  *
  * Original project is MIT licensed. See LICENSE in this directory.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   UserManager,
   type SigninRedirectArgs,
@@ -18,7 +18,7 @@ import { initialAuthState, type AuthState } from "./AuthState";
 import { hasAuthParams, toError } from "./utils";
 
 interface AuthProviderProps extends UserManagerSettings {
-  children: React.ReactNode;
+  children: ReactNode;
   skipSigninCallback?: boolean;
   onSigninCallback?: (user: User | null) => Promise<void> | void;
 }

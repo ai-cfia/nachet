@@ -1,17 +1,17 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, type Context, type ReactNode } from "react";
 import {
   WebStorageStateStore,
   type User,
   type UserManagerSettings,
 } from "oidc-client-ts";
-import type { NachetAuthContextValue } from "../types";
+import type { NachetAuthContextValue } from "../NachetAuthContext";
 import { AuthProvider } from "./react-oidc-context/AuthProvider";
 import { useAuth as useOidcAuth } from "./react-oidc-context/useAuth";
 
 interface OidcAuthProviderProps {
   apiScopeClaim: string;
-  authContext: React.Context<NachetAuthContextValue | undefined>;
-  children: React.ReactNode;
+  authContext: Context<NachetAuthContextValue | undefined>;
+  children: ReactNode;
 }
 
 function requiredEnv(name: string): string {

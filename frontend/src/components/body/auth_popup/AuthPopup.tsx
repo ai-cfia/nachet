@@ -1,4 +1,3 @@
-import React from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,10 +13,9 @@ import { useNachetAuth } from "../../../auth";
 interface AuthPopupProps {
   open: boolean;
   onClose: () => void;
-  apiScopeClaim?: string;
 }
 
-const AuthPopup: React.FC<AuthPopupProps> = ({ open, onClose }) => {
+const AuthPopup = ({ open, onClose }: AuthPopupProps) => {
   const { t } = useTranslation("popups");
   const { isAuthenticated, isLoading, login } = useNachetAuth();
 

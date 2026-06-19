@@ -4,4 +4,4 @@ export type {
   AuthProviderKind,
   NachetAuthAccount,
   NachetAuthContextValue,
-} from "./types";
+} from "./NachetAuthContext";

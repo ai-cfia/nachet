@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 import {
   Box,
   Dialog,
@@ -25,7 +25,7 @@ import { useNotificationStore } from "@stores/useNotificationStore";
 import { useNachetAuth } from "../../../auth";
 
 interface params {
-  setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
+  setReadAzureStorage: Dispatch<SetStateAction<boolean>>;
   apiScopeClaim: string;
   mode: "create" | "edit" | "delete";
   initialData?: {
@@ -35,7 +35,7 @@ interface params {
   };
 }
 
-const DirectoryPopup: React.FC<params> = (props) => {
+const DirectoryPopup = (props: params) => {
   const { t } = useTranslation("popups");
   const { t: tValidation } = useTranslation("validation");
   const { setReadAzureStorage, apiScopeClaim, mode, initialData } = props;

@@ -1,4 +1,3 @@
-import React from "react";
 import CFIALogo from "../../../assets/CFIA_blackfont.png";
 import { Button, IconButton, Box } from "@mui/material";
 import { colours } from "../../../styles/colours";
@@ -6,7 +5,7 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useTranslation } from "react-i18next";
 import { useNachetAuth } from "../../../auth";
 
-const Navbar: React.FC = () => {
+const Navbar = () => {
   const { accounts, isAuthenticated, login, logout } = useNachetAuth();
   const { t } = useTranslation("header");
   const handleLogout = async (): Promise<void> => {

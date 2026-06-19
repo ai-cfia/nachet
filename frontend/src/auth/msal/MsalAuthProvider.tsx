@@ -1,13 +1,22 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  type Context,
+  type ReactNode,
+} from "react";
 import { InteractionStatus, type AccountInfo } from "@azure/msal-browser";
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { acquireAccessToken } from "../../common/auth";
-import type { NachetAuthAccount, NachetAuthContextValue } from "../types";
+import type {
+  NachetAuthAccount,
+  NachetAuthContextValue,
+} from "../NachetAuthContext";
 
 interface MsalAuthProviderProps {
   apiScopeClaim: string;
-  authContext: React.Context<NachetAuthContextValue | undefined>;
-  children: React.ReactNode;
+  authContext: Context<NachetAuthContextValue | undefined>;
+  children: ReactNode;
 }
 
 function mapAccount(account: AccountInfo): NachetAuthAccount {
