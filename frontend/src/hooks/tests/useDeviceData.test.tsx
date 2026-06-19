@@ -3,18 +3,21 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useDeviceData } from "../useDeviceData";
 import { useDeviceStore } from "@stores/useDeviceStore";
 import { fetchDevices } from "@common/api";
-import { useNachetAuth } from "../../auth";
+import { acquireAccessToken } from "@common/auth";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
 
 // Mock dependencies
 vi.mock("@stores/useDeviceStore");
 vi.mock("@common/api");
-vi.mock("../../auth");
+vi.mock("@common/auth");
+vi.mock("@azure/msal-react");
 
 describe("useDeviceData", () => {
   let mockSetDevicesData: any;
   let mockSetLoading: any;
   let mockSetError: any;
-  let mockGetAccessToken: any;
+  let mockMsalInstance: any;
   const mockDevicesData = {
     devices: [
       { id: "device-1", name: "Device 1" },
@@ -28,7 +31,7 @@ describe("useDeviceData", () => {
     mockSetDevicesData = vi.fn();
     mockSetLoading = vi.fn();
     mockSetError = vi.fn();
-    mockGetAccessToken = vi.fn().mockResolvedValue("test-token");
+    mockMsalInstance = {} as any;
 
     // Mock the store
     (useDeviceStore as any).mockReturnValue({
@@ -40,11 +43,17 @@ describe("useDeviceData", () => {
       setError: mockSetError,
     });
 
-    (useNachetAuth as any).mockReturnValue({
-      getAccessToken: mockGetAccessToken,
-      isAuthenticated: true,
-      isLoading: false,
+    // Mock useMsal
+    (useMsal as any).mockReturnValue({
+      instance: mockMsalInstance,
+      inProgress: InteractionStatus.None,
     });
+
+    // Mock useIsAuthenticated
+    (useIsAuthenticated as any).mockReturnValue(true);
+
+    // Mock auth
+    (acquireAccessToken as any).mockResolvedValue("test-token");
 
     // Mock fetchDevices
     (fetchDevices as any).mockResolvedValue(mockDevicesData);
@@ -61,7 +70,9 @@ describe("useDeviceData", () => {
     });
 
     await waitFor(() => {
-      expect(mockGetAccessToken).toHaveBeenCalledWith(["test-scope"]);
+      expect(acquireAccessToken).toHaveBeenCalledWith(mockMsalInstance, [
+        "test-scope",
+      ]);
     });
 
     await waitFor(() => {
@@ -87,11 +98,7 @@ describe("useDeviceData", () => {
   });
 
   it("should not fetch when not authenticated", () => {
-    (useNachetAuth as any).mockReturnValue({
-      getAccessToken: mockGetAccessToken,
-      isAuthenticated: false,
-      isLoading: false,
-    });
+    (useIsAuthenticated as any).mockReturnValue(false);
 
     renderHook(() => useDeviceData("http://test-backend.com", "test-scope"));
 
@@ -114,10 +121,9 @@ describe("useDeviceData", () => {
   });
 
   it("should not fetch when interaction is in progress", () => {
-    (useNachetAuth as any).mockReturnValue({
-      getAccessToken: mockGetAccessToken,
-      isAuthenticated: true,
-      isLoading: true,
+    (useMsal as any).mockReturnValue({
+      instance: mockMsalInstance,
+      inProgress: InteractionStatus.Login,
     });
 
     renderHook(() => useDeviceData("http://test-backend.com", "test-scope"));

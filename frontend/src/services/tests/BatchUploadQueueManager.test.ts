@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { BatchUploadQueueManager } from "../BatchUploadQueueManager";
 import * as api from "@common/api";
+import * as auth from "@common/auth";
 import { errorLogger } from "../../logging";
 
 // Mock dependencies
 vi.mock("@common/api");
+vi.mock("@common/auth");
 vi.mock("../../logging");
 
 describe("BatchUploadQueueManager", () => {
@@ -12,7 +14,7 @@ describe("BatchUploadQueueManager", () => {
   let mockUploadStore: any;
   let mockOnComplete: any;
   let mockOnError: any;
-  let mockGetAccessToken: any;
+  let mockMsalInstance: any;
   let mockConfig: any;
 
   beforeEach(() => {
@@ -30,16 +32,19 @@ describe("BatchUploadQueueManager", () => {
 
     mockOnComplete = vi.fn();
     mockOnError = vi.fn();
-    mockGetAccessToken = vi.fn().mockResolvedValue("test-token");
+    mockMsalInstance = {} as any;
 
     mockConfig = {
       backendUrl: "http://test-backend.com",
-      getAccessToken: mockGetAccessToken,
+      msalInstance: mockMsalInstance,
       scopes: ["test-scope"],
       uploadStore: mockUploadStore,
       onComplete: mockOnComplete,
       onError: mockOnError,
     };
+
+    // Mock auth
+    (auth.acquireAccessToken as any).mockResolvedValue("test-token");
 
     // Mock FileReader for file conversion
     global.FileReader = class {

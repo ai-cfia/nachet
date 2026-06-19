@@ -2,6 +2,8 @@ import { getWorkflowStatus } from "@common";
 import { batchUploadImage } from "@common/api";
 import type { BatchUploadMetadata, WorkflowStatus } from "@common/types";
 import { errorLogger } from "../logging";
+import { acquireAccessToken } from "../common/auth";
+import type { IPublicClientApplication } from "@azure/msal-browser";
 
 interface QueueItem {
   file: File;
@@ -32,7 +34,7 @@ interface UploadStore {
 
 interface BatchUploadQueueManagerConfig {
   backendUrl: string;
-  getAccessToken: (scopes?: string[]) => Promise<string>;
+  msalInstance: IPublicClientApplication;
   scopes: string[];
   uploadStore: UploadStore;
   onComplete: (workflowId: string, file: File, results: unknown) => void;
@@ -129,7 +131,10 @@ export class BatchUploadQueueManager {
 
     try {
       // Acquire fresh access token
-      const accessToken = await this.config.getAccessToken(this.config.scopes);
+      const accessToken = await acquireAccessToken(
+        this.config.msalInstance,
+        this.config.scopes,
+      );
 
       // Convert file to base64 data URL
       const imageDataUrl = await this.fileToDataUrl(item.file);
@@ -279,7 +284,10 @@ export class BatchUploadQueueManager {
 
     try {
       // Acquire fresh access token
-      const accessToken = await this.config.getAccessToken(this.config.scopes);
+      const accessToken = await acquireAccessToken(
+        this.config.msalInstance,
+        this.config.scopes,
+      );
 
       const statusResponse = await getWorkflowStatus({
         backendUrl: this.config.backendUrl,

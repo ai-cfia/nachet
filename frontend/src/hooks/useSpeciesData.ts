@@ -1,7 +1,9 @@
 import { useEffect } from "react";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
 import { useSpeciesStore } from "@stores/useSpeciesStore";
 import { requestClassList } from "@common/api";
-import { useNachetAuth } from "../auth";
+import { acquireAccessToken } from "@common/auth";
 
 export const useSpeciesData = (backendUrl: string, apiScopeClaim: string) => {
   const {
@@ -12,11 +14,8 @@ export const useSpeciesData = (backendUrl: string, apiScopeClaim: string) => {
     setLoading,
     setError,
   } = useSpeciesStore();
-  const {
-    getAccessToken,
-    isAuthenticated,
-    isLoading: authLoading,
-  } = useNachetAuth();
+  const { instance, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
 
   useEffect(() => {
     const fetchSpeciesData = async () => {
@@ -32,7 +31,7 @@ export const useSpeciesData = (backendUrl: string, apiScopeClaim: string) => {
         return; // Already have data, don't fetch again
       }
 
-      if (authLoading) {
+      if (inProgress !== InteractionStatus.None) {
         return; // Wait for interaction to complete
       }
 
@@ -40,7 +39,7 @@ export const useSpeciesData = (backendUrl: string, apiScopeClaim: string) => {
       setError(null);
 
       try {
-        const accessToken = await getAccessToken([apiScopeClaim]);
+        const accessToken = await acquireAccessToken(instance, [apiScopeClaim]);
         const response = await requestClassList({ backendUrl, accessToken });
         setSpeciesData(response);
       } catch (err) {
@@ -57,8 +56,8 @@ export const useSpeciesData = (backendUrl: string, apiScopeClaim: string) => {
   }, [
     apiScopeClaim,
     backendUrl,
-    authLoading,
-    getAccessToken,
+    instance,
+    inProgress,
     isAuthenticated,
     setError,
     setLoading,

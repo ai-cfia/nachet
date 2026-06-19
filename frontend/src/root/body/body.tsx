@@ -39,7 +39,9 @@ import { useModelStore } from "@stores/useModelStore";
 import { useNotificationStore } from "@stores/useNotificationStore";
 import { useInferenceResultsStore } from "@stores/useInferenceResultsStore";
 import { WorkflowQueueManager } from "../../services/WorkflowQueueManager";
-import { useNachetAuth } from "../../auth";
+import { InteractionStatus } from "@azure/msal-browser";
+import { useMsal, useIsAuthenticated, useAccount } from "@azure/msal-react";
+import { acquireAccessToken } from "@common/auth";
 import {
   getLabelOccurrence,
   loadToCanvas,
@@ -159,24 +161,13 @@ const Body: React.FC<params> = (props) => {
   const decodedTiff = useDecoderTiff(imageTiff);
   const backendUrl = useBackendUrl();
   const apiScopeClaim = props.apiScopeClaim;
-  const {
-    getAccessToken,
-    isAuthenticated,
-    isLoading: authLoading,
-    accounts,
-    activeAccount,
-  } = useNachetAuth();
-  const getApiAccessToken = useCallback(
-    () => getAccessToken(apiScopeClaim ? [apiScopeClaim] : undefined),
-    [apiScopeClaim, getAccessToken],
-  );
+  const { instance: msalInstance, inProgress, accounts } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
+  const accountInfo = useAccount();
 
   // Webcam devices hook
   useWebcamDevices();
-  const uuid =
-    (activeAccount?.idTokenClaims?.oid as string | undefined) ??
-    (activeAccount?.idTokenClaims?.sub as string | undefined) ??
-    "";
+  const uuid = accountInfo?.idTokenClaims?.oid ?? "";
   const { devicesData } = useDeviceData(backendUrl, apiScopeClaim);
 
   // Model metadata hook
@@ -184,7 +175,7 @@ const Body: React.FC<params> = (props) => {
     backendUrl,
     apiScopeClaim,
     isAuthenticated,
-    authLoading,
+    inProgress,
   });
 
   // Model store
@@ -213,8 +204,15 @@ const Body: React.FC<params> = (props) => {
 
   // Derive authPopupOpen from authentication state
   const authPopupOpen = useMemo(() => {
-    return !isAuthenticated && !authLoading;
-  }, [authLoading, isAuthenticated]);
+    return !isAuthenticated && inProgress === InteractionStatus.None;
+  }, [isAuthenticated, inProgress]);
+
+  // Set active account if available
+  useEffect(() => {
+    if (accounts.length > 0 && !msalInstance.getActiveAccount()) {
+      msalInstance.setActiveAccount(accounts[0]);
+    }
+  }, [accounts, msalInstance]);
 
   const captureFeed = (): void => {
     // takes screenshot of webcam feed and loads it to cache when capture button is pressed
@@ -236,7 +234,7 @@ const Body: React.FC<params> = (props) => {
       addError(t("auth.signInRequired"), "auth");
       return;
     }
-    if (authLoading) {
+    if (inProgress !== InteractionStatus.None) {
       addWarning(t("auth.inProgress"), 8000);
       return;
     }
@@ -254,7 +252,7 @@ const Body: React.FC<params> = (props) => {
       const folderName = curDir.folderName;
 
       setIsLoading(true);
-      getApiAccessToken()
+      acquireAccessToken(msalInstance, [apiScopeClaim])
         .then((accessToken) => {
           return inferenceDirectRequest({
             backendUrl,
@@ -290,7 +288,7 @@ const Body: React.FC<params> = (props) => {
       addError(t("auth.signInRequired"), "auth");
       return;
     }
-    if (authLoading) {
+    if (inProgress !== InteractionStatus.None) {
       addWarning(t("auth.inProgress"), 8000);
       return;
     }
@@ -341,7 +339,7 @@ const Body: React.FC<params> = (props) => {
 
     queueManagerRef.current.configure({
       backendUrl,
-      getAccessToken,
+      msalInstance,
       scopes,
       pipelineId,
       pipelineName,
@@ -432,7 +430,7 @@ const Body: React.FC<params> = (props) => {
     });
   }, [
     backendUrl,
-    getAccessToken,
+    msalInstance,
     apiScopeClaim,
     pipelineId,
     pipelineName,
@@ -509,7 +507,7 @@ const Body: React.FC<params> = (props) => {
     if (!isAuthenticated) {
       return;
     }
-    if (authLoading) {
+    if (inProgress !== InteractionStatus.None) {
       return;
     }
     if (backendUrl == null || backendUrl === "") {
@@ -525,7 +523,9 @@ const Body: React.FC<params> = (props) => {
 
     const checkRegistration = async () => {
       try {
-        const accessToken = await getApiAccessToken();
+        const accessToken = await acquireAccessToken(msalInstance, [
+          apiScopeClaim,
+        ]);
         const response = await checkUserRegistration({
           backendUrl,
           accessToken,
@@ -550,9 +550,10 @@ const Body: React.FC<params> = (props) => {
   }, [
     uuid,
     backendUrl,
-    getApiAccessToken,
+    msalInstance,
+    apiScopeClaim,
     isAuthenticated,
-    authLoading,
+    inProgress,
     registrationCheckComplete,
     t,
     addError,
@@ -562,7 +563,7 @@ const Body: React.FC<params> = (props) => {
     if (!isAuthenticated) {
       return;
     }
-    if (authLoading) {
+    if (inProgress !== InteractionStatus.None) {
       return;
     }
     if (backendUrl == null || backendUrl === "") {
@@ -578,7 +579,9 @@ const Body: React.FC<params> = (props) => {
 
     const loadAzureStorageDir = async () => {
       try {
-        const accessToken = await getApiAccessToken();
+        const accessToken = await acquireAccessToken(msalInstance, [
+          apiScopeClaim,
+        ]);
         const response = await readAzureStorageDir({ backendUrl, accessToken });
         const directories: AzureStorageDirectoryItem[] = [];
         const folders = response.directories;
@@ -606,9 +609,10 @@ const Body: React.FC<params> = (props) => {
   }, [
     uuid,
     backendUrl,
-    getApiAccessToken,
+    msalInstance,
+    apiScopeClaim,
     isAuthenticated,
-    authLoading,
+    inProgress,
     registrationCheckComplete,
     readAzureStorage,
     t,
@@ -667,6 +671,7 @@ const Body: React.FC<params> = (props) => {
             onClose={() => {
               /* Auth popup closes automatically when user is authenticated */
             }}
+            apiScopeClaim={apiScopeClaim}
           />
         )}
         {registrationModalOpen && (

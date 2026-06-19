@@ -6,7 +6,12 @@ import {
 
 // Track if we're currently in a redirect flow to prevent loops
 let isRedirecting = false;
+let requestInterceptorId: number | null = null;
 let responseInterceptorId: number | null = null;
+
+interface NachetAuthRequestConfig extends InternalAxiosRequestConfig {
+  nachetAuthRequired?: boolean;
+}
 
 /**
  * Checks if an error requires user interaction (redirect to login)
@@ -37,9 +42,30 @@ export function resetRedirectFlag(): void {
 export function setupAxiosInterceptor(
   getAccessToken: () => Promise<string>,
 ): void {
+  if (requestInterceptorId !== null) {
+    axios.interceptors.request.eject(requestInterceptorId);
+  }
+
   if (responseInterceptorId !== null) {
     axios.interceptors.response.eject(responseInterceptorId);
   }
+
+  requestInterceptorId = axios.interceptors.request.use(
+    async (config: NachetAuthRequestConfig) => {
+      if (!config.nachetAuthRequired || config.headers?.Authorization) {
+        return config;
+      }
+
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        throw new Error("Access token is null or empty");
+      }
+
+      config.headers.Authorization = `Bearer ${accessToken}`;
+      return config;
+    },
+    (error) => Promise.reject(error),
+  );
 
   // Response interceptor to handle 401 errors
   responseInterceptorId = axios.interceptors.response.use(

@@ -8,6 +8,9 @@ import {
   useZodFieldValidation,
   ERROR_KEY_MAPPINGS,
 } from "@hooks";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
+import { acquireAccessToken } from "@common/auth";
 import { getSeedIdByTaxonomy } from "../../../utils/seedLookup";
 import {
   folderNameSchema,
@@ -26,7 +29,6 @@ import { useModalStore } from "@stores/useModalStore";
 import { BatchUploadPopupView } from "./BatchUploadPopupView";
 import { useTranslation } from "react-i18next";
 import { useNotificationStore } from "@stores/useNotificationStore";
-import { useNachetAuth } from "../../../auth";
 
 interface BatchUploadPopupContainerProps {
   backendUrl: string;
@@ -137,13 +139,8 @@ export const BatchUploadPopupContainer = (
 
   const { speciesData } = useSpeciesData(backendUrl, apiScopeClaim);
   const { devicesData } = useDeviceData(backendUrl, apiScopeClaim);
-  const {
-    getAccessToken,
-    isAuthenticated,
-    isLoading: authLoading,
-  } = useNachetAuth();
-  const getApiAccessToken = () =>
-    getAccessToken(apiScopeClaim ? [apiScopeClaim] : undefined);
+  const { instance: msalInstance, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
 
   // Folder creation state
   const [createdFolderId, setCreatedFolderId] = useState<string>("");
@@ -186,7 +183,7 @@ export const BatchUploadPopupContainer = (
       return;
     }
 
-    if (authLoading || !isAuthenticated) {
+    if (inProgress !== InteractionStatus.None || !isAuthenticated) {
       console.warn("Authentication in progress or user not authenticated");
       return;
     }
@@ -213,7 +210,9 @@ export const BatchUploadPopupContainer = (
     setFolderDescriptionError("");
 
     try {
-      const accessToken = await getApiAccessToken();
+      const accessToken = await acquireAccessToken(msalInstance, [
+        apiScopeClaim,
+      ]);
       const result = await createOrGetFolder({
         backendUrl,
         accessToken,
@@ -505,7 +504,7 @@ export const BatchUploadPopupContainer = (
       return;
     }
 
-    if (authLoading) {
+    if (inProgress !== InteractionStatus.None) {
       addWarning(tErrors("auth.inProgress"), 8000);
       return;
     }
@@ -542,7 +541,7 @@ export const BatchUploadPopupContainer = (
     }
 
     // Initialize batch upload session
-    getApiAccessToken()
+    acquireAccessToken(msalInstance, [apiScopeClaim])
       .then((accessToken) => {
         return batchUploadInit({
           backendUrl,
@@ -563,7 +562,7 @@ export const BatchUploadPopupContainer = (
         // Configure queue manager
         queueManagerRef.current.configure({
           backendUrl,
-          getAccessToken,
+          msalInstance,
           scopes,
           uploadStore: {
             addUpload,

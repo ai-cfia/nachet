@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type SetStateAction } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Dialog,
@@ -9,6 +9,9 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "@styles/colours";
 import { useBackendUrl } from "@hooks";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
+import { acquireAccessToken } from "@common/auth";
 import { createOrGetFolder, updateFolder, deleteFolder } from "@common/api";
 import { normalizedPathSchema, descriptionSchema } from "@common/validation";
 import { getZodErrorKey } from "@common/zodErrorMap";
@@ -22,10 +25,9 @@ import { PopupActionButtons } from "@components/common";
 import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";
 import { useFolderStore } from "@stores/useFolderStore";
 import { useNotificationStore } from "@stores/useNotificationStore";
-import { useNachetAuth } from "../../../auth";
 
 interface params {
-  setReadAzureStorage: Dispatch<SetStateAction<boolean>>;
+  setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
   apiScopeClaim: string;
   mode: "create" | "edit" | "delete";
   initialData?: {
@@ -35,7 +37,7 @@ interface params {
   };
 }
 
-const DirectoryPopup = (props: params) => {
+const DirectoryPopup: React.FC<params> = (props) => {
   const { t } = useTranslation("popups");
   const { t: tValidation } = useTranslation("validation");
   const { setReadAzureStorage, apiScopeClaim, mode, initialData } = props;
@@ -55,13 +57,8 @@ const DirectoryPopup = (props: params) => {
   );
   const [validationError, setValidationError] = useState<string>("");
   const [descriptionError, setDescriptionError] = useState<string>("");
-  const {
-    getAccessToken,
-    isAuthenticated,
-    isLoading: authLoading,
-  } = useNachetAuth();
-  const getApiAccessToken = () =>
-    getAccessToken(apiScopeClaim ? [apiScopeClaim] : undefined);
+  const { instance: msalInstance, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
   const { addError, addWarning } = useNotificationStore();
 
   // Zod validation hook for auto-normalization on blur
@@ -83,7 +80,7 @@ const DirectoryPopup = (props: params) => {
       return;
     }
 
-    if (authLoading) {
+    if (inProgress !== InteractionStatus.None) {
       const warningKey =
         mode === "delete"
           ? "deleteDirectory.errors.authInProgress"
@@ -99,7 +96,7 @@ const DirectoryPopup = (props: params) => {
         return;
       }
 
-      getApiAccessToken()
+      acquireAccessToken(msalInstance, [apiScopeClaim])
         .then(async (accessToken) => {
           await deleteFolder({
             backendUrl: backendURL,
@@ -160,7 +157,7 @@ const DirectoryPopup = (props: params) => {
 
     const sanitizedDescription = descriptionValidationResult.data;
 
-    getApiAccessToken()
+    acquireAccessToken(msalInstance, [apiScopeClaim])
       .then(async (accessToken) => {
         if (mode === "create") {
           // Create directory at root level using new API

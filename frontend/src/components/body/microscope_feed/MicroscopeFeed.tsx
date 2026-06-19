@@ -13,13 +13,15 @@ import {
 } from "@common/types";
 import { sendNegativeFeedback, sendPositiveFeedback } from "@common";
 import { useSpeciesData } from "@hooks";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
+import { acquireAccessToken } from "@common/auth";
 import { getUnscaledCoordinates } from "@common/imageutils";
 import { useImageStore } from "@stores/useImageStore";
 import { useNotificationStore } from "@stores/useNotificationStore";
 import { useInferenceResultsStore } from "@stores/useInferenceResultsStore";
 import { MicroscopeFeedControlsView } from "./MicroscopeFeedControlsView";
 import { MicroscopeFeedWorkspaceView } from "./MicroscopeFeedWorkspaceView";
-import { useNachetAuth } from "../../../auth";
 
 interface MicroscopeFeedProps {
   webcamRef: React.RefObject<Webcam | null>;
@@ -92,17 +94,12 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
   const [apiResultDismissed, setApiResultDismissed] = useState<boolean>(true);
   const [boxDragEnabled, setBoxDragEnabled] = useState<boolean>(true);
 
-  const {
-    getAccessToken,
-    isAuthenticated,
-    isLoading: authLoading,
-  } = useNachetAuth();
+  const { instance: msalInstance, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
   const { speciesData, isLoading: classListLoading } = useSpeciesData(
     backendUrl,
     apiScopeClaim,
   );
-  const getApiAccessToken = () =>
-    getAccessToken(apiScopeClaim ? [apiScopeClaim] : undefined);
 
   const classList: SpeciesData[] = useMemo(() => {
     if (!speciesData?.seeds) return [];
@@ -168,7 +165,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     }
     console.log("Submitting positive feedback for key: ", index);
 
-    if (authLoading) {
+    if (inProgress !== InteractionStatus.None) {
       addWarning(t("microscopeFeed.errors.authInProgress"), 8000);
       return;
     }
@@ -183,7 +180,9 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     setApiResultDismissed(false);
 
     try {
-      const accessToken = await getApiAccessToken();
+      const accessToken = await acquireAccessToken(msalInstance, [
+        apiScopeClaim,
+      ]);
       await sendPositiveFeedback({
         feedbackData: feedbackDataPositive,
         backendUrl,
@@ -213,7 +212,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
       return;
     }
 
-    if (authLoading) {
+    if (inProgress !== InteractionStatus.None) {
       setApiError(t("microscopeFeed.errors.authInProgress"));
       setApiResultDismissed(false);
       return;
@@ -227,7 +226,9 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     setApiResultDismissed(false);
 
     try {
-      const accessToken = await getApiAccessToken();
+      const accessToken = await acquireAccessToken(msalInstance, [
+        apiScopeClaim,
+      ]);
       await sendNegativeFeedback({
         feedbackData: feedbackDataNegative,
         backendUrl,

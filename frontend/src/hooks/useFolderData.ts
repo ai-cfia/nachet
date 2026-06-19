@@ -6,18 +6,17 @@
  */
 
 import { useEffect } from "react";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
 import { useFolderStore, FolderData } from "@stores/useFolderStore";
 import { readAzureStorageDir } from "@common/api";
-import { useNachetAuth } from "../auth";
+import { acquireAccessToken } from "@common/auth";
 
 export const useFolderData = (backendUrl: string, apiScopeClaim: string) => {
   const { folderData, isLoading, error, setFolderData, setLoading, setError } =
     useFolderStore();
-  const {
-    getAccessToken,
-    isAuthenticated,
-    isLoading: authLoading,
-  } = useNachetAuth();
+  const { instance, inProgress } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
 
   useEffect(() => {
     const fetchFolderData = async () => {
@@ -33,7 +32,7 @@ export const useFolderData = (backendUrl: string, apiScopeClaim: string) => {
         return; // Already have data, don't fetch again
       }
 
-      if (authLoading) {
+      if (inProgress !== InteractionStatus.None) {
         return; // Wait for interaction to complete
       }
 
@@ -41,7 +40,7 @@ export const useFolderData = (backendUrl: string, apiScopeClaim: string) => {
       setError(null);
 
       try {
-        const accessToken = await getAccessToken([apiScopeClaim]);
+        const accessToken = await acquireAccessToken(instance, [apiScopeClaim]);
         const response = await readAzureStorageDir({ backendUrl, accessToken });
 
         // Transform API response to match store format
@@ -69,8 +68,8 @@ export const useFolderData = (backendUrl: string, apiScopeClaim: string) => {
   }, [
     apiScopeClaim,
     backendUrl,
-    authLoading,
-    getAccessToken,
+    instance,
+    inProgress,
     isAuthenticated,
     setError,
     setLoading,

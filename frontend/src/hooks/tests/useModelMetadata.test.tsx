@@ -3,18 +3,21 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useModelMetadata } from "../useModelMetadata";
 import { useModelStore } from "@stores/useModelStore";
 import { fetchModelMetadata } from "@common";
-import { useNachetAuth } from "../../auth";
+import { acquireAccessToken } from "@common/auth";
+import { useMsal } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
 
 // Mock dependencies
 vi.mock("@stores/useModelStore");
 vi.mock("@common");
-vi.mock("../../auth");
+vi.mock("@common/auth");
+vi.mock("@azure/msal-react");
 
 describe("useModelMetadata", () => {
   let mockSetMetadata: any;
   let mockSetSelectedModel: any;
   let mockSetLoading: any;
-  let mockGetAccessToken: any;
+  let mockMsalInstance: any;
   const mockMetadata = [
     { pipelineId: "pipeline-1", name: "Model 1", default: false },
     { pipelineId: "pipeline-2", name: "Model 2", default: true },
@@ -27,7 +30,7 @@ describe("useModelMetadata", () => {
     mockSetMetadata = vi.fn();
     mockSetSelectedModel = vi.fn();
     mockSetLoading = vi.fn();
-    mockGetAccessToken = vi.fn().mockResolvedValue("test-token");
+    mockMsalInstance = {} as any;
 
     // Mock the store
     (useModelStore as any).mockReturnValue({
@@ -38,9 +41,13 @@ describe("useModelMetadata", () => {
       setLoading: mockSetLoading,
     });
 
-    (useNachetAuth as any).mockReturnValue({
-      getAccessToken: mockGetAccessToken,
+    // Mock useMsal
+    (useMsal as any).mockReturnValue({
+      instance: mockMsalInstance,
     });
+
+    // Mock auth
+    (acquireAccessToken as any).mockResolvedValue("test-token");
 
     // Mock fetchModelMetadata
     (fetchModelMetadata as any).mockResolvedValue(mockMetadata);
@@ -56,7 +63,7 @@ describe("useModelMetadata", () => {
         backendUrl: "http://test-backend.com",
         apiScopeClaim: "test-scope",
         isAuthenticated: true,
-        authLoading: false,
+        inProgress: InteractionStatus.None,
       }),
     );
 
@@ -65,7 +72,9 @@ describe("useModelMetadata", () => {
     });
 
     await waitFor(() => {
-      expect(mockGetAccessToken).toHaveBeenCalledWith(["test-scope"]);
+      expect(acquireAccessToken).toHaveBeenCalledWith(mockMsalInstance, [
+        "test-scope",
+      ]);
     });
 
     await waitFor(() => {
@@ -94,20 +103,20 @@ describe("useModelMetadata", () => {
         backendUrl: "http://test-backend.com",
         apiScopeClaim: "test-scope",
         isAuthenticated: false,
-        authLoading: false,
+        inProgress: InteractionStatus.None,
       }),
     );
 
     expect(fetchModelMetadata).not.toHaveBeenCalled();
   });
 
-  it("should not fetch while auth is loading", () => {
+  it("should not fetch when interaction is in progress", () => {
     renderHook(() =>
       useModelMetadata({
         backendUrl: "http://test-backend.com",
         apiScopeClaim: "test-scope",
         isAuthenticated: true,
-        authLoading: true,
+        inProgress: InteractionStatus.Login,
       }),
     );
 
@@ -127,7 +136,7 @@ describe("useModelMetadata", () => {
         backendUrl: "http://test-backend.com",
         apiScopeClaim: "test-scope",
         isAuthenticated: true,
-        authLoading: false,
+        inProgress: InteractionStatus.None,
       }),
     );
 
@@ -148,7 +157,7 @@ describe("useModelMetadata", () => {
         backendUrl: "http://test-backend.com",
         apiScopeClaim: "test-scope",
         isAuthenticated: true,
-        authLoading: false,
+        inProgress: InteractionStatus.None,
       }),
     );
 
@@ -178,7 +187,7 @@ describe("useModelMetadata", () => {
         backendUrl: "http://test-backend.com",
         apiScopeClaim: "test-scope",
         isAuthenticated: true,
-        authLoading: false,
+        inProgress: InteractionStatus.None,
       }),
     );
 
@@ -208,7 +217,7 @@ describe("useModelMetadata", () => {
         backendUrl: "http://test-backend.com",
         apiScopeClaim: "test-scope",
         isAuthenticated: true,
-        authLoading: false,
+        inProgress: InteractionStatus.None,
       }),
     );
 
@@ -223,7 +232,7 @@ describe("useModelMetadata", () => {
           backendUrl,
           apiScopeClaim: "test-scope",
           isAuthenticated: true,
-          authLoading: false,
+          inProgress: InteractionStatus.None,
         }),
       {
         initialProps: { backendUrl: "http://test-backend-1.com" },
