@@ -85,16 +85,18 @@ describe("QueueSummary", () => {
   it("shows ETA chip when timing data is available", async () => {
     const now = Date.now();
     useInferenceQueueStore.setState({
-      queue: [{
-        id: "id-1",
-        imageSrc: "img-0.jpg",
-        imageIndex: 0,
-        status: "processing",
-        addedAt: now - 2000,
-        inferenceStartedAt: now - 2000,
-        detectionDoneAt: now - 1000,
-        detectedBoxCount: 4,
-      }],
+      queue: [
+        {
+          id: "id-1",
+          imageSrc: "img-0.jpg",
+          imageIndex: 0,
+          status: "processing",
+          addedAt: now - 2000,
+          inferenceStartedAt: now - 2000,
+          detectionDoneAt: now - 1000,
+          detectedBoxCount: 4,
+        },
+      ],
       lastDetectionDurationMs: 3000,
       lastClassificationPerBoxMs: 500,
     });
