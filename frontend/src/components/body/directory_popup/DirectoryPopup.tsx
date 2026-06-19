@@ -9,9 +9,6 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "@styles/colours";
 import { useBackendUrl } from "@hooks";
-import { useMsal, useIsAuthenticated } from "@azure/msal-react";
-import { InteractionStatus } from "@azure/msal-browser";
-import { acquireAccessToken } from "@common/auth";
 import { createOrGetFolder, updateFolder, deleteFolder } from "@common/api";
 import { normalizedPathSchema, descriptionSchema } from "@common/validation";
 import { getZodErrorKey } from "@common/zodErrorMap";
@@ -25,6 +22,7 @@ import { PopupActionButtons } from "@components/common";
 import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";
 import { useFolderStore } from "@stores/useFolderStore";
 import { useNotificationStore } from "@stores/useNotificationStore";
+import { useNachetAuth } from "../../../auth";
 
 interface params {
   setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
@@ -57,8 +55,13 @@ const DirectoryPopup: React.FC<params> = (props) => {
   );
   const [validationError, setValidationError] = useState<string>("");
   const [descriptionError, setDescriptionError] = useState<string>("");
-  const { instance: msalInstance, inProgress } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
+  const {
+    getAccessToken,
+    isAuthenticated,
+    isLoading: authLoading,
+  } = useNachetAuth();
+  const getApiAccessToken = () =>
+    getAccessToken(apiScopeClaim ? [apiScopeClaim] : undefined);
   const { addError, addWarning } = useNotificationStore();
 
   // Zod validation hook for auto-normalization on blur
@@ -80,7 +83,7 @@ const DirectoryPopup: React.FC<params> = (props) => {
       return;
     }
 
-    if (inProgress !== InteractionStatus.None) {
+    if (authLoading) {
       const warningKey =
         mode === "delete"
           ? "deleteDirectory.errors.authInProgress"
@@ -96,7 +99,7 @@ const DirectoryPopup: React.FC<params> = (props) => {
         return;
       }
 
-      acquireAccessToken(msalInstance, [apiScopeClaim])
+      getApiAccessToken()
         .then(async (accessToken) => {
           await deleteFolder({
             backendUrl: backendURL,
@@ -157,7 +160,7 @@ const DirectoryPopup: React.FC<params> = (props) => {
 
     const sanitizedDescription = descriptionValidationResult.data;
 
-    acquireAccessToken(msalInstance, [apiScopeClaim])
+    getApiAccessToken()
       .then(async (accessToken) => {
         if (mode === "create") {
           // Create directory at root level using new API

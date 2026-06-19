@@ -1,12 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { WorkflowQueueManager } from "../WorkflowQueueManager";
 import * as api from "@common/api";
-import * as auth from "@common/auth";
 import { errorLogger } from "../../logging";
 
 // Mock dependencies
 vi.mock("@common/api");
-vi.mock("@common/auth");
 vi.mock("../../logging");
 
 describe("WorkflowQueueManager", () => {
@@ -14,7 +12,7 @@ describe("WorkflowQueueManager", () => {
   let mockWorkflowStore: any;
   let mockOnComplete: any;
   let mockOnError: any;
-  let mockMsalInstance: any;
+  let mockGetAccessToken: any;
   let mockConfig: any;
 
   beforeEach(() => {
@@ -31,11 +29,11 @@ describe("WorkflowQueueManager", () => {
 
     mockOnComplete = vi.fn();
     mockOnError = vi.fn();
-    mockMsalInstance = {} as any;
+    mockGetAccessToken = vi.fn().mockResolvedValue("test-token");
 
     mockConfig = {
       backendUrl: "http://test-backend.com",
-      msalInstance: mockMsalInstance,
+      getAccessToken: mockGetAccessToken,
       scopes: ["test-scope"],
       pipelineId: "pipeline-1",
       pipelineName: "Test Pipeline",
@@ -46,9 +44,6 @@ describe("WorkflowQueueManager", () => {
       onComplete: mockOnComplete,
       onError: mockOnError,
     };
-
-    // Mock auth
-    (auth.acquireAccessToken as any).mockResolvedValue("test-token");
   });
 
   afterEach(() => {

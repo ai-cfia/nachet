@@ -5,8 +5,6 @@ import {
 } from "@common";
 import type { Images, ApiInferenceData } from "@common/types";
 import { errorLogger } from "../logging";
-import { acquireAccessToken } from "../common/auth";
-import type { IPublicClientApplication } from "@azure/msal-browser";
 
 interface QueueItem {
   imageIndex: number;
@@ -47,7 +45,7 @@ interface WorkflowStore {
 
 interface WorkflowQueueManagerConfig {
   backendUrl: string;
-  msalInstance: IPublicClientApplication;
+  getAccessToken: (scopes?: string[]) => Promise<string>;
   scopes: string[];
   pipelineId: string;
   pipelineName: string;
@@ -185,10 +183,7 @@ export class WorkflowQueueManager {
       }
 
       // Acquire fresh access token
-      const accessToken = await acquireAccessToken(
-        this.config.msalInstance,
-        this.config.scopes,
-      );
+      const accessToken = await this.config.getAccessToken(this.config.scopes);
 
       // Submit to backend using the pipeline info from queue item
       const response = await inferenceRequest({
@@ -317,10 +312,7 @@ export class WorkflowQueueManager {
 
     try {
       // Acquire fresh access token
-      const accessToken = await acquireAccessToken(
-        this.config.msalInstance,
-        this.config.scopes,
-      );
+      const accessToken = await this.config.getAccessToken(this.config.scopes);
 
       const statusResponse = await getWorkflowStatus({
         backendUrl: this.config.backendUrl,
@@ -368,10 +360,7 @@ export class WorkflowQueueManager {
 
     try {
       // Acquire fresh access token
-      const accessToken = await acquireAccessToken(
-        this.config.msalInstance,
-        this.config.scopes,
-      );
+      const accessToken = await this.config.getAccessToken(this.config.scopes);
 
       // Fetch results
       const results = await getWorkflowResults({

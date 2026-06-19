@@ -1,6 +1,8 @@
 import React from "react";
+import { AuthApiBridge } from "./AuthApiBridge";
 import { NachetAuthContext } from "./NachetAuthContext";
 import { MsalAuthProvider } from "./msal/MsalAuthProvider";
+import { OidcAuthProvider } from "./oidc/OidcAuthProvider";
 
 export interface NachetAuthProviderProps {
   apiScopeClaim: string;
@@ -14,19 +16,34 @@ export function NachetAuthProvider({
   const configuredProvider = (import.meta.env.VITE_AUTH_PROVIDER ?? "msal")
     .trim()
     .toLowerCase();
+  const oidcApiScopeClaim =
+    import.meta.env.VITE_OIDC_API_SCOPE_CLAIM?.trim() || apiScopeClaim;
 
-  if (configuredProvider !== "msal") {
-    throw new Error(
-      `Unsupported auth provider '${configuredProvider}'. Only 'msal' is wired in this slice.`,
+  if (configuredProvider === "msal") {
+    return (
+      <MsalAuthProvider
+        apiScopeClaim={apiScopeClaim}
+        authContext={NachetAuthContext}
+      >
+        <AuthApiBridge />
+        {children}
+      </MsalAuthProvider>
     );
   }
 
-  return (
-    <MsalAuthProvider
-      apiScopeClaim={apiScopeClaim}
-      authContext={NachetAuthContext}
-    >
-      {children}
-    </MsalAuthProvider>
+  if (configuredProvider === "oidc") {
+    return (
+      <OidcAuthProvider
+        apiScopeClaim={oidcApiScopeClaim}
+        authContext={NachetAuthContext}
+      >
+        <AuthApiBridge />
+        {children}
+      </OidcAuthProvider>
+    );
+  }
+
+  throw new Error(
+    `Unsupported auth provider '${configuredProvider}'. Use 'msal' or 'oidc'.`,
   );
 }

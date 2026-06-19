@@ -3,21 +3,18 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useSpeciesData } from "../useSpeciesData";
 import { useSpeciesStore } from "@stores/useSpeciesStore";
 import { requestClassList } from "@common/api";
-import { acquireAccessToken } from "@common/auth";
-import { useMsal, useIsAuthenticated } from "@azure/msal-react";
-import { InteractionStatus } from "@azure/msal-browser";
+import { useNachetAuth } from "../../auth";
 
 // Mock dependencies
 vi.mock("@stores/useSpeciesStore");
 vi.mock("@common/api");
-vi.mock("@common/auth");
-vi.mock("@azure/msal-react");
+vi.mock("../../auth");
 
 describe("useSpeciesData", () => {
   let mockSetSpeciesData: any;
   let mockSetLoading: any;
   let mockSetError: any;
-  let mockMsalInstance: any;
+  let mockGetAccessToken: any;
   const mockSpeciesData = [
     { id: 1, name: "Species 1" },
     { id: 2, name: "Species 2" },
@@ -29,7 +26,7 @@ describe("useSpeciesData", () => {
     mockSetSpeciesData = vi.fn();
     mockSetLoading = vi.fn();
     mockSetError = vi.fn();
-    mockMsalInstance = {} as any;
+    mockGetAccessToken = vi.fn().mockResolvedValue("test-token");
 
     (useSpeciesStore as any).mockReturnValue({
       speciesData: null,
@@ -40,13 +37,11 @@ describe("useSpeciesData", () => {
       setError: mockSetError,
     });
 
-    (useMsal as any).mockReturnValue({
-      instance: mockMsalInstance,
-      inProgress: InteractionStatus.None,
+    (useNachetAuth as any).mockReturnValue({
+      getAccessToken: mockGetAccessToken,
+      isAuthenticated: true,
+      isLoading: false,
     });
-
-    (useIsAuthenticated as any).mockReturnValue(true);
-    (acquireAccessToken as any).mockResolvedValue("test-token");
     (requestClassList as any).mockResolvedValue(mockSpeciesData);
 
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -79,7 +74,11 @@ describe("useSpeciesData", () => {
   });
 
   it("should not fetch when not authenticated", () => {
-    (useIsAuthenticated as any).mockReturnValue(false);
+    (useNachetAuth as any).mockReturnValue({
+      getAccessToken: mockGetAccessToken,
+      isAuthenticated: false,
+      isLoading: false,
+    });
     renderHook(() => useSpeciesData("http://test-backend.com", "test-scope"));
     expect(requestClassList).not.toHaveBeenCalled();
   });
@@ -99,9 +98,10 @@ describe("useSpeciesData", () => {
   });
 
   it("should not fetch when interaction is in progress", () => {
-    (useMsal as any).mockReturnValue({
-      instance: mockMsalInstance,
-      inProgress: InteractionStatus.Login,
+    (useNachetAuth as any).mockReturnValue({
+      getAccessToken: mockGetAccessToken,
+      isAuthenticated: true,
+      isLoading: true,
     });
 
     renderHook(() => useSpeciesData("http://test-backend.com", "test-scope"));

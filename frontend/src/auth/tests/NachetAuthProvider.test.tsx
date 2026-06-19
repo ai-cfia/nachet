@@ -7,6 +7,50 @@ import { NachetAuthProvider, useNachetAuth } from "../";
 
 vi.mock("@azure/msal-react");
 vi.mock("../../common/auth");
+vi.mock("../../common/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../common/api")>();
+  return {
+    ...actual,
+    initializeApi: vi.fn(),
+  };
+});
+vi.mock("../../logging", () => ({
+  errorLogger: {
+    setTokenProvider: vi.fn(),
+  },
+}));
+vi.mock("../oidc/OidcAuthProvider", () => ({
+  OidcAuthProvider: ({ authContext, children }: any) => {
+    const Provider = authContext.Provider;
+
+    return (
+      <Provider
+        value={{
+          provider: "oidc",
+          isAuthenticated: true,
+          isLoading: false,
+          accounts: [
+            {
+              username: "oidc-user@example.com",
+              name: "OIDC User",
+              idTokenClaims: { sub: "oidc-subject" },
+            },
+          ],
+          activeAccount: {
+            username: "oidc-user@example.com",
+            name: "OIDC User",
+            idTokenClaims: { sub: "oidc-subject" },
+          },
+          login: vi.fn(),
+          logout: vi.fn(),
+          getAccessToken: vi.fn().mockResolvedValue("oidc-access-token"),
+        }}
+      >
+        {children}
+      </Provider>
+    );
+  },
+}));
 
 const mockAccount = {
   homeAccountId: "home-account-id",
@@ -158,8 +202,23 @@ describe("NachetAuthProvider", () => {
     });
   });
 
-  it("fails closed when an unsupported auth provider is configured", () => {
+  it("selects the OIDC adapter when oidc is configured", () => {
     import.meta.env.VITE_AUTH_PROVIDER = "oidc";
+
+    render(
+      <NachetAuthProvider apiScopeClaim="api://nachet/scope">
+        <TestConsumer />
+      </NachetAuthProvider>,
+    );
+
+    expect(screen.getByTestId("provider").textContent).toBe("oidc");
+    expect(screen.getByTestId("username").textContent).toBe(
+      "oidc-user@example.com",
+    );
+  });
+
+  it("fails closed when an unsupported auth provider is configured", () => {
+    import.meta.env.VITE_AUTH_PROVIDER = "unknown";
 
     expect(() =>
       render(
@@ -167,6 +226,6 @@ describe("NachetAuthProvider", () => {
           <TestConsumer />
         </NachetAuthProvider>,
       ),
-    ).toThrow("Unsupported auth provider 'oidc'");
+    ).toThrow("Unsupported auth provider 'unknown'");
   });
 });

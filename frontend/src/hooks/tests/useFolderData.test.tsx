@@ -3,21 +3,18 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useFolderData } from "../useFolderData";
 import { useFolderStore, FolderData } from "@stores/useFolderStore";
 import { readAzureStorageDir } from "@common/api";
-import { acquireAccessToken } from "@common/auth";
-import { useMsal, useIsAuthenticated } from "@azure/msal-react";
-import { InteractionStatus } from "@azure/msal-browser";
+import { useNachetAuth } from "../../auth";
 
 // Mock dependencies
 vi.mock("@stores/useFolderStore");
 vi.mock("@common/api");
-vi.mock("@common/auth");
-vi.mock("@azure/msal-react");
+vi.mock("../../auth");
 
 describe("useFolderData", () => {
   let mockSetFolderData: any;
   let mockSetLoading: any;
   let mockSetError: any;
-  let mockMsalInstance: any;
+  let mockGetAccessToken: any;
   const mockApiResponse = {
     directories: [
       {
@@ -60,7 +57,7 @@ describe("useFolderData", () => {
     mockSetFolderData = vi.fn();
     mockSetLoading = vi.fn();
     mockSetError = vi.fn();
-    mockMsalInstance = {} as any;
+    mockGetAccessToken = vi.fn().mockResolvedValue("test-token");
 
     (useFolderStore as any).mockReturnValue({
       folderData: null,
@@ -71,13 +68,11 @@ describe("useFolderData", () => {
       setError: mockSetError,
     });
 
-    (useMsal as any).mockReturnValue({
-      instance: mockMsalInstance,
-      inProgress: InteractionStatus.None,
+    (useNachetAuth as any).mockReturnValue({
+      getAccessToken: mockGetAccessToken,
+      isAuthenticated: true,
+      isLoading: false,
     });
-
-    (useIsAuthenticated as any).mockReturnValue(true);
-    (acquireAccessToken as any).mockResolvedValue("test-token");
     (readAzureStorageDir as any).mockResolvedValue(mockApiResponse);
 
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -145,7 +140,11 @@ describe("useFolderData", () => {
   });
 
   it("should not fetch when not authenticated", () => {
-    (useIsAuthenticated as any).mockReturnValue(false);
+    (useNachetAuth as any).mockReturnValue({
+      getAccessToken: mockGetAccessToken,
+      isAuthenticated: false,
+      isLoading: false,
+    });
     renderHook(() => useFolderData("http://test-backend.com", "test-scope"));
     expect(readAzureStorageDir).not.toHaveBeenCalled();
   });
@@ -165,9 +164,10 @@ describe("useFolderData", () => {
   });
 
   it("should not fetch when interaction is in progress", () => {
-    (useMsal as any).mockReturnValue({
-      instance: mockMsalInstance,
-      inProgress: InteractionStatus.Login,
+    (useNachetAuth as any).mockReturnValue({
+      getAccessToken: mockGetAccessToken,
+      isAuthenticated: true,
+      isLoading: true,
     });
 
     renderHook(() => useFolderData("http://test-backend.com", "test-scope"));

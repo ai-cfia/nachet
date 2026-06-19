@@ -14,6 +14,7 @@ import { useNachetAuth } from "../../../auth";
 interface AuthPopupProps {
   open: boolean;
   onClose: () => void;
+  apiScopeClaim?: string;
 }
 
 const AuthPopup: React.FC<AuthPopupProps> = ({ open, onClose }) => {

@@ -127,4 +127,23 @@ describe("OidcAuthProvider", () => {
       "oidc-user@example.com",
     );
   });
+
+  it("adds the API scope to an explicit OIDC scope", () => {
+    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
+    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
+    import.meta.env.VITE_OIDC_SCOPE = "openid profile";
+
+    render(
+      <OidcAuthProvider
+        apiScopeClaim="api://nachet/access_as_user"
+        authContext={TestAuthContext}
+      >
+        <TestConsumer />
+      </OidcAuthProvider>,
+    );
+
+    expect(capturedAuthProviderSettings.value).toMatchObject({
+      scope: "openid profile api://nachet/access_as_user",
+    });
+  });
 });

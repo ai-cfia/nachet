@@ -294,10 +294,10 @@ from the frontend.
 `"test"` for using test data, any other value will use real data from the
 backend.
 3. `VITE_AUTH_PROVIDER`: Selects the frontend authentication provider at build
-time. The current app-wide provider remains `"msal"` while the provider-neutral
-OIDC adapter is prepared.
+time. Use `"msal"` for the official Microsoft Entra path or `"oidc"` for the
+provider-neutral OIDC path.
 
-The OIDC adapter uses these settings in the next integration slice:
+The OIDC adapter requires these settings when `VITE_AUTH_PROVIDER` is `"oidc"`:
 
 - `VITE_OIDC_AUTHORITY`
 - `VITE_OIDC_CLIENT_ID`

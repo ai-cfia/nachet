@@ -40,20 +40,15 @@ import {
 } from "./validation";
 import { errorLogger } from "../logging";
 import { setupAxiosInterceptor, resetRedirectFlag } from "./apiInterceptor";
-import type { IPublicClientApplication } from "@azure/msal-browser";
 
 /**
  * Initialize API module with axios interceptor for authentication
  * Must be called once during app initialization
  *
- * @param msalInstance - MSAL instance for authentication
- * @param scopes - Array of scopes to request for tokens
+ * @param getAccessToken - Provider-neutral token getter
  */
-export function initializeApi(
-  msalInstance: IPublicClientApplication,
-  scopes: string[],
-): void {
-  setupAxiosInterceptor(msalInstance, scopes);
+export function initializeApi(getAccessToken: () => Promise<string>): void {
+  setupAxiosInterceptor(getAccessToken);
 }
 
 // Re-export resetRedirectFlag for use in main.tsx

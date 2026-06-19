@@ -1,9 +1,7 @@
 import { useEffect } from "react";
-import { useMsal, useIsAuthenticated } from "@azure/msal-react";
-import { InteractionStatus } from "@azure/msal-browser";
 import { useDeviceStore } from "@stores/useDeviceStore";
 import { fetchDevices } from "@common/api";
-import { acquireAccessToken } from "@common/auth";
+import { useNachetAuth } from "../auth";
 
 export const useDeviceData = (backendUrl: string, apiScopeClaim: string) => {
   const {
@@ -14,8 +12,11 @@ export const useDeviceData = (backendUrl: string, apiScopeClaim: string) => {
     setLoading,
     setError,
   } = useDeviceStore();
-  const { instance, inProgress } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
+  const {
+    getAccessToken,
+    isAuthenticated,
+    isLoading: authLoading,
+  } = useNachetAuth();
 
   useEffect(() => {
     const fetchDeviceData = async () => {
@@ -31,7 +32,7 @@ export const useDeviceData = (backendUrl: string, apiScopeClaim: string) => {
         return; // Already have data, don't fetch again
       }
 
-      if (inProgress !== InteractionStatus.None) {
+      if (authLoading) {
         return; // Wait for interaction to complete
       }
 
@@ -39,7 +40,7 @@ export const useDeviceData = (backendUrl: string, apiScopeClaim: string) => {
       setError(null);
 
       try {
-        const accessToken = await acquireAccessToken(instance, [apiScopeClaim]);
+        const accessToken = await getAccessToken([apiScopeClaim]);
         const response = await fetchDevices({ backendUrl, accessToken });
         setDevicesData(response);
       } catch (err) {
@@ -56,8 +57,8 @@ export const useDeviceData = (backendUrl: string, apiScopeClaim: string) => {
   }, [
     apiScopeClaim,
     backendUrl,
-    instance,
-    inProgress,
+    authLoading,
+    getAccessToken,
     isAuthenticated,
     setError,
     setLoading,

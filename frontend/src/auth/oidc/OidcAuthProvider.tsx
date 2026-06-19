@@ -84,9 +84,9 @@ function OidcAuthBridge({
 }: OidcAuthProviderProps) {
   const oidc = useOidcAuth();
   const defaultScope = useMemo(() => {
-    return (
-      optionalEnv("VITE_OIDC_SCOPE") ??
-      buildScope("openid profile email", apiScopeClaim ? [apiScopeClaim] : [])
+    return buildScope(
+      optionalEnv("VITE_OIDC_SCOPE") ?? "openid profile email",
+      apiScopeClaim ? [apiScopeClaim] : [],
     );
   }, [apiScopeClaim]);
 
@@ -149,9 +149,10 @@ function OidcAuthBridge({
 }
 
 function getOidcSettings(apiScopeClaim: string): UserManagerSettings {
-  const baseScope =
-    optionalEnv("VITE_OIDC_SCOPE") ??
-    buildScope("openid profile email", apiScopeClaim ? [apiScopeClaim] : []);
+  const baseScope = buildScope(
+    optionalEnv("VITE_OIDC_SCOPE") ?? "openid profile email",
+    apiScopeClaim ? [apiScopeClaim] : [],
+  );
 
   return {
     authority: requiredEnv("VITE_OIDC_AUTHORITY"),
