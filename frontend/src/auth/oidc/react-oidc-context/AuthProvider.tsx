@@ -1,8 +1,8 @@
 /*
  * Borrowed and adapted from these react-oidc-context files:
- * https://github.com/authts/react-oidc-context/blob/main/src/AuthProvider.tsx
- * https://github.com/authts/react-oidc-context/blob/main/src/AuthState.ts
- * https://github.com/authts/react-oidc-context/blob/main/src/utils.ts
+ * https://github.com/authts/react-oidc-context/blob/80e60ae0b538afdb6e0be7016ec3430104b1bf42/src/AuthProvider.tsx
+ * https://github.com/authts/react-oidc-context/blob/80e60ae0b538afdb6e0be7016ec3430104b1bf42/src/AuthState.ts
+ * https://github.com/authts/react-oidc-context/blob/80e60ae0b538afdb6e0be7016ec3430104b1bf42/src/utils.ts
  *
  * Original project is MIT licensed. See LICENSE in this directory.
  */

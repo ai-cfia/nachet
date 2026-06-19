@@ -1,6 +1,6 @@
 /*
  * Borrowed and adapted from react-oidc-context useAuth.ts:
- * https://github.com/authts/react-oidc-context/blob/main/src/useAuth.ts
+ * https://github.com/authts/react-oidc-context/blob/80e60ae0b538afdb6e0be7016ec3430104b1bf42/src/useAuth.ts
  *
  * Original project is MIT licensed. See LICENSE in this directory.
  */

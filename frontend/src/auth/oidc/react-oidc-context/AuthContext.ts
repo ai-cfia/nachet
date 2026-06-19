@@ -1,6 +1,7 @@
 /*
- * Borrowed and adapted from react-oidc-context AuthContext.ts:
- * https://github.com/authts/react-oidc-context/blob/main/src/AuthContext.ts
+ * Borrowed and adapted from react-oidc-context:
+ * https://github.com/authts/react-oidc-context/blob/80e60ae0b538afdb6e0be7016ec3430104b1bf42/src/AuthContext.ts
+ * https://github.com/authts/react-oidc-context/blob/80e60ae0b538afdb6e0be7016ec3430104b1bf42/src/AuthState.ts
  *
  * Original project is MIT licensed. See LICENSE in this directory.
  */

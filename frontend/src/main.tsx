@@ -15,8 +15,8 @@ import { errorLogger } from "./logging";
 import { theme } from "./theme";
 import {
   acquireAccessToken,
-  resetAuthRedirectFlag,
   shouldTriggerRedirect,
+  resetAuthRedirectFlag,
 } from "./common/auth";
 import { initializeApi, resetRedirectFlag } from "./common/api";
 import "./i18n";
