@@ -1,24 +1,43 @@
+import React from "react";
 import CFIALogo from "../../../assets/CFIA_blackfont.png";
 import { Button, IconButton, Box } from "@mui/material";
 import { colours } from "../../../styles/colours";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import { useMsal, useIsAuthenticated } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
 import { useTranslation } from "react-i18next";
-import { useNachetAuth } from "../../../auth";
 
-const Navbar = () => {
-  const { accounts, isAuthenticated, login, logout } = useNachetAuth();
+interface params {
+  windowSize: {
+    width: number;
+    height: number;
+  };
+  apiScopeClaim: string;
+}
+
+const Navbar: React.FC<params> = (props) => {
+  const { instance, inProgress, accounts } = useMsal();
+  const isAuthenticated = useIsAuthenticated();
+  const { apiScopeClaim } = props;
   const { t } = useTranslation("header");
-  const handleLogout = async (): Promise<void> => {
+  const logout = async (): Promise<void> => {
     try {
-      await logout();
+      await instance.logoutRedirect();
     } catch (error) {
       console.error("Logout failed:", error);
       throw error;
     }
   };
-  const handleLogin = async (): Promise<void> => {
+  const login = async (): Promise<void> => {
     try {
-      await login();
+      if (inProgress !== InteractionStatus.None) {
+        console.warn("Interaction already in progress, please wait");
+        return;
+      }
+      await instance.loginRedirect({
+        // scopes: ["openid", "profile", "email"],
+        scopes: [apiScopeClaim ?? ""],
+      });
     } catch (error) {
       console.error("Login failed:", error);
       throw error;
@@ -96,7 +115,7 @@ const Navbar = () => {
               variant="outlined"
               onClick={async () => {
                 try {
-                  await handleLogin();
+                  await login();
                 } catch (error) {
                   console.error("Login failed:", error);
                 }
@@ -112,7 +131,7 @@ const Navbar = () => {
                 sx={{ padding: 0, marginTop: "0.27vh", marginRight: "0.4vh" }}
                 onClick={async () => {
                   try {
-                    await handleLogout();
+                    await logout();
                   } catch (error) {
                     console.error("Logout failed:", error);
                   }

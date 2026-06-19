@@ -58,7 +58,7 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
       <MsalProvider instance={msalInstance}>
         <NachetAuthProvider apiScopeClaim={apiScopeClaim}>
           <Fragment>
-            <Navbar />
+            <Navbar windowSize={windowSize} apiScopeClaim={apiScopeClaim} />
             <Appbar windowSize={windowSize} />
             <Routes>
               <Route

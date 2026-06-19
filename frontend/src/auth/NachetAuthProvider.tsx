@@ -1,24 +1,11 @@
-import { useEffect, type ReactNode } from "react";
-import { NachetAuthContext, useNachetAuth } from "./NachetAuthContext";
+import { type ReactNode } from "react";
+import { NachetAuthContext } from "./NachetAuthContext";
 import { MsalAuthProvider } from "./msal/MsalAuthProvider";
 import { OidcAuthProvider } from "./oidc/OidcAuthProvider";
-import { initializeApi } from "../common/api";
-import { errorLogger } from "../logging";
 
 export interface NachetAuthProviderProps {
   apiScopeClaim: string;
   children: ReactNode;
-}
-
-function AuthApiBridge() {
-  const { getAccessToken } = useNachetAuth();
-
-  useEffect(() => {
-    initializeApi(getAccessToken);
-    errorLogger.setTokenProvider(async () => getAccessToken());
-  }, [getAccessToken]);
-
-  return null;
 }
 
 export function NachetAuthProvider({
@@ -37,7 +24,6 @@ export function NachetAuthProvider({
         apiScopeClaim={apiScopeClaim}
         authContext={NachetAuthContext}
       >
-        <AuthApiBridge />
         {children}
       </MsalAuthProvider>
     );
@@ -49,7 +35,6 @@ export function NachetAuthProvider({
         apiScopeClaim={oidcApiScopeClaim}
         authContext={NachetAuthContext}
       >
-        <AuthApiBridge />
         {children}
       </OidcAuthProvider>
     );

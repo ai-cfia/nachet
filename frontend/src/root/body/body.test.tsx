@@ -2,19 +2,6 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import Body from "./body";
 
-vi.mock("../../auth", () => ({
-  useNachetAuth: () => ({
-    isAuthenticated: false,
-    isLoading: false,
-    activeAccount: null,
-    accounts: [],
-    login: vi.fn(),
-    logout: vi.fn(),
-    getAccessToken: vi.fn(),
-    provider: "msal",
-  }),
-}));
-
 // Mock the hooks
 vi.mock("@hooks", () => ({
   useBackendUrl: () => "http://localhost:8080",
