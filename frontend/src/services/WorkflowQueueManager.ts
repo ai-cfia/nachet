@@ -5,8 +5,6 @@ import {
 } from "@common";
 import type { Images, ApiInferenceData } from "@common/types";
 import { errorLogger } from "../logging";
-import { acquireAccessToken } from "../common/auth";
-import type { IPublicClientApplication } from "@azure/msal-browser";
 
 interface QueueItem {
   imageIndex: number;
@@ -47,8 +45,6 @@ interface WorkflowStore {
 
 interface WorkflowQueueManagerConfig {
   backendUrl: string;
-  msalInstance: IPublicClientApplication;
-  scopes: string[];
   pipelineId: string;
   pipelineName: string;
   curDir: { folderId: string; folderName: string };
@@ -184,19 +180,12 @@ export class WorkflowQueueManager {
         return;
       }
 
-      // Acquire fresh access token
-      const accessToken = await acquireAccessToken(
-        this.config.msalInstance,
-        this.config.scopes,
-      );
-
       // Submit to backend using the pipeline info from queue item
       const response = await inferenceRequest({
         backendUrl: this.config.backendUrl,
         selectedModel: item.pipelineId,
         imageObject: image as Images,
         curDir: this.config.curDir.folderName,
-        accessToken,
         folderId: this.config.curDir.folderId,
       });
 
@@ -316,16 +305,9 @@ export class WorkflowQueueManager {
     }
 
     try {
-      // Acquire fresh access token
-      const accessToken = await acquireAccessToken(
-        this.config.msalInstance,
-        this.config.scopes,
-      );
-
       const statusResponse = await getWorkflowStatus({
         backendUrl: this.config.backendUrl,
         workflowId,
-        accessToken,
       });
 
       // Update workflow status in store
@@ -367,17 +349,10 @@ export class WorkflowQueueManager {
     this.stopPolling();
 
     try {
-      // Acquire fresh access token
-      const accessToken = await acquireAccessToken(
-        this.config.msalInstance,
-        this.config.scopes,
-      );
-
       // Fetch results
       const results = await getWorkflowResults({
         backendUrl: this.config.backendUrl,
         workflowId,
-        accessToken,
       });
 
       // Clear current workflow BEFORE calling callback

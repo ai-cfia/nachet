@@ -59,7 +59,7 @@ const App = ({ basename, msalInstance, apiScopeClaim }: AppProps) => {
         msalInstance={msalInstance}
       >
         <Fragment>
-          <Navbar windowSize={windowSize} apiScopeClaim={apiScopeClaim} />
+          <Navbar />
           <Appbar windowSize={windowSize} />
           <Routes>
             <Route
@@ -72,7 +72,6 @@ const App = ({ basename, msalInstance, apiScopeClaim }: AppProps) => {
                   handleCreativeCommonsAgreement={
                     handleCreativeCommonsAgreement
                   }
-                  apiScopeClaim={apiScopeClaim}
                 />
               }
             />
@@ -87,7 +86,6 @@ const App = ({ basename, msalInstance, apiScopeClaim }: AppProps) => {
                   handleCreativeCommonsAgreement={
                     handleCreativeCommonsAgreement
                   }
-                  apiScopeClaim={apiScopeClaim}
                 />
               }
             />

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, type Dispatch, type FC, type SetStateAction } from "react";
 import {
   Box,
   Dialog,
@@ -9,9 +9,6 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "@styles/colours";
 import { useBackendUrl } from "@hooks";
-import { useMsal, useIsAuthenticated } from "@azure/msal-react";
-import { InteractionStatus } from "@azure/msal-browser";
-import { acquireAccessToken } from "@common/auth";
 import { createOrGetFolder, updateFolder, deleteFolder } from "@common/api";
 import { normalizedPathSchema, descriptionSchema } from "@common/validation";
 import { getZodErrorKey } from "@common/zodErrorMap";
@@ -25,10 +22,10 @@ import { PopupActionButtons } from "@components/common";
 import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";
 import { useFolderStore } from "@stores/useFolderStore";
 import { useNotificationStore } from "@stores/useNotificationStore";
+import { useNachetAuth } from "../../../auth";
 
 interface params {
-  setReadAzureStorage: React.Dispatch<React.SetStateAction<boolean>>;
-  apiScopeClaim: string;
+  setReadAzureStorage: Dispatch<SetStateAction<boolean>>;
   mode: "create" | "edit" | "delete";
   initialData?: {
     folderId: string;
@@ -37,10 +34,10 @@ interface params {
   };
 }
 
-const DirectoryPopup: React.FC<params> = (props) => {
+const DirectoryPopup: FC<params> = (props) => {
   const { t } = useTranslation("popups");
   const { t: tValidation } = useTranslation("validation");
-  const { setReadAzureStorage, apiScopeClaim, mode, initialData } = props;
+  const { setReadAzureStorage, mode, initialData } = props;
   const { closeCreateDirectory, closeEditDirectory, closeDeleteDirectory } =
     useDirectoryModalStore();
   const { setCurDir } = useFolderStore();
@@ -57,8 +54,7 @@ const DirectoryPopup: React.FC<params> = (props) => {
   );
   const [validationError, setValidationError] = useState<string>("");
   const [descriptionError, setDescriptionError] = useState<string>("");
-  const { instance: msalInstance, inProgress } = useMsal();
-  const isAuthenticated = useIsAuthenticated();
+  const { isAuthenticated, isLoading: authLoading } = useNachetAuth();
   const { addError, addWarning } = useNotificationStore();
 
   // Zod validation hook for auto-normalization on blur
@@ -80,7 +76,7 @@ const DirectoryPopup: React.FC<params> = (props) => {
       return;
     }
 
-    if (inProgress !== InteractionStatus.None) {
+    if (authLoading) {
       const warningKey =
         mode === "delete"
           ? "deleteDirectory.errors.authInProgress"
@@ -96,13 +92,11 @@ const DirectoryPopup: React.FC<params> = (props) => {
         return;
       }
 
-      acquireAccessToken(msalInstance, [apiScopeClaim])
-        .then(async (accessToken) => {
-          await deleteFolder({
-            backendUrl: backendURL,
-            accessToken,
-            folderId: initialData.folderId,
-          });
+      deleteFolder({
+        backendUrl: backendURL,
+        folderId: initialData.folderId,
+      })
+        .then(() => {
           console.log(`Folder deleted: ${initialData.folderId}`);
           closeDeleteDirectory();
           setCurDir(null);
@@ -157,13 +151,12 @@ const DirectoryPopup: React.FC<params> = (props) => {
 
     const sanitizedDescription = descriptionValidationResult.data;
 
-    acquireAccessToken(msalInstance, [apiScopeClaim])
-      .then(async (accessToken) => {
+    Promise.resolve()
+      .then(async () => {
         if (mode === "create") {
           // Create directory at root level using new API
           const result = await createOrGetFolder({
             backendUrl: backendURL,
-            accessToken,
             normalizedPath,
             description: sanitizedDescription,
           });
@@ -175,7 +168,6 @@ const DirectoryPopup: React.FC<params> = (props) => {
           }
           const result = await updateFolder({
             backendUrl: backendURL,
-            accessToken,
             folderId: initialData.folderId,
             name: normalizedPath,
             description: sanitizedDescription,
