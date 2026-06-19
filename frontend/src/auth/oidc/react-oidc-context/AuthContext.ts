@@ -13,7 +13,13 @@ import type {
   UserManagerEvents,
   UserManagerSettings,
 } from "oidc-client-ts";
-import type { AuthState } from "./AuthState";
+
+interface AuthState {
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  user: User | null;
+  error: Error | null;
+}
 
 export interface AuthContextValue extends AuthState {
   settings: UserManagerSettings;

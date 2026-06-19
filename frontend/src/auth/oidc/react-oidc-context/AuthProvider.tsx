@@ -1,6 +1,8 @@
 /*
- * Borrowed and adapted from react-oidc-context AuthProvider.tsx:
+ * Borrowed and adapted from these react-oidc-context files:
  * https://github.com/authts/react-oidc-context/blob/main/src/AuthProvider.tsx
+ * https://github.com/authts/react-oidc-context/blob/main/src/AuthState.ts
+ * https://github.com/authts/react-oidc-context/blob/main/src/utils.ts
  *
  * Original project is MIT licensed. See LICENSE in this directory.
  */
@@ -14,13 +16,45 @@ import {
   type UserManagerSettings,
 } from "oidc-client-ts";
 import { AuthContext } from "./AuthContext";
-import { initialAuthState, type AuthState } from "./AuthState";
-import { hasAuthParams, toError } from "./utils";
+
+interface AuthState {
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  user: User | null;
+  error: Error | null;
+}
+
+const initialAuthState: AuthState = {
+  isLoading: true,
+  isAuthenticated: false,
+  user: null,
+  error: null,
+};
 
 interface AuthProviderProps extends UserManagerSettings {
   children: ReactNode;
   skipSigninCallback?: boolean;
   onSigninCallback?: (user: User | null) => Promise<void> | void;
+}
+
+function hasAuthParams(location = window.location): boolean {
+  const searchParams = new URLSearchParams(location.search);
+  const hashParams = new URLSearchParams(location.hash.replace(/^#/, ""));
+
+  return (
+    ((searchParams.has("code") || searchParams.has("error")) &&
+      searchParams.has("state")) ||
+    ((hashParams.has("code") || hashParams.has("error")) &&
+      hashParams.has("state"))
+  );
+}
+
+function toError(error: unknown): Error {
+  if (error instanceof Error) {
+    return error;
+  }
+
+  return new Error(typeof error === "string" ? error : JSON.stringify(error));
 }
 
 export function AuthProvider({
