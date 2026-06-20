@@ -78,7 +78,7 @@
     "@babel/preset-env": "^7.28.3",
     "@babel/preset-react": "^7.27.1",
     "@babel/preset-typescript": "^7.27.1",
-    "@cyclonedx/cyclonedx-npm": "^4.0.0",
+    "@cyclonedx/cyclonedx-npm": "^5.0.0",
     "@eslint/compat": "^2.0.0",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.33.0",
