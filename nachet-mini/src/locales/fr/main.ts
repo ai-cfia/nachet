@@ -27,6 +27,7 @@ const main = {
     noModelLoaded: "Aucun mod\u00e8le charg\u00e9",
     cameraError: "Erreur de cam\u00e9ra\u00a0: {{message}}",
     error: "Erreur\u00a0: {{error}}",
+    queued: "En attente d'identification",
   },
   modelLoader: {
     detector: "D\u00e9tecteur",
@@ -82,6 +83,10 @@ const main = {
     resultEntry: "{{time}} \u2014 {{modelId}}",
     boxes: "{{count}} bo\u00eetes",
     removeResult: "Supprimer les r\u00e9sultats s\u00e9lectionn\u00e9s",
+    inferring: "Identification en cours...",
+    queuePosition: "Position dans la file : {{position}}",
+    cancelInference: "Annuler l'identification de l'image {{number}}",
+    inferring_: "En cours",
   },
   metadata: {
     defaultsTitle: "Métadonnées par défaut",
@@ -133,6 +138,16 @@ const main = {
       "Nachet Mini effectue l'identification dans votre navigateur. La première fois que vous identifiez une image, les fichiers du modèle doivent être téléchargés et initialisés, ce qui peut prendre un certain temps. Les visites ultérieures devraient être plus rapides, car votre navigateur réutilisera les fichiers en cache.",
     cancel: "Annuler",
     continue: "Continuer",
+  },
+  inferenceQueue: {
+    itemsQueued_one: "{{count}} élément en file",
+    itemsQueued_other: "{{count}} éléments en file",
+    eta: "~{{time}}s restantes",
+    etaUnknown: "Estimation...",
+    etaDetecting: "~{{time}}s · détection",
+    etaClassifying: "~{{time}}s · classification",
+    etaTooltip:
+      "Temps restant estimé. La précision s'améliore avec chaque identification complétée.",
   },
 } as const;
 

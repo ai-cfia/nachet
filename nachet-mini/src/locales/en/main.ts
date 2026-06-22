@@ -27,6 +27,7 @@ const main = {
     noModelLoaded: "No model loaded",
     cameraError: "Camera error: {{message}}",
     error: "Error: {{error}}",
+    queued: "Queued for inference",
   },
   modelLoader: {
     detector: "Detector",
@@ -81,6 +82,10 @@ const main = {
     resultEntry: "{{time}} \u2014 {{modelId}}",
     boxes: "{{count}} boxes",
     removeResult: "Delete selected results",
+    cancelInference: "Cancel inference for image {{number}}",
+    inferring: "Identifying...",
+    queuePosition: "Queue position {{position}}",
+    inferring_: "Running",
   },
   metadata: {
     defaultsTitle: "Default Metadata",
@@ -109,6 +114,8 @@ const main = {
     },
   },
   validation: {
+    etaTooltip:
+      "Estimated time remaining. Accuracy improves as more inferences are completed.",
     invalidType: "File must be a PNG or JPEG image",
     fileTooLarge: "File size must be less than 10MB",
     dimensionsTooLarge: "Image dimensions must not exceed 8000x8000 pixels",
@@ -129,6 +136,16 @@ const main = {
       "Nachet Mini runs identification in your browser. The first time you identify an image, the model files must be downloaded and initialized, which can take a while. Later visits should be faster because your browser will reuse cached model files.",
     cancel: "Cancel",
     continue: "Continue",
+  },
+  inferenceQueue: {
+    itemsQueued_one: "{{count}} item in queue",
+    itemsQueued_other: "{{count}} items in queue",
+    eta: "~{{time}}s remaining",
+    etaUnknown: "Estimating...",
+    etaDetecting: "~{{time}}s · detecting",
+    etaClassifying: "~{{time}}s · classifying",
+    etaTooltip:
+      "Estimated time remaining. Accuracy improves as more inferences are completed.",
   },
 } as const;
 

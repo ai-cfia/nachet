@@ -7,6 +7,7 @@ import enMain from "../../locales/en/main";
 import frMain from "../../locales/fr/main";
 import type { Images, InferenceResult } from "@common/types";
 import ImageGallery from "../ImageGallery";
+import { useInferenceQueueStore } from "@stores/useInferenceQueueStore";
 
 const makeImage = (
   index: number,
@@ -846,6 +847,131 @@ describe("ImageGallery", () => {
           page.getByRole("img", { name: frMain.imageGallery.resultsAvailable }),
         )
         .toBeVisible();
+    });
+  });
+
+  describe("inference queue indicators", () => {
+    beforeEach(() => {
+      useInferenceQueueStore.setState({
+        queue: [],
+        lastInferenceDurationMs: null,
+      });
+    });
+
+    it("shows a position chip when an image is pending in the queue", async () => {
+      useInferenceQueueStore.setState({
+        queue: [
+          {
+            id: "id-1",
+            imageSrc: "data:image/png;base64,abc",
+            imageIndex: 0,
+            status: "pending",
+            addedAt: Date.now(),
+          },
+        ],
+        lastInferenceDurationMs: null,
+      });
+      renderGallery({ images: [makeImage(0)] });
+      await expect.element(page.getByText("1")).toBeVisible();
+    });
+
+    it("shows a spinner when an image is processing", async () => {
+      useInferenceQueueStore.setState({
+        queue: [
+          {
+            id: "id-1",
+            imageSrc: "data:image/png;base64,abc",
+            imageIndex: 0,
+            status: "processing",
+            addedAt: Date.now(),
+          },
+        ],
+        lastInferenceDurationMs: null,
+      });
+      renderGallery({ images: [makeImage(0)] });
+      await expect.element(page.getByRole("progressbar")).toBeVisible();
+    });
+
+    it("shows the cancel button when an image is pending", async () => {
+      useInferenceQueueStore.setState({
+        queue: [
+          {
+            id: "id-1",
+            imageSrc: "data:image/png;base64,abc",
+            imageIndex: 0,
+            status: "pending",
+            addedAt: Date.now(),
+          },
+        ],
+        lastInferenceDurationMs: null,
+      });
+      renderGallery({ images: [makeImage(0)] });
+      await expect
+        .element(
+          page.getByRole("button", {
+            name: renderTemplate(enMain.imageGallery.cancelInference, {
+              number: "1",
+            }),
+          }),
+        )
+        .toBeVisible();
+    });
+
+    it("hides the cancel button when an image is processing", async () => {
+      useInferenceQueueStore.setState({
+        queue: [
+          {
+            id: "id-1",
+            imageSrc: "data:image/png;base64,abc",
+            imageIndex: 0,
+            status: "processing",
+            addedAt: Date.now(),
+          },
+        ],
+        lastInferenceDurationMs: null,
+      });
+      renderGallery({ images: [makeImage(0)] });
+      await expect
+        .element(
+          page.getByRole("button", {
+            name: renderTemplate(enMain.imageGallery.cancelInference, {
+              number: "1",
+            }),
+          }),
+        )
+        .not.toBeInTheDocument();
+    });
+
+    it("shows correct position numbers for multiple queued images", async () => {
+      useInferenceQueueStore.setState({
+        queue: [
+          {
+            id: "id-1",
+            imageSrc: "data:image/png;base64,abc",
+            imageIndex: 0,
+            status: "pending",
+            addedAt: Date.now(),
+          },
+          {
+            id: "id-2",
+            imageSrc: "data:image/png;base64,abc",
+            imageIndex: 1,
+            status: "pending",
+            addedAt: Date.now(),
+          },
+        ],
+        lastInferenceDurationMs: null,
+      });
+      renderGallery({ images: [makeImage(0), makeImage(1)] });
+      await expect.element(page.getByText("1", { exact: true })).toBeVisible();
+      await expect.element(page.getByText("2", { exact: true })).toBeVisible();
+    });
+
+    it("shows no queue indicators when queue is empty", async () => {
+      renderGallery({ images: [makeImage(0)] });
+      await expect
+        .element(page.getByRole("progressbar"))
+        .not.toBeInTheDocument();
     });
   });
 });
