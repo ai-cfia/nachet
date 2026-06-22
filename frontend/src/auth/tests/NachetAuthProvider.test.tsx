@@ -5,7 +5,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { acquireAccessToken } from "../../common/auth";
 import { NachetAuthProvider, useNachetAuth } from "../";
 
-vi.mock("@azure/msal-react");
+vi.mock("@azure/msal-react", () => ({
+  MsalProvider: ({ children }: any) => <>{children}</>,
+  useIsAuthenticated: vi.fn(),
+  useMsal: vi.fn(),
+}));
 vi.mock("../../common/auth");
 vi.mock("../../common/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../common/api")>();
@@ -98,6 +102,16 @@ describe("NachetAuthProvider", () => {
     logoutRedirect: vi.fn(),
   };
 
+  const renderWithProvider = () =>
+    render(
+      <NachetAuthProvider
+        apiScopeClaim="api://nachet/scope"
+        msalInstance={mockMsalInstance as any}
+      >
+        <TestConsumer />
+      </NachetAuthProvider>,
+    );
+
   beforeEach(() => {
     vi.clearAllMocks();
     delete document.body.dataset.token;
@@ -118,11 +132,7 @@ describe("NachetAuthProvider", () => {
   });
 
   it("exposes MSAL account state through the shared auth interface", async () => {
-    render(
-      <NachetAuthProvider apiScopeClaim="api://nachet/scope">
-        <TestConsumer />
-      </NachetAuthProvider>,
-    );
+    renderWithProvider();
 
     expect(screen.getByTestId("provider").textContent).toBe("msal");
     expect(screen.getByTestId("authenticated").textContent).toBe(
@@ -139,11 +149,7 @@ describe("NachetAuthProvider", () => {
   });
 
   it("delegates login, logout, and token acquisition to MSAL", async () => {
-    render(
-      <NachetAuthProvider apiScopeClaim="api://nachet/scope">
-        <TestConsumer />
-      </NachetAuthProvider>,
-    );
+    renderWithProvider();
 
     fireEvent.click(screen.getByText("login"));
     await waitFor(() => {
@@ -169,11 +175,7 @@ describe("NachetAuthProvider", () => {
   it("normalizes the configured provider name", () => {
     import.meta.env.VITE_AUTH_PROVIDER = " MSAL ";
 
-    render(
-      <NachetAuthProvider apiScopeClaim="api://nachet/scope">
-        <TestConsumer />
-      </NachetAuthProvider>,
-    );
+    renderWithProvider();
 
     expect(screen.getByTestId("provider").textContent).toBe("msal");
   });
@@ -185,11 +187,7 @@ describe("NachetAuthProvider", () => {
       accounts: [mockAccount],
     });
 
-    render(
-      <NachetAuthProvider apiScopeClaim="api://nachet/scope">
-        <TestConsumer />
-      </NachetAuthProvider>,
-    );
+    renderWithProvider();
 
     expect(screen.getByTestId("loading").textContent).toBe("loading");
 
@@ -205,11 +203,7 @@ describe("NachetAuthProvider", () => {
   it("selects the OIDC adapter when oidc is configured", () => {
     import.meta.env.VITE_AUTH_PROVIDER = "oidc";
 
-    render(
-      <NachetAuthProvider apiScopeClaim="api://nachet/scope">
-        <TestConsumer />
-      </NachetAuthProvider>,
-    );
+    renderWithProvider();
 
     expect(screen.getByTestId("provider").textContent).toBe("oidc");
     expect(screen.getByTestId("username").textContent).toBe(
@@ -222,7 +216,10 @@ describe("NachetAuthProvider", () => {
 
     expect(() =>
       render(
-        <NachetAuthProvider apiScopeClaim="api://nachet/scope">
+        <NachetAuthProvider
+          apiScopeClaim="api://nachet/scope"
+          msalInstance={mockMsalInstance as any}
+        >
           <TestConsumer />
         </NachetAuthProvider>,
       ),

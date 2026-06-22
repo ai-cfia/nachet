@@ -1,4 +1,6 @@
 import { type ReactNode } from "react";
+import { type PublicClientApplication } from "@azure/msal-browser";
+import { MsalProvider } from "@azure/msal-react";
 import { NachetAuthContext } from "./NachetAuthContext";
 import { MsalAuthProvider } from "./msal/MsalAuthProvider";
 import { OidcAuthProvider } from "./oidc/OidcAuthProvider";
@@ -6,11 +8,13 @@ import { OidcAuthProvider } from "./oidc/OidcAuthProvider";
 export interface NachetAuthProviderProps {
   apiScopeClaim: string;
   children: ReactNode;
+  msalInstance: PublicClientApplication;
 }
 
 export const NachetAuthProvider = ({
   apiScopeClaim,
   children,
+  msalInstance,
 }: NachetAuthProviderProps) => {
   const configuredProvider = (import.meta.env.VITE_AUTH_PROVIDER ?? "msal")
     .trim()
@@ -20,12 +24,14 @@ export const NachetAuthProvider = ({
 
   if (configuredProvider === "msal") {
     return (
-      <MsalAuthProvider
-        apiScopeClaim={apiScopeClaim}
-        authContext={NachetAuthContext}
-      >
-        {children}
-      </MsalAuthProvider>
+      <MsalProvider instance={msalInstance}>
+        <MsalAuthProvider
+          apiScopeClaim={apiScopeClaim}
+          authContext={NachetAuthContext}
+        >
+          {children}
+        </MsalAuthProvider>
+      </MsalProvider>
     );
   }
 
