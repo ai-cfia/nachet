@@ -63,6 +63,24 @@ const TokenConsumer = () => {
   );
 };
 
+const ConcurrentTokenConsumer = () => {
+  const auth = useContext(TestAuthContext);
+
+  return (
+    <button
+      onClick={() => {
+        if (!auth) {
+          return;
+        }
+
+        void Promise.allSettled([auth.getAccessToken(), auth.getAccessToken()]);
+      }}
+    >
+      get tokens concurrently
+    </button>
+  );
+};
+
 describe("OidcAuthProvider", () => {
   beforeEach(() => {
     capturedAuthProviderSettings.value = undefined;
@@ -182,6 +200,10 @@ describe("OidcAuthProvider", () => {
   it("starts sign-in when silent token renewal fails", async () => {
     import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
     import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
+    import.meta.env.VITE_OIDC_SCOPE = "openid profile email";
+    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173/callback";
+    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
+      "http://localhost:5173/";
     mockOidcAuth.value.user = {
       expired: true,
       access_token: "expired-token",
@@ -207,6 +229,55 @@ describe("OidcAuthProvider", () => {
     fireEvent.click(screen.getByText("get token"));
 
     await waitFor(() => {
+      expect(mockOidcAuth.value.signinRedirect).toHaveBeenCalledWith({
+        scope: "openid profile email api://nachet/access_as_user",
+      });
+    });
+  });
+
+  it("shares expired-token recovery across concurrent requests", async () => {
+    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
+    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
+    import.meta.env.VITE_OIDC_SCOPE = "openid profile email";
+    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173/callback";
+    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
+      "http://localhost:5173/";
+    mockOidcAuth.value.user = {
+      expired: true,
+      access_token: "expired-token",
+      profile: {
+        preferred_username: "oidc-user@example.com",
+        name: "OIDC User",
+        sub: "oidc-subject",
+      },
+    };
+
+    let rejectRenewal: (error: Error) => void = () => {};
+    mockOidcAuth.value.signinSilent.mockReturnValueOnce(
+      new Promise<null>((_, reject) => {
+        rejectRenewal = reject;
+      }),
+    );
+
+    render(
+      <OidcAuthProvider
+        apiScopeClaim="api://nachet/access_as_user"
+        authContext={TestAuthContext}
+      >
+        <ConcurrentTokenConsumer />
+      </OidcAuthProvider>,
+    );
+
+    fireEvent.click(screen.getByText("get tokens concurrently"));
+
+    await waitFor(() => {
+      expect(mockOidcAuth.value.signinSilent).toHaveBeenCalledTimes(1);
+    });
+
+    rejectRenewal(new Error("silent renewal failed"));
+
+    await waitFor(() => {
+      expect(mockOidcAuth.value.signinRedirect).toHaveBeenCalledTimes(1);
       expect(mockOidcAuth.value.signinRedirect).toHaveBeenCalledWith({
         scope: "openid profile email api://nachet/access_as_user",
       });

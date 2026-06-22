@@ -1,4 +1,10 @@
-import { useCallback, useMemo, type Context, type ReactNode } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  type Context,
+  type ReactNode,
+} from "react";
 import {
   WebStorageStateStore,
   type User,
@@ -110,13 +116,48 @@ const OidcAuthBridge = ({
   defaultScope,
 }: OidcAuthBridgeProps) => {
   const oidc = useOidcAuth();
+  const silentRenewPromisesRef = useRef<Map<string, Promise<User | null>>>(
+    new Map(),
+  );
+  const loginRedirectPromiseRef = useRef<Promise<void> | null>(null);
   const activeAccount = useMemo(() => mapUser(oidc.user), [oidc.user]);
+
+  const signinRedirectOnce = useCallback(
+    (scope: string) => {
+      loginRedirectPromiseRef.current ??= Promise.resolve(
+        oidc.signinRedirect({ scope }),
+      ).catch((error) => {
+        loginRedirectPromiseRef.current = null;
+        throw error;
+      });
+
+      return loginRedirectPromiseRef.current;
+    },
+    [oidc],
+  );
+
+  const signinSilentOnce = useCallback(
+    (scope: string) => {
+      const existingPromise = silentRenewPromisesRef.current.get(scope);
+      if (existingPromise) {
+        return existingPromise;
+      }
+
+      const renewPromise = oidc.signinSilent({ scope }).finally(() => {
+        silentRenewPromisesRef.current.delete(scope);
+      });
+      silentRenewPromisesRef.current.set(scope, renewPromise);
+
+      return renewPromise;
+    },
+    [oidc],
+  );
 
   const login = useCallback(
     async (scopes?: string[]) => {
-      await oidc.signinRedirect({ scope: buildScope(defaultScope, scopes) });
+      await signinRedirectOnce(buildScope(defaultScope, scopes));
     },
-    [defaultScope, oidc],
+    [defaultScope, signinRedirectOnce],
   );
 
   const logout = useCallback(async () => {
@@ -129,13 +170,12 @@ const OidcAuthBridge = ({
         return oidc.user.access_token;
       }
 
+      const requestedScope = buildScope(defaultScope, scopes);
       let renewedUser: User | null | undefined;
       try {
-        renewedUser = await oidc.signinSilent({
-          scope: buildScope(defaultScope, scopes),
-        });
+        renewedUser = await signinSilentOnce(requestedScope);
       } catch (error) {
-        await login(scopes);
+        await signinRedirectOnce(requestedScope);
         throw error;
       }
 
@@ -143,10 +183,10 @@ const OidcAuthBridge = ({
         return renewedUser.access_token;
       }
 
-      await login(scopes);
+      await signinRedirectOnce(requestedScope);
       throw new Error("Redirecting to sign in for a fresh OIDC access token.");
     },
-    [login, oidc],
+    [defaultScope, oidc.user, signinRedirectOnce, signinSilentOnce],
   );
 
   const authValue = useMemo<NachetAuthContextValue>(
