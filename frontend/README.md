@@ -256,10 +256,16 @@ This enables preview of local frontend changes while connecting to the backend s
 
 The frontend includes the AI Lab fork of `oidc-client-ts` as a Git submodule
 under `frontend/submodules/oidc-client-ts`.
-After cloning the repository, initialize submodules with:
+When cloning the repository, include submodules:
 
 ```bash
-git submodule update --init --recursive
+git clone --recurse-submodules https://github.com/ai-cfia/nachet.git
+```
+
+If the repository is already cloned, initialize the frontend submodule with:
+
+```bash
+git submodule update --init --recursive frontend/submodules/oidc-client-ts
 ```
 
 ## Deployment Environment Configuration Management
