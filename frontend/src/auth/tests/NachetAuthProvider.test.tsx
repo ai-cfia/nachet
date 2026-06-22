@@ -180,6 +180,14 @@ describe("NachetAuthProvider", () => {
     expect(screen.getByTestId("provider").textContent).toBe("msal");
   });
 
+  it("uses MSAL when no auth provider is configured", () => {
+    delete import.meta.env.VITE_AUTH_PROVIDER;
+
+    renderWithProvider();
+
+    expect(screen.getByTestId("provider").textContent).toBe("msal");
+  });
+
   it("does not start login while another MSAL interaction is in progress", async () => {
     (useMsal as any).mockReturnValue({
       instance: mockMsalInstance,

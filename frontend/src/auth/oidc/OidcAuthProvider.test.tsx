@@ -82,6 +82,22 @@ describe("OidcAuthProvider", () => {
     ).toThrow("VITE_OIDC_AUTHORITY is required by the OIDC auth adapter");
   });
 
+  it("fails closed when a required OIDC value is blank", () => {
+    import.meta.env.VITE_OIDC_AUTHORITY = "   ";
+    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
+
+    expect(() =>
+      render(
+        <OidcAuthProvider
+          apiScopeClaim="api://nachet/access_as_user"
+          authContext={TestAuthContext}
+        >
+          <TestConsumer />
+        </OidcAuthProvider>,
+      ),
+    ).toThrow("VITE_OIDC_AUTHORITY is required by the OIDC auth adapter");
+  });
+
   it("fails closed when the OIDC client id is missing", () => {
     import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
 
