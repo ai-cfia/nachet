@@ -3,6 +3,8 @@ FROM node:24.13.0-alpine AS builder
 
 WORKDIR /app
 
+RUN apk add --no-cache git
+
 # Copy package files
 COPY package*.json ./
 COPY tsconfig.json ./
