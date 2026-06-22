@@ -13,6 +13,22 @@ interface NachetAuthRequestConfig extends InternalAxiosRequestConfig {
   nachetAuthRequired?: boolean;
 }
 
+function assertAccessToken(accessToken: string): string {
+  if (!accessToken) {
+    throw new Error("Access token is null or empty");
+  }
+
+  return accessToken;
+}
+
+function requestRequiresNachetAuth(
+  request?: InternalAxiosRequestConfig,
+): request is NachetAuthRequestConfig {
+  return Boolean(
+    (request as NachetAuthRequestConfig | undefined)?.nachetAuthRequired,
+  );
+}
+
 /**
  * Checks if an error requires user interaction (redirect to login)
  * @param error - The error to check
@@ -33,22 +49,30 @@ export function resetRedirectFlag(): void {
   isRedirecting = false;
 }
 
+export function clearAxiosInterceptors(): void {
+  if (requestInterceptorId !== null) {
+    axios.interceptors.request.eject(requestInterceptorId);
+    requestInterceptorId = null;
+  }
+
+  if (responseInterceptorId !== null) {
+    axios.interceptors.response.eject(responseInterceptorId);
+    responseInterceptorId = null;
+  }
+
+  resetRedirectFlag();
+}
+
 /**
  * Configure axios interceptor to handle 401 Unauthorized errors and retry once
- * with a fresh token from the active auth provider.
+ * with an access token from the active auth provider.
  *
  * @param getAccessToken - Provider-neutral token getter
  */
 export function setupAxiosInterceptor(
   getAccessToken: () => Promise<string>,
 ): void {
-  if (requestInterceptorId !== null) {
-    axios.interceptors.request.eject(requestInterceptorId);
-  }
-
-  if (responseInterceptorId !== null) {
-    axios.interceptors.response.eject(responseInterceptorId);
-  }
+  clearAxiosInterceptors();
 
   requestInterceptorId = axios.interceptors.request.use(
     async (config: NachetAuthRequestConfig) => {
@@ -56,12 +80,9 @@ export function setupAxiosInterceptor(
         return config;
       }
 
-      const accessToken = await getAccessToken();
-      if (!accessToken) {
-        throw new Error("Access token is null or empty");
-      }
-
-      config.headers.Authorization = `Bearer ${accessToken}`;
+      config.headers.Authorization = `Bearer ${assertAccessToken(
+        await getAccessToken(),
+      )}`;
       return config;
     },
     (error) => Promise.reject(error),
@@ -76,7 +97,11 @@ export function setupAxiosInterceptor(
       };
 
       // Check if this is a 401 error and we haven't already retried
-      if (error.response?.status === 401 && !originalRequest?._retry) {
+      if (
+        error.response?.status === 401 &&
+        requestRequiresNachetAuth(originalRequest) &&
+        !originalRequest?._retry
+      ) {
         originalRequest._retry = true;
 
         // Prevent redirect loop
@@ -85,7 +110,7 @@ export function setupAxiosInterceptor(
         }
 
         try {
-          const accessToken = await getAccessToken();
+          const accessToken = assertAccessToken(await getAccessToken());
 
           // Update the authorization header with new token
           if (originalRequest.headers) {

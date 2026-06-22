@@ -39,7 +39,13 @@ import {
   safeUserInputSchema,
 } from "./validation";
 import { errorLogger } from "../logging";
-import { setupAxiosInterceptor, resetRedirectFlag } from "./apiInterceptor";
+import {
+  setupAxiosInterceptor,
+  resetRedirectFlag,
+  clearAxiosInterceptors,
+} from "./apiInterceptor";
+
+let isAuthProviderInitialized = false;
 
 /**
  * Initialize API module with axios interceptor for authentication
@@ -49,6 +55,12 @@ import { setupAxiosInterceptor, resetRedirectFlag } from "./apiInterceptor";
  */
 export function initializeApi(getAccessToken: () => Promise<string>): void {
   setupAxiosInterceptor(getAccessToken);
+  isAuthProviderInitialized = true;
+}
+
+export function clearApiAuthentication(): void {
+  clearAxiosInterceptors();
+  isAuthProviderInitialized = false;
 }
 
 // Re-export resetRedirectFlag for use in main.tsx
@@ -64,6 +76,15 @@ const handleAxios = async <T>(request: {
   // Generate correlation ID for this request
   const correlationId = errorLogger.getCorrelationId();
   const requestHasAuthHeader = Boolean(request.headers.Authorization);
+  const requestRequiresAuth = request.authRequired !== false;
+
+  if (
+    requestRequiresAuth &&
+    !requestHasAuthHeader &&
+    !isAuthProviderInitialized
+  ) {
+    throw new ValueError("Auth provider is not initialized for API requests");
+  }
 
   // Add correlation and session IDs to headers
   const enhancedRequest = {
@@ -74,7 +95,7 @@ const handleAxios = async <T>(request: {
       "X-Session-ID": errorLogger.getSessionId(),
     },
     withCredentials: true,
-    ...(request.authRequired !== false && !requestHasAuthHeader
+    ...(requestRequiresAuth && !requestHasAuthHeader
       ? { nachetAuthRequired: true }
       : {}),
   };

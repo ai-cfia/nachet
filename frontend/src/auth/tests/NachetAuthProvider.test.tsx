@@ -15,6 +15,7 @@ vi.mock("../../common/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../common/api")>();
   return {
     ...actual,
+    clearApiAuthentication: vi.fn(),
     initializeApi: vi.fn(),
   };
 });

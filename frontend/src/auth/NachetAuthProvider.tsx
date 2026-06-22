@@ -4,7 +4,7 @@ import { MsalProvider } from "@azure/msal-react";
 import { NachetAuthContext, useNachetAuth } from "./NachetAuthContext";
 import { MsalAuthProvider } from "./msal/MsalAuthProvider";
 import { OidcAuthProvider } from "./oidc/OidcAuthProvider";
-import { initializeApi } from "../common/api";
+import { clearApiAuthentication, initializeApi } from "../common/api";
 import { errorLogger } from "../logging";
 
 export interface NachetAuthProviderProps {
@@ -19,6 +19,11 @@ const AuthApiBridge = () => {
   useEffect(() => {
     initializeApi(getAccessToken);
     errorLogger.setTokenProvider(async () => getAccessToken());
+
+    return () => {
+      clearApiAuthentication();
+      errorLogger.setTokenProvider(async () => null);
+    };
   }, [getAccessToken]);
 
   return null;

@@ -2,6 +2,7 @@ import { describe, it, vi, beforeEach, expect } from "vitest";
 import {
   createAzureStorageDir,
   deleteAzureStorageDir,
+  fetchDevices,
   fetchModelMetadata,
   inferenceRequest,
   readAzureStorageDir,
@@ -34,6 +35,18 @@ vi.mock("../../logging", () => ({
 
 beforeEach(() => {
   mockedAxios.mockClear();
+});
+
+describe("protected API auth initialization", () => {
+  it("should fail closed before sending protected requests without auth initialization", async () => {
+    await expect(
+      fetchDevices({ backendUrl: "http://localhost:8080" }),
+    ).rejects.toThrow(
+      new ValueError("Auth provider is not initialized for API requests"),
+    );
+
+    expect(mockedAxios).not.toHaveBeenCalled();
+  });
 });
 
 describe("readAzureStorageDir", () => {
