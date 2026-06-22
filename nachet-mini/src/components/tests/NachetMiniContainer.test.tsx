@@ -15,6 +15,7 @@ import { useBoxEditStore } from "@stores/useBoxEditStore";
 import { useWebcamStore } from "@stores/useWebcamStore";
 import { useMetadataDefaultsStore } from "@stores/useMetadataDefaultsStore";
 import { useModelLoadConsentStore } from "@stores/useModelLoadConsentStore";
+import { useInferenceQueueStore } from "@stores/useInferenceQueueStore";
 import {
   DEFAULT_DETECTOR,
   DEFAULT_CLASSIFIER,
@@ -182,11 +183,14 @@ describe("NachetMiniContainer", () => {
     });
     useModelLoadConsentStore.setState({
       hasAcknowledgedModelLoadWarning: false,
-      pendingInferenceRequest: null,
     });
     useBoxEditStore.getState().exitEditMode();
     useWebcamStore.setState({ devices: [], activeDeviceId: undefined });
     useMetadataDefaultsStore.getState().clearDefaults();
+    useInferenceQueueStore.setState({
+      queue: [],
+      lastInferenceDurationMs: null,
+    });
 
     // Reset mocks
     mockLoadModels.mockReset();
@@ -623,8 +627,12 @@ describe("NachetMiniContainer", () => {
         fireEvent.click(screen.getByText(enMain.modelLoadDialog.cancel));
       });
       expect(
-        useModelLoadConsentStore.getState().pendingInferenceRequest,
-      ).toBeNull();
+        useInferenceQueueStore
+          .getState()
+          .queue.filter(
+            (i) => i.status === "pending" || i.status === "processing",
+          ),
+      ).toHaveLength(0);
     });
 
     it("Continue calls loadModels with the selected config", async () => {
@@ -721,7 +729,7 @@ describe("NachetMiniContainer", () => {
       expect(mockRunInference).not.toHaveBeenCalled();
     });
 
-    it("clears the pending request after inference fires", async () => {
+    it("starts inference after models finish loading", async () => {
       setupImageAndWebcamOff();
       renderContainer();
       await act(async () => {
@@ -734,9 +742,12 @@ describe("NachetMiniContainer", () => {
       await act(async () => {
         useInferenceStore.getState().setModelLoaded(true);
       });
-      expect(
-        useModelLoadConsentStore.getState().pendingInferenceRequest,
-      ).toBeNull();
+      // runInference was called — item is now processing
+      expect(mockRunInference).toHaveBeenCalledTimes(1);
+      const processingItem = useInferenceQueueStore
+        .getState()
+        .queue.find((i) => i.status === "processing");
+      expect(processingItem).toBeDefined();
     });
   });
 
@@ -1029,14 +1040,14 @@ describe("NachetMiniContainer", () => {
       expect(getProps().canRunInference).toBe(true);
     });
 
-    it("canRunInference is false while inference is running", async () => {
+    it("canRunInference remains true while inference is running", async () => {
       addOneImage();
       useInferenceStore.getState().setStatus("detecting");
       renderContainer();
       await act(async () => {
         getProps().setIsWebcamActive(false);
       });
-      expect(getProps().canRunInference).toBe(false);
+      expect(getProps().canRunInference).toBe(true);
     });
 
     it("canEditBoxes is true when there is an active result and not inferring", async () => {
@@ -1099,19 +1110,53 @@ describe("NachetMiniContainer", () => {
       expect(getProps().statusText).toBe(enMain.status.loadingModel);
     });
 
-    it("shows the detecting status while detecting", () => {
+    it("shows the detecting status while detecting", async () => {
+      useImageStore.setState({
+        images: [makeImage({ index: 0 })],
+        currentIndex: 0,
+      });
+      useInferenceQueueStore.setState({
+        queue: [
+          {
+            id: "id-1",
+            imageSrc: "x",
+            imageIndex: 0,
+            status: "processing",
+            addedAt: Date.now(),
+          },
+        ],
+        lastInferenceDurationMs: null,
+      });
       useInferenceStore.getState().setStatus("detecting");
       renderContainer();
       expect(getProps().statusText).toBe(enMain.status.detecting);
     });
 
     it("shows the classifying status while classifying", () => {
+      useImageStore.setState({
+        images: [makeImage({ index: 0 })],
+        currentIndex: 0,
+      });
+      useInferenceQueueStore.setState({
+        queue: [
+          {
+            id: "id-1",
+            imageSrc: "x",
+            imageIndex: 0,
+            status: "processing",
+            addedAt: Date.now(),
+          },
+        ],
+        lastInferenceDurationMs: null,
+      });
       useInferenceStore.getState().setStatus("classifying");
       renderContainer();
       expect(getProps().statusText).toBe(enMain.status.classifying);
     });
 
     it("shows 'inference complete' when complete", () => {
+      useImageStore.setState({ images: [makeImage()], currentIndex: 0 });
+      useInferenceStore.getState().setResult(0, "m", makeResult());
       useInferenceStore.getState().setStatus("complete");
       renderContainer();
       expect(getProps().statusText).toBe(enMain.status.inferenceComplete);
@@ -1147,6 +1192,208 @@ describe("NachetMiniContainer", () => {
         getProps().setIsWebcamActive(false);
       });
       expect(getProps().statusText).not.toContain("denied");
+    });
+  });
+
+  describe("inference queue", () => {
+    const setupImage = (index = 0) => {
+      useImageStore.setState({
+        images: [makeImage({ index, src: `img-${index}.jpg` })],
+        currentIndex: index,
+      });
+    };
+
+    const setupModelLoaded = () => {
+      useInferenceStore.setState({
+        modelLoaded: true,
+        status: "idle",
+      });
+      useModelLoadConsentStore.setState({
+        hasAcknowledgedModelLoadWarning: true,
+      });
+    };
+
+    beforeEach(() => {
+      useInferenceQueueStore.setState({
+        queue: [],
+        lastInferenceDurationMs: null,
+      });
+    });
+
+    it("enqueues item when onRunInference is called", async () => {
+      setupImage();
+      setupModelLoaded();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      expect(useInferenceQueueStore.getState().queue).toHaveLength(1);
+      expect(useInferenceQueueStore.getState().queue[0].imageIndex).toBe(0);
+    });
+
+    it("does not enqueue the same image twice", async () => {
+      setupImage();
+      setupModelLoaded();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+      });
+      await act(async () => {
+        getProps().onRunInference();
+        getProps().onRunInference();
+      });
+      expect(useInferenceQueueStore.getState().queue).toHaveLength(1);
+    });
+
+    it("opens model load dialog when model not acknowledged", async () => {
+      setupImage();
+      useInferenceStore.setState({ modelLoaded: false, status: "idle" });
+      useModelLoadConsentStore.setState({
+        hasAcknowledgedModelLoadWarning: false,
+      });
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    it("does not load models if already loading", async () => {
+      setupImage();
+      useInferenceStore.setState({
+        modelLoaded: false,
+        status: "loading-model",
+      });
+      useModelLoadConsentStore.setState({
+        hasAcknowledgedModelLoadWarning: true,
+      });
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      expect(mockLoadModels).not.toHaveBeenCalled();
+    });
+
+    it("fires runInference when model is loaded and item is pending", async () => {
+      setupImage();
+      setupModelLoaded();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      expect(mockRunInference).toHaveBeenCalledWith("img-0.jpg", 0);
+    });
+
+    it("marks item as processing before runInference is called", async () => {
+      setupImage();
+      setupModelLoaded();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      // After drain fires, no pending items should remain (moved to processing)
+      const pending = useInferenceQueueStore
+        .getState()
+        .queue.filter((i) => i.status === "pending");
+      expect(pending).toHaveLength(0);
+    });
+
+    it("cancelling a pending item removes it from the queue", async () => {
+      setupImage(0);
+      setupModelLoaded();
+      // Manually enqueue a second item so we have a pending one to cancel
+      useInferenceQueueStore
+        .getState()
+        .enqueue({ imageSrc: "img-1.jpg", imageIndex: 1 });
+      useInferenceQueueStore
+        .getState()
+        .enqueue({ imageSrc: "img-2.jpg", imageIndex: 2 });
+      const secondId = useInferenceQueueStore.getState().queue[1].id;
+      renderContainer();
+      await act(async () => {
+        useInferenceQueueStore.getState().cancel(secondId);
+      });
+      const cancelledItem = useInferenceQueueStore
+        .getState()
+        .queue.find((i) => i.id === secondId);
+      expect(cancelledItem?.status).toBe("cancelled");
+    });
+
+    it("skips a deleted image in the queue", async () => {
+      setupImage(0);
+      setupModelLoaded();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+      });
+      // Enqueue an image that doesn't exist in the image store
+      useInferenceQueueStore
+        .getState()
+        .enqueue({ imageSrc: "ghost.jpg", imageIndex: 99 });
+      await act(async () => {
+        // Force drain tick by simulating status change
+        useInferenceStore.setState({ status: "complete" });
+        useInferenceStore.setState({ status: "idle" });
+      });
+      // The ghost item should be cancelled, not sent to inference
+      const ghostItem = useInferenceQueueStore
+        .getState()
+        .queue.find((i) => i.imageIndex === 99);
+      // Either cancelled or removed
+      expect(ghostItem === undefined || ghostItem.status === "cancelled").toBe(
+        true,
+      );
+      expect(mockRunInference).not.toHaveBeenCalledWith("ghost.jpg", 99);
+    });
+
+    it("status text shows queued when image is pending", async () => {
+      setupImage(0);
+      setupModelLoaded();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+      });
+      // Enqueue image 0 first — drain will immediately pick it up as processing
+      useInferenceQueueStore
+        .getState()
+        .enqueue({ imageSrc: "img-0.jpg", imageIndex: 0 });
+      // Enqueue image 1 — this one stays pending
+      useInferenceQueueStore
+        .getState()
+        .enqueue({ imageSrc: "img-1.jpg", imageIndex: 1 });
+      await act(async () => {});
+      const secondItem = useInferenceQueueStore
+        .getState()
+        .queue.find((i) => i.imageIndex === 1);
+      expect(secondItem?.status).toBe("pending");
+    });
+
+    it("canRunInference remains true while inferring (queue allows multiple)", async () => {
+      useImageStore.setState({
+        images: [makeImage({ imageDims: [10, 10] })],
+        currentIndex: 0,
+      });
+      useInferenceStore.getState().setStatus("detecting");
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+      });
+      expect(getProps().canRunInference).toBe(true);
     });
   });
 });

@@ -28,10 +28,14 @@ export default defineConfig({
     include: [
       "@mui/icons-material/GitHub",
       "@mui/icons-material/Close",
+      "@mui/icons-material/Cancel",
+      "@mui/icons-material/AccessTime", 
+      "@mui/icons-material/List",
       "react-webcam",
       "file-saver",
       "jszip",
       "zustand/middleware",
+      "zustand/react/shallow",
     ],
   },
   resolve: {

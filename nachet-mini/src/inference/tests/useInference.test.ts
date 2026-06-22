@@ -103,14 +103,14 @@ const mockBoxes: BoxCoordinates[] = [
 describe("useInference", () => {
   describe("worker lifecycle", () => {
     it("creates a Worker on mount", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(0));
       // workerInstance is set by the MockWorker constructor; its existence proves
       // new Worker() was called exactly once during mount.
       expect(workerInstance).toBeDefined();
     });
 
     it("terminates the worker on unmount", () => {
-      const { unmount } = renderHook(() => useInference());
+      const { unmount } = renderHook(() => useInference(0));
       unmount();
       expect(workerInstance.terminate).toHaveBeenCalledOnce();
     });
@@ -118,18 +118,18 @@ describe("useInference", () => {
 
   describe("isModelLoaded getter", () => {
     it("returns false initially", () => {
-      const { result } = renderHook(() => useInference());
+      const { result } = renderHook(() => useInference(0));
       expect(result.current.isModelLoaded).toBe(false);
     });
 
     it("returns true after model-loaded message", () => {
-      const { result } = renderHook(() => useInference());
+      const { result } = renderHook(() => useInference(0));
       simulateModelLoaded();
       expect(result.current.isModelLoaded).toBe(true);
     });
 
     it("resets to false when loadModels is called", () => {
-      const { result } = renderHook(() => useInference());
+      const { result } = renderHook(() => useInference(0));
       simulateModelLoaded();
       act(() => {
         result.current.loadModels(mockConfig);
@@ -140,7 +140,7 @@ describe("useInference", () => {
 
   describe("model-progress message", () => {
     it("updates store modelLoadProgress with name and progress", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(0));
       fireMessage({ type: "model-progress", name: "detector", progress: 0.5 });
       expect(useInferenceStore.getState().modelLoadProgress).toEqual({
         name: "detector",
@@ -151,20 +151,20 @@ describe("useInference", () => {
 
   describe("model-loaded message", () => {
     it("isModelLoaded becomes true", () => {
-      const { result } = renderHook(() => useInference());
+      const { result } = renderHook(() => useInference(0));
       simulateModelLoaded();
       expect(result.current.isModelLoaded).toBe(true);
     });
 
     it("sets store status to idle", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(0));
       useInferenceStore.getState().setStatus("loading-model");
       simulateModelLoaded();
       expect(useInferenceStore.getState().status).toBe("idle");
     });
 
     it("clears store modelLoadProgress to null", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(0));
       useInferenceStore
         .getState()
         .setModelLoadProgress({ name: "classifier", progress: 0.8 });
@@ -173,7 +173,7 @@ describe("useInference", () => {
     });
 
     it("sets store modelLoaded to true", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(0));
       simulateModelLoaded();
       expect(useInferenceStore.getState().modelLoaded).toBe(true);
     });
@@ -181,7 +181,7 @@ describe("useInference", () => {
 
   describe("status message", () => {
     it("forwards the status value to the store", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(0));
       fireMessage({ type: "status", status: "detecting" });
       expect(useInferenceStore.getState().status).toBe("detecting");
     });
@@ -189,7 +189,7 @@ describe("useInference", () => {
 
   describe("partial-result message", () => {
     it("stores result at the correct composite key", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(0));
       const result = makeResult();
       fireMessage({
         type: "partial-result",
@@ -202,8 +202,9 @@ describe("useInference", () => {
       );
     });
 
+    // partial-result > updates activeResultKey
     it("updates activeResultKey", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(2)); // ← pass currentIndex matching imageIndex
       fireMessage({
         type: "partial-result",
         imageIndex: 2,
@@ -212,11 +213,23 @@ describe("useInference", () => {
       });
       expect(useInferenceStore.getState().activeResultKey).toBe("2:cfg-1");
     });
+
+    // result > updates activeResultKey
+    it("updates activeResultKey", () => {
+      renderHook(() => useInference(3)); // ← pass currentIndex matching imageIndex
+      fireMessage({
+        type: "result",
+        imageIndex: 3,
+        modelConfigId: "cfg-2",
+        result: makeResult(),
+      });
+      expect(useInferenceStore.getState().activeResultKey).toBe("3:cfg-2");
+    });
   });
 
   describe("result message", () => {
     it("stores result at the correct composite key", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(0));
       const result = makeResult();
       fireMessage({
         type: "result",
@@ -230,7 +243,7 @@ describe("useInference", () => {
     });
 
     it("updates activeResultKey", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(3));
       fireMessage({
         type: "result",
         imageIndex: 3,
@@ -241,7 +254,7 @@ describe("useInference", () => {
     });
 
     it("sets store status to complete", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(0));
       fireMessage({
         type: "result",
         imageIndex: 0,
@@ -254,13 +267,13 @@ describe("useInference", () => {
 
   describe("error message", () => {
     it("writes error message to store", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(0));
       fireMessage({ type: "error", message: "inference failed" });
       expect(useInferenceStore.getState().error).toBe("inference failed");
     });
 
     it("sets store status to error", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(0));
       fireMessage({ type: "error", message: "inference failed" });
       expect(useInferenceStore.getState().status).toBe("error");
     });
@@ -268,13 +281,13 @@ describe("useInference", () => {
 
   describe("worker.onerror handler", () => {
     it("writes error message to store", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(0));
       fireError("worker crashed");
       expect(useInferenceStore.getState().error).toBe("worker crashed");
     });
 
     it("sets store status to error", () => {
-      renderHook(() => useInference());
+      renderHook(() => useInference(0));
       fireError("worker crashed");
       expect(useInferenceStore.getState().status).toBe("error");
     });
@@ -282,7 +295,7 @@ describe("useInference", () => {
 
   describe("loadModels", () => {
     it("posts load-models message with the provided config", () => {
-      const { result } = renderHook(() => useInference());
+      const { result } = renderHook(() => useInference(0));
       act(() => {
         result.current.loadModels(mockConfig);
       });
@@ -293,7 +306,7 @@ describe("useInference", () => {
     });
 
     it("resets isModelLoaded to false even if model was previously loaded", () => {
-      const { result } = renderHook(() => useInference());
+      const { result } = renderHook(() => useInference(0));
       simulateModelLoaded();
       expect(result.current.isModelLoaded).toBe(true);
       act(() => {
@@ -303,7 +316,7 @@ describe("useInference", () => {
     });
 
     it("sets store status to loading-model", () => {
-      const { result } = renderHook(() => useInference());
+      const { result } = renderHook(() => useInference(0));
       act(() => {
         result.current.loadModels(mockConfig);
       });
@@ -311,7 +324,7 @@ describe("useInference", () => {
     });
 
     it("sets store modelLoaded to false", () => {
-      const { result } = renderHook(() => useInference());
+      const { result } = renderHook(() => useInference(0));
       simulateModelLoaded();
       act(() => {
         result.current.loadModels(mockConfig);
@@ -320,7 +333,7 @@ describe("useInference", () => {
     });
 
     it("does nothing after unmount", () => {
-      const { result, unmount } = renderHook(() => useInference());
+      const { result, unmount } = renderHook(() => useInference(0));
       unmount();
       act(() => {
         result.current.loadModels(mockConfig);
@@ -331,7 +344,7 @@ describe("useInference", () => {
 
   describe("runInference", () => {
     it("posts run-inference message when model is loaded", () => {
-      const { result } = renderHook(() => useInference());
+      const { result } = renderHook(() => useInference(0));
       simulateModelLoaded();
       act(() => {
         result.current.runInference("data:image/png;base64,abc", 1);
@@ -344,7 +357,7 @@ describe("useInference", () => {
     });
 
     it("does nothing when model is not loaded", () => {
-      const { result } = renderHook(() => useInference());
+      const { result } = renderHook(() => useInference(0));
       act(() => {
         result.current.runInference("data:image/png;base64,abc", 1);
       });
@@ -352,7 +365,7 @@ describe("useInference", () => {
     });
 
     it("does nothing after unmount", () => {
-      const { result, unmount } = renderHook(() => useInference());
+      const { result, unmount } = renderHook(() => useInference(0));
       simulateModelLoaded();
       unmount();
       act(() => {
@@ -364,7 +377,7 @@ describe("useInference", () => {
 
   describe("runClassifyOnly", () => {
     it("posts run-classify-only message with the full payload when model is loaded", () => {
-      const { result } = renderHook(() => useInference());
+      const { result } = renderHook(() => useInference(0));
       simulateModelLoaded();
       act(() => {
         result.current.runClassifyOnly(
@@ -384,7 +397,7 @@ describe("useInference", () => {
     });
 
     it("does nothing when model is not loaded", () => {
-      const { result } = renderHook(() => useInference());
+      const { result } = renderHook(() => useInference(0));
       act(() => {
         result.current.runClassifyOnly(
           "data:image/png;base64,abc",
@@ -397,7 +410,7 @@ describe("useInference", () => {
     });
 
     it("does nothing after unmount", () => {
-      const { result, unmount } = renderHook(() => useInference());
+      const { result, unmount } = renderHook(() => useInference(0));
       simulateModelLoaded();
       unmount();
       act(() => {

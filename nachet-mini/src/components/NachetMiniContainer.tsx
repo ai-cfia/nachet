@@ -10,6 +10,7 @@ import { useImageStore } from "@stores/useImageStore";
 import { useInferenceStore, resultKey } from "@stores/useInferenceStore";
 import { useInference } from "@inference/useInference";
 import { useBoxEditStore } from "@stores/useBoxEditStore";
+import { useInferenceQueueStore } from "@stores/useInferenceQueueStore";
 import {
   DETECTOR_MODELS,
   CLASSIFIER_MODELS,
@@ -71,21 +72,28 @@ const NachetMiniContainer = () => {
   const clearResults = useInferenceStore((s) => s.clearResults);
   const setError = useInferenceStore((s) => s.setError);
 
-  const { loadModels, runInference, runClassifyOnly } = useInference();
+  const { loadModels, runInference, runClassifyOnly } =
+    useInference(currentIndex);
 
+  // Model load consent store
   const hasAcknowledgedModelLoadWarning = useModelLoadConsentStore(
     (s) => s.hasAcknowledgedModelLoadWarning,
-  );
-  const pendingInferenceRequest = useModelLoadConsentStore(
-    (s) => s.pendingInferenceRequest,
   );
   const acknowledgeModelLoadWarning = useModelLoadConsentStore(
     (s) => s.acknowledgeModelLoadWarning,
   );
-  const setPendingInferenceRequest = useModelLoadConsentStore(
-    (s) => s.setPendingInferenceRequest,
-  );
 
+  // Inference queue store
+  const enqueue = useInferenceQueueStore((s) => s.enqueue);
+  const markProcessing = useInferenceQueueStore((s) => s.markProcessing);
+  const markDone = useInferenceQueueStore((s) => s.markDone);
+  const cancel = useInferenceQueueStore((s) => s.cancel);
+  const nextPendingId = useInferenceQueueStore(
+    (s) => s.queue.find((i) => i.status === "pending")?.id ?? null,
+  );
+  const [drainTick, setDrainTick] = useState(0);
+  const clearCompleted = useInferenceQueueStore((s) => s.clearCompleted);
+  const markDetectionDone = useInferenceQueueStore((s) => s.markDetectionDone);
   // ADD local dialog state
   const [modelLoadDialogOpen, setModelLoadDialogOpen] = useState(false);
 
@@ -184,49 +192,133 @@ const NachetMiniContainer = () => {
     }
   }, [selectedDetectorId, selectedClassifierId, modelLoaded]);
 
+  const isInferring = status === "detecting" || status === "classifying";
   const handleRunInference = () => {
     if (!currentImage) return;
 
-    if (modelLoaded) {
-      runInference(currentImage.src, currentImage.index);
-      return;
-    }
+    const alreadyQueued = useInferenceQueueStore
+      .getState()
+      .queue.some(
+        (i) =>
+          i.imageIndex === currentImage.index &&
+          (i.status === "pending" || i.status === "processing"),
+      );
 
-    setPendingInferenceRequest({
-      imageSrc: currentImage.src,
-      imageIndex: currentImage.index,
-    });
+    if (alreadyQueued) return;
+
+    enqueue({ imageSrc: currentImage.src, imageIndex: currentImage.index });
 
     if (!hasAcknowledgedModelLoadWarning) {
       setModelLoadDialogOpen(true);
       return;
     }
 
-    handleLoadModel();
+    if (!modelLoaded && !isLoading) {
+      handleLoadModel();
+    }
   };
 
-  // When model finishes loading, run the pending inference request (if any).
-  const pendingRef = useRef(pendingInferenceRequest);
+  const startTimeRef = useRef<number | null>(null);
+  const detectionStartRef = useRef<number | null>(null);
+  const isFiringRef = useRef(false);
 
+  // Fire the next pending item when conditions are met
   useEffect(() => {
-    pendingRef.current = pendingInferenceRequest;
-  }, [pendingInferenceRequest]);
+    if (!modelLoaded || isInferring || !nextPendingId) return;
+    if (isFiringRef.current) return;
 
-  useEffect(() => {
-    if (!modelLoaded) return;
-    const pending = pendingRef.current;
-    if (!pending) return;
+    const state = useInferenceQueueStore.getState();
+    const item = state.queue.find((i) => i.id === nextPendingId);
+    if (!item || item.status !== "pending") return;
 
-    const stillExists = images.some((img) => img.index === pending.imageIndex);
-    if (stillExists) {
-      runInference(pending.imageSrc, pending.imageIndex);
+    const stillExists = images.some((img) => img.index === item.imageIndex);
+    if (!stillExists) {
+      cancel(item.id);
+      return;
     }
-    setPendingInferenceRequest(null);
-  }, [modelLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    isFiringRef.current = true;
+    markProcessing(item.id);
+    startTimeRef.current = Date.now();
+    detectionStartRef.current = Date.now();
+    runInference(item.imageSrc, item.imageIndex);
+  }, [modelLoaded, isInferring, nextPendingId, drainTick]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const prevStatusRef = useRef<string>(status);
+
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
+
+    if (prev === "detecting" && status === "classifying") {
+      const processingItem = useInferenceQueueStore
+        .getState()
+        .queue.find((i) => i.status === "processing");
+      if (!processingItem) return;
+
+      const detectionDuration = detectionStartRef.current
+        ? Date.now() - detectionStartRef.current
+        : 0;
+
+      // Read box count from the partial result stored in useInferenceStore
+      const { results } = useInferenceStore.getState();
+      let boxCount = 0;
+      for (const [key, result] of results) {
+        if (key.startsWith(`${processingItem.imageIndex}:`)) {
+          boxCount = result.totalBoxes;
+          break;
+        }
+      }
+
+      markDetectionDone(processingItem.id, detectionDuration, boxCount);
+    }
+  }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When inference completes, mark the processing item as done
+  useEffect(() => {
+    if (isInferring) {
+      if (status === "detecting") {
+        detectionStartRef.current ??= Date.now();
+      }
+      startTimeRef.current ??= Date.now();
+      return;
+    }
+
+    if (status === "complete") {
+      const totalDuration = startTimeRef.current
+        ? Date.now() - startTimeRef.current
+        : 0;
+
+      const processingItem = useInferenceQueueStore
+        .getState()
+        .queue.find((i) => i.status === "processing");
+
+      if (processingItem) {
+        // Classification duration = total - detection duration
+        const detectionDuration =
+          processingItem.detectionDoneAt && startTimeRef.current
+            ? processingItem.detectionDoneAt - startTimeRef.current
+            : 0;
+        const classificationDuration = Math.max(
+          0,
+          totalDuration - detectionDuration,
+        );
+        markDone(processingItem.id, classificationDuration);
+      } else if (totalDuration > 0) {
+        useInferenceQueueStore
+          .getState()
+          .setLastInferenceDuration(totalDuration);
+      }
+      isFiringRef.current = false;
+      clearCompleted();
+      setTimeout(() => setDrainTick((n) => n + 1), 0);
+      startTimeRef.current = null;
+    }
+  }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleModelLoadDialogCancel = () => {
     setModelLoadDialogOpen(false);
-    setPendingInferenceRequest(null);
+    if (nextPendingId) cancel(nextPendingId);
   };
 
   const handleModelLoadDialogContinue = () => {
@@ -252,6 +344,7 @@ const NachetMiniContainer = () => {
     );
     if (!detector || !classifier) return;
     const configId = `${detector.id}+${classifier.id}`;
+    // eslint-disable-next-line react-hooks/purity
     const editedConfigId = `${configId}:edited-${Date.now()}`;
     const boxes = editedBoxes.map((b) => ({
       topX: b.topX,
@@ -350,10 +443,8 @@ const NachetMiniContainer = () => {
     setCheckedResults(new Set());
   }, []);
 
-  const isInferring = status === "detecting" || status === "classifying";
   const isLoading = status === "loading-model";
-  const canRunInference =
-    !isWebcamActive && !!currentImage && !isInferring && !isEditing;
+  const canRunInference = !isWebcamActive && !!currentImage && !isEditing;
   const canEditBoxes =
     !isWebcamActive && !!currentResult && !isInferring && !isEditing;
   const canClassifyEdited =
@@ -363,9 +454,32 @@ const NachetMiniContainer = () => {
     if (webcamError && isWebcamActive) return webcamError;
     if (error) return t("status.error", { error });
     if (status === "loading-model") return t("status.loadingModel");
-    if (status === "detecting") return t("status.detecting");
-    if (status === "classifying") return t("status.classifying");
-    if (status === "complete") return t("status.inferenceComplete");
+
+    // Context-aware status based on selected image
+    if (currentImage) {
+      const queueEntry = useInferenceQueueStore
+        .getState()
+        .queue.find((i) => i.imageIndex === currentImage.index);
+
+      if (queueEntry?.status === "processing") {
+        if (status === "detecting") return t("status.detecting");
+        if (status === "classifying") return t("status.classifying");
+      }
+
+      if (queueEntry?.status === "pending") {
+        return t("status.queued");
+      }
+
+      const imageResults = getResultsForImage(currentImage.index);
+      if (
+        imageResults.length > 0 &&
+        status !== "detecting" &&
+        status !== "classifying"
+      ) {
+        return t("status.inferenceComplete");
+      }
+    }
+
     if (modelLoaded) return t("status.modelReady");
     return t("status.noModelLoaded");
   })();
