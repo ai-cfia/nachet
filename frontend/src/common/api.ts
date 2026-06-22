@@ -53,15 +53,15 @@ let isAuthProviderInitialized = false;
  *
  * @param getAccessToken - Provider-neutral token getter
  */
-export function initializeApi(getAccessToken: () => Promise<string>): void {
+export const initializeApi = (getAccessToken: () => Promise<string>): void => {
   setupAxiosInterceptor(getAccessToken);
   isAuthProviderInitialized = true;
-}
+};
 
-export function clearApiAuthentication(): void {
+export const clearApiAuthentication = (): void => {
   clearAxiosInterceptors();
   isAuthProviderInitialized = false;
-}
+};
 
 // Re-export resetRedirectFlag for use in main.tsx
 export { resetRedirectFlag };

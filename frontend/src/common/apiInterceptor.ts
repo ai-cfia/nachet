@@ -49,7 +49,7 @@ export function resetRedirectFlag(): void {
   isRedirecting = false;
 }
 
-export function clearAxiosInterceptors(): void {
+export const clearAxiosInterceptors = (): void => {
   if (requestInterceptorId !== null) {
     axios.interceptors.request.eject(requestInterceptorId);
     requestInterceptorId = null;
@@ -61,7 +61,7 @@ export function clearAxiosInterceptors(): void {
   }
 
   resetRedirectFlag();
-}
+};
 
 /**
  * Configure axios interceptor to handle 401 Unauthorized errors and retry once
