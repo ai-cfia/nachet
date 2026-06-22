@@ -34,7 +34,7 @@ dependencies = [
     "python-dotenv==1.2.2",
     "hypercorn==0.18.0",
     "Pillow==12.2.0",
-    "cryptography==46.0.7",
+    "cryptography==48.0.1",
     "pyyaml==6.0.3",
     "pydantic==2.13.0",
     "pydantic-core>=2.33.2",
