@@ -1,9 +1,7 @@
 import axios from "axios";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  clearAxiosInterceptors,
-  setupAxiosInterceptor,
-} from "../apiInterceptor";
+import { setupAxiosInterceptor } from "../apiInterceptor";
+import { clearApiAuthentication, fetchDevices, initializeApi } from "../api";
 
 const runRequest = async (config: Record<string, unknown>) => {
   return axios({
@@ -21,8 +19,11 @@ const runRequest = async (config: Record<string, unknown>) => {
 };
 
 describe("apiInterceptor", () => {
+  const originalAdapter = axios.defaults.adapter;
+
   afterEach(() => {
-    clearAxiosInterceptors();
+    clearApiAuthentication();
+    axios.defaults.adapter = originalAdapter;
   });
 
   it("attaches a bearer token to protected Nachet API requests", async () => {
@@ -119,6 +120,70 @@ describe("apiInterceptor", () => {
     expect(response.data).toEqual({ ok: true });
     expect(getAccessToken).toHaveBeenCalledTimes(2);
     expect(authorizationHeaders[0]).toBe("Bearer initial-token");
+    expect(authorizationHeaders[1]).toBe("Bearer retry-token");
+  });
+
+  it("attaches tokens to API helper requests through initializeApi", async () => {
+    const getAccessToken = vi.fn().mockResolvedValue("api-helper-token");
+    const authorizationHeaders: string[] = [];
+    axios.defaults.adapter = async (requestConfig: any) => {
+      authorizationHeaders.push(requestConfig.headers.Authorization);
+      return {
+        data: { devices: [] },
+        status: 200,
+        statusText: "OK",
+        headers: {},
+        config: requestConfig,
+      };
+    };
+
+    initializeApi(getAccessToken);
+
+    await expect(
+      fetchDevices({ backendUrl: "https://api.example.test" }),
+    ).resolves.toEqual({ devices: [] });
+    expect(getAccessToken).toHaveBeenCalledOnce();
+    expect(authorizationHeaders).toEqual(["Bearer api-helper-token"]);
+  });
+
+  it("retries stale explicit-token requests with a replacement token", async () => {
+    const getAccessToken = vi.fn().mockResolvedValue("retry-token");
+    const authorizationHeaders: string[] = [];
+    setupAxiosInterceptor(getAccessToken);
+
+    const response = await axios({
+      method: "get",
+      url: "https://api.example.test/protected",
+      nachetAuthRequired: true,
+      headers: { Authorization: "Bearer stale-token" },
+      adapter: async (requestConfig: any) => {
+        authorizationHeaders.push(requestConfig.headers.Authorization);
+        if (authorizationHeaders.length === 1) {
+          return Promise.reject({
+            config: requestConfig,
+            response: {
+              data: null,
+              status: 401,
+              statusText: "Unauthorized",
+              headers: {},
+              config: requestConfig,
+            },
+          });
+        }
+
+        return {
+          data: { ok: true },
+          status: 200,
+          statusText: "OK",
+          headers: {},
+          config: requestConfig,
+        };
+      },
+    } as any);
+
+    expect(response.data).toEqual({ ok: true });
+    expect(getAccessToken).toHaveBeenCalledOnce();
+    expect(authorizationHeaders[0]).toBe("Bearer stale-token");
     expect(authorizationHeaders[1]).toBe("Bearer retry-token");
   });
 });

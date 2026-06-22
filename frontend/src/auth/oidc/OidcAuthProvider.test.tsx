@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NachetAuthContextValue } from "../NachetAuthContext";
 import { OidcAuthProvider } from "./OidcAuthProvider";
@@ -53,9 +53,30 @@ const TestConsumer = () => {
   );
 };
 
+const TokenConsumer = () => {
+  const auth = useContext(TestAuthContext);
+
+  return (
+    <button onClick={() => void auth?.getAccessToken().catch(() => undefined)}>
+      get token
+    </button>
+  );
+};
+
 describe("OidcAuthProvider", () => {
   beforeEach(() => {
     capturedAuthProviderSettings.value = undefined;
+    mockOidcAuth.value.isAuthenticated = true;
+    mockOidcAuth.value.isLoading = false;
+    mockOidcAuth.value.user = {
+      expired: false,
+      access_token: "oidc-access-token",
+      profile: {
+        preferred_username: "oidc-user@example.com",
+        name: "OIDC User",
+        sub: "oidc-subject",
+      },
+    };
     mockOidcAuth.value.signinRedirect.mockClear();
     mockOidcAuth.value.signinSilent.mockClear();
     mockOidcAuth.value.signoutRedirect.mockClear();
@@ -155,6 +176,40 @@ describe("OidcAuthProvider", () => {
 
     expect(capturedAuthProviderSettings.value).toMatchObject({
       scope: "openid profile api://nachet/access_as_user",
+    });
+  });
+
+  it("starts sign-in when silent token renewal fails", async () => {
+    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
+    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
+    mockOidcAuth.value.user = {
+      expired: true,
+      access_token: "expired-token",
+      profile: {
+        preferred_username: "oidc-user@example.com",
+        name: "OIDC User",
+        sub: "oidc-subject",
+      },
+    };
+    mockOidcAuth.value.signinSilent.mockRejectedValueOnce(
+      new Error("silent renewal failed"),
+    );
+
+    render(
+      <OidcAuthProvider
+        apiScopeClaim="api://nachet/access_as_user"
+        authContext={TestAuthContext}
+      >
+        <TokenConsumer />
+      </OidcAuthProvider>,
+    );
+
+    fireEvent.click(screen.getByText("get token"));
+
+    await waitFor(() => {
+      expect(mockOidcAuth.value.signinRedirect).toHaveBeenCalledWith({
+        scope: "openid profile email api://nachet/access_as_user",
+      });
     });
   });
 });

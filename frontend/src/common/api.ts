@@ -77,6 +77,8 @@ const handleAxios = async <T>(request: {
   const correlationId = errorLogger.getCorrelationId();
   const requestHasAuthHeader = Boolean(request.headers.Authorization);
   const requestRequiresAuth = request.authRequired !== false;
+  const requestCanUseAuthProvider =
+    requestRequiresAuth && (!requestHasAuthHeader || isAuthProviderInitialized);
 
   if (
     requestRequiresAuth &&
@@ -95,9 +97,7 @@ const handleAxios = async <T>(request: {
       "X-Session-ID": errorLogger.getSessionId(),
     },
     withCredentials: true,
-    ...(requestRequiresAuth && !requestHasAuthHeader
-      ? { nachetAuthRequired: true }
-      : {}),
+    ...(requestCanUseAuthProvider ? { nachetAuthRequired: true } : {}),
   };
 
   const data = await axios(enhancedRequest)

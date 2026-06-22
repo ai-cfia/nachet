@@ -129,6 +129,20 @@ const OidcAuthBridge = ({
         return oidc.user.access_token;
       }
 
+      let renewedUser: User | null | undefined;
+      try {
+        renewedUser = await oidc.signinSilent({
+          scope: buildScope(defaultScope, scopes),
+        });
+      } catch (error) {
+        await login(scopes);
+        throw error;
+      }
+
+      if (renewedUser?.access_token && !renewedUser.expired) {
+        return renewedUser.access_token;
+      }
+
       await login(scopes);
       throw new Error("Redirecting to sign in for a fresh OIDC access token.");
     },
