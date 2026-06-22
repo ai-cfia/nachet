@@ -14,24 +14,51 @@ interface OidcAuthProviderProps {
   children: ReactNode;
 }
 
-const requiredEnv = (name: string): string => {
-  const value = (import.meta.env as Record<string, string | undefined>)[
-    name
-  ]?.trim();
+interface OidcEnv {
+  authority: string;
+  clientId: string;
+  scope: string;
+  redirectUri: string;
+  postLogoutRedirectUri: string;
+}
 
-  if (!value) {
-    throw new Error(`${name} is required by the OIDC auth adapter.`);
+interface OidcAuthBridgeProps extends OidcAuthProviderProps {
+  defaultScope: string;
+}
+
+const getOidcEnv = (): OidcEnv => {
+  const oidcEnv = {
+    authority: import.meta.env.VITE_OIDC_AUTHORITY?.trim() ?? "",
+    clientId: import.meta.env.VITE_OIDC_CLIENT_ID?.trim() ?? "",
+    scope: import.meta.env.VITE_OIDC_SCOPE?.trim() ?? "",
+    redirectUri: import.meta.env.VITE_OIDC_REDIRECT_URI?.trim() ?? "",
+    postLogoutRedirectUri:
+      import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI?.trim() ?? "",
+  };
+
+  const missingEnv = [
+    ["VITE_OIDC_AUTHORITY", oidcEnv.authority],
+    ["VITE_OIDC_CLIENT_ID", oidcEnv.clientId],
+    ["VITE_OIDC_SCOPE", oidcEnv.scope],
+    ["VITE_OIDC_REDIRECT_URI", oidcEnv.redirectUri],
+    ["VITE_OIDC_POST_LOGOUT_REDIRECT_URI", oidcEnv.postLogoutRedirectUri],
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
+
+  if (missingEnv.length > 0) {
+    throw new Error(
+      `Missing required OIDC auth configuration: ${missingEnv.join(", ")}`,
+    );
   }
 
-  return value;
+  return oidcEnv;
 };
 
-const optionalEnv = (name: string): string | undefined => {
-  const value = (import.meta.env as Record<string, string | undefined>)[
-    name
-  ]?.trim();
-  return value || undefined;
-};
+interface OidcConfig {
+  defaultScope: string;
+  settings: UserManagerSettings;
+}
 
 const buildScope = (baseScope: string, requestedScopes?: string[]): string => {
   const scopes = new Set(
@@ -78,18 +105,11 @@ const mapUser = (user: User | null) => {
 };
 
 const OidcAuthBridge = ({
-  apiScopeClaim,
   authContext,
   children,
-}: OidcAuthProviderProps) => {
+  defaultScope,
+}: OidcAuthBridgeProps) => {
   const oidc = useOidcAuth();
-  const defaultScope = useMemo(() => {
-    return buildScope(
-      optionalEnv("VITE_OIDC_SCOPE") ?? "openid profile email",
-      apiScopeClaim ? [apiScopeClaim] : [],
-    );
-  }, [apiScopeClaim]);
-
   const activeAccount = useMemo(() => mapUser(oidc.user), [oidc.user]);
 
   const login = useCallback(
@@ -109,18 +129,10 @@ const OidcAuthBridge = ({
         return oidc.user.access_token;
       }
 
-      const renewedUser = await oidc.signinSilent({
-        scope: buildScope(defaultScope, scopes),
-      });
-
-      if (renewedUser?.access_token && !renewedUser.expired) {
-        return renewedUser.access_token;
-      }
-
       await login(scopes);
       throw new Error("Redirecting to sign in for a fresh OIDC access token.");
     },
-    [defaultScope, login, oidc],
+    [login, oidc],
   );
 
   const authValue = useMemo<NachetAuthContextValue>(
@@ -148,32 +160,31 @@ const OidcAuthBridge = ({
   return <Provider value={authValue}>{children}</Provider>;
 };
 
-const getOidcSettings = (apiScopeClaim: string): UserManagerSettings => {
-  const baseScope = buildScope(
-    optionalEnv("VITE_OIDC_SCOPE") ?? "openid profile email",
+const getOidcConfig = (apiScopeClaim: string): OidcConfig => {
+  const oidcEnv = getOidcEnv();
+  const defaultScope = buildScope(
+    oidcEnv.scope,
     apiScopeClaim ? [apiScopeClaim] : [],
   );
 
   return {
-    authority: requiredEnv("VITE_OIDC_AUTHORITY"),
-    client_id: requiredEnv("VITE_OIDC_CLIENT_ID"),
-    redirect_uri:
-      optionalEnv("VITE_OIDC_REDIRECT_URI") ??
-      window.location.origin + window.location.pathname,
-    post_logout_redirect_uri:
-      optionalEnv("VITE_OIDC_POST_LOGOUT_REDIRECT_URI") ??
-      window.location.origin + window.location.pathname,
-    response_type: "code",
-    scope: baseScope,
-    userStore: new WebStorageStateStore({ store: window.sessionStorage }),
-    automaticSilentRenew: Boolean(optionalEnv("VITE_OIDC_SILENT_REDIRECT_URI")),
-    silent_redirect_uri: optionalEnv("VITE_OIDC_SILENT_REDIRECT_URI"),
+    defaultScope,
+    settings: {
+      authority: oidcEnv.authority,
+      client_id: oidcEnv.clientId,
+      redirect_uri: oidcEnv.redirectUri,
+      post_logout_redirect_uri: oidcEnv.postLogoutRedirectUri,
+      response_type: "code",
+      scope: defaultScope,
+      userStore: new WebStorageStateStore({ store: window.sessionStorage }),
+      automaticSilentRenew: false,
+    },
   };
 };
 
 export const OidcAuthProvider = (props: OidcAuthProviderProps) => {
-  const settings = useMemo(
-    () => getOidcSettings(props.apiScopeClaim),
+  const oidcConfig = useMemo(
+    () => getOidcConfig(props.apiScopeClaim),
     [props.apiScopeClaim],
   );
 
@@ -183,8 +194,8 @@ export const OidcAuthProvider = (props: OidcAuthProviderProps) => {
   }, []);
 
   return (
-    <AuthProvider {...settings} onSigninCallback={onSigninCallback}>
-      <OidcAuthBridge {...props} />
+    <AuthProvider {...oidcConfig.settings} onSigninCallback={onSigninCallback}>
+      <OidcAuthBridge {...props} defaultScope={oidcConfig.defaultScope} />
     </AuthProvider>
   );
 };

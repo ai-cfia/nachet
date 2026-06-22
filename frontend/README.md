@@ -308,11 +308,9 @@ The OIDC adapter requires these settings when `VITE_AUTH_PROVIDER` is `"oidc"`:
 
 - `VITE_OIDC_AUTHORITY`
 - `VITE_OIDC_CLIENT_ID`
-
-`VITE_OIDC_SCOPE`, `VITE_OIDC_REDIRECT_URI`, and
-`VITE_OIDC_POST_LOGOUT_REDIRECT_URI` can be set to override the defaults. The
-default OIDC scope is `openid profile email` plus the configured API scope, and
-the default redirect URLs use the current local app URL.
+- `VITE_OIDC_SCOPE`
+- `VITE_OIDC_REDIRECT_URI`
+- `VITE_OIDC_POST_LOGOUT_REDIRECT_URI`
 
 `VITE_OIDC_API_SCOPE_CLAIM` can be set when the backend API needs a specific
 access-token scope for the selected provider. If it is omitted, the frontend
