@@ -37,7 +37,7 @@ interface AuthProviderProps extends UserManagerSettings {
   onSigninCallback?: (user: User | null) => Promise<void> | void;
 }
 
-function hasAuthParams(location = window.location): boolean {
+const hasAuthParams = (location = window.location): boolean => {
   const searchParams = new URLSearchParams(location.search);
   const hashParams = new URLSearchParams(location.hash.replace(/^#/, ""));
 
@@ -47,22 +47,22 @@ function hasAuthParams(location = window.location): boolean {
     ((hashParams.has("code") || hashParams.has("error")) &&
       hashParams.has("state"))
   );
-}
+};
 
-function toError(error: unknown): Error {
+const toError = (error: unknown): Error => {
   if (error instanceof Error) {
     return error;
   }
 
   return new Error(typeof error === "string" ? error : JSON.stringify(error));
-}
+};
 
-export function AuthProvider({
+export const AuthProvider = ({
   children,
   skipSigninCallback = false,
   onSigninCallback,
   ...settings
-}: AuthProviderProps) {
+}: AuthProviderProps) => {
   const managerSettings = useMemo<UserManagerSettings>(
     () => ({
       authority: settings.authority,
@@ -201,4 +201,4 @@ export function AuthProvider({
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
+};

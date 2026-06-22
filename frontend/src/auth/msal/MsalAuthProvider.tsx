@@ -19,19 +19,19 @@ interface MsalAuthProviderProps {
   children: ReactNode;
 }
 
-function mapAccount(account: AccountInfo): NachetAuthAccount {
+const mapAccount = (account: AccountInfo): NachetAuthAccount => {
   return {
     username: account.username,
     name: account.name,
     idTokenClaims: account.idTokenClaims as Record<string, unknown> | undefined,
   };
-}
+};
 
-export function MsalAuthProvider({
+export const MsalAuthProvider = ({
   apiScopeClaim,
   authContext,
   children,
-}: MsalAuthProviderProps) {
+}: MsalAuthProviderProps) => {
   const { instance, inProgress, accounts } = useMsal();
   const isAuthenticated = useIsAuthenticated();
   const defaultScopes = useMemo(
@@ -94,4 +94,4 @@ export function MsalAuthProvider({
   const Provider = authContext.Provider;
 
   return <Provider value={value}>{children}</Provider>;
-}
+};

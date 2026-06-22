@@ -8,10 +8,10 @@ export interface NachetAuthProviderProps {
   children: ReactNode;
 }
 
-export function NachetAuthProvider({
+export const NachetAuthProvider = ({
   apiScopeClaim,
   children,
-}: NachetAuthProviderProps) {
+}: NachetAuthProviderProps) => {
   const configuredProvider = (import.meta.env.VITE_AUTH_PROVIDER ?? "msal")
     .trim()
     .toLowerCase();
@@ -43,4 +43,4 @@ export function NachetAuthProvider({
   throw new Error(
     `Unsupported auth provider '${configuredProvider}'. Use 'msal' or 'oidc'.`,
   );
-}
+};

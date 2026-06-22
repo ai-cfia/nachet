@@ -14,7 +14,7 @@ interface AppProps {
   apiScopeClaim: string;
 }
 
-function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
+const App = ({ basename, msalInstance, apiScopeClaim }: AppProps) => {
   const [windowSize, setWindowSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -97,6 +97,6 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
       </MsalProvider>
     </Router>
   );
-}
+};
 
 export default App;

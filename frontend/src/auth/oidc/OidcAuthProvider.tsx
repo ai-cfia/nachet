@@ -14,7 +14,7 @@ interface OidcAuthProviderProps {
   children: ReactNode;
 }
 
-function requiredEnv(name: string): string {
+const requiredEnv = (name: string): string => {
   const value = (import.meta.env as Record<string, string | undefined>)[
     name
   ]?.trim();
@@ -24,16 +24,16 @@ function requiredEnv(name: string): string {
   }
 
   return value;
-}
+};
 
-function optionalEnv(name: string): string | undefined {
+const optionalEnv = (name: string): string | undefined => {
   const value = (import.meta.env as Record<string, string | undefined>)[
     name
   ]?.trim();
   return value || undefined;
-}
+};
 
-function buildScope(baseScope: string, requestedScopes?: string[]): string {
+const buildScope = (baseScope: string, requestedScopes?: string[]): string => {
   const scopes = new Set(
     baseScope
       .split(/\s+/)
@@ -48,18 +48,18 @@ function buildScope(baseScope: string, requestedScopes?: string[]): string {
   });
 
   return Array.from(scopes).join(" ");
-}
+};
 
-function getStringClaim(
+const getStringClaim = (
   profile: Record<string, unknown>,
   claimNames: string[],
-): string | undefined {
+): string | undefined => {
   return claimNames
     .map((claimName) => profile[claimName])
     .find((claimValue): claimValue is string => typeof claimValue === "string");
-}
+};
 
-function mapUser(user: User | null) {
+const mapUser = (user: User | null) => {
   if (user === null) {
     return null;
   }
@@ -75,13 +75,13 @@ function mapUser(user: User | null) {
     name,
     idTokenClaims: profile,
   };
-}
+};
 
-function OidcAuthBridge({
+const OidcAuthBridge = ({
   apiScopeClaim,
   authContext,
   children,
-}: OidcAuthProviderProps) {
+}: OidcAuthProviderProps) => {
   const oidc = useOidcAuth();
   const defaultScope = useMemo(() => {
     return buildScope(
@@ -146,9 +146,9 @@ function OidcAuthBridge({
 
   const Provider = authContext.Provider;
   return <Provider value={authValue}>{children}</Provider>;
-}
+};
 
-function getOidcSettings(apiScopeClaim: string): UserManagerSettings {
+const getOidcSettings = (apiScopeClaim: string): UserManagerSettings => {
   const baseScope = buildScope(
     optionalEnv("VITE_OIDC_SCOPE") ?? "openid profile email",
     apiScopeClaim ? [apiScopeClaim] : [],
@@ -169,9 +169,9 @@ function getOidcSettings(apiScopeClaim: string): UserManagerSettings {
     automaticSilentRenew: Boolean(optionalEnv("VITE_OIDC_SILENT_REDIRECT_URI")),
     silent_redirect_uri: optionalEnv("VITE_OIDC_SILENT_REDIRECT_URI"),
   };
-}
+};
 
-export function OidcAuthProvider(props: OidcAuthProviderProps) {
+export const OidcAuthProvider = (props: OidcAuthProviderProps) => {
   const settings = useMemo(
     () => getOidcSettings(props.apiScopeClaim),
     [props.apiScopeClaim],
@@ -187,4 +187,4 @@ export function OidcAuthProvider(props: OidcAuthProviderProps) {
       <OidcAuthBridge {...props} />
     </AuthProvider>
   );
-}
+};

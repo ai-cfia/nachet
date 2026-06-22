@@ -64,7 +64,7 @@ const mockAccount = {
   },
 };
 
-function TestConsumer() {
+const TestConsumer = () => {
   const auth = useNachetAuth();
 
   return (
@@ -88,7 +88,7 @@ function TestConsumer() {
       </button>
     </div>
   );
-}
+};
 
 describe("NachetAuthProvider", () => {
   const mockMsalInstance = {

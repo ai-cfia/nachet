@@ -42,7 +42,7 @@ const TestAuthContext = createContext<NachetAuthContextValue | undefined>(
   undefined,
 );
 
-function TestConsumer() {
+const TestConsumer = () => {
   const auth = useContext(TestAuthContext);
 
   return (
@@ -51,7 +51,7 @@ function TestConsumer() {
       <span data-testid="username">{auth?.activeAccount?.username}</span>
     </div>
   );
-}
+};
 
 describe("OidcAuthProvider", () => {
   beforeEach(() => {
