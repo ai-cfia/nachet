@@ -29,7 +29,7 @@ export default defineConfig({
       "@mui/icons-material/GitHub",
       "@mui/icons-material/Close",
       "@mui/icons-material/Cancel",
-      "@mui/icons-material/AccessTime",
+      "@mui/icons-material/AccessTime", 
       "@mui/icons-material/List",
       "react-webcam",
       "file-saver",
