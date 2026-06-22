@@ -254,7 +254,8 @@ This enables preview of local frontend changes while connecting to the backend s
 
 ### Submodules
 
-The frontend includes the AI Lab fork of `oidc-client-ts` as a Git submodule.
+The frontend includes the AI Lab fork of `oidc-client-ts` as a Git submodule
+under `frontend/submodules/oidc-client-ts`.
 After cloning the repository, initialize submodules with:
 
 ```bash

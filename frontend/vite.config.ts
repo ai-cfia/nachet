@@ -29,7 +29,7 @@ export default defineConfig({
       "@stores/*": path.resolve(__dirname, "./src/stores/*"),
       "oidc-client-ts": path.resolve(
         __dirname,
-        "./vendor/oidc-client-ts/src/index.ts",
+        "./submodules/oidc-client-ts/src/index.ts",
       ),
     },
   },
