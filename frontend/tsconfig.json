@@ -50,6 +50,9 @@
       "@stores": [
         "src/stores"
       ],
+      "oidc-client-ts": [
+        "submodules/oidc-client-ts/dist/types/oidc-client-ts.d.ts"
+      ],
     },
     /* Linting */
     "strict": true,

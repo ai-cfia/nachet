@@ -4,8 +4,8 @@ import Cookies from "js-cookie";
 import { Navbar, Appbar } from "./components/header";
 import Body from "./root/body";
 import Footer from "./components/footer";
-import { MsalProvider } from "@azure/msal-react";
 import { PublicClientApplication } from "@azure/msal-browser";
+import { NachetAuthProvider } from "./auth";
 
 interface AppProps {
   basename: string;
@@ -13,7 +13,7 @@ interface AppProps {
   apiScopeClaim: string;
 }
 
-function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
+const App = ({ basename, msalInstance, apiScopeClaim }: AppProps) => {
   const [windowSize, setWindowSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -54,7 +54,10 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
 
   return (
     <Router basename={basename}>
-      <MsalProvider instance={msalInstance}>
+      <NachetAuthProvider
+        apiScopeClaim={apiScopeClaim}
+        msalInstance={msalInstance}
+      >
         <Fragment>
           <Navbar windowSize={windowSize} apiScopeClaim={apiScopeClaim} />
           <Appbar windowSize={windowSize} />
@@ -91,9 +94,9 @@ function App({ basename, msalInstance, apiScopeClaim }: AppProps) {
           </Routes>
           <Footer />
         </Fragment>
-      </MsalProvider>
+      </NachetAuthProvider>
     </Router>
   );
-}
+};
 
 export default App;

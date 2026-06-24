@@ -6,6 +6,7 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: "./src/setupTests.ts",
+    exclude: ["node_modules/**", "dist/**", "submodules/**"],
     // Specify other Vitest options here
     coverage: {
       include: ["src/**/*.{ts,tsx}"],
@@ -33,6 +34,10 @@ export default defineConfig({
       "@styles/*": path.resolve(__dirname, "./src/styles/*"),
       "@stores": path.resolve(__dirname, "./src/stores"),
       "@stores/*": path.resolve(__dirname, "./src/stores/*"),
+      "oidc-client-ts": path.resolve(
+        __dirname,
+        "./submodules/oidc-client-ts/dist/esm/oidc-client-ts.js",
+      ),
     },
   },
 });

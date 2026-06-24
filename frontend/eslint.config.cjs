@@ -17,6 +17,7 @@ module.exports = [
       "**/.eslintrc.cjs",
       "**/__mocks__",
       "**/vitest.config.ts",
+      "submodules",
       "src/client", // Exclude generated client code
     ],
   },

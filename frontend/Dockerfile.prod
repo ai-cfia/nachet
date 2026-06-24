@@ -3,6 +3,8 @@ FROM node:24.13.0-alpine AS builder
 
 WORKDIR /app
 
+RUN apk add --no-cache git
+
 # Copy package files
 COPY package*.json ./
 COPY tsconfig.json ./
@@ -12,6 +14,9 @@ RUN npm ci
 
 # Copy source code
 COPY . .
+
+# Build generated output and TypeScript declarations for the OIDC submodule
+RUN npm run build:oidc-client-ts
 
 # Build the application
 RUN npm run build

@@ -252,6 +252,30 @@ docker-compose up --build
 
 This enables preview of local frontend changes while connecting to the backend services.
 
+### Submodules
+
+The frontend includes the AI Lab fork of `oidc-client-ts` as a Git submodule
+under `frontend/submodules/oidc-client-ts`.
+When cloning the repository, include submodules:
+
+```bash
+git clone --recurse-submodules https://github.com/ai-cfia/nachet.git
+```
+
+If the repository is already cloned, initialize the frontend submodule with:
+
+```bash
+git submodule update --init --recursive frontend/submodules/oidc-client-ts
+```
+
+Build the submodule before running frontend lint, tests, dev, or production
+builds that use the OIDC adapter:
+
+```bash
+cd frontend
+npm run build:oidc-client-ts
+```
+
 ## Deployment Environment Configuration Management
 
 For managing and configuring different deployment environments (development,
@@ -284,6 +308,21 @@ from the frontend.
 2. `VITE_APP_MODE`: Determines the mode in which the application runs. Set to
 `"test"` for using test data, any other value will use real data from the
 backend.
+3. `VITE_AUTH_PROVIDER`: Selects the frontend authentication provider at build
+time. Use `"msal"` for the official Microsoft Entra path or `"oidc"` for the
+provider-neutral OIDC path.
+
+The OIDC adapter requires these settings when `VITE_AUTH_PROVIDER` is `"oidc"`:
+
+- `VITE_OIDC_AUTHORITY`
+- `VITE_OIDC_CLIENT_ID`
+- `VITE_OIDC_SCOPE`
+- `VITE_OIDC_REDIRECT_URI`
+- `VITE_OIDC_POST_LOGOUT_REDIRECT_URI`
+
+`VITE_OIDC_API_SCOPE_CLAIM` can be set when the backend API needs a specific
+access-token scope for the selected provider. If it is omitted, the frontend
+uses the Azure API scope value as a fallback for compatibility during migration.
 
 ### Setting Up Environment Variables
 

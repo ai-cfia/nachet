@@ -1,16 +1,17 @@
 {
   "name": "nachet-frontend",
   "private": true,
-  "version": "2.9.15",
+  "version": "2.9.16",
   "acia-cfia": {
     "backend-version": "2.9.4"
   },
   "type": "module",
   "scripts": {
     "update": "rm -r node_modules && npm install && npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo \"\" >> sbom.json",
+    "build:oidc-client-ts": "npm ci --prefix ./submodules/oidc-client-ts --ignore-scripts && npm run build --prefix ./submodules/oidc-client-ts",
     "dev": "vite",
     "prestart": "ts-appversion",
-    "prebuild": "prettier \"src/**/*.{ts,tsx,js,jsx,json,css}\" -l --write ; eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 && tsc",
+    "prebuild": "prettier \"src/**/*.{ts,tsx,js,jsx,json,css}\" -l --write && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 && tsc",
     "build": "export $(grep -v '^#' .env.config.local | xargs) && tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --fix && tsc --noEmit",
     "lint:md": "prettier \"docs/**/*.md\" -l --write && markdownlint-cli2 \"docs/**/*.md\" --fix --config ../.markdownlint-cli2.jsonc",
@@ -43,6 +44,7 @@
     "i18next-browser-languagedetector": "^8.2.0",
     "js-cookie": "^3.0.5",
     "jszip": "^3.10.1",
+    "jwt-decode": "^4.0.0",
     "re-resizable": "^6.11.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

@@ -27,6 +27,10 @@ export default defineConfig({
       "@styles/*": path.resolve(__dirname, "./src/styles/*"),
       "@stores": path.resolve(__dirname, "./src/stores"),
       "@stores/*": path.resolve(__dirname, "./src/stores/*"),
+      "oidc-client-ts": path.resolve(
+        __dirname,
+        "./submodules/oidc-client-ts/dist/esm/oidc-client-ts.js",
+      ),
     },
   },
 });
