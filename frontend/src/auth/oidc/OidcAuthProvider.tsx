@@ -10,7 +10,10 @@ import {
   type User,
   type UserManagerSettings,
 } from "oidc-client-ts";
-import type { NachetAuthContextValue } from "../NachetAuthContext";
+import type {
+  NachetAuthContextValue,
+  NachetAuthTokenOptions,
+} from "../NachetAuthContext";
 import { AuthProvider } from "./react-oidc-context/AuthProvider";
 import { useAuth as useOidcAuth } from "./react-oidc-context/useAuth";
 
@@ -106,6 +109,8 @@ const mapUser = (user: User | null) => {
   return {
     username,
     name,
+    userId: getStringClaim(profile, ["oid", "sub"]) ?? username,
+    isGuest: false,
     idTokenClaims: profile,
   };
 };
@@ -126,9 +131,8 @@ const OidcAuthBridge = ({
     (scope: string) => {
       loginRedirectPromiseRef.current ??= Promise.resolve(
         oidc.signinRedirect({ scope }),
-      ).catch((error) => {
+      ).finally(() => {
         loginRedirectPromiseRef.current = null;
-        throw error;
       });
 
       return loginRedirectPromiseRef.current;
@@ -165,12 +169,15 @@ const OidcAuthBridge = ({
   }, [oidc]);
 
   const getAccessToken = useCallback(
-    async (scopes?: string[]) => {
-      if (oidc.user?.access_token && !oidc.user.expired) {
+    async (scopes?: string[], options?: NachetAuthTokenOptions) => {
+      const requestedScope = buildScope(defaultScope, scopes);
+      const canUseCachedToken =
+        !options?.forceRefresh && requestedScope === defaultScope;
+
+      if (canUseCachedToken && oidc.user?.access_token && !oidc.user.expired) {
         return oidc.user.access_token;
       }
 
-      const requestedScope = buildScope(defaultScope, scopes);
       let renewedUser: User | null | undefined;
       try {
         renewedUser = await signinSilentOnce(requestedScope);

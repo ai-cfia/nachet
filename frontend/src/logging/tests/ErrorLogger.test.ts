@@ -186,45 +186,32 @@ describe("ErrorLogger (Singleton)", () => {
       );
     });
 
-    it("should continue without auth if token provider fails", async () => {
+    it("should skip backend logging if token provider fails", async () => {
       const tokenProvider = vi.fn().mockRejectedValue(new Error("Token error"));
       errorLogger.setTokenProvider(tokenProvider);
 
       await errorLogger.logError("Test");
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        "Failed to acquire token for logs endpoint:",
+        "Skipping backend log submission because log auth failed:",
         expect.any(Error),
       );
-      expect(axios.post).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Object),
-        expect.objectContaining({
-          headers: expect.not.objectContaining({
-            Authorization: expect.anything(),
-          }),
-        }),
-      );
+      expect(axios.post).not.toHaveBeenCalled();
 
       // Reset token provider
       errorLogger.setTokenProvider(null as any);
     });
 
-    it("should continue without auth if token provider returns null", async () => {
+    it("should skip backend logging if token provider returns null", async () => {
       const tokenProvider = vi.fn().mockResolvedValue(null);
       errorLogger.setTokenProvider(tokenProvider);
 
       await errorLogger.logError("Test");
 
-      expect(axios.post).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Object),
-        expect.objectContaining({
-          headers: expect.not.objectContaining({
-            Authorization: expect.anything(),
-          }),
-        }),
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "Skipping backend log submission because no auth token is available.",
       );
+      expect(axios.post).not.toHaveBeenCalled();
 
       // Reset token provider
       errorLogger.setTokenProvider(null as any);

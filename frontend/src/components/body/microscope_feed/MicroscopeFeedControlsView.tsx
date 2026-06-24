@@ -129,18 +129,8 @@ export const MicroscopeFeedControlsView = (
     padding: 0,
   };
 
-  // Derive isGuest from accountInfo
-  // acct === 0 means member account, acct !== 0 or undefined means guest account
-  // Defensive: treat missing/undefined acct as guest (hide D button)
   const isGuest = useMemo(() => {
-    const idTokenClaims = activeAccount?.idTokenClaims as
-      | { acct?: number }
-      | undefined;
-    const acctClaim = idTokenClaims?.acct;
-
-    // Only acct === 0 means member (show D button)
-    // Everything else (undefined, null, non-zero) means guest (hide D button)
-    return acctClaim !== 0;
+    return activeAccount?.isGuest ?? true;
   }, [activeAccount]);
 
   // Find the model name from metadata based on selectedModel (pipelineId)

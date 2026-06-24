@@ -63,6 +63,31 @@ const TokenConsumer = () => {
   );
 };
 
+const TokenCaptureConsumer = ({
+  forceRefresh = false,
+  scopes,
+}: {
+  forceRefresh?: boolean;
+  scopes?: string[];
+}) => {
+  const auth = useContext(TestAuthContext);
+
+  return (
+    <button
+      onClick={() => {
+        void auth
+          ?.getAccessToken(scopes, forceRefresh ? { forceRefresh } : undefined)
+          .then((token) => {
+            document.body.dataset.oidcToken = token;
+          })
+          .catch(() => undefined);
+      }}
+    >
+      capture token
+    </button>
+  );
+};
+
 const ConcurrentTokenConsumer = () => {
   const auth = useContext(TestAuthContext);
 
@@ -98,6 +123,7 @@ describe("OidcAuthProvider", () => {
     mockOidcAuth.value.signinRedirect.mockClear();
     mockOidcAuth.value.signinSilent.mockClear();
     mockOidcAuth.value.signoutRedirect.mockClear();
+    delete document.body.dataset.oidcToken;
     delete import.meta.env.VITE_OIDC_AUTHORITY;
     delete import.meta.env.VITE_OIDC_CLIENT_ID;
     delete import.meta.env.VITE_OIDC_SCOPE;
@@ -227,6 +253,139 @@ describe("OidcAuthProvider", () => {
     );
 
     fireEvent.click(screen.getByText("get token"));
+
+    await waitFor(() => {
+      expect(mockOidcAuth.value.signinRedirect).toHaveBeenCalledWith({
+        scope: "openid profile email api://nachet/access_as_user",
+      });
+    });
+  });
+
+  it("returns the cached token when it is fresh and the default scope is requested", async () => {
+    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
+    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
+    import.meta.env.VITE_OIDC_SCOPE = "openid profile email";
+    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173/callback";
+    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
+      "http://localhost:5173/";
+
+    render(
+      <OidcAuthProvider
+        apiScopeClaim="api://nachet/access_as_user"
+        authContext={TestAuthContext}
+      >
+        <TokenCaptureConsumer />
+      </OidcAuthProvider>,
+    );
+
+    fireEvent.click(screen.getByText("capture token"));
+
+    await waitFor(() => {
+      expect(document.body.dataset.oidcToken).toBe("oidc-access-token");
+    });
+    expect(mockOidcAuth.value.signinSilent).not.toHaveBeenCalled();
+  });
+
+  it("force-refreshes the token after a protected API 401", async () => {
+    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
+    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
+    import.meta.env.VITE_OIDC_SCOPE = "openid profile email";
+    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173/callback";
+    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
+      "http://localhost:5173/";
+    mockOidcAuth.value.signinSilent.mockResolvedValueOnce({
+      expired: false,
+      access_token: "fresh-oidc-token",
+      profile: {
+        preferred_username: "oidc-user@example.com",
+        name: "OIDC User",
+        sub: "oidc-subject",
+      },
+    });
+
+    render(
+      <OidcAuthProvider
+        apiScopeClaim="api://nachet/access_as_user"
+        authContext={TestAuthContext}
+      >
+        <TokenCaptureConsumer forceRefresh />
+      </OidcAuthProvider>,
+    );
+
+    fireEvent.click(screen.getByText("capture token"));
+
+    await waitFor(() => {
+      expect(document.body.dataset.oidcToken).toBe("fresh-oidc-token");
+    });
+    expect(mockOidcAuth.value.signinSilent).toHaveBeenCalledWith({
+      scope: "openid profile email api://nachet/access_as_user",
+    });
+  });
+
+  it("uses silent renewal when additional scopes are requested", async () => {
+    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
+    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
+    import.meta.env.VITE_OIDC_SCOPE = "openid profile email";
+    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173/callback";
+    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
+      "http://localhost:5173/";
+    mockOidcAuth.value.signinSilent.mockResolvedValueOnce({
+      expired: false,
+      access_token: "extra-scope-token",
+      profile: {
+        preferred_username: "oidc-user@example.com",
+        name: "OIDC User",
+        sub: "oidc-subject",
+      },
+    });
+
+    render(
+      <OidcAuthProvider
+        apiScopeClaim="api://nachet/access_as_user"
+        authContext={TestAuthContext}
+      >
+        <TokenCaptureConsumer scopes={["custom-scope"]} />
+      </OidcAuthProvider>,
+    );
+
+    fireEvent.click(screen.getByText("capture token"));
+
+    await waitFor(() => {
+      expect(document.body.dataset.oidcToken).toBe("extra-scope-token");
+    });
+    expect(mockOidcAuth.value.signinSilent).toHaveBeenCalledWith({
+      scope: "openid profile email api://nachet/access_as_user custom-scope",
+    });
+  });
+
+  it("starts sign-in when silent token renewal returns no fresh token", async () => {
+    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
+    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
+    import.meta.env.VITE_OIDC_SCOPE = "openid profile email";
+    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173/callback";
+    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
+      "http://localhost:5173/";
+    mockOidcAuth.value.user = {
+      expired: true,
+      access_token: "expired-token",
+      profile: {
+        preferred_username: "oidc-user@example.com",
+        name: "OIDC User",
+        sub: "oidc-subject",
+      },
+    };
+    mockOidcAuth.value.signinSilent.mockResolvedValueOnce(null);
+
+    render(
+      <OidcAuthProvider
+        apiScopeClaim="api://nachet/access_as_user"
+        authContext={TestAuthContext}
+      >
+        <TokenCaptureConsumer />
+      </OidcAuthProvider>,
+    );
+
+    fireEvent.click(screen.getByText("capture token"));
 
     await waitFor(() => {
       expect(mockOidcAuth.value.signinRedirect).toHaveBeenCalledWith({

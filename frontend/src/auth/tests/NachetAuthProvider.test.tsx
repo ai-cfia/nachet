@@ -3,6 +3,7 @@ import { InteractionStatus } from "@azure/msal-browser";
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { acquireAccessToken } from "../../common/auth";
+import { initializeApi } from "../../common/api";
 import { NachetAuthProvider, useNachetAuth } from "../";
 
 vi.mock("@azure/msal-react", () => ({
@@ -38,12 +39,16 @@ vi.mock("../oidc/OidcAuthProvider", () => ({
             {
               username: "oidc-user@example.com",
               name: "OIDC User",
+              userId: "oidc-subject",
+              isGuest: false,
               idTokenClaims: { sub: "oidc-subject" },
             },
           ],
           activeAccount: {
             username: "oidc-user@example.com",
             name: "OIDC User",
+            userId: "oidc-subject",
+            isGuest: false,
             idTokenClaims: { sub: "oidc-subject" },
           },
           login: vi.fn(),
@@ -65,6 +70,7 @@ const mockAccount = {
   username: "user@example.com",
   name: "Test User",
   idTokenClaims: {
+    oid: "member-oid",
     acct: 0,
   },
 };
@@ -103,11 +109,13 @@ describe("NachetAuthProvider", () => {
     logoutRedirect: vi.fn(),
   };
 
-  const renderWithProvider = () =>
+  const renderWithProvider = ({
+    msalInstance = mockMsalInstance as any,
+  }: { msalInstance?: any } = {}) =>
     render(
       <NachetAuthProvider
         apiScopeClaim="api://nachet/scope"
-        msalInstance={mockMsalInstance as any}
+        msalInstance={msalInstance}
       >
         <TestConsumer />
       </NachetAuthProvider>,
@@ -166,11 +174,30 @@ describe("NachetAuthProvider", () => {
 
     fireEvent.click(screen.getByText("token"));
     await waitFor(() => {
-      expect(acquireAccessToken).toHaveBeenCalledWith(mockMsalInstance, [
-        "api://nachet/scope",
-      ]);
+      expect(acquireAccessToken).toHaveBeenCalledWith(
+        mockMsalInstance,
+        ["api://nachet/scope"],
+        undefined,
+      );
       expect(document.body.dataset.token).toBe("access-token");
     });
+  });
+
+  it("initializes API auth through the MSAL adapter by default", async () => {
+    renderWithProvider();
+
+    await waitFor(() => {
+      expect(initializeApi).toHaveBeenCalled();
+    });
+
+    const getAccessToken = (initializeApi as any).mock.calls[0][0];
+    await getAccessToken({ forceRefresh: true });
+
+    expect(acquireAccessToken).toHaveBeenCalledWith(
+      mockMsalInstance,
+      ["api://nachet/scope"],
+      { forceRefresh: true },
+    );
   });
 
   it("normalizes the configured provider name", () => {
@@ -212,7 +239,11 @@ describe("NachetAuthProvider", () => {
   it("selects the OIDC adapter when oidc is configured", () => {
     import.meta.env.VITE_AUTH_PROVIDER = "oidc";
 
-    renderWithProvider();
+    render(
+      <NachetAuthProvider apiScopeClaim="api://nachet/scope">
+        <TestConsumer />
+      </NachetAuthProvider>,
+    );
 
     expect(screen.getByTestId("provider").textContent).toBe("oidc");
     expect(screen.getByTestId("username").textContent).toBe(

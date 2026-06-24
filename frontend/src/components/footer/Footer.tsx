@@ -16,19 +16,8 @@ const Footer: React.FC = () => {
     null,
   );
 
-  // Derive isGuest from accountInfo
-  // acct === 0 means member account, acct !== 0 means guest account
-  const isGuest = (() => {
-    const idTokenClaims = activeAccount?.idTokenClaims as
-      | { acct?: number }
-      | undefined;
-    const acctClaim = idTokenClaims?.acct;
-    return acctClaim !== 0;
-  })();
-  const userOid =
-    typeof activeAccount?.idTokenClaims?.oid === "string"
-      ? activeAccount.idTokenClaims.oid
-      : "";
+  const isGuest = activeAccount?.isGuest ?? true;
+  const userOid = activeAccount?.userId ?? "";
 
   // Check backend connectivity for guest users
   useEffect(() => {

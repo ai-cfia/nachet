@@ -41,9 +41,9 @@ import {
 import { errorLogger } from "../logging";
 import {
   setupAxiosInterceptor,
-  resetRedirectFlag,
   clearAxiosInterceptors,
 } from "./apiInterceptor";
+import type { NachetAuthTokenOptions } from "../auth/NachetAuthContext";
 
 let isAuthProviderInitialized = false;
 
@@ -53,7 +53,9 @@ let isAuthProviderInitialized = false;
  *
  * @param getAccessToken - Provider-neutral token getter
  */
-export const initializeApi = (getAccessToken: () => Promise<string>): void => {
+export const initializeApi = (
+  getAccessToken: (options?: NachetAuthTokenOptions) => Promise<string>,
+): void => {
   setupAxiosInterceptor(getAccessToken);
   isAuthProviderInitialized = true;
 };
@@ -62,9 +64,6 @@ export const clearApiAuthentication = (): void => {
   clearAxiosInterceptors();
   isAuthProviderInitialized = false;
 };
-
-// Re-export resetRedirectFlag for use in main.tsx
-export { resetRedirectFlag };
 
 const handleAxios = async <T>(request: {
   method: string;
@@ -938,7 +937,7 @@ export const batchUploadImage = async ({
  * Authorization: Users can only create folders for themselves
  *
  * @param backendUrl - Backend API base URL
- * @param accessToken - Bearer token for authentication
+ * @param accessToken - Optional compatibility bearer token. App callers normally use the shared auth provider.
  * @param normalizedPath - Relative path from user's root (e.g., "avena-fatua" or "mycology/avena-fatua")
  * @param description - Optional folder description
  * @returns Promise resolving to CreateOrGetFolderResponse with folderId
@@ -948,7 +947,6 @@ export const batchUploadImage = async ({
  * @example
  * await createOrGetFolder({
  *   backendUrl: "https://api.example.com",
- *   accessToken: "bearer-token",
  *   normalizedPath: "mycology/avena-fatua",
  *   description: "Wild oat samples"
  * });
@@ -1012,7 +1010,7 @@ export const createOrGetFolder = async ({
  * Restrictions: Cannot update default folders for active users
  *
  * @param backendUrl - Backend API base URL
- * @param accessToken - Bearer token for authentication
+ * @param accessToken - Optional compatibility bearer token. App callers normally use the shared auth provider.
  * @param folderId - UUID of the folder to update
  * @param name - Optional new folder name (just the name, not full path)
  * @param description - Optional new description
@@ -1023,7 +1021,6 @@ export const createOrGetFolder = async ({
  * @example
  * await updateFolder({
  *   backendUrl: "https://api.example.com",
- *   accessToken: "bearer-token",
  *   folderId: "uuid-string",
  *   name: "new-folder-name",
  *   description: "Updated description"

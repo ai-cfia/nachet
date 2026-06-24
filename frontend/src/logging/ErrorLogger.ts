@@ -78,11 +78,20 @@ class ErrorLogger {
             headers["Authorization"] = `Bearer ${token}`;
           }
         } catch (tokenError) {
-          // Log token acquisition failure but continue without auth
+          // Backend logging is protected when the auth bridge is active.
+          // Keep console fallback rather than posting an unauthenticated log.
           console.warn(
-            "Failed to acquire token for logs endpoint:",
+            "Skipping backend log submission because log auth failed:",
             tokenError,
           );
+          return;
+        }
+
+        if (!headers.Authorization) {
+          console.warn(
+            "Skipping backend log submission because no auth token is available.",
+          );
+          return;
         }
       }
 

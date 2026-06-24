@@ -4,12 +4,12 @@ import Cookies from "js-cookie";
 import { Navbar, Appbar } from "./components/header";
 import Body from "./root/body";
 import Footer from "./components/footer";
-import { PublicClientApplication } from "@azure/msal-browser";
+import type { PublicClientApplication } from "@azure/msal-browser";
 import { NachetAuthProvider } from "./auth";
 
 interface AppProps {
   basename: string;
-  msalInstance: PublicClientApplication;
+  msalInstance?: PublicClientApplication;
   apiScopeClaim: string;
 }
 

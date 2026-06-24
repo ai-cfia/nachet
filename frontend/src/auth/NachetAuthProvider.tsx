@@ -10,14 +10,14 @@ import { errorLogger } from "../logging";
 export interface NachetAuthProviderProps {
   apiScopeClaim: string;
   children: ReactNode;
-  msalInstance: PublicClientApplication;
+  msalInstance?: PublicClientApplication;
 }
 
 const AuthApiBridge = () => {
   const { getAccessToken } = useNachetAuth();
 
   useEffect(() => {
-    initializeApi(getAccessToken);
+    initializeApi((options) => getAccessToken(undefined, options));
     errorLogger.setTokenProvider(async () => getAccessToken());
 
     return () => {
@@ -41,6 +41,10 @@ export const NachetAuthProvider = ({
     import.meta.env.VITE_OIDC_API_SCOPE_CLAIM?.trim() || apiScopeClaim;
 
   if (configuredProvider === "msal") {
+    if (!msalInstance) {
+      throw new Error("MSAL auth provider requires an MSAL instance.");
+    }
+
     return (
       <MsalProvider instance={msalInstance}>
         <MsalAuthProvider

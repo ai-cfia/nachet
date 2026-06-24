@@ -166,13 +166,7 @@ const Body: React.FC<params> = (props) => {
 
   // Webcam devices hook
   useWebcamDevices();
-  const accountClaims = activeAccount?.idTokenClaims;
-  const uuid =
-    typeof accountClaims?.oid === "string"
-      ? accountClaims.oid
-      : typeof accountClaims?.sub === "string"
-        ? accountClaims.sub
-        : "";
+  const uuid = activeAccount?.userId ?? "";
   const { devicesData } = useDeviceData(backendUrl);
 
   // Model metadata hook

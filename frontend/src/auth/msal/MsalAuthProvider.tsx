@@ -11,6 +11,7 @@ import { acquireAccessToken } from "../../common/auth";
 import type {
   NachetAuthAccount,
   NachetAuthContextValue,
+  NachetAuthTokenOptions,
 } from "../NachetAuthContext";
 
 interface MsalAuthProviderProps {
@@ -20,10 +21,24 @@ interface MsalAuthProviderProps {
 }
 
 const mapAccount = (account: AccountInfo): NachetAuthAccount => {
+  const idTokenClaims = account.idTokenClaims as
+    | Record<string, unknown>
+    | undefined;
+  const oidClaim = idTokenClaims?.oid;
+  const subClaim = idTokenClaims?.sub;
+  const acctClaim = idTokenClaims?.acct;
+
   return {
     username: account.username,
     name: account.name,
-    idTokenClaims: account.idTokenClaims as Record<string, unknown> | undefined,
+    userId:
+      typeof oidClaim === "string"
+        ? oidClaim
+        : typeof subClaim === "string"
+          ? subClaim
+          : account.localAccountId,
+    isGuest: acctClaim !== 0,
+    idTokenClaims,
   };
 };
 
@@ -62,8 +77,11 @@ export const MsalAuthProvider = ({
   }, [instance]);
 
   const getAccessToken = useCallback(
-    async (scopes = defaultScopes): Promise<string> => {
-      return acquireAccessToken(instance, scopes);
+    async (
+      scopes = defaultScopes,
+      options?: NachetAuthTokenOptions,
+    ): Promise<string> => {
+      return acquireAccessToken(instance, scopes, options);
     },
     [defaultScopes, instance],
   );

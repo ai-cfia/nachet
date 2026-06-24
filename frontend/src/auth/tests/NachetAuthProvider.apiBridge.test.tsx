@@ -34,12 +34,16 @@ vi.mock("../oidc/OidcAuthProvider", () => ({
             {
               username: "oidc-user@example.com",
               name: "OIDC User",
+              userId: "oidc-subject",
+              isGuest: false,
               idTokenClaims: { sub: "oidc-subject" },
             },
           ],
           activeAccount: {
             username: "oidc-user@example.com",
             name: "OIDC User",
+            userId: "oidc-subject",
+            isGuest: false,
             idTokenClaims: { sub: "oidc-subject" },
           },
           login: vi.fn(),
@@ -99,10 +103,7 @@ describe("NachetAuthProvider API bridge", () => {
 
   it("initializes Axios with the shared auth provider before child API helpers run", async () => {
     render(
-      <NachetAuthProvider
-        apiScopeClaim="api://nachet/access_as_user"
-        msalInstance={{} as any}
-      >
+      <NachetAuthProvider apiScopeClaim="api://nachet/access_as_user">
         <ApiCallOnMount backendUrl="https://api.example.test" />
       </NachetAuthProvider>,
     );

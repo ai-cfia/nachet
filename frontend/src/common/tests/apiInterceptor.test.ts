@@ -119,6 +119,8 @@ describe("apiInterceptor", () => {
 
     expect(response.data).toEqual({ ok: true });
     expect(getAccessToken).toHaveBeenCalledTimes(2);
+    expect(getAccessToken).toHaveBeenNthCalledWith(1);
+    expect(getAccessToken).toHaveBeenNthCalledWith(2, { forceRefresh: true });
     expect(authorizationHeaders[0]).toBe("Bearer initial-token");
     expect(authorizationHeaders[1]).toBe("Bearer retry-token");
   });
@@ -183,6 +185,7 @@ describe("apiInterceptor", () => {
 
     expect(response.data).toEqual({ ok: true });
     expect(getAccessToken).toHaveBeenCalledOnce();
+    expect(getAccessToken).toHaveBeenCalledWith({ forceRefresh: true });
     expect(authorizationHeaders[0]).toBe("Bearer stale-token");
     expect(authorizationHeaders[1]).toBe("Bearer retry-token");
   });
