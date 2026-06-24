@@ -8,6 +8,7 @@
   "type": "module",
   "scripts": {
     "update": "rm -r node_modules && npm install && npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v --sv 1.6 -o sbom.json && echo \"\" >> sbom.json",
+    "build:oidc-client-ts": "npm ci --prefix ./submodules/oidc-client-ts --ignore-scripts && npm run build --prefix ./submodules/oidc-client-ts",
     "dev": "vite",
     "prestart": "ts-appversion",
     "prebuild": "prettier \"src/**/*.{ts,tsx,js,jsx,json,css}\" -l --write && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 && tsc",

@@ -15,6 +15,9 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Build generated output and TypeScript declarations for the OIDC submodule
+RUN npm run build:oidc-client-ts
+
 # Build the application
 RUN npm run build
 

@@ -268,6 +268,14 @@ If the repository is already cloned, initialize the frontend submodule with:
 git submodule update --init --recursive frontend/submodules/oidc-client-ts
 ```
 
+Build the submodule before running frontend lint, tests, dev, or production
+builds that use the OIDC adapter:
+
+```bash
+cd frontend
+npm run build:oidc-client-ts
+```
+
 ## Deployment Environment Configuration Management
 
 For managing and configuring different deployment environments (development,

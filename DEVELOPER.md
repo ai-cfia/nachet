@@ -420,6 +420,7 @@ At this point you will have the full stack, you will be able to test integration
 - run `npm run prestart`
 - ensure you have .env.config.local in frontend/ and .env.local in backend/
 - initialize the frontend auth submodule if it is not already present `nachet $ git submodule update --init --recursive frontend/submodules/oidc-client-ts`
+- build the generated OIDC client output and types `nachet/frontend $ npm run build:oidc-client-ts`
 - build your changes locally `nachet/frontend $ npm run build`
 - push the new build to blob storage `nachet/backend $ uv run app/scripts/push_frontend_to_blob.py --clean`
 - you can also debug by running the frontend in dev mode and connecting to the backend `nachet/frontend $ npm run dev -- --port 12438`
