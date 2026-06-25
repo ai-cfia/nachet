@@ -208,12 +208,12 @@ describe("NachetAuthProvider", () => {
     expect(screen.getByTestId("provider").textContent).toBe("msal");
   });
 
-  it("uses MSAL when no auth provider is configured", () => {
+  it("fails closed when no auth provider is configured", () => {
     delete import.meta.env.VITE_AUTH_PROVIDER;
 
-    renderWithProvider();
-
-    expect(screen.getByTestId("provider").textContent).toBe("msal");
+    expect(() => renderWithProvider()).toThrow(
+      'VITE_AUTH_PROVIDER must be set to "msal" or "oidc".',
+    );
   });
 
   it("does not start login while another MSAL interaction is in progress", async () => {
@@ -263,6 +263,6 @@ describe("NachetAuthProvider", () => {
           <TestConsumer />
         </NachetAuthProvider>,
       ),
-    ).toThrow("Unsupported auth provider 'unknown'");
+    ).toThrow('VITE_AUTH_PROVIDER must be set to "msal" or "oidc".');
   });
 });

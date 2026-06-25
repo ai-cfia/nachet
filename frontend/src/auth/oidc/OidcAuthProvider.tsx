@@ -110,6 +110,7 @@ const mapUser = (user: User | null) => {
     username,
     name,
     userId: getStringClaim(profile, ["oid", "sub"]) ?? username,
+    // Generic OIDC has no guest/member claim yet; claim mapping may own this later.
     isGuest: false,
     idTokenClaims: profile,
   };

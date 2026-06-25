@@ -70,9 +70,12 @@ const basename = process.env.REACT_APP_BASENAME ?? "/";
 const apiScopeClaim =
   (import.meta.env.VITE_AZURE_APP_ID_URI ?? "") +
   (import.meta.env.VITE_AZURE_API_SCOPE_CLAIM ?? "");
-const configuredAuthProvider = (import.meta.env.VITE_AUTH_PROVIDER ?? "msal")
-  .trim()
-  .toLowerCase();
+const authProviderEnv = import.meta.env.VITE_AUTH_PROVIDER?.trim();
+const configuredAuthProvider = authProviderEnv?.toLowerCase();
+
+if (configuredAuthProvider !== "msal" && configuredAuthProvider !== "oidc") {
+  throw new Error('VITE_AUTH_PROVIDER must be set to "msal" or "oidc".');
+}
 
 console.log("Azure API Scope Claim: ", apiScopeClaim);
 
@@ -125,8 +128,11 @@ const initializeMsalAndRender = async (): Promise<void> => {
   }
 };
 
-if (configuredAuthProvider === "msal") {
-  void initializeMsalAndRender();
-} else {
-  renderApp();
+switch (configuredAuthProvider) {
+  case "msal":
+    void initializeMsalAndRender();
+    break;
+  case "oidc":
+    renderApp();
+    break;
 }
