@@ -1,10 +1,19 @@
-import { useCallback, useMemo, type Context, type ReactNode } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  type Context,
+  type ReactNode,
+} from "react";
 import {
   WebStorageStateStore,
   type User,
   type UserManagerSettings,
 } from "oidc-client-ts";
-import type { NachetAuthContextValue } from "../NachetAuthContext";
+import type {
+  NachetAuthContextValue,
+  NachetAuthTokenOptions,
+} from "../NachetAuthContext";
 import { AuthProvider } from "./react-oidc-context/AuthProvider";
 import { useAuth as useOidcAuth } from "./react-oidc-context/useAuth";
 
@@ -100,6 +109,9 @@ const mapUser = (user: User | null) => {
   return {
     username,
     name,
+    userId: getStringClaim(profile, ["oid", "sub"]) ?? username,
+    // Generic OIDC has no guest/member claim yet; claim mapping may own this later.
+    isGuest: false,
     idTokenClaims: profile,
   };
 };
@@ -110,13 +122,47 @@ const OidcAuthBridge = ({
   defaultScope,
 }: OidcAuthBridgeProps) => {
   const oidc = useOidcAuth();
+  const silentRenewPromisesRef = useRef<Map<string, Promise<User | null>>>(
+    new Map(),
+  );
+  const loginRedirectPromiseRef = useRef<Promise<void> | null>(null);
   const activeAccount = useMemo(() => mapUser(oidc.user), [oidc.user]);
+
+  const signinRedirectOnce = useCallback(
+    (scope: string) => {
+      loginRedirectPromiseRef.current ??= Promise.resolve(
+        oidc.signinRedirect({ scope }),
+      ).finally(() => {
+        loginRedirectPromiseRef.current = null;
+      });
+
+      return loginRedirectPromiseRef.current;
+    },
+    [oidc],
+  );
+
+  const signinSilentOnce = useCallback(
+    (scope: string) => {
+      const existingPromise = silentRenewPromisesRef.current.get(scope);
+      if (existingPromise) {
+        return existingPromise;
+      }
+
+      const renewPromise = oidc.signinSilent({ scope }).finally(() => {
+        silentRenewPromisesRef.current.delete(scope);
+      });
+      silentRenewPromisesRef.current.set(scope, renewPromise);
+
+      return renewPromise;
+    },
+    [oidc],
+  );
 
   const login = useCallback(
     async (scopes?: string[]) => {
-      await oidc.signinRedirect({ scope: buildScope(defaultScope, scopes) });
+      await signinRedirectOnce(buildScope(defaultScope, scopes));
     },
-    [defaultScope, oidc],
+    [defaultScope, signinRedirectOnce],
   );
 
   const logout = useCallback(async () => {
@@ -124,15 +170,31 @@ const OidcAuthBridge = ({
   }, [oidc]);
 
   const getAccessToken = useCallback(
-    async (scopes?: string[]) => {
-      if (oidc.user?.access_token && !oidc.user.expired) {
+    async (scopes?: string[], options?: NachetAuthTokenOptions) => {
+      const requestedScope = buildScope(defaultScope, scopes);
+      const canUseCachedToken =
+        !options?.forceRefresh && requestedScope === defaultScope;
+
+      if (canUseCachedToken && oidc.user?.access_token && !oidc.user.expired) {
         return oidc.user.access_token;
       }
 
-      await login(scopes);
+      let renewedUser: User | null | undefined;
+      try {
+        renewedUser = await signinSilentOnce(requestedScope);
+      } catch (error) {
+        await signinRedirectOnce(requestedScope);
+        throw error;
+      }
+
+      if (renewedUser?.access_token && !renewedUser.expired) {
+        return renewedUser.access_token;
+      }
+
+      await signinRedirectOnce(requestedScope);
       throw new Error("Redirecting to sign in for a fresh OIDC access token.");
     },
-    [login, oidc],
+    [defaultScope, oidc.user, signinRedirectOnce, signinSilentOnce],
   );
 
   const authValue = useMemo<NachetAuthContextValue>(

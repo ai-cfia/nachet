@@ -5,7 +5,13 @@ export type AuthProviderKind = "msal" | "oidc";
 export interface NachetAuthAccount {
   username: string;
   name?: string;
+  userId: string;
+  isGuest: boolean;
   idTokenClaims?: Record<string, unknown>;
+}
+
+export interface NachetAuthTokenOptions {
+  forceRefresh?: boolean;
 }
 
 export interface NachetAuthContextValue {
@@ -16,7 +22,10 @@ export interface NachetAuthContextValue {
   activeAccount: NachetAuthAccount | null;
   login: (scopes?: string[]) => Promise<void>;
   logout: () => Promise<void>;
-  getAccessToken: (scopes?: string[]) => Promise<string>;
+  getAccessToken: (
+    scopes?: string[],
+    options?: NachetAuthTokenOptions,
+  ) => Promise<string>;
 }
 
 export const NachetAuthContext = createContext<

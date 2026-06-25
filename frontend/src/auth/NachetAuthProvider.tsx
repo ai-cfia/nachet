@@ -8,7 +8,7 @@ import { OidcAuthProvider } from "./oidc/OidcAuthProvider";
 export interface NachetAuthProviderProps {
   apiScopeClaim: string;
   children: ReactNode;
-  msalInstance: PublicClientApplication;
+  msalInstance?: PublicClientApplication;
 }
 
 export const NachetAuthProvider = ({
@@ -16,13 +16,20 @@ export const NachetAuthProvider = ({
   children,
   msalInstance,
 }: NachetAuthProviderProps) => {
-  const configuredProvider = (import.meta.env.VITE_AUTH_PROVIDER ?? "msal")
-    .trim()
-    .toLowerCase();
+  const authProviderEnv = import.meta.env.VITE_AUTH_PROVIDER?.trim();
+  const configuredProvider = authProviderEnv?.toLowerCase();
   const oidcApiScopeClaim =
     import.meta.env.VITE_OIDC_API_SCOPE_CLAIM?.trim() || apiScopeClaim;
 
+  if (configuredProvider !== "msal" && configuredProvider !== "oidc") {
+    throw new Error('VITE_AUTH_PROVIDER must be set to "msal" or "oidc".');
+  }
+
   if (configuredProvider === "msal") {
+    if (!msalInstance) {
+      throw new Error("MSAL auth provider requires an MSAL instance.");
+    }
+
     return (
       <MsalProvider instance={msalInstance}>
         <MsalAuthProvider
@@ -46,7 +53,5 @@ export const NachetAuthProvider = ({
     );
   }
 
-  throw new Error(
-    `Unsupported auth provider '${configuredProvider}'. Use 'msal' or 'oidc'.`,
-  );
+  throw new Error('VITE_AUTH_PROVIDER must be set to "msal" or "oidc".');
 };

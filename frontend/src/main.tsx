@@ -72,22 +72,46 @@ const msalConfig: Configuration = {
   },
 };
 
-const msalInstance = new PublicClientApplication(msalConfig);
 const basename = process.env.REACT_APP_BASENAME ?? "/";
 const apiScopeClaim =
   (import.meta.env.VITE_AZURE_APP_ID_URI ?? "") +
   (import.meta.env.VITE_AZURE_API_SCOPE_CLAIM ?? "");
+const authProviderEnv = import.meta.env.VITE_AUTH_PROVIDER?.trim();
+const configuredAuthProvider = authProviderEnv?.toLowerCase();
+
+if (configuredAuthProvider !== "msal" && configuredAuthProvider !== "oidc") {
+  throw new Error('VITE_AUTH_PROVIDER must be set to "msal" or "oidc".');
+}
 
 console.log("Azure API Scope Claim: ", apiScopeClaim);
 
-// Initialize MSAL and handle redirect promise before rendering app
-// This is critical for processing OAuth callbacks from Azure AD
-msalInstance
-  .initialize()
-  .then(() => {
-    return msalInstance.handleRedirectPromise();
-  })
-  .then((response) => {
+const renderApp = (msalClient?: PublicClientApplication): void => {
+  const emotionCache = createEmotionCache();
+
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <ThemeProvider theme={theme}>
+        <CacheProvider value={emotionCache}>
+          <ErrorBoundary>
+            <App
+              msalInstance={msalClient}
+              basename={basename}
+              apiScopeClaim={apiScopeClaim}
+            />
+          </ErrorBoundary>
+        </CacheProvider>
+      </ThemeProvider>
+    </React.StrictMode>,
+  );
+};
+
+const initializeMsalAndRender = async (): Promise<void> => {
+  const msalInstance = new PublicClientApplication(msalConfig);
+
+  try {
+    await msalInstance.initialize();
+    const response = await msalInstance.handleRedirectPromise();
+
     if (response) {
       // Set the active account after successful redirect
       msalInstance.setActiveAccount(response.account);
@@ -133,44 +157,20 @@ msalInstance
       }
     });
 
-    // Create Emotion cache with CSP nonce support
-    const emotionCache = createEmotionCache();
-
-    // Render app after MSAL is initialized
-    ReactDOM.createRoot(document.getElementById("root")!).render(
-      <React.StrictMode>
-        <ThemeProvider theme={theme}>
-          <CacheProvider value={emotionCache}>
-            <ErrorBoundary>
-              <App
-                msalInstance={msalInstance}
-                basename={basename}
-                apiScopeClaim={apiScopeClaim}
-              />
-            </ErrorBoundary>
-          </CacheProvider>
-        </ThemeProvider>
-      </React.StrictMode>,
-    );
-  })
-  .catch((error) => {
+    renderApp(msalInstance);
+  } catch (error) {
     console.error("Error initializing MSAL:", error);
 
     // Still render the app even if there's an error, so user can see auth popup
-    const emotionCache = createEmotionCache();
-    ReactDOM.createRoot(document.getElementById("root")!).render(
-      <React.StrictMode>
-        <ThemeProvider theme={theme}>
-          <CacheProvider value={emotionCache}>
-            <ErrorBoundary>
-              <App
-                msalInstance={msalInstance}
-                basename={basename}
-                apiScopeClaim={apiScopeClaim}
-              />
-            </ErrorBoundary>
-          </CacheProvider>
-        </ThemeProvider>
-      </React.StrictMode>,
-    );
-  });
+    renderApp(msalInstance);
+  }
+};
+
+switch (configuredAuthProvider) {
+  case "msal":
+    void initializeMsalAndRender();
+    break;
+  case "oidc":
+    renderApp();
+    break;
+}

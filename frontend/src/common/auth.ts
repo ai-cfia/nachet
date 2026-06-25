@@ -3,6 +3,7 @@ import {
   InteractionRequiredAuthError,
   BrowserAuthError,
 } from "@azure/msal-browser";
+import type { NachetAuthTokenOptions } from "../auth/NachetAuthContext";
 
 // Track if we're currently in a redirect flow to prevent loops
 let isRedirecting = false;
@@ -12,7 +13,7 @@ let isRedirecting = false;
  * @param error - The error to check
  * @returns true if the error requires redirect authentication
  */
-export function shouldTriggerRedirect(error: unknown): boolean {
+export const shouldTriggerRedirect = (error: unknown): boolean => {
   return (
     error instanceof InteractionRequiredAuthError ||
     (error instanceof BrowserAuthError &&
@@ -20,14 +21,14 @@ export function shouldTriggerRedirect(error: unknown): boolean {
     (error instanceof BrowserAuthError &&
       error.errorCode === "interaction_in_progress")
   );
-}
+};
 
 /**
  * Reset the redirect flag (called after successful redirect)
  */
-export function resetAuthRedirectFlag(): void {
+export const resetAuthRedirectFlag = (): void => {
   isRedirecting = false;
-}
+};
 
 /**
  * Acquires an access token outside of React component context
@@ -38,10 +39,11 @@ export function resetAuthRedirectFlag(): void {
  * @returns Access token string
  * @throws Error if user is not signed in or token acquisition fails
  */
-export async function acquireAccessToken(
+export const acquireAccessToken = async (
   msalInstance: IPublicClientApplication,
   scopes: string[],
-): Promise<string> {
+  options: NachetAuthTokenOptions = {},
+): Promise<string> => {
   const activeAccount = msalInstance.getActiveAccount();
   const accounts = msalInstance.getAllAccounts();
 
@@ -54,6 +56,7 @@ export async function acquireAccessToken(
   const request = {
     scopes,
     account: activeAccount || accounts[0],
+    forceRefresh: options.forceRefresh,
   };
 
   try {
@@ -83,7 +86,7 @@ export async function acquireAccessToken(
     }
     throw error;
   }
-}
+};
 
 /**
  * Acquires an ID token
@@ -91,10 +94,10 @@ export async function acquireAccessToken(
  * @param scopes - Array of scopes to request
  * @returns ID token string
  */
-export async function acquireIdToken(
+export const acquireIdToken = async (
   msalInstance: IPublicClientApplication,
   scopes: string[],
-): Promise<string> {
+): Promise<string> => {
   const activeAccount = msalInstance.getActiveAccount();
   const accounts = msalInstance.getAllAccounts();
 
@@ -134,4 +137,4 @@ export async function acquireIdToken(
     }
     throw error;
   }
-}
+};
