@@ -38,14 +38,17 @@ const createOidcUser = vi.hoisted(
     ({
       expired = false,
       accessToken = "oidc-access-token",
+      expiresAt = Math.floor(Date.now() / 1000) + (expired ? -60 : 300),
       profile = {},
     }: {
       expired?: boolean;
       accessToken?: string;
+      expiresAt?: number;
       profile?: Record<string, unknown>;
     } = {}) => ({
       expired,
       access_token: accessToken,
+      expires_at: expiresAt,
       profile: {
         preferred_username: "oidc-user@example.com",
         name: "OIDC User",
@@ -170,6 +173,33 @@ const ConcurrentTokenConsumer = () => {
   );
 };
 
+const OrderedScopesConsumer = () => {
+  const auth = useContext(TestAuthContext);
+
+  return (
+    <div>
+      <button
+        onClick={() => {
+          void auth?.getAccessToken(["read", "write"]).then((token) => {
+            document.body.dataset.firstScopeToken = token;
+          });
+        }}
+      >
+        first order
+      </button>
+      <button
+        onClick={() => {
+          void auth?.getAccessToken(["write", "read"]).then((token) => {
+            document.body.dataset.secondScopeToken = token;
+          });
+        }}
+      >
+        second order
+      </button>
+    </div>
+  );
+};
+
 describe("OidcAuthProvider", () => {
   beforeEach(() => {
     capturedAuthProviderSettings.value = undefined;
@@ -182,6 +212,8 @@ describe("OidcAuthProvider", () => {
     delete document.body.dataset.oidcToken;
     delete document.body.dataset.oidcTokenError;
     delete document.body.dataset.concurrentTokenResults;
+    delete document.body.dataset.firstScopeToken;
+    delete document.body.dataset.secondScopeToken;
     clearOidcEnv();
   });
 
@@ -233,7 +265,7 @@ describe("OidcAuthProvider", () => {
       redirect_uri: "http://localhost:5173/callback",
       post_logout_redirect_uri: "http://localhost:5173/",
       response_type: "code",
-      scope: "openid profile email api://nachet/access_as_user",
+      scope: "api://nachet/access_as_user email openid profile",
       automaticSilentRenew: false,
     });
     expect(capturedAuthProviderSettings.value).not.toHaveProperty(
@@ -302,7 +334,7 @@ describe("OidcAuthProvider", () => {
     );
 
     expect(capturedAuthProviderSettings.value).toMatchObject({
-      scope: "openid profile api://nachet/access_as_user",
+      scope: "api://nachet/access_as_user openid profile",
     });
   });
 
@@ -376,7 +408,7 @@ describe("OidcAuthProvider", () => {
       expect(document.body.dataset.oidcToken).toBe("fresh-oidc-token");
     });
     expect(mockOidcAuth.value.signinSilent).toHaveBeenCalledWith({
-      scope: "openid profile email api://nachet/access_as_user",
+      scope: "api://nachet/access_as_user email openid profile",
     });
   });
 
@@ -407,8 +439,165 @@ describe("OidcAuthProvider", () => {
       expect(mockOidcAuth.value.signinSilent).toHaveBeenCalledTimes(1);
     });
     expect(mockOidcAuth.value.signinSilent).toHaveBeenCalledWith({
-      scope: "openid profile email api://nachet/access_as_user custom-scope",
+      scope: "api://nachet/access_as_user custom-scope email openid profile",
     });
+  });
+
+  it("uses the same cache entry for reordered additional scopes", async () => {
+    setOidcEnv();
+    mockOidcAuth.value.signinSilent.mockResolvedValue(
+      createOidcUser({ accessToken: "ordered-scope-token" }),
+    );
+
+    render(
+      <OidcAuthProvider
+        apiScopeClaim={API_SCOPE_CLAIM}
+        authContext={TestAuthContext}
+      >
+        <OrderedScopesConsumer />
+      </OidcAuthProvider>,
+    );
+
+    fireEvent.click(screen.getByText("first order"));
+
+    await waitFor(() => {
+      expect(document.body.dataset.firstScopeToken).toBe("ordered-scope-token");
+    });
+
+    fireEvent.click(screen.getByText("second order"));
+
+    await waitFor(() => {
+      expect(document.body.dataset.secondScopeToken).toBe(
+        "ordered-scope-token",
+      );
+    });
+    expect(mockOidcAuth.value.signinSilent).toHaveBeenCalledTimes(1);
+    expect(mockOidcAuth.value.signinSilent).toHaveBeenCalledWith({
+      scope: "api://nachet/access_as_user email openid profile read write",
+    });
+  });
+
+  it("renews tokens before they enter the expiry buffer", async () => {
+    setOidcEnv();
+    mockOidcAuth.value.user = createOidcUser({
+      accessToken: "almost-expired-token",
+      expiresAt: Math.floor(Date.now() / 1000) + 30,
+    });
+    mockOidcAuth.value.signinSilent.mockResolvedValueOnce(
+      createOidcUser({ accessToken: "buffer-renewed-token" }),
+    );
+
+    render(
+      <OidcAuthProvider
+        apiScopeClaim={API_SCOPE_CLAIM}
+        authContext={TestAuthContext}
+      >
+        <TokenCaptureConsumer />
+      </OidcAuthProvider>,
+    );
+
+    fireEvent.click(screen.getByText("capture token"));
+
+    await waitFor(() => {
+      expect(document.body.dataset.oidcToken).toBe("buffer-renewed-token");
+    });
+    expect(mockOidcAuth.value.signinSilent).toHaveBeenCalledWith({
+      scope: "api://nachet/access_as_user email openid profile",
+    });
+  });
+
+  it("keeps custom-scope cache when the same user object refreshes", async () => {
+    setOidcEnv();
+    mockOidcAuth.value.signinSilent.mockResolvedValue(
+      createOidcUser({ accessToken: "cached-custom-scope-token" }),
+    );
+
+    const { rerender } = render(
+      <OidcAuthProvider
+        apiScopeClaim={API_SCOPE_CLAIM}
+        authContext={TestAuthContext}
+      >
+        <TokenCaptureConsumer scopes={["custom-scope"]} />
+      </OidcAuthProvider>,
+    );
+
+    fireEvent.click(screen.getByText("capture token"));
+
+    await waitFor(() => {
+      expect(document.body.dataset.oidcToken).toBe("cached-custom-scope-token");
+    });
+
+    mockOidcAuth.value.user = createOidcUser({
+      accessToken: "refreshed-default-token",
+      profile: {
+        sub: "oidc-subject",
+      },
+    });
+    rerender(
+      <OidcAuthProvider
+        apiScopeClaim={API_SCOPE_CLAIM}
+        authContext={TestAuthContext}
+      >
+        <TokenCaptureConsumer scopes={["custom-scope"]} />
+      </OidcAuthProvider>,
+    );
+
+    fireEvent.click(screen.getByText("capture token"));
+
+    await waitFor(() => {
+      expect(mockOidcAuth.value.signinSilent).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("clears custom-scope cache when the OIDC user identity changes", async () => {
+    setOidcEnv();
+    const { rerender } = render(
+      <OidcAuthProvider
+        apiScopeClaim={API_SCOPE_CLAIM}
+        authContext={TestAuthContext}
+      >
+        <TokenCaptureConsumer scopes={["custom-scope"]} />
+      </OidcAuthProvider>,
+    );
+    mockOidcAuth.value.signinSilent.mockResolvedValueOnce(
+      createOidcUser({ accessToken: "first-user-token" }),
+    );
+
+    fireEvent.click(screen.getByText("capture token"));
+
+    await waitFor(() => {
+      expect(document.body.dataset.oidcToken).toBe("first-user-token");
+    });
+
+    mockOidcAuth.value.user = createOidcUser({
+      accessToken: "second-default-token",
+      profile: {
+        sub: "second-oidc-subject",
+      },
+    });
+    mockOidcAuth.value.signinSilent.mockResolvedValueOnce(
+      createOidcUser({
+        accessToken: "second-user-custom-token",
+        profile: {
+          sub: "second-oidc-subject",
+        },
+      }),
+    );
+    rerender(
+      <OidcAuthProvider
+        apiScopeClaim={API_SCOPE_CLAIM}
+        authContext={TestAuthContext}
+      >
+        <TokenCaptureConsumer scopes={["custom-scope"]} />
+      </OidcAuthProvider>,
+    );
+
+    fireEvent.click(screen.getByText("capture token"));
+
+    await waitFor(() => {
+      expect(document.body.dataset.oidcToken).toBe("second-user-custom-token");
+    });
+    expect(mockOidcAuth.value.signinSilent).toHaveBeenCalledTimes(2);
   });
 
   it("does not redirect automatically when silent renewal returns no fresh token", async () => {

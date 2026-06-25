@@ -70,6 +70,8 @@ interface OidcConfig {
   settings: UserManagerSettings;
 }
 
+const TOKEN_EXPIRY_BUFFER_SECONDS = 60;
+
 const buildScope = (baseScope: string, requestedScopes?: string[]): string => {
   const scopes = new Set(
     baseScope
@@ -84,7 +86,7 @@ const buildScope = (baseScope: string, requestedScopes?: string[]): string => {
     }
   });
 
-  return Array.from(scopes).join(" ");
+  return Array.from(scopes).sort().join(" ");
 };
 
 const getStringClaim = (
@@ -96,13 +98,36 @@ const getStringClaim = (
     .find((claimValue): claimValue is string => typeof claimValue === "string");
 };
 
+const getStableUserId = (user: User | null): string | null => {
+  if (user === null) {
+    return null;
+  }
+
+  return (
+    getStringClaim(user.profile as Record<string, unknown>, ["oid", "sub"]) ??
+    null
+  );
+};
+
+const isTokenFresh = (
+  user: User,
+  bufferSeconds = TOKEN_EXPIRY_BUFFER_SECONDS,
+): boolean => {
+  if (!user.access_token || user.expires_at === undefined) {
+    return false;
+  }
+
+  const nowInSeconds = Math.floor(Date.now() / 1000);
+  return user.expires_at - nowInSeconds > bufferSeconds;
+};
+
 const mapUser = (user: User | null) => {
   if (user === null) {
     return null;
   }
 
   const profile = user.profile as Record<string, unknown>;
-  const userId = getStringClaim(profile, ["oid", "sub"]);
+  const userId = getStableUserId(user);
   const username =
     getStringClaim(profile, ["preferred_username", "email", "sub"]) ??
     "unknown";
@@ -133,10 +158,15 @@ const OidcAuthBridge = ({
   );
   const tokenUsersByScopeRef = useRef<Map<string, User>>(new Map());
   const loginRedirectPromiseRef = useRef<Promise<void> | null>(null);
+  const previousUserIdRef = useRef<string | null>(getStableUserId(oidc.user));
   const activeAccount = useMemo(() => mapUser(oidc.user), [oidc.user]);
 
   useEffect(() => {
-    tokenUsersByScopeRef.current.clear();
+    const currentUserId = getStableUserId(oidc.user);
+    if (currentUserId !== previousUserIdRef.current) {
+      tokenUsersByScopeRef.current.clear();
+      previousUserIdRef.current = currentUserId;
+    }
   }, [oidc.user]);
 
   const signinRedirectOnce = useCallback(
@@ -183,11 +213,11 @@ const OidcAuthBridge = ({
   const getCachedUser = useCallback(
     (scope: string): User | null => {
       if (scope === defaultScope) {
-        return oidc.user?.access_token && !oidc.user.expired ? oidc.user : null;
+        return oidc.user && isTokenFresh(oidc.user) ? oidc.user : null;
       }
 
       const cachedUser = tokenUsersByScopeRef.current.get(scope);
-      if (cachedUser?.access_token && !cachedUser.expired) {
+      if (cachedUser && isTokenFresh(cachedUser)) {
         return cachedUser;
       }
 
@@ -210,7 +240,7 @@ const OidcAuthBridge = ({
 
       const renewedUser = await signinSilentOnce(requestedScope);
 
-      if (renewedUser?.access_token && !renewedUser.expired) {
+      if (renewedUser && isTokenFresh(renewedUser)) {
         tokenUsersByScopeRef.current.set(requestedScope, renewedUser);
         return renewedUser.access_token;
       }
