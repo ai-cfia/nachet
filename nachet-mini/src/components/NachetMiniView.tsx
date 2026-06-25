@@ -413,6 +413,7 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
                 onSelectDetector={setSelectedDetectorId}
                 onSelectClassifier={setSelectedClassifierId}
                 isLoading={isLoading}
+                disabled={isWebcamActive}
               />
               {!isEditing && (
                 <ControlBarButton
