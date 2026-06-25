@@ -1,12 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { WorkflowQueueManager } from "../WorkflowQueueManager";
 import * as api from "@common/api";
-import * as auth from "@common/auth";
 import { errorLogger } from "../../logging";
 
 // Mock dependencies
 vi.mock("@common/api");
-vi.mock("@common/auth");
 vi.mock("../../logging");
 
 describe("WorkflowQueueManager", () => {
@@ -14,7 +12,6 @@ describe("WorkflowQueueManager", () => {
   let mockWorkflowStore: any;
   let mockOnComplete: any;
   let mockOnError: any;
-  let mockMsalInstance: any;
   let mockConfig: any;
 
   beforeEach(() => {
@@ -31,12 +28,9 @@ describe("WorkflowQueueManager", () => {
 
     mockOnComplete = vi.fn();
     mockOnError = vi.fn();
-    mockMsalInstance = {} as any;
 
     mockConfig = {
       backendUrl: "http://test-backend.com",
-      msalInstance: mockMsalInstance,
-      scopes: ["test-scope"],
       pipelineId: "pipeline-1",
       pipelineName: "Test Pipeline",
       curDir: { folderId: "folder-1", folderName: "Test Folder" },
@@ -46,9 +40,6 @@ describe("WorkflowQueueManager", () => {
       onComplete: mockOnComplete,
       onError: mockOnError,
     };
-
-    // Mock auth
-    (auth.acquireAccessToken as any).mockResolvedValue("test-token");
   });
 
   afterEach(() => {
@@ -153,7 +144,6 @@ describe("WorkflowQueueManager", () => {
         selectedModel: "pipeline-1",
         imageObject: mockImage,
         curDir: "Test Folder",
-        accessToken: "test-token",
         folderId: "folder-1",
       });
       expect(mockWorkflowStore.removeWorkflow).toHaveBeenCalled();
@@ -276,7 +266,6 @@ describe("WorkflowQueueManager", () => {
       expect(api.getWorkflowResults).toHaveBeenCalledWith({
         backendUrl: "http://test-backend.com",
         workflowId: "workflow-1",
-        accessToken: "test-token",
       });
 
       expect(mockOnComplete).toHaveBeenCalledWith(

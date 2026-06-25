@@ -3,6 +3,7 @@ import { renderHook } from "@testing-library/react";
 import { useWorkflowPolling } from "../useWorkflowPolling";
 import { useWorkflowStore } from "@stores/useWorkflowStore";
 import * as commonApi from "@common/index";
+import { useNachetAuth } from "../../auth";
 import { errorLogger } from "../../logging";
 import type { ApiInferenceData, WorkflowStatusResponse } from "@common/types";
 
@@ -18,10 +19,11 @@ vi.mock("../../logging", () => ({
   },
 }));
 
+vi.mock("../../auth");
+
 describe("useWorkflowPolling", () => {
   const mockWorkflowId = "workflow-123";
   const mockBackendUrl = "http://localhost:8080";
-  const mockAccessToken = "mock-token";
   const mockOnComplete = vi.fn();
   const mockOnError = vi.fn();
 
@@ -97,6 +99,11 @@ describe("useWorkflowPolling", () => {
     useWorkflowStore.setState({
       workflows: new Map(),
     });
+
+    vi.mocked(useNachetAuth).mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
+    } as ReturnType<typeof useNachetAuth>);
   });
 
   afterEach(() => {
@@ -110,7 +117,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: false,
           onComplete: mockOnComplete,
         }),
@@ -127,7 +133,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: "",
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
         }),
@@ -143,7 +148,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: "",
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
         }),
@@ -154,12 +158,16 @@ describe("useWorkflowPolling", () => {
       expect(commonApi.getWorkflowStatus).not.toHaveBeenCalled();
     });
 
-    it("should not start polling when accessToken is empty", () => {
+    it("should not start polling when the user is not authenticated", () => {
+      vi.mocked(useNachetAuth).mockReturnValue({
+        isAuthenticated: false,
+        isLoading: false,
+      } as ReturnType<typeof useNachetAuth>);
+
       renderHook(() =>
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: "",
           enabled: true,
           onComplete: mockOnComplete,
         }),
@@ -181,7 +189,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
         }),
@@ -205,7 +212,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
         }),
@@ -244,7 +250,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
         }),
@@ -282,7 +287,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
         }),
@@ -293,13 +297,11 @@ describe("useWorkflowPolling", () => {
       expect(commonApi.getWorkflowStatus).toHaveBeenCalledWith({
         backendUrl: mockBackendUrl,
         workflowId: mockWorkflowId,
-        accessToken: mockAccessToken,
       });
 
       expect(commonApi.getWorkflowResults).toHaveBeenCalledWith({
         backendUrl: mockBackendUrl,
         workflowId: mockWorkflowId,
-        accessToken: mockAccessToken,
       });
 
       expect(mockOnComplete).toHaveBeenCalledWith(mockInferenceResults);
@@ -328,7 +330,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
         }),
@@ -355,7 +356,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
         }),
@@ -391,7 +391,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
           onError: mockOnError,
@@ -426,7 +425,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
           onError: mockOnError,
@@ -461,7 +459,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
           onError: mockOnError,
@@ -496,7 +493,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
           onError: mockOnError,
@@ -531,7 +527,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
           onError: mockOnError,
@@ -566,7 +561,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
           onError: mockOnError,
@@ -591,7 +585,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
           onError: mockOnError,
@@ -616,7 +609,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
           onError: mockOnError,
@@ -652,7 +644,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
           onError: mockOnError,
@@ -676,7 +667,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
           onError: mockOnError,
@@ -700,7 +690,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
           onError: mockOnError,
@@ -739,7 +728,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
           onError: mockOnError,
@@ -767,7 +755,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
           onError: mockOnError,
@@ -787,7 +774,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
           // No onError provided
@@ -813,7 +799,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
         }),
@@ -836,7 +821,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
         }),
@@ -857,7 +841,6 @@ describe("useWorkflowPolling", () => {
           useWorkflowPolling({
             workflowId: mockWorkflowId,
             backendUrl: mockBackendUrl,
-            accessToken: mockAccessToken,
             enabled,
             onComplete: mockOnComplete,
           }),
@@ -894,7 +877,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
         }),
@@ -921,7 +903,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: false,
           onComplete: mockOnComplete,
         }),
@@ -939,7 +920,6 @@ describe("useWorkflowPolling", () => {
         useWorkflowPolling({
           workflowId: mockWorkflowId,
           backendUrl: mockBackendUrl,
-          accessToken: mockAccessToken,
           enabled: true,
           onComplete: mockOnComplete,
         }),

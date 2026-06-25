@@ -14,13 +14,13 @@ import InfoIcon from "@mui/icons-material/Info";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import { colours } from "@styles/colours";
-import { useAccount } from "@azure/msal-react";
 import { useDeviceStore } from "@stores/useDeviceStore";
 import { useImageStore } from "@stores/useImageStore";
 import { useModalStore } from "@stores/useModalStore";
 import { useWebcamStore } from "@stores/useWebcamStore";
 import { useModelStore } from "@stores/useModelStore";
 import { useNotificationStore } from "@stores/useNotificationStore";
+import { useNachetAuth } from "../../../auth";
 
 export interface MicroscopeFeedControlsViewProps {
   isWebcamActive: boolean;
@@ -94,7 +94,7 @@ export const MicroscopeFeedControlsView = (
   const { getMissingMetadataCount } = useDeviceStore();
   const { images: imageCache } = useImageStore();
   const { selectedModel, metadata } = useModelStore();
-  const accountInfo = useAccount();
+  const { activeAccount } = useNachetAuth();
 
   // Modal store actions
   const {
@@ -129,19 +129,9 @@ export const MicroscopeFeedControlsView = (
     padding: 0,
   };
 
-  // Derive isGuest from accountInfo
-  // acct === 0 means member account, acct !== 0 or undefined means guest account
-  // Defensive: treat missing/undefined acct as guest (hide D button)
   const isGuest = useMemo(() => {
-    const idTokenClaims = accountInfo?.idTokenClaims as
-      | { acct?: number }
-      | undefined;
-    const acctClaim = idTokenClaims?.acct;
-
-    // Only acct === 0 means member (show D button)
-    // Everything else (undefined, null, non-zero) means guest (hide D button)
-    return acctClaim !== 0;
-  }, [accountInfo]);
+    return activeAccount?.isGuest ?? true;
+  }, [activeAccount]);
 
   // Find the model name from metadata based on selectedModel (pipelineId)
   const selectedModelName = useMemo(() => {

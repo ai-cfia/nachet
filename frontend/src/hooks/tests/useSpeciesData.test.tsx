@@ -3,21 +3,17 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useSpeciesData } from "../useSpeciesData";
 import { useSpeciesStore } from "@stores/useSpeciesStore";
 import { requestClassList } from "@common/api";
-import { acquireAccessToken } from "@common/auth";
-import { useMsal, useIsAuthenticated } from "@azure/msal-react";
-import { InteractionStatus } from "@azure/msal-browser";
+import { useNachetAuth } from "../../auth";
 
 // Mock dependencies
 vi.mock("@stores/useSpeciesStore");
 vi.mock("@common/api");
-vi.mock("@common/auth");
-vi.mock("@azure/msal-react");
+vi.mock("../../auth");
 
 describe("useSpeciesData", () => {
   let mockSetSpeciesData: any;
   let mockSetLoading: any;
   let mockSetError: any;
-  let mockMsalInstance: any;
   const mockSpeciesData = [
     { id: 1, name: "Species 1" },
     { id: 2, name: "Species 2" },
@@ -29,7 +25,6 @@ describe("useSpeciesData", () => {
     mockSetSpeciesData = vi.fn();
     mockSetLoading = vi.fn();
     mockSetError = vi.fn();
-    mockMsalInstance = {} as any;
 
     (useSpeciesStore as any).mockReturnValue({
       speciesData: null,
@@ -40,20 +35,17 @@ describe("useSpeciesData", () => {
       setError: mockSetError,
     });
 
-    (useMsal as any).mockReturnValue({
-      instance: mockMsalInstance,
-      inProgress: InteractionStatus.None,
+    (useNachetAuth as any).mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
     });
-
-    (useIsAuthenticated as any).mockReturnValue(true);
-    (acquireAccessToken as any).mockResolvedValue("test-token");
     (requestClassList as any).mockResolvedValue(mockSpeciesData);
 
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   it("should fetch and set species data when authenticated", async () => {
-    renderHook(() => useSpeciesData("http://test-backend.com", "test-scope"));
+    renderHook(() => useSpeciesData("http://test-backend.com"));
 
     await waitFor(() => {
       expect(mockSetLoading).toHaveBeenCalledWith(true);
@@ -63,7 +55,6 @@ describe("useSpeciesData", () => {
     await waitFor(() => {
       expect(requestClassList).toHaveBeenCalledWith({
         backendUrl: "http://test-backend.com",
-        accessToken: "test-token",
       });
     });
 
@@ -74,13 +65,16 @@ describe("useSpeciesData", () => {
   });
 
   it("should not fetch when backendUrl is empty", () => {
-    renderHook(() => useSpeciesData("", "test-scope"));
+    renderHook(() => useSpeciesData(""));
     expect(requestClassList).not.toHaveBeenCalled();
   });
 
   it("should not fetch when not authenticated", () => {
-    (useIsAuthenticated as any).mockReturnValue(false);
-    renderHook(() => useSpeciesData("http://test-backend.com", "test-scope"));
+    (useNachetAuth as any).mockReturnValue({
+      isAuthenticated: false,
+      isLoading: false,
+    });
+    renderHook(() => useSpeciesData("http://test-backend.com"));
     expect(requestClassList).not.toHaveBeenCalled();
   });
 
@@ -94,17 +88,17 @@ describe("useSpeciesData", () => {
       setError: mockSetError,
     });
 
-    renderHook(() => useSpeciesData("http://test-backend.com", "test-scope"));
+    renderHook(() => useSpeciesData("http://test-backend.com"));
     expect(requestClassList).not.toHaveBeenCalled();
   });
 
-  it("should not fetch when interaction is in progress", () => {
-    (useMsal as any).mockReturnValue({
-      instance: mockMsalInstance,
-      inProgress: InteractionStatus.Login,
+  it("should not fetch while auth is loading", () => {
+    (useNachetAuth as any).mockReturnValue({
+      isAuthenticated: true,
+      isLoading: true,
     });
 
-    renderHook(() => useSpeciesData("http://test-backend.com", "test-scope"));
+    renderHook(() => useSpeciesData("http://test-backend.com"));
     expect(requestClassList).not.toHaveBeenCalled();
   });
 
@@ -112,7 +106,7 @@ describe("useSpeciesData", () => {
     const mockError = new Error("Failed to fetch species");
     (requestClassList as any).mockRejectedValue(mockError);
 
-    renderHook(() => useSpeciesData("http://test-backend.com", "test-scope"));
+    renderHook(() => useSpeciesData("http://test-backend.com"));
 
     await waitFor(() => {
       expect(mockSetError).toHaveBeenCalledWith("Failed to fetch species");
@@ -132,7 +126,7 @@ describe("useSpeciesData", () => {
     });
 
     const { result } = renderHook(() =>
-      useSpeciesData("http://test-backend.com", "test-scope"),
+      useSpeciesData("http://test-backend.com"),
     );
 
     expect(result.current.speciesData).toEqual(mockSpeciesData);
