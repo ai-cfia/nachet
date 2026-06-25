@@ -1,8 +1,9 @@
 import type { Context, ReactNode } from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { InteractionStatus } from "@azure/msal-browser";
-import type { PublicClientApplication } from "@azure/msal-browser";
+import { InteractionStatus, Logger } from "@azure/msal-browser";
+import type { AccountInfo, PublicClientApplication } from "@azure/msal-browser";
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
+import type { IMsalContext } from "@azure/msal-react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { acquireAccessToken } from "../../common/auth";
 import {
@@ -60,7 +61,7 @@ vi.mock("../oidc/OidcAuthProvider", () => ({
   },
 }));
 
-const mockAccount = {
+const mockAccount: AccountInfo = {
   homeAccountId: "home-account-id",
   environment: "login.microsoftonline.com",
   tenantId: "tenant-id",
@@ -108,6 +109,14 @@ describe("NachetAuthProvider", () => {
   };
   const mockPublicClientApplication =
     mockMsalInstance as unknown as PublicClientApplication;
+  const createMsalContext = (
+    inProgress: InteractionStatus = InteractionStatus.None,
+  ): IMsalContext => ({
+    instance: mockPublicClientApplication,
+    inProgress,
+    accounts: [mockAccount],
+    logger: new Logger({}),
+  });
 
   const renderWithProvider = ({
     msalInstance = mockPublicClientApplication,
@@ -130,11 +139,7 @@ describe("NachetAuthProvider", () => {
     mockMsalInstance.loginRedirect.mockResolvedValue(undefined);
     mockMsalInstance.logoutRedirect.mockResolvedValue(undefined);
 
-    vi.mocked(useMsal).mockReturnValue({
-      instance: mockPublicClientApplication,
-      inProgress: InteractionStatus.None,
-      accounts: [mockAccount],
-    } as ReturnType<typeof useMsal>);
+    vi.mocked(useMsal).mockReturnValue(createMsalContext());
     vi.mocked(useIsAuthenticated).mockReturnValue(true);
     vi.mocked(acquireAccessToken).mockResolvedValue("access-token");
     vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -200,11 +205,9 @@ describe("NachetAuthProvider", () => {
   });
 
   it("does not start login while another MSAL interaction is in progress", async () => {
-    vi.mocked(useMsal).mockReturnValue({
-      instance: mockPublicClientApplication,
-      inProgress: InteractionStatus.Login,
-      accounts: [mockAccount],
-    } as ReturnType<typeof useMsal>);
+    vi.mocked(useMsal).mockReturnValue(
+      createMsalContext(InteractionStatus.Login),
+    );
 
     renderWithProvider();
 
