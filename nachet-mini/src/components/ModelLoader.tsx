@@ -23,6 +23,7 @@ interface Props {
   onSelectDetector: (id: string) => void;
   onSelectClassifier: (id: string) => void;
   isLoading: boolean;
+  disabled: boolean;
 }
 
 const ModelLoader = ({
@@ -33,6 +34,7 @@ const ModelLoader = ({
   onSelectDetector,
   onSelectClassifier,
   isLoading,
+  disabled,
 }: Props) => {
   const { t } = useTranslation("main");
   const detectorLabel = t("modelLoader.detector");
@@ -50,7 +52,11 @@ const ModelLoader = ({
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: "0.4vh" }}>
-      <FormControl size="small" sx={dropdownSx} disabled={isLoading}>
+      <FormControl
+        size="small"
+        sx={dropdownSx}
+        disabled={isLoading || disabled}
+      >
         <InputLabel id="detector-model-label" sx={{ fontSize: "1.2vh" }}>
           {detectorLabel}
         </InputLabel>
@@ -85,7 +91,11 @@ const ModelLoader = ({
         </IconButton>
       )}
 
-      <FormControl size="small" sx={dropdownSx} disabled={isLoading}>
+      <FormControl
+        size="small"
+        sx={dropdownSx}
+        disabled={isLoading || disabled}
+      >
         <InputLabel id="classifier-model-label" sx={{ fontSize: "1.2vh" }}>
           {classifierLabel}
         </InputLabel>

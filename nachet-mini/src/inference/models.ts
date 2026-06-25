@@ -85,6 +85,12 @@ export const DETECTOR_MODELS: DetectorModelEntry[] = [
     modelFileName: "model_patched",
   },
   {
+    id: "rt-detr-v2 101spp",
+    model: "cfia-ai-lab/rtdetr_v2_r50vd-101spp-ft",
+    threshold: 0.8,
+    modelFileName: "model_patched",
+  },
+  {
     id: "detr-resnet-50 0spp",
     model: "Xenova/detr-resnet-50",
     threshold: 0.5,
@@ -95,6 +101,12 @@ export const CLASSIFIER_MODELS: ClassifierModelEntry[] = [
   {
     id: "swin-L 64spp",
     model: "cfia-ai-lab/swin-large-patch4-window12-384-in22k-64spp-ft",
+    topK: 5,
+    minBoxSize: 384,
+  },
+  {
+    id: "swin-L 101spp",
+    model: "cfia-ai-lab/swin-large-patch4-window12-384-in22k-101spp-ft",
     topK: 5,
     minBoxSize: 384,
   },
