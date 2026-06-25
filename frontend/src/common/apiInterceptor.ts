@@ -1,46 +1,71 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-import {
-  IPublicClientApplication,
-  InteractionRequiredAuthError,
-  BrowserAuthError,
-} from "@azure/msal-browser";
+import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 
-// Track if we're currently in a redirect flow to prevent loops
-let isRedirecting = false;
+let requestInterceptorId: number | null = null;
+let responseInterceptorId: number | null = null;
 
-/**
- * Checks if an error requires user interaction (redirect to login)
- * @param error - The error to check
- * @returns true if the error requires redirect authentication
- */
-export function shouldTriggerRedirect(error: unknown): boolean {
-  return (
-    error instanceof InteractionRequiredAuthError ||
-    (error instanceof BrowserAuthError &&
-      error.errorCode === "monitor_window_timeout")
+interface NachetAuthRequestConfig extends InternalAxiosRequestConfig {
+  nachetAuthRequired?: boolean;
+}
+
+interface AccessTokenOptions {
+  forceRefresh?: boolean;
+}
+
+type GetAccessToken = (options?: AccessTokenOptions) => Promise<string>;
+
+const assertAccessToken = (accessToken: string): string => {
+  if (!accessToken) {
+    throw new Error("Access token is null or empty");
+  }
+
+  return accessToken;
+};
+
+const requestRequiresNachetAuth = (
+  request?: InternalAxiosRequestConfig,
+): request is NachetAuthRequestConfig => {
+  return Boolean(
+    (request as NachetAuthRequestConfig | undefined)?.nachetAuthRequired,
   );
-}
+};
+
+export const clearAxiosInterceptors = (): void => {
+  if (requestInterceptorId !== null) {
+    axios.interceptors.request.eject(requestInterceptorId);
+    requestInterceptorId = null;
+  }
+
+  if (responseInterceptorId !== null) {
+    axios.interceptors.response.eject(responseInterceptorId);
+    responseInterceptorId = null;
+  }
+};
 
 /**
- * Reset the redirect flag (called after successful redirect)
- */
-export function resetRedirectFlag(): void {
-  isRedirecting = false;
-}
-
-/**
- * Configure axios interceptor to handle 401 Unauthorized errors
- * and trigger redirect authentication when tokens expire
+ * Configure axios interceptor to handle 401 Unauthorized errors and retry once
+ * with an access token from the active auth provider.
  *
- * @param msalInstance - MSAL instance for authentication
- * @param scopes - Array of scopes to request for tokens
+ * @param getAccessToken - Provider-neutral token getter
  */
-export function setupAxiosInterceptor(
-  msalInstance: IPublicClientApplication,
-  scopes: string[],
-): void {
+export const setupAxiosInterceptor = (getAccessToken: GetAccessToken): void => {
+  clearAxiosInterceptors();
+
+  requestInterceptorId = axios.interceptors.request.use(
+    async (config: NachetAuthRequestConfig) => {
+      if (!config.nachetAuthRequired || config.headers?.Authorization) {
+        return config;
+      }
+
+      config.headers.Authorization = `Bearer ${assertAccessToken(
+        await getAccessToken(),
+      )}`;
+      return config;
+    },
+    (error) => Promise.reject(error),
+  );
+
   // Response interceptor to handle 401 errors
-  axios.interceptors.response.use(
+  responseInterceptorId = axios.interceptors.response.use(
     (response) => response, // Pass through successful responses
     async (error: AxiosError) => {
       const originalRequest = error.config as InternalAxiosRequestConfig & {
@@ -48,52 +73,26 @@ export function setupAxiosInterceptor(
       };
 
       // Check if this is a 401 error and we haven't already retried
-      if (error.response?.status === 401 && !originalRequest?._retry) {
+      if (
+        error.response?.status === 401 &&
+        requestRequiresNachetAuth(originalRequest) &&
+        !originalRequest?._retry
+      ) {
         originalRequest._retry = true;
 
-        // Prevent redirect loop
-        if (isRedirecting) {
-          return Promise.reject(error);
-        }
-
-        // Get the active account
-        const activeAccount = msalInstance.getActiveAccount();
-        const accounts = msalInstance.getAllAccounts();
-
-        if (!activeAccount && accounts.length === 0) {
-          // Let the error propagate - user is not authenticated
-          return Promise.reject(error);
-        }
-
-        const request = {
-          scopes,
-          account: activeAccount || accounts[0],
-        };
-
         try {
-          // Try to acquire token silently
-          const authResult = await msalInstance.acquireTokenSilent(request);
+          const accessToken = assertAccessToken(
+            await getAccessToken({ forceRefresh: true }),
+          );
 
           // Update the authorization header with new token
           if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${authResult.accessToken}`;
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           }
 
           // Retry the original request with new token
           return axios(originalRequest);
         } catch (tokenError) {
-          // If silent token acquisition fails, check if redirect is needed
-          if (shouldTriggerRedirect(tokenError)) {
-            // Set redirect flag to prevent loops
-            isRedirecting = true;
-
-            // Trigger redirect authentication
-            await msalInstance.acquireTokenRedirect(request);
-            // This line will never be reached as user is redirected away
-            return Promise.reject(tokenError);
-          }
-
-          // For other errors, just reject
           return Promise.reject(tokenError);
         }
       }
@@ -102,4 +101,4 @@ export function setupAxiosInterceptor(
       return Promise.reject(error);
     },
   );
-}
+};

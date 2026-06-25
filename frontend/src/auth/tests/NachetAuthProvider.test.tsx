@@ -6,6 +6,7 @@ import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import type { IMsalContext } from "@azure/msal-react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { acquireAccessToken } from "../../common/auth";
+import { initializeApi } from "../../common/api";
 import {
   NachetAuthProvider,
   useNachetAuth,
@@ -18,6 +19,19 @@ vi.mock("@azure/msal-react", () => ({
   useMsal: vi.fn(),
 }));
 vi.mock("../../common/auth");
+vi.mock("../../common/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../common/api")>();
+  return {
+    ...actual,
+    clearApiAuthentication: vi.fn(),
+    initializeApi: vi.fn(),
+  };
+});
+vi.mock("../../logging", () => ({
+  errorLogger: {
+    setTokenProvider: vi.fn(),
+  },
+}));
 vi.mock("../oidc/OidcAuthProvider", () => ({
   OidcAuthProvider: ({
     authContext,
@@ -211,6 +225,23 @@ describe("NachetAuthProvider", () => {
       );
       expect(document.body.dataset.token).toBe("access-token");
     });
+  });
+
+  it("initializes API auth through the MSAL adapter by default", async () => {
+    renderWithProvider();
+
+    await waitFor(() => {
+      expect(initializeApi).toHaveBeenCalled();
+    });
+
+    const getAccessToken = (initializeApi as any).mock.calls[0][0];
+    await getAccessToken({ forceRefresh: true });
+
+    expect(acquireAccessToken).toHaveBeenCalledWith(
+      mockMsalInstance,
+      ["api://nachet/scope"],
+      { forceRefresh: true },
+    );
   });
 
   it("normalizes the configured provider name", () => {
