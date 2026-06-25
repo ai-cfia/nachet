@@ -159,7 +159,10 @@ const OidcAuthBridge = ({
   const tokenUsersByScopeRef = useRef<Map<string, User>>(new Map());
   const loginRedirectPromiseRef = useRef<Promise<void> | null>(null);
   const previousUserIdRef = useRef<string | null>(getStableUserId(oidc.user));
-  const activeAccount = useMemo(() => mapUser(oidc.user), [oidc.user]);
+  const activeAccount = useMemo(
+    () => (oidc.isAuthenticated ? mapUser(oidc.user) : null),
+    [oidc.isAuthenticated, oidc.user],
+  );
 
   useEffect(() => {
     const currentUserId = getStableUserId(oidc.user);

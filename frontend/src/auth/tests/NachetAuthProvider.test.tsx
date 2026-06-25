@@ -85,6 +85,10 @@ const TestConsumer = () => {
       </span>
       <span data-testid="loading">{auth.isLoading ? "loading" : "idle"}</span>
       <span data-testid="username">{auth.activeAccount?.username ?? ""}</span>
+      <span data-testid="user-id">{auth.activeAccount?.userId ?? ""}</span>
+      <span data-testid="guest">
+        {auth.activeAccount?.isGuest ? "guest" : "member"}
+      </span>
       <button onClick={() => void auth.login()}>login</button>
       <button onClick={() => void auth.logout()}>logout</button>
       <button
@@ -154,12 +158,33 @@ describe("NachetAuthProvider", () => {
     );
     expect(screen.getByTestId("loading").textContent).toBe("idle");
     expect(screen.getByTestId("username").textContent).toBe("user@example.com");
+    expect(screen.getByTestId("user-id").textContent).toBe("member-oid");
+    expect(screen.getByTestId("guest").textContent).toBe("member");
 
     await waitFor(() => {
       expect(mockMsalInstance.setActiveAccount).toHaveBeenCalledWith(
         mockAccount,
       );
     });
+  });
+
+  it("treats a string MSAL acct member claim as member", () => {
+    vi.mocked(useMsal).mockReturnValue({
+      ...createMsalContext(),
+      accounts: [
+        {
+          ...mockAccount,
+          idTokenClaims: {
+            oid: "member-oid",
+            acct: "0",
+          },
+        },
+      ],
+    });
+
+    renderWithProvider();
+
+    expect(screen.getByTestId("guest").textContent).toBe("member");
   });
 
   it("delegates login, logout, and token acquisition to MSAL", async () => {

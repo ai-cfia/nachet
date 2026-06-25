@@ -97,7 +97,11 @@ const TestConsumer = () => {
       <span data-testid="username">{auth?.activeAccount?.username}</span>
       <span data-testid="user-id">{auth?.activeAccount?.userId}</span>
       <span data-testid="guest">
-        {auth?.activeAccount?.isGuest ? "guest" : "member"}
+        {auth?.activeAccount
+          ? auth.activeAccount.isGuest
+            ? "guest"
+            : "member"
+          : ""}
       </span>
     </div>
   );
@@ -299,6 +303,26 @@ describe("OidcAuthProvider", () => {
     expect(screen.getByTestId("user-id").textContent).toBe(
       "provider-object-id",
     );
+  });
+
+  it("does not expose a stale OIDC user when unauthenticated", () => {
+    setOidcEnv();
+    mockOidcAuth.value.isAuthenticated = false;
+    mockOidcAuth.value.user = createOidcUser();
+
+    render(
+      <OidcAuthProvider
+        apiScopeClaim={API_SCOPE_CLAIM}
+        authContext={TestAuthContext}
+      >
+        <TestConsumer />
+      </OidcAuthProvider>,
+    );
+
+    expect(screen.getByTestId("provider").textContent).toBe("oidc");
+    expect(screen.getByTestId("username").textContent).toBe("");
+    expect(screen.getByTestId("user-id").textContent).toBe("");
+    expect(screen.getByTestId("guest").textContent).toBe("");
   });
 
   it("fails closed when the OIDC profile has no stable subject identifier", () => {

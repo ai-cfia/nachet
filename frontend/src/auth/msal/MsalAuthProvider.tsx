@@ -39,7 +39,7 @@ const mapAccount = (account: AccountInfo): NachetAuthAccount => {
           : account.localAccountId,
     // Default to guest unless Entra explicitly marks the account as a member.
     // Longer term, backend auth or configured claim mapping may own this.
-    isGuest: acctClaim !== 0,
+    isGuest: acctClaim !== 0 && acctClaim !== "0",
     idTokenClaims,
   };
 };
