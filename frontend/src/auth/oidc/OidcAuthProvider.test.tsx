@@ -4,19 +4,59 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NachetAuthContextValue } from "../NachetAuthContext";
 import { OidcAuthProvider } from "./OidcAuthProvider";
 
-const mockOidcAuth = vi.hoisted(() => ({
-  value: {
-    isAuthenticated: true,
-    isLoading: false,
-    user: {
-      expired: false,
-      access_token: "oidc-access-token",
+const API_SCOPE_CLAIM = "api://nachet/access_as_user";
+const DEFAULT_OIDC_ENV = {
+  VITE_OIDC_AUTHORITY: "https://idp.example/realms/nachet",
+  VITE_OIDC_CLIENT_ID: "frontend-client-id",
+  VITE_OIDC_SCOPE: "openid profile email",
+  VITE_OIDC_REDIRECT_URI: "http://localhost:5173/callback",
+  VITE_OIDC_POST_LOGOUT_REDIRECT_URI: "http://localhost:5173/",
+};
+
+type OidcEnv = typeof DEFAULT_OIDC_ENV;
+
+const setOidcEnv = (overrides: Partial<OidcEnv> = {}): void => {
+  const env = { ...DEFAULT_OIDC_ENV, ...overrides };
+  import.meta.env.VITE_OIDC_AUTHORITY = env.VITE_OIDC_AUTHORITY;
+  import.meta.env.VITE_OIDC_CLIENT_ID = env.VITE_OIDC_CLIENT_ID;
+  import.meta.env.VITE_OIDC_SCOPE = env.VITE_OIDC_SCOPE;
+  import.meta.env.VITE_OIDC_REDIRECT_URI = env.VITE_OIDC_REDIRECT_URI;
+  import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
+    env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI;
+};
+
+const clearOidcEnv = (): void => {
+  delete import.meta.env.VITE_OIDC_AUTHORITY;
+  delete import.meta.env.VITE_OIDC_CLIENT_ID;
+  delete import.meta.env.VITE_OIDC_SCOPE;
+  delete import.meta.env.VITE_OIDC_REDIRECT_URI;
+  delete import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI;
+};
+
+const createOidcUser = vi.hoisted(
+  () =>
+    ({
+      expired = false,
+      accessToken = "oidc-access-token",
+    }: {
+      expired?: boolean;
+      accessToken?: string;
+    } = {}) => ({
+      expired,
+      access_token: accessToken,
       profile: {
         preferred_username: "oidc-user@example.com",
         name: "OIDC User",
         sub: "oidc-subject",
       },
-    },
+    }),
+);
+
+const mockOidcAuth = vi.hoisted(() => ({
+  value: {
+    isAuthenticated: true,
+    isLoading: false,
+    user: createOidcUser(),
     signinRedirect: vi.fn(),
     signinSilent: vi.fn(),
     signoutRedirect: vi.fn(),
@@ -111,31 +151,19 @@ describe("OidcAuthProvider", () => {
     capturedAuthProviderSettings.value = undefined;
     mockOidcAuth.value.isAuthenticated = true;
     mockOidcAuth.value.isLoading = false;
-    mockOidcAuth.value.user = {
-      expired: false,
-      access_token: "oidc-access-token",
-      profile: {
-        preferred_username: "oidc-user@example.com",
-        name: "OIDC User",
-        sub: "oidc-subject",
-      },
-    };
+    mockOidcAuth.value.user = createOidcUser();
     mockOidcAuth.value.signinRedirect.mockClear();
     mockOidcAuth.value.signinSilent.mockClear();
     mockOidcAuth.value.signoutRedirect.mockClear();
     delete document.body.dataset.oidcToken;
-    delete import.meta.env.VITE_OIDC_AUTHORITY;
-    delete import.meta.env.VITE_OIDC_CLIENT_ID;
-    delete import.meta.env.VITE_OIDC_SCOPE;
-    delete import.meta.env.VITE_OIDC_REDIRECT_URI;
-    delete import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI;
+    clearOidcEnv();
   });
 
   it("fails closed when required OIDC configuration is missing", () => {
     expect(() =>
       render(
         <OidcAuthProvider
-          apiScopeClaim="api://nachet/access_as_user"
+          apiScopeClaim={API_SCOPE_CLAIM}
           authContext={TestAuthContext}
         >
           <TestConsumer />
@@ -147,17 +175,12 @@ describe("OidcAuthProvider", () => {
   });
 
   it("fails closed when a required OIDC value is blank", () => {
-    import.meta.env.VITE_OIDC_AUTHORITY = "   ";
-    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
-    import.meta.env.VITE_OIDC_SCOPE = "openid profile email";
-    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173";
-    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
-      "http://localhost:5173";
+    setOidcEnv({ VITE_OIDC_AUTHORITY: "   " });
 
     expect(() =>
       render(
         <OidcAuthProvider
-          apiScopeClaim="api://nachet/access_as_user"
+          apiScopeClaim={API_SCOPE_CLAIM}
           authContext={TestAuthContext}
         >
           <TestConsumer />
@@ -167,16 +190,11 @@ describe("OidcAuthProvider", () => {
   });
 
   it("passes provider-neutral settings to the local OIDC provider", () => {
-    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
-    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
-    import.meta.env.VITE_OIDC_SCOPE = "openid profile email";
-    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173/callback";
-    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
-      "http://localhost:5173/";
+    setOidcEnv();
 
     render(
       <OidcAuthProvider
-        apiScopeClaim="api://nachet/access_as_user"
+        apiScopeClaim={API_SCOPE_CLAIM}
         authContext={TestAuthContext}
       >
         <TestConsumer />
@@ -202,16 +220,11 @@ describe("OidcAuthProvider", () => {
   });
 
   it("adds the API scope to an explicit OIDC scope", () => {
-    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
-    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
-    import.meta.env.VITE_OIDC_SCOPE = "openid profile";
-    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173/callback";
-    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
-      "http://localhost:5173/";
+    setOidcEnv({ VITE_OIDC_SCOPE: "openid profile" });
 
     render(
       <OidcAuthProvider
-        apiScopeClaim="api://nachet/access_as_user"
+        apiScopeClaim={API_SCOPE_CLAIM}
         authContext={TestAuthContext}
       >
         <TestConsumer />
@@ -224,28 +237,18 @@ describe("OidcAuthProvider", () => {
   });
 
   it("starts sign-in when silent token renewal fails", async () => {
-    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
-    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
-    import.meta.env.VITE_OIDC_SCOPE = "openid profile email";
-    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173/callback";
-    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
-      "http://localhost:5173/";
-    mockOidcAuth.value.user = {
+    setOidcEnv();
+    mockOidcAuth.value.user = createOidcUser({
       expired: true,
-      access_token: "expired-token",
-      profile: {
-        preferred_username: "oidc-user@example.com",
-        name: "OIDC User",
-        sub: "oidc-subject",
-      },
-    };
+      accessToken: "expired-token",
+    });
     mockOidcAuth.value.signinSilent.mockRejectedValueOnce(
       new Error("silent renewal failed"),
     );
 
     render(
       <OidcAuthProvider
-        apiScopeClaim="api://nachet/access_as_user"
+        apiScopeClaim={API_SCOPE_CLAIM}
         authContext={TestAuthContext}
       >
         <TokenConsumer />
@@ -262,16 +265,11 @@ describe("OidcAuthProvider", () => {
   });
 
   it("returns the cached token when it is fresh and the default scope is requested", async () => {
-    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
-    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
-    import.meta.env.VITE_OIDC_SCOPE = "openid profile email";
-    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173/callback";
-    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
-      "http://localhost:5173/";
+    setOidcEnv();
 
     render(
       <OidcAuthProvider
-        apiScopeClaim="api://nachet/access_as_user"
+        apiScopeClaim={API_SCOPE_CLAIM}
         authContext={TestAuthContext}
       >
         <TokenCaptureConsumer />
@@ -287,25 +285,14 @@ describe("OidcAuthProvider", () => {
   });
 
   it("force-refreshes the token after a protected API 401", async () => {
-    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
-    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
-    import.meta.env.VITE_OIDC_SCOPE = "openid profile email";
-    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173/callback";
-    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
-      "http://localhost:5173/";
-    mockOidcAuth.value.signinSilent.mockResolvedValueOnce({
-      expired: false,
-      access_token: "fresh-oidc-token",
-      profile: {
-        preferred_username: "oidc-user@example.com",
-        name: "OIDC User",
-        sub: "oidc-subject",
-      },
-    });
+    setOidcEnv();
+    mockOidcAuth.value.signinSilent.mockResolvedValueOnce(
+      createOidcUser({ accessToken: "fresh-oidc-token" }),
+    );
 
     render(
       <OidcAuthProvider
-        apiScopeClaim="api://nachet/access_as_user"
+        apiScopeClaim={API_SCOPE_CLAIM}
         authContext={TestAuthContext}
       >
         <TokenCaptureConsumer forceRefresh />
@@ -323,25 +310,14 @@ describe("OidcAuthProvider", () => {
   });
 
   it("uses silent renewal when additional scopes are requested", async () => {
-    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
-    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
-    import.meta.env.VITE_OIDC_SCOPE = "openid profile email";
-    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173/callback";
-    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
-      "http://localhost:5173/";
-    mockOidcAuth.value.signinSilent.mockResolvedValueOnce({
-      expired: false,
-      access_token: "extra-scope-token",
-      profile: {
-        preferred_username: "oidc-user@example.com",
-        name: "OIDC User",
-        sub: "oidc-subject",
-      },
-    });
+    setOidcEnv();
+    mockOidcAuth.value.signinSilent.mockResolvedValueOnce(
+      createOidcUser({ accessToken: "extra-scope-token" }),
+    );
 
     render(
       <OidcAuthProvider
-        apiScopeClaim="api://nachet/access_as_user"
+        apiScopeClaim={API_SCOPE_CLAIM}
         authContext={TestAuthContext}
       >
         <TokenCaptureConsumer scopes={["custom-scope"]} />
@@ -359,26 +335,16 @@ describe("OidcAuthProvider", () => {
   });
 
   it("starts sign-in when silent token renewal returns no fresh token", async () => {
-    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
-    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
-    import.meta.env.VITE_OIDC_SCOPE = "openid profile email";
-    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173/callback";
-    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
-      "http://localhost:5173/";
-    mockOidcAuth.value.user = {
+    setOidcEnv();
+    mockOidcAuth.value.user = createOidcUser({
       expired: true,
-      access_token: "expired-token",
-      profile: {
-        preferred_username: "oidc-user@example.com",
-        name: "OIDC User",
-        sub: "oidc-subject",
-      },
-    };
+      accessToken: "expired-token",
+    });
     mockOidcAuth.value.signinSilent.mockResolvedValueOnce(null);
 
     render(
       <OidcAuthProvider
-        apiScopeClaim="api://nachet/access_as_user"
+        apiScopeClaim={API_SCOPE_CLAIM}
         authContext={TestAuthContext}
       >
         <TokenCaptureConsumer />
@@ -395,21 +361,11 @@ describe("OidcAuthProvider", () => {
   });
 
   it("shares expired-token recovery across concurrent requests", async () => {
-    import.meta.env.VITE_OIDC_AUTHORITY = "https://idp.example/realms/nachet";
-    import.meta.env.VITE_OIDC_CLIENT_ID = "frontend-client-id";
-    import.meta.env.VITE_OIDC_SCOPE = "openid profile email";
-    import.meta.env.VITE_OIDC_REDIRECT_URI = "http://localhost:5173/callback";
-    import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI =
-      "http://localhost:5173/";
-    mockOidcAuth.value.user = {
+    setOidcEnv();
+    mockOidcAuth.value.user = createOidcUser({
       expired: true,
-      access_token: "expired-token",
-      profile: {
-        preferred_username: "oidc-user@example.com",
-        name: "OIDC User",
-        sub: "oidc-subject",
-      },
-    };
+      accessToken: "expired-token",
+    });
 
     let rejectRenewal: (error: Error) => void = () => {};
     mockOidcAuth.value.signinSilent.mockReturnValueOnce(
@@ -420,7 +376,7 @@ describe("OidcAuthProvider", () => {
 
     render(
       <OidcAuthProvider
-        apiScopeClaim="api://nachet/access_as_user"
+        apiScopeClaim={API_SCOPE_CLAIM}
         authContext={TestAuthContext}
       >
         <ConcurrentTokenConsumer />
