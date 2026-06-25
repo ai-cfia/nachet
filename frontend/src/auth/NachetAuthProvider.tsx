@@ -4,6 +4,7 @@ import { MsalProvider } from "@azure/msal-react";
 import { NachetAuthContext } from "./NachetAuthContext";
 import { MsalAuthProvider } from "./msal/MsalAuthProvider";
 import { OidcAuthProvider } from "./oidc/OidcAuthProvider";
+import { getConfiguredAuthProvider } from "./authProviderConfig";
 
 export interface NachetAuthProviderProps {
   apiScopeClaim: string;
@@ -16,42 +17,34 @@ export const NachetAuthProvider = ({
   children,
   msalInstance,
 }: NachetAuthProviderProps) => {
-  const authProviderEnv = import.meta.env.VITE_AUTH_PROVIDER?.trim();
-  const configuredProvider = authProviderEnv?.toLowerCase();
+  const configuredProvider = getConfiguredAuthProvider();
   const oidcApiScopeClaim =
     import.meta.env.VITE_OIDC_API_SCOPE_CLAIM?.trim() || apiScopeClaim;
 
-  if (configuredProvider !== "msal" && configuredProvider !== "oidc") {
-    throw new Error('VITE_AUTH_PROVIDER must be set to "msal" or "oidc".');
-  }
+  switch (configuredProvider) {
+    case "msal":
+      if (!msalInstance) {
+        throw new Error("MSAL auth provider requires an MSAL instance.");
+      }
 
-  if (configuredProvider === "msal") {
-    if (!msalInstance) {
-      throw new Error("MSAL auth provider requires an MSAL instance.");
-    }
-
-    return (
-      <MsalProvider instance={msalInstance}>
-        <MsalAuthProvider
-          apiScopeClaim={apiScopeClaim}
+      return (
+        <MsalProvider instance={msalInstance}>
+          <MsalAuthProvider
+            apiScopeClaim={apiScopeClaim}
+            authContext={NachetAuthContext}
+          >
+            {children}
+          </MsalAuthProvider>
+        </MsalProvider>
+      );
+    case "oidc":
+      return (
+        <OidcAuthProvider
+          apiScopeClaim={oidcApiScopeClaim}
           authContext={NachetAuthContext}
         >
           {children}
-        </MsalAuthProvider>
-      </MsalProvider>
-    );
+        </OidcAuthProvider>
+      );
   }
-
-  if (configuredProvider === "oidc") {
-    return (
-      <OidcAuthProvider
-        apiScopeClaim={oidcApiScopeClaim}
-        authContext={NachetAuthContext}
-      >
-        {children}
-      </OidcAuthProvider>
-    );
-  }
-
-  throw new Error('VITE_AUTH_PROVIDER must be set to "msal" or "oidc".');
 };

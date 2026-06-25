@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   type Context,
@@ -101,17 +102,22 @@ const mapUser = (user: User | null) => {
   }
 
   const profile = user.profile as Record<string, unknown>;
+  const userId = getStringClaim(profile, ["oid", "sub"]);
   const username =
     getStringClaim(profile, ["preferred_username", "email", "sub"]) ??
     "unknown";
   const name = getStringClaim(profile, ["name"]) ?? username;
 
+  if (!userId) {
+    throw new Error("OIDC user profile is missing a stable user identifier.");
+  }
+
   return {
     username,
     name,
-    userId: getStringClaim(profile, ["oid", "sub"]) ?? username,
-    // Generic OIDC has no guest/member claim yet; claim mapping may own this later.
-    isGuest: false,
+    userId,
+    // Generic OIDC has no standard member claim; backend auth or claim mapping may own this later.
+    isGuest: true,
     idTokenClaims: profile,
   };
 };
@@ -125,8 +131,13 @@ const OidcAuthBridge = ({
   const silentRenewPromisesRef = useRef<Map<string, Promise<User | null>>>(
     new Map(),
   );
+  const tokenUsersByScopeRef = useRef<Map<string, User>>(new Map());
   const loginRedirectPromiseRef = useRef<Promise<void> | null>(null);
   const activeAccount = useMemo(() => mapUser(oidc.user), [oidc.user]);
+
+  useEffect(() => {
+    tokenUsersByScopeRef.current.clear();
+  }, [oidc.user]);
 
   const signinRedirectOnce = useCallback(
     (scope: string) => {
@@ -169,32 +180,46 @@ const OidcAuthBridge = ({
     await oidc.signoutRedirect();
   }, [oidc]);
 
+  const getCachedUser = useCallback(
+    (scope: string): User | null => {
+      if (scope === defaultScope) {
+        return oidc.user?.access_token && !oidc.user.expired ? oidc.user : null;
+      }
+
+      const cachedUser = tokenUsersByScopeRef.current.get(scope);
+      if (cachedUser?.access_token && !cachedUser.expired) {
+        return cachedUser;
+      }
+
+      tokenUsersByScopeRef.current.delete(scope);
+      return null;
+    },
+    [defaultScope, oidc.user],
+  );
+
   const getAccessToken = useCallback(
     async (scopes?: string[], options?: NachetAuthTokenOptions) => {
       const requestedScope = buildScope(defaultScope, scopes);
-      const canUseCachedToken =
-        !options?.forceRefresh && requestedScope === defaultScope;
+      const cachedUser = options?.forceRefresh
+        ? null
+        : getCachedUser(requestedScope);
 
-      if (canUseCachedToken && oidc.user?.access_token && !oidc.user.expired) {
-        return oidc.user.access_token;
+      if (cachedUser?.access_token) {
+        return cachedUser.access_token;
       }
 
-      let renewedUser: User | null | undefined;
-      try {
-        renewedUser = await signinSilentOnce(requestedScope);
-      } catch (error) {
-        await signinRedirectOnce(requestedScope);
-        throw error;
-      }
+      const renewedUser = await signinSilentOnce(requestedScope);
 
       if (renewedUser?.access_token && !renewedUser.expired) {
+        tokenUsersByScopeRef.current.set(requestedScope, renewedUser);
         return renewedUser.access_token;
       }
 
-      await signinRedirectOnce(requestedScope);
-      throw new Error("Redirecting to sign in for a fresh OIDC access token.");
+      throw new Error(
+        "OIDC silent token renewal did not return a usable access token.",
+      );
     },
-    [defaultScope, oidc.user, signinRedirectOnce, signinSilentOnce],
+    [defaultScope, getCachedUser, signinSilentOnce],
   );
 
   const authValue = useMemo<NachetAuthContextValue>(

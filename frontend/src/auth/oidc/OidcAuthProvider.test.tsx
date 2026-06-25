@@ -38,9 +38,11 @@ const createOidcUser = vi.hoisted(
     ({
       expired = false,
       accessToken = "oidc-access-token",
+      profile = {},
     }: {
       expired?: boolean;
       accessToken?: string;
+      profile?: Record<string, unknown>;
     } = {}) => ({
       expired,
       access_token: accessToken,
@@ -48,6 +50,7 @@ const createOidcUser = vi.hoisted(
         preferred_username: "oidc-user@example.com",
         name: "OIDC User",
         sub: "oidc-subject",
+        ...profile,
       },
     }),
 );
@@ -89,6 +92,10 @@ const TestConsumer = () => {
     <div>
       <span data-testid="provider">{auth?.provider}</span>
       <span data-testid="username">{auth?.activeAccount?.username}</span>
+      <span data-testid="user-id">{auth?.activeAccount?.userId}</span>
+      <span data-testid="guest">
+        {auth?.activeAccount?.isGuest ? "guest" : "member"}
+      </span>
     </div>
   );
 };
@@ -97,7 +104,14 @@ const TokenConsumer = () => {
   const auth = useContext(TestAuthContext);
 
   return (
-    <button onClick={() => void auth?.getAccessToken().catch(() => undefined)}>
+    <button
+      onClick={() => {
+        void auth?.getAccessToken().catch((error: unknown) => {
+          document.body.dataset.oidcTokenError =
+            error instanceof Error ? error.message : "unknown error";
+        });
+      }}
+    >
       get token
     </button>
   );
@@ -120,7 +134,10 @@ const TokenCaptureConsumer = ({
           .then((token) => {
             document.body.dataset.oidcToken = token;
           })
-          .catch(() => undefined);
+          .catch((error: unknown) => {
+            document.body.dataset.oidcTokenError =
+              error instanceof Error ? error.message : "unknown error";
+          });
       }}
     >
       capture token
@@ -138,7 +155,14 @@ const ConcurrentTokenConsumer = () => {
           return;
         }
 
-        void Promise.allSettled([auth.getAccessToken(), auth.getAccessToken()]);
+        void Promise.allSettled([
+          auth.getAccessToken(),
+          auth.getAccessToken(),
+        ]).then((results) => {
+          document.body.dataset.concurrentTokenResults = results
+            .map((result) => result.status)
+            .join(",");
+        });
       }}
     >
       get tokens concurrently
@@ -152,10 +176,12 @@ describe("OidcAuthProvider", () => {
     mockOidcAuth.value.isAuthenticated = true;
     mockOidcAuth.value.isLoading = false;
     mockOidcAuth.value.user = createOidcUser();
-    mockOidcAuth.value.signinRedirect.mockClear();
-    mockOidcAuth.value.signinSilent.mockClear();
-    mockOidcAuth.value.signoutRedirect.mockClear();
+    mockOidcAuth.value.signinRedirect.mockReset();
+    mockOidcAuth.value.signinSilent.mockReset();
+    mockOidcAuth.value.signoutRedirect.mockReset();
     delete document.body.dataset.oidcToken;
+    delete document.body.dataset.oidcTokenError;
+    delete document.body.dataset.concurrentTokenResults;
     clearOidcEnv();
   });
 
@@ -217,6 +243,50 @@ describe("OidcAuthProvider", () => {
     expect(screen.getByTestId("username").textContent).toBe(
       "oidc-user@example.com",
     );
+    expect(screen.getByTestId("user-id").textContent).toBe("oidc-subject");
+    expect(screen.getByTestId("guest").textContent).toBe("guest");
+  });
+
+  it("prefers an OIDC oid claim when one is available", () => {
+    setOidcEnv();
+    mockOidcAuth.value.user = createOidcUser({
+      profile: {
+        oid: "provider-object-id",
+      },
+    });
+
+    render(
+      <OidcAuthProvider
+        apiScopeClaim={API_SCOPE_CLAIM}
+        authContext={TestAuthContext}
+      >
+        <TestConsumer />
+      </OidcAuthProvider>,
+    );
+
+    expect(screen.getByTestId("user-id").textContent).toBe(
+      "provider-object-id",
+    );
+  });
+
+  it("fails closed when the OIDC profile has no stable subject identifier", () => {
+    setOidcEnv();
+    mockOidcAuth.value.user = createOidcUser({
+      profile: {
+        sub: undefined,
+      },
+    });
+
+    expect(() =>
+      render(
+        <OidcAuthProvider
+          apiScopeClaim={API_SCOPE_CLAIM}
+          authContext={TestAuthContext}
+        >
+          <TestConsumer />
+        </OidcAuthProvider>,
+      ),
+    ).toThrow("OIDC user profile is missing a stable user identifier.");
   });
 
   it("adds the API scope to an explicit OIDC scope", () => {
@@ -236,7 +306,7 @@ describe("OidcAuthProvider", () => {
     });
   });
 
-  it("starts sign-in when silent token renewal fails", async () => {
+  it("does not redirect automatically when silent token renewal fails", async () => {
     setOidcEnv();
     mockOidcAuth.value.user = createOidcUser({
       expired: true,
@@ -258,10 +328,11 @@ describe("OidcAuthProvider", () => {
     fireEvent.click(screen.getByText("get token"));
 
     await waitFor(() => {
-      expect(mockOidcAuth.value.signinRedirect).toHaveBeenCalledWith({
-        scope: "openid profile email api://nachet/access_as_user",
-      });
+      expect(document.body.dataset.oidcTokenError).toBe(
+        "silent renewal failed",
+      );
     });
+    expect(mockOidcAuth.value.signinRedirect).not.toHaveBeenCalled();
   });
 
   it("returns the cached token when it is fresh and the default scope is requested", async () => {
@@ -311,7 +382,7 @@ describe("OidcAuthProvider", () => {
 
   it("uses silent renewal when additional scopes are requested", async () => {
     setOidcEnv();
-    mockOidcAuth.value.signinSilent.mockResolvedValueOnce(
+    mockOidcAuth.value.signinSilent.mockResolvedValue(
       createOidcUser({ accessToken: "extra-scope-token" }),
     );
 
@@ -329,12 +400,18 @@ describe("OidcAuthProvider", () => {
     await waitFor(() => {
       expect(document.body.dataset.oidcToken).toBe("extra-scope-token");
     });
+
+    fireEvent.click(screen.getByText("capture token"));
+
+    await waitFor(() => {
+      expect(mockOidcAuth.value.signinSilent).toHaveBeenCalledTimes(1);
+    });
     expect(mockOidcAuth.value.signinSilent).toHaveBeenCalledWith({
       scope: "openid profile email api://nachet/access_as_user custom-scope",
     });
   });
 
-  it("starts sign-in when silent token renewal returns no fresh token", async () => {
+  it("does not redirect automatically when silent renewal returns no fresh token", async () => {
     setOidcEnv();
     mockOidcAuth.value.user = createOidcUser({
       expired: true,
@@ -354,10 +431,11 @@ describe("OidcAuthProvider", () => {
     fireEvent.click(screen.getByText("capture token"));
 
     await waitFor(() => {
-      expect(mockOidcAuth.value.signinRedirect).toHaveBeenCalledWith({
-        scope: "openid profile email api://nachet/access_as_user",
-      });
+      expect(document.body.dataset.oidcTokenError).toBe(
+        "OIDC silent token renewal did not return a usable access token.",
+      );
     });
+    expect(mockOidcAuth.value.signinRedirect).not.toHaveBeenCalled();
   });
 
   it("shares expired-token recovery across concurrent requests", async () => {
@@ -392,10 +470,10 @@ describe("OidcAuthProvider", () => {
     rejectRenewal(new Error("silent renewal failed"));
 
     await waitFor(() => {
-      expect(mockOidcAuth.value.signinRedirect).toHaveBeenCalledTimes(1);
-      expect(mockOidcAuth.value.signinRedirect).toHaveBeenCalledWith({
-        scope: "openid profile email api://nachet/access_as_user",
-      });
+      expect(document.body.dataset.concurrentTokenResults).toBe(
+        "rejected,rejected",
+      );
     });
+    expect(mockOidcAuth.value.signinRedirect).not.toHaveBeenCalled();
   });
 });
