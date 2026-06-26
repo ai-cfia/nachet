@@ -70,29 +70,32 @@ class ErrorLogger {
         "X-Correlation-ID": this.getCorrelationId(),
       };
 
-      // Try to get access token if token provider is available
-      if (this.tokenProvider) {
-        try {
-          const token = await this.tokenProvider();
-          if (token) {
-            headers["Authorization"] = `Bearer ${token}`;
-          }
-        } catch (tokenError) {
-          // Backend logging is protected when the auth bridge is active.
-          // Keep console fallback rather than posting an unauthenticated log.
-          console.warn(
-            "Skipping backend log submission because log auth failed:",
-            tokenError,
-          );
-          return;
-        }
+      if (!this.tokenProvider) {
+        console.warn(
+          "Skipping backend log submission because log auth is not initialized.",
+        );
+        return;
+      }
 
-        if (!headers.Authorization) {
-          console.warn(
-            "Skipping backend log submission because no auth token is available.",
-          );
-          return;
+      try {
+        const token = await this.tokenProvider();
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
         }
+      } catch (tokenError) {
+        // Keep console fallback rather than posting an unauthenticated log.
+        console.warn(
+          "Skipping backend log submission because log auth failed:",
+          tokenError,
+        );
+        return;
+      }
+
+      if (!headers.Authorization) {
+        console.warn(
+          "Skipping backend log submission because no auth token is available.",
+        );
+        return;
       }
 
       await axios.post(this.apiEndpoint, logData, {

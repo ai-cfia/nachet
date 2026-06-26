@@ -14,6 +14,7 @@ describe("ErrorLogger (Singleton)", () => {
   beforeEach(() => {
     // Reset mocks
     vi.clearAllMocks();
+    errorLogger.setTokenProvider(vi.fn().mockResolvedValue("test-token"));
 
     // Mock axios.post
     (axios.post as any).mockResolvedValue({ data: { success: true } });
@@ -58,7 +59,7 @@ describe("ErrorLogger (Singleton)", () => {
       );
 
       // Reset token provider
-      errorLogger.setTokenProvider(null as any);
+      errorLogger.setTokenProvider(vi.fn().mockResolvedValue("test-token"));
     });
   });
 
@@ -199,7 +200,7 @@ describe("ErrorLogger (Singleton)", () => {
       expect(axios.post).not.toHaveBeenCalled();
 
       // Reset token provider
-      errorLogger.setTokenProvider(null as any);
+      errorLogger.setTokenProvider(vi.fn().mockResolvedValue("test-token"));
     });
 
     it("should skip backend logging if token provider returns null", async () => {
@@ -214,7 +215,18 @@ describe("ErrorLogger (Singleton)", () => {
       expect(axios.post).not.toHaveBeenCalled();
 
       // Reset token provider
+      errorLogger.setTokenProvider(vi.fn().mockResolvedValue("test-token"));
+    });
+
+    it("should skip backend logging if token provider is not initialized", async () => {
       errorLogger.setTokenProvider(null as any);
+
+      await errorLogger.logError("Test");
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "Skipping backend log submission because log auth is not initialized.",
+      );
+      expect(axios.post).not.toHaveBeenCalled();
     });
   });
 

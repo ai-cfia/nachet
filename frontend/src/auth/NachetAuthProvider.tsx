@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from "react";
+import { useLayoutEffect, type ReactNode } from "react";
 import { type PublicClientApplication } from "@azure/msal-browser";
 import { MsalProvider } from "@azure/msal-react";
 import { NachetAuthContext, useNachetAuth } from "./NachetAuthContext";
@@ -17,7 +17,7 @@ export interface NachetAuthProviderProps {
 const AuthApiBridge = () => {
   const { getAccessToken } = useNachetAuth();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     initializeApi((options) => getAccessToken(undefined, options));
     errorLogger.setTokenProvider(async () => getAccessToken());
 
