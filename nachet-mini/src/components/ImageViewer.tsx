@@ -5,6 +5,7 @@ import { getUnscaledCoordinates, getScaledBounds } from "@common/imageutils";
 import InferenceOverlay from "@components/InferenceOverlay";
 import { useIsPortrait } from "@hooks/useIsPortrait";
 import { useBoxEditStore, generateUserBoxId } from "@stores/useBoxEditStore";
+import { useInferenceStore } from "@stores/useInferenceStore";
 
 interface Props {
   src: string | undefined;
@@ -18,6 +19,19 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const isPortrait = useIsPortrait();
+
+  // DFF concept heatmaps (keyed "imageIndex:modelConfigId:boxId"); the active
+  // result key gives the "imageIndex:modelConfigId" prefix for the shown result.
+  // `dffConcepts` = the colored concept stack; `dffJet` = the single jet-heatmap
+  // concept (the two are mutually exclusive modes for the active run).
+  const dffResults = useInferenceStore((s) => s.dffResults);
+  const dffConcepts = useInferenceStore((s) => s.dffConcepts);
+  const dffJet = useInferenceStore((s) => s.dffJet);
+  const activeResultKey = useInferenceStore((s) => s.activeResultKey);
+  const activeConcepts = activeResultKey
+    ? Array.from(dffConcepts.get(activeResultKey) ?? [])
+    : [];
+  const jetConcept = activeResultKey ? dffJet.get(activeResultKey) : undefined;
 
   // Box edit store
   const isEditing = useBoxEditStore((s) => s.isEditing);
@@ -244,6 +258,13 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
                 minBoxSize={result?.minBoxSize ?? 0}
                 editMode={isEditing}
                 isEditSelected={isEditing && selectedBoxIndex === i}
+                dff={
+                  !isEditing && activeResultKey
+                    ? dffResults.get(`${activeResultKey}:${box.boxId}`)
+                    : undefined
+                }
+                activeConcepts={isEditing ? undefined : activeConcepts}
+                jetConcept={isEditing ? undefined : jetConcept}
                 onBoxUpdate={isEditing ? updateBox : undefined}
                 onBoxDelete={isEditing ? deleteBox : undefined}
                 onBoxSelect={isEditing ? setSelectedBoxIndex : undefined}

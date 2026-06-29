@@ -15,6 +15,8 @@ import {
   useRef,
 } from "react";
 import type { InferenceBox } from "@common/types";
+import type { DffBoxResult } from "@stores/useInferenceStore";
+import { conceptColorRgb, jetColor } from "@common/dffColors";
 import { getScaledBounds, getUnscaledCoordinates } from "@common/imageutils";
 import { useIsPortrait } from "@hooks/useIsPortrait";
 import {
@@ -54,6 +56,12 @@ interface Props {
   minBoxSize: number;
   editMode?: boolean;
   isEditSelected?: boolean;
+  /** DFF concept heatmaps for this box (when the patched classifier is active). */
+  dff?: DffBoxResult;
+  /** Which concept indices to overlay on this box (empty/undefined = none). */
+  activeConcepts?: number[];
+  /** When set, show only this concept as a jet (blue→red) heatmap instead. */
+  jetConcept?: number;
   onBoxUpdate?: (index: number, box: InferenceBox) => void;
   onBoxDelete?: (index: number) => void;
   onBoxSelect?: (index: number) => void;
@@ -78,6 +86,9 @@ const InferenceOverlay = ({
   minBoxSize,
   editMode = false,
   isEditSelected = false,
+  dff,
+  activeConcepts,
+  jetConcept,
   onBoxUpdate,
   onBoxDelete,
   onBoxSelect,
@@ -93,6 +104,10 @@ const InferenceOverlay = ({
   const [isDragging, setIsDragging] = useState(false);
   const [resizeHandle, setResizeHandle] = useState<ResizeHandle>(null);
   const dragStart = useRef({ mouseX: 0, mouseY: 0, box: box });
+
+  // DFF concept overlay canvas; ImageViewer passes the box's heatmaps plus the
+  // set of active concept indices (toggled per concept in the Images panel).
+  const dffCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const baseZ = index;
   const zIndex = baseZ + zOffset + (isEditSelected ? 100 : 0);
@@ -122,6 +137,97 @@ const InferenceOverlay = ({
     },
     [canvasWidth, canvasHeight, imageWidth, imageHeight],
   );
+
+  // Render the DFF overlay. Two modes:
+  //  - jet: a single concept as a blue→red heatmap.
+  //  - stack: color each cell by whichever of the toggled-on concepts is
+  //    strongest there (one concept -> its smooth map; several -> a clean
+  //    dominant-per-cell combined map, no wash).
+  // The 12x12 heatmap is bilinearly upsampled to a fine grid *before* coloring,
+  // so the jet ramp interpolates in value space (smooth blue→red) instead of
+  // canvas-blending final colors (which looks blocky/muddy).
+  useEffect(() => {
+    const canvas = dffCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!dff || editMode) return;
+
+    const g = dff.grid;
+    const COLOR_ALPHA = 215; // colored stack (per-cell dominant concept)
+    const JET_ALPHA = 140; // jet heatmap (~0.55, matches the old seed cutouts)
+    const F = 192; // fine grid side for smooth value-space interpolation
+    const stack = activeConcepts ?? [];
+    const jc = jetConcept;
+    const jetHeat =
+      jc !== undefined && dff.heatmaps[jc]?.length === g * g
+        ? dff.heatmaps[jc]
+        : undefined;
+    if (!jetHeat && stack.length === 0) return;
+
+    // Bilinear sample of a (g x g) heatmap at fractional (fx, fy) in [0, g-1].
+    const sample = (heat: Float32Array | number[], fx: number, fy: number) => {
+      const x0 = Math.floor(fx);
+      const y0 = Math.floor(fy);
+      const x1 = Math.min(x0 + 1, g - 1);
+      const y1 = Math.min(y0 + 1, g - 1);
+      const dx = fx - x0;
+      const dy = fy - y0;
+      return (
+        heat[y0 * g + x0] * (1 - dx) * (1 - dy) +
+        heat[y0 * g + x1] * dx * (1 - dy) +
+        heat[y1 * g + x0] * (1 - dx) * dy +
+        heat[y1 * g + x1] * dx * dy
+      );
+    };
+
+    const fine = document.createElement("canvas");
+    fine.width = F;
+    fine.height = F;
+    const fctx = fine.getContext("2d");
+    if (!fctx) return;
+    const img = fctx.createImageData(F, F);
+    const span = g - 1;
+
+    for (let j = 0; j < F; j++) {
+      const fy = (j / (F - 1)) * span;
+      for (let i = 0; i < F; i++) {
+        const fx = (i / (F - 1)) * span;
+        const o = (j * F + i) * 4;
+        if (jetHeat) {
+          const [r, gg, b] = jetColor(sample(jetHeat, fx, fy));
+          img.data[o] = r;
+          img.data[o + 1] = gg;
+          img.data[o + 2] = b;
+          img.data[o + 3] = JET_ALPHA;
+        } else {
+          let best = -1;
+          let bestVal = -1;
+          for (const c of stack) {
+            const heat = dff.heatmaps[c];
+            if (!heat || g * g !== heat.length) continue;
+            const v = sample(heat, fx, fy);
+            if (v > bestVal) {
+              bestVal = v;
+              best = c;
+            }
+          }
+          if (best < 0) continue;
+          const [r, gg, b] = conceptColorRgb(best);
+          img.data[o] = r;
+          img.data[o + 1] = gg;
+          img.data[o + 2] = b;
+          img.data[o + 3] = Math.round(
+            Math.max(0, Math.min(1, bestVal)) * COLOR_ALPHA,
+          );
+        }
+      }
+    }
+    fctx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(fine, 0, 0, canvas.width, canvas.height);
+  }, [dff, activeConcepts, jetConcept, editMode, scaledWidth, scaledHeight]);
 
   // Window-level mouse handlers for drag/resize
   useEffect(() => {
@@ -409,6 +515,28 @@ const InferenceOverlay = ({
       sx={sx}
       onMouseDown={editMode ? handleBoxMouseDown : undefined}
     >
+      {/* DFF overlay: colored concept stack or a single jet heatmap */}
+      {dff &&
+        !editMode &&
+        (jetConcept !== undefined ||
+          (activeConcepts && activeConcepts.length > 0)) && (
+          <canvas
+            ref={dffCanvasRef}
+            data-testid={`dff-overlay-${index}`}
+            width={Math.max(1, Math.round(scaledWidth))}
+            height={Math.max(1, Math.round(scaledHeight))}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              pointerEvents: "none",
+              zIndex: 250,
+            }}
+          />
+        )}
+
       {/* box number (+ spinner when classifying) */}
       <Box
         data-testid={`inference-overlay-label-${index}`}

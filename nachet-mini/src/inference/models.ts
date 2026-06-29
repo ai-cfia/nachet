@@ -71,6 +71,19 @@ export type WorkerOutMessage =
       modelConfigId: string;
       result: InferenceResult;
     }
+  | {
+      // Deep Feature Factorization concept heatmaps for one classified box.
+      // Streamed separately from the classification result so the boxes render
+      // immediately and DFF overlays arrive as each seed is factorized.
+      type: "dff-result";
+      imageIndex: number;
+      modelConfigId: string;
+      boxId: string;
+      /** spatial grid side (e.g. 12 → 12×12 = 144 tokens). */
+      grid: number;
+      /** K concept heatmaps, each `grid*grid` floats normalized to [0, 1]. */
+      heatmaps: number[][];
+    }
   | { type: "error"; message: string };
 
 // ---------------------------------------------------------------------------
@@ -107,6 +120,17 @@ export const CLASSIFIER_MODELS: ClassifierModelEntry[] = [
   {
     id: "swin-L 101spp",
     model: "cfia-ai-lab/swin-large-patch4-window12-384-in22k-101spp-ft",
+    topK: 5,
+    minBoxSize: 384,
+  },
+  {
+    id: "swin-L 101spp DFF",
+    // Same 101spp model, but this repo's onnx/model.onnx is the patched FP16
+    // export that also outputs `swin_layernorm`. Selecting this entry surfaces
+    // the Deep Feature Factorization UI (concept-map toggle + per-seed cutouts);
+    // the plain "swin-L 101spp" entry above has no such output, so that UI stays
+    // hidden for it.
+    model: "cfia-ai-lab/swin-large-patch4-window12-384-in22k-101spp-ft-dff",
     topK: 5,
     minBoxSize: 384,
   },

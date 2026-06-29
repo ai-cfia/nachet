@@ -12,6 +12,12 @@ import {
 } from "@huggingface/transformers";
 import type { ModelConfig, WorkerInMessage, WorkerOutMessage } from "./models";
 import type { InferenceResult, InferenceBox } from "@common/types";
+import { computeDff } from "./dff";
+
+// Deep Feature Factorization: number of concepts (matches the nachet-model-ccds
+// GradCAM/DFF notebook). DFF runs only when the loaded classifier exposes the
+// `swin_layernorm` output (the patched model); otherwise it's silently skipped.
+const DFF_COMPONENTS = 4;
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -672,14 +678,21 @@ const classifyBoxes = async (
 
       const cropImage = await RawImage.read(cropUrl);
       const clsInputs = await classifierProcessor(cropImage);
-      const clsOutputs = await classifierModel(clsInputs);
 
-      const logits = clsOutputs.logits[0];
-      const probs = new Tensor(
-        "float32",
-        softmax(logits.data as Float32Array),
-        logits.dims,
-      );
+      // Run the underlying ORT session directly (instead of the high-level
+      // classifierModel(clsInputs)) so we can also read the intermediate
+      // `swin_layernorm` output for DFF. The transformers.js wrapper keeps only
+      // recognized outputs (logits) and drops the rest. logits are identical.
+      const session = classifierModel.sessions.model;
+      const pv = clsInputs.pixel_values;
+      const rawOut = await session.run({ pixel_values: pv.ort_tensor ?? pv });
+
+      // squeeze batch dim to match the previous `clsOutputs.logits[0]` shape
+      const logits = {
+        data: rawOut.logits.data as Float32Array,
+        dims: [rawOut.logits.dims[rawOut.logits.dims.length - 1]],
+      };
+      const probs = new Tensor("float32", softmax(logits.data), logits.dims);
       const [topValues, topIndices] = await topk(probs, config.classifierTopK);
 
       const clsId2label = classifierModel.config?.id2label ?? {};
@@ -722,6 +735,32 @@ const classifyBoxes = async (
           minBoxSize: config.minBoxSize,
         },
       });
+
+      // ── Deep Feature Factorization ───────────────────────────────────────
+      // Only when the loaded classifier is the patched model exposing
+      // `swin_layernorm` (1, tokens, channels). Streamed per box so heatmaps
+      // arrive after each seed is classified.
+      const featTensor = rawOut.swin_layernorm as
+        | { data?: Float32Array; dims?: number[] }
+        | undefined;
+      if (featTensor?.data && featTensor.dims?.length === 3) {
+        try {
+          const [, tokens, channels] = featTensor.dims;
+          const dff = computeDff(featTensor.data, tokens, channels, {
+            k: DFF_COMPONENTS,
+          });
+          send({
+            type: "dff-result",
+            imageIndex,
+            modelConfigId,
+            boxId: boxes[i].boxId,
+            grid: dff.grid,
+            heatmaps: dff.heatmaps.map((h) => Array.from(h)),
+          });
+        } catch (e) {
+          console.warn("[worker] DFF failed for box", i, e);
+        }
+      }
     } finally {
       if (cropUrl) URL.revokeObjectURL(cropUrl);
     }

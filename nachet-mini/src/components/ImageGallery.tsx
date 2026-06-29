@@ -23,6 +23,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import type { Images, InferenceResult } from "@common/types";
 import { resultKey } from "@stores/useInferenceStore";
 import { useInferenceQueueStore } from "@stores/useInferenceQueueStore";
+import ConceptLayerToggles from "@components/ConceptLayerToggles";
 import { useTranslation } from "react-i18next";
 import { useState, useCallback, useMemo } from "react";
 interface Props {
@@ -433,84 +434,92 @@ const ImageGallery = ({
                             })()
                           : "";
                         return (
-                          <Box
-                            key={key}
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.3vw",
-                              pl: "3.5vh",
-                              pr: "0.8vh",
-                              py: "0.4vh",
-                              fontSize: "1.3vh",
-                              cursor: "pointer",
-                              backgroundColor: isActive
-                                ? "#E3F2FD"
-                                : "transparent",
-                              "&:hover": {
+                          <Box key={key}>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "0.3vw",
+                                pl: "3.5vh",
+                                pr: "0.8vh",
+                                py: "0.4vh",
+                                fontSize: "1.3vh",
+                                cursor: "pointer",
                                 backgroundColor: isActive
                                   ? "#E3F2FD"
-                                  : "#F5F5F5",
-                              },
-                              color: "text.secondary",
-                              borderTop: "1px solid #f0f0f0",
-                            }}
-                            role="button"
-                            aria-pressed={isActive}
-                            data-testid={`result-row-${key}`}
-                            onClick={() => onSelectResult(key)}
-                          >
-                            <Checkbox
-                              size="small"
-                              checked={checkedResults.has(key)}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => {
-                                const next = new Set(checkedResults);
-                                if (e.target.checked) next.add(key);
-                                else next.delete(key);
-                                setCheckedResults(next);
-                              }}
-                              sx={{
-                                padding: 0,
-                                pl: "0px",
-                                ml: "0px",
-                                "& .MuiSvgIcon-root": { fontSize: "2.1vh" },
-                              }}
-                              slotProps={{
-                                input: {
-                                  "aria-label": t("imageGallery.selectResult", {
-                                    modelId: displayModelId,
-                                  }),
+                                  : "transparent",
+                                "&:hover": {
+                                  backgroundColor: isActive
+                                    ? "#E3F2FD"
+                                    : "#F5F5F5",
                                 },
+                                color: "text.secondary",
+                                borderTop: "1px solid #f0f0f0",
                               }}
-                            />
-                            <ScienceIcon
-                              sx={{ fontSize: "1.8vh", color: "#7b1fa2" }}
-                            />
-                            <Box
-                              sx={{
-                                flex: 1,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
+                              role="button"
+                              aria-pressed={isActive}
+                              data-testid={`result-row-${key}`}
+                              onClick={() => onSelectResult(key)}
                             >
-                              {t("imageGallery.resultEntry", {
-                                modelId: displayModelId,
-                                time: timeLabel,
-                              })}
+                              <Checkbox
+                                size="small"
+                                checked={checkedResults.has(key)}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => {
+                                  const next = new Set(checkedResults);
+                                  if (e.target.checked) next.add(key);
+                                  else next.delete(key);
+                                  setCheckedResults(next);
+                                }}
+                                sx={{
+                                  padding: 0,
+                                  pl: "0px",
+                                  ml: "0px",
+                                  "& .MuiSvgIcon-root": { fontSize: "2.1vh" },
+                                }}
+                                slotProps={{
+                                  input: {
+                                    "aria-label": t(
+                                      "imageGallery.selectResult",
+                                      {
+                                        modelId: displayModelId,
+                                      },
+                                    ),
+                                  },
+                                }}
+                              />
+                              <ScienceIcon
+                                sx={{ fontSize: "1.8vh", color: "#7b1fa2" }}
+                              />
+                              <Box
+                                sx={{
+                                  flex: 1,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {t("imageGallery.resultEntry", {
+                                  modelId: displayModelId,
+                                  time: timeLabel,
+                                })}
+                              </Box>
+                              <Box
+                                sx={{
+                                  fontSize: "1.35vh",
+                                  color: "text.disabled",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {t("imageGallery.boxes", {
+                                  count: result.totalBoxes,
+                                })}
+                              </Box>
                             </Box>
-                            <Box
-                              sx={{
-                                fontSize: "1.35vh",
-                                color: "text.disabled",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {t("imageGallery.boxes", {
-                                count: result.totalBoxes,
-                              })}
-                            </Box>
+                            <ConceptLayerToggles
+                              resultKey={key}
+                              result={result}
+                            />
                           </Box>
                         );
                       })}

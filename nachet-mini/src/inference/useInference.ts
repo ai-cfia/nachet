@@ -20,6 +20,7 @@ export const useInference = (currentIndex: number) => {
 
   const setStatus = useInferenceStore((s) => s.setStatus);
   const setResult = useInferenceStore((s) => s.setResult);
+  const setDffResult = useInferenceStore((s) => s.setDffResult);
   const setActiveResultKey = useInferenceStore((s) => s.setActiveResultKey);
   const setModelLoaded = useInferenceStore((s) => s.setModelLoaded);
   const setModelLoadProgress = useInferenceStore((s) => s.setModelLoadProgress);
@@ -61,6 +62,12 @@ export const useInference = (currentIndex: number) => {
           }
           setStatus("complete");
           break;
+        case "dff-result":
+          setDffResult(msg.imageIndex, msg.modelConfigId, msg.boxId, {
+            grid: msg.grid,
+            heatmaps: msg.heatmaps,
+          });
+          break;
         case "error":
           setError(msg.message);
           setStatus("error");
@@ -82,6 +89,7 @@ export const useInference = (currentIndex: number) => {
   }, [
     setStatus,
     setResult,
+    setDffResult,
     setActiveResultKey,
     setModelLoaded,
     setModelLoadProgress,
