@@ -18,8 +18,6 @@ export const NachetAuthProvider = ({
   msalInstance,
 }: NachetAuthProviderProps) => {
   const configuredProvider = getConfiguredAuthProvider();
-  const oidcApiScopeClaim =
-    import.meta.env.VITE_OIDC_API_SCOPE_CLAIM?.trim() || apiScopeClaim;
 
   switch (configuredProvider) {
     case "msal":
@@ -40,7 +38,7 @@ export const NachetAuthProvider = ({
     case "oidc":
       return (
         <OidcAuthProvider
-          apiScopeClaim={oidcApiScopeClaim}
+          apiScopeClaim={apiScopeClaim}
           authContext={NachetAuthContext}
         >
           {children}

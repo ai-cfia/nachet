@@ -74,12 +74,17 @@ const msalConfig: Configuration = {
 };
 
 const basename = process.env.REACT_APP_BASENAME ?? "/";
-const apiScopeClaim =
+const configuredAuthProvider = getConfiguredAuthProvider();
+const azureApiScopeClaim =
   (import.meta.env.VITE_AZURE_APP_ID_URI ?? "") +
   (import.meta.env.VITE_AZURE_API_SCOPE_CLAIM ?? "");
-const configuredAuthProvider = getConfiguredAuthProvider();
+const oidcApiScopeClaim = import.meta.env.VITE_OIDC_API_SCOPE_CLAIM?.trim();
+const apiScopeClaim =
+  configuredAuthProvider === "oidc" && oidcApiScopeClaim
+    ? oidcApiScopeClaim
+    : azureApiScopeClaim;
 
-console.log("Azure API Scope Claim: ", apiScopeClaim);
+console.log("API Scope Claim: ", apiScopeClaim);
 
 const renderApp = (msalClient?: PublicClientApplication): void => {
   const emotionCache = createEmotionCache();
