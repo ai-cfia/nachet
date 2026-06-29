@@ -1,10 +1,20 @@
-import { useCallback, useMemo, type Context, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type Context,
+  type ReactNode,
+} from "react";
 import {
   WebStorageStateStore,
   type User,
   type UserManagerSettings,
 } from "oidc-client-ts";
-import type { NachetAuthContextValue } from "../NachetAuthContext";
+import type {
+  NachetAuthContextValue,
+  NachetAuthTokenOptions,
+} from "../NachetAuthContext";
 import { AuthProvider } from "./react-oidc-context/AuthProvider";
 import { useAuth as useOidcAuth } from "./react-oidc-context/useAuth";
 
@@ -60,6 +70,8 @@ interface OidcConfig {
   settings: UserManagerSettings;
 }
 
+const TOKEN_EXPIRY_BUFFER_SECONDS = 60;
+
 const buildScope = (baseScope: string, requestedScopes?: string[]): string => {
   const scopes = new Set(
     baseScope
@@ -74,7 +86,7 @@ const buildScope = (baseScope: string, requestedScopes?: string[]): string => {
     }
   });
 
-  return Array.from(scopes).join(" ");
+  return Array.from(scopes).sort().join(" ");
 };
 
 const getStringClaim = (
@@ -86,20 +98,51 @@ const getStringClaim = (
     .find((claimValue): claimValue is string => typeof claimValue === "string");
 };
 
+const getStableUserId = (user: User | null): string | null => {
+  if (user === null) {
+    return null;
+  }
+
+  return (
+    getStringClaim(user.profile as Record<string, unknown>, ["oid", "sub"]) ??
+    null
+  );
+};
+
+const isTokenFresh = (
+  user: User,
+  bufferSeconds = TOKEN_EXPIRY_BUFFER_SECONDS,
+): boolean => {
+  if (!user.access_token || user.expires_at === undefined) {
+    return false;
+  }
+
+  const nowInSeconds = Math.floor(Date.now() / 1000);
+  return user.expires_at - nowInSeconds > bufferSeconds;
+};
+
 const mapUser = (user: User | null) => {
   if (user === null) {
     return null;
   }
 
   const profile = user.profile as Record<string, unknown>;
+  const userId = getStableUserId(user);
   const username =
     getStringClaim(profile, ["preferred_username", "email", "sub"]) ??
     "unknown";
   const name = getStringClaim(profile, ["name"]) ?? username;
 
+  if (!userId) {
+    throw new Error("OIDC user profile is missing a stable user identifier.");
+  }
+
   return {
     username,
     name,
+    userId,
+    // Generic OIDC has no standard member claim; backend auth or claim mapping may own this later.
+    isGuest: true,
     idTokenClaims: profile,
   };
 };
@@ -110,29 +153,106 @@ const OidcAuthBridge = ({
   defaultScope,
 }: OidcAuthBridgeProps) => {
   const oidc = useOidcAuth();
-  const activeAccount = useMemo(() => mapUser(oidc.user), [oidc.user]);
+  const silentRenewPromisesRef = useRef<Map<string, Promise<User | null>>>(
+    new Map(),
+  );
+  const tokenUsersByScopeRef = useRef<Map<string, User>>(new Map());
+  const loginRedirectPromiseRef = useRef<Promise<void> | null>(null);
+  const previousUserIdRef = useRef<string | null>(getStableUserId(oidc.user));
+  const activeAccount = useMemo(
+    () => (oidc.isAuthenticated ? mapUser(oidc.user) : null),
+    [oidc.isAuthenticated, oidc.user],
+  );
+
+  useEffect(() => {
+    const currentUserId = getStableUserId(oidc.user);
+    if (currentUserId !== previousUserIdRef.current) {
+      tokenUsersByScopeRef.current.clear();
+      previousUserIdRef.current = currentUserId;
+    }
+  }, [oidc.user]);
+
+  const signinRedirectOnce = useCallback(
+    (scope: string) => {
+      loginRedirectPromiseRef.current ??= Promise.resolve(
+        oidc.signinRedirect({ scope }),
+      ).finally(() => {
+        loginRedirectPromiseRef.current = null;
+      });
+
+      return loginRedirectPromiseRef.current;
+    },
+    [oidc],
+  );
+
+  const signinSilentOnce = useCallback(
+    (scope: string) => {
+      const existingPromise = silentRenewPromisesRef.current.get(scope);
+      if (existingPromise) {
+        return existingPromise;
+      }
+
+      const renewPromise = oidc.signinSilent({ scope }).finally(() => {
+        silentRenewPromisesRef.current.delete(scope);
+      });
+      silentRenewPromisesRef.current.set(scope, renewPromise);
+
+      return renewPromise;
+    },
+    [oidc],
+  );
 
   const login = useCallback(
     async (scopes?: string[]) => {
-      await oidc.signinRedirect({ scope: buildScope(defaultScope, scopes) });
+      await signinRedirectOnce(buildScope(defaultScope, scopes));
     },
-    [defaultScope, oidc],
+    [defaultScope, signinRedirectOnce],
   );
 
   const logout = useCallback(async () => {
     await oidc.signoutRedirect();
   }, [oidc]);
 
-  const getAccessToken = useCallback(
-    async (scopes?: string[]) => {
-      if (oidc.user?.access_token && !oidc.user.expired) {
-        return oidc.user.access_token;
+  const getCachedUser = useCallback(
+    (scope: string): User | null => {
+      if (scope === defaultScope) {
+        return oidc.user && isTokenFresh(oidc.user) ? oidc.user : null;
       }
 
-      await login(scopes);
-      throw new Error("Redirecting to sign in for a fresh OIDC access token.");
+      const cachedUser = tokenUsersByScopeRef.current.get(scope);
+      if (cachedUser && isTokenFresh(cachedUser)) {
+        return cachedUser;
+      }
+
+      tokenUsersByScopeRef.current.delete(scope);
+      return null;
     },
-    [login, oidc],
+    [defaultScope, oidc.user],
+  );
+
+  const getAccessToken = useCallback(
+    async (scopes?: string[], options?: NachetAuthTokenOptions) => {
+      const requestedScope = buildScope(defaultScope, scopes);
+      const cachedUser = options?.forceRefresh
+        ? null
+        : getCachedUser(requestedScope);
+
+      if (cachedUser?.access_token) {
+        return cachedUser.access_token;
+      }
+
+      const renewedUser = await signinSilentOnce(requestedScope);
+
+      if (renewedUser && isTokenFresh(renewedUser)) {
+        tokenUsersByScopeRef.current.set(requestedScope, renewedUser);
+        return renewedUser.access_token;
+      }
+
+      throw new Error(
+        "OIDC silent token renewal did not return a usable access token.",
+      );
+    },
+    [defaultScope, getCachedUser, signinSilentOnce],
   );
 
   const authValue = useMemo<NachetAuthContextValue>(

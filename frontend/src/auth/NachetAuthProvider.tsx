@@ -4,11 +4,12 @@ import { MsalProvider } from "@azure/msal-react";
 import { NachetAuthContext } from "./NachetAuthContext";
 import { MsalAuthProvider } from "./msal/MsalAuthProvider";
 import { OidcAuthProvider } from "./oidc/OidcAuthProvider";
+import { getConfiguredAuthProvider } from "./authProviderConfig";
 
 export interface NachetAuthProviderProps {
   apiScopeClaim: string;
   children: ReactNode;
-  msalInstance: PublicClientApplication;
+  msalInstance?: PublicClientApplication;
 }
 
 export const NachetAuthProvider = ({
@@ -16,37 +17,32 @@ export const NachetAuthProvider = ({
   children,
   msalInstance,
 }: NachetAuthProviderProps) => {
-  const configuredProvider = (import.meta.env.VITE_AUTH_PROVIDER ?? "msal")
-    .trim()
-    .toLowerCase();
-  const oidcApiScopeClaim =
-    import.meta.env.VITE_OIDC_API_SCOPE_CLAIM?.trim() || apiScopeClaim;
+  const configuredProvider = getConfiguredAuthProvider();
 
-  if (configuredProvider === "msal") {
-    return (
-      <MsalProvider instance={msalInstance}>
-        <MsalAuthProvider
+  switch (configuredProvider) {
+    case "msal":
+      if (!msalInstance) {
+        throw new Error("MSAL auth provider requires an MSAL instance.");
+      }
+
+      return (
+        <MsalProvider instance={msalInstance}>
+          <MsalAuthProvider
+            apiScopeClaim={apiScopeClaim}
+            authContext={NachetAuthContext}
+          >
+            {children}
+          </MsalAuthProvider>
+        </MsalProvider>
+      );
+    case "oidc":
+      return (
+        <OidcAuthProvider
           apiScopeClaim={apiScopeClaim}
           authContext={NachetAuthContext}
         >
           {children}
-        </MsalAuthProvider>
-      </MsalProvider>
-    );
+        </OidcAuthProvider>
+      );
   }
-
-  if (configuredProvider === "oidc") {
-    return (
-      <OidcAuthProvider
-        apiScopeClaim={oidcApiScopeClaim}
-        authContext={NachetAuthContext}
-      >
-        {children}
-      </OidcAuthProvider>
-    );
-  }
-
-  throw new Error(
-    `Unsupported auth provider '${configuredProvider}'. Use 'msal' or 'oidc'.`,
-  );
 };
