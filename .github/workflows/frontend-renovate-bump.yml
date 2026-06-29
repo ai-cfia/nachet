@@ -2,8 +2,7 @@
 name: Frontend Renovate
 
 permissions:
-  actions: write
-  contents: write
+  contents: read
   pull-requests: read
 
 concurrency:
@@ -39,6 +38,9 @@ jobs:
     needs: [versions]
     if: ${{ !cancelled() && needs.versions.result == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v6
