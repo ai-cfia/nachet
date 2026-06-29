@@ -26,7 +26,7 @@ defaults:
 
 jobs:
   versions:
-    if: ${{ github.event.pull_request.user.login == 'renovate[bot]' }}
+    if: ${{ github.event.pull_request.user.login == 'renovate[bot]' || github.event.pull_request.user.login == 'Slumberdac' }}
     uses: ./.github/workflows/reusable-frontend-versions.yml
     with:
       working-directory: nachet-mini

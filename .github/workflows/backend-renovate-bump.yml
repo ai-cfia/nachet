@@ -28,7 +28,7 @@ defaults:
 jobs:
   bump-version:
     name: Bump version
-    if: ${{ github.event.pull_request.user.login == 'renovate[bot]' }}
+    if: ${{ github.event.pull_request.user.login == 'renovate[bot]' || github.event.pull_request.user.login == 'Slumberdac' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR branch
@@ -68,4 +68,3 @@ jobs:
           gh workflow run backend-lint.yml --ref "${{ github.head_ref }}"
         env:
           GH_TOKEN: ${{ github.token }}
-          
