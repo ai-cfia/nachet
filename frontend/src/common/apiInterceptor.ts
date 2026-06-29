@@ -54,13 +54,17 @@ export const setupAxiosInterceptor = (getAccessToken: GetAccessToken): void => {
 
   requestInterceptorId = axios.interceptors.request.use(
     async (config: NachetAuthRequestConfig) => {
-      if (!config.nachetAuthRequired || config.headers?.Authorization) {
+      if (
+        !requestRequiresNachetAuth(config) ||
+        config.headers.has("Authorization")
+      ) {
         return config;
       }
 
-      config.headers.Authorization = `Bearer ${assertAccessToken(
-        await getAccessToken(),
-      )}`;
+      config.headers.set(
+        "Authorization",
+        `Bearer ${assertAccessToken(await getAccessToken())}`,
+      );
       return config;
     },
     (error) => Promise.reject(error),
@@ -89,9 +93,7 @@ export const setupAxiosInterceptor = (getAccessToken: GetAccessToken): void => {
           );
 
           // Update the authorization header with new token
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          }
+          originalRequest.headers.set("Authorization", `Bearer ${accessToken}`);
 
           // Retry the original request with new token
           return axios(originalRequest);

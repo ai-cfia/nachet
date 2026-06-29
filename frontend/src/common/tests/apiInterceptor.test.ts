@@ -36,7 +36,7 @@ const unauthorizedResponse = (requestConfig: InternalAxiosRequestConfig) => ({
 const getAuthorizationHeader = (
   requestConfig: InternalAxiosRequestConfig,
 ): string | undefined => {
-  const authorizationHeader = requestConfig.headers.Authorization;
+  const authorizationHeader = requestConfig.headers.get("Authorization");
   return typeof authorizationHeader === "string"
     ? authorizationHeader
     : undefined;
@@ -75,6 +75,21 @@ describe("apiInterceptor", () => {
 
     expect(getAccessToken).not.toHaveBeenCalled();
     expect(response.config.headers.Authorization).toBeUndefined();
+  });
+
+  it("does not overwrite an existing authorization header", async () => {
+    const getAccessToken = vi.fn().mockResolvedValue("access-token");
+    setupAxiosInterceptor(getAccessToken);
+
+    const response = await runRequest({
+      nachetAuthRequired: true,
+      headers: { authorization: "Bearer explicit-token" },
+    });
+
+    expect(getAccessToken).not.toHaveBeenCalled();
+    expect(getAuthorizationHeader(response.config)).toBe(
+      "Bearer explicit-token",
+    );
   });
 
   it("fails closed when a protected request cannot get a token", async () => {

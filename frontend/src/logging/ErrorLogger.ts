@@ -14,6 +14,22 @@ interface LogEntry {
 
 type TokenProvider = () => Promise<string | null>;
 
+const formatRejectionReason = (reason: unknown): string => {
+  if (reason instanceof Error) {
+    return reason.message;
+  }
+
+  if (typeof reason === "string") {
+    return reason;
+  }
+
+  try {
+    return JSON.stringify(reason) ?? String(reason);
+  } catch {
+    return String(reason);
+  }
+};
+
 class ErrorLogger {
   private apiEndpoint: string;
   private sessionId: string;
@@ -183,11 +199,16 @@ class ErrorLogger {
   // Log unhandled promise rejections
   public setupGlobalHandlers(): void {
     window.addEventListener("unhandledrejection", (event) => {
-      this.logError(
-        `Unhandled Promise Rejection: ${event.reason}`,
-        event.reason instanceof Error
-          ? event.reason
-          : new Error(String(event.reason)),
+      const rejectionReason = event.reason;
+      const rejectionMessage = formatRejectionReason(rejectionReason);
+      const rejectionError =
+        rejectionReason instanceof Error
+          ? rejectionReason
+          : new Error(rejectionMessage);
+
+      void this.logError(
+        `Unhandled Promise Rejection: ${rejectionMessage}`,
+        rejectionError,
         { promise: event.promise },
       );
     });
