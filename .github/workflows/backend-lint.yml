@@ -26,6 +26,7 @@ on:
       - "backend/**"
       - "backend/pyproject.toml"
       - ".github/workflows/backend-*"
+  workflow_dispatch:
 
 defaults:
   run:
@@ -96,4 +97,3 @@ jobs:
     secrets: inherit
     with:
       working-directory: backend
-      

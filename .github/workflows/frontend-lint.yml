@@ -25,6 +25,7 @@ on:
     paths:
       - "frontend/**"
       - ".github/workflows/frontend-*.yml"
+  workflow_dispatch:
 
 env:
   IS_MONOREPO: true
