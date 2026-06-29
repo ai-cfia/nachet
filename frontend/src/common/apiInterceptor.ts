@@ -7,6 +7,10 @@ interface NachetAuthRequestConfig extends InternalAxiosRequestConfig {
   nachetAuthRequired?: boolean;
 }
 
+interface RetriableNachetAuthRequestConfig extends NachetAuthRequestConfig {
+  _retry?: boolean;
+}
+
 interface AccessTokenOptions {
   forceRefresh?: boolean;
 }
@@ -22,11 +26,9 @@ const assertAccessToken = (accessToken: string): string => {
 };
 
 const requestRequiresNachetAuth = (
-  request?: InternalAxiosRequestConfig,
-): request is NachetAuthRequestConfig => {
-  return Boolean(
-    (request as NachetAuthRequestConfig | undefined)?.nachetAuthRequired,
-  );
+  request?: NachetAuthRequestConfig,
+): boolean => {
+  return request?.nachetAuthRequired === true;
 };
 
 export const clearAxiosInterceptors = (): void => {
@@ -68,15 +70,16 @@ export const setupAxiosInterceptor = (getAccessToken: GetAccessToken): void => {
   responseInterceptorId = axios.interceptors.response.use(
     (response) => response, // Pass through successful responses
     async (error: AxiosError) => {
-      const originalRequest = error.config as InternalAxiosRequestConfig & {
-        _retry?: boolean;
-      };
+      const originalRequest = error.config as
+        | RetriableNachetAuthRequestConfig
+        | undefined;
 
       // Check if this is a 401 error and we haven't already retried
       if (
         error.response?.status === 401 &&
+        originalRequest &&
         requestRequiresNachetAuth(originalRequest) &&
-        !originalRequest?._retry
+        !originalRequest._retry
       ) {
         originalRequest._retry = true;
 

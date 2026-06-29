@@ -1,21 +1,54 @@
-import axios from "axios";
+import axios, {
+  type AxiosAdapter,
+  type AxiosRequestConfig,
+  type InternalAxiosRequestConfig,
+} from "axios";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setupAxiosInterceptor } from "../apiInterceptor";
 import { clearApiAuthentication, fetchDevices, initializeApi } from "../api";
 
-const runRequest = async (config: Record<string, unknown>) => {
+interface NachetAuthAxiosRequestConfig extends AxiosRequestConfig {
+  nachetAuthRequired?: boolean;
+}
+
+const okResponse = (
+  requestConfig: InternalAxiosRequestConfig,
+  data: unknown = null,
+) => ({
+  data,
+  status: 200,
+  statusText: "OK",
+  headers: {},
+  config: requestConfig,
+});
+
+const unauthorizedResponse = (requestConfig: InternalAxiosRequestConfig) => ({
+  config: requestConfig,
+  response: {
+    data: null,
+    status: 401,
+    statusText: "Unauthorized",
+    headers: {},
+    config: requestConfig,
+  },
+});
+
+const getAuthorizationHeader = (
+  requestConfig: InternalAxiosRequestConfig,
+): string | undefined => {
+  const authorizationHeader = requestConfig.headers.Authorization;
+  return typeof authorizationHeader === "string"
+    ? authorizationHeader
+    : undefined;
+};
+
+const runRequest = async (config: NachetAuthAxiosRequestConfig) => {
   return axios({
     method: "get",
     url: "https://api.example.test/protected",
     ...config,
-    adapter: async (requestConfig: any) => ({
-      data: null,
-      status: 200,
-      statusText: "OK",
-      headers: {},
-      config: requestConfig,
-    }),
-  } as any);
+    adapter: async (requestConfig) => okResponse(requestConfig),
+  });
 };
 
 describe("apiInterceptor", () => {
@@ -60,19 +93,10 @@ describe("apiInterceptor", () => {
       axios({
         method: "get",
         url: "https://example.test/not-nachet",
-        adapter: async (requestConfig: any) => {
-          return Promise.reject({
-            config: requestConfig,
-            response: {
-              data: null,
-              status: 401,
-              statusText: "Unauthorized",
-              headers: {},
-              config: requestConfig,
-            },
-          });
+        adapter: async (requestConfig) => {
+          return Promise.reject(unauthorizedResponse(requestConfig));
         },
-      } as any),
+      }),
     ).rejects.toMatchObject({
       response: { status: 401 },
     });
@@ -85,37 +109,26 @@ describe("apiInterceptor", () => {
       .fn()
       .mockResolvedValueOnce("initial-token")
       .mockResolvedValueOnce("retry-token");
-    const authorizationHeaders: string[] = [];
+    const authorizationHeaders: Array<string | undefined> = [];
     setupAxiosInterceptor(getAccessToken);
 
-    const response = await axios({
+    const retryAdapter: AxiosAdapter = async (requestConfig) => {
+      authorizationHeaders.push(getAuthorizationHeader(requestConfig));
+      if (authorizationHeaders.length === 1) {
+        return Promise.reject(unauthorizedResponse(requestConfig));
+      }
+
+      return okResponse(requestConfig, { ok: true });
+    };
+
+    const requestConfig: NachetAuthAxiosRequestConfig = {
       method: "get",
       url: "https://api.example.test/protected",
       nachetAuthRequired: true,
-      adapter: async (requestConfig: any) => {
-        authorizationHeaders.push(requestConfig.headers.Authorization);
-        if (authorizationHeaders.length === 1) {
-          return Promise.reject({
-            config: requestConfig,
-            response: {
-              data: null,
-              status: 401,
-              statusText: "Unauthorized",
-              headers: {},
-              config: requestConfig,
-            },
-          });
-        }
+      adapter: retryAdapter,
+    };
 
-        return {
-          data: { ok: true },
-          status: 200,
-          statusText: "OK",
-          headers: {},
-          config: requestConfig,
-        };
-      },
-    } as any);
+    const response = await axios(requestConfig);
 
     expect(response.data).toEqual({ ok: true });
     expect(getAccessToken).toHaveBeenCalledTimes(2);
@@ -127,16 +140,10 @@ describe("apiInterceptor", () => {
 
   it("attaches tokens to API helper requests through initializeApi", async () => {
     const getAccessToken = vi.fn().mockResolvedValue("api-helper-token");
-    const authorizationHeaders: string[] = [];
-    axios.defaults.adapter = async (requestConfig: any) => {
-      authorizationHeaders.push(requestConfig.headers.Authorization);
-      return {
-        data: { devices: [] },
-        status: 200,
-        statusText: "OK",
-        headers: {},
-        config: requestConfig,
-      };
+    const authorizationHeaders: Array<string | undefined> = [];
+    axios.defaults.adapter = async (requestConfig) => {
+      authorizationHeaders.push(getAuthorizationHeader(requestConfig));
+      return okResponse(requestConfig, { devices: [] });
     };
 
     initializeApi(getAccessToken);
@@ -150,38 +157,27 @@ describe("apiInterceptor", () => {
 
   it("retries stale explicit-token requests with a replacement token", async () => {
     const getAccessToken = vi.fn().mockResolvedValue("retry-token");
-    const authorizationHeaders: string[] = [];
+    const authorizationHeaders: Array<string | undefined> = [];
     setupAxiosInterceptor(getAccessToken);
 
-    const response = await axios({
+    const retryAdapter: AxiosAdapter = async (requestConfig) => {
+      authorizationHeaders.push(getAuthorizationHeader(requestConfig));
+      if (authorizationHeaders.length === 1) {
+        return Promise.reject(unauthorizedResponse(requestConfig));
+      }
+
+      return okResponse(requestConfig, { ok: true });
+    };
+
+    const requestConfig: NachetAuthAxiosRequestConfig = {
       method: "get",
       url: "https://api.example.test/protected",
       nachetAuthRequired: true,
       headers: { Authorization: "Bearer stale-token" },
-      adapter: async (requestConfig: any) => {
-        authorizationHeaders.push(requestConfig.headers.Authorization);
-        if (authorizationHeaders.length === 1) {
-          return Promise.reject({
-            config: requestConfig,
-            response: {
-              data: null,
-              status: 401,
-              statusText: "Unauthorized",
-              headers: {},
-              config: requestConfig,
-            },
-          });
-        }
+      adapter: retryAdapter,
+    };
 
-        return {
-          data: { ok: true },
-          status: 200,
-          statusText: "OK",
-          headers: {},
-          config: requestConfig,
-        };
-      },
-    } as any);
+    const response = await axios(requestConfig);
 
     expect(response.data).toEqual({ ok: true });
     expect(getAccessToken).toHaveBeenCalledOnce();

@@ -1,9 +1,13 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { useEffect, useState, type Context, type ReactNode } from "react";
+import axios, {
+  type AxiosAdapter,
+  type InternalAxiosRequestConfig,
+} from "axios";
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearApiAuthentication, fetchDevices } from "../../common/api";
 import { NachetAuthProvider } from "../";
+import type { NachetAuthContextValue } from "../NachetAuthContext";
 
 const mockOidcAuth = vi.hoisted(() => ({
   getAccessToken: vi.fn(),
@@ -20,8 +24,13 @@ vi.mock("../../logging", () => ({
   },
 }));
 
+interface MockOidcAuthProviderProps {
+  authContext: Context<NachetAuthContextValue | undefined>;
+  children: ReactNode;
+}
+
 vi.mock("../oidc/OidcAuthProvider", () => ({
-  OidcAuthProvider: ({ authContext, children }: any) => {
+  OidcAuthProvider: ({ authContext, children }: MockOidcAuthProviderProps) => {
     const Provider = authContext.Provider;
 
     return (
@@ -77,22 +86,34 @@ describe("NachetAuthProvider API bridge", () => {
   const originalAdapter = axios.defaults.adapter;
   const authorizationHeaders: Array<string | undefined> = [];
 
+  const okDevicesResponse = (requestConfig: InternalAxiosRequestConfig) => ({
+    data: { devices: [] },
+    status: 200,
+    statusText: "OK",
+    headers: {},
+    config: requestConfig,
+  });
+
+  const getAuthorizationHeader = (
+    requestConfig: InternalAxiosRequestConfig,
+  ): string | undefined => {
+    const authorizationHeader = requestConfig.headers.Authorization;
+    return typeof authorizationHeader === "string"
+      ? authorizationHeader
+      : undefined;
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     authorizationHeaders.length = 0;
     import.meta.env.VITE_AUTH_PROVIDER = "oidc";
     mockOidcAuth.getAccessToken.mockResolvedValue("oidc-api-token");
-    axios.defaults.adapter = async (requestConfig: any) => {
-      authorizationHeaders.push(requestConfig.headers.Authorization);
+    const adapter: AxiosAdapter = async (requestConfig) => {
+      authorizationHeaders.push(getAuthorizationHeader(requestConfig));
 
-      return {
-        data: { devices: [] },
-        status: 200,
-        statusText: "OK",
-        headers: {},
-        config: requestConfig,
-      };
+      return okDevicesResponse(requestConfig);
     };
+    axios.defaults.adapter = adapter;
   });
 
   afterEach(() => {
