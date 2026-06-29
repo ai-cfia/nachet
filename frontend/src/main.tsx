@@ -19,7 +19,10 @@ import {
   resetAuthRedirectFlag,
 } from "./common/auth";
 import { initializeApi, resetRedirectFlag } from "./common/api";
-import { getConfiguredAuthProvider } from "./auth/authProviderConfig";
+import {
+  getApiScopeClaim,
+  getConfiguredAuthProvider,
+} from "./auth/authProviderConfig";
 import "./i18n";
 import "./locales/types"; // Import TypeScript type definitions for i18n
 
@@ -75,14 +78,7 @@ const msalConfig: Configuration = {
 
 const basename = process.env.REACT_APP_BASENAME ?? "/";
 const configuredAuthProvider = getConfiguredAuthProvider();
-const azureApiScopeClaim =
-  (import.meta.env.VITE_AZURE_APP_ID_URI ?? "") +
-  (import.meta.env.VITE_AZURE_API_SCOPE_CLAIM ?? "");
-const oidcApiScopeClaim = import.meta.env.VITE_OIDC_API_SCOPE_CLAIM?.trim();
-const apiScopeClaim =
-  configuredAuthProvider === "oidc" && oidcApiScopeClaim
-    ? oidcApiScopeClaim
-    : azureApiScopeClaim;
+const apiScopeClaim = getApiScopeClaim();
 
 console.log("API Scope Claim: ", apiScopeClaim);
 
