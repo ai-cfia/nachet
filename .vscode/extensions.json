@@ -1,9 +1,0 @@
-{
-	"recommendations": [
-		"stkb.rewrap",
-		"DavidAnson.vscode-markdownlint"
-	],
-	"unwantedRecommendations": [
-
-	]
-}
