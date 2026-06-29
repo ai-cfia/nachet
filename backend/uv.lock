@@ -1755,7 +1755,7 @@ wheels = [
 
 [[package]]
 name = "nachet-backend"
-version = "2.9.20"
+version = "2.9.21"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
