@@ -1,7 +1,7 @@
 ---
 name: backend lint
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
   actions: read
 
@@ -33,7 +33,7 @@ defaults:
 
 jobs:
   nachet-pyproject-version-bump:
-    # if: github.event.pull_request.merged != true
+    if: ${{ github.event.pull_request.user.login != 'renovate[bot]' }}
     name: nachet-backend-pyproject-version-bump
     uses: ai-cfia/github-workflows/.github/workflows/workflow-version-bump-python-mono.yml@main
     secrets: inherit
@@ -42,54 +42,12 @@ jobs:
       package-name: "nachet-backend"
       working-directory: backend
 
-  bump-version-renovate:
-    needs: [nachet-pyproject-version-bump]
-    # Failure of nachet-pyproject-version-bump indicates that version in pyproject.toml has not been updated.
-    if: ${{ !cancelled() && (github.event.pull_request.user.login == 'renovate[bot]' || github.event.pull_request.user.login == 'github-actions[bot]') && needs.nachet-pyproject-version-bump.result == 'failure' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
-          persist-credentials: true
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.14"
-          
-      - name: Install uv
-        uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
-        with:
-          version: "latest"
-
-      - name: Bump version for Renovate PRs
-        run: |
-          uv version --bump patch
-
-      - name: Update lock file for Renovate PRs
-        run: uv lock
-
-      - name: Commit & push changes
-        uses: EndBug/add-and-commit@ebe9b51bb11d033d228e1a1c3f23ad5bd4110c81
-        with:
-          message: "chore: bump backend version for Renovate PRs"
-          add: "."
-          pull: "--rebase --autostash"
-          author_name: "github-actions[bot]"
-          author_email: "github-actions[bot]@users.noreply.github.com"
-
   backend-lint:
     name: backend-lint-test-python
     uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-python-mono.yml@main
     secrets: inherit
     with:
       working-directory: backend
-  # bytebase-sql-review:
-  #   uses: ai-cfia/github-workflows/.github/workflows/workflow-bytebase-sql-review.yml@main
-  #   secrets: inherit
 
   mkd-check:
     name: workflow-markdown-check
@@ -125,7 +83,6 @@ jobs:
 
       - name: Check if uv.lock is up to date
         run: |
-          # Generate a new lock file and compare with existing
           uv lock --check
         working-directory: backend
 
@@ -139,3 +96,4 @@ jobs:
     secrets: inherit
     with:
       working-directory: backend
+      

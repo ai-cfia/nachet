@@ -1,0 +1,71 @@
+---
+name: Backend Renovate
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "backend/pyproject.toml"
+      - ".github/workflows/backend-*"
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  bump-version:
+    name: Bump version
+    if: ${{ github.event.pull_request.user.login == 'renovate[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
+        with:
+          version: "latest"
+
+      - name: Bump version for Renovate PRs
+        run: uv version --bump patch
+
+      - name: Update lock file
+        run: uv lock
+
+      - name: Commit & push changes
+        uses: EndBug/add-and-commit@ebe9b51bb11d033d228e1a1c3f23ad5bd4110c81
+        with:
+          message: "chore: bump backend version for Renovate PRs"
+          add: "."
+          pull: "--rebase --autostash"
+          author_name: "github-actions[bot]"
+          author_email: "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run backend checks
+        run: |
+          gh workflow run backend-lint.yml --ref "${{ github.head_ref }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          
