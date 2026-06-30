@@ -112,7 +112,13 @@ jobs:
           npm install --package-lock-only
           npm audit fix --package-lock-only || true
 
+      - name: Check if bump is needed
+        id: check
+        run: |
+          git diff --exit-code || echo "changed=true" >> $GITHUB_OUTPUT
+
       - name: Commit & push changes
+        if: steps.check.outputs.changed == 'true'
         uses: EndBug/add-and-commit@ebe9b51bb11d033d228e1a1c3f23ad5bd4110c81
         with:
           message: "chore: bump nachet-mini version for Renovate PRs"
