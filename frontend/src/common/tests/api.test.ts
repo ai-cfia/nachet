@@ -16,8 +16,15 @@ import {
 import axios from "axios";
 import { AzureAPIError, ValueError } from "../error";
 
-// mock axios
-vi.mock("axios");
+// mock axios while keeping AxiosHeaders available for api.ts header checks
+vi.mock("axios", async () => {
+  const actual = await vi.importActual<typeof import("axios")>("axios");
+
+  return {
+    ...actual,
+    default: vi.fn(),
+  };
+});
 const mockedAxios = vi.mocked(axios);
 
 // mock errorLogger

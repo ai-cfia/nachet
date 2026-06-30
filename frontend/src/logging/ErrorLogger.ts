@@ -12,7 +12,7 @@ interface LogEntry {
   extra?: Record<string, any>;
 }
 
-type TokenProvider = () => Promise<string | null>;
+type TokenProvider = () => Promise<string>;
 
 const formatRejectionReason = (reason: unknown): string => {
   if (reason instanceof Error) {
@@ -42,7 +42,7 @@ class ErrorLogger {
     this.tokenProvider = tokenProvider || null;
   }
 
-  public setTokenProvider(tokenProvider: TokenProvider): void {
+  public setTokenProvider(tokenProvider: TokenProvider | null): void {
     this.tokenProvider = tokenProvider;
   }
 

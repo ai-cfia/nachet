@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosHeaders } from "axios";
 import { AzureAPIError, ValueError } from "./error";
 import {
   ApiInferenceData,
@@ -65,13 +65,13 @@ export const clearApiAuthentication = (): void => {
 const handleAxios = async <T>(request: {
   method: string;
   url: string;
-  headers: { [label: string]: string };
+  headers: Record<string, string>;
   data?: any;
   authRequired?: boolean;
 }): Promise<T> => {
   // Generate correlation ID for this request
   const correlationId = errorLogger.getCorrelationId();
-  const requestHasExplicitAuthHeader = Boolean(request.headers.Authorization);
+  const requestHasExplicitAuthHeader = hasAuthorizationHeader(request.headers);
   const requestRequiresAuth = request.authRequired ?? true;
   const requestCanUseAuthProvider =
     requestRequiresAuth && hasApiAccessTokenProvider();
@@ -162,6 +162,15 @@ const handleAxios = async <T>(request: {
       throw new AzureAPIError(error.message || "Unknown error");
     });
   return data;
+};
+
+// API helpers build plain header objects before Axios normalizes header names.
+const hasAuthorizationHeader = (headers: Record<string, string>): boolean => {
+  const authorizationHeader = AxiosHeaders.from(headers).get("Authorization");
+
+  return (
+    typeof authorizationHeader === "string" && authorizationHeader.trim() !== ""
+  );
 };
 
 // During the API auth migration, callers either pass an explicit token

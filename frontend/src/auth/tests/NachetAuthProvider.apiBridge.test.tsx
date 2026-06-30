@@ -97,7 +97,7 @@ describe("NachetAuthProvider API bridge", () => {
   const getAuthorizationHeader = (
     requestConfig: InternalAxiosRequestConfig,
   ): string | undefined => {
-    const authorizationHeader = requestConfig.headers.Authorization;
+    const authorizationHeader = requestConfig.headers.get("Authorization");
     return typeof authorizationHeader === "string"
       ? authorizationHeader
       : undefined;

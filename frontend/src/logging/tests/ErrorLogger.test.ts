@@ -9,6 +9,7 @@ describe("ErrorLogger (Singleton)", () => {
   let consoleErrorSpy: any;
   let consoleWarnSpy: any;
   let consoleInfoSpy: any;
+  const mockedAxiosPost = vi.mocked(axios.post);
   const originalEnv = import.meta.env.VITE_LOG_API_URL;
 
   beforeEach(() => {
@@ -17,7 +18,7 @@ describe("ErrorLogger (Singleton)", () => {
     errorLogger.setTokenProvider(vi.fn().mockResolvedValue("test-token"));
 
     // Mock axios.post
-    (axios.post as any).mockResolvedValue({ data: { success: true } });
+    mockedAxiosPost.mockResolvedValue({ data: { success: true } });
 
     // Spy on console methods
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -30,7 +31,7 @@ describe("ErrorLogger (Singleton)", () => {
     consoleWarnSpy.mockRestore();
     consoleInfoSpy.mockRestore();
     // Reset token provider
-    errorLogger.setTokenProvider(null as any);
+    errorLogger.setTokenProvider(null);
     import.meta.env.VITE_LOG_API_URL = originalEnv;
   });
 
@@ -175,7 +176,7 @@ describe("ErrorLogger (Singleton)", () => {
 
     it("should fallback to console if axios fails", async () => {
       const axiosError = new Error("Network error");
-      (axios.post as any).mockRejectedValueOnce(axiosError);
+      mockedAxiosPost.mockRejectedValueOnce(axiosError);
 
       await errorLogger.logError("Test error");
 
@@ -203,8 +204,8 @@ describe("ErrorLogger (Singleton)", () => {
       errorLogger.setTokenProvider(vi.fn().mockResolvedValue("test-token"));
     });
 
-    it("should skip backend logging if token provider returns null", async () => {
-      const tokenProvider = vi.fn().mockResolvedValue(null);
+    it("should skip backend logging if token provider returns an empty token", async () => {
+      const tokenProvider = vi.fn().mockResolvedValue("");
       errorLogger.setTokenProvider(tokenProvider);
 
       await errorLogger.logError("Test");
@@ -219,7 +220,7 @@ describe("ErrorLogger (Singleton)", () => {
     });
 
     it("should skip backend logging if token provider is not initialized", async () => {
-      errorLogger.setTokenProvider(null as any);
+      errorLogger.setTokenProvider(null);
 
       await errorLogger.logError("Test");
 

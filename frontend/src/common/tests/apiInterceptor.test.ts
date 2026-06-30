@@ -79,7 +79,7 @@ describe("apiInterceptor", () => {
 
     const response = await runRequest({ useNachetAuthProvider: true });
 
-    expect(response.config.headers.Authorization).toBe("Bearer access-token");
+    expect(getAuthorizationHeader(response.config)).toBe("Bearer access-token");
   });
 
   it("does not attach a bearer token to requests without the Nachet API marker", async () => {
@@ -89,7 +89,7 @@ describe("apiInterceptor", () => {
     const response = await runRequest({});
 
     expect(getAccessToken).not.toHaveBeenCalled();
-    expect(response.config.headers.Authorization).toBeUndefined();
+    expect(getAuthorizationHeader(response.config)).toBeUndefined();
   });
 
   it("does not overwrite an existing authorization header", async () => {

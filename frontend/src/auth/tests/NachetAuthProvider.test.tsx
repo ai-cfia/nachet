@@ -228,13 +228,15 @@ describe("NachetAuthProvider", () => {
   });
 
   it("initializes API auth through the MSAL adapter by default", async () => {
+    const initializeApiMock = vi.mocked(initializeApi);
+
     renderWithProvider();
 
     await waitFor(() => {
-      expect(initializeApi).toHaveBeenCalled();
+      expect(initializeApiMock).toHaveBeenCalled();
     });
 
-    const getAccessToken = (initializeApi as any).mock.calls[0][0];
+    const getAccessToken = initializeApiMock.mock.calls[0][0];
     await getAccessToken({ forceRefresh: true });
 
     expect(acquireAccessToken).toHaveBeenCalledWith(
