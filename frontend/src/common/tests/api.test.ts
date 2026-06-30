@@ -108,16 +108,7 @@ describe("readAzureStorageDir", () => {
         backendUrl: "http://localhost:8080",
         accessToken: "",
       }),
-    ).rejects.toThrow(new ValueError("Access token is null or empty"));
-  });
-
-  it("should throw ValueError for null access token", async () => {
-    await expect(
-      readAzureStorageDir({
-        backendUrl: "http://localhost:8080",
-        accessToken: null as any,
-      }),
-    ).rejects.toThrow(new ValueError("Access token is null or empty"));
+    ).rejects.toThrow(new ValueError("Access token is empty"));
   });
 
   it("should throw error has response", async () => {
@@ -249,7 +240,7 @@ describe("createAzureStorageDir", () => {
         accessToken: "",
         folderName: "folder",
       }),
-    ).rejects.toThrow(new ValueError("Access token is null or empty"));
+    ).rejects.toThrow(new ValueError("Access token is empty"));
   });
 
   it("should throw ValueError for empty folder name", async () => {
@@ -330,7 +321,7 @@ describe("deleteAzureStorageDir", () => {
         accessToken: "",
         folderName: "folder",
       }),
-    ).rejects.toThrow(new ValueError("Access token is null or empty"));
+    ).rejects.toThrow(new ValueError("Access token is empty"));
   });
 
   it("should throw ValueError for empty folder name", async () => {
@@ -500,7 +491,7 @@ describe("inferenceRequest", () => {
         accessToken: "",
         folderId: "folder-id",
       }),
-    ).rejects.toThrow(new ValueError("Access token is null or empty"));
+    ).rejects.toThrow(new ValueError("Access token is empty"));
   });
 
   it("should handle inference service errors", async () => {

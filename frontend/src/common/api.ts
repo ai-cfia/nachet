@@ -46,9 +46,7 @@ import {
 } from "./apiInterceptor";
 import type { NachetAuthTokenOptions } from "../auth/NachetAuthContext";
 
-type GetApiAccessToken = (
-  options?: NachetAuthTokenOptions,
-) => Promise<string>;
+type GetApiAccessToken = (options?: NachetAuthTokenOptions) => Promise<string>;
 
 /**
  * Initialize API module with axios interceptor for authentication
@@ -166,11 +164,11 @@ const handleAxios = async <T>(request: {
   return data;
 };
 
-const getAuthHeaders = (
-  accessToken?: string | null,
-): Record<string, string> => {
-  if (accessToken === "" || accessToken === null) {
-    throw new ValueError("Access token is null or empty");
+// During the API auth migration, callers either pass an explicit token
+// or omit it so the Axios auth bridge can attach one.
+const getAuthHeaders = (accessToken?: string): Record<string, string> => {
+  if (accessToken === "") {
+    throw new ValueError("Access token is empty");
   }
 
   return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
@@ -206,7 +204,7 @@ export const checkUserRegistration = async ({
   accessToken,
 }: {
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
 }): Promise<{ isRegistered: boolean }> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -235,7 +233,7 @@ export const readAzureStorageDir = async ({
   accessToken,
 }: {
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
 }): Promise<ReadAzureStorageDirApi> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -268,7 +266,7 @@ export const createAzureStorageDir = async ({
   folderName,
 }: {
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
   folderName: string;
 }): Promise<boolean> => {
   if (backendUrl === "" || backendUrl == null) {
@@ -309,7 +307,7 @@ export const deleteAzureStorageDir = async ({
   folderName,
 }: {
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
   folderName: string;
 }): Promise<boolean> => {
   if (backendUrl === "" || backendUrl == null) {
@@ -349,7 +347,7 @@ export const deleteFolder = async ({
   folderId,
 }: {
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
   folderId: string;
 }): Promise<{ id: string; message: string }> => {
   if (!backendUrl) {
@@ -397,7 +395,7 @@ export const inferenceRequest = async ({
   selectedModel: string;
   imageObject: Images;
   curDir: string;
-  accessToken?: string | null;
+  accessToken?: string;
   folderId: string;
 }): Promise<ImageSubmissionResponse> => {
   if (backendUrl === "" || backendUrl == null) {
@@ -475,7 +473,7 @@ export const inferenceDirectRequest = async ({
   selectedModel: string;
   imageObject: Images;
   curDir: string;
-  accessToken?: string | null;
+  accessToken?: string;
   folderId: string;
 }): Promise<ApiInferenceData> => {
   if (backendUrl === "" || backendUrl == null) {
@@ -546,7 +544,7 @@ export const fetchModelMetadata = async ({
   accessToken,
 }: {
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
 }): Promise<ModelMetadata[]> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -576,7 +574,7 @@ export const fetchDevices = async ({
   accessToken,
 }: {
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
 }): Promise<ApiDevicesResponse> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -608,7 +606,7 @@ export const getWorkflowStatus = async ({
 }: {
   backendUrl: string;
   workflowId: string;
-  accessToken?: string | null;
+  accessToken?: string;
 }): Promise<WorkflowStatusResponse> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -643,7 +641,7 @@ export const getWorkflowResults = async ({
 }: {
   backendUrl: string;
   workflowId: string;
-  accessToken?: string | null;
+  accessToken?: string;
 }): Promise<ApiInferenceData> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -678,7 +676,7 @@ export const sendFeedbackNewBox = async ({
 }: {
   feedbackData: FeedbackDataNegative;
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
 }): Promise<ApiInferenceData> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -710,7 +708,7 @@ export const sendPositiveFeedback = async ({
 }: {
   feedbackData: FeedbackDataPositive;
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
 }): Promise<ApiInferenceData> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -742,7 +740,7 @@ export const sendNegativeFeedback = async ({
 }: {
   feedbackData: FeedbackDataNegative;
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
 }): Promise<ApiInferenceData> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -797,7 +795,7 @@ export const requestClassList = async ({
   accessToken,
 }: {
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
 }): Promise<ApiSpeciesData> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -829,7 +827,7 @@ export const batchUploadInit = async ({
   fileCount,
 }: {
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
   folderId: string;
   fileCount: number;
 }): Promise<{
@@ -874,7 +872,7 @@ export const batchUploadImage = async ({
 }: {
   backendUrl: string;
   data: BatchUploadMetadata;
-  accessToken?: string | null;
+  accessToken?: string;
 }): Promise<BatchUploadImageResponse> => {
   const {
     sessionId,
@@ -985,7 +983,7 @@ export const createOrGetFolder = async ({
   description = "",
 }: {
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
   normalizedPath: string;
   description?: string;
 }): Promise<CreateOrGetFolderResponse> => {
@@ -1062,7 +1060,7 @@ export const updateFolder = async ({
   description,
 }: {
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
   folderId: string;
   name?: string;
   description?: string;
@@ -1129,7 +1127,7 @@ export const sendLogToBackend = async ({
   logData,
 }: {
   backendUrl: string;
-  accessToken?: string | null;
+  accessToken?: string;
   logData: {
     level: "ERROR" | "WARNING" | "INFO" | "DEBUG";
     message: string;

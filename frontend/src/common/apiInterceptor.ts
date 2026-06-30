@@ -20,7 +20,7 @@ type GetAccessToken = (options?: AccessTokenOptions) => Promise<string>;
 
 const assertAccessToken = (accessToken: string): string => {
   if (!accessToken) {
-    throw new Error("Access token is null or empty");
+    throw new Error("Access token is empty");
   }
 
   return accessToken;

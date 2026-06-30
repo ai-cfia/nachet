@@ -111,7 +111,7 @@ describe("apiInterceptor", () => {
     setupAxiosInterceptor(vi.fn().mockResolvedValue(""));
 
     await expect(runRequest({ useNachetAuthProvider: true })).rejects.toThrow(
-      "Access token is null or empty",
+      "Access token is empty",
     );
   });
 
