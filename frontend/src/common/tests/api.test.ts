@@ -83,6 +83,7 @@ describe("readAzureStorageDir", () => {
         "X-Session-ID": "test-session-id",
       },
       withCredentials: true,
+      nachetAuthRequired: false,
     });
   });
 
@@ -227,6 +228,7 @@ describe("createAzureStorageDir", () => {
         folderName: folderName,
       },
       withCredentials: true,
+      nachetAuthRequired: false,
     });
   });
 
@@ -307,6 +309,7 @@ describe("deleteAzureStorageDir", () => {
         folderName: folderName,
       },
       withCredentials: true,
+      nachetAuthRequired: false,
     });
   });
 
@@ -430,6 +433,7 @@ describe("inferenceRequest", () => {
         magnification: mockImageObject.magnification,
       },
       withCredentials: true,
+      nachetAuthRequired: false,
     });
   });
 
@@ -625,6 +629,7 @@ describe("fetchModelMetadata", () => {
       },
       data: {},
       withCredentials: true,
+      nachetAuthRequired: false,
     });
   });
 
@@ -722,6 +727,7 @@ describe("requestClassList", () => {
       },
       data: {},
       withCredentials: true,
+      nachetAuthRequired: false,
     });
   });
 
@@ -768,6 +774,7 @@ describe("batchUploadInit", () => {
         fileCount: nbPictures,
       },
       withCredentials: true,
+      nachetAuthRequired: false,
     });
   });
 
@@ -848,6 +855,7 @@ describe("batchUploadImage", () => {
         image: mockBatchUploadData.imageDataUrl,
       },
       withCredentials: true,
+      nachetAuthRequired: false,
     });
   });
 
@@ -1024,6 +1032,7 @@ describe("sendPositiveFeedback", () => {
       },
       data: mockPositiveFeedbackData,
       withCredentials: true,
+      nachetAuthRequired: false,
     });
   });
 
@@ -1113,6 +1122,7 @@ describe("sendNegativeFeedback", () => {
       },
       data: mockNegativeFeedbackData,
       withCredentials: true,
+      nachetAuthRequired: false,
     });
   });
 
@@ -1195,6 +1205,7 @@ describe("sendFeedbackNewBox", () => {
       },
       data: mockNewBoxFeedbackData,
       withCredentials: true,
+      nachetAuthRequired: false,
     });
   });
 

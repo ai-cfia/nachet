@@ -74,7 +74,7 @@ const handleAxios = async <T>(request: {
   // Generate correlation ID for this request
   const correlationId = errorLogger.getCorrelationId();
   const requestHasExplicitAuthHeader = Boolean(request.headers.Authorization);
-  const requestRequiresAuth = request.authRequired !== false;
+  const requestRequiresAuth = request.authRequired ?? true;
   const requestCanUseAuthProvider =
     requestRequiresAuth && hasApiAccessTokenProvider();
 
@@ -95,7 +95,7 @@ const handleAxios = async <T>(request: {
       "X-Session-ID": errorLogger.getSessionId(),
     },
     withCredentials: true,
-    ...(requestCanUseAuthProvider ? { nachetAuthRequired: true } : {}),
+    nachetAuthRequired: requestCanUseAuthProvider,
   };
 
   const data = await axios(enhancedRequest)
