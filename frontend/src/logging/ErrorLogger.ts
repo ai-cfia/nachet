@@ -12,7 +12,23 @@ interface LogEntry {
   extra?: Record<string, any>;
 }
 
-type TokenProvider = () => Promise<string | null>;
+type TokenProvider = () => Promise<string>;
+
+const formatRejectionReason = (reason: unknown): string => {
+  if (reason instanceof Error) {
+    return reason.message;
+  }
+
+  if (typeof reason === "string") {
+    return reason;
+  }
+
+  try {
+    return JSON.stringify(reason) ?? String(reason);
+  } catch {
+    return String(reason);
+  }
+};
 
 class ErrorLogger {
   private apiEndpoint: string;
@@ -26,7 +42,7 @@ class ErrorLogger {
     this.tokenProvider = tokenProvider || null;
   }
 
-  public setTokenProvider(tokenProvider: TokenProvider): void {
+  public setTokenProvider(tokenProvider: TokenProvider | null): void {
     this.tokenProvider = tokenProvider;
   }
 
@@ -70,20 +86,32 @@ class ErrorLogger {
         "X-Correlation-ID": this.getCorrelationId(),
       };
 
-      // Try to get access token if token provider is available
-      if (this.tokenProvider) {
-        try {
-          const token = await this.tokenProvider();
-          if (token) {
-            headers["Authorization"] = `Bearer ${token}`;
-          }
-        } catch (tokenError) {
-          // Log token acquisition failure but continue without auth
-          console.warn(
-            "Failed to acquire token for logs endpoint:",
-            tokenError,
-          );
+      if (!this.tokenProvider) {
+        console.warn(
+          "Skipping backend log submission because log auth is not initialized.",
+        );
+        return;
+      }
+
+      try {
+        const token = await this.tokenProvider();
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
         }
+      } catch (tokenError) {
+        // Keep console fallback rather than posting an unauthenticated log.
+        console.warn(
+          "Skipping backend log submission because log auth failed:",
+          tokenError,
+        );
+        return;
+      }
+
+      if (!headers.Authorization) {
+        console.warn(
+          "Skipping backend log submission because no auth token is available.",
+        );
+        return;
       }
 
       await axios.post(this.apiEndpoint, logData, {
@@ -171,11 +199,16 @@ class ErrorLogger {
   // Log unhandled promise rejections
   public setupGlobalHandlers(): void {
     window.addEventListener("unhandledrejection", (event) => {
-      this.logError(
-        `Unhandled Promise Rejection: ${event.reason}`,
-        event.reason instanceof Error
-          ? event.reason
-          : new Error(String(event.reason)),
+      const rejectionReason = event.reason;
+      const rejectionMessage = formatRejectionReason(rejectionReason);
+      const rejectionError =
+        rejectionReason instanceof Error
+          ? rejectionReason
+          : new Error(rejectionMessage);
+
+      void this.logError(
+        `Unhandled Promise Rejection: ${rejectionMessage}`,
+        rejectionError,
         { promise: event.promise },
       );
     });

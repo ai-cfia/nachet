@@ -11,14 +11,8 @@ import { CacheProvider } from "@emotion/react";
 import { ThemeProvider } from "@mui/material/styles";
 import { createEmotionCache } from "./common/emotionCache";
 import { ErrorBoundary } from "@components/body/index.ts";
-import { errorLogger } from "./logging";
 import { theme } from "./theme";
-import {
-  acquireAccessToken,
-  shouldTriggerRedirect,
-  resetAuthRedirectFlag,
-} from "./common/auth";
-import { initializeApi, resetRedirectFlag } from "./common/api";
+import { resetAuthRedirectFlag } from "./common/auth";
 import {
   getApiScopeClaim,
   getConfiguredAuthProvider,
@@ -113,7 +107,6 @@ const initializeMsalAndRender = async (): Promise<void> => {
       // Set the active account after successful redirect
       msalInstance.setActiveAccount(response.account);
       // Reset redirect flags to allow future redirects if needed
-      resetRedirectFlag(); // For axios interceptor
       resetAuthRedirectFlag(); // For auth.ts
     } else {
       // Check if we have any cached accounts
@@ -122,37 +115,6 @@ const initializeMsalAndRender = async (): Promise<void> => {
         msalInstance.setActiveAccount(accounts[0]);
       }
     }
-
-    // Initialize axios interceptor for authentication
-    const scopes = apiScopeClaim ? [apiScopeClaim] : [];
-    initializeApi(msalInstance, scopes);
-
-    // Set up token provider for error logger
-    errorLogger.setTokenProvider(async () => {
-      try {
-        const token = await acquireAccessToken(msalInstance, scopes);
-        return token;
-      } catch (error) {
-        // Check if error requires redirect
-        if (shouldTriggerRedirect(error)) {
-          console.error(
-            "Error logger: Token acquisition failed. Redirecting to login...",
-          );
-          // Trigger redirect authentication
-          const activeAccount = msalInstance.getActiveAccount();
-          const accounts = msalInstance.getAllAccounts();
-          if (activeAccount || accounts.length > 0) {
-            await msalInstance.acquireTokenRedirect({
-              scopes,
-              account: activeAccount || accounts[0],
-            });
-          }
-        }
-        // If token acquisition fails, return null (logs will be sent without auth)
-        console.warn("Failed to acquire token for error logger:", error);
-        return null;
-      }
-    });
 
     renderApp(msalInstance);
   } catch (error) {
