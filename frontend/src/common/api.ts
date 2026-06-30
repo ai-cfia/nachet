@@ -42,10 +42,9 @@ import { errorLogger } from "../logging";
 import {
   setupAxiosInterceptor,
   clearAxiosInterceptors,
+  hasApiAccessTokenProvider,
 } from "./apiInterceptor";
 import type { NachetAuthTokenOptions } from "../auth/NachetAuthContext";
-
-let isAuthProviderInitialized = false;
 
 type GetApiAccessToken = (
   options?: NachetAuthTokenOptions,
@@ -59,12 +58,10 @@ type GetApiAccessToken = (
  */
 export const initializeApi = (getApiAccessToken: GetApiAccessToken): void => {
   setupAxiosInterceptor(getApiAccessToken);
-  isAuthProviderInitialized = true;
 };
 
 export const clearApiAuthentication = (): void => {
   clearAxiosInterceptors();
-  isAuthProviderInitialized = false;
 };
 
 const handleAxios = async <T>(request: {
@@ -76,15 +73,15 @@ const handleAxios = async <T>(request: {
 }): Promise<T> => {
   // Generate correlation ID for this request
   const correlationId = errorLogger.getCorrelationId();
-  const requestHasAuthHeader = Boolean(request.headers.Authorization);
+  const requestHasExplicitAuthHeader = Boolean(request.headers.Authorization);
   const requestRequiresAuth = request.authRequired !== false;
   const requestCanUseAuthProvider =
-    requestRequiresAuth && (!requestHasAuthHeader || isAuthProviderInitialized);
+    requestRequiresAuth && hasApiAccessTokenProvider();
 
   if (
     requestRequiresAuth &&
-    !requestHasAuthHeader &&
-    !isAuthProviderInitialized
+    !requestHasExplicitAuthHeader &&
+    !requestCanUseAuthProvider
   ) {
     throw new ValueError("Auth provider is not initialized for API requests");
   }

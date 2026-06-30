@@ -4,7 +4,10 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from "axios";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { setupAxiosInterceptor } from "../apiInterceptor";
+import {
+  hasApiAccessTokenProvider,
+  setupAxiosInterceptor,
+} from "../apiInterceptor";
 import { clearApiAuthentication, fetchDevices, initializeApi } from "../api";
 
 interface NachetAuthAxiosRequestConfig extends AxiosRequestConfig {
@@ -57,6 +60,18 @@ describe("apiInterceptor", () => {
   afterEach(() => {
     clearApiAuthentication();
     axios.defaults.adapter = originalAdapter;
+  });
+
+  it("tracks whether the API access token provider is configured", () => {
+    expect(hasApiAccessTokenProvider()).toBe(false);
+
+    setupAxiosInterceptor(vi.fn().mockResolvedValue("access-token"));
+
+    expect(hasApiAccessTokenProvider()).toBe(true);
+
+    clearApiAuthentication();
+
+    expect(hasApiAccessTokenProvider()).toBe(false);
   });
 
   it("attaches a bearer token to protected Nachet API requests", async () => {

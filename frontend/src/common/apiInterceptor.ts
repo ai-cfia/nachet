@@ -2,6 +2,7 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 
 let requestInterceptorId: number | null = null;
 let responseInterceptorId: number | null = null;
+let apiAccessTokenProvider: GetAccessToken | null = null;
 
 interface NachetAuthRequestConfig extends InternalAxiosRequestConfig {
   nachetAuthRequired?: boolean;
@@ -41,6 +42,12 @@ export const clearAxiosInterceptors = (): void => {
     axios.interceptors.response.eject(responseInterceptorId);
     responseInterceptorId = null;
   }
+
+  apiAccessTokenProvider = null;
+};
+
+export const hasApiAccessTokenProvider = (): boolean => {
+  return apiAccessTokenProvider !== null;
 };
 
 /**
@@ -51,6 +58,7 @@ export const clearAxiosInterceptors = (): void => {
  */
 export const setupAxiosInterceptor = (getAccessToken: GetAccessToken): void => {
   clearAxiosInterceptors();
+  apiAccessTokenProvider = getAccessToken;
 
   requestInterceptorId = axios.interceptors.request.use(
     async (config: NachetAuthRequestConfig) => {
