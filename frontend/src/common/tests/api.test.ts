@@ -1,4 +1,12 @@
 import { describe, it, vi, beforeEach, expect } from "vitest";
+
+const mockHasApiAccessTokenProvider = vi.hoisted(() => vi.fn(() => true));
+
+vi.mock("../apiInterceptor", () => ({
+  setupAxiosInterceptor: vi.fn(),
+  clearAxiosInterceptors: vi.fn(),
+  hasApiAccessTokenProvider: mockHasApiAccessTokenProvider,
+}));
 import {
   createAzureStorageDir,
   deleteAzureStorageDir,
@@ -16,7 +24,7 @@ import {
 import axios from "axios";
 import { AzureAPIError, ValueError } from "../error";
 
-// mock axios while keeping AxiosHeaders available for api.ts header checks
+// mock axios
 vi.mock("axios", async () => {
   const actual = await vi.importActual<typeof import("axios")>("axios");
 
@@ -42,10 +50,13 @@ vi.mock("../../logging", () => ({
 
 beforeEach(() => {
   mockedAxios.mockClear();
+  mockHasApiAccessTokenProvider.mockReturnValue(true);
 });
 
 describe("protected API auth initialization", () => {
   it("should fail closed before sending protected requests without auth initialization", async () => {
+    mockHasApiAccessTokenProvider.mockReturnValue(false);
+
     await expect(
       fetchDevices({ backendUrl: "http://localhost:8080" }),
     ).rejects.toThrow(
@@ -75,9 +86,7 @@ describe("readAzureStorageDir", () => {
       data: mockData,
     });
     const backendUrl = "http://localhost:8080";
-    const accessToken = "valid-access-token";
-
-    const result = await readAzureStorageDir({ backendUrl, accessToken });
+    const result = await readAzureStorageDir({ backendUrl });
     expect(result).toEqual(mockData);
     expect(mockedAxios).toHaveBeenCalledWith({
       method: "get",
@@ -85,37 +94,26 @@ describe("readAzureStorageDir", () => {
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        Authorization: `Bearer ${accessToken}`,
         "X-Correlation-ID": "test-correlation-id",
         "X-Session-ID": "test-session-id",
       },
       withCredentials: true,
-      useNachetAuthProvider: false,
+      useNachetAuthProvider: true,
     });
   });
 
   it("should throw ValueError for empty backend URL", async () => {
-    await expect(
-      readAzureStorageDir({ backendUrl: "", accessToken: "valid-token" }),
-    ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
+    await expect(readAzureStorageDir({ backendUrl: "" })).rejects.toThrow(
+      new ValueError("Backend URL is null or empty"),
+    );
   });
 
   it("should throw ValueError for null backend URL", async () => {
     await expect(
       readAzureStorageDir({
         backendUrl: null as any,
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
-  });
-
-  it("should throw ValueError for empty access token", async () => {
-    await expect(
-      readAzureStorageDir({
-        backendUrl: "http://localhost:8080",
-        accessToken: "",
-      }),
-    ).rejects.toThrow(new ValueError("Access token is empty"));
   });
 
   it("should throw error has response", async () => {
@@ -128,11 +126,9 @@ describe("readAzureStorageDir", () => {
       },
     });
     const backendUrl = "backendUrl";
-    const accessToken = "valid-token";
-
-    await expect(
-      readAzureStorageDir({ backendUrl, accessToken }),
-    ).rejects.toEqual(new AzureAPIError("error"));
+    await expect(readAzureStorageDir({ backendUrl })).rejects.toEqual(
+      new AzureAPIError("error"),
+    );
     expect(console.error).toHaveBeenCalled();
     console.error = consoleError;
   });
@@ -144,11 +140,9 @@ describe("readAzureStorageDir", () => {
       request: "error",
     });
     const backendUrl = "backendUrl";
-    const accessToken = "valid-token";
-
-    await expect(
-      readAzureStorageDir({ backendUrl, accessToken }),
-    ).rejects.toEqual(new AzureAPIError("Network request failed"));
+    await expect(readAzureStorageDir({ backendUrl })).rejects.toEqual(
+      new AzureAPIError("Network request failed"),
+    );
     expect(console.error).toHaveBeenCalled();
     console.error = consoleError;
   });
@@ -161,11 +155,9 @@ describe("readAzureStorageDir", () => {
       config: "error config",
     });
     const backendUrl = "http://localhost:8080";
-    const accessToken = "valid-token";
-
-    await expect(
-      readAzureStorageDir({ backendUrl, accessToken }),
-    ).rejects.toEqual(new AzureAPIError("Network error"));
+    await expect(readAzureStorageDir({ backendUrl })).rejects.toEqual(
+      new AzureAPIError("Network error"),
+    );
     expect(console.error).toHaveBeenCalledWith("Error", "Network error");
     console.error = consoleError;
   });
@@ -176,11 +168,9 @@ describe("readAzureStorageDir", () => {
       data: "created",
     });
     const backendUrl = "http://localhost:8080";
-    const accessToken = "valid-token";
-
-    await expect(
-      readAzureStorageDir({ backendUrl, accessToken }),
-    ).rejects.toThrow(AzureAPIError);
+    await expect(readAzureStorageDir({ backendUrl })).rejects.toThrow(
+      AzureAPIError,
+    );
   });
 
   it("should throw error has config", async () => {
@@ -190,11 +180,9 @@ describe("readAzureStorageDir", () => {
       config: "error",
     });
     const backendUrl = "backendUrl";
-    const accessToken = "valid-token";
-
-    await expect(
-      readAzureStorageDir({ backendUrl, accessToken }),
-    ).rejects.toEqual(new AzureAPIError("Unknown error"));
+    await expect(readAzureStorageDir({ backendUrl })).rejects.toEqual(
+      new AzureAPIError("Unknown error"),
+    );
     expect(console.error).toHaveBeenCalled();
     console.error = consoleError;
   });
@@ -208,17 +196,15 @@ describe("createAzureStorageDir", () => {
       data: { folderName: "test-folder" },
     });
     const backendUrl = "http://localhost:8080";
-    const accessToken = "valid-token";
     const folderName = "test-folder";
 
-    await createAzureStorageDir({ backendUrl, accessToken, folderName });
+    await createAzureStorageDir({ backendUrl, folderName });
     expect(mockedAxios).toHaveBeenCalledWith({
       method: "post",
       url: `${backendUrl}/create-dir`,
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        Authorization: `Bearer ${accessToken}`,
         "X-Correlation-ID": "test-correlation-id",
         "X-Session-ID": "test-session-id",
       },
@@ -226,7 +212,7 @@ describe("createAzureStorageDir", () => {
         folderName: folderName,
       },
       withCredentials: true,
-      useNachetAuthProvider: false,
+      useNachetAuthProvider: true,
     });
   });
 
@@ -234,27 +220,15 @@ describe("createAzureStorageDir", () => {
     await expect(
       createAzureStorageDir({
         backendUrl: "",
-        accessToken: "valid-token",
         folderName: "folder",
       }),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
-  });
-
-  it("should throw ValueError for empty access token", async () => {
-    await expect(
-      createAzureStorageDir({
-        backendUrl: "http://localhost:8080",
-        accessToken: "",
-        folderName: "folder",
-      }),
-    ).rejects.toThrow(new ValueError("Access token is empty"));
   });
 
   it("should throw ValueError for empty folder name", async () => {
     await expect(
       createAzureStorageDir({
         backendUrl: "http://localhost:8080",
-        accessToken: "valid-token",
         folderName: "",
       }),
     ).rejects.toThrow(new ValueError("Folder name is null or empty"));
@@ -273,7 +247,6 @@ describe("createAzureStorageDir", () => {
     await expect(
       createAzureStorageDir({
         backendUrl: "http://localhost:8080",
-        accessToken: "valid-token",
         folderName: "folder",
       }),
     ).rejects.toThrow(new AzureAPIError("Permission denied"));
@@ -289,17 +262,15 @@ describe("deleteAzureStorageDir", () => {
       data: { folderName: "test-folder" },
     });
     const backendUrl = "http://localhost:8080";
-    const accessToken = "valid-token";
     const folderName = "test-folder";
 
-    await deleteAzureStorageDir({ backendUrl, accessToken, folderName });
+    await deleteAzureStorageDir({ backendUrl, folderName });
     expect(mockedAxios).toHaveBeenCalledWith({
       method: "post",
       url: `${backendUrl}/del`,
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        Authorization: `Bearer ${accessToken}`,
         "X-Correlation-ID": "test-correlation-id",
         "X-Session-ID": "test-session-id",
       },
@@ -307,7 +278,7 @@ describe("deleteAzureStorageDir", () => {
         folderName: folderName,
       },
       withCredentials: true,
-      useNachetAuthProvider: false,
+      useNachetAuthProvider: true,
     });
   });
 
@@ -315,27 +286,15 @@ describe("deleteAzureStorageDir", () => {
     await expect(
       deleteAzureStorageDir({
         backendUrl: "",
-        accessToken: "valid-token",
         folderName: "folder",
       }),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
-  });
-
-  it("should throw ValueError for empty access token", async () => {
-    await expect(
-      deleteAzureStorageDir({
-        backendUrl: "http://localhost:8080",
-        accessToken: "",
-        folderName: "folder",
-      }),
-    ).rejects.toThrow(new ValueError("Access token is empty"));
   });
 
   it("should throw ValueError for empty folder name", async () => {
     await expect(
       deleteAzureStorageDir({
         backendUrl: "http://localhost:8080",
-        accessToken: "valid-token",
         folderName: "",
       }),
     ).rejects.toThrow(new ValueError("Folder name is null or empty"));
@@ -354,7 +313,6 @@ describe("deleteAzureStorageDir", () => {
     await expect(
       deleteAzureStorageDir({
         backendUrl: "http://localhost:8080",
-        accessToken: "valid-token",
         folderName: "nonexistent",
       }),
     ).rejects.toThrow(new AzureAPIError("Directory not found"));
@@ -401,7 +359,6 @@ describe("inferenceRequest", () => {
       selectedModel,
       imageObject: mockImageObject,
       curDir,
-      accessToken: "valid-token",
       folderId: folderId,
     });
 
@@ -412,7 +369,6 @@ describe("inferenceRequest", () => {
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        Authorization: `Bearer valid-token`,
         "X-Correlation-ID": "test-correlation-id",
         "X-Session-ID": "test-session-id",
       },
@@ -431,7 +387,7 @@ describe("inferenceRequest", () => {
         magnification: mockImageObject.magnification,
       },
       withCredentials: true,
-      useNachetAuthProvider: false,
+      useNachetAuthProvider: true,
     });
   });
 
@@ -442,7 +398,6 @@ describe("inferenceRequest", () => {
         selectedModel: "model",
         imageObject: mockImageObject,
         curDir: "dir",
-        accessToken: "token",
         folderId: "folder-id",
       }),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
@@ -455,7 +410,6 @@ describe("inferenceRequest", () => {
         selectedModel: "",
         imageObject: mockImageObject,
         curDir: "dir",
-        accessToken: "token",
         folderId: "folder-id",
       }),
     ).rejects.toThrow(new ValueError("Model is null or empty"));
@@ -469,7 +423,6 @@ describe("inferenceRequest", () => {
         selectedModel: "model",
         imageObject: emptyImageObject,
         curDir: "dir",
-        accessToken: "token",
         folderId: "folder-id",
       }),
     ).rejects.toThrow(new ValueError("Image is null or empty"));
@@ -482,23 +435,9 @@ describe("inferenceRequest", () => {
         selectedModel: "model",
         imageObject: mockImageObject,
         curDir: "",
-        accessToken: "token",
         folderId: "folder-id",
       }),
     ).rejects.toThrow(new ValueError("Directory is null or empty"));
-  });
-
-  it("should throw ValueError for empty access token", async () => {
-    await expect(
-      inferenceRequest({
-        backendUrl: "http://localhost:8080",
-        selectedModel: "model",
-        imageObject: mockImageObject,
-        curDir: "dir",
-        accessToken: "",
-        folderId: "folder-id",
-      }),
-    ).rejects.toThrow(new ValueError("Access token is empty"));
   });
 
   it("should handle inference service errors", async () => {
@@ -517,7 +456,6 @@ describe("inferenceRequest", () => {
         selectedModel: "invalid-model",
         imageObject: mockImageObject,
         curDir: "dir",
-        accessToken: "token",
         folderId: "52345678-1234-1234-8234-123456789012",
       }),
     ).rejects.toThrow(new AzureAPIError("Model not available"));
@@ -540,7 +478,6 @@ describe("inferenceRequest", () => {
         selectedModel: "model",
         imageObject: mockImageObject,
         curDir: "dir",
-        accessToken: "token",
         folderId: "62345678-1234-1234-8234-123456789012",
       }),
     ).rejects.toThrow(new AzureAPIError("Invalid image format"));
@@ -560,7 +497,6 @@ describe("inferenceRequest", () => {
         selectedModel: "model",
         imageObject: mockImageObject,
         curDir: "dir",
-        accessToken: "token",
         folderId: "72345678-1234-1234-8234-123456789012",
       }),
     ).rejects.toThrow(new AzureAPIError("Network request failed"));
@@ -578,7 +514,6 @@ describe("handleAxios error scenarios", () => {
     await expect(
       fetchModelMetadata({
         backendUrl: "http://localhost:8080",
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(AzureAPIError);
   });
@@ -611,7 +546,6 @@ describe("fetchModelMetadata", () => {
     const backendUrl = "http://localhost:8080";
     const result = await fetchModelMetadata({
       backendUrl,
-      accessToken: "valid-token",
     });
 
     expect(result).toEqual(mockMetadata);
@@ -621,27 +555,25 @@ describe("fetchModelMetadata", () => {
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        Authorization: `Bearer valid-token`,
         "X-Correlation-ID": "test-correlation-id",
         "X-Session-ID": "test-session-id",
       },
       data: {},
       withCredentials: true,
-      useNachetAuthProvider: false,
+      useNachetAuthProvider: true,
     });
   });
 
   it("should throw ValueError for empty backend URL", async () => {
-    await expect(
-      fetchModelMetadata({ backendUrl: "", accessToken: "valid-token" }),
-    ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
+    await expect(fetchModelMetadata({ backendUrl: "" })).rejects.toThrow(
+      new ValueError("Backend URL is null or empty"),
+    );
   });
 
   it("should throw ValueError for null backend URL", async () => {
     await expect(
       fetchModelMetadata({
         backendUrl: null as any,
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
   });
@@ -659,7 +591,6 @@ describe("fetchModelMetadata", () => {
     await expect(
       fetchModelMetadata({
         backendUrl: "http://localhost:8080",
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new AzureAPIError("Service temporarily unavailable"));
     console.error = consoleError;
@@ -674,7 +605,6 @@ describe("fetchModelMetadata", () => {
 
     const result = await fetchModelMetadata({
       backendUrl: "http://localhost:8080",
-      accessToken: "valid-token",
     });
     expect(result).toEqual([]);
   });
@@ -709,7 +639,6 @@ describe("requestClassList", () => {
     const backendUrl = "http://localhost:8080";
     const result = await requestClassList({
       backendUrl,
-      accessToken: "valid-token",
     });
 
     expect(result).toEqual(mockSpeciesData);
@@ -719,20 +648,19 @@ describe("requestClassList", () => {
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        Authorization: `Bearer valid-token`,
         "X-Correlation-ID": "test-correlation-id",
         "X-Session-ID": "test-session-id",
       },
       data: {},
       withCredentials: true,
-      useNachetAuthProvider: false,
+      useNachetAuthProvider: true,
     });
   });
 
   it("should throw ValueError for empty backend URL", async () => {
-    await expect(
-      requestClassList({ backendUrl: "", accessToken: "valid-token" }),
-    ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
+    await expect(requestClassList({ backendUrl: "" })).rejects.toThrow(
+      new ValueError("Backend URL is null or empty"),
+    );
   });
 });
 
@@ -751,7 +679,6 @@ describe("batchUploadInit", () => {
 
     const result = await batchUploadInit({
       backendUrl,
-      accessToken: "valid-token",
       folderId,
       fileCount: nbPictures,
     });
@@ -763,7 +690,6 @@ describe("batchUploadInit", () => {
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        Authorization: `Bearer valid-token`,
         "X-Correlation-ID": "test-correlation-id",
         "X-Session-ID": "test-session-id",
       },
@@ -772,7 +698,7 @@ describe("batchUploadInit", () => {
         fileCount: nbPictures,
       },
       withCredentials: true,
-      useNachetAuthProvider: false,
+      useNachetAuthProvider: true,
     });
   });
 
@@ -780,7 +706,6 @@ describe("batchUploadInit", () => {
     await expect(
       batchUploadInit({
         backendUrl: "http://localhost:8080",
-        accessToken: "valid-token",
         folderId: "folder-uuid",
         fileCount: 0,
       }),
@@ -791,7 +716,6 @@ describe("batchUploadInit", () => {
     await expect(
       batchUploadInit({
         backendUrl: "http://localhost:8080",
-        accessToken: "valid-token",
         folderId: "",
         fileCount: 5,
       }),
@@ -826,7 +750,6 @@ describe("batchUploadImage", () => {
     const result = await batchUploadImage({
       backendUrl,
       data: mockBatchUploadData,
-      accessToken: "valid-token",
     });
 
     expect(result.pictureId).toBe("picture-uuid-789");
@@ -837,7 +760,6 @@ describe("batchUploadImage", () => {
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        Authorization: `Bearer valid-token`,
         "X-Correlation-ID": "test-correlation-id",
         "X-Session-ID": "test-session-id",
       },
@@ -853,7 +775,7 @@ describe("batchUploadImage", () => {
         image: mockBatchUploadData.imageDataUrl,
       },
       withCredentials: true,
-      useNachetAuthProvider: false,
+      useNachetAuthProvider: true,
     });
   });
 
@@ -862,7 +784,6 @@ describe("batchUploadImage", () => {
       batchUploadImage({
         backendUrl: "",
         data: mockBatchUploadData,
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
   });
@@ -873,7 +794,6 @@ describe("batchUploadImage", () => {
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: invalidData,
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Session ID is null or empty"));
   });
@@ -884,7 +804,6 @@ describe("batchUploadImage", () => {
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: invalidData,
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Image is null or empty"));
   });
@@ -895,7 +814,6 @@ describe("batchUploadImage", () => {
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: invalidData,
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Seed ID is null or empty"));
   });
@@ -906,7 +824,6 @@ describe("batchUploadImage", () => {
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: invalidData,
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Magnification is null or empty"));
   });
@@ -917,7 +834,6 @@ describe("batchUploadImage", () => {
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: invalidData,
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Tray code is null or empty"));
   });
@@ -928,7 +844,6 @@ describe("batchUploadImage", () => {
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: invalidData,
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Sample ID Prefix is null or empty"));
   });
@@ -939,7 +854,6 @@ describe("batchUploadImage", () => {
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: invalidData,
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Device brand is null or empty"));
   });
@@ -950,7 +864,6 @@ describe("batchUploadImage", () => {
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: invalidData,
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Device model is null or empty"));
   });
@@ -961,7 +874,6 @@ describe("batchUploadImage", () => {
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: invalidData,
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Device lens is null or empty"));
   });
@@ -980,7 +892,6 @@ describe("batchUploadImage", () => {
       batchUploadImage({
         backendUrl: "http://localhost:8080",
         data: mockBatchUploadData,
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new AzureAPIError("Upload failed - file too large"));
     console.error = consoleError;
@@ -1014,7 +925,6 @@ describe("sendPositiveFeedback", () => {
     const result = await sendPositiveFeedback({
       feedbackData: mockPositiveFeedbackData,
       backendUrl,
-      accessToken: "valid-token",
     });
 
     expect(result).toEqual(mockResponse);
@@ -1024,13 +934,12 @@ describe("sendPositiveFeedback", () => {
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        Authorization: `Bearer valid-token`,
         "X-Correlation-ID": "test-correlation-id",
         "X-Session-ID": "test-session-id",
       },
       data: mockPositiveFeedbackData,
       withCredentials: true,
-      useNachetAuthProvider: false,
+      useNachetAuthProvider: true,
     });
   });
 
@@ -1039,7 +948,6 @@ describe("sendPositiveFeedback", () => {
       sendPositiveFeedback({
         feedbackData: mockPositiveFeedbackData,
         backendUrl: "",
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
   });
@@ -1058,7 +966,6 @@ describe("sendPositiveFeedback", () => {
       sendPositiveFeedback({
         feedbackData: mockPositiveFeedbackData,
         backendUrl: "http://localhost:8080",
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new AzureAPIError("Inference not found"));
     console.error = consoleError;
@@ -1104,7 +1011,6 @@ describe("sendNegativeFeedback", () => {
     const result = await sendNegativeFeedback({
       feedbackData: mockNegativeFeedbackData,
       backendUrl,
-      accessToken: "valid-token",
     });
 
     expect(result).toEqual(mockResponse);
@@ -1114,13 +1020,12 @@ describe("sendNegativeFeedback", () => {
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        Authorization: `Bearer valid-token`,
         "X-Correlation-ID": "test-correlation-id",
         "X-Session-ID": "test-session-id",
       },
       data: mockNegativeFeedbackData,
       withCredentials: true,
-      useNachetAuthProvider: false,
+      useNachetAuthProvider: true,
     });
   });
 
@@ -1129,7 +1034,6 @@ describe("sendNegativeFeedback", () => {
       sendNegativeFeedback({
         feedbackData: mockNegativeFeedbackData,
         backendUrl: "",
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
   });
@@ -1187,7 +1091,6 @@ describe("sendFeedbackNewBox", () => {
     const result = await sendFeedbackNewBox({
       feedbackData: mockNewBoxFeedbackData,
       backendUrl,
-      accessToken: "valid-token",
     });
 
     expect(result).toEqual(mockResponse);
@@ -1197,13 +1100,12 @@ describe("sendFeedbackNewBox", () => {
       headers: {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        Authorization: `Bearer valid-token`,
         "X-Correlation-ID": "test-correlation-id",
         "X-Session-ID": "test-session-id",
       },
       data: mockNewBoxFeedbackData,
       withCredentials: true,
-      useNachetAuthProvider: false,
+      useNachetAuthProvider: true,
     });
   });
 
@@ -1212,7 +1114,6 @@ describe("sendFeedbackNewBox", () => {
       sendFeedbackNewBox({
         feedbackData: mockNewBoxFeedbackData,
         backendUrl: "",
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new ValueError("Backend URL is null or empty"));
   });
@@ -1231,7 +1132,6 @@ describe("sendFeedbackNewBox", () => {
       sendFeedbackNewBox({
         feedbackData: mockNewBoxFeedbackData,
         backendUrl: "http://localhost:8080",
-        accessToken: "valid-token",
       }),
     ).rejects.toThrow(new AzureAPIError("Invalid box coordinates"));
     console.error = consoleError;

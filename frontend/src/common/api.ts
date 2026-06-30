@@ -1,4 +1,4 @@
-import axios, { AxiosHeaders } from "axios";
+import axios from "axios";
 import { AzureAPIError, ValueError } from "./error";
 import {
   ApiInferenceData,
@@ -71,16 +71,11 @@ const handleAxios = async <T>(request: {
 }): Promise<T> => {
   // Generate correlation ID for this request
   const correlationId = errorLogger.getCorrelationId();
-  const requestHasExplicitAuthHeader = hasAuthorizationHeader(request.headers);
   const requestRequiresAuth = request.authRequired ?? true;
   const requestCanUseAuthProvider =
     requestRequiresAuth && hasApiAccessTokenProvider();
 
-  if (
-    requestRequiresAuth &&
-    !requestHasExplicitAuthHeader &&
-    !requestCanUseAuthProvider
-  ) {
+  if (requestRequiresAuth && !requestCanUseAuthProvider) {
     throw new ValueError("Auth provider is not initialized for API requests");
   }
 
@@ -164,25 +159,6 @@ const handleAxios = async <T>(request: {
   return data;
 };
 
-// API helpers build plain header objects before Axios normalizes header names.
-const hasAuthorizationHeader = (headers: Record<string, string>): boolean => {
-  const authorizationHeader = AxiosHeaders.from(headers).get("Authorization");
-
-  return (
-    typeof authorizationHeader === "string" && authorizationHeader.trim() !== ""
-  );
-};
-
-// During the API auth migration, callers either pass an explicit token
-// or omit it so the Axios auth bridge can attach one.
-const getAuthHeaders = (accessToken?: string): Record<string, string> => {
-  if (accessToken === "") {
-    throw new ValueError("Access token is empty");
-  }
-
-  return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
-};
-
 export const pingBackend = async ({
   backendUrl,
 }: {
@@ -210,23 +186,18 @@ export const pingBackend = async ({
 
 export const checkUserRegistration = async ({
   backendUrl,
-  accessToken,
 }: {
   backendUrl: string;
-  accessToken?: string;
 }): Promise<{ isRegistered: boolean }> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "get",
     url: `${backendUrl}/is-registered`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
   };
   const response = await handleAxios<unknown>(request);
@@ -239,23 +210,18 @@ export const checkUserRegistration = async ({
 
 export const readAzureStorageDir = async ({
   backendUrl,
-  accessToken,
 }: {
   backendUrl: string;
-  accessToken?: string;
 }): Promise<ReadAzureStorageDirApi> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "get",
     url: `${backendUrl}/get-directories`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     // data: {
     //   //   container_name: uuid,
@@ -271,11 +237,9 @@ export const readAzureStorageDir = async ({
 
 export const createAzureStorageDir = async ({
   backendUrl,
-  accessToken,
   folderName,
 }: {
   backendUrl: string;
-  accessToken?: string;
   folderName: string;
 }): Promise<boolean> => {
   if (backendUrl === "" || backendUrl == null) {
@@ -284,15 +248,12 @@ export const createAzureStorageDir = async ({
   if (folderName === "" || folderName == null) {
     throw new ValueError("Folder name is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "post",
     url: `${backendUrl}/create-dir`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: {
       folderName: folderName,
@@ -312,11 +273,9 @@ export const createAzureStorageDir = async ({
  */
 export const deleteAzureStorageDir = async ({
   backendUrl,
-  accessToken,
   folderName,
 }: {
   backendUrl: string;
-  accessToken?: string;
   folderName: string;
 }): Promise<boolean> => {
   if (backendUrl === "" || backendUrl == null) {
@@ -325,15 +284,12 @@ export const deleteAzureStorageDir = async ({
   if (folderName === "" || folderName == null) {
     throw new ValueError("Folder name is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "post",
     url: `${backendUrl}/del`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: {
       folderName: folderName,
@@ -352,11 +308,9 @@ export const deleteAzureStorageDir = async ({
  */
 export const deleteFolder = async ({
   backendUrl,
-  accessToken,
   folderId,
 }: {
   backendUrl: string;
-  accessToken?: string;
   folderId: string;
 }): Promise<{ id: string; message: string }> => {
   if (!backendUrl) {
@@ -365,15 +319,12 @@ export const deleteFolder = async ({
   if (!folderId) {
     throw new ValueError("Folder ID is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "delete",
     url: `${backendUrl}/folders/${folderId}`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
   };
 
@@ -397,14 +348,12 @@ export const inferenceRequest = async ({
   selectedModel,
   imageObject,
   curDir,
-  accessToken,
   folderId,
 }: {
   backendUrl: string;
   selectedModel: string;
   imageObject: Images;
   curDir: string;
-  accessToken?: string;
   folderId: string;
 }): Promise<ImageSubmissionResponse> => {
   if (backendUrl === "" || backendUrl == null) {
@@ -419,8 +368,6 @@ export const inferenceRequest = async ({
   if (curDir === "" || curDir == null) {
     throw new ValueError("Directory is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   // Build payload object with all required and optional fields
   const payload = {
     pipelineId: selectedModel,
@@ -458,7 +405,6 @@ export const inferenceRequest = async ({
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: validatedPayload,
   };
@@ -475,14 +421,12 @@ export const inferenceDirectRequest = async ({
   selectedModel,
   imageObject,
   curDir,
-  accessToken,
   folderId,
 }: {
   backendUrl: string;
   selectedModel: string;
   imageObject: Images;
   curDir: string;
-  accessToken?: string;
   folderId: string;
 }): Promise<ApiInferenceData> => {
   if (backendUrl === "" || backendUrl == null) {
@@ -497,8 +441,6 @@ export const inferenceDirectRequest = async ({
   if (curDir === "" || curDir == null) {
     throw new ValueError("Directory is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   // Build payload object with all required and optional fields
   const payload = {
     pipelineId: selectedModel,
@@ -536,7 +478,6 @@ export const inferenceDirectRequest = async ({
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: validatedPayload,
   };
@@ -550,23 +491,18 @@ export const inferenceDirectRequest = async ({
 
 export const fetchModelMetadata = async ({
   backendUrl,
-  accessToken,
 }: {
   backendUrl: string;
-  accessToken?: string;
 }): Promise<ModelMetadata[]> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "get",
     url: `${backendUrl}/model-endpoints-metadata`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: {},
   };
@@ -580,23 +516,18 @@ export const fetchModelMetadata = async ({
 
 export const fetchDevices = async ({
   backendUrl,
-  accessToken,
 }: {
   backendUrl: string;
-  accessToken?: string;
 }): Promise<ApiDevicesResponse> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "get",
     url: `${backendUrl}/devices`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: {},
   };
@@ -611,11 +542,9 @@ export const fetchDevices = async ({
 export const getWorkflowStatus = async ({
   backendUrl,
   workflowId,
-  accessToken,
 }: {
   backendUrl: string;
   workflowId: string;
-  accessToken?: string;
 }): Promise<WorkflowStatusResponse> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -623,15 +552,12 @@ export const getWorkflowStatus = async ({
   if (workflowId === "" || workflowId == null) {
     throw new ValueError("Workflow ID is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "get",
     url: `${backendUrl}/workflow/${workflowId}/status`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: {},
   };
@@ -646,11 +572,9 @@ export const getWorkflowStatus = async ({
 export const getWorkflowResults = async ({
   backendUrl,
   workflowId,
-  accessToken,
 }: {
   backendUrl: string;
   workflowId: string;
-  accessToken?: string;
 }): Promise<ApiInferenceData> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
@@ -658,15 +582,12 @@ export const getWorkflowResults = async ({
   if (workflowId === "" || workflowId == null) {
     throw new ValueError("Workflow ID is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "get",
     url: `${backendUrl}/workflow/${workflowId}/results`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: {},
   };
@@ -681,24 +602,19 @@ export const getWorkflowResults = async ({
 export const sendFeedbackNewBox = async ({
   feedbackData,
   backendUrl,
-  accessToken,
 }: {
   feedbackData: FeedbackDataNegative;
   backendUrl: string;
-  accessToken?: string;
 }): Promise<ApiInferenceData> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "post",
     url: `${backendUrl}/feedback-new-box`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: feedbackData,
   };
@@ -713,24 +629,19 @@ export const sendFeedbackNewBox = async ({
 export const sendPositiveFeedback = async ({
   feedbackData,
   backendUrl,
-  accessToken,
 }: {
   feedbackData: FeedbackDataPositive;
   backendUrl: string;
-  accessToken?: string;
 }): Promise<ApiInferenceData> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "post",
     url: `${backendUrl}/feedback-positive`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: feedbackData,
   };
@@ -745,24 +656,19 @@ export const sendPositiveFeedback = async ({
 export const sendNegativeFeedback = async ({
   feedbackData,
   backendUrl,
-  accessToken,
 }: {
   feedbackData: FeedbackDataNegative;
   backendUrl: string;
-  accessToken?: string;
 }): Promise<ApiInferenceData> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "post",
     url: `${backendUrl}/feedback-negative`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: feedbackData,
   };
@@ -801,23 +707,18 @@ export const sendNegativeFeedback = async ({
 
 export const requestClassList = async ({
   backendUrl,
-  accessToken,
 }: {
   backendUrl: string;
-  accessToken?: string;
 }): Promise<ApiSpeciesData> => {
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "get",
     url: `${backendUrl}/seeds`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: {},
   };
@@ -831,12 +732,10 @@ export const requestClassList = async ({
 
 export const batchUploadInit = async ({
   backendUrl,
-  accessToken,
   folderId,
   fileCount,
 }: {
   backendUrl: string;
-  accessToken?: string;
   folderId: string;
   fileCount: number;
 }): Promise<{
@@ -851,15 +750,12 @@ export const batchUploadInit = async ({
   if (fileCount === 0 || fileCount == null) {
     throw new ValueError("Number of pictures is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "post",
     url: `${backendUrl}/new-batch-import`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: {
       folderId: folderId,
@@ -877,11 +773,9 @@ export const batchUploadInit = async ({
 export const batchUploadImage = async ({
   backendUrl,
   data,
-  accessToken,
 }: {
   backendUrl: string;
   data: BatchUploadMetadata;
-  accessToken?: string;
 }): Promise<BatchUploadImageResponse> => {
   const {
     sessionId,
@@ -927,15 +821,12 @@ export const batchUploadImage = async ({
   if (magnification === 0 || magnification == null) {
     throw new ValueError("Magnification is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "post",
     url: `${backendUrl}/upload-picture`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: {
       sessionId: sessionId,
@@ -970,7 +861,6 @@ export const batchUploadImage = async ({
  * Authorization: Users can only create folders for themselves
  *
  * @param backendUrl - Backend API base URL
- * @param accessToken - Optional compatibility bearer token. App callers normally use the shared auth provider.
  * @param normalizedPath - Relative path from user's root (e.g., "avena-fatua" or "mycology/avena-fatua")
  * @param description - Optional folder description
  * @returns Promise resolving to CreateOrGetFolderResponse with folderId
@@ -987,12 +877,10 @@ export const batchUploadImage = async ({
  */
 export const createOrGetFolder = async ({
   backendUrl,
-  accessToken,
   normalizedPath,
   description = "",
 }: {
   backendUrl: string;
-  accessToken?: string;
   normalizedPath: string;
   description?: string;
 }): Promise<CreateOrGetFolderResponse> => {
@@ -1011,15 +899,12 @@ export const createOrGetFolder = async ({
       `Invalid normalized path: ${pathValidation.error.issues[0].message}`,
     );
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "post",
     url: `${backendUrl}/folders`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: {
       normalizedPath: normalizedPath,
@@ -1044,7 +929,6 @@ export const createOrGetFolder = async ({
  * Restrictions: Cannot update default folders for active users
  *
  * @param backendUrl - Backend API base URL
- * @param accessToken - Optional compatibility bearer token. App callers normally use the shared auth provider.
  * @param folderId - UUID of the folder to update
  * @param name - Optional new folder name (just the name, not full path)
  * @param description - Optional new description
@@ -1063,13 +947,11 @@ export const createOrGetFolder = async ({
  */
 export const updateFolder = async ({
   backendUrl,
-  accessToken,
   folderId,
   name,
   description,
 }: {
   backendUrl: string;
-  accessToken?: string;
   folderId: string;
   name?: string;
   description?: string;
@@ -1106,15 +988,12 @@ export const updateFolder = async ({
       );
     }
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "put",
     url: `${backendUrl}/folders/${folderId}`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: {
       ...(name && { name }),
@@ -1132,11 +1011,9 @@ export const updateFolder = async ({
 
 export const sendLogToBackend = async ({
   backendUrl,
-  accessToken,
   logData,
 }: {
   backendUrl: string;
-  accessToken?: string;
   logData: {
     level: "ERROR" | "WARNING" | "INFO" | "DEBUG";
     message: string;
@@ -1151,15 +1028,12 @@ export const sendLogToBackend = async ({
   if (backendUrl === "" || backendUrl == null) {
     throw new ValueError("Backend URL is null or empty");
   }
-  const authHeaders = getAuthHeaders(accessToken);
-
   const request = {
     method: "post",
     url: `${backendUrl}/logs`,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      ...authHeaders,
     },
     data: logData,
   };
