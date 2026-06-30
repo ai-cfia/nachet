@@ -9,14 +9,16 @@ describe("ErrorLogger (Singleton)", () => {
   let consoleErrorSpy: any;
   let consoleWarnSpy: any;
   let consoleInfoSpy: any;
+  const mockedAxiosPost = vi.mocked(axios.post);
   const originalEnv = import.meta.env.VITE_LOG_API_URL;
 
   beforeEach(() => {
     // Reset mocks
     vi.clearAllMocks();
+    errorLogger.setTokenProvider(vi.fn().mockResolvedValue("test-token"));
 
     // Mock axios.post
-    (axios.post as any).mockResolvedValue({ data: { success: true } });
+    mockedAxiosPost.mockResolvedValue({ data: { success: true } });
 
     // Spy on console methods
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -29,7 +31,7 @@ describe("ErrorLogger (Singleton)", () => {
     consoleWarnSpy.mockRestore();
     consoleInfoSpy.mockRestore();
     // Reset token provider
-    errorLogger.setTokenProvider(null as any);
+    errorLogger.setTokenProvider(null);
     import.meta.env.VITE_LOG_API_URL = originalEnv;
   });
 
@@ -58,7 +60,7 @@ describe("ErrorLogger (Singleton)", () => {
       );
 
       // Reset token provider
-      errorLogger.setTokenProvider(null as any);
+      errorLogger.setTokenProvider(vi.fn().mockResolvedValue("test-token"));
     });
   });
 
@@ -174,7 +176,7 @@ describe("ErrorLogger (Singleton)", () => {
 
     it("should fallback to console if axios fails", async () => {
       const axiosError = new Error("Network error");
-      (axios.post as any).mockRejectedValueOnce(axiosError);
+      mockedAxiosPost.mockRejectedValueOnce(axiosError);
 
       await errorLogger.logError("Test error");
 
@@ -186,48 +188,46 @@ describe("ErrorLogger (Singleton)", () => {
       );
     });
 
-    it("should continue without auth if token provider fails", async () => {
+    it("should skip backend logging if token provider fails", async () => {
       const tokenProvider = vi.fn().mockRejectedValue(new Error("Token error"));
       errorLogger.setTokenProvider(tokenProvider);
 
       await errorLogger.logError("Test");
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        "Failed to acquire token for logs endpoint:",
+        "Skipping backend log submission because log auth failed:",
         expect.any(Error),
       );
-      expect(axios.post).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Object),
-        expect.objectContaining({
-          headers: expect.not.objectContaining({
-            Authorization: expect.anything(),
-          }),
-        }),
-      );
+      expect(axios.post).not.toHaveBeenCalled();
 
       // Reset token provider
-      errorLogger.setTokenProvider(null as any);
+      errorLogger.setTokenProvider(vi.fn().mockResolvedValue("test-token"));
     });
 
-    it("should continue without auth if token provider returns null", async () => {
-      const tokenProvider = vi.fn().mockResolvedValue(null);
+    it("should skip backend logging if token provider returns an empty token", async () => {
+      const tokenProvider = vi.fn().mockResolvedValue("");
       errorLogger.setTokenProvider(tokenProvider);
 
       await errorLogger.logError("Test");
 
-      expect(axios.post).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Object),
-        expect.objectContaining({
-          headers: expect.not.objectContaining({
-            Authorization: expect.anything(),
-          }),
-        }),
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "Skipping backend log submission because no auth token is available.",
       );
+      expect(axios.post).not.toHaveBeenCalled();
 
       // Reset token provider
-      errorLogger.setTokenProvider(null as any);
+      errorLogger.setTokenProvider(vi.fn().mockResolvedValue("test-token"));
+    });
+
+    it("should skip backend logging if token provider is not initialized", async () => {
+      errorLogger.setTokenProvider(null);
+
+      await errorLogger.logError("Test");
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "Skipping backend log submission because log auth is not initialized.",
+      );
+      expect(axios.post).not.toHaveBeenCalled();
     });
   });
 

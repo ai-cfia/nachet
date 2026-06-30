@@ -2,6 +2,7 @@ import { describe, it, vi, beforeEach, expect } from "vitest";
 import {
   createAzureStorageDir,
   deleteAzureStorageDir,
+  fetchDevices,
   fetchModelMetadata,
   inferenceRequest,
   readAzureStorageDir,
@@ -15,8 +16,15 @@ import {
 import axios from "axios";
 import { AzureAPIError, ValueError } from "../error";
 
-// mock axios
-vi.mock("axios");
+// mock axios while keeping AxiosHeaders available for api.ts header checks
+vi.mock("axios", async () => {
+  const actual = await vi.importActual<typeof import("axios")>("axios");
+
+  return {
+    ...actual,
+    default: vi.fn(),
+  };
+});
 const mockedAxios = vi.mocked(axios);
 
 // mock errorLogger
@@ -34,6 +42,18 @@ vi.mock("../../logging", () => ({
 
 beforeEach(() => {
   mockedAxios.mockClear();
+});
+
+describe("protected API auth initialization", () => {
+  it("should fail closed before sending protected requests without auth initialization", async () => {
+    await expect(
+      fetchDevices({ backendUrl: "http://localhost:8080" }),
+    ).rejects.toThrow(
+      new ValueError("Auth provider is not initialized for API requests"),
+    );
+
+    expect(mockedAxios).not.toHaveBeenCalled();
+  });
 });
 
 describe("readAzureStorageDir", () => {
@@ -70,6 +90,7 @@ describe("readAzureStorageDir", () => {
         "X-Session-ID": "test-session-id",
       },
       withCredentials: true,
+      useNachetAuthProvider: false,
     });
   });
 
@@ -94,16 +115,7 @@ describe("readAzureStorageDir", () => {
         backendUrl: "http://localhost:8080",
         accessToken: "",
       }),
-    ).rejects.toThrow(new ValueError("Access token is null or empty"));
-  });
-
-  it("should throw ValueError for null access token", async () => {
-    await expect(
-      readAzureStorageDir({
-        backendUrl: "http://localhost:8080",
-        accessToken: null as any,
-      }),
-    ).rejects.toThrow(new ValueError("Access token is null or empty"));
+    ).rejects.toThrow(new ValueError("Access token is empty"));
   });
 
   it("should throw error has response", async () => {
@@ -214,6 +226,7 @@ describe("createAzureStorageDir", () => {
         folderName: folderName,
       },
       withCredentials: true,
+      useNachetAuthProvider: false,
     });
   });
 
@@ -234,7 +247,7 @@ describe("createAzureStorageDir", () => {
         accessToken: "",
         folderName: "folder",
       }),
-    ).rejects.toThrow(new ValueError("Access token is null or empty"));
+    ).rejects.toThrow(new ValueError("Access token is empty"));
   });
 
   it("should throw ValueError for empty folder name", async () => {
@@ -294,6 +307,7 @@ describe("deleteAzureStorageDir", () => {
         folderName: folderName,
       },
       withCredentials: true,
+      useNachetAuthProvider: false,
     });
   });
 
@@ -314,7 +328,7 @@ describe("deleteAzureStorageDir", () => {
         accessToken: "",
         folderName: "folder",
       }),
-    ).rejects.toThrow(new ValueError("Access token is null or empty"));
+    ).rejects.toThrow(new ValueError("Access token is empty"));
   });
 
   it("should throw ValueError for empty folder name", async () => {
@@ -417,6 +431,7 @@ describe("inferenceRequest", () => {
         magnification: mockImageObject.magnification,
       },
       withCredentials: true,
+      useNachetAuthProvider: false,
     });
   });
 
@@ -483,7 +498,7 @@ describe("inferenceRequest", () => {
         accessToken: "",
         folderId: "folder-id",
       }),
-    ).rejects.toThrow(new ValueError("Access token is null or empty"));
+    ).rejects.toThrow(new ValueError("Access token is empty"));
   });
 
   it("should handle inference service errors", async () => {
@@ -612,6 +627,7 @@ describe("fetchModelMetadata", () => {
       },
       data: {},
       withCredentials: true,
+      useNachetAuthProvider: false,
     });
   });
 
@@ -709,6 +725,7 @@ describe("requestClassList", () => {
       },
       data: {},
       withCredentials: true,
+      useNachetAuthProvider: false,
     });
   });
 
@@ -755,6 +772,7 @@ describe("batchUploadInit", () => {
         fileCount: nbPictures,
       },
       withCredentials: true,
+      useNachetAuthProvider: false,
     });
   });
 
@@ -835,6 +853,7 @@ describe("batchUploadImage", () => {
         image: mockBatchUploadData.imageDataUrl,
       },
       withCredentials: true,
+      useNachetAuthProvider: false,
     });
   });
 
@@ -1011,6 +1030,7 @@ describe("sendPositiveFeedback", () => {
       },
       data: mockPositiveFeedbackData,
       withCredentials: true,
+      useNachetAuthProvider: false,
     });
   });
 
@@ -1100,6 +1120,7 @@ describe("sendNegativeFeedback", () => {
       },
       data: mockNegativeFeedbackData,
       withCredentials: true,
+      useNachetAuthProvider: false,
     });
   });
 
@@ -1182,6 +1203,7 @@ describe("sendFeedbackNewBox", () => {
       },
       data: mockNewBoxFeedbackData,
       withCredentials: true,
+      useNachetAuthProvider: false,
     });
   });
 
