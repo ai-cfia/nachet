@@ -5,7 +5,7 @@ let responseInterceptorId: number | null = null;
 let apiAccessTokenProvider: GetAccessToken | null = null;
 
 interface NachetAuthRequestConfig extends InternalAxiosRequestConfig {
-  nachetAuthRequired?: boolean;
+  useNachetAuthProvider?: boolean;
 }
 
 interface RetriableNachetAuthRequestConfig extends NachetAuthRequestConfig {
@@ -26,10 +26,10 @@ const assertAccessToken = (accessToken: string): string => {
   return accessToken;
 };
 
-const requestRequiresNachetAuth = (
+const requestUsesNachetAuthProvider = (
   request?: NachetAuthRequestConfig,
 ): boolean => {
-  return request?.nachetAuthRequired === true;
+  return request?.useNachetAuthProvider === true;
 };
 
 export const clearAxiosInterceptors = (): void => {
@@ -63,7 +63,7 @@ export const setupAxiosInterceptor = (getAccessToken: GetAccessToken): void => {
   requestInterceptorId = axios.interceptors.request.use(
     async (config: NachetAuthRequestConfig) => {
       if (
-        !requestRequiresNachetAuth(config) ||
+        !requestUsesNachetAuthProvider(config) ||
         config.headers.has("Authorization")
       ) {
         return config;
@@ -90,7 +90,7 @@ export const setupAxiosInterceptor = (getAccessToken: GetAccessToken): void => {
       if (
         error.response?.status === 401 &&
         originalRequest &&
-        requestRequiresNachetAuth(originalRequest) &&
+        requestUsesNachetAuthProvider(originalRequest) &&
         !originalRequest._retry
       ) {
         originalRequest._retry = true;

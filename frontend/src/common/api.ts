@@ -95,7 +95,7 @@ const handleAxios = async <T>(request: {
       "X-Session-ID": errorLogger.getSessionId(),
     },
     withCredentials: true,
-    nachetAuthRequired: requestCanUseAuthProvider,
+    useNachetAuthProvider: requestCanUseAuthProvider,
   };
 
   const data = await axios(enhancedRequest)

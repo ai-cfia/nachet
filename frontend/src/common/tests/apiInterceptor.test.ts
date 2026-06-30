@@ -11,7 +11,7 @@ import {
 import { clearApiAuthentication, fetchDevices, initializeApi } from "../api";
 
 interface NachetAuthAxiosRequestConfig extends AxiosRequestConfig {
-  nachetAuthRequired?: boolean;
+  useNachetAuthProvider?: boolean;
 }
 
 const okResponse = (
@@ -77,7 +77,7 @@ describe("apiInterceptor", () => {
   it("attaches a bearer token to protected Nachet API requests", async () => {
     setupAxiosInterceptor(vi.fn().mockResolvedValue("access-token"));
 
-    const response = await runRequest({ nachetAuthRequired: true });
+    const response = await runRequest({ useNachetAuthProvider: true });
 
     expect(response.config.headers.Authorization).toBe("Bearer access-token");
   });
@@ -97,7 +97,7 @@ describe("apiInterceptor", () => {
     setupAxiosInterceptor(getAccessToken);
 
     const response = await runRequest({
-      nachetAuthRequired: true,
+      useNachetAuthProvider: true,
       headers: { authorization: "Bearer explicit-token" },
     });
 
@@ -110,7 +110,7 @@ describe("apiInterceptor", () => {
   it("fails closed when a protected request cannot get a token", async () => {
     setupAxiosInterceptor(vi.fn().mockResolvedValue(""));
 
-    await expect(runRequest({ nachetAuthRequired: true })).rejects.toThrow(
+    await expect(runRequest({ useNachetAuthProvider: true })).rejects.toThrow(
       "Access token is null or empty",
     );
   });
@@ -154,7 +154,7 @@ describe("apiInterceptor", () => {
     const requestConfig: NachetAuthAxiosRequestConfig = {
       method: "get",
       url: "https://api.example.test/protected",
-      nachetAuthRequired: true,
+      useNachetAuthProvider: true,
       adapter: retryAdapter,
     };
 
@@ -202,7 +202,7 @@ describe("apiInterceptor", () => {
     const requestConfig: NachetAuthAxiosRequestConfig = {
       method: "get",
       url: "https://api.example.test/protected",
-      nachetAuthRequired: true,
+      useNachetAuthProvider: true,
       headers: { Authorization: "Bearer stale-token" },
       adapter: retryAdapter,
     };
