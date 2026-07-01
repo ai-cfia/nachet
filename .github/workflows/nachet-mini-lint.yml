@@ -1,6 +1,6 @@
 name: Nachet Mini Lint
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
   actions: write
 
@@ -37,7 +37,7 @@ defaults:
 
 jobs:
   versions:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.user.login != 'renovate[bot]' }}
+    if: ${{ github.event.pull_request.user.login != 'renovate[bot]' }}
     uses: ./.github/workflows/reusable-frontend-versions.yml
     with:
       working-directory: nachet-mini
@@ -69,13 +69,9 @@ jobs:
         run: |
           echo "🔍 Checking if package-lock.json needs updating..."
 
-          # Create a backup of the current package-lock.json
           cp package-lock.json package-lock.json.backup
-
-          # Run npm install to regenerate package-lock.json
           npm install --package-lock-only
 
-          # Compare the files
           if ! cmp -s package-lock.json package-lock.json.backup; then
             echo "❌ package-lock.json is out of date!"
             echo ""
@@ -100,7 +96,6 @@ jobs:
     secrets: inherit
 
   nachet-mini-browser-tests:
-    # TODO: make this reusable in the github workflows repo and use it in other frontend repos as well
     name: Nachet Mini Browser Tests
     needs: [versions, nachet-mini-lint-test]
     if: ${{ !cancelled() && needs.nachet-mini-lint-test.result == 'success' }}
