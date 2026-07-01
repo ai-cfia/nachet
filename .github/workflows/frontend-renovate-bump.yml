@@ -131,6 +131,7 @@ jobs:
           author_email: "github-actions[bot]@users.noreply.github.com"
 
       - name: Run frontend checks
+        if: steps.check.outputs.changed == 'true'
         run: |
           gh workflow run frontend-lint.yml --ref "${{ github.head_ref }}"
         env:
