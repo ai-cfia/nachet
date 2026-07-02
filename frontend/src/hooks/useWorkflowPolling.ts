@@ -190,13 +190,11 @@ export const useWorkflowPolling = ({
   ]);
 
   useEffect(() => {
-    if (
-      !enabled ||
-      !workflowId ||
-      !backendUrl ||
-      !isAuthenticated ||
-      authLoading
-    ) {
+    const isWorkflowReady =
+      enabled && Boolean(workflowId) && Boolean(backendUrl);
+    const isAuthReady = isAuthenticated && !authLoading;
+
+    if (!isWorkflowReady || !isAuthReady) {
       return;
     }
 

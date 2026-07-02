@@ -538,9 +538,6 @@ export const BatchUploadPopupContainer = (
       folderId: createdFolderId,
       fileCount,
     })
-      .then((response) => {
-        return { sessionId: response.sessionId };
-      })
       .then(({ sessionId }) => {
         // Create session in Zustand store
         createSession(sessionId, fileCount);

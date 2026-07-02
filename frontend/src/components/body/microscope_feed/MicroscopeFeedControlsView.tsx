@@ -129,9 +129,7 @@ export const MicroscopeFeedControlsView = (
     padding: 0,
   };
 
-  const isGuest = useMemo(() => {
-    return activeAccount?.isGuest ?? true;
-  }, [activeAccount]);
+  const isGuest = activeAccount?.isGuest ?? true;
 
   // Find the model name from metadata based on selectedModel (pipelineId)
   const selectedModelName = useMemo(() => {
