@@ -1,0 +1,113 @@
+---
+name: Backend Renovate
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "backend/pyproject.toml"
+      - ".github/workflows/backend-*"
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  bump-version:
+    name: Bump version
+    if: ${{ (github.event.pull_request.user.login == 'renovate[bot]' || github.event.pull_request.user.login == 'github-actions[bot]') && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
+        with:
+          version: "latest"
+
+      - name: Bump version for Renovate PRs
+        id: bump
+        run: |
+          latest_version=""
+          tags=$(git tag --list "nachet-backend-v*" --sort=-creatordate | head -n 10)
+
+          for tag in $tags; do
+            version=$(echo "$tag" | grep -oP '(?<=nachet-backend-v)[0-9]+\.[0-9]+\.[0-9]+')
+            if [ -n "$version" ]; then
+              latest_version="$version"
+              break
+            fi
+          done
+
+          if [ -z "$latest_version" ]; then
+            latest_version="0.0.0"
+          fi
+
+          current=$(uv version --short)
+          desired=$(echo "$latest_version" | awk -F. -v OFS=. '{ $NF++; print }')
+
+          echo "Latest released: $latest_version"
+          echo "Current in pyproject.toml: $current"
+          echo "Desired: $desired"
+
+          if [ "$(printf '%s\n' "$current" "$latest_version" | sort -V | tail -1)" = "$current" ] && [ "$current" != "$latest_version" ]; then
+            echo "bumped=false" >> $GITHUB_OUTPUT
+            echo "Version already bumped, skipping."
+          else
+            uv version "$desired"
+            echo "bumped=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update lock file
+        if: steps.bump.outputs.bumped == 'true'
+        run: uv lock
+
+      - name: Check if bump is needed
+        id: check
+        if: steps.bump.outputs.bumped == 'true'
+        run: git diff --exit-code || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit & push changes
+        if: steps.check.outputs.changed == 'true'
+        permissions:
+          contents: write
+        uses: EndBug/add-and-commit@ebe9b51bb11d033d228e1a1c3f23ad5bd4110c81
+        with:
+          message: "chore: bump backend version for Renovate PRs"
+          add: "."
+          pull: "--rebase --autostash"
+          author_name: "github-actions[bot]"
+          author_email: "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run backend checks
+        run: |
+          gh workflow run backend-lint.yml --ref "${{ github.head_ref }}"
+        env:
+          GH_TOKEN: ${{ github.token }}

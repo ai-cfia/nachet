@@ -1,4 +1,5 @@
-name: Nachet Mini Renovate
+---
+name: Frontend Renovate
 
 permissions:
   actions: write
@@ -12,8 +13,8 @@ concurrency:
 on:
   pull_request:
     paths:
-      - "nachet-mini/**"
-      - ".github/workflows/nachet-mini-*.yml"
+      - "frontend/**"
+      - ".github/workflows/frontend-*.yml"
       - ".github/workflows/reusable-frontend-versions.yml"
     types:
       - opened
@@ -22,15 +23,15 @@ on:
 
 defaults:
   run:
-    working-directory: nachet-mini
+    working-directory: frontend
 
 jobs:
   versions:
     if: ${{ github.event.pull_request.user.login == 'renovate[bot]' || github.event.pull_request.user.login == 'github-actions[bot]' }}
     uses: ./.github/workflows/reusable-frontend-versions.yml
     with:
-      working-directory: nachet-mini
-      package-name: nachet-mini
+      working-directory: frontend
+      package-name: nachet-frontend
       skip-version-check: true
 
   bump-version:
@@ -38,20 +39,23 @@ jobs:
     needs: [versions]
     if: ${{ !cancelled() && needs.versions.result == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.event.pull_request.base.ref }}
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: ${{ needs.versions.outputs.node-version }}
           cache: "npm"
-          cache-dependency-path: nachet-mini/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install specific npm version
         run: npm install -g npm@${{ needs.versions.outputs.npm-version }}
@@ -59,10 +63,10 @@ jobs:
       - name: Idempotently bump version
         run: |
           latest_version=""
-          tags=$(git tag --list "nachet-mini-v*" --sort=-creatordate | head -n 10)
+          tags=$(git tag --list "nachet-frontend-v*" --sort=-creatordate | head -n 10)
 
           for tag in $tags; do
-            version=$(echo "$tag" | grep -oP '(?<=nachet-mini-v)[0-9]+\.[0-9]+\.[0-9]+')
+            version=$(echo "$tag" | grep -oP '(?<=nachet-frontend-v)[0-9]+\.[0-9]+\.[0-9]+')
             if [ -n "$version" ]; then
               latest_version="$version"
               break
@@ -121,14 +125,15 @@ jobs:
         if: steps.check.outputs.changed == 'true'
         uses: EndBug/add-and-commit@ebe9b51bb11d033d228e1a1c3f23ad5bd4110c81
         with:
-          message: "chore: bump nachet-mini version for Renovate PRs"
+          message: "chore: bump frontend version for Renovate PRs"
           add: "."
           pull: "--rebase --autostash"
           author_name: "github-actions[bot]"
           author_email: "github-actions[bot]@users.noreply.github.com"
 
-      - name: Run nachet-mini checks
+      - name: Run frontend checks
+        if: steps.check.outputs.changed == 'true'
         run: |
-          gh workflow run nachet-mini-lint.yml --ref "${{ github.head_ref }}"
+          gh workflow run frontend-lint.yml --ref "${{ github.head_ref }}"
         env:
           GH_TOKEN: ${{ github.token }}
