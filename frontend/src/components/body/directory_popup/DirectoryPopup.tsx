@@ -22,7 +22,7 @@ import { PopupActionButtons } from "@components/common";
 import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";
 import { useFolderStore } from "@stores/useFolderStore";
 import { useNotificationStore } from "@stores/useNotificationStore";
-import { useNachetAuth } from "../../../auth";
+import { useNachetAuth } from "@auth";
 
 interface params {
   setReadAzureStorage: Dispatch<SetStateAction<boolean>>;

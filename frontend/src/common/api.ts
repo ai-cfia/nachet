@@ -44,7 +44,7 @@ import {
   clearAxiosInterceptors,
   hasApiAccessTokenProvider,
 } from "./apiInterceptor";
-import type { NachetAuthTokenOptions } from "../auth/NachetAuthContext";
+import type { NachetAuthTokenOptions } from "@auth";
 
 type GetApiAccessToken = (options?: NachetAuthTokenOptions) => Promise<string>;
 

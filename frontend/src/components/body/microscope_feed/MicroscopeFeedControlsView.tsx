@@ -20,7 +20,7 @@ import { useModalStore } from "@stores/useModalStore";
 import { useWebcamStore } from "@stores/useWebcamStore";
 import { useModelStore } from "@stores/useModelStore";
 import { useNotificationStore } from "@stores/useNotificationStore";
-import { useNachetAuth } from "../../../auth";
+import { useNachetAuth } from "@auth";
 
 export interface MicroscopeFeedControlsViewProps {
   isWebcamActive: boolean;

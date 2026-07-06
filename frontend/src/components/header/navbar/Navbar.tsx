@@ -3,7 +3,7 @@ import { Button, IconButton, Box } from "@mui/material";
 import { colours } from "../../../styles/colours";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useTranslation } from "react-i18next";
-import { useNachetAuth } from "../../../auth";
+import { useNachetAuth } from "@auth";
 
 const Navbar = () => {
   const { accounts, isAuthenticated, login, logout } = useNachetAuth();

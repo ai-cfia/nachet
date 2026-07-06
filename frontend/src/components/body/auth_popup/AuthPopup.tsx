@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import { colours } from "../../../styles/colours";
 import { useTranslation } from "react-i18next";
-import { useNachetAuth } from "../../../auth";
+import { useNachetAuth } from "@auth";
 
 interface AuthPopupProps {
   open: boolean;

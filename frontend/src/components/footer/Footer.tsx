@@ -6,7 +6,7 @@ import useBackendUrl from "@hooks/useBackendUrl";
 import { pingBackend } from "@common/api";
 import { colours } from "../../styles/colours";
 import { useTranslation } from "react-i18next";
-import { useNachetAuth } from "../../auth";
+import { useNachetAuth } from "@auth";
 
 const Footer: React.FC = () => {
   const { activeAccount } = useNachetAuth();

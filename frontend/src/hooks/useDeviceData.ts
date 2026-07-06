@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useDeviceStore } from "@stores/useDeviceStore";
 import { fetchDevices } from "@common/api";
-import { useNachetAuth } from "../auth";
+import { useNachetAuth } from "@auth";
 
 export const useDeviceData = (backendUrl: string) => {
   const {

@@ -8,7 +8,7 @@
 import { useEffect } from "react";
 import { useFolderStore, FolderData } from "@stores/useFolderStore";
 import { readAzureStorageDir } from "@common/api";
-import { useNachetAuth } from "../auth";
+import { useNachetAuth } from "@auth";
 
 export const useFolderData = (backendUrl: string) => {
   const { folderData, isLoading, error, setFolderData, setLoading, setError } =

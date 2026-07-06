@@ -19,7 +19,7 @@ import { useNotificationStore } from "@stores/useNotificationStore";
 import { useInferenceResultsStore } from "@stores/useInferenceResultsStore";
 import { MicroscopeFeedControlsView } from "./MicroscopeFeedControlsView";
 import { MicroscopeFeedWorkspaceView } from "./MicroscopeFeedWorkspaceView";
-import { useNachetAuth } from "../../../auth";
+import { useNachetAuth } from "@auth";
 
 interface MicroscopeFeedProps {
   webcamRef: React.RefObject<Webcam | null>;

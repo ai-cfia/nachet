@@ -3,7 +3,7 @@ import { getWorkflowStatus, getWorkflowResults } from "@common/index";
 import { useWorkflowStore } from "@stores/useWorkflowStore";
 import { ApiInferenceData, WorkflowStatus } from "@common/types";
 import { errorLogger } from "../logging";
-import { useNachetAuth } from "../auth";
+import { useNachetAuth } from "@auth";
 
 const POLLING_INTERVAL_MS = 10000; // 10 seconds
 const INITIAL_DELAY_MS = 20000; // 20 seconds - wait before first poll

@@ -39,7 +39,7 @@ import { useModelStore } from "@stores/useModelStore";
 import { useNotificationStore } from "@stores/useNotificationStore";
 import { useInferenceResultsStore } from "@stores/useInferenceResultsStore";
 import { WorkflowQueueManager } from "../../services/WorkflowQueueManager";
-import { useNachetAuth } from "../../auth";
+import { useNachetAuth } from "@auth";
 import {
   getLabelOccurrence,
   loadToCanvas,

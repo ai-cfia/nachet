@@ -3,7 +3,7 @@ import { renderHook } from "@testing-library/react";
 import { useWorkflowPolling } from "../useWorkflowPolling";
 import { useWorkflowStore } from "@stores/useWorkflowStore";
 import * as commonApi from "@common/index";
-import { useNachetAuth } from "../../auth";
+import { useNachetAuth } from "@auth";
 import { errorLogger } from "../../logging";
 import type { ApiInferenceData, WorkflowStatusResponse } from "@common/types";
 
@@ -19,7 +19,7 @@ vi.mock("../../logging", () => ({
   },
 }));
 
-vi.mock("../../auth");
+vi.mock("@auth");
 
 describe("useWorkflowPolling", () => {
   const mockWorkflowId = "workflow-123";

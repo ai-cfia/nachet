@@ -3,12 +3,12 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useSpeciesData } from "../useSpeciesData";
 import { useSpeciesStore } from "@stores/useSpeciesStore";
 import { requestClassList } from "@common/api";
-import { useNachetAuth } from "../../auth";
+import { useNachetAuth } from "@auth";
 
 // Mock dependencies
 vi.mock("@stores/useSpeciesStore");
 vi.mock("@common/api");
-vi.mock("../../auth");
+vi.mock("@auth");
 
 describe("useSpeciesData", () => {
   let mockSetSpeciesData: any;

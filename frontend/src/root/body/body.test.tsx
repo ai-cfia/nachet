@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import Body from "./body";
 
-vi.mock("../../auth", () => ({
+vi.mock("@auth", () => ({
   useNachetAuth: () => ({
     isAuthenticated: false,
     isLoading: false,

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useSpeciesStore } from "@stores/useSpeciesStore";
 import { requestClassList } from "@common/api";
-import { useNachetAuth } from "../auth";
+import { useNachetAuth } from "@auth";
 
 export const useSpeciesData = (backendUrl: string) => {
   const {

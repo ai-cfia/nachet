@@ -3,12 +3,12 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useDeviceData } from "../useDeviceData";
 import { useDeviceStore } from "@stores/useDeviceStore";
 import { fetchDevices } from "@common/api";
-import { useNachetAuth } from "../../auth";
+import { useNachetAuth } from "@auth";
 
 // Mock dependencies
 vi.mock("@stores/useDeviceStore");
 vi.mock("@common/api");
-vi.mock("../../auth");
+vi.mock("@auth");
 
 describe("useDeviceData", () => {
   let mockSetDevicesData: any;

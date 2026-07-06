@@ -3,12 +3,12 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useFolderData } from "../useFolderData";
 import { useFolderStore, FolderData } from "@stores/useFolderStore";
 import { readAzureStorageDir } from "@common/api";
-import { useNachetAuth } from "../../auth";
+import { useNachetAuth } from "@auth";
 
 // Mock dependencies
 vi.mock("@stores/useFolderStore");
 vi.mock("@common/api");
-vi.mock("../../auth");
+vi.mock("@auth");
 
 describe("useFolderData", () => {
   let mockSetFolderData: any;

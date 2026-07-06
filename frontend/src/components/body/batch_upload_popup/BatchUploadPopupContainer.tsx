@@ -26,7 +26,7 @@ import { useModalStore } from "@stores/useModalStore";
 import { BatchUploadPopupView } from "./BatchUploadPopupView";
 import { useTranslation } from "react-i18next";
 import { useNotificationStore } from "@stores/useNotificationStore";
-import { useNachetAuth } from "../../../auth";
+import { useNachetAuth } from "@auth";
 
 interface BatchUploadPopupContainerProps {
   backendUrl: string;
