@@ -8,41 +8,31 @@
 import { useEffect } from "react";
 import { useModelStore } from "@stores/useModelStore";
 import { fetchModelMetadata } from "@common";
-import { acquireAccessToken } from "@common/auth";
-import { useMsal } from "@azure/msal-react";
-import { InteractionStatus } from "@azure/msal-browser";
 
 interface UseModelMetadataParams {
   backendUrl: string;
-  apiScopeClaim: string;
   isAuthenticated: boolean;
-  inProgress: InteractionStatus;
+  authLoading: boolean;
 }
 
 export const useModelMetadata = ({
   backendUrl,
-  apiScopeClaim,
   isAuthenticated,
-  inProgress,
+  authLoading,
 }: UseModelMetadataParams) => {
-  const { instance: msalInstance } = useMsal();
   const { metadata, selectedModel, setMetadata, setSelectedModel, setLoading } =
     useModelStore();
 
   useEffect(() => {
     // Only load metadata if user is authenticated and no interaction is in progress
-    if (!isAuthenticated || inProgress !== InteractionStatus.None) {
+    if (!isAuthenticated || authLoading) {
       return;
     }
 
     const loadModelMetadata = async () => {
       try {
         setLoading(true);
-        const accessToken = await acquireAccessToken(msalInstance, [
-          apiScopeClaim,
-        ]);
-
-        const metadata = await fetchModelMetadata({ backendUrl, accessToken });
+        const metadata = await fetchModelMetadata({ backendUrl });
         setMetadata(metadata);
 
         // Find the default model from the metadata
@@ -63,11 +53,9 @@ export const useModelMetadata = ({
 
     void loadModelMetadata();
   }, [
+    authLoading,
     backendUrl,
-    msalInstance,
-    apiScopeClaim,
     isAuthenticated,
-    inProgress,
     setMetadata,
     setSelectedModel,
     setLoading,

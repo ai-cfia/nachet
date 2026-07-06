@@ -3,21 +3,17 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { useDeviceData } from "../useDeviceData";
 import { useDeviceStore } from "@stores/useDeviceStore";
 import { fetchDevices } from "@common/api";
-import { acquireAccessToken } from "@common/auth";
-import { useMsal, useIsAuthenticated } from "@azure/msal-react";
-import { InteractionStatus } from "@azure/msal-browser";
+import { useNachetAuth } from "@auth";
 
 // Mock dependencies
 vi.mock("@stores/useDeviceStore");
 vi.mock("@common/api");
-vi.mock("@common/auth");
-vi.mock("@azure/msal-react");
+vi.mock("@auth");
 
 describe("useDeviceData", () => {
   let mockSetDevicesData: any;
   let mockSetLoading: any;
   let mockSetError: any;
-  let mockMsalInstance: any;
   const mockDevicesData = {
     devices: [
       { id: "device-1", name: "Device 1" },
@@ -31,7 +27,6 @@ describe("useDeviceData", () => {
     mockSetDevicesData = vi.fn();
     mockSetLoading = vi.fn();
     mockSetError = vi.fn();
-    mockMsalInstance = {} as any;
 
     // Mock the store
     (useDeviceStore as any).mockReturnValue({
@@ -43,17 +38,10 @@ describe("useDeviceData", () => {
       setError: mockSetError,
     });
 
-    // Mock useMsal
-    (useMsal as any).mockReturnValue({
-      instance: mockMsalInstance,
-      inProgress: InteractionStatus.None,
+    (useNachetAuth as any).mockReturnValue({
+      isAuthenticated: true,
+      isLoading: false,
     });
-
-    // Mock useIsAuthenticated
-    (useIsAuthenticated as any).mockReturnValue(true);
-
-    // Mock auth
-    (acquireAccessToken as any).mockResolvedValue("test-token");
 
     // Mock fetchDevices
     (fetchDevices as any).mockResolvedValue(mockDevicesData);
@@ -63,22 +51,15 @@ describe("useDeviceData", () => {
   });
 
   it("should fetch and set device data when authenticated", async () => {
-    renderHook(() => useDeviceData("http://test-backend.com", "test-scope"));
+    renderHook(() => useDeviceData("http://test-backend.com"));
 
     await waitFor(() => {
       expect(mockSetLoading).toHaveBeenCalledWith(true);
     });
 
     await waitFor(() => {
-      expect(acquireAccessToken).toHaveBeenCalledWith(mockMsalInstance, [
-        "test-scope",
-      ]);
-    });
-
-    await waitFor(() => {
       expect(fetchDevices).toHaveBeenCalledWith({
         backendUrl: "http://test-backend.com",
-        accessToken: "test-token",
       });
     });
 
@@ -92,15 +73,18 @@ describe("useDeviceData", () => {
   });
 
   it("should not fetch when backendUrl is empty", () => {
-    renderHook(() => useDeviceData("", "test-scope"));
+    renderHook(() => useDeviceData(""));
 
     expect(fetchDevices).not.toHaveBeenCalled();
   });
 
   it("should not fetch when not authenticated", () => {
-    (useIsAuthenticated as any).mockReturnValue(false);
+    (useNachetAuth as any).mockReturnValue({
+      isAuthenticated: false,
+      isLoading: false,
+    });
 
-    renderHook(() => useDeviceData("http://test-backend.com", "test-scope"));
+    renderHook(() => useDeviceData("http://test-backend.com"));
 
     expect(fetchDevices).not.toHaveBeenCalled();
   });
@@ -115,18 +99,18 @@ describe("useDeviceData", () => {
       setError: mockSetError,
     });
 
-    renderHook(() => useDeviceData("http://test-backend.com", "test-scope"));
+    renderHook(() => useDeviceData("http://test-backend.com"));
 
     expect(fetchDevices).not.toHaveBeenCalled();
   });
 
-  it("should not fetch when interaction is in progress", () => {
-    (useMsal as any).mockReturnValue({
-      instance: mockMsalInstance,
-      inProgress: InteractionStatus.Login,
+  it("should not fetch while auth is loading", () => {
+    (useNachetAuth as any).mockReturnValue({
+      isAuthenticated: true,
+      isLoading: true,
     });
 
-    renderHook(() => useDeviceData("http://test-backend.com", "test-scope"));
+    renderHook(() => useDeviceData("http://test-backend.com"));
 
     expect(fetchDevices).not.toHaveBeenCalled();
   });
@@ -135,7 +119,7 @@ describe("useDeviceData", () => {
     const mockError = new Error("Failed to fetch devices");
     (fetchDevices as any).mockRejectedValue(mockError);
 
-    renderHook(() => useDeviceData("http://test-backend.com", "test-scope"));
+    renderHook(() => useDeviceData("http://test-backend.com"));
 
     await waitFor(() => {
       expect(mockSetError).toHaveBeenCalledWith("Failed to fetch devices");
@@ -156,7 +140,7 @@ describe("useDeviceData", () => {
   it("should handle non-Error rejection", async () => {
     (fetchDevices as any).mockRejectedValue("String error");
 
-    renderHook(() => useDeviceData("http://test-backend.com", "test-scope"));
+    renderHook(() => useDeviceData("http://test-backend.com"));
 
     await waitFor(() => {
       expect(mockSetError).toHaveBeenCalledWith("Unknown error occurred");
@@ -178,7 +162,7 @@ describe("useDeviceData", () => {
     });
 
     const { result } = renderHook(() =>
-      useDeviceData("http://test-backend.com", "test-scope"),
+      useDeviceData("http://test-backend.com"),
     );
 
     expect(result.current.devicesData).toEqual(mockDevicesData);

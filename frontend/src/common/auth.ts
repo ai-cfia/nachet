@@ -3,7 +3,7 @@ import {
   InteractionRequiredAuthError,
   BrowserAuthError,
 } from "@azure/msal-browser";
-import type { NachetAuthTokenOptions } from "../auth/NachetAuthContext";
+import type { NachetAuthTokenOptions } from "@auth";
 
 // Track if we're currently in a redirect flow to prevent loops
 let isRedirecting = false;

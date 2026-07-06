@@ -3,6 +3,7 @@ import { getWorkflowStatus, getWorkflowResults } from "@common/index";
 import { useWorkflowStore } from "@stores/useWorkflowStore";
 import { ApiInferenceData, WorkflowStatus } from "@common/types";
 import { errorLogger } from "../logging";
+import { useNachetAuth } from "@auth";
 
 const POLLING_INTERVAL_MS = 10000; // 10 seconds
 const INITIAL_DELAY_MS = 20000; // 20 seconds - wait before first poll
@@ -18,7 +19,6 @@ const isTerminalState = (status: string): status is TerminalState => {
 interface UseWorkflowPollingParams {
   workflowId: string;
   backendUrl: string;
-  accessToken: string;
   enabled: boolean;
   onComplete: (results: ApiInferenceData) => void;
   onError?: (error: Error) => void;
@@ -28,7 +28,6 @@ interface UseWorkflowPollingParams {
  * Custom hook for polling workflow status and fetching results when complete
  * @param workflowId - The workflow ID to poll
  * @param backendUrl - Backend API URL
- * @param accessToken - Authentication token
  * @param enabled - Whether polling is enabled
  * @param onComplete - Callback when workflow completes successfully
  * @param onError - Optional callback when workflow fails
@@ -36,11 +35,11 @@ interface UseWorkflowPollingParams {
 export const useWorkflowPolling = ({
   workflowId,
   backendUrl,
-  accessToken,
   enabled,
   onComplete,
   onError,
 }: UseWorkflowPollingParams) => {
+  const { isAuthenticated, isLoading: authLoading } = useNachetAuth();
   const updateWorkflowStatus = useWorkflowStore(
     (state) => state.updateWorkflowStatus,
   );
@@ -74,7 +73,6 @@ export const useWorkflowPolling = ({
       const statusResponse = await getWorkflowStatus({
         backendUrl,
         workflowId,
-        accessToken,
       });
 
       console.log(
@@ -114,7 +112,6 @@ export const useWorkflowPolling = ({
           const results = await getWorkflowResults({
             backendUrl,
             workflowId,
-            accessToken,
           });
 
           console.log(
@@ -185,7 +182,6 @@ export const useWorkflowPolling = ({
   }, [
     workflowId,
     backendUrl,
-    accessToken,
     updateWorkflowStatus,
     removeWorkflow,
     onComplete,
@@ -194,7 +190,11 @@ export const useWorkflowPolling = ({
   ]);
 
   useEffect(() => {
-    if (!enabled || !workflowId || !backendUrl || !accessToken) {
+    const isWorkflowReady =
+      enabled && Boolean(workflowId) && Boolean(backendUrl);
+    const isAuthReady = isAuthenticated && !authLoading;
+
+    if (!isWorkflowReady || !isAuthReady) {
       return;
     }
 
@@ -217,7 +217,14 @@ export const useWorkflowPolling = ({
         pollingIntervalRef.current = null;
       }
     };
-  }, [enabled, workflowId, backendUrl, accessToken, pollWorkflowStatus]);
+  }, [
+    enabled,
+    workflowId,
+    backendUrl,
+    isAuthenticated,
+    authLoading,
+    pollWorkflowStatus,
+  ]);
 
   return {
     isPolling: enabled && pollingIntervalRef.current !== null,

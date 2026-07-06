@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useAccount } from "@azure/msal-react";
 import { environment } from "../../environments/environment";
 import { Box, Link } from "@mui/material";
 import CanadaLogo from "../../assets/Canada_logo.png";
@@ -7,24 +6,18 @@ import useBackendUrl from "@hooks/useBackendUrl";
 import { pingBackend } from "@common/api";
 import { colours } from "../../styles/colours";
 import { useTranslation } from "react-i18next";
+import { useNachetAuth } from "@auth";
 
 const Footer: React.FC = () => {
-  const accountInfo = useAccount();
+  const { activeAccount } = useNachetAuth();
   const backendUrl = useBackendUrl();
   const { t } = useTranslation("footer");
   const [backendConnected, setBackendConnected] = useState<boolean | null>(
     null,
   );
 
-  // Derive isGuest from accountInfo
-  // acct === 0 means member account, acct !== 0 means guest account
-  const isGuest = (() => {
-    const idTokenClaims = accountInfo?.idTokenClaims as
-      | { acct?: number }
-      | undefined;
-    const acctClaim = idTokenClaims?.acct;
-    return acctClaim !== 0;
-  })();
+  const isGuest = activeAccount?.isGuest ?? true;
+  const userOid = activeAccount?.userId ?? "";
 
   // Check backend connectivity for guest users
   useEffect(() => {
@@ -138,7 +131,7 @@ const Footer: React.FC = () => {
             zIndex: 0,
           }}
         >
-          {t("oid", { oid: accountInfo?.idTokenClaims?.oid || "" })}
+          {t("oid", { oid: userOid })}
         </Box>
         <Box
           component="img"

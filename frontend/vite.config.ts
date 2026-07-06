@@ -27,6 +27,8 @@ export default defineConfig({
       "@styles/*": path.resolve(__dirname, "./src/styles/*"),
       "@stores": path.resolve(__dirname, "./src/stores"),
       "@stores/*": path.resolve(__dirname, "./src/stores/*"),
+      "@auth": path.resolve(__dirname, "./src/auth"),
+      "@auth/*": path.resolve(__dirname, "./src/auth/*"),
       "oidc-client-ts": path.resolve(
         __dirname,
         "./submodules/oidc-client-ts/dist/esm/oidc-client-ts.js",
