@@ -15,6 +15,7 @@ import {
   useRef,
 } from "react";
 import type { InferenceBox } from "@common/types";
+import { jetColor } from "@common/heatmapColors";
 import { getScaledBounds, getUnscaledCoordinates } from "@common/imageutils";
 import { useIsPortrait } from "@hooks/useIsPortrait";
 import {
@@ -54,6 +55,10 @@ interface Props {
   minBoxSize: number;
   editMode?: boolean;
   isEditSelected?: boolean;
+  /** CAM heatmap (grid*grid floats in [0,1]) to overlay as a jet map, or none. */
+  camHeatmap?: number[];
+  /** spatial grid side for `camHeatmap` (e.g. 12). */
+  camGrid?: number;
   onBoxUpdate?: (index: number, box: InferenceBox) => void;
   onBoxDelete?: (index: number) => void;
   onBoxSelect?: (index: number) => void;
@@ -78,6 +83,8 @@ const InferenceOverlay = ({
   minBoxSize,
   editMode = false,
   isEditSelected = false,
+  camHeatmap,
+  camGrid,
   onBoxUpdate,
   onBoxDelete,
   onBoxSelect,
@@ -93,6 +100,10 @@ const InferenceOverlay = ({
   const [isDragging, setIsDragging] = useState(false);
   const [resizeHandle, setResizeHandle] = useState<ResizeHandle>(null);
   const dragStart = useRef({ mouseX: 0, mouseY: 0, box: box });
+
+  // CAM overlay canvas; ImageViewer passes the selected class's heatmap for
+  // this box (toggled per species in the Classification Results panel).
+  const camCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const baseZ = index;
   const zIndex = baseZ + zOffset + (isEditSelected ? 100 : 0);
@@ -122,6 +133,64 @@ const InferenceOverlay = ({
     },
     [canvasWidth, canvasHeight, imageWidth, imageHeight],
   );
+
+  // Render the CAM overlay: the selected class's heatmap as a jet (blue→red)
+  // map for this box. The grid*grid heatmap is bilinearly upsampled to a fine
+  // grid *before* the colormap is applied, so the jet ramp interpolates in
+  // value space (smooth) instead of canvas-blending final colors (blocky).
+  useEffect(() => {
+    const canvas = camCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (editMode || !camHeatmap || !camGrid) return;
+    const g = camGrid;
+    if (g * g !== camHeatmap.length) return;
+
+    const JET_ALPHA = 140; // ~0.55, lets the seed show through
+    const F = 192; // fine grid side for smooth value-space interpolation
+    const span = g - 1;
+
+    // Bilinear sample of the (g x g) heatmap at fractional (fx, fy) in [0, g-1].
+    const sample = (fx: number, fy: number) => {
+      const x0 = Math.floor(fx);
+      const y0 = Math.floor(fy);
+      const x1 = Math.min(x0 + 1, g - 1);
+      const y1 = Math.min(y0 + 1, g - 1);
+      const dx = fx - x0;
+      const dy = fy - y0;
+      return (
+        camHeatmap[y0 * g + x0] * (1 - dx) * (1 - dy) +
+        camHeatmap[y0 * g + x1] * dx * (1 - dy) +
+        camHeatmap[y1 * g + x0] * (1 - dx) * dy +
+        camHeatmap[y1 * g + x1] * dx * dy
+      );
+    };
+
+    const fine = document.createElement("canvas");
+    fine.width = F;
+    fine.height = F;
+    const fctx = fine.getContext("2d");
+    if (!fctx) return;
+    const img = fctx.createImageData(F, F);
+
+    for (let j = 0; j < F; j++) {
+      const fy = (j / (F - 1)) * span;
+      for (let i = 0; i < F; i++) {
+        const fx = (i / (F - 1)) * span;
+        const [r, gg, b] = jetColor(sample(fx, fy));
+        const o = (j * F + i) * 4;
+        img.data[o] = r;
+        img.data[o + 1] = gg;
+        img.data[o + 2] = b;
+        img.data[o + 3] = JET_ALPHA;
+      }
+    }
+    fctx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(fine, 0, 0, canvas.width, canvas.height);
+  }, [camHeatmap, camGrid, editMode, scaledWidth, scaledHeight]);
 
   // Window-level mouse handlers for drag/resize
   useEffect(() => {
@@ -409,6 +478,25 @@ const InferenceOverlay = ({
       sx={sx}
       onMouseDown={editMode ? handleBoxMouseDown : undefined}
     >
+      {/* CAM overlay: the selected class's jet heatmap for this box */}
+      {camHeatmap && camGrid && !editMode && (
+        <canvas
+          ref={camCanvasRef}
+          data-testid={`cam-overlay-${index}`}
+          width={Math.max(1, Math.round(scaledWidth))}
+          height={Math.max(1, Math.round(scaledHeight))}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            pointerEvents: "none",
+            zIndex: 250,
+          }}
+        />
+      )}
+
       {/* box number (+ spinner when classifying) */}
       <Box
         data-testid={`inference-overlay-label-${index}`}

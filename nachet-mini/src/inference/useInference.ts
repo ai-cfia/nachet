@@ -20,6 +20,7 @@ export const useInference = (currentIndex: number) => {
 
   const setStatus = useInferenceStore((s) => s.setStatus);
   const setResult = useInferenceStore((s) => s.setResult);
+  const setCamResult = useInferenceStore((s) => s.setCamResult);
   const setActiveResultKey = useInferenceStore((s) => s.setActiveResultKey);
   const setModelLoaded = useInferenceStore((s) => s.setModelLoaded);
   const setModelLoadProgress = useInferenceStore((s) => s.setModelLoadProgress);
@@ -80,6 +81,12 @@ export const useInference = (currentIndex: number) => {
           }
           setStatus("complete");
           break;
+        case "cam-result":
+          setCamResult(msg.imageIndex, msg.modelConfigId, msg.boxId, {
+            grid: msg.grid,
+            classes: msg.classes,
+          });
+          break;
         case "error":
           setError(msg.message);
           setStatus("error");
@@ -101,6 +108,7 @@ export const useInference = (currentIndex: number) => {
   }, [
     setStatus,
     setResult,
+    setCamResult,
     setActiveResultKey,
     setModelLoaded,
     setModelLoadProgress,

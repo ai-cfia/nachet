@@ -125,6 +125,24 @@ export type WorkerOutMessage =
       modelConfigId: string;
       result: InferenceResult;
     }
+  | {
+      // Class Activation Maps for one classified box: one heatmap per top-K
+      // class, showing which regions drive that species' score. Streamed
+      // separately so boxes render immediately and overlays arrive per seed.
+      type: "cam-result";
+      imageIndex: number;
+      modelConfigId: string;
+      boxId: string;
+      /** spatial grid side (e.g. 12 → 12×12 = 144 tokens). */
+      grid: number;
+      /** Per top-K class: index, label, score, and its `grid*grid` heatmap [0,1]. */
+      classes: {
+        classIndex: number;
+        label: string;
+        score: number;
+        heatmap: number[];
+      }[];
+    }
   | { type: "error"; message: string };
 
 // ---------------------------------------------------------------------------
@@ -195,6 +213,16 @@ export const CLASSIFIER_MODELS: ClassifierModelEntry[] = [
   {
     id: "swin-L 101spp",
     model: "cfia-ai-lab/swin-large-patch4-window12-384-in22k-101spp-ft",
+    topK: 5,
+    minBoxSize: 384,
+  },
+  {
+    id: "swin-L 101spp CAM",
+    // Same 101spp model, but this repo's onnx/model.onnx is the patched FP16
+    // export that also outputs `swin_layernorm`. Selecting this entry enables
+    // the per-species Class Activation Maps in the results panel; the plain
+    // "swin-L 101spp" entry above has no such output, so that UI stays hidden.
+    model: "cfia-ai-lab/swin-large-patch4-window12-384-in22k-101spp-ft-dff",
     topK: 5,
     minBoxSize: 384,
   },
