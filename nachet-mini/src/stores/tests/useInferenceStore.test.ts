@@ -1,6 +1,17 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { useInferenceStore, resultKey } from "../useInferenceStore";
+import { useInferenceStore, resultKey, boxKey } from "../useInferenceStore";
+import type { CamBoxResult } from "../useInferenceStore";
 import type { InferenceResult } from "@common/types";
+
+const makeCam = (classCount = 3, grid = 2): CamBoxResult => ({
+  grid,
+  classes: Array.from({ length: classCount }, (_, i) => ({
+    classIndex: i,
+    label: `species-${i}`,
+    score: 1 - i * 0.1,
+    heatmap: Array.from({ length: grid * grid }, () => 0),
+  })),
+});
 
 const makeResult = (
   overrides: Partial<InferenceResult> = {},
@@ -22,6 +33,8 @@ const makeResult = (
 
 const getInitialState = () => ({
   results: new Map<string, InferenceResult>(),
+  camResults: new Map<string, CamBoxResult>(),
+  camRank: new Map<string, number>(),
   activeResultKey: null as string | null,
   status: "idle" as const,
   modelLoaded: false,
@@ -41,6 +54,17 @@ describe("resultKey", () => {
   });
 });
 
+describe("boxKey", () => {
+  it("formats key as imageIndex:modelConfigId:boxId", () => {
+    expect(boxKey(0, "swin-v2", "box-1")).toBe("0:swin-v2:box-1");
+    expect(boxKey(3, "ensemble", "abc")).toBe("3:ensemble:abc");
+  });
+
+  it("shares the result-key prefix so per-box entries sort under their run", () => {
+    expect(boxKey(2, "m", "b").startsWith(`${resultKey(2, "m")}:`)).toBe(true);
+  });
+});
+
 describe("useInferenceStore", () => {
   beforeEach(() => {
     useInferenceStore.setState(getInitialState());
@@ -49,6 +73,8 @@ describe("useInferenceStore", () => {
   it("has correct initial state", () => {
     const state = useInferenceStore.getState();
     expect(state.results.size).toBe(0);
+    expect(state.camResults.size).toBe(0);
+    expect(state.camRank.size).toBe(0);
     expect(state.activeResultKey).toBeNull();
     expect(state.status).toBe("idle");
     expect(state.modelLoaded).toBe(false);
@@ -175,6 +201,23 @@ describe("useInferenceStore", () => {
       useInferenceStore.getState().removeResultsForImage(99);
       expect(useInferenceStore.getState().results.size).toBe(1);
     });
+
+    it("removes CAM results and ranks for the image but keeps others", () => {
+      useInferenceStore
+        .getState()
+        .setCamResult(1, "model-a", "box-1", makeCam());
+      useInferenceStore
+        .getState()
+        .setCamResult(2, "model-a", "box-1", makeCam());
+      useInferenceStore.getState().toggleCamRank("1:model-a", 0);
+      useInferenceStore.getState().toggleCamRank("2:model-a", 1);
+      useInferenceStore.getState().removeResultsForImage(1);
+      const state = useInferenceStore.getState();
+      expect(state.camResults.has("1:model-a:box-1")).toBe(false);
+      expect(state.camResults.has("2:model-a:box-1")).toBe(true);
+      expect(state.camRank.has("1:model-a")).toBe(false);
+      expect(state.camRank.get("2:model-a")).toBe(1);
+    });
   });
 
   describe("removeResult", () => {
@@ -203,6 +246,68 @@ describe("useInferenceStore", () => {
       useInferenceStore.setState({ activeResultKey: "0:model-b" });
       useInferenceStore.getState().removeResult("0:model-a");
       expect(useInferenceStore.getState().activeResultKey).toBe("0:model-b");
+    });
+  });
+
+  describe("setCamResult", () => {
+    it("stores a CAM result under the per-box key", () => {
+      const cam = makeCam();
+      useInferenceStore.getState().setCamResult(0, "model-a", "box-1", cam);
+      expect(
+        useInferenceStore.getState().camResults.get("0:model-a:box-1"),
+      ).toEqual(cam);
+    });
+
+    it("keeps CAM results for different boxes independent", () => {
+      useInferenceStore
+        .getState()
+        .setCamResult(0, "model-a", "box-1", makeCam(2));
+      useInferenceStore
+        .getState()
+        .setCamResult(0, "model-a", "box-2", makeCam(3));
+      const cams = useInferenceStore.getState().camResults;
+      expect(cams.size).toBe(2);
+      expect(cams.get("0:model-a:box-1")?.classes).toHaveLength(2);
+      expect(cams.get("0:model-a:box-2")?.classes).toHaveLength(3);
+    });
+
+    it("overwrites an existing CAM result for the same box", () => {
+      useInferenceStore
+        .getState()
+        .setCamResult(0, "model-a", "box-1", makeCam(2));
+      useInferenceStore
+        .getState()
+        .setCamResult(0, "model-a", "box-1", makeCam(4));
+      expect(
+        useInferenceStore.getState().camResults.get("0:model-a:box-1")?.classes,
+      ).toHaveLength(4);
+    });
+  });
+
+  describe("toggleCamRank", () => {
+    it("sets the active rank for a run when none is set", () => {
+      useInferenceStore.getState().toggleCamRank("0:model-a", 1);
+      expect(useInferenceStore.getState().camRank.get("0:model-a")).toBe(1);
+    });
+
+    it("clears the rank when the same rank is toggled again", () => {
+      useInferenceStore.getState().toggleCamRank("0:model-a", 1);
+      useInferenceStore.getState().toggleCamRank("0:model-a", 1);
+      expect(useInferenceStore.getState().camRank.has("0:model-a")).toBe(false);
+    });
+
+    it("switches to a different rank (single-select) without stacking", () => {
+      useInferenceStore.getState().toggleCamRank("0:model-a", 1);
+      useInferenceStore.getState().toggleCamRank("0:model-a", 2);
+      expect(useInferenceStore.getState().camRank.get("0:model-a")).toBe(2);
+      expect(useInferenceStore.getState().camRank.size).toBe(1);
+    });
+
+    it("tracks the active rank per run independently", () => {
+      useInferenceStore.getState().toggleCamRank("0:model-a", 0);
+      useInferenceStore.getState().toggleCamRank("1:model-a", 2);
+      expect(useInferenceStore.getState().camRank.get("0:model-a")).toBe(0);
+      expect(useInferenceStore.getState().camRank.get("1:model-a")).toBe(2);
     });
   });
 
@@ -271,9 +376,15 @@ describe("useInferenceStore", () => {
         modelLoadProgress: { name: "m", progress: 1 },
         error: "oops",
       });
+      useInferenceStore
+        .getState()
+        .setCamResult(0, "model-a", "box-1", makeCam());
+      useInferenceStore.getState().toggleCamRank("0:model-a", 0);
       useInferenceStore.getState().clearResults();
       const state = useInferenceStore.getState();
       expect(state.results.size).toBe(0);
+      expect(state.camResults.size).toBe(0);
+      expect(state.camRank.size).toBe(0);
       expect(state.activeResultKey).toBeNull();
       expect(state.status).toBe("idle");
       expect(state.modelLoadProgress).toBeNull();

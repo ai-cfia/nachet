@@ -10,6 +10,7 @@ import {
   env,
 } from "@huggingface/transformers";
 import type { ModelConfig, WorkerInMessage, WorkerOutMessage } from "./models";
+import { CLASSIFIER_HEAD_FILENAME, huggingFaceFileUrl } from "./models";
 import type { InferenceResult, InferenceBox } from "@common/types";
 import {
   loadDetector,
@@ -635,6 +636,10 @@ const classifyBoxes = async (
             tokens,
             channels,
             topIdxList,
+            huggingFaceFileUrl(
+              config.classifierModel,
+              CLASSIFIER_HEAD_FILENAME,
+            ),
           );
           send({
             type: "cam-result",

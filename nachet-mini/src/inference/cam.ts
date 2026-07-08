@@ -14,22 +14,19 @@
  * head weights `W` (extracted offline, bundled as a binary asset).
  */
 
-// Vite emits this binary asset and rewrites the URL (incl. base path) for both
-// dev and the deployed build; works inside the worker.
-const HEAD_URL = new URL(
-  "../assets/classifier_head_101spp.f32.bin",
-  import.meta.url,
-);
-
 const NUM_CLASSES = 101;
 const NUM_FEATURES = 1536;
 
-let headPromise: Promise<Float32Array> | null = null;
+// The head weights are model-specific, so they're hosted alongside the patched
+// model on Hugging Face and fetched by URL (not bundled into the app). Cache the
+// fetch per URL so repeated boxes reuse one download.
+const headCache = new Map<string, Promise<Float32Array>>();
 
 /** Lazily fetch the classifier head weights (101 x 1536, row-major float32). */
-const loadHead = (): Promise<Float32Array> => {
-  if (!headPromise) {
-    headPromise = fetch(HEAD_URL)
+const loadHead = (url: string): Promise<Float32Array> => {
+  let promise = headCache.get(url);
+  if (!promise) {
+    promise = fetch(url)
       .then((r) => {
         if (!r.ok) throw new Error(`head weights HTTP ${r.status}`);
         return r.arrayBuffer();
@@ -40,9 +37,15 @@ const loadHead = (): Promise<Float32Array> => {
           throw new Error(`head weights wrong size: ${w.length}`);
         }
         return w;
+      })
+      .catch((err) => {
+        // Drop the failed promise so a later call can retry the download.
+        headCache.delete(url);
+        throw err;
       });
+    headCache.set(url, promise);
   }
-  return headPromise;
+  return promise;
 };
 
 export interface CamResult {
@@ -58,12 +61,14 @@ export interface CamResult {
  * @param tokens   spatial tokens (e.g. 144).
  * @param channels feature dim (must be 1536 to match the head).
  * @param classIndices which class rows of W to map (e.g. the top-K indices).
+ * @param headUrl  URL of the classifier head weights (hosted on Hugging Face).
  */
 export async function computeCam(
   features: Float32Array,
   tokens: number,
   channels: number,
   classIndices: number[],
+  headUrl: string,
 ): Promise<CamResult> {
   if (channels !== NUM_FEATURES) {
     throw new Error(`CAM: channels ${channels} != head ${NUM_FEATURES}`);
@@ -72,7 +77,7 @@ export async function computeCam(
   if (grid * grid !== tokens)
     throw new Error(`CAM: non-square grid (${tokens})`);
 
-  const W = await loadHead();
+  const W = await loadHead(headUrl);
 
   const maps = classIndices.map((rawC) => {
     const c = Number(rawC); // guard against BigInt indices from int64 tensors

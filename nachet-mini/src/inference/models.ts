@@ -246,6 +246,21 @@ export const huggingFaceUrl = (modelId: string): string => {
   return `https://huggingface.co/${modelId}`;
 };
 
+/** Build the download URL for a file hosted in a Hugging Face model repo. */
+export const huggingFaceFileUrl = (
+  modelId: string,
+  filename: string,
+): string => {
+  return `https://huggingface.co/${modelId}/resolve/main/${filename}`;
+};
+
+/**
+ * Filename of the extracted Swin classifier-head weights (101 × 1536 float32),
+ * hosted alongside the patched model on Hugging Face and fetched at CAM time.
+ * Model-specific, so it lives in the model repo rather than the app bundle.
+ */
+export const CLASSIFIER_HEAD_FILENAME = "classifier_head_101spp.f32.bin";
+
 /** Assemble a ModelConfig from independent detector and classifier selections. */
 export const buildModelConfig = (
   detector: DetectorModelEntry,
