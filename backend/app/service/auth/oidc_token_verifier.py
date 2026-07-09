@@ -39,6 +39,10 @@ class OidcTokenVerifier:
         self.config = config
         self.signing_keys = self._load_signing_keys(jwks)
 
+    # Discovery can check key availability without reaching into verifier internals.
+    def has_signing_key(self, key_id: str) -> bool:
+        return key_id in self.signing_keys
+
     # The JWKS is the provider's public key set. We keep the usable signing keys
     # and store them by `kid` so each token can name the key that should verify it.
     def _load_signing_keys(self, jwks: dict[str, Any]) -> dict[str, AllowedPublicKeys]:
