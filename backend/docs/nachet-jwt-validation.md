@@ -1,278 +1,166 @@
-# Nachet JWT Validation Process
+# Backend token validation
 
-This document explains the step-by-step JWT validation process in the Nachet backend, with code references.
+Nachet validates every protected backend request with either Microsoft Entra or
+a provider-neutral OpenID Connect (OIDC) provider. Microsoft Entra remains the
+default. The backend has no unauthenticated mode.
 
-## Overview
+## Request flow
 
-The Nachet API uses Azure AD JWT tokens for authentication. The validation process ensures that only authenticated users with valid tokens can access protected endpoints like `/seeds`.
-
-## Validation Flow
-
-### 1. Token Extraction
-
-**File**: `auth.py:265-269`
-
-```python
-async def extract_access_token(self, request: HTTPConnection) -> Optional[str]:
-    return await self.oauth(request=request)
+```text
+Protected FastAPI route
+  -> get_current_user
+  -> select AUTH_PROVIDER
+     -> azure: existing Entra validator
+     -> oidc: OIDC discovery and token verifier
+  -> normalize verified claims into User
+  -> require a UUID-shaped User.oid
+  -> continue to the route
 ```
 
-This uses FastAPI's `OAuth2AuthorizationCodeBearer` to extract the `Bearer` token from the `Authorization` header.
+Routes continue to depend on `get_current_user`. Provider selection happens in
+`app/service/auth/jwt_auth.py`, so routes do not contain provider-specific code.
 
-### 2. Initial Token Parsing
+## Provider selection
 
-**File**: `auth.py:164-177`
+`AUTH_PROVIDER` accepts two values:
 
-```python
-try:
-    if access_token is None:
-        raise InvalidRequest('No access token provided', request=request)
-    # Extract header information of the token.
-    header: dict[str, Any] = get_unverified_header(access_token)
-    claims: dict[str, Any] = get_unverified_claims(access_token)
-except Exception as error:
-    log.warning('Malformed token received. %s. Error: %s', access_token, error, exc_info=True)
-    raise Unauthorized(detail='Invalid token format', ...)
-```
+| Value | Backend path |
+| --- | --- |
+| `azure` | Existing Microsoft Entra validation |
+| `oidc` | Provider-neutral OIDC discovery and validation |
 
-**File**: `utils.py:19-30`
+The default is `azure`. Any other value is rejected by the settings model.
 
-```python
-def get_unverified_header(access_token: str) -> Dict[str, Any]:
-    return dict(jwt.get_unverified_header(access_token))
+## Microsoft Entra path
 
-def get_unverified_claims(access_token: str) -> Dict[str, Any]:
-    return dict(jwt.decode(access_token, options={'verify_signature': False}))
-```
-
-This extracts the JWT header (contains `kid` - key ID) and claims without verifying the signature yet.
-
-### 3. Guest User Check
-
-**File**: `auth.py:179-182`
-
-```python
-user_is_guest: bool = is_guest(claims=claims)
-if not self.allow_guest_users and user_is_guest:
-    log.info('User denied, is a guest user', claims)
-    raise Forbidden(detail='Guest users not allowed', request=request)
-```
-
-**File**: `utils.py:6-16`
-
-```python
-def is_guest(claims: Dict[str, Any]) -> bool:
-    if claims.get('acct') == 1:
-        return True
-    # formula: idp exist and idp != iss: guest user
-    claims_iss: str = claims.get('iss', '')
-    idp: str = claims.get('idp', claims_iss)
-    return idp != claims_iss
-```
-
-Checks if the user is a guest (external user invited to the tenant).
-
-### 4. Scope Validation
-
-**File**: `auth.py:184-192`
-
-```python
-for scope in security_scopes.scopes:
-    token_scope_string = claims.get('scp', '')
-    log.debug('Scopes: %s', token_scope_string)
-    if not isinstance(token_scope_string, str):
-        raise Forbidden('Token contains invalid formatted scopes', request=request)
-
-    token_scopes = token_scope_string.split(' ')
-    if scope not in token_scopes:
-        raise Forbidden('Required scope missing', request=request)
-```
-
-Validates that the token contains all required scopes for the endpoint.
-
-### 5. OpenID Configuration Loading
-
-**File**: `auth.py:193-194`
-
-```python
-await self.openid_config.load_config()
-```
-
-**File**: `openid_config.py:34-56`
-
-```python
-async def load_config(self) -> None:
-    refresh_time = datetime.now() - timedelta(hours=24)
-    if not self._config_timestamp or self._config_timestamp < refresh_time:
-        try:
-            log.debug('Loading Azure Entra ID OpenID configuration.')
-            await self._load_openid_config()
-            self._config_timestamp = datetime.now()
-```
-
-Fetches Azure AD's public keys and configuration (refreshed every 24 hours).
-
-### 6. Issuer Determination
-
-**File**: `auth.py:196-199`
-
-```python
-if self.multi_tenant and self.validate_iss and self.iss_callable:
-    iss = await self.iss_callable(tid=claims.get('tid'))
-else:
-    iss = self.openid_config.issuer
-```
-
-Determines the expected issuer based on tenant configuration.
-
-### 7. Signing Key Lookup
-
-**File**: `auth.py:202-203`
-
-```python
-if key := self.openid_config.signing_keys.get(header.get('kid', '')):
-```
-
-Uses the `kid` (key ID) from the JWT header to find the matching public key from Azure AD.
-
-### 8. Token Signature Validation
-
-**File**: `auth.py:204-219`
-
-```python
-required_claims = ['exp', 'aud', 'iat', 'nbf', 'sub']
-if self.validate_iss:
-    required_claims.append('iss')
-
-options = {
-    'verify_signature': True,
-    'verify_aud': True,      # Validates audience (your app's client ID)
-    'verify_iat': True,      # Validates issued at time
-    'verify_exp': True,      # Validates expiration
-    'verify_nbf': True,      # Validates not before time
-    'verify_iss': self.validate_iss,  # Validates issuer
-    'require': required_claims,
-}
-token = self.validate(access_token=access_token, iss=iss, key=key, options=options)
-```
-
-**File**: `auth.py:271-288`
-
-```python
-def validate(self, access_token: str, key: 'AllowedPublicKeys', iss: str, options: Dict[str, Any]) -> Dict[str, Any]:
-    alg = 'RS256'
-    return dict(
-        jwt.decode(
-            access_token,
-            key=key,
-            algorithms=[alg],
-            audience=self.app_client_id,
-            issuer=iss,
-            leeway=self.leeway,
-            options=options,
-        )
-    )
-```
-
-This is the core validation that:
-
-- Verifies the token signature using Azure AD's public key
-- Validates the token hasn't expired (`exp`)
-- Validates the audience matches your app (`aud`)
-- Validates the issuer is Azure AD (`iss`)
-
-### 9. User Object Creation
-
-**File**: `auth.py:220-225`
-
-```python
-user: User = User(
-    **{**token, 'claims': token, 'access_token': access_token, 'is_guest': user_is_guest}
-)
-request.state.user = user
-return user
-```
-
-Creates a `User` object containing all the validated claims and attaches it to the request.
-
-### 10. Error Handling
-
-**File**: `auth.py:226-246`
-
-```python
-except (
-    InvalidAudienceError,     # Wrong app/audience
-    InvalidIssuerError,       # Wrong tenant/issuer
-    InvalidIssuedAtError,     # Invalid timestamp
-    ImmatureSignatureError,   # Token not yet valid (nbf)
-    MissingRequiredClaimError # Missing required claims
-) as error:
-    raise Unauthorized(detail='Token contains invalid claims', request=request)
-except ExpiredSignatureError as error:
-    raise Unauthorized(detail='Token signature has expired', request=request)
-except InvalidTokenError as error:
-    raise Unauthorized(detail='Unable to validate token', request=request)
-```
-
-Handles various JWT validation failures with appropriate error messages.
-
-## Implementation in Nachet
-
-### Protected Route Example
-
-**File**: `routes.py:59-67`
-
-```python
-@router.get(
-    "/seeds",
-    status_code=status.HTTP_200_OK,
-    name="Get Seed Data [AUTH REQUIRED]",
-)
-async def get_seed_data(current_user: User = Depends(get_current_user)):
-    print(f"/seeds - authenticated user: {current_user.oid}")
-    seed_data = await SeedService.get_seed_data()
-    return seed_data
-```
-
-### JWT Authenticator Setup
-
-**File**: `jwt_auth.py:31-35`
-
-```python
-self._auth_scheme = SingleTenantAzureAuthorizationCodeBearer(
-    app_client_id=client_id,
-    tenant_id=tenant_id,
-    auto_error=True,
-)
-```
-
-## Flow Summary for `/seeds` Endpoint
-
-1. **Request arrives** at `/seeds` with `Authorization: Bearer <jwt_token>`
-2. **Dependency triggers** `get_current_user` dependency triggers JWT validation
-3. **Token extraction** from Authorization header
-4. **Claims parsing** (unverified) to extract header and payload
-5. **Guest check** validates user is not a guest (if configured)
-6. **Scope validation** ensures token has required permissions
-7. **Config loading** fetches Azure AD public keys (cached for 24h)
-8. **Key lookup** finds signing key using `kid` from JWT header
-9. **Signature validation** verifies token signature and claims
-10. **User creation** `User` object is created and returned
-11. **Route execution** handler receives authenticated user: `current_user.oid`
-
-## Required Environment Variables
+The Entra path continues to use `SingleTenantAzureAuthorizationCodeBearer` and
+the existing Azure configuration:
 
 ```bash
-AZURE_CLIENT_ID="your-azure-client-id"
-AZURE_TENANT_ID="your-tenant-id"
+AUTH_PROVIDER="azure"
+AZURE_CLIENT_ID="<api-client-id>"
+AZURE_TENANT_ID="<tenant-id>"
 ```
 
-## Security Features
+This path validates the Entra token and creates the same `User` model returned
+by the OIDC path.
 
-- **Signature verification** using Azure AD's public keys
-- **Token expiration** validation
-- **Audience validation** ensures token is for this application
-- **Issuer validation** ensures token comes from correct Azure AD tenant
-- **Scope validation** for fine-grained permissions
-- **Guest user filtering** (configurable)
-- **Automatic key rotation** support through OpenID Connect discovery
+## OIDC path
+
+The OIDC path is split into three small layers.
+
+### Token verifier
+
+`app/service/auth/oidc_token_verifier.py` validates a JWT access token with
+PyJWT. It checks:
+
+- the signature against a trusted public key;
+- the configured issuer and audience;
+- the allowed signing algorithm;
+- the `exp`, `iat`, and `nbf` time claims;
+- the required claims, including `iss`, `aud`, and `sub`;
+- the `kid` used to select the signing key.
+
+The identity provider sets the token lifetime in `exp`. Nachet does not create
+or extend that lifetime. It rejects expired tokens and tokens whose `nbf` time
+has not arrived.
+
+### Discovery and JWKS
+
+`app/service/auth/oidc_discovery.py` loads the provider metadata from:
+
+```text
+<OIDC_ISSUER>/.well-known/openid-configuration
+```
+
+The discovery response must return the exact configured issuer and a `jwks_uri`.
+The JWKS response must be a JSON object with a `keys` array. The verifier keeps
+only signing keys with a supported algorithm and a string `kid`.
+
+The verifier is cached for 24 hours. If a token names an unknown `kid`, the
+backend refreshes JWKS once so normal provider key rotation can succeed. A
+cooldown limits repeated refreshes caused by invalid tokens.
+
+`OIDC_ISSUER` is a trusted deployment setting. It must not come from an API
+request or token claim. Staging and production providers must publish discovery
+and JWKS over HTTPS. A compromised identity provider or deployment
+configuration is outside the protection a JWT verifier can provide because that
+provider is the source of the trusted keys.
+
+### FastAPI auth boundary
+
+`app/service/auth/jwt_auth.py` extracts the bearer token, calls the discovery
+client, checks any scopes requested by FastAPI, and converts the verified claims
+into `User`.
+
+Providers commonly use either `scp` or `scope`. Nachet reads both. Scope checks
+run only when a route declares FastAPI security scopes. Existing routes that use
+`Depends(get_current_user)` without declared scopes still require a valid token,
+but they do not add a route-specific scope requirement.
+
+Authentication failures return a Bearer `WWW-Authenticate` header. Invalid
+tokens return HTTP 401. A valid token without a required scope returns HTTP 403.
+
+## User identity
+
+The OIDC adapter reads the user ID from `OIDC_USER_ID_CLAIM`, which defaults to
+`sub`. The selected value must currently be a UUID because existing routes and
+database services use `UUID(current_user.oid)`.
+
+This is a compatibility rule, not the final identity model. A later change will
+map the provider, issuer, and subject to an internal Nachet user ID.
+
+Do not enable the OIDC path against an existing Entra production database until
+that mapping exists. A UUID proves only that the claim has the expected format.
+It does not separate identities issued by different providers.
+
+The adapter stores the normalized UUID in `User.oid`. Raw provider claims remain
+available through `User.claims`, but unknown claims do not automatically become
+normal `User` attributes. Nachet-owned fields such as `access_token` and
+`is_guest` are written after provider claims, so a token cannot replace them.
+
+OIDC does not define a common guest/member claim. OIDC users therefore use the
+restricted guest posture until claim mapping is designed.
+
+## OIDC settings
+
+```bash
+AUTH_PROVIDER="oidc"
+OIDC_ISSUER="https://<provider-issuer>"
+OIDC_AUDIENCE="<nachet-api-audience>"
+OIDC_USER_ID_CLAIM="sub"
+OIDC_USERNAME_CLAIM="preferred_username"
+OIDC_EMAIL_CLAIM="email"
+```
+
+`OIDC_ISSUER` and `OIDC_AUDIENCE` are required in OIDC mode. Blank claim names
+are rejected. Optional configuration values are trimmed when settings load.
+
+## Tests
+
+Run the focused backend auth tests from `backend/`:
+
+```bash
+uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py -q
+```
+
+The test groups cover:
+
+- signed token and claim validation;
+- discovery, JWKS shape, caching, and key refresh;
+- provider selection and Entra compatibility;
+- bearer header parsing and failure responses;
+- UUID identity normalization;
+- `scp` and `scope` handling;
+- protection of Nachet-owned user fields.
+
+## Current limits
+
+- Local Keycloak startup and realm configuration are not included yet.
+- External OIDC subjects are not yet mapped to internal Nachet user IDs.
+- The OIDC path must not use an existing Entra production database until that
+  identity mapping is implemented.
+- Production OIDC endpoints must use HTTPS. The local-provider work still needs
+  to define and enforce any loopback-only HTTP exception used for development.
+- Existing routes do not currently declare route-specific FastAPI scopes.
+- Microsoft Entra remains the official production path.

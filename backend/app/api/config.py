@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from http import HTTPStatus
+from typing import Literal
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +11,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from pydantic import computed_field
+from pydantic import computed_field, field_validator
 from pydantic_settings import BaseSettings
 
 from app.exceptions import log_error
@@ -27,10 +28,16 @@ class Settings(BaseSettings):
     # base_path: str = Field("", alias="api_base_path")
 
     # auth settings
+    auth_provider: Literal["azure", "oidc"] = "azure"
     azure_auth_enabled: bool = True
     azure_client_id: str | None = None
     azure_tenant_id: str | None = None
     azure_api_scope_claim: str | None = None
+    oidc_issuer: str | None = None
+    oidc_audience: str | None = None
+    oidc_user_id_claim: str = "sub"
+    oidc_username_claim: str = "preferred_username"
+    oidc_email_claim: str = "email"
 
     # database settings
     db_user: str | None = None
@@ -105,6 +112,42 @@ class Settings(BaseSettings):
     backend_url: str | None = None
     is_test_environment: bool = False
     nachet_env: str = "production"  # "development", "staging", "production"
+
+    # Auth provider config is case-insensitive at the environment boundary, but
+    # the rest of the backend receives one normalized value.
+    @field_validator("auth_provider", mode="before")
+    @classmethod
+    def normalize_auth_provider(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
+    # Optional provider settings treat blank environment values as missing so
+    # the auth boundary can report a configuration error before making a request.
+    @field_validator("oidc_issuer", "oidc_audience", mode="before")
+    @classmethod
+    def normalize_optional_oidc_setting(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
+    # Claim names are configuration keys, so a blank name is always a setup
+    # error rather than a claim that should be searched for at runtime.
+    @field_validator(
+        "oidc_user_id_claim",
+        "oidc_username_claim",
+        "oidc_email_claim",
+        mode="before",
+    )
+    @classmethod
+    def normalize_oidc_claim_name(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+
+        claim_name = value.strip()
+        if not claim_name:
+            raise ValueError("OIDC claim names cannot be blank")
+        return claim_name
 
     @computed_field
     @property
