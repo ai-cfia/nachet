@@ -1295,7 +1295,7 @@ describe("NachetMiniContainer", () => {
       await act(async () => {
         getProps().onRunInference();
       });
-      expect(mockRunInference).toHaveBeenCalledWith("img-0.jpg", 0);
+      expect(mockRunInference).toHaveBeenCalledWith("img-0.jpg", 0, null);
     });
 
     it("marks item as processing before runInference is called", async () => {
@@ -1360,7 +1360,7 @@ describe("NachetMiniContainer", () => {
       expect(ghostItem === undefined || ghostItem.status === "cancelled").toBe(
         true,
       );
-      expect(mockRunInference).not.toHaveBeenCalledWith("ghost.jpg", 99);
+      expect(mockRunInference).not.toHaveBeenCalledWith("ghost.jpg", 99, null);
     });
 
     it("status text shows queued when image is pending", async () => {
