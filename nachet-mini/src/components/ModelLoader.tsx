@@ -5,7 +5,6 @@ import {
   InputLabel,
   MenuItem,
   Select,
-  Skeleton,
   TextField,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
