@@ -1,10 +1,11 @@
 # import hypercorn
 # from fastapi import FastAPI
 from app.api.routes import router as api_router
-from app.api.config import create_app, lifespan, Settings
+from app.api.config import create_app, get_settings, lifespan
 from dbos import DBOS, DBOSConfig
 
-settings = Settings()
+# Share one validated settings instance across startup, lifespan, and auth.
+settings = get_settings()
 # Conditional import for debug routes
 if settings.nachet_env == "development":
     from app.api.dev_routes import router as debug_router

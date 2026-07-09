@@ -61,18 +61,21 @@ class JWTAuthenticator:
     def _get_oidc_discovery_client(self) -> OidcDiscoveryClient:
         if self._oidc_discovery_client is None:
             settings = get_settings()
-            if not settings.oidc_issuer or not settings.oidc_audience:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="OIDC configuration missing. Please set OIDC_ISSUER and OIDC_AUDIENCE.",
-                )
 
-            # Discovery owns provider metadata and JWKS loading. The auth boundary
-            # supplies only the issuer and audience that Nachet expects.
+            # These fields remain optional for Azure mode, so keep a runtime
+            # guard even though OIDC settings are validated at startup.
+            if settings.oidc_issuer is None or settings.oidc_audience is None:
+                raise RuntimeError("Validated OIDC settings are incomplete")
+
+            # Discovery loads provider metadata and keys. Nachet supplies the
+            # issuer and audience that the token must match.
             self._oidc_discovery_client = OidcDiscoveryClient(
                 OidcDiscoveryConfig(
                     issuer=settings.oidc_issuer,
                     audience=settings.oidc_audience,
+                    allow_insecure_http_for_localhost=(
+                        settings.oidc_allow_insecure_http_for_localhost
+                    ),
                 )
             )
 
@@ -130,11 +133,16 @@ class JWTAuthenticator:
         oidc_client = self._get_oidc_discovery_client()
         try:
             return await oidc_client.verify(access_token)
-        except (OidcDiscoveryError, OidcTokenValidationError) as error:
+        except OidcTokenValidationError as error:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Unable to validate token",
                 headers=_bearer_authenticate_headers("invalid_token"),
+            ) from error
+        except OidcDiscoveryError as error:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="OIDC provider is unavailable",
             ) from error
 
     def _validate_current_user(self, user: User | None) -> User:

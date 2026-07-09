@@ -163,7 +163,6 @@ async def test_default_provider_uses_azure_auth_path(
     assert user.ipaddr is None
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("issuer", "audience"),
     [
@@ -172,24 +171,94 @@ async def test_default_provider_uses_azure_auth_path(
         (ISSUER, " "),
     ],
 )
-async def test_oidc_provider_requires_non_blank_issuer_and_audience_config(
-    monkeypatch: pytest.MonkeyPatch,
+def test_oidc_provider_requires_non_blank_issuer_and_audience_config(
     issuer: str | None,
     audience: str | None,
 ) -> None:
-    set_settings(
-        monkeypatch,
-        auth_provider="oidc",
-        oidc_issuer=issuer,
-        oidc_audience=audience,
+    with pytest.raises(ValidationError, match="OIDC issuer and audience are required"):
+        Settings.model_validate(
+            {
+                "auth_provider": "oidc",
+                "oidc_issuer": issuer,
+                "oidc_audience": audience,
+            }
+        )
+
+
+def test_azure_provider_does_not_require_oidc_config() -> None:
+    settings = Settings.model_validate({"auth_provider": "azure"})
+
+    assert settings.auth_provider == "azure"
+    assert settings.oidc_issuer is None
+    assert settings.oidc_audience is None
+
+
+def test_oidc_provider_accepts_https_issuer() -> None:
+    settings = Settings.model_validate(
+        {
+            "auth_provider": "oidc",
+            "oidc_issuer": ISSUER,
+            "oidc_audience": AUDIENCE,
+        }
     )
-    authenticator = JWTAuthenticator()
 
-    with pytest.raises(HTTPException) as error:
-        await authenticator(create_request(), no_security_scopes())
+    assert settings.oidc_issuer == ISSUER
 
-    assert error.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-    assert "OIDC configuration missing" in error.value.detail
+
+def test_oidc_provider_rejects_local_http_by_default() -> None:
+    with pytest.raises(ValidationError, match="OIDC issuer must use HTTPS"):
+        Settings.model_validate(
+            {
+                "auth_provider": "oidc",
+                "oidc_issuer": "http://localhost:8080/realms/nachet",
+                "oidc_audience": AUDIENCE,
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    "issuer",
+    [
+        "http://localhost:8080/realms/nachet",
+        "http://keycloak.localhost:8080/realms/nachet",
+        "http://127.0.0.1:8080/realms/nachet",
+        "http://[::1]:8080/realms/nachet",
+    ],
+)
+def test_oidc_provider_accepts_explicit_local_http(issuer: str) -> None:
+    settings = Settings.model_validate(
+        {
+            "auth_provider": "oidc",
+            "oidc_issuer": issuer,
+            "oidc_audience": AUDIENCE,
+            "oidc_allow_insecure_http_for_localhost": True,
+        }
+    )
+
+    assert settings.oidc_issuer == issuer
+
+
+@pytest.mark.parametrize(
+    "issuer",
+    [
+        "http://keycloak:8080/realms/nachet",
+        "http://192.168.1.10:8080/realms/nachet",
+        "http://idp.example/realms/nachet",
+        "https://user:password@idp.example/realms/nachet",
+        "https://idp.example/realms/nachet?tenant=one",
+        "https://idp.example/realms/nachet#keys",
+    ],
+)
+def test_oidc_provider_rejects_unsafe_issuer_urls(issuer: str) -> None:
+    with pytest.raises(ValidationError, match="OIDC issuer"):
+        Settings.model_validate(
+            {
+                "auth_provider": "oidc",
+                "oidc_issuer": issuer,
+                "oidc_audience": AUDIENCE,
+                "oidc_allow_insecure_http_for_localhost": True,
+            }
+        )
 
 
 @pytest.mark.parametrize(
@@ -256,23 +325,15 @@ async def test_malformed_bearer_header_fails_closed(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "client_error",
-    [
-        OidcDiscoveryError("unable to load discovery"),
-        OidcTokenValidationError("invalid token"),
-    ],
-)
 async def test_invalid_oidc_token_fails_closed(
     monkeypatch: pytest.MonkeyPatch,
-    client_error: Exception,
 ) -> None:
     set_oidc_settings(monkeypatch)
     authenticator = JWTAuthenticator()
     install_fake_oidc_client(
         monkeypatch,
         authenticator,
-        FakeOidcDiscoveryClient(error=client_error),
+        FakeOidcDiscoveryClient(error=OidcTokenValidationError("invalid token")),
     )
 
     with pytest.raises(HTTPException) as error:
@@ -281,6 +342,29 @@ async def test_invalid_oidc_token_fails_closed(
     assert error.value.status_code == status.HTTP_401_UNAUTHORIZED
     assert "Unable to validate token" in error.value.detail
     assert error.value.headers == {"WWW-Authenticate": 'Bearer error="invalid_token"'}
+
+
+@pytest.mark.asyncio
+async def test_oidc_provider_outage_returns_service_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    set_oidc_settings(monkeypatch)
+    authenticator = JWTAuthenticator()
+    install_fake_oidc_client(
+        monkeypatch,
+        authenticator,
+        FakeOidcDiscoveryClient(
+            error=OidcDiscoveryError("unable to load discovery")
+        ),
+    )
+
+    # An identity-provider outage is retryable and does not make the token invalid.
+    with pytest.raises(HTTPException) as error:
+        await authenticator(create_request(), no_security_scopes())
+
+    assert error.value.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    assert error.value.detail == "OIDC provider is unavailable"
+    assert error.value.headers is None
 
 
 @pytest.mark.asyncio

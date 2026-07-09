@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from http import HTTPStatus
-from typing import Literal
+from typing import Literal, Self
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +11,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from pydantic import computed_field, field_validator
+from pydantic import computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 from app.exceptions import log_error
@@ -22,6 +22,7 @@ from app.blob.manager import (
     close_blob_storage,
     blob_storage_manager,
 )
+from app.oidc_endpoint import validate_oidc_issuer_url
 
 
 class Settings(BaseSettings):
@@ -35,6 +36,7 @@ class Settings(BaseSettings):
     azure_api_scope_claim: str | None = None
     oidc_issuer: str | None = None
     oidc_audience: str | None = None
+    oidc_allow_insecure_http_for_localhost: bool = False
     oidc_user_id_claim: str = "sub"
     oidc_username_claim: str = "preferred_username"
     oidc_email_claim: str = "email"
@@ -122,8 +124,8 @@ class Settings(BaseSettings):
             return value.strip().lower()
         return value
 
-    # Optional provider settings treat blank environment values as missing so
-    # the auth boundary can report a configuration error before making a request.
+    # Treat blank values as missing so OIDC startup validation handles them
+    # consistently.
     @field_validator("oidc_issuer", "oidc_audience", mode="before")
     @classmethod
     def normalize_optional_oidc_setting(cls, value: object) -> object:
@@ -148,6 +150,26 @@ class Settings(BaseSettings):
         if not claim_name:
             raise ValueError("OIDC claim names cannot be blank")
         return claim_name
+
+    # OIDC mode cannot start without a complete provider configuration. Azure
+    # mode keeps its existing settings requirements.
+    @model_validator(mode="after")
+    def validate_oidc_provider_config(self) -> Self:
+        if self.auth_provider != "oidc":
+            return self
+
+        if self.oidc_issuer is None or self.oidc_audience is None:
+            raise ValueError(
+                "OIDC issuer and audience are required when AUTH_PROVIDER is oidc"
+            )
+
+        validate_oidc_issuer_url(
+            self.oidc_issuer,
+            allow_insecure_http_for_localhost=(
+                self.oidc_allow_insecure_http_for_localhost
+            ),
+        )
+        return self
 
     @computed_field
     @property
