@@ -85,7 +85,11 @@ const HF_FILENAME_RE = /^[A-Za-z0-9_.-]+$/;
  * hostname is asserted to equal the constant origin — so the request target
  * can only ever be huggingface.co regardless of registry contents.
  */
-const buildHfUrl = (repo: string, fileName: string, suffix: string): string => {
+export const buildHfUrl = (
+  repo: string,
+  fileName: string,
+  suffix: string,
+): string => {
   if (!HF_ID_RE.test(repo)) {
     throw new Error(`[sam3] Rejected non-conforming HF repo id`);
   }
@@ -105,15 +109,15 @@ const buildHfUrl = (repo: string, fileName: string, suffix: string): string => {
 };
 
 /** HF resolve URL for a component ONNX file. */
-const onnxUrl = (repo: string, fileName: string): string =>
+export const onnxUrl = (repo: string, fileName: string): string =>
   buildHfUrl(repo, fileName, ".onnx");
 
 /** HF resolve URL for the matching external .data file. */
-const onnxDataUrl = (repo: string, fileName: string): string =>
+export const onnxDataUrl = (repo: string, fileName: string): string =>
   buildHfUrl(repo, fileName, ".onnx.data");
 
 /** Only allow image sources that are safe client-side (blob:, data:, or same-origin). */
-const sanitizeImageSrc = (src: string): string => {
+export const sanitizeImageSrc = (src: string): string => {
   if (!/^(blob:|data:|\/)/.test(src)) {
     throw new Error(`[sam3] Rejected non-conforming image src scheme`);
   }
@@ -390,11 +394,38 @@ export const runSam3 = async (
   const predBoxes = decoderResult.pred_boxes.data as Float32Array; // [1, 200, 4]
   const predLogits = decoderResult.pred_logits.data as Float32Array; // [1, 200]
 
+  const detections = postProcessSam3Detections(
+    predBoxes,
+    predLogits,
+    threshold,
+    originalWidth,
+    originalHeight,
+  );
+  console.log(
+    `[sam3] ${detections.boxes.length} detections above threshold ${threshold}`,
+  );
+  return detections;
+};
+
+/**
+ * Decode raw decoder outputs into detections: sigmoid the per-query logits,
+ * keep those at or above `threshold`, and denormalize boxes from [0, 1] to
+ * original image pixel space. Exported for testing; the core of runSam3's
+ * post-processing step.
+ */
+export const postProcessSam3Detections = (
+  predBoxes: Float32Array | number[],
+  predLogits: Float32Array | number[],
+  threshold: number,
+  originalWidth: number,
+  originalHeight: number,
+  numQueries: number = SAM3_NUM_QUERIES,
+): Sam3Detections => {
   const boxes: number[][] = [];
   const scores: number[] = [];
   const classes: number[] = [];
 
-  for (let i = 0; i < SAM3_NUM_QUERIES; i++) {
+  for (let i = 0; i < numQueries; i++) {
     const score = 1 / (1 + Math.exp(-predLogits[i]));
     if (score < threshold) continue;
 
@@ -413,8 +444,6 @@ export const runSam3 = async (
     classes.push(0);
   }
 
-  console.log(`[sam3] ${boxes.length} detections above threshold ${threshold}`);
-
   return { boxes, scores, classes };
 };
 
@@ -426,7 +455,7 @@ export const runSam3 = async (
  * Coerce a transformers.js Tensor's int data into a BigInt64Array for ONNX.
  * Handles BigInt64Array, number[], and other typed int arrays.
  */
-const bigInt64FromTensor = (tensor: {
+export const bigInt64FromTensor = (tensor: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data?: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
