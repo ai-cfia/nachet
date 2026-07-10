@@ -4,6 +4,10 @@ export interface QueuedInferenceItem {
   id: string;
   imageSrc: string;
   imageIndex: number;
+  // Text prompt captured at enqueue time for text-promptable detectors (null
+  // for closed-vocabulary detectors). Frozen here so a later prompt edit can't
+  // change what an already-queued image runs with.
+  prompt: string | null;
   status: "pending" | "processing" | "done" | "cancelled";
   addedAt: number;
   inferenceStartedAt: number | null; // set when processing starts
@@ -20,12 +24,13 @@ interface InferenceQueueState {
     item: Omit<
       QueuedInferenceItem,
       | "id"
+      | "prompt"
       | "status"
       | "addedAt"
       | "inferenceStartedAt"
       | "detectionDoneAt"
       | "detectedBoxCount"
-    >,
+    > & { prompt?: string | null },
   ) => void;
   cancel: (id: string) => void;
   markProcessing: (id: string) => void;
@@ -47,6 +52,7 @@ export const useInferenceQueueStore = create<InferenceQueueState>()((set) => ({
         {
           ...item,
           id: crypto.randomUUID(),
+          prompt: item.prompt ?? null,
           status: "pending",
           addedAt: Date.now(),
           inferenceStartedAt: null,

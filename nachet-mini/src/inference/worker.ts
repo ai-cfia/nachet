@@ -17,6 +17,7 @@ import {
   isDetectorReady,
   patchProcessorSize,
 } from "./detector";
+import { createSerialQueue } from "./serialQueue";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -128,9 +129,14 @@ const makeProgressCallback = (phase: "detector" | "classifier") => {
 // Message handler
 // ---------------------------------------------------------------------------
 
-addEventListener("message", async (event: MessageEvent) => {
-  const data = event.data as WorkerInMessage;
+// Serialize every worker operation. Without this, a `load-models` message
+// could run concurrently with an in-flight `run-inference` and release ORT
+// sessions that inference is still using — which surfaces as a "function
+// signature mismatch" crash. The queue makes a model switch wait for the
+// current inference to finish before tearing anything down.
+const runSerial = createSerialQueue();
 
+const handleMessage = async (data: WorkerInMessage): Promise<void> => {
   // ── Load models ──────────────────────────────────────────────────────────
   if (data.type === "load-models") {
     const config = data.config;
@@ -501,6 +507,12 @@ addEventListener("message", async (event: MessageEvent) => {
       });
     }
   }
+};
+
+// Enqueue each message so it runs strictly after the previous one settles.
+addEventListener("message", (event: MessageEvent) => {
+  const data = event.data as WorkerInMessage;
+  runSerial(() => handleMessage(data));
 });
 
 // ---------------------------------------------------------------------------

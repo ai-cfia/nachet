@@ -215,7 +215,14 @@ const NachetMiniContainer = () => {
 
     if (alreadyQueued) return;
 
-    enqueue({ imageSrc: currentImage.src, imageIndex: currentImage.index });
+    // Capture the prompt now (at enqueue time) so a later prompt edit can't
+    // change what this already-queued image runs with. Closed-vocabulary
+    // detectors ignore it, so store null for them.
+    enqueue({
+      imageSrc: currentImage.src,
+      imageIndex: currentImage.index,
+      prompt: detectorRequiresPrompt ? detectorPrompt : null,
+    });
 
     if (!hasAcknowledgedModelLoadWarning) {
       setModelLoadDialogOpen(true);
@@ -250,14 +257,9 @@ const NachetMiniContainer = () => {
     markProcessing(item.id);
     startTimeRef.current = Date.now();
     detectionStartRef.current = Date.now();
-    // Only forward the prompt when the detector actually consumes it. Closed-
-    // vocabulary detectors (RT-DETR, DETR) ignore it; we pass null so the
-    // worker logs stay clear.
-    runInference(
-      item.imageSrc,
-      item.imageIndex,
-      detectorRequiresPrompt ? detectorPrompt : null,
-    );
+    // Use the prompt captured on the item at enqueue time — NOT the current
+    // detectorPrompt, which may have changed while this item was queued.
+    runInference(item.imageSrc, item.imageIndex, item.prompt);
   }, [modelLoaded, isInferring, nextPendingId, drainTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const prevStatusRef = useRef<string>(status);

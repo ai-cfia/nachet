@@ -1298,6 +1298,49 @@ describe("NachetMiniContainer", () => {
       expect(mockRunInference).toHaveBeenCalledWith("img-0.jpg", 0, null);
     });
 
+    it("runs a queued image with the prompt captured at enqueue time, not a later edit", async () => {
+      const sam3 = DETECTOR_MODELS.find(
+        (d) => d.kind === "text-promptable-segmentation",
+      );
+      if (!sam3)
+        throw new Error("no text-promptable detector in test fixtures");
+
+      setupImage();
+      // Acknowledge the load warning but leave the model UNloaded, so the
+      // enqueued item stays pending while we edit the prompt.
+      useModelLoadConsentStore.setState({
+        hasAcknowledgedModelLoadWarning: true,
+      });
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+        getProps().setSelectedDetectorId(sam3.id);
+        getProps().setDetectorPrompt("yellow seed");
+      });
+      await act(async () => {
+        getProps().onRunInference(); // enqueues with "yellow seed"
+      });
+      // Edit the prompt while the item is still pending.
+      await act(async () => {
+        getProps().setDetectorPrompt("black seed");
+      });
+      // Model finishes loading -> the queued item drains.
+      await act(async () => {
+        useInferenceStore.getState().setModelLoaded(true);
+      });
+
+      expect(mockRunInference).toHaveBeenCalledWith(
+        "img-0.jpg",
+        0,
+        "yellow seed",
+      );
+      expect(mockRunInference).not.toHaveBeenCalledWith(
+        "img-0.jpg",
+        0,
+        "black seed",
+      );
+    });
+
     it("marks item as processing before runInference is called", async () => {
       setupImage();
       setupModelLoaded();

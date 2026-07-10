@@ -42,11 +42,11 @@ const makeFakeProcessor = () =>
     },
   });
 
-// A callable detection model with a config.id2label map.
+// A callable detection model with a config.id2label map and an async dispose().
 const makeFakeModel = () =>
   Object.assign(
     async () => ({ logits: { dims: [1, 1, 1], data: new Float32Array([2]) } }),
-    { config: { id2label: { 0: "seed" } } },
+    { config: { id2label: { 0: "seed" } }, dispose: vi.fn(async () => {}) },
   );
 
 const objConfig = {
@@ -138,6 +138,22 @@ describe("loadDetector", () => {
     const modelOrder = vi.mocked(AutoModelForObjectDetection.from_pretrained)
       .mock.invocationCallOrder[0];
     expect(unloadOrder).toBeLessThan(modelOrder);
+  });
+
+  it("disposes the previous closed-vocab detector's session before switching", async () => {
+    const dispose = vi.fn(async () => {});
+    const model = Object.assign(
+      async () => ({
+        logits: { dims: [1, 1, 1], data: new Float32Array([2]) },
+      }),
+      { config: { id2label: {} }, dispose },
+    );
+    vi.mocked(
+      AutoModelForObjectDetection.from_pretrained,
+    ).mockResolvedValueOnce(model);
+    await loadDetector(objConfig, callbacks()); // loads `model`
+    await loadDetector(sam3Config, callbacks()); // switches away -> disposes it
+    expect(dispose).toHaveBeenCalledTimes(1);
   });
 });
 

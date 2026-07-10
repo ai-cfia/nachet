@@ -50,6 +50,24 @@ let detectorModel: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let detectorProcessor: any = null;
 
+/**
+ * Dispose the currently-loaded closed-vocabulary detector's ONNX session (via
+ * transformers.js' async `dispose()`) and drop the references. Nulling alone
+ * leaks the underlying ORT session, so we always dispose first when switching
+ * detectors. Safe to call when nothing is loaded.
+ */
+const disposeClosedVocabDetector = async (): Promise<void> => {
+  if (detectorModel && typeof detectorModel.dispose === "function") {
+    try {
+      await detectorModel.dispose();
+    } catch (err) {
+      console.warn("[detector] Error disposing detector model:", err);
+    }
+  }
+  detectorModel = null;
+  detectorProcessor = null;
+};
+
 // ---------------------------------------------------------------------------
 // Processor size patching
 // ---------------------------------------------------------------------------
@@ -102,10 +120,10 @@ export const loadDetector = async (
 
   if (config.detectorKind === "text-promptable-segmentation") {
     console.log("[detector] Loading SAM 3 detector via sam3 module");
-    // Free any previously-loaded closed-vocabulary detector first so we don't
-    // hold two detectors in memory while SAM 3's components load.
-    detectorModel = null;
-    detectorProcessor = null;
+    // Dispose + free any previously-loaded closed-vocabulary detector first so
+    // we don't leak its ONNX session or hold two detectors in memory while
+    // SAM 3's components load.
+    await disposeClosedVocabDetector();
     // SAM 3's three components — vision encoder, text encoder, decoder — are
     // loaded inside the sam3 module. We forward its progress events.
     await loadSam3(config, callbacks.sam3Progress);
@@ -114,11 +132,11 @@ export const loadDetector = async (
 
   // Closed-vocabulary detector path (RT-DETR, DETR, existing behavior).
   //
-  // Free any previously-loaded SAM 3 sessions BEFORE allocating the new
-  // detector, so we don't hold SAM 3's (large) sessions and the new detector
-  // in memory at the same time — keeps peak memory down when switching
-  // detectors.
+  // Free the other kind's memory BEFORE allocating the new detector, so we
+  // don't hold SAM 3's (large) sessions or a stale detector session alongside
+  // the new one — keeps peak memory down when switching detectors.
   await unloadSam3();
+  await disposeClosedVocabDetector();
 
   const [detProc, detMod] = await Promise.all([
     AutoProcessor.from_pretrained(config.detectorModel),
