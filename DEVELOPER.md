@@ -229,17 +229,13 @@ Use these values for the OIDC path:
 AUTH_PROVIDER="oidc"
 OIDC_ISSUER="https://<provider-issuer>"
 OIDC_AUDIENCE="<nachet-api-audience>"
-OIDC_ALLOW_INSECURE_HTTP_FOR_LOCALHOST="false"
 OIDC_USER_ID_CLAIM="sub"
 OIDC_USERNAME_CLAIM="preferred_username"
 OIDC_EMAIL_CLAIM="email"
 ```
 
-OIDC endpoints must use HTTPS. Local development may set
-`OIDC_ALLOW_INSECURE_HTTP_FOR_LOCALHOST="true"` for `localhost`, a
-`*.localhost` name, or a loopback IP address. The setting does not allow HTTP
-for Docker service names, private network addresses, or remote hosts. Backend D
-will add the supported local Keycloak setup.
+OIDC issuer and JWKS endpoints must use HTTPS. A follow-up PR will define and
+document the supported local Keycloak setup.
 
 The claim selected by `OIDC_USER_ID_CLAIM` must currently contain a UUID. This
 keeps the existing route and database contract intact until external identities

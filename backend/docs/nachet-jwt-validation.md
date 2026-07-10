@@ -300,7 +300,6 @@ OIDC mode requires a nonblank issuer and audience:
 AUTH_PROVIDER="oidc"
 OIDC_ISSUER="https://<provider-issuer>"
 OIDC_AUDIENCE="<nachet-api-audience>"
-OIDC_ALLOW_INSECURE_HTTP_FOR_LOCALHOST="false"
 OIDC_USER_ID_CLAIM="sub"
 OIDC_USERNAME_CLAIM="preferred_username"
 OIDC_EMAIL_CLAIM="email"
@@ -316,20 +315,9 @@ settings.
 discovered `jwks_uri` with `httpx.URL`, the same URL parser used for the network
 requests.
 
-OIDC endpoints must use HTTPS by default. The issuer cannot contain credentials,
+OIDC endpoints must use HTTPS. The issuer cannot contain credentials,
 a query string, or a fragment. Normal HTTPX certificate verification remains
 enabled for HTTPS requests.
-
-For local development only,
-`OIDC_ALLOW_INSECURE_HTTP_FOR_LOCALHOST="true"` permits HTTP when the host is:
-
-- `localhost`;
-- a name ending in `.localhost`, such as `keycloak.localhost`;
-- an IPv4 or IPv6 loopback address.
-
-The setting still rejects HTTP for Docker service names such as `keycloak`,
-private network addresses, and remote hosts. Backend D will provide the actual
-local Keycloak configuration.
 
 ### Discovery and JWKS loading
 

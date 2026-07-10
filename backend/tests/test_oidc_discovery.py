@@ -137,7 +137,6 @@ def create_client(
     audience: str = AUDIENCE,
     cache_ttl: timedelta = timedelta(hours=24),
     unknown_key_refresh_cooldown: timedelta = timedelta(minutes=1),
-    allow_insecure_http_for_localhost: bool = False,
     clock: MutableClock | None = None,
 ) -> OidcDiscoveryClient:
     transport = httpx.MockTransport(provider.handle_request)
@@ -147,7 +146,6 @@ def create_client(
             audience=audience,
             cache_ttl=cache_ttl,
             unknown_key_refresh_cooldown=unknown_key_refresh_cooldown,
-            allow_insecure_http_for_localhost=allow_insecure_http_for_localhost,
         ),
         http_client_factory=lambda: httpx.AsyncClient(transport=transport),
         cache_clock=clock or MutableClock(datetime.now(timezone.utc)),
@@ -239,31 +237,6 @@ def test_rejects_insecure_remote_issuer_before_request() -> None:
                 audience=AUDIENCE,
             )
         )
-
-
-@pytest.mark.asyncio
-async def test_allows_explicit_local_http_for_discovery_and_jwks() -> None:
-    local_issuer = "http://keycloak.localhost:8080/realms/nachet"
-    local_discovery_url = f"{local_issuer}/.well-known/openid-configuration"
-    local_jwks_uri = f"{local_issuer}/protocol/openid-connect/certs"
-    private_key = create_private_key()
-    provider = MockOidcProvider(
-        issuer=local_issuer,
-        discovery_url=local_discovery_url,
-        jwks_uri=local_jwks_uri,
-        jwks=jwks_from_key(private_key),
-    )
-    client = create_client(
-        provider,
-        issuer=local_issuer,
-        allow_insecure_http_for_localhost=True,
-    )
-
-    verifier = await client.get_verifier()
-
-    assert verifier.has_signing_key(KEY_ID)
-    assert provider.count_requests(local_discovery_url) == 1
-    assert provider.count_requests(local_jwks_uri) == 1
 
 
 @pytest.mark.asyncio

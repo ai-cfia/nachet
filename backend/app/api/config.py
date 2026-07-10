@@ -34,7 +34,6 @@ class Settings(BaseSettings):
     azure_api_scope_claim: str | None = None
     oidc_issuer: str | None = None
     oidc_audience: str | None = None
-    oidc_allow_insecure_http_for_localhost: bool = False
     oidc_user_id_claim: str = "sub"
     oidc_username_claim: str = "preferred_username"
     oidc_email_claim: str = "email"

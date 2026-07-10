@@ -210,34 +210,13 @@ def test_oidc_provider_accepts_https_issuer() -> None:
     assert auth_config.oidc_discovery.issuer == ISSUER
 
 
-def test_oidc_provider_rejects_local_http_by_default() -> None:
+def test_oidc_provider_rejects_http_issuer() -> None:
     with pytest.raises(ValueError, match="OIDC issuer must use HTTPS"):
         create_auth_config(
             auth_provider="oidc",
             oidc_issuer="http://localhost:8080/realms/nachet",
             oidc_audience=AUDIENCE,
         )
-
-
-@pytest.mark.parametrize(
-    "issuer",
-    [
-        "http://localhost:8080/realms/nachet",
-        "http://keycloak.localhost:8080/realms/nachet",
-        "http://127.0.0.1:8080/realms/nachet",
-        "http://[::1]:8080/realms/nachet",
-    ],
-)
-def test_oidc_provider_accepts_explicit_local_http(issuer: str) -> None:
-    auth_config = create_auth_config(
-        auth_provider="oidc",
-        oidc_issuer=issuer,
-        oidc_audience=AUDIENCE,
-        oidc_allow_insecure_http_for_localhost=True,
-    )
-
-    assert auth_config.oidc_discovery is not None
-    assert auth_config.oidc_discovery.issuer == issuer
 
 
 @pytest.mark.parametrize(
@@ -257,7 +236,6 @@ def test_oidc_provider_rejects_unsafe_issuer_urls(issuer: str) -> None:
             auth_provider="oidc",
             oidc_issuer=issuer,
             oidc_audience=AUDIENCE,
-            oidc_allow_insecure_http_for_localhost=True,
         )
 
 

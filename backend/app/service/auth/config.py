@@ -41,9 +41,6 @@ class BackendAuthConfig:
             oidc_discovery = OidcDiscoveryConfig(
                 issuer=issuer,
                 audience=audience,
-                allow_insecure_http_for_localhost=(
-                    settings.oidc_allow_insecure_http_for_localhost
-                ),
             )
 
         return cls(
