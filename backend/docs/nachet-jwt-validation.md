@@ -306,12 +306,13 @@ OIDC_USERNAME_CLAIM="preferred_username"
 OIDC_EMAIL_CLAIM="email"
 ```
 
-The settings model validates this contract when the application starts. Azure
-mode does not require OIDC settings.
+The backend auth configuration validates this contract when the authenticator
+is created during application startup. Azure mode does not require OIDC
+settings.
 
 ### Endpoint policy
 
-`app/oidc_endpoint.py` validates the configured issuer and the
+`app/service/auth/oidc_endpoint.py` validates the configured issuer and the
 discovered `jwks_uri` with `httpx.URL`, the same URL parser used for the network
 requests.
 

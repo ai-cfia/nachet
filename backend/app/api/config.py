@@ -1,6 +1,5 @@
 from contextlib import asynccontextmanager
 from http import HTTPStatus
-from typing import Literal, Self
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +10,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from pydantic import computed_field, field_validator, model_validator
+from pydantic import computed_field
 from pydantic_settings import BaseSettings
 
 from app.exceptions import log_error
@@ -22,14 +21,13 @@ from app.blob.manager import (
     close_blob_storage,
     blob_storage_manager,
 )
-from app.oidc_endpoint import validate_oidc_issuer_url
 
 
 class Settings(BaseSettings):
     # base_path: str = Field("", alias="api_base_path")
 
     # auth settings
-    auth_provider: Literal["azure", "oidc"] = "azure"
+    auth_provider: str = "azure"
     azure_auth_enabled: bool = True
     azure_client_id: str | None = None
     azure_tenant_id: str | None = None
@@ -114,62 +112,6 @@ class Settings(BaseSettings):
     backend_url: str | None = None
     is_test_environment: bool = False
     nachet_env: str = "production"  # "development", "staging", "production"
-
-    # Auth provider config is case-insensitive at the environment boundary, but
-    # the rest of the backend receives one normalized value.
-    @field_validator("auth_provider", mode="before")
-    @classmethod
-    def normalize_auth_provider(cls, value: object) -> object:
-        if isinstance(value, str):
-            return value.strip().lower()
-        return value
-
-    # Treat blank values as missing so OIDC startup validation handles them
-    # consistently.
-    @field_validator("oidc_issuer", "oidc_audience", mode="before")
-    @classmethod
-    def normalize_optional_oidc_setting(cls, value: object) -> object:
-        if isinstance(value, str):
-            return value.strip() or None
-        return value
-
-    # Claim names are configuration keys, so a blank name is always a setup
-    # error rather than a claim that should be searched for at runtime.
-    @field_validator(
-        "oidc_user_id_claim",
-        "oidc_username_claim",
-        "oidc_email_claim",
-        mode="before",
-    )
-    @classmethod
-    def normalize_oidc_claim_name(cls, value: object) -> object:
-        if not isinstance(value, str):
-            return value
-
-        claim_name = value.strip()
-        if not claim_name:
-            raise ValueError("OIDC claim names cannot be blank")
-        return claim_name
-
-    # OIDC mode cannot start without a complete provider configuration. Azure
-    # mode keeps its existing settings requirements.
-    @model_validator(mode="after")
-    def validate_oidc_provider_config(self) -> Self:
-        if self.auth_provider != "oidc":
-            return self
-
-        if self.oidc_issuer is None or self.oidc_audience is None:
-            raise ValueError(
-                "OIDC issuer and audience are required when AUTH_PROVIDER is oidc"
-            )
-
-        validate_oidc_issuer_url(
-            self.oidc_issuer,
-            allow_insecure_http_for_localhost=(
-                self.oidc_allow_insecure_http_for_localhost
-            ),
-        )
-        return self
 
     @computed_field
     @property

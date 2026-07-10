@@ -10,7 +10,7 @@ import httpx
 import jwt
 from jwt.exceptions import InvalidTokenError
 
-from app.oidc_endpoint import (
+from app.service.auth.oidc_endpoint import (
     OidcEndpointError,
     validate_oidc_issuer_url,
     validate_oidc_jwks_uri,
@@ -55,6 +55,14 @@ class OidcDiscoveryConfig:
     unknown_key_refresh_cooldown: timedelta = DEFAULT_UNKNOWN_KEY_REFRESH_COOLDOWN
     allow_insecure_http_for_localhost: bool = False
 
+    def __post_init__(self) -> None:
+        validate_oidc_issuer_url(
+            self.issuer,
+            allow_insecure_http_for_localhost=(
+                self.allow_insecure_http_for_localhost
+            ),
+        )
+
 
 @dataclass(frozen=True)
 class CachedOidcVerifier:
@@ -70,12 +78,6 @@ class OidcDiscoveryClient:
         cache_clock: CacheClock | None = None,
     ) -> None:
         self.config = config
-        validate_oidc_issuer_url(
-            self.config.issuer,
-            allow_insecure_http_for_localhost=(
-                self.config.allow_insecure_http_for_localhost
-            ),
-        )
         self.discovery_url = self._build_discovery_url(self.config.issuer)
         self._http_client_factory = (
             http_client_factory

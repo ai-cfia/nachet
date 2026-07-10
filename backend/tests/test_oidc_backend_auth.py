@@ -6,11 +6,10 @@ from uuid import uuid4
 import pytest
 from fastapi import HTTPException, status
 from fastapi.security import SecurityScopes
-from pydantic import ValidationError
 from starlette.requests import Request
 
 import app.api.config as config_module
-from app.api.config import Settings
+from app.service.auth.config import AuthProvider, BackendAuthConfig
 from app.service.auth.jwt_auth import JWTAuthenticator
 from app.service.auth.oidc_discovery import OidcDiscoveryError
 from app.service.auth.oidc_token_verifier import OidcTokenValidationError
@@ -46,7 +45,7 @@ def reset_settings_cache(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def set_settings(monkeypatch: pytest.MonkeyPatch, **overrides: Any) -> None:
-    settings = Settings(**overrides)
+    settings = config_module.Settings(**overrides)
     monkeypatch.setattr(config_module, "_settings", settings)
 
 
@@ -58,6 +57,11 @@ def set_oidc_settings(monkeypatch: pytest.MonkeyPatch, **overrides: Any) -> None
     }
     oidc_settings.update(overrides)
     set_settings(monkeypatch, **oidc_settings)
+
+
+def create_auth_config(**overrides: Any) -> BackendAuthConfig:
+    settings = config_module.Settings.model_validate(overrides)
+    return BackendAuthConfig.from_settings(settings)
 
 
 def no_security_scopes() -> SecurityScopes:
@@ -175,44 +179,43 @@ def test_oidc_provider_requires_non_blank_issuer_and_audience_config(
     issuer: str | None,
     audience: str | None,
 ) -> None:
-    with pytest.raises(ValidationError, match="OIDC issuer and audience are required"):
-        Settings.model_validate(
-            {
-                "auth_provider": "oidc",
-                "oidc_issuer": issuer,
-                "oidc_audience": audience,
-            }
+    with pytest.raises(ValueError, match="OIDC issuer and audience are required"):
+        create_auth_config(
+            auth_provider="oidc",
+            oidc_issuer=issuer,
+            oidc_audience=audience,
         )
 
 
 def test_azure_provider_does_not_require_oidc_config() -> None:
-    settings = Settings.model_validate({"auth_provider": "azure"})
+    auth_config = create_auth_config(auth_provider="azure")
 
-    assert settings.auth_provider == "azure"
-    assert settings.oidc_issuer is None
-    assert settings.oidc_audience is None
+    assert auth_config.provider is AuthProvider.AZURE
+    assert auth_config.oidc_discovery is None
+
+
+def test_auth_config_rejects_unknown_provider() -> None:
+    with pytest.raises(ValueError, match="AUTH_PROVIDER must be azure or oidc"):
+        create_auth_config(auth_provider="unknown")
 
 
 def test_oidc_provider_accepts_https_issuer() -> None:
-    settings = Settings.model_validate(
-        {
-            "auth_provider": "oidc",
-            "oidc_issuer": ISSUER,
-            "oidc_audience": AUDIENCE,
-        }
+    auth_config = create_auth_config(
+        auth_provider="oidc",
+        oidc_issuer=ISSUER,
+        oidc_audience=AUDIENCE,
     )
 
-    assert settings.oidc_issuer == ISSUER
+    assert auth_config.oidc_discovery is not None
+    assert auth_config.oidc_discovery.issuer == ISSUER
 
 
 def test_oidc_provider_rejects_local_http_by_default() -> None:
-    with pytest.raises(ValidationError, match="OIDC issuer must use HTTPS"):
-        Settings.model_validate(
-            {
-                "auth_provider": "oidc",
-                "oidc_issuer": "http://localhost:8080/realms/nachet",
-                "oidc_audience": AUDIENCE,
-            }
+    with pytest.raises(ValueError, match="OIDC issuer must use HTTPS"):
+        create_auth_config(
+            auth_provider="oidc",
+            oidc_issuer="http://localhost:8080/realms/nachet",
+            oidc_audience=AUDIENCE,
         )
 
 
@@ -226,16 +229,15 @@ def test_oidc_provider_rejects_local_http_by_default() -> None:
     ],
 )
 def test_oidc_provider_accepts_explicit_local_http(issuer: str) -> None:
-    settings = Settings.model_validate(
-        {
-            "auth_provider": "oidc",
-            "oidc_issuer": issuer,
-            "oidc_audience": AUDIENCE,
-            "oidc_allow_insecure_http_for_localhost": True,
-        }
+    auth_config = create_auth_config(
+        auth_provider="oidc",
+        oidc_issuer=issuer,
+        oidc_audience=AUDIENCE,
+        oidc_allow_insecure_http_for_localhost=True,
     )
 
-    assert settings.oidc_issuer == issuer
+    assert auth_config.oidc_discovery is not None
+    assert auth_config.oidc_discovery.issuer == issuer
 
 
 @pytest.mark.parametrize(
@@ -250,14 +252,12 @@ def test_oidc_provider_accepts_explicit_local_http(issuer: str) -> None:
     ],
 )
 def test_oidc_provider_rejects_unsafe_issuer_urls(issuer: str) -> None:
-    with pytest.raises(ValidationError, match="OIDC issuer"):
-        Settings.model_validate(
-            {
-                "auth_provider": "oidc",
-                "oidc_issuer": issuer,
-                "oidc_audience": AUDIENCE,
-                "oidc_allow_insecure_http_for_localhost": True,
-            }
+    with pytest.raises(ValueError, match="OIDC issuer"):
+        create_auth_config(
+            auth_provider="oidc",
+            oidc_issuer=issuer,
+            oidc_audience=AUDIENCE,
+            oidc_allow_insecure_http_for_localhost=True,
         )
 
 
@@ -266,24 +266,23 @@ def test_oidc_provider_rejects_unsafe_issuer_urls(issuer: str) -> None:
     ["oidc_user_id_claim", "oidc_username_claim", "oidc_email_claim"],
 )
 def test_oidc_claim_names_cannot_be_blank(claim_setting: str) -> None:
-    with pytest.raises(ValidationError, match="OIDC claim names cannot be blank"):
-        Settings.model_validate({claim_setting: " "})
+    with pytest.raises(ValueError, match="OIDC claim names cannot be blank"):
+        create_auth_config(**{claim_setting: " "})
 
 
 def test_oidc_settings_are_normalized_at_the_config_boundary() -> None:
-    settings = Settings.model_validate(
-        {
-            "auth_provider": " OIDC ",
-            "oidc_issuer": f" {ISSUER} ",
-            "oidc_audience": f" {AUDIENCE} ",
-            "oidc_user_id_claim": " sub ",
-        }
+    auth_config = create_auth_config(
+        auth_provider=" OIDC ",
+        oidc_issuer=f" {ISSUER} ",
+        oidc_audience=f" {AUDIENCE} ",
+        oidc_user_id_claim=" sub ",
     )
 
-    assert settings.auth_provider == "oidc"
-    assert settings.oidc_issuer == ISSUER
-    assert settings.oidc_audience == AUDIENCE
-    assert settings.oidc_user_id_claim == "sub"
+    assert auth_config.provider is AuthProvider.OIDC
+    assert auth_config.oidc_discovery is not None
+    assert auth_config.oidc_discovery.issuer == ISSUER
+    assert auth_config.oidc_discovery.audience == AUDIENCE
+    assert auth_config.oidc_user_id_claim == "sub"
 
 
 @pytest.mark.asyncio

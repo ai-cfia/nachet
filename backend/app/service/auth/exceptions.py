@@ -4,6 +4,13 @@ from fastapi import HTTPException, WebSocketException, status
 from starlette.requests import HTTPConnection
 
 
+def bearer_authenticate_headers(error: str | None = None) -> dict[str, str]:
+    challenge = "Bearer"
+    if error is not None:
+        challenge = f'{challenge} error="{error}"'
+    return {"WWW-Authenticate": challenge}
+
+
 class InvalidRequestHttp(HTTPException):
     """HTTP exception for malformed/invalid requests"""
 
