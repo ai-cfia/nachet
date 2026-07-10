@@ -509,16 +509,19 @@ const handleMessage = async (data: WorkerInMessage): Promise<void> => {
   }
 };
 
-// Messages from the host page (dedicated-worker postMessage) carry an empty
-// origin; any non-empty origin that isn't ours is untrusted and ignored. This
-// satisfies CodeQL's missing-origin-verification check on postMessage handlers.
-const TRUSTED_MESSAGE_ORIGINS = new Set<string>([self.location.origin]);
+// The only origin we accept messages from is our own. Dedicated-worker
+// messages posted by the host page carry an empty origin, which we also allow;
+// anything else is rejected. The explicit `event.origin` comparisons below are
+// what CodeQL's missing-origin-verification query looks for.
+const EXPECTED_MESSAGE_ORIGIN = self.location.origin;
 
 // Enqueue each message so it runs strictly after the previous one settles.
 addEventListener("message", (event: MessageEvent) => {
-  const origin = event.origin;
-  if (origin && !TRUSTED_MESSAGE_ORIGINS.has(origin)) {
-    console.warn("[worker] Ignoring message from untrusted origin:", origin);
+  if (event.origin !== "" && event.origin !== EXPECTED_MESSAGE_ORIGIN) {
+    console.warn(
+      "[worker] Ignoring message from untrusted origin:",
+      event.origin,
+    );
     return;
   }
   const data = event.data as WorkerInMessage;
