@@ -516,7 +516,7 @@ async def test_missing_required_scope_fails_closed(
 ) -> None:
     set_oidc_settings(monkeypatch)
     authenticator = JWTAuthenticator()
-    claims = create_oidc_claims(scp="openid profile")
+    claims = create_oidc_claims(scp="read")
     install_fake_oidc_client(
         monkeypatch,
         authenticator,
@@ -524,10 +524,15 @@ async def test_missing_required_scope_fails_closed(
     )
 
     with pytest.raises(HTTPException) as error:
-        await authenticator(create_request(), required_security_scopes())
+        await authenticator(
+            create_request(),
+            SecurityScopes(scopes=["read", "write", "delete"]),
+        )
 
     assert error.value.status_code == status.HTTP_403_FORBIDDEN
     assert "Required scope missing" in error.value.detail
     assert error.value.headers == {
-        "WWW-Authenticate": 'Bearer error="insufficient_scope"'
+        "WWW-Authenticate": (
+            'Bearer error="insufficient_scope", scope="write delete"'
+        )
     }

@@ -181,29 +181,28 @@ class JWTAuthenticator:
             return
 
         token_scopes = self._extract_token_scopes(claims)
-        missing_scope = self._find_first_missing_required_scope(
+        missing_scopes = self._get_missing_required_scopes(
             required_scopes,
             token_scopes,
         )
-        if missing_scope is None:
+        if not missing_scopes:
             return
 
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Required scope missing",
-            headers=bearer_authenticate_headers("insufficient_scope"),
+            headers=bearer_authenticate_headers(
+                "insufficient_scope",
+                scopes=missing_scopes,
+            ),
         )
 
-    def _find_first_missing_required_scope(
+    def _get_missing_required_scopes(
         self,
         required_scopes: list[str],
         token_scopes: set[str],
-    ) -> str | None:
-        for required_scope in required_scopes:
-            if required_scope not in token_scopes:
-                return required_scope
-
-        return None
+    ) -> list[str]:
+        return [scope for scope in required_scopes if scope not in token_scopes]
 
     def _extract_token_scopes(self, claims: dict[str, Any]) -> set[str]:
         scp_scopes = self._scopes_from_claim_value(claims.get("scp"))

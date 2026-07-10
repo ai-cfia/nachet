@@ -400,7 +400,8 @@ The OIDC auth boundary separates failures by meaning:
 | `403 Forbidden` | The token is valid but lacks a required scope. |
 | `503 Service Unavailable` | Discovery or JWKS could not be loaded or trusted. |
 
-Only token failures return `WWW-Authenticate: Bearer error="invalid_token"`.
+Invalid tokens return `WWW-Authenticate: Bearer error="invalid_token"`. Missing
+scopes return `Bearer error="insufficient_scope"` with the missing scope names.
 A provider outage does not claim that the user's token is invalid.
 
 ## OIDC tests

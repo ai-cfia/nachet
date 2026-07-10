@@ -4,10 +4,16 @@ from fastapi import HTTPException, WebSocketException, status
 from starlette.requests import HTTPConnection
 
 
-def bearer_authenticate_headers(error: str | None = None) -> dict[str, str]:
+def bearer_authenticate_headers(
+    error: str | None = None,
+    scopes: list[str] | None = None,
+) -> dict[str, str]:
     challenge = "Bearer"
     if error is not None:
         challenge = f'{challenge} error="{error}"'
+    if scopes:
+        scope_value = " ".join(scopes)
+        challenge = f'{challenge}, scope="{scope_value}"'
     return {"WWW-Authenticate": challenge}
 
 
