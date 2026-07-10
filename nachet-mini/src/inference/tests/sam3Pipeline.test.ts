@@ -123,11 +123,11 @@ describe("SAM 3 pipeline (mocked ORT)", () => {
     await loadSam3(config, progress);
     expect(hoisted.sessions).toHaveLength(3);
     expect(progress).toHaveBeenCalledWith({
-      name: "sam3 vision encoder",
+      name: "sam3 vision encoder (initializing)",
       progress: 100,
     });
     expect(progress).toHaveBeenCalledWith({
-      name: "sam3 decoder",
+      name: "sam3 decoder (initializing)",
       progress: 100,
     });
   });

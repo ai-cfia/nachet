@@ -282,6 +282,7 @@ const makeProps = (
   detectorPrompt: "",
   setDetectorPrompt: vi.fn(),
   detectorRequiresPrompt: false,
+  promptError: false,
   isEditing: false,
   isDrawingBox: false,
   setIsDrawing: vi.fn(),

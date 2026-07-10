@@ -38,6 +38,7 @@ const main = {
     loading: "Chargement\u2026",
     prompt: "Concept",
     promptPlaceholder: "ex. graine",
+    promptRequired: "Un concept est requis pour ce détecteur",
   },
   imageUpload: {
     title: "T\u00e9l\u00e9verser des images",

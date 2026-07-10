@@ -106,6 +106,8 @@ export interface NachetMiniViewProps {
   detectorPrompt: string;
   setDetectorPrompt: (value: string) => void;
   detectorRequiresPrompt: boolean;
+  // True when the user tried to run without a required prompt.
+  promptError: boolean;
 
   // Edit mode
   isEditing: boolean;
@@ -189,6 +191,7 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
     detectorPrompt,
     setDetectorPrompt,
     detectorRequiresPrompt,
+    promptError,
     isEditing,
     isDrawingBox,
     setIsDrawing,
@@ -426,6 +429,7 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
                 detectorPrompt={detectorPrompt}
                 onDetectorPromptChange={setDetectorPrompt}
                 detectorRequiresPrompt={detectorRequiresPrompt}
+                promptError={promptError}
               />
               {!isEditing && (
                 <ControlBarButton

@@ -191,8 +191,12 @@ export const runDetector = async (
 }> => {
   if (config.detectorKind === "text-promptable-segmentation") {
     // SAM 3 path — the sam3 module handles preprocessing, inference, and
-    // post-processing.
-    const concept = prompt?.trim() || "seed";
+    // post-processing. A prompt is required; the UI blocks empty submissions,
+    // so reaching here empty is a programming error, not a silent "seed" run.
+    const concept = prompt?.trim();
+    if (!concept) {
+      throw new Error("A concept prompt is required for this detector.");
+    }
     console.log(
       `[detector] Running SAM 3 detector with prompt: "${concept}", threshold: ${config.detectorThreshold}`,
     );

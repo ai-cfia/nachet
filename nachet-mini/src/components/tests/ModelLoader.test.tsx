@@ -33,6 +33,7 @@ interface RenderOptions {
   detectorPrompt?: string;
   onDetectorPromptChange?: (v: string) => void;
   detectorRequiresPrompt?: boolean;
+  promptError?: boolean;
 }
 
 const renderModelLoaderElement = ({
@@ -46,6 +47,7 @@ const renderModelLoaderElement = ({
   detectorPrompt = "",
   onDetectorPromptChange = vi.fn(),
   detectorRequiresPrompt = false,
+  promptError = false,
 }: RenderOptions = {}) => (
   <I18nextProvider i18n={i18n}>
     <ModelLoader
@@ -59,6 +61,7 @@ const renderModelLoaderElement = ({
       detectorPrompt={detectorPrompt}
       onDetectorPromptChange={onDetectorPromptChange}
       detectorRequiresPrompt={detectorRequiresPrompt}
+      promptError={promptError}
     />
   </I18nextProvider>
 );
@@ -349,6 +352,20 @@ describe("ModelLoader", () => {
       await expect
         .element(getPromptInput(frMain.modelLoader.prompt))
         .toBeVisible();
+    });
+
+    it("shows a validation message when promptError is set", async () => {
+      renderModelLoader({ detectorRequiresPrompt: true, promptError: true });
+      await expect
+        .element(page.getByText(enMain.modelLoader.promptRequired))
+        .toBeVisible();
+    });
+
+    it("shows no validation message when promptError is not set", async () => {
+      renderModelLoader({ detectorRequiresPrompt: true, promptError: false });
+      expect(
+        await page.getByText(enMain.modelLoader.promptRequired).all(),
+      ).toHaveLength(0);
     });
   });
 });

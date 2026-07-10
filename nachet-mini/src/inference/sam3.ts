@@ -125,14 +125,59 @@ export const sanitizeImageSrc = (src: string): string => {
 };
 
 /**
+ * Fetch a URL into an ArrayBuffer, reporting download progress as a fraction
+ * in [0, 1] as bytes arrive. Falls back to a single read when the body isn't
+ * streamable or the server omits Content-Length. Exported for testing.
+ */
+export const fetchWithProgress = async (
+  url: string,
+  onProgress?: (fraction: number) => void,
+): Promise<ArrayBuffer> => {
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    throw new Error(
+      `Failed to fetch external data: ${resp.status} ${resp.statusText}`,
+    );
+  }
+  const total = Number(resp.headers.get("content-length")) || 0;
+  if (!resp.body || total === 0) {
+    // Can't report progress without a streamable body + known size.
+    return resp.arrayBuffer();
+  }
+
+  const reader = resp.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      chunks.push(value);
+      received += value.length;
+      onProgress?.(Math.min(1, received / total));
+    }
+  }
+
+  const out = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return out.buffer;
+};
+
+/**
  * Load an InferenceSession, fetching the external `.onnx.data` file by hand
  * when present. ORT-Web doesn't auto-fetch external data files — without
  * this the graph loads with unresolved weights and crashes silently.
+ * `onDownloadProgress` reports the external-data download as a fraction [0, 1].
  */
 const createSessionWithExternalData = async (
   repo: string,
   fileName: string,
   options: ort.InferenceSession.SessionOptions,
+  onDownloadProgress?: (fraction: number) => void,
 ): Promise<ort.InferenceSession> => {
   const modelUrl = onnxUrl(repo, fileName);
   const dataUrl = onnxDataUrl(repo, fileName);
@@ -146,13 +191,7 @@ const createSessionWithExternalData = async (
       console.log(
         `[sam3] External data file detected: ${fileName}.onnx.data (${len ?? "?"} bytes)`,
       );
-      const dataResp = await fetch(dataUrl);
-      if (!dataResp.ok) {
-        throw new Error(
-          `Failed to fetch external data: ${dataResp.status} ${dataResp.statusText}`,
-        );
-      }
-      externalDataBuffer = await dataResp.arrayBuffer();
+      externalDataBuffer = await fetchWithProgress(dataUrl, onDownloadProgress);
       console.log(
         `[sam3] External data downloaded: ${externalDataBuffer.byteLength} bytes`,
       );
@@ -238,37 +277,50 @@ export const loadSam3 = async (
   const repo = config.detectorModel;
   const preprocessorRepo = config.detectorPreprocessorModel ?? repo;
 
-  console.log("[sam3] Loading vision encoder from", repo, "/", vision);
-  onProgress?.({ name: "sam3 vision encoder", progress: 0 });
-  visionSession = await createSessionWithExternalData(repo, vision, {
+  // Load one ONNX component, reporting a real download percentage as its
+  // weights stream in, then a distinct "initializing" phase while ORT parses
+  // the graph (no ORT progress hook exists for that step). This keeps the UI
+  // from sitting frozen at 0% for minutes during the large downloads.
+  const loadComponent = async (
+    label: string,
+    fileName: string,
+    sessionOptions: ort.InferenceSession.SessionOptions,
+  ): Promise<ort.InferenceSession> => {
+    console.log(`[sam3] Loading ${label} from`, repo, "/", fileName);
+    onProgress?.({ name: `${label} (downloading)`, progress: 0 });
+    const session = await createSessionWithExternalData(
+      repo,
+      fileName,
+      sessionOptions,
+      (fraction) =>
+        onProgress?.({
+          name: `${label} (downloading)`,
+          progress: Math.round(fraction * 100),
+        }),
+    );
+    // Download finished; the graph is now being parsed/initialized.
+    onProgress?.({ name: `${label} (initializing)`, progress: 100 });
+    console.log(`[sam3] ${label} loaded`);
+    return session;
+  };
+
+  visionSession = await loadComponent("sam3 vision encoder", vision, {
     executionProviders: providers,
   });
-  console.log("[sam3] Vision encoder loaded");
-  onProgress?.({ name: "sam3 vision encoder", progress: 100 });
-
-  console.log("[sam3] Loading text encoder from", repo, "/", text);
-  onProgress?.({ name: "sam3 text encoder", progress: 0 });
-  textSession = await createSessionWithExternalData(repo, text, {
+  textSession = await loadComponent("sam3 text encoder", text, {
     executionProviders: providers,
   });
-  console.log("[sam3] Text encoder loaded");
-  onProgress?.({ name: "sam3 text encoder", progress: 100 });
-
   // Decoder always uses wasm — attention layers blow past 4 GB VRAM on
   // consumer GPUs (Python validation: 860 MB intermediate).
-  console.log("[sam3] Loading decoder from", repo, "/", decoder);
-  onProgress?.({ name: "sam3 decoder", progress: 0 });
-  decoderSession = await createSessionWithExternalData(repo, decoder, {
+  decoderSession = await loadComponent("sam3 decoder", decoder, {
     executionProviders: ["wasm"],
   });
-  console.log("[sam3] Decoder loaded");
-  onProgress?.({ name: "sam3 decoder", progress: 100 });
 
   // Tokenizer config isn't in the ONNX bundle — load it from facebook/sam3.
   console.log("[sam3] Loading tokenizer from", preprocessorRepo);
-  onProgress?.({ name: "sam3 tokenizer", progress: 0 });
+  onProgress?.({ name: "sam3 tokenizer (downloading)", progress: 0 });
   tokenizer = await AutoTokenizer.from_pretrained(preprocessorRepo);
-  onProgress?.({ name: "sam3 tokenizer", progress: 100 });
+  onProgress?.({ name: "sam3 tokenizer (initializing)", progress: 100 });
 
   console.log("[sam3] All components loaded");
 };

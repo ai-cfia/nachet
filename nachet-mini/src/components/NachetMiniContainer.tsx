@@ -126,6 +126,9 @@ const NachetMiniContainer = () => {
   // Ignored by closed-vocabulary detectors (RT-DETR, DETR) — those classify by
   // their trained labels regardless of what's typed here.
   const [detectorPrompt, setDetectorPrompt] = useState("seed");
+  // Set when the user tries to run a text-promptable detector with an empty
+  // prompt — drives the inline validation message on the prompt field.
+  const [promptError, setPromptError] = useState(false);
   const selectedDetector = DETECTOR_MODELS.find(
     (d) => d.id === selectedDetectorId,
   );
@@ -144,6 +147,14 @@ const NachetMiniContainer = () => {
   const currentResult = activeResultKey
     ? (results.get(activeResultKey) ?? null)
     : null;
+
+  // Update the prompt and clear the validation error as soon as the user types
+  // something non-empty (done here rather than in an effect to avoid an extra
+  // render pass).
+  const handleDetectorPromptChange = (value: string) => {
+    setDetectorPrompt(value);
+    if (value.trim()) setPromptError(false);
+  };
 
   const handleImageLoaded = async (
     src: string,
@@ -204,6 +215,13 @@ const NachetMiniContainer = () => {
   const isInferring = status === "detecting" || status === "classifying";
   const handleRunInference = () => {
     if (!currentImage) return;
+
+    // Text-promptable detectors require a non-empty prompt — block submission
+    // and surface an inline message instead of silently substituting a default.
+    if (detectorRequiresPrompt && !detectorPrompt.trim()) {
+      setPromptError(true);
+      return;
+    }
 
     const alreadyQueued = useInferenceQueueStore
       .getState()
@@ -550,8 +568,9 @@ const NachetMiniContainer = () => {
         setSelectedDetectorId={setSelectedDetectorId}
         setSelectedClassifierId={setSelectedClassifierId}
         detectorPrompt={detectorPrompt}
-        setDetectorPrompt={setDetectorPrompt}
+        setDetectorPrompt={handleDetectorPromptChange}
         detectorRequiresPrompt={detectorRequiresPrompt}
+        promptError={promptError}
         isEditing={isEditing}
         isDrawingBox={isDrawingBox}
         setIsDrawing={setIsDrawing}

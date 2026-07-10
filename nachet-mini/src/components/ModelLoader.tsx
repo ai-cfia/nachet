@@ -33,6 +33,8 @@ interface Props {
   detectorPrompt: string;
   onDetectorPromptChange: (value: string) => void;
   detectorRequiresPrompt: boolean;
+  /** True when the user tried to run without a required prompt. */
+  promptError?: boolean;
 }
 
 const ModelLoader = ({
@@ -47,6 +49,7 @@ const ModelLoader = ({
   detectorPrompt,
   onDetectorPromptChange,
   detectorRequiresPrompt,
+  promptError = false,
 }: Props) => {
   const { t } = useTranslation("main");
   const detectorLabel = t("modelLoader.detector");
@@ -146,6 +149,9 @@ const ModelLoader = ({
         <TextField
           id="detector-prompt-input"
           size="small"
+          required
+          error={promptError}
+          helperText={promptError ? t("modelLoader.promptRequired") : undefined}
           label={t("modelLoader.prompt")}
           placeholder={t("modelLoader.promptPlaceholder")}
           value={detectorPrompt}
@@ -157,6 +163,7 @@ const ModelLoader = ({
             style: { fontSize: "1.2vh" },
           }}
           InputLabelProps={{ sx: { fontSize: "1.2vh" } }}
+          FormHelperTextProps={{ sx: { fontSize: "1vh", m: 0 } }}
           sx={{
             minWidth: { xs: "fit-content", md: "10vw" },
             maxWidth: { xs: "fit-content", md: "12vw" },

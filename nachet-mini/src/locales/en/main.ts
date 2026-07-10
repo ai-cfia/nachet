@@ -38,6 +38,7 @@ const main = {
     loading: "Loading\u2026",
     prompt: "Concept prompt",
     promptPlaceholder: "e.g. seed",
+    promptRequired: "A concept prompt is required for this detector",
   },
   imageUpload: {
     title: "Upload Image(s)",

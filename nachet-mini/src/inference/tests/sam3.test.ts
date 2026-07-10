@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   buildHfUrl,
   onnxUrl,
@@ -6,6 +6,7 @@ import {
   sanitizeImageSrc,
   bigInt64FromTensor,
   postProcessSam3Detections,
+  fetchWithProgress,
   loadSam3,
   unloadSam3,
   runSam3,
@@ -154,6 +155,83 @@ describe("postProcessSam3Detections", () => {
     expect(out.boxes).toHaveLength(0);
     expect(out.scores).toHaveLength(0);
     expect(out.classes).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Streaming download with progress
+// ---------------------------------------------------------------------------
+
+describe("fetchWithProgress", () => {
+  const streamResponse = (chunks: Uint8Array[], total: number) => {
+    let i = 0;
+    return {
+      ok: true,
+      headers: {
+        get: (h: string) =>
+          h.toLowerCase() === "content-length" ? String(total) : null,
+      },
+      body: {
+        getReader: () => ({
+          read: async () =>
+            i < chunks.length
+              ? { done: false, value: chunks[i++] }
+              : { done: true, value: undefined },
+        }),
+      },
+      arrayBuffer: async () => new ArrayBuffer(total),
+    } as unknown as Response;
+  };
+
+  it("reports incremental progress and returns the assembled buffer", async () => {
+    const chunks = [new Uint8Array([1, 2, 3]), new Uint8Array([4, 5])];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => streamResponse(chunks, 5)),
+    );
+    const fractions: number[] = [];
+    const buf = await fetchWithProgress("https://x/data", (f) =>
+      fractions.push(f),
+    );
+    expect(new Uint8Array(buf)).toEqual(new Uint8Array([1, 2, 3, 4, 5]));
+    expect(fractions).toEqual([0.6, 1]);
+    vi.unstubAllGlobals();
+  });
+
+  it("falls back to a single read when Content-Length is missing", async () => {
+    const resp = {
+      ok: true,
+      headers: { get: () => null },
+      body: {},
+      arrayBuffer: async () => new Uint8Array([9, 9]).buffer,
+    } as unknown as Response;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => resp),
+    );
+    const onProgress = vi.fn();
+    const buf = await fetchWithProgress("https://x/data", onProgress);
+    expect(new Uint8Array(buf)).toEqual(new Uint8Array([9, 9]));
+    expect(onProgress).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("throws on a non-ok response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          ({
+            ok: false,
+            status: 500,
+            statusText: "err",
+          }) as unknown as Response,
+      ),
+    );
+    await expect(fetchWithProgress("https://x/data")).rejects.toThrow(
+      /Failed to fetch/i,
+    );
+    vi.unstubAllGlobals();
   });
 });
 

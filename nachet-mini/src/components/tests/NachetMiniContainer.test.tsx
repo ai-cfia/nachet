@@ -1341,6 +1341,30 @@ describe("NachetMiniContainer", () => {
       );
     });
 
+    it("blocks running a text-promptable detector with an empty prompt", async () => {
+      const sam3 = DETECTOR_MODELS.find(
+        (d) => d.kind === "text-promptable-segmentation",
+      );
+      if (!sam3)
+        throw new Error("no text-promptable detector in test fixtures");
+
+      setupImage();
+      setupModelLoaded();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+        getProps().setSelectedDetectorId(sam3.id);
+        getProps().setDetectorPrompt("   "); // whitespace only -> empty
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+
+      expect(useInferenceQueueStore.getState().queue).toHaveLength(0);
+      expect(mockRunInference).not.toHaveBeenCalled();
+      expect(getProps().promptError).toBe(true);
+    });
+
     it("marks item as processing before runInference is called", async () => {
       setupImage();
       setupModelLoaded();

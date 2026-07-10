@@ -201,20 +201,14 @@ describe("runDetector", () => {
     expect(labelForClass(0)).toBe("ragweed");
   });
 
-  it("defaults the SAM 3 prompt to 'seed' when none is given", async () => {
-    await runDetector(
-      sam3Config,
-      "data:image/png;base64,AAAA",
-      fakeRawImage,
-      null,
-    );
-    expect(runSam3).toHaveBeenCalledWith(
-      "data:image/png;base64,AAAA",
-      "seed",
-      0.5,
-      1280,
-      640,
-    );
+  it("throws (no silent fallback) when a text-promptable detector gets an empty prompt", async () => {
+    await expect(
+      runDetector(sam3Config, "data:image/png;base64,AAAA", fakeRawImage, null),
+    ).rejects.toThrow(/prompt is required/i);
+    await expect(
+      runDetector(sam3Config, "data:image/png;base64,AAAA", fakeRawImage, "  "),
+    ).rejects.toThrow(/prompt is required/i);
+    expect(runSam3).not.toHaveBeenCalled();
   });
 
   it("scales closed-vocab boxes to original pixel space and maps labels", async () => {
