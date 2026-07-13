@@ -13,43 +13,57 @@ class AuthProvider(str, Enum):
 
 
 @dataclass(frozen=True)
+class OidcAuthConfig:
+    discovery: OidcDiscoveryConfig
+    user_id_claim: str
+    username_claim: str
+    email_claim: str
+
+
+@dataclass(frozen=True)
+class AzureAuthConfig:
+    client_id: str | None
+    tenant_id: str | None
+
+
+@dataclass(frozen=True)
 class BackendAuthConfig:
     provider: AuthProvider
-    azure_client_id: str | None
-    azure_tenant_id: str | None
-    oidc_discovery: OidcDiscoveryConfig | None
-    oidc_user_id_claim: str
-    oidc_username_claim: str
-    oidc_email_claim: str
+    azure: AzureAuthConfig | None
+    oidc: OidcAuthConfig | None
 
     @classmethod
     def from_settings(cls, settings: Settings) -> BackendAuthConfig:
         provider = _parse_auth_provider(settings.auth_provider)
-        oidc_user_id_claim = _parse_claim_name(settings.oidc_user_id_claim)
-        oidc_username_claim = _parse_claim_name(settings.oidc_username_claim)
-        oidc_email_claim = _parse_claim_name(settings.oidc_email_claim)
 
-        oidc_discovery = None
-        if provider is AuthProvider.OIDC:
+        azure = None
+        oidc = None
+        if provider is AuthProvider.AZURE:
+            azure = AzureAuthConfig(
+                client_id=settings.azure_client_id,
+                tenant_id=settings.azure_tenant_id,
+            )
+        else:
             issuer = _parse_required_setting(settings.oidc_issuer, "OIDC issuer")
             audience = _parse_required_setting(
                 settings.oidc_audience,
                 "OIDC audience",
             )
 
-            oidc_discovery = OidcDiscoveryConfig(
-                issuer=issuer,
-                audience=audience,
+            oidc = OidcAuthConfig(
+                discovery=OidcDiscoveryConfig(
+                    issuer=issuer,
+                    audience=audience,
+                ),
+                user_id_claim=_parse_claim_name(settings.oidc_user_id_claim),
+                username_claim=_parse_claim_name(settings.oidc_username_claim),
+                email_claim=_parse_claim_name(settings.oidc_email_claim),
             )
 
         return cls(
             provider=provider,
-            azure_client_id=settings.azure_client_id,
-            azure_tenant_id=settings.azure_tenant_id,
-            oidc_discovery=oidc_discovery,
-            oidc_user_id_claim=oidc_user_id_claim,
-            oidc_username_claim=oidc_username_claim,
-            oidc_email_claim=oidc_email_claim,
+            azure=azure,
+            oidc=oidc,
         )
 
 

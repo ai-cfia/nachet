@@ -7,7 +7,12 @@ from fastapi.security import SecurityScopes
 from starlette.requests import HTTPConnection
 from app.api.config import Settings, get_settings
 from app.service.auth.auth import SingleTenantAzureAuthorizationCodeBearer
-from app.service.auth.config import AuthProvider, BackendAuthConfig
+from app.service.auth.config import (
+    AuthProvider,
+    AzureAuthConfig,
+    BackendAuthConfig,
+    OidcAuthConfig,
+)
 from app.service.auth.exceptions import bearer_authenticate_headers
 from app.service.auth.oidc_discovery import (
     OidcDiscoveryClient,
@@ -30,8 +35,9 @@ class JWTAuthenticator:
     def _get_azure_auth_scheme(self) -> SingleTenantAzureAuthorizationCodeBearer:
         """Initialize and return the Azure AD auth scheme"""
         if self._azure_auth_scheme is None:
-            client_id = self._config.azure_client_id
-            tenant_id = self._config.azure_tenant_id
+            azure_config = self._get_azure_config()
+            client_id = azure_config.client_id
+            tenant_id = azure_config.tenant_id
 
             if not client_id or not tenant_id:
                 raise HTTPException(
@@ -49,17 +55,25 @@ class JWTAuthenticator:
 
         return self._azure_auth_scheme
 
+    def _get_azure_config(self) -> AzureAuthConfig:
+        azure_config = self._config.azure
+        if azure_config is None:
+            raise RuntimeError("Azure authentication is not configured")
+        return azure_config
+
     def _get_oidc_discovery_client(self) -> OidcDiscoveryClient:
         if self._oidc_discovery_client is None:
-            oidc_discovery_config = self._config.oidc_discovery
-            if oidc_discovery_config is None:
-                raise RuntimeError("Validated OIDC settings are incomplete")
-
             self._oidc_discovery_client = OidcDiscoveryClient(
-                oidc_discovery_config
+                self._get_oidc_config().discovery
             )
 
         return self._oidc_discovery_client
+
+    def _get_oidc_config(self) -> OidcAuthConfig:
+        oidc_config = self._config.oidc
+        if oidc_config is None:
+            raise RuntimeError("OIDC authentication is not configured")
+        return oidc_config
 
     async def __call__(
         self, request: HTTPConnection, security_scopes: SecurityScopes
@@ -224,7 +238,8 @@ class JWTAuthenticator:
         return scopes
 
     def _build_oidc_user(self, claims: dict[str, Any], access_token: str) -> User:
-        identity_claim_name = self._config.oidc_user_id_claim
+        oidc_config = self._get_oidc_config()
+        identity_claim_name = oidc_config.user_id_claim
         user_id = self._get_string_claim(claims, identity_claim_name)
         if user_id is None:
             raise HTTPException(
@@ -235,7 +250,7 @@ class JWTAuthenticator:
 
         self._validate_user_id(user_id)
         preferred_username = self._get_oidc_display_username(claims)
-        email = self._get_string_claim(claims, self._config.oidc_email_claim)
+        email = self._get_string_claim(claims, oidc_config.email_claim)
         user_data = dict(claims)
         user_data["oid"] = user_id
         if preferred_username is not None:
@@ -243,21 +258,20 @@ class JWTAuthenticator:
         if email is not None:
             user_data["email"] = email
 
-        # Runtime auth fields belong to Nachet, not to the token namespace. Write
-        # them last so provider-specific claims cannot replace trusted app state.
+        # Nachet owns these runtime fields, so provider claims cannot override
+        # them. OIDC has no common guest claim, so generic users get a guest marker.
         user_data.update(
             claims=claims,
             access_token=access_token,
             is_guest=True,
         )
 
-        # OIDC does not define a universal guest/member claim. Until claim mapping
-        # is designed, generic OIDC users use the more restrictive guest posture.
         return User(**user_data)
 
     def _get_oidc_display_username(self, claims: dict[str, Any]) -> str | None:
+        oidc_config = self._get_oidc_config()
         username_claim_candidates = (
-            self._config.oidc_username_claim,
+            oidc_config.username_claim,
             "preferred_username",
             "email",
             "sub",

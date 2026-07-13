@@ -367,16 +367,18 @@ The OIDC adapter reads the user ID from `OIDC_USER_ID_CLAIM`, which defaults to
 `sub`. The value must currently be a UUID because existing routes and database
 services call `UUID(current_user.oid)`.
 
-This is a temporary compatibility rule. A later schema change will map the
-provider issuer and subject to an internal Nachet user ID. Until then, do not
-enable OIDC against an existing Entra production database.
+The Keycloak follow-up will test this with Nachet's existing UUID registration
+process. Supporting non-UUID subjects or linking multiple providers to one user
+is tracked separately. Use a separate database for the Keycloak test. We have
+not decided how Keycloak accounts should be linked to existing Entra users yet.
 
 Raw provider claims remain available through `User.claims`, but unknown claims
 do not become normal `User` attributes. Nachet writes `access_token` and
 `is_guest` after provider claims so token content cannot replace those fields.
 
-OIDC does not define one guest/member claim. Generic OIDC users therefore use
-the restricted guest posture until claim mapping is designed.
+OIDC does not define one guest/member claim. Generic OIDC users are currently
+marked with `is_guest=True`; this marker does not replace database-backed
+authorization.
 
 ### HTTP failure responses
 
@@ -406,9 +408,9 @@ identity compatibility, and protection of Nachet-owned user fields.
 
 ## Current limits
 
-- Local Keycloak startup and realm configuration belong to Backend D.
-- External OIDC subjects are not yet mapped to internal Nachet user IDs.
-- OIDC must not use an existing Entra production database until that identity
-  mapping exists.
+- Local Keycloak startup and realm configuration belong to a follow-up PR.
+- Non-UUID OIDC subjects and cross-provider account linking are not supported.
+- The Keycloak test should use a separate database until we decide how to link
+  Keycloak accounts to existing Entra users.
 - Existing routes do not currently declare route-specific FastAPI scopes.
 - Microsoft Entra remains the official production path.

@@ -238,12 +238,13 @@ OIDC issuer and JWKS endpoints must use HTTPS. A follow-up PR will define and
 document the supported local Keycloak setup.
 
 The claim selected by `OIDC_USER_ID_CLAIM` must currently contain a UUID. This
-keeps the existing route and database contract intact until external identities
-are mapped to internal Nachet users.
+keeps the existing route and database contract intact. The Keycloak follow-up
+will test this with Nachet's existing UUID registration process. Supporting
+non-UUID subjects or linking multiple providers to one user is tracked
+separately.
 
-Do not enable the OIDC path against an existing Entra production database yet.
-Until Nachet stores the provider, issuer, and subject together, identities from
-different providers are not separated in the database.
+Use a separate database for the Keycloak test. We have not decided how Keycloak
+accounts should be linked to existing Entra users yet.
 
 The frontend and backend use different provider names because they select
 different implementations:

@@ -188,11 +188,19 @@ def test_oidc_provider_requires_non_blank_issuer_and_audience_config(
         )
 
 
-def test_azure_provider_does_not_require_oidc_config() -> None:
-    auth_config = create_auth_config(auth_provider="azure")
+def test_azure_provider_ignores_oidc_config() -> None:
+    auth_config = create_auth_config(
+        auth_provider="azure",
+        oidc_issuer=None,
+        oidc_audience=None,
+        oidc_user_id_claim=" ",
+        oidc_username_claim=" ",
+        oidc_email_claim=" ",
+    )
 
     assert auth_config.provider is AuthProvider.AZURE
-    assert auth_config.oidc_discovery is None
+    assert auth_config.azure is not None
+    assert auth_config.oidc is None
 
 
 def test_auth_config_rejects_unknown_provider() -> None:
@@ -207,8 +215,9 @@ def test_oidc_provider_accepts_https_issuer() -> None:
         oidc_audience=AUDIENCE,
     )
 
-    assert auth_config.oidc_discovery is not None
-    assert auth_config.oidc_discovery.issuer == ISSUER
+    assert auth_config.azure is None
+    assert auth_config.oidc is not None
+    assert auth_config.oidc.discovery.issuer == ISSUER
 
 
 def test_oidc_provider_rejects_http_issuer() -> None:
@@ -246,7 +255,12 @@ def test_oidc_provider_rejects_unsafe_issuer_urls(issuer: str) -> None:
 )
 def test_oidc_claim_names_cannot_be_blank(claim_setting: str) -> None:
     with pytest.raises(ValueError, match="OIDC claim names cannot be blank"):
-        create_auth_config(**{claim_setting: " "})
+        create_auth_config(
+            auth_provider="oidc",
+            oidc_issuer=ISSUER,
+            oidc_audience=AUDIENCE,
+            **{claim_setting: " "},
+        )
 
 
 def test_oidc_settings_are_normalized_at_the_config_boundary() -> None:
@@ -258,10 +272,10 @@ def test_oidc_settings_are_normalized_at_the_config_boundary() -> None:
     )
 
     assert auth_config.provider is AuthProvider.OIDC
-    assert auth_config.oidc_discovery is not None
-    assert auth_config.oidc_discovery.issuer == ISSUER
-    assert auth_config.oidc_discovery.audience == AUDIENCE
-    assert auth_config.oidc_user_id_claim == "sub"
+    assert auth_config.oidc is not None
+    assert auth_config.oidc.discovery.issuer == ISSUER
+    assert auth_config.oidc.discovery.audience == AUDIENCE
+    assert auth_config.oidc.user_id_claim == "sub"
 
 
 @pytest.mark.asyncio

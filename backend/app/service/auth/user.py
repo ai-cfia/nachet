@@ -251,5 +251,5 @@ class User(Claims):
     )
     is_guest: bool = Field(
         False,
-        description="Whether Nachet should apply its restricted guest behavior.",
+        description="Whether provider normalization marked this user as a guest.",
     )
