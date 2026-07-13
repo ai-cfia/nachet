@@ -35,6 +35,10 @@ export interface ModelConfig {
    * Detector kind. Defaults to `"object-detection"`. The
    * `text-promptable-segmentation` kind is what drives the prompt UI and the
    * worker's `prompt` expectation — there's no separate boolean for it.
+   *
+   * Same value as `DetectorModelEntry.kind`; `buildModelConfig` copies it here
+   * and prefixes it `detector` because `ModelConfig` flattens the selected
+   * detector and classifier entries into one object sent to the worker.
    */
   detectorKind?: DetectorKind;
   /** For multi-file detectors: ONNX filenames within `detectorModel`'s HF repo. */
@@ -59,6 +63,9 @@ export interface DetectorModelEntry {
    * What kind of detector this is. Defaults to `"object-detection"`.
    * `text-promptable-segmentation` (e.g. SAM3) is what makes the UI show a
    * text-prompt input — no separate `requiresPrompt` flag needed.
+   *
+   * This is the registry-entry field; `buildModelConfig` copies it onto the
+   * flattened `ModelConfig` as `detectorKind`.
    */
   kind?: DetectorKind;
   /** For multi-file detectors (e.g. SAM3): which ONNX files make up the model. */

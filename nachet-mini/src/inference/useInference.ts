@@ -38,7 +38,7 @@ export const useInference = (currentIndex: number) => {
     // progress callbacks dozens of times per second. Pushing every one into
     // the Zustand store re-renders subscribed components fast enough to trip
     // React's "Maximum update depth exceeded" guard. We coalesce to one
-    // update per (name, integer-percent) combo and at most one per 50ms.
+    // update per (name, integer-percent) combo and at most one per 2000ms.
     let lastProgressName = "";
     let lastProgressPct = -1;
     let lastProgressTime = 0;
@@ -50,7 +50,7 @@ export const useInference = (currentIndex: number) => {
           const now = Date.now();
           const sameAsBefore =
             msg.name === lastProgressName && pct === lastProgressPct;
-          const tooSoon = now - lastProgressTime < 50;
+          const tooSoon = now - lastProgressTime < 2000;
           if (sameAsBefore || (tooSoon && pct < 100)) break;
           lastProgressName = msg.name;
           lastProgressPct = pct;
