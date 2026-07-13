@@ -5,6 +5,7 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  TextField,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import type { SelectChangeEvent } from "@mui/material";
@@ -24,6 +25,16 @@ interface Props {
   onSelectClassifier: (id: string) => void;
   isLoading: boolean;
   disabled: boolean;
+  /**
+   * Text-promptable detector inputs. When the selected detector's kind is
+   * `text-promptable-segmentation` (e.g. SAM3), a TextField is rendered next to
+   * the dropdowns. Closed-vocabulary detectors (RT-DETR, DETR) hide it.
+   */
+  detectorPrompt: string;
+  onDetectorPromptChange: (value: string) => void;
+  detectorRequiresPrompt: boolean;
+  /** True when the user tried to run without a required prompt. */
+  promptError?: boolean;
 }
 
 const ModelLoader = ({
@@ -35,6 +46,10 @@ const ModelLoader = ({
   onSelectClassifier,
   isLoading,
   disabled,
+  detectorPrompt,
+  onDetectorPromptChange,
+  detectorRequiresPrompt,
+  promptError = false,
 }: Props) => {
   const { t } = useTranslation("main");
   const detectorLabel = t("modelLoader.detector");
@@ -128,6 +143,32 @@ const ModelLoader = ({
         >
           <InfoOutlinedIcon sx={{ fontSize: "1.6vh" }} />
         </IconButton>
+      )}
+
+      {detectorRequiresPrompt && (
+        <TextField
+          id="detector-prompt-input"
+          size="small"
+          required
+          error={promptError}
+          helperText={promptError ? t("modelLoader.promptRequired") : undefined}
+          label={t("modelLoader.prompt")}
+          placeholder={t("modelLoader.promptPlaceholder")}
+          value={detectorPrompt}
+          onChange={(e) => onDetectorPromptChange(e.target.value)}
+          // Accessible name beats the visual label for screen readers since
+          // the label text is shrunk to ~1.2vh for visual density.
+          inputProps={{
+            "aria-label": t("modelLoader.prompt"),
+            style: { fontSize: "1.2vh" },
+          }}
+          InputLabelProps={{ sx: { fontSize: "1.2vh" } }}
+          FormHelperTextProps={{ sx: { fontSize: "1vh", m: 0 } }}
+          sx={{
+            minWidth: { xs: "fit-content", md: "10vw" },
+            maxWidth: { xs: "fit-content", md: "12vw" },
+          }}
+        />
       )}
     </Box>
   );

@@ -2,7 +2,6 @@
 
 import {
   AutoProcessor,
-  AutoModelForObjectDetection,
   AutoModelForImageClassification,
   RawImage,
   Tensor,
@@ -12,6 +11,13 @@ import {
 } from "@huggingface/transformers";
 import type { ModelConfig, WorkerInMessage, WorkerOutMessage } from "./models";
 import type { InferenceResult, InferenceBox } from "@common/types";
+import {
+  loadDetector,
+  runDetector,
+  isDetectorReady,
+  patchProcessorSize,
+} from "./detector";
+import { createSerialQueue } from "./serialQueue";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -24,16 +30,6 @@ env.allowRemoteModels = true;
 // static server returns an HTML 404 page which transformers.js tries to parse
 // as JSON and fails. Disable local model lookup in production.
 env.allowLocalModels = import.meta.env.DEV;
-
-// ---------------------------------------------------------------------------
-// Types for post-processing output
-// ---------------------------------------------------------------------------
-
-interface PostProcessedDetection {
-  boxes: number[][];
-  classes: number[];
-  scores: number[];
-}
 
 // ---------------------------------------------------------------------------
 // Worker-specific helpers
@@ -93,44 +89,9 @@ const cropRegion = async (
 };
 
 // ---------------------------------------------------------------------------
-// Processor size patching
-// ---------------------------------------------------------------------------
-
-/**
- * Some HuggingFace models (e.g. RT-DETR from cfia-ai-lab) use
- * `{ max_height, max_width }` in their preprocessor_config.json `size` field.
- * transformers.js doesn't support this format, so we convert it to
- * `{ longest_edge }` which preserves aspect ratio.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const patchProcessorSize = (processor: any): void => {
-  // AutoProcessor wraps an image_processor; try both paths
-  const imageProcessor = processor?.image_processor ?? processor;
-  if (!imageProcessor?.size) {
-    console.log("[worker] No image processor size to patch");
-    return;
-  }
-
-  const size = imageProcessor.size;
-  console.log("[worker] Processor size config:", JSON.stringify(size));
-
-  if (size.max_height !== undefined && size.max_width !== undefined) {
-    const longest = Math.min(size.max_height, size.max_width);
-    console.log(
-      `[worker] Patching processor size: {max_height: ${size.max_height}, max_width: ${size.max_width}} → {longest_edge: ${longest}}`,
-    );
-    imageProcessor.size = { longest_edge: longest };
-  }
-};
-
-// ---------------------------------------------------------------------------
 // Pipeline state
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let detectorModel: any = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let detectorProcessor: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let classifierModel: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -168,15 +129,18 @@ const makeProgressCallback = (phase: "detector" | "classifier") => {
 // Message handler
 // ---------------------------------------------------------------------------
 
-addEventListener("message", async (event: MessageEvent) => {
-  const data = event.data as WorkerInMessage;
+// Serialize every worker operation. Without this, a `load-models` message
+// could run concurrently with an in-flight `run-inference` and release ORT
+// sessions that inference is still using — which surfaces as a "function
+// signature mismatch" crash. The queue makes a model switch wait for the
+// current inference to finish before tearing anything down.
+const runSerial = createSerialQueue();
 
+const handleMessage = async (data: WorkerInMessage): Promise<void> => {
   // ── Load models ──────────────────────────────────────────────────────────
   if (data.type === "load-models") {
     const config = data.config;
     const device = await getDevice();
-    // WebGPU has precision issues with detection models — use WASM for detector
-    const detectorDevice: DeviceType = "wasm";
     const classifierDevice = device;
     const progressDetector = makeProgressCallback("detector");
     const progressClassifier = makeProgressCallback("classifier");
@@ -184,12 +148,7 @@ addEventListener("message", async (event: MessageEvent) => {
     try {
       send({ type: "status", status: "loading-model" });
 
-      console.log(
-        "[worker] Loading detector model:",
-        config.detectorModel,
-        "device:",
-        detectorDevice,
-      );
+      console.log("[worker] Loading detector model:", config.detectorModel);
       console.log(
         "[worker] Loading classifier model:",
         config.classifierModel,
@@ -197,27 +156,21 @@ addEventListener("message", async (event: MessageEvent) => {
         classifierDevice,
       );
 
-      // Load detector processor + model (always WASM for precision)
-      const [detProc, detMod] = await Promise.all([
-        AutoProcessor.from_pretrained(config.detectorModel),
-        AutoModelForObjectDetection.from_pretrained(config.detectorModel, {
-          device: detectorDevice,
-          dtype: "fp32" as const,
-          model_file_name: config.detectorModelFileName ?? "model",
-          progress_callback: progressDetector as unknown as (
-            progress: unknown,
-          ) => void,
-        }),
-      ]);
-
-      console.log("[worker] Detector loaded, patching processor...");
-      patchProcessorSize(detProc);
-      detectorProcessor = detProc;
-      detectorModel = detMod;
-      console.log(
-        "[worker] Detector id2label:",
-        JSON.stringify(detMod.config?.id2label ?? {}),
-      );
+      // Detector loading is delegated to the detector module, which handles
+      // both the SAM 3 (text-promptable) and closed-vocabulary paths and frees
+      // the other kind's memory before loading its own.
+      await loadDetector(config, {
+        transformersProgress: progressDetector as unknown as (
+          info: unknown,
+        ) => void,
+        sam3Progress: (info) => {
+          send({
+            type: "model-progress",
+            name: `detector: ${info.name}`,
+            progress: info.progress,
+          });
+        },
+      });
 
       // Load classifier processor + model (WebGPU if available)
       const [clsProc, clsMod] = await Promise.all([
@@ -243,24 +196,44 @@ addEventListener("message", async (event: MessageEvent) => {
       console.log("[worker] All models loaded successfully");
       send({ type: "model-loaded" });
     } catch (err) {
-      console.error("[worker] Model loading error:", err);
-      send({
-        type: "error",
-        message: err instanceof Error ? err.message : String(err),
-      });
+      // ORT-Web sometimes throws bare numeric pointers into wasm memory
+      // (e.g. `25954464`) instead of Error objects. When that happens, dump
+      // the raw value, its type, and any properties so we can at least see
+      // what we're dealing with — `String(err)` alone is useless.
+      console.error("[worker] Model loading error (raw):", err);
+      console.error("[worker]   typeof:", typeof err);
+      try {
+        const eAny = err as { name?: string; message?: string; stack?: string };
+        console.error("[worker]   err.name:", eAny?.name);
+        console.error("[worker]   err.message:", eAny?.message);
+        console.error("[worker]   err.stack:", eAny?.stack);
+        console.error(
+          "[worker]   keys:",
+          err && typeof err === "object" ? Object.keys(err) : "(not object)",
+        );
+      } catch {
+        // ignore — diagnostics only
+      }
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null && "message" in err
+            ? String((err as { message: unknown }).message)
+            : String(err);
+      send({ type: "error", message });
     }
   }
 
   // ── Run inference ────────────────────────────────────────────────────────
   if (data.type === "run-inference") {
-    if (
-      !detectorModel ||
-      !detectorProcessor ||
-      !classifierModel ||
-      !classifierProcessor ||
-      !loadedConfig
-    ) {
+    // Validation differs by detector kind — the detector module knows how to
+    // check readiness for each path (SAM 3 readiness is managed internally).
+    if (!classifierModel || !classifierProcessor || !loadedConfig) {
       send({ type: "error", message: "Models not loaded" });
+      return;
+    }
+    if (!isDetectorReady(loadedConfig)) {
+      send({ type: "error", message: "Detector not loaded" });
       return;
     }
 
@@ -281,146 +254,14 @@ addEventListener("message", async (event: MessageEvent) => {
         rawImage.height,
       );
 
-      const detInputs = await detectorProcessor(rawImage);
-      console.log("[worker] Detector inputs keys:", Object.keys(detInputs));
-      for (const [key, val] of Object.entries(detInputs)) {
-        const t = val as {
-          dims?: number[];
-          type?: string;
-          data?: Float32Array;
-        };
-        if (t?.dims) {
-          console.log(
-            `[worker]   ${key}: dims=${JSON.stringify(t.dims)} dtype=${t.type}`,
-          );
-        }
-        if (key === "pixel_values" && t?.data) {
-          const d = t.data;
-          let min = Infinity,
-            max = -Infinity,
-            sum = 0;
-          for (let i = 0; i < d.length; i++) {
-            if (d[i] < min) min = d[i];
-            if (d[i] > max) max = d[i];
-            sum += d[i];
-          }
-          const mean = sum / d.length;
-          console.log(
-            `[worker] pixel_values stats: min=${min.toFixed(4)} max=${max.toFixed(4)} mean=${mean.toFixed(4)} length=${d.length}`,
-          );
-          // First 10 values for comparison with Python
-          console.log(
-            "[worker] pixel_values first 10:",
-            Array.from(d.slice(0, 10)).map((v) => v.toFixed(4)),
-          );
-        }
-      }
-
-      // Run detector model
-      console.log("[worker] Running detector model...");
-      const detOutputs = await detectorModel(detInputs);
-      console.log("[worker] Detector output keys:", Object.keys(detOutputs));
-      for (const [key, val] of Object.entries(detOutputs)) {
-        const t = val as {
-          dims?: number[];
-          type?: string;
-          data?: Float32Array;
-        };
-        if (t?.dims) {
-          console.log(
-            `[worker]   ${key}: dims=${JSON.stringify(t.dims)} dtype=${t.type}`,
-          );
-        }
-        if (key === "logits" && t?.data) {
-          const scores = Array.from(t.data).map(
-            (v: number) => 1 / (1 + Math.exp(-v)),
-          ); // sigmoid
-          const sorted = [...scores].sort((a, b) => b - a);
-          console.log("[worker] Top 10 sigmoid scores:", sorted.slice(0, 10));
-          console.log(
-            "[worker] Scores > 0.01:",
-            scores.filter((s: number) => s > 0.01).length,
-          );
-        }
-      }
-
-      // Post-process detections
-      // RT-DETR uses sigmoid (no background class), so pass is_zero_shot=true
-      const numClasses = detOutputs.logits.dims[2];
-      const useSigmoid = numClasses === 1;
-
-      // Get boxes in model input space (640x640), then scale to original
-      // image dimensions ourselves — matching the Python CLI approach.
-      // post_process with null target_sizes returns normalized [0,1] boxes.
-      console.log(
-        "[worker] Post-processing with threshold:",
-        config.detectorThreshold,
-        "sigmoid:",
-        useSigmoid,
-      );
-      const processed = (
-        detectorProcessor.image_processor ?? detectorProcessor
-      ).post_process_object_detection(
-        detOutputs,
-        config.detectorThreshold,
-        null, // get normalized boxes
-        useSigmoid,
-      ) as PostProcessedDetection[];
-
-      // Scale normalized boxes from padded model space to original image coords.
-      // The model input is 640x640 (padded). The image was resized preserving
-      // aspect ratio, so we need to scale through the resized dimensions.
-      const modelW = detInputs.pixel_values.dims[3];
-      const modelH = detInputs.pixel_values.dims[2];
-      const resizeScale = Math.min(
-        modelW / rawImage.width,
-        modelH / rawImage.height,
-      );
-      const resizedW = rawImage.width * resizeScale;
-      const resizedH = rawImage.height * resizeScale;
-      const scaleX = rawImage.width / resizedW;
-      const scaleY = rawImage.height / resizedH;
-
-      console.log(
-        "[worker] Model input:",
-        modelW,
-        "x",
-        modelH,
-        "resized:",
-        resizedW.toFixed(0),
-        "x",
-        resizedH.toFixed(0),
-        "scale:",
-        scaleX.toFixed(3),
-        "x",
-        scaleY.toFixed(3),
-      );
-
-      // Convert normalized boxes to original image pixel coordinates
-      for (const det of processed) {
-        for (let i = 0; i < det.boxes.length; i++) {
-          const [x0, y0, x1, y1] = det.boxes[i];
-          det.boxes[i] = [
-            x0 * modelW * scaleX,
-            y0 * modelH * scaleY,
-            x1 * modelW * scaleX,
-            y1 * modelH * scaleY,
-          ];
-        }
-      }
-
-      console.log(
-        "[worker] Post-processed detections:",
-        JSON.stringify(processed),
-      );
-
-      const id2label = detectorModel.config?.id2label ?? {};
-      const detections = processed[0];
-      console.log(
-        "[worker] Detections count:",
-        detections?.boxes?.length ?? 0,
-        "id2label keys:",
-        Object.keys(id2label).length,
+      // Detector inference is delegated to the detector module. Both paths
+      // return `detections` + `labelForClass` so the box-building loop below
+      // can treat them uniformly.
+      const { detections, labelForClass } = await runDetector(
+        config,
+        imageSrc,
+        rawImage,
+        data.prompt,
       );
 
       if (!detections || !detections.boxes || detections.boxes.length === 0) {
@@ -448,7 +289,7 @@ addEventListener("message", async (event: MessageEvent) => {
         const [xmin, ymin, xmax, ymax] = detections.boxes[i];
         const score = detections.scores[i];
         const classIdx = detections.classes[i];
-        const detLabel = id2label[classIdx] ?? `class_${classIdx}`;
+        const detLabel = labelForClass(classIdx);
 
         console.log(
           `[worker] Detection ${i}: label=${detLabel} score=${score.toFixed(3)} box=[${xmin.toFixed(0)},${ymin.toFixed(0)},${xmax.toFixed(0)},${ymax.toFixed(0)}]`,
@@ -540,11 +381,30 @@ addEventListener("message", async (event: MessageEvent) => {
         result,
       });
     } catch (err) {
-      console.error("[worker] Inference error:", err);
-      send({
-        type: "error",
-        message: err instanceof Error ? err.message : String(err),
-      });
+      // Same dance as load-models: ORT-Web sometimes throws bare wasm
+      // pointers (e.g. `2397765560`) instead of Error objects. Dig out
+      // whatever we can.
+      console.error("[worker] Inference error (raw):", err);
+      console.error("[worker]   typeof:", typeof err);
+      try {
+        const eAny = err as { name?: string; message?: string; stack?: string };
+        console.error("[worker]   err.name:", eAny?.name);
+        console.error("[worker]   err.message:", eAny?.message);
+        console.error("[worker]   err.stack:", eAny?.stack);
+        console.error(
+          "[worker]   keys:",
+          err && typeof err === "object" ? Object.keys(err) : "(not object)",
+        );
+      } catch {
+        // ignore — diagnostics only
+      }
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null && "message" in err
+            ? String((err as { message: unknown }).message)
+            : String(err);
+      send({ type: "error", message });
     }
   }
 
@@ -647,6 +507,25 @@ addEventListener("message", async (event: MessageEvent) => {
       });
     }
   }
+};
+
+// The only origin we accept messages from is our own. Dedicated-worker
+// messages posted by the host page carry an empty origin, which we also allow;
+// anything else is rejected. The explicit `event.origin` comparisons below are
+// what CodeQL's missing-origin-verification query looks for.
+const EXPECTED_MESSAGE_ORIGIN = self.location.origin;
+
+// Enqueue each message so it runs strictly after the previous one settles.
+addEventListener("message", (event: MessageEvent) => {
+  if (event.origin !== "" && event.origin !== EXPECTED_MESSAGE_ORIGIN) {
+    console.warn(
+      "[worker] Ignoring message from untrusted origin:",
+      event.origin,
+    );
+    return;
+  }
+  const data = event.data as WorkerInMessage;
+  runSerial(() => handleMessage(data));
 });
 
 // ---------------------------------------------------------------------------

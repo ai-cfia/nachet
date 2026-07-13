@@ -122,6 +122,18 @@ const NachetMiniContainer = () => {
   const [selectedClassifierId, setSelectedClassifierId] = useState(
     DEFAULT_CLASSIFIER.id,
   );
+  // Text prompt for text-promptable detectors (e.g. SAM3).
+  // Ignored by closed-vocabulary detectors (RT-DETR, DETR) — those classify by
+  // their trained labels regardless of what's typed here.
+  const [detectorPrompt, setDetectorPrompt] = useState("seed");
+  // Set when the user tries to run a text-promptable detector with an empty
+  // prompt — drives the inline validation message on the prompt field.
+  const [promptError, setPromptError] = useState(false);
+  const selectedDetector = DETECTOR_MODELS.find(
+    (d) => d.id === selectedDetectorId,
+  );
+  const detectorRequiresPrompt =
+    selectedDetector?.kind === "text-promptable-segmentation";
   const [switchTable, setSwitchTable] = useState(false);
   const [metadataOpen, setMetadataOpen] = useState(false);
   const [metadataMode, setMetadataMode] = useState<"defaults" | "image">(
@@ -135,6 +147,14 @@ const NachetMiniContainer = () => {
   const currentResult = activeResultKey
     ? (results.get(activeResultKey) ?? null)
     : null;
+
+  // Update the prompt and clear the validation error as soon as the user types
+  // something non-empty (done here rather than in an effect to avoid an extra
+  // render pass).
+  const handleDetectorPromptChange = (value: string) => {
+    setDetectorPrompt(value);
+    if (value.trim()) setPromptError(false);
+  };
 
   const handleImageLoaded = async (
     src: string,
@@ -196,6 +216,13 @@ const NachetMiniContainer = () => {
   const handleRunInference = () => {
     if (!currentImage) return;
 
+    // Text-promptable detectors require a non-empty prompt — block submission
+    // and surface an inline message instead of silently substituting a default.
+    if (detectorRequiresPrompt && !detectorPrompt.trim()) {
+      setPromptError(true);
+      return;
+    }
+
     const alreadyQueued = useInferenceQueueStore
       .getState()
       .queue.some(
@@ -206,7 +233,14 @@ const NachetMiniContainer = () => {
 
     if (alreadyQueued) return;
 
-    enqueue({ imageSrc: currentImage.src, imageIndex: currentImage.index });
+    // Capture the prompt now (at enqueue time) so a later prompt edit can't
+    // change what this already-queued image runs with. Closed-vocabulary
+    // detectors ignore it, so store null for them.
+    enqueue({
+      imageSrc: currentImage.src,
+      imageIndex: currentImage.index,
+      prompt: detectorRequiresPrompt ? detectorPrompt : null,
+    });
 
     if (!hasAcknowledgedModelLoadWarning) {
       setModelLoadDialogOpen(true);
@@ -241,7 +275,9 @@ const NachetMiniContainer = () => {
     markProcessing(item.id);
     startTimeRef.current = Date.now();
     detectionStartRef.current = Date.now();
-    runInference(item.imageSrc, item.imageIndex);
+    // Use the prompt captured on the item at enqueue time — NOT the current
+    // detectorPrompt, which may have changed while this item was queued.
+    runInference(item.imageSrc, item.imageIndex, item.prompt);
   }, [modelLoaded, isInferring, nextPendingId, drainTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const prevStatusRef = useRef<string>(status);
@@ -531,6 +567,10 @@ const NachetMiniContainer = () => {
         selectedClassifierId={selectedClassifierId}
         setSelectedDetectorId={setSelectedDetectorId}
         setSelectedClassifierId={setSelectedClassifierId}
+        detectorPrompt={detectorPrompt}
+        setDetectorPrompt={handleDetectorPromptChange}
+        detectorRequiresPrompt={detectorRequiresPrompt}
+        promptError={promptError}
         isEditing={isEditing}
         isDrawingBox={isDrawingBox}
         setIsDrawing={setIsDrawing}

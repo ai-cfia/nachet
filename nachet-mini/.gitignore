@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Local-only SAM 3 CLI scripts (kept out of the PR; model work lives in the export repo)
+tmp_sam3_scripts/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

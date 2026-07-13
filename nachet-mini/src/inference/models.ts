@@ -1,5 +1,22 @@
 import type { InferenceResult } from "@common/types";
 
+/**
+ * Detector flavor. `object-detection` is the classic single-file closed-
+ * vocabulary shape (RT-DETR, DETR). `text-promptable-segmentation` is the
+ * SAM 3 shape — multi-component, takes a text prompt, open vocabulary.
+ */
+export type DetectorKind = "object-detection" | "text-promptable-segmentation";
+
+/** Filenames for a multi-file detector's components (e.g. SAM 3's three ONNX files). */
+export interface DetectorComponentFiles {
+  /** Vision encoder ONNX filename (without `.onnx`) */
+  vision: string;
+  /** Text encoder ONNX filename (without `.onnx`) */
+  text: string;
+  /** Decoder ONNX filename (without `.onnx`) */
+  decoder: string;
+}
+
 export interface ModelConfig {
   id: string;
   /** HuggingFace model ID for object detection (must have ONNX weights) */
@@ -14,6 +31,20 @@ export interface ModelConfig {
   detectorModelFileName?: string;
   /** Minimum bounding-box size (longest dimension, px) for reliable classification */
   minBoxSize: number;
+  /**
+   * Detector kind. Defaults to `"object-detection"`. The
+   * `text-promptable-segmentation` kind is what drives the prompt UI and the
+   * worker's `prompt` expectation — there's no separate boolean for it.
+   *
+   * Same value as `DetectorModelEntry.kind`; `buildModelConfig` copies it here
+   * and prefixes it `detector` because `ModelConfig` flattens the selected
+   * detector and classifier entries into one object sent to the worker.
+   */
+  detectorKind?: DetectorKind;
+  /** For multi-file detectors: ONNX filenames within `detectorModel`'s HF repo. */
+  detectorComponentFiles?: DetectorComponentFiles;
+  /** Alternate HF repo for tokenizer/processor when weights and config live separately (e.g. SAM 3). */
+  detectorPreprocessorModel?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -28,6 +59,19 @@ export interface DetectorModelEntry {
   threshold: number;
   /** Optional ONNX filename (without .onnx extension), defaults to "model" */
   modelFileName?: string;
+  /**
+   * What kind of detector this is. Defaults to `"object-detection"`.
+   * `text-promptable-segmentation` (e.g. SAM3) is what makes the UI show a
+   * text-prompt input — no separate `requiresPrompt` flag needed.
+   *
+   * This is the registry-entry field; `buildModelConfig` copies it onto the
+   * flattened `ModelConfig` as `detectorKind`.
+   */
+  kind?: DetectorKind;
+  /** For multi-file detectors (e.g. SAM3): which ONNX files make up the model. */
+  componentFiles?: DetectorComponentFiles;
+  /** Alternate HF repo for tokenizer/processor when weights and config live separately. */
+  preprocessorModel?: string;
 }
 
 export interface ClassifierModelEntry {
@@ -46,7 +90,17 @@ export interface ClassifierModelEntry {
 
 export type WorkerInMessage =
   | { type: "load-models"; config: ModelConfig }
-  | { type: "run-inference"; imageSrc: string; imageIndex: number }
+  | {
+      type: "run-inference";
+      imageSrc: string;
+      imageIndex: number;
+      /**
+       * Text concept prompt for text-promptable detectors (e.g. SAM3). Required
+       * when the active detector's kind is `text-promptable-segmentation`;
+       * `null` (or omitted) for closed-vocabulary detectors that ignore it.
+       */
+      prompt?: string | null;
+    }
   | {
       type: "run-classify-only";
       imageSrc: string;
@@ -94,6 +148,40 @@ export const DETECTOR_MODELS: DetectorModelEntry[] = [
     id: "detr-resnet-50 0spp",
     model: "Xenova/detr-resnet-50",
     threshold: 0.5,
+  },
+  {
+    // SAM 3 — text-promptable concept segmentation. Takes a free-text
+    // concept ("seed", "weed seed", etc.) and detects matching instances.
+    // fp32 unfused, 3.3 GB. Needs VRAM headroom (1.72 GB attention buffer
+    // per global-attention layer). Faster than MHA-fused below when memory
+    // isn't the bottleneck; fall back to MHA-fused on tighter hardware.
+    // https://huggingface.co/cfia-ai-lab/sam3-text-onnx
+    id: "sam3 fp32",
+    model: "cfia-ai-lab/sam3-text-onnx",
+    threshold: 0.5,
+    kind: "text-promptable-segmentation",
+    componentFiles: {
+      vision: "vision_encoder",
+      text: "text_encoder",
+      decoder: "decoder",
+    },
+  },
+  {
+    // SAM 3 with fused MultiHeadAttention — memory-constrained fallback.
+    // The 32 attention blocks are collapsed into com.microsoft.MultiHeadAttention
+    // ops that ORT-Web routes to its FlashAttention-2 kernel (O(N) tiles
+    // instead of the unfused variant's 1.72 GB O(N²) score matrices).
+    // Slower than unfused on GPUs with headroom; pick this when unfused OOMs.
+    // Parity-checked vs unfused (max abs diff 4.3e-4). Fused in custom_mha_fusion.py.
+    id: "sam3 fp32 MHA-fused (browser-optimized)",
+    model: "cfia-ai-lab/sam3-text-onnx",
+    threshold: 0.5,
+    kind: "text-promptable-segmentation",
+    componentFiles: {
+      vision: "vision_encoder_mhafused", // ← the new fused vision encoder
+      text: "text_encoder", // unchanged (no attention to fuse there)
+      decoder: "decoder", // unchanged
+    },
   },
 ];
 
@@ -143,5 +231,10 @@ export const buildModelConfig = (
     classifierTopK: classifier.topK,
     detectorModelFileName: detector.modelFileName,
     minBoxSize: classifier.minBoxSize,
+    // Multi-component / text-promptable detector fields. Undefined for the
+    // standard single-file object-detection detectors.
+    detectorKind: detector.kind,
+    detectorComponentFiles: detector.componentFiles,
+    detectorPreprocessorModel: detector.preprocessorModel,
   };
 };
