@@ -43,6 +43,7 @@ class MutableClock:
 @dataclass
 class MockOidcProvider:
     issuer: str = ISSUER
+    discovery_url: str = DISCOVERY_URL
     jwks_uri: str = JWKS_URI
     jwks: dict[str, Any] = field(default_factory=lambda: {"keys": []})
     delay_seconds: float = 0
@@ -56,7 +57,7 @@ class MockOidcProvider:
         if self.delay_seconds:
             await asyncio.sleep(self.delay_seconds)
 
-        if str(request.url) == DISCOVERY_URL:
+        if str(request.url) == self.discovery_url:
             if self.discovery_status != 200:
                 return httpx.Response(self.discovery_status)
 
@@ -226,6 +227,29 @@ async def test_uses_cached_verifier_before_ttl_expires() -> None:
     assert second_verifier is first_verifier
     assert provider.count_requests(DISCOVERY_URL) == 1
     assert provider.count_requests(JWKS_URI) == 1
+
+
+def test_rejects_insecure_remote_issuer_before_request() -> None:
+    with pytest.raises(ValueError, match="OIDC issuer must use HTTPS"):
+        OidcDiscoveryClient(
+            OidcDiscoveryConfig(
+                issuer="http://idp.example/realms/nachet",
+                audience=AUDIENCE,
+            )
+        )
+
+
+@pytest.mark.asyncio
+async def test_rejects_insecure_remote_jwks_before_request() -> None:
+    insecure_jwks_uri = "http://keys.example/realms/nachet/certs"
+    provider = MockOidcProvider(jwks_uri=insecure_jwks_uri)
+    client = create_client(provider)
+
+    # Reject the JWKS URI before a second request leaves the backend.
+    with pytest.raises(OidcDiscoveryError, match="JWKS URI must use HTTPS"):
+        await client.get_verifier()
+
+    assert provider.requests == [DISCOVERY_URL]
 
 
 # Expired cache entries are replaced with fresh discovery and JWKS data.

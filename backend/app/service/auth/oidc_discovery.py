@@ -10,6 +10,11 @@ import httpx
 import jwt
 from jwt.exceptions import InvalidTokenError
 
+from app.service.auth.oidc_endpoint import (
+    OidcEndpointError,
+    validate_oidc_issuer_url,
+    validate_oidc_jwks_uri,
+)
 from app.service.auth.oidc_token_verifier import (
     DEFAULT_ALLOWED_ALGORITHMS,
     REQUIRED_ACCESS_TOKEN_CLAIMS,
@@ -48,6 +53,9 @@ class OidcDiscoveryConfig:
     cache_ttl: timedelta = DEFAULT_DISCOVERY_CACHE_TTL
     request_timeout: float = DEFAULT_REQUEST_TIMEOUT_SECONDS
     unknown_key_refresh_cooldown: timedelta = DEFAULT_UNKNOWN_KEY_REFRESH_COOLDOWN
+
+    def __post_init__(self) -> None:
+        validate_oidc_issuer_url(self.issuer)
 
 
 @dataclass(frozen=True)
@@ -200,7 +208,15 @@ class OidcDiscoveryClient:
         if not isinstance(jwks_uri, str) or not jwks_uri:
             raise OidcDiscoveryError("OIDC discovery metadata is missing jwks_uri")
 
-        return {"issuer": issuer, "jwks_uri": jwks_uri}
+        # Validate the provider-supplied JWKS URI before requesting it.
+        try:
+            validated_jwks_uri = validate_oidc_jwks_uri(
+                jwks_uri,
+            )
+        except OidcEndpointError as error:
+            raise OidcDiscoveryError(str(error)) from error
+
+        return {"issuer": issuer, "jwks_uri": validated_jwks_uri}
 
     # RFC 7517 defines a JWKS as a JSON object with a `keys` array.
     async def _fetch_jwks(

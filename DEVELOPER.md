@@ -209,6 +209,61 @@ nachet/backend$ uv run app/scripts/push_frontend_to_blob.py
 nachet$ docker compose -f docker-compose.yaml.local build nachet-backend --no-cache && docker compose -f docker-compose.yaml.local up -d nachet-backend --force-recreate
 ```
 
+#### Backend authentication
+
+The backend supports the existing Microsoft Entra validator and a
+provider-neutral OIDC validator. Entra remains the default. There is no setting
+that disables authentication.
+
+Use these values for the Entra path:
+
+```bash
+AUTH_PROVIDER="azure"
+AZURE_CLIENT_ID="<api-client-id>"
+AZURE_TENANT_ID="<tenant-id>"
+```
+
+Use these values for the OIDC path:
+
+```bash
+AUTH_PROVIDER="oidc"
+OIDC_ISSUER="https://<provider-issuer>"
+OIDC_AUDIENCE="<nachet-api-audience>"
+OIDC_USER_ID_CLAIM="sub"
+OIDC_USERNAME_CLAIM="preferred_username"
+OIDC_EMAIL_CLAIM="email"
+```
+
+OIDC issuer and JWKS endpoints must use HTTPS. A follow-up PR will define and
+document the supported local Keycloak setup.
+
+The claim selected by `OIDC_USER_ID_CLAIM` must currently contain a UUID. This
+keeps the existing route and database contract intact. The Keycloak follow-up
+will test this with Nachet's existing UUID registration process. Supporting
+non-UUID subjects or linking multiple providers to one user is tracked
+separately.
+
+Use a separate database for the Keycloak test. We have not decided how Keycloak
+accounts should be linked to existing Entra users yet.
+
+The frontend and backend use different provider names because they select
+different implementations:
+
+| Layer | Microsoft path | OIDC path |
+| --- | --- | --- |
+| Frontend `VITE_AUTH_PROVIDER` | `msal` | `oidc` |
+| Backend `AUTH_PROVIDER` | `azure` | `oidc` |
+
+Run the focused backend auth tests with:
+
+```bash
+uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py -q
+```
+
+See [backend token validation](backend/docs/nachet-jwt-validation.md) for the
+request flow, validation rules, and current identity limitation. Local Keycloak
+setup is not included yet.
+
 ### Frontend setup
 
 ```bash

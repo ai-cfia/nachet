@@ -27,10 +27,16 @@ class Settings(BaseSettings):
     # base_path: str = Field("", alias="api_base_path")
 
     # auth settings
+    auth_provider: str = "azure"
     azure_auth_enabled: bool = True
     azure_client_id: str | None = None
     azure_tenant_id: str | None = None
     azure_api_scope_claim: str | None = None
+    oidc_issuer: str | None = None
+    oidc_audience: str | None = None
+    oidc_user_id_claim: str = "sub"
+    oidc_username_claim: str = "preferred_username"
+    oidc_email_claim: str = "email"
 
     # database settings
     db_user: str | None = None

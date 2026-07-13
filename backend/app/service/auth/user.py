@@ -5,19 +5,19 @@ from pydantic import BaseModel, Field, field_validator
 
 class Claims(BaseModel):
     """
-    A more complete overview of the claims available in an access token can be found here:
-    https://learn.microsoft.com/en-us/azure/active-directory/develop/access-tokens#payload-claims
+    Verified access-token claims used by Nachet.
+
+    Standard JWT fields are shared by every provider. Optional Microsoft Entra
+    fields remain here so the existing production auth path keeps its contract.
     """
 
-    aud: str = Field(
+    aud: str | list[str] = Field(
         ...,
-        description="Identifies the intended audience of the token. In v2.0 tokens, this value is always the client ID"
-        " of the API. In v1.0 tokens, it can be the client ID or the resource URI used in the request.",
+        description="Identifies the intended audience or audiences of the token.",
     )
     iss: str = Field(
         ...,
-        description="Identifies the STS that constructs and returns the token, and the Azure Entra ID tenant of the"
-        " authenticated user. If the token issued is a v2.0 token (see the ver claim), the URI ends in /v2.0.",
+        description="Identifies the provider that issued the token.",
     )
     idp: Optional[str] = Field(
         default=None,
@@ -67,7 +67,7 @@ class Claims(BaseModel):
     )
     oid: Optional[str] = Field(
         default=None,
-        description="The immutable identifier for the requestor, which is the verified identity of the user or service principal",
+        description="The UUID-shaped user identifier used by Nachet after provider normalization.",
     )
     tid: Optional[str] = Field(
         default=None,
@@ -81,9 +81,9 @@ class Claims(BaseModel):
         default=None,
         description="Token identifier claim, equivalent to jti in the JWT specification. Unique, per-token identifier that is case-sensitive.",
     )
-    ver: Literal["1.0", "2.0"] = Field(
-        ...,
-        description="Indicates the version of the access token.",
+    ver: Optional[Literal["1.0", "2.0"]] = Field(
+        default=None,
+        description="Indicates the version of a Microsoft Entra access token when present.",
     )
 
     # Optional claims, configured in Azure Entra ID
@@ -247,9 +247,9 @@ class User(Claims):
     )
     access_token: str = Field(
         ...,
-        description="The access_token. Can be used for fetching the Graph API",
+        description="The bearer access token presented with the request.",
     )
     is_guest: bool = Field(
         False,
-        description="The user is a guest user in the tenant",
+        description="Whether provider normalization marked this user as a guest.",
     )

@@ -1,12 +1,21 @@
 # Nachet JWT Validation Process
 
-This document explains the step-by-step JWT validation process in the Nachet backend, with code references.
+This document explains the step-by-step JWT validation process in the Nachet backend, with code references for both supported authentication paths.
 
 ## Overview
 
-The Nachet API uses Azure AD JWT tokens for authentication. The validation process ensures that only authenticated users with valid tokens can access protected endpoints like `/seeds`.
+Nachet validates protected API requests with either Microsoft Entra or a provider-neutral OpenID Connect (OIDC) provider. Microsoft Entra remains the default, and the backend has no unauthenticated mode.
 
-## Validation Flow
+Protected routes continue to depend on `get_current_user`. Provider selection happens inside `app/service/auth/jwt_auth.py`, so route handlers do not contain provider-specific code.
+
+| `AUTH_PROVIDER` | Backend path |
+| --- | --- |
+| `azure` | Existing Microsoft Entra validation |
+| `oidc` | Provider-neutral OIDC discovery and validation |
+
+## Microsoft Entra Validation Flow
+
+The existing Entra path remains unchanged.
 
 ### 1. Token Extraction
 
@@ -276,3 +285,132 @@ AZURE_TENANT_ID="your-tenant-id"
 - **Scope validation** for fine-grained permissions
 - **Guest user filtering** (configurable)
 - **Automatic key rotation** support through OpenID Connect discovery
+
+## Provider-neutral OIDC validation flow
+
+The OIDC path uses the same `get_current_user` route dependency but separates
+configuration, provider metadata loading, token verification, and user
+normalization.
+
+### Startup configuration
+
+OIDC mode requires a nonblank issuer and audience:
+
+```bash
+AUTH_PROVIDER="oidc"
+OIDC_ISSUER="https://<provider-issuer>"
+OIDC_AUDIENCE="<nachet-api-audience>"
+OIDC_USER_ID_CLAIM="sub"
+OIDC_USERNAME_CLAIM="preferred_username"
+OIDC_EMAIL_CLAIM="email"
+```
+
+The backend auth configuration validates this contract when the authenticator
+is created during application startup. Azure mode does not require OIDC
+settings.
+
+### Endpoint policy
+
+`app/service/auth/oidc_endpoint.py` validates the configured issuer and the
+discovered `jwks_uri` with `httpx.URL`, the same URL parser used for the network
+requests.
+
+OIDC endpoints must use HTTPS. The issuer cannot contain credentials,
+a query string, or a fragment. Normal HTTPX certificate verification remains
+enabled for HTTPS requests.
+
+### Discovery and JWKS loading
+
+`app/service/auth/oidc_discovery.py` loads metadata from:
+
+```text
+<OIDC_ISSUER>/.well-known/openid-configuration
+```
+
+The discovery response must return the exact configured issuer and a valid
+`jwks_uri`. The JWKS response must be a JSON object with a `keys` array as
+defined by RFC 7517.
+
+The client caches the verifier for 24 hours. If a token names an unknown `kid`,
+the client refreshes JWKS once so provider key rotation can succeed. A cooldown
+limits refresh traffic caused by repeated invalid key IDs. Concurrent refreshes
+share one lock.
+
+The configured issuer is trusted deployment input. It never comes from a token
+or API request. If the provider or deployment configuration is compromised, an
+application-side JWT verifier cannot restore that trust boundary.
+
+### Access-token verification
+
+`app/service/auth/oidc_token_verifier.py` uses PyJWT and the trusted public key
+selected by `kid`. It verifies:
+
+- the token signature;
+- the configured issuer and audience;
+- the allowed signing algorithm;
+- the `exp`, `iat`, and `nbf` time claims;
+- required claims, including `iss`, `aud`, and `sub`.
+
+The identity provider controls token lifetime through `exp`. Nachet does not
+create or extend that lifetime.
+
+### Scope checks
+
+OIDC providers commonly use either `scp` or `scope`. Nachet reads both. A route
+that declares FastAPI security scopes requires every declared scope. Existing
+routes that use `Depends(get_current_user)` still require authentication but do
+not add a route-specific scope requirement.
+
+### User normalization
+
+The OIDC adapter reads the user ID from `OIDC_USER_ID_CLAIM`, which defaults to
+`sub`. The value must currently be a UUID because existing routes and database
+services call `UUID(current_user.oid)`.
+
+The Keycloak follow-up will test this with Nachet's existing UUID registration
+process. Supporting non-UUID subjects or linking multiple providers to one user
+is tracked separately. Use a separate database for the Keycloak test. We have
+not decided how Keycloak accounts should be linked to existing Entra users yet.
+
+Raw provider claims remain available through `User.claims`, but unknown claims
+do not become normal `User` attributes. Nachet writes `access_token` and
+`is_guest` after provider claims so token content cannot replace those fields.
+
+OIDC does not define one guest/member claim. Generic OIDC users are currently
+marked with `is_guest=True`; this marker does not replace database-backed
+authorization.
+
+### HTTP failure responses
+
+The OIDC auth boundary separates failures by meaning:
+
+| Status | Meaning |
+| --- | --- |
+| `401 Unauthorized` | The request has no usable bearer token or the token is invalid. |
+| `403 Forbidden` | The token is valid but lacks a required scope. |
+| `503 Service Unavailable` | Discovery or JWKS could not be loaded or trusted. |
+
+Invalid tokens return `WWW-Authenticate: Bearer error="invalid_token"`. Missing
+scopes return `Bearer error="insufficient_scope"` with the missing scope names.
+A provider outage does not claim that the user's token is invalid.
+
+## OIDC tests
+
+Run the focused backend auth tests from `backend/`:
+
+```bash
+uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py -q
+```
+
+The tests cover token validation, discovery and JWKS shape, cache refresh,
+provider selection, endpoint policy, bearer parsing, scope handling, UUID
+identity compatibility, and protection of Nachet-owned user fields.
+
+## Current limits
+
+- Local Keycloak startup and realm configuration belong to a follow-up PR.
+- Non-UUID OIDC subjects and cross-provider account linking are not supported.
+- The Keycloak test should use a separate database until we decide how to link
+  Keycloak accounts to existing Entra users.
+- Existing routes do not currently declare route-specific FastAPI scopes.
+- Microsoft Entra remains the official production path.
