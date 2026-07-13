@@ -31,12 +31,11 @@ class BackendAuthConfig:
 
         oidc_discovery = None
         if provider is AuthProvider.OIDC:
-            issuer = _normalize_optional_setting(settings.oidc_issuer)
-            audience = _normalize_optional_setting(settings.oidc_audience)
-            if issuer is None or audience is None:
-                raise ValueError(
-                    "OIDC issuer and audience are required when AUTH_PROVIDER is oidc"
-                )
+            issuer = _parse_required_setting(settings.oidc_issuer, "OIDC issuer")
+            audience = _parse_required_setting(
+                settings.oidc_audience,
+                "OIDC audience",
+            )
 
             oidc_discovery = OidcDiscoveryConfig(
                 issuer=issuer,
@@ -62,10 +61,11 @@ def _parse_auth_provider(value: str) -> AuthProvider:
         raise ValueError("AUTH_PROVIDER must be azure or oidc") from error
 
 
-def _normalize_optional_setting(value: str | None) -> str | None:
-    if value is None:
-        return None
-    return value.strip() or None
+def _parse_required_setting(value: str | None, setting_name: str) -> str:
+    normalized_value = value.strip() if value is not None else ""
+    if not normalized_value:
+        raise ValueError(f"{setting_name} is required when AUTH_PROVIDER is oidc")
+    return normalized_value
 
 
 def _parse_claim_name(value: str) -> str:

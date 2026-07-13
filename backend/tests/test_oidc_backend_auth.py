@@ -168,18 +168,19 @@ async def test_default_provider_uses_azure_auth_path(
 
 
 @pytest.mark.parametrize(
-    ("issuer", "audience"),
+    ("issuer", "audience", "missing_setting"),
     [
-        (None, None),
-        (" ", AUDIENCE),
-        (ISSUER, " "),
+        (None, None, "OIDC issuer"),
+        (" ", AUDIENCE, "OIDC issuer"),
+        (ISSUER, " ", "OIDC audience"),
     ],
 )
 def test_oidc_provider_requires_non_blank_issuer_and_audience_config(
     issuer: str | None,
     audience: str | None,
+    missing_setting: str,
 ) -> None:
-    with pytest.raises(ValueError, match="OIDC issuer and audience are required"):
+    with pytest.raises(ValueError, match=f"{missing_setting} is required"):
         create_auth_config(
             auth_provider="oidc",
             oidc_issuer=issuer,
