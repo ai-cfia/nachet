@@ -55,37 +55,37 @@ jobs:
           echo "version=$PR_VERSION" >> $GITHUB_OUTPUT
 
       - name: Verify src/_versions.ts matches package.json
-          run: |
-            PACKAGE_VERSION=$(jq -r '.version' package.json)
+        run: |
+          PACKAGE_VERSION=$(jq -r '.version' package.json)
 
-            if [ -z "$PACKAGE_VERSION" ] || [ "$PACKAGE_VERSION" = "null" ]; then
-              echo "Error: Could not extract version from package.json"
-              exit 1
-            fi
+          if [ -z "$PACKAGE_VERSION" ] || [ "$PACKAGE_VERSION" = "null" ]; then
+            echo "Error: Could not extract version from package.json"
+            exit 1
+          fi
 
-            if [ ! -f "src/_versions.ts" ]; then
-              echo "Error: src/_versions.ts not found in ${{ inputs.working-directory }}"
-              exit 1
-            fi
+          if [ ! -f "src/_versions.ts" ]; then
+            echo "Error: src/_versions.ts not found in ${{ inputs.working-directory }}"
+            exit 1
+          fi
 
-            FILE_VERSION=$(grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' src/_versions.ts | head -n 1)
+          FILE_VERSION=$(grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' src/_versions.ts | head -n 1)
 
-            if [ -z "$FILE_VERSION" ]; then
-              echo "Error: Could not extract APP_VERSION from src/_versions.ts"
-              exit 1
-            fi
+          if [ -z "$FILE_VERSION" ]; then
+            echo "Error: Could not extract APP_VERSION from src/_versions.ts"
+            exit 1
+          fi
 
-            echo "package.json version: $PACKAGE_VERSION"
-            echo "src/_versions.ts APP_VERSION: $FILE_VERSION"
+          echo "package.json version: $PACKAGE_VERSION"
+          echo "src/_versions.ts APP_VERSION: $FILE_VERSION"
 
-            if [ "$PACKAGE_VERSION" != "$FILE_VERSION" ]; then
-              echo "❌ Version mismatch detected!"
-              echo "${{ inputs.working-directory }}/package.json version ($PACKAGE_VERSION) does not match ${{ inputs.working-directory }}/src/_versions.ts APP_VERSION ($FILE_VERSION)."
-              echo "Please update src/_versions.ts to match package.json."
-              exit 1
-            fi
+          if [ "$PACKAGE_VERSION" != "$FILE_VERSION" ]; then
+            echo "❌ Version mismatch detected!"
+            echo "${{ inputs.working-directory }}/package.json version ($PACKAGE_VERSION) does not match ${{ inputs.working-directory }}/src/_versions.ts APP_VERSION ($FILE_VERSION)."
+            echo "Please update src/_versions.ts to match package.json."
+            exit 1
+          fi
 
-            echo "✅ src/_versions.ts matches package.json"
+          echo "✅ src/_versions.ts matches package.json"
 
       - name: Get latest version
         if: ${{ !inputs.skip-version-check }}
