@@ -75,7 +75,7 @@ describe("computeCam", () => {
     for (const m of maps) expect(m).toHaveLength(4);
   });
 
-  it("computes the per-token contribution and min-max normalizes to [0, 1]", async () => {
+  it("normalizes positive contributions to [0, 1] by their max", async () => {
     const { maps } = await computeCam(
       makeFeatures([0, 1, 2, 3]),
       4,
@@ -90,7 +90,38 @@ describe("computeCam", () => {
     expect(map[3]).toBeCloseTo(1, 6);
   });
 
-  it("normalizes a uniform activation to all zeros (avoids divide-by-zero)", async () => {
+  it("ReLUs all-negative contributions to a blank (all-cold) map", async () => {
+    // Every token lowers the class score; none positively supports it, so the
+    // map must be all zeros (blue) rather than stretching the least-negative
+    // token to red as min-max normalization would.
+    const { maps } = await computeCam(
+      makeFeatures([-5, -3, -1, -2]),
+      4,
+      NUM_FEATURES,
+      [0],
+      headUrl,
+    );
+    expect(Array.from(maps[0])).toEqual([0, 0, 0, 0]);
+  });
+
+  it("keeps only positive support for mixed contributions", async () => {
+    // [-2, 0, 3, 6] → ReLU [0, 0, 3, 6] → /max(6) → [0, 0, 0.5, 1].
+    const { maps } = await computeCam(
+      makeFeatures([-2, 0, 3, 6]),
+      4,
+      NUM_FEATURES,
+      [0],
+      headUrl,
+    );
+    const map = Array.from(maps[0]);
+    expect(map[0]).toBeCloseTo(0, 6);
+    expect(map[1]).toBeCloseTo(0, 6);
+    expect(map[2]).toBeCloseTo(0.5, 6);
+    expect(map[3]).toBeCloseTo(1, 6);
+  });
+
+  it("maps uniform positive support to a uniformly hot map", async () => {
+    // Uniform positive support → every token is the max → all 1 (uniformly hot).
     const { maps } = await computeCam(
       makeFeatures([5, 5, 5, 5]),
       4,
@@ -98,7 +129,7 @@ describe("computeCam", () => {
       [0],
       headUrl,
     );
-    expect(Array.from(maps[0])).toEqual([0, 0, 0, 0]);
+    expect(Array.from(maps[0])).toEqual([1, 1, 1, 1]);
   });
 
   it("returns a blank map for an out-of-range class index", async () => {

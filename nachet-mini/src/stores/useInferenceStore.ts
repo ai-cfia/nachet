@@ -195,9 +195,25 @@ export const useInferenceStore = create<InferenceState>()((set, get) => ({
     set((state) => {
       const newMap = new Map(state.results);
       newMap.delete(key);
+      // Also drop this run's CAM state, keyed by the "<resultKey>:<boxId>"
+      // prefix (maps) and the resultKey itself (overlaid rank). Box ids are
+      // reused across runs, so leaving these behind could resurface a stale
+      // heatmap or overlay. Mirrors removeResultsForImage.
+      const prefix = `${key}:`;
+      const newCam = new Map(state.camResults);
+      for (const camKey of newCam.keys()) {
+        if (camKey.startsWith(prefix)) newCam.delete(camKey);
+      }
+      const newRank = new Map(state.camRank);
+      newRank.delete(key);
       const activeKey =
         state.activeResultKey === key ? null : state.activeResultKey;
-      return { results: newMap, activeResultKey: activeKey };
+      return {
+        results: newMap,
+        camResults: newCam,
+        camRank: newRank,
+        activeResultKey: activeKey,
+      };
     });
   },
 

@@ -84,21 +84,24 @@ export async function computeCam(
     const map = new Float32Array(tokens);
     if (!Number.isFinite(c) || c < 0 || c >= NUM_CLASSES) return map; // blank
     const wOff = c * NUM_FEATURES;
-    let mn = Infinity;
-    let mx = -Infinity;
+    let mx = 0;
     for (let t = 0; t < tokens; t++) {
       let s = 0;
       const fOff = t * channels;
       for (let ch = 0; ch < channels; ch++) {
         s += features[fOff + ch] * W[wOff + ch];
       }
-      map[t] = s;
-      if (s < mn) mn = s;
-      if (s > mx) mx = s;
+      // ReLU (Grad-CAM convention): keep only positive support. A negative
+      // contribution lowers the class score, so it should read as cold — not
+      // get stretched into a hot region by min-max normalization.
+      const relu = s > 0 ? s : 0;
+      map[t] = relu;
+      if (relu > mx) mx = relu;
     }
-    // min-max normalize to [0, 1] for display
-    const range = mx - mn || 1;
-    for (let t = 0; t < tokens; t++) map[t] = (map[t] - mn) / range;
+    // Normalize by the max so red = strongest positive support; tokens with no
+    // positive support stay 0 (blue). If nothing is positive, the map is blank.
+    const scale = mx || 1;
+    for (let t = 0; t < tokens; t++) map[t] = map[t] / scale;
     return map;
   });
 

@@ -247,6 +247,28 @@ describe("useInferenceStore", () => {
       useInferenceStore.getState().removeResult("0:model-a");
       expect(useInferenceStore.getState().activeResultKey).toBe("0:model-b");
     });
+
+    it("clears CAM results and the selected rank for the removed run only", () => {
+      useInferenceStore.getState().setResult(0, "model-a", makeResult());
+      useInferenceStore.getState().setResult(0, "model-b", makeResult());
+      useInferenceStore
+        .getState()
+        .setCamResult(0, "model-a", "box-1", makeCam());
+      useInferenceStore
+        .getState()
+        .setCamResult(0, "model-b", "box-1", makeCam());
+      useInferenceStore.getState().toggleCamRank("0:model-a", 1);
+      useInferenceStore.getState().toggleCamRank("0:model-b", 2);
+
+      useInferenceStore.getState().removeResult("0:model-a");
+
+      const state = useInferenceStore.getState();
+      expect(state.camResults.has("0:model-a:box-1")).toBe(false);
+      expect(state.camRank.has("0:model-a")).toBe(false);
+      // the other run's CAM state is untouched
+      expect(state.camResults.has("0:model-b:box-1")).toBe(true);
+      expect(state.camRank.get("0:model-b")).toBe(2);
+    });
   });
 
   describe("setCamResult", () => {
