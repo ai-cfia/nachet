@@ -159,6 +159,18 @@ def test_not_before_in_future_fails_closed() -> None:
         verifier.verify(token)
 
 
+def test_token_without_optional_not_before_claim_returns_claims() -> None:
+    private_key = create_private_key()
+    verifier = create_verifier(public_jwk_from_key(private_key))
+    claims = create_claims()
+    del claims["nbf"]
+    token = sign_token(private_key, claims)
+
+    verified_claims = verifier.verify(token)
+
+    assert verified_claims["sub"] == "user-subject"
+
+
 # `alg: none` asks the backend to trust unsigned claims. The verifier treats it
 # as an unsupported algorithm.
 def test_unsigned_alg_none_token_fails_closed() -> None:

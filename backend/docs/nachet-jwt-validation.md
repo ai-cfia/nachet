@@ -315,9 +315,20 @@ settings.
 discovered `jwks_uri` with `httpx.URL`, the same URL parser used for the network
 requests.
 
-OIDC endpoints must use HTTPS. The issuer cannot contain credentials,
-a query string, or a fragment. Normal HTTPX certificate verification remains
-enabled for HTTPS requests.
+OIDC endpoints must use HTTPS. The issuer cannot contain credentials, a query
+string, or a fragment. Normal HTTPX certificate verification remains enabled
+for HTTPS requests.
+
+The local Keycloak setup is the only HTTP exception. It requires
+`OIDC_ALLOW_INSECURE_HTTP_FOR_LOCAL_DEVELOPMENT=true`. The issuer must use a
+loopback host, and `NACHET_ENV` must be `local` or `development`. An HTTP
+`jwks_uri` is accepted only from the discovery URL's exact origin. Remote and
+private-network HTTP issuers remain rejected.
+
+The local issuer uses `keycloak.localhost`. The host resolves this name to its
+loopback interface, while the Compose network provides the same name as a
+Keycloak service alias. Host and container backends therefore use the same
+issuer and the standard issuer-derived discovery URL.
 
 ### Discovery and JWKS loading
 
@@ -328,8 +339,8 @@ enabled for HTTPS requests.
 ```
 
 The discovery response must return the exact configured issuer and a valid
-`jwks_uri`. The JWKS response must be a JSON object with a `keys` array as
-defined by RFC 7517.
+`jwks_uri`. The JWKS response must be a JSON object with a `keys` array of JWK
+objects, as defined by RFC 7517.
 
 The client caches the verifier for 24 hours. If a token names an unknown `kid`,
 the client refreshes JWKS once so provider key rotation can succeed. A cooldown
@@ -348,7 +359,8 @@ selected by `kid`. It verifies:
 - the token signature;
 - the configured issuer and audience;
 - the allowed signing algorithm;
-- the `exp`, `iat`, and `nbf` time claims;
+- the required `exp` and `iat` time claims;
+- `nbf` when the provider includes it;
 - required claims, including `iss`, `aud`, and `sub`.
 
 The identity provider controls token lifetime through `exp`. Nachet does not
@@ -367,10 +379,10 @@ The OIDC adapter reads the user ID from `OIDC_USER_ID_CLAIM`, which defaults to
 `sub`. The value must currently be a UUID because existing routes and database
 services call `UUID(current_user.oid)`.
 
-The Keycloak follow-up will test this with Nachet's existing UUID registration
-process. Supporting non-UUID subjects or linking multiple providers to one user
-is tracked separately. Use a separate database for the Keycloak test. We have
-not decided how Keycloak accounts should be linked to existing Entra users yet.
+The local Keycloak realm uses UUID subjects. Supporting non-UUID subjects or
+linking multiple providers to one user is tracked separately. Use a separate
+local database because Nachet does not yet link Keycloak accounts to existing
+Entra accounts.
 
 Raw provider claims remain available through `User.claims`, but unknown claims
 do not become normal `User` attributes. Nachet writes `access_token` and
@@ -399,18 +411,33 @@ A provider outage does not claim that the user's token is invalid.
 Run the focused backend auth tests from `backend/`:
 
 ```bash
-uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py -q
+uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py tests/test_local_keycloak_config.py -q
 ```
 
 The tests cover token validation, discovery and JWKS shape, cache refresh,
 provider selection, endpoint policy, bearer parsing, scope handling, UUID
 identity compatibility, and protection of Nachet-owned user fields.
 
+## Local Keycloak
+
+The repository includes a local Keycloak realm and a pinned Keycloak service:
+
+```bash
+docker compose --profile oidc up -d nachet-keycloak
+```
+
+The issuer is `http://keycloak.localhost:8080/realms/nachet` for the browser,
+host backend, and container backend. The realm provides `nachet-admin` for the
+seeded local user and `nachet-user` for the registration path. Both use the
+local password `nachet-local`.
+
+See the Local Keycloak section in [DEVELOPER.md](../../DEVELOPER.md) for the
+frontend and backend setup.
+
 ## Current limits
 
-- Local Keycloak startup and realm configuration belong to a follow-up PR.
 - Non-UUID OIDC subjects and cross-provider account linking are not supported.
-- The Keycloak test should use a separate database until we decide how to link
-  Keycloak accounts to existing Entra users.
+- Keycloak should use a separate local database until account linking is
+  defined.
 - Existing routes do not currently declare route-specific FastAPI scopes.
 - Microsoft Entra remains the official production path.

@@ -227,24 +227,23 @@ Use these values for the OIDC path:
 
 ```bash
 AUTH_PROVIDER="oidc"
-OIDC_ISSUER="https://<provider-issuer>"
-OIDC_AUDIENCE="<nachet-api-audience>"
+OIDC_ISSUER="http://keycloak.localhost:8080/realms/nachet"
+OIDC_AUDIENCE="nachet-api"
 OIDC_USER_ID_CLAIM="sub"
 OIDC_USERNAME_CLAIM="preferred_username"
 OIDC_EMAIL_CLAIM="email"
+OIDC_ALLOW_INSECURE_HTTP_FOR_LOCAL_DEVELOPMENT="true"
 ```
 
-OIDC issuer and JWKS endpoints must use HTTPS. A follow-up PR will define and
-document the supported local Keycloak setup.
+The HTTP exception is limited to the local Keycloak workflow. Other OIDC
+deployments should use HTTPS and leave it disabled.
 
 The claim selected by `OIDC_USER_ID_CLAIM` must currently contain a UUID. This
-keeps the existing route and database contract intact. The Keycloak follow-up
-will test this with Nachet's existing UUID registration process. Supporting
-non-UUID subjects or linking multiple providers to one user is tracked
-separately.
+keeps the existing route and database contract intact. Supporting non-UUID
+subjects or linking multiple providers to one user is tracked separately.
 
-Use a separate database for the Keycloak test. We have not decided how Keycloak
-accounts should be linked to existing Entra users yet.
+Use a separate local database for Keycloak. Nachet does not yet link Keycloak
+accounts to existing Entra accounts.
 
 The frontend and backend use different provider names because they select
 different implementations:
@@ -257,12 +256,51 @@ different implementations:
 Run the focused backend auth tests with:
 
 ```bash
-uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py -q
+uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py tests/test_local_keycloak_config.py -q
 ```
 
 See [backend token validation](backend/docs/nachet-jwt-validation.md) for the
-request flow, validation rules, and current identity limitation. Local Keycloak
-setup is not included yet.
+request flow, validation rules, and current identity limitation.
+
+#### Local Keycloak
+
+Start the local identity provider from the repository root:
+
+```bash
+docker compose --profile oidc up -d nachet-keycloak
+```
+
+Copy the environment templates as usual. In the frontend config, change
+`VITE_AUTH_PROVIDER` to `oidc`. In the backend config, change `AUTH_PROVIDER`
+to `oidc`.
+
+Run the frontend on the callback origin configured in the template:
+
+```bash
+nachet/frontend$ npm run dev -- --port 5173
+```
+
+Then sign in with either local account:
+
+| Username | Password | Purpose |
+| --- | --- | --- |
+| `nachet-admin` | `nachet-local` | Matches the seeded local Nachet user and can exercise protected workflows. |
+| `nachet-user` | `nachet-local` | Has a second UUID and can exercise the registration path. |
+
+The browser, a host-run backend, and a container backend all use
+`http://keycloak.localhost:8080/realms/nachet` as the issuer. On the host,
+`.localhost` resolves to the loopback interface. On the dedicated Docker
+network, the same name is an alias for the Keycloak service. This lets every
+client use normal issuer-based OIDC discovery without a second internal URL.
+
+Stop the local provider with:
+
+```bash
+docker compose --profile oidc stop nachet-keycloak
+```
+
+The realm uses Keycloak's development mode, fixed local passwords, and HTTP.
+Do not use this realm configuration for a shared or production environment.
 
 ### Frontend setup
 
@@ -278,7 +316,7 @@ nachet/frontend$ npm run test
 # run dev with env vars from .env.config.local
 # nachet/frontend$ source .env.config.local # requires export keyword in the file
 nachet/frontend$ export $(grep -v '^#' .env.config.local | xargs)
-nachet/frontend$ npm run dev -- --port 12438
+nachet/frontend$ npm run dev -- --port 5173
 
 # unset env vars
 nachet/frontend$ unset $(grep -v '^#' .env.config.local | grep -v '^$' | cut -d= -f1)
@@ -478,7 +516,7 @@ At this point you will have the full stack, you will be able to test integration
 - build the generated OIDC client output and types `nachet/frontend $ npm run build:oidc-client-ts`
 - build your changes locally `nachet/frontend $ npm run build`
 - push the new build to blob storage `nachet/backend $ uv run app/scripts/push_frontend_to_blob.py --clean`
-- you can also debug by running the frontend in dev mode and connecting to the backend `nachet/frontend $ npm run dev -- --port 12438`
+- you can also debug by running the frontend in dev mode and connecting to the backend `nachet/frontend $ npm run dev -- --port 5173`
 - you can also run the frontend in a container `nachet $ docker compose -f docker-compose.yaml build nachet-frontend --no-cache && docker compose -f docker-compose.yaml up -d nachet-frontend --force-recreate`
 
 ### Regenerating Frontend API Types

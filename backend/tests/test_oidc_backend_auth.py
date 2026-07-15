@@ -120,6 +120,12 @@ def create_oidc_claims(**overrides: Any) -> dict[str, Any]:
     return claims
 
 
+def create_oidc_claims_without_not_before(**overrides: Any) -> dict[str, Any]:
+    claims = create_oidc_claims(**overrides)
+    del claims["nbf"]
+    return claims
+
+
 def install_fake_oidc_client(
     monkeypatch: pytest.MonkeyPatch,
     authenticator: JWTAuthenticator,
@@ -232,6 +238,27 @@ def test_oidc_provider_rejects_http_issuer() -> None:
 @pytest.mark.parametrize(
     "issuer",
     [
+        "http://keycloak.localhost:8080/realms/nachet",
+        "http://127.0.0.1:8080/realms/nachet",
+        "http://[::1]:8080/realms/nachet",
+    ],
+)
+def test_oidc_provider_accepts_explicit_local_http_issuer(issuer: str) -> None:
+    auth_config = create_auth_config(
+        auth_provider="oidc",
+        nachet_env="development",
+        oidc_issuer=issuer,
+        oidc_audience=AUDIENCE,
+        oidc_allow_insecure_http_for_local_development=True,
+    )
+
+    assert auth_config.oidc is not None
+    assert auth_config.oidc.discovery.issuer == issuer
+
+
+@pytest.mark.parametrize(
+    "issuer",
+    [
         "http://keycloak:8080/realms/nachet",
         "http://192.168.1.10:8080/realms/nachet",
         "http://idp.example/realms/nachet",
@@ -246,6 +273,39 @@ def test_oidc_provider_rejects_unsafe_issuer_urls(issuer: str) -> None:
             auth_provider="oidc",
             oidc_issuer=issuer,
             oidc_audience=AUDIENCE,
+        )
+
+
+@pytest.mark.parametrize(
+    "issuer",
+    [
+        "http://keycloak:8080/realms/nachet",
+        "http://192.168.1.10:8080/realms/nachet",
+        "http://idp.example/realms/nachet",
+    ],
+)
+def test_local_http_setting_does_not_allow_remote_issuers(issuer: str) -> None:
+    with pytest.raises(ValueError, match="OIDC issuer must use HTTPS"):
+        create_auth_config(
+            auth_provider="oidc",
+            nachet_env="development",
+            oidc_issuer=issuer,
+            oidc_audience=AUDIENCE,
+            oidc_allow_insecure_http_for_local_development=True,
+        )
+
+
+@pytest.mark.parametrize("nachet_env", ["staging", "production"])
+def test_local_http_setting_is_rejected_outside_local_environments(
+    nachet_env: str,
+) -> None:
+    with pytest.raises(ValueError, match="local or development"):
+        create_auth_config(
+            auth_provider="oidc",
+            nachet_env=nachet_env,
+            oidc_issuer="http://localhost:8080/realms/nachet",
+            oidc_audience=AUDIENCE,
+            oidc_allow_insecure_http_for_local_development=True,
         )
 
 
@@ -383,6 +443,25 @@ async def test_valid_oidc_token_returns_user_without_azure_version_claim(
     assert "ver" not in claims
     assert request.state.user is user
     assert oidc_client.verified_tokens == [ACCESS_TOKEN]
+
+
+@pytest.mark.asyncio
+async def test_oidc_user_allows_optional_not_before_claim(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    set_oidc_settings(monkeypatch)
+    authenticator = JWTAuthenticator()
+    claims = create_oidc_claims_without_not_before()
+    install_fake_oidc_client(
+        monkeypatch,
+        authenticator,
+        FakeOidcDiscoveryClient(claims=claims),
+    )
+
+    user = await authenticator(create_request(), no_security_scopes())
+
+    assert user.oid == claims["sub"]
+    assert user.nbf is None
 
 
 @pytest.mark.asyncio

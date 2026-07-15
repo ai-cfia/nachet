@@ -53,9 +53,14 @@ class OidcDiscoveryConfig:
     cache_ttl: timedelta = DEFAULT_DISCOVERY_CACHE_TTL
     request_timeout: float = DEFAULT_REQUEST_TIMEOUT_SECONDS
     unknown_key_refresh_cooldown: timedelta = DEFAULT_UNKNOWN_KEY_REFRESH_COOLDOWN
+    allow_insecure_http_for_local_development: bool = False
 
     def __post_init__(self) -> None:
-        validate_oidc_issuer_url(self.issuer)
+        allow_local_http = self.allow_insecure_http_for_local_development
+        validate_oidc_issuer_url(
+            self.issuer,
+            allow_insecure_http_for_local_development=allow_local_http,
+        )
 
 
 @dataclass(frozen=True)
@@ -191,7 +196,10 @@ class OidcDiscoveryClient:
             required_claims=self.config.required_claims,
             leeway=self.config.leeway,
         )
-        return OidcTokenVerifier(config=verifier_config, jwks=jwks)
+        verifier = OidcTokenVerifier(config=verifier_config, jwks=jwks)
+        if not verifier.has_signing_keys():
+            raise OidcDiscoveryError("OIDC JWKS has no usable signing key")
+        return verifier
 
     # Accept discovery metadata only from the configured issuer and only when it
     # provides a JWKS endpoint.
@@ -212,6 +220,7 @@ class OidcDiscoveryClient:
         try:
             validated_jwks_uri = validate_oidc_jwks_uri(
                 jwks_uri,
+                discovery_url=self.discovery_url,
             )
         except OidcEndpointError as error:
             raise OidcDiscoveryError(str(error)) from error
@@ -225,8 +234,12 @@ class OidcDiscoveryClient:
         jwks_uri: str,
     ) -> dict[str, Any]:
         jwks = await self._get_json(client, jwks_uri, "JWKS")
-        if not isinstance(jwks.get("keys"), list):
+        keys = jwks.get("keys")
+        if not isinstance(keys, list):
             raise OidcDiscoveryError("OIDC JWKS must contain a keys array")
+        for key in keys:
+            if not isinstance(key, dict):
+                raise OidcDiscoveryError("OIDC JWKS keys must be JWK objects")
 
         return jwks
 

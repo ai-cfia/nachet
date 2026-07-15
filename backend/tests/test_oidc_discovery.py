@@ -137,6 +137,7 @@ def create_client(
     audience: str = AUDIENCE,
     cache_ttl: timedelta = timedelta(hours=24),
     unknown_key_refresh_cooldown: timedelta = timedelta(minutes=1),
+    allow_insecure_http_for_local_development: bool = False,
     clock: MutableClock | None = None,
 ) -> OidcDiscoveryClient:
     transport = httpx.MockTransport(provider.handle_request)
@@ -146,6 +147,9 @@ def create_client(
             audience=audience,
             cache_ttl=cache_ttl,
             unknown_key_refresh_cooldown=unknown_key_refresh_cooldown,
+            allow_insecure_http_for_local_development=(
+                allow_insecure_http_for_local_development
+            ),
         ),
         http_client_factory=lambda: httpx.AsyncClient(transport=transport),
         cache_clock=clock or MutableClock(datetime.now(timezone.utc)),
@@ -211,6 +215,51 @@ async def test_rejects_malformed_jwks_without_keys_array() -> None:
         await client.get_verifier()
 
 
+@pytest.mark.asyncio
+async def test_rejects_malformed_jwks_with_non_object_key() -> None:
+    provider = MockOidcProvider(jwks={"keys": ["not-a-jwk-object"]})
+    client = create_client(provider)
+
+    with pytest.raises(OidcDiscoveryError, match="JWK objects"):
+        await client.get_verifier()
+
+
+@pytest.mark.asyncio
+async def test_ignores_malformed_jwk_when_a_usable_signing_key_exists() -> None:
+    private_key = create_private_key()
+    malformed_jwk = {"kid": "malformed-key", "alg": SIGNING_ALGORITHM, "use": "sig"}
+    provider = MockOidcProvider(
+        jwks={"keys": [malformed_jwk, public_jwk_from_key(private_key)]}
+    )
+    client = create_client(provider)
+    token = sign_token(private_key, create_claims())
+
+    claims = await client.verify(token)
+
+    assert claims["sub"] == "user-subject"
+
+
+@pytest.mark.asyncio
+async def test_rejects_jwks_without_a_usable_signing_key() -> None:
+    malformed_jwk = {"kid": KEY_ID, "alg": SIGNING_ALGORITHM, "use": "sig"}
+    provider = MockOidcProvider(jwks={"keys": [malformed_jwk]})
+    client = create_client(provider)
+
+    with pytest.raises(OidcDiscoveryError, match="usable signing key"):
+        await client.get_verifier()
+
+
+@pytest.mark.asyncio
+async def test_discovery_redirect_fails_closed_without_following_location() -> None:
+    provider = MockOidcProvider(discovery_status=302)
+    client = create_client(provider)
+
+    with pytest.raises(OidcDiscoveryError, match="Unable to load OIDC discovery"):
+        await client.get_verifier()
+
+    assert provider.requests == [DISCOVERY_URL]
+
+
 # Fresh cache entries should be reused so normal API requests do not refetch
 # provider metadata on every token validation.
 @pytest.mark.asyncio
@@ -247,6 +296,61 @@ async def test_rejects_insecure_remote_jwks_before_request() -> None:
 
     # Reject the JWKS URI before a second request leaves the backend.
     with pytest.raises(OidcDiscoveryError, match="JWKS URI must use HTTPS"):
+        await client.get_verifier()
+
+    assert provider.requests == [DISCOVERY_URL]
+
+
+@pytest.mark.asyncio
+async def test_accepts_local_http_discovery_and_jwks_when_explicitly_enabled() -> None:
+    local_issuer = "http://keycloak.localhost:8080/realms/nachet"
+    local_discovery_url = f"{local_issuer}/.well-known/openid-configuration"
+    local_jwks_uri = f"{local_issuer}/protocol/openid-connect/certs"
+    private_key = create_private_key()
+    provider = MockOidcProvider(
+        issuer=local_issuer,
+        discovery_url=local_discovery_url,
+        jwks_uri=local_jwks_uri,
+        jwks=jwks_from_key(private_key),
+    )
+    client = create_client(
+        provider,
+        issuer=local_issuer,
+        allow_insecure_http_for_local_development=True,
+    )
+
+    await client.get_verifier()
+
+    assert provider.requests == [local_discovery_url, local_jwks_uri]
+
+
+@pytest.mark.asyncio
+async def test_rejects_insecure_jwks_from_a_different_origin() -> None:
+    local_issuer = "http://keycloak.localhost:8080/realms/nachet"
+    discovery_url = f"{local_issuer}/.well-known/openid-configuration"
+    provider = MockOidcProvider(
+        issuer=local_issuer,
+        discovery_url=discovery_url,
+        jwks_uri="http://metadata.internal/keys",
+    )
+    client = create_client(
+        provider,
+        issuer=local_issuer,
+        allow_insecure_http_for_local_development=True,
+    )
+
+    with pytest.raises(OidcDiscoveryError, match="must use HTTPS"):
+        await client.get_verifier()
+
+    assert provider.requests == [discovery_url]
+
+
+@pytest.mark.asyncio
+async def test_rejects_malformed_jwks_uri_with_discovery_error() -> None:
+    provider = MockOidcProvider(jwks_uri="http://[::1/keys")
+    client = create_client(provider)
+
+    with pytest.raises(OidcDiscoveryError, match="valid URL"):
         await client.get_verifier()
 
     assert provider.requests == [DISCOVERY_URL]

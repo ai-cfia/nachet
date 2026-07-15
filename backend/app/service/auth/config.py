@@ -49,12 +49,10 @@ class BackendAuthConfig:
                 settings.oidc_audience,
                 "OIDC audience",
             )
+            discovery = _build_oidc_discovery_config(settings, issuer, audience)
 
             oidc = OidcAuthConfig(
-                discovery=OidcDiscoveryConfig(
-                    issuer=issuer,
-                    audience=audience,
-                ),
+                discovery=discovery,
                 user_id_claim=_parse_claim_name(settings.oidc_user_id_claim),
                 username_claim=_parse_claim_name(settings.oidc_username_claim),
                 email_claim=_parse_claim_name(settings.oidc_email_claim),
@@ -80,6 +78,27 @@ def _parse_required_setting(value: str | None, setting_name: str) -> str:
     if not normalized_value:
         raise ValueError(f"{setting_name} is required when AUTH_PROVIDER is oidc")
     return normalized_value
+
+
+def _build_oidc_discovery_config(
+    settings: Settings,
+    issuer: str,
+    audience: str,
+) -> OidcDiscoveryConfig:
+    allow_local_http = settings.oidc_allow_insecure_http_for_local_development
+    if allow_local_http and settings.nachet_env.strip().lower() not in {
+        "development",
+        "local",
+    }:
+        raise ValueError(
+            "Insecure OIDC HTTP is only available in local or development environments"
+        )
+
+    return OidcDiscoveryConfig(
+        issuer=issuer,
+        audience=audience,
+        allow_insecure_http_for_local_development=allow_local_http,
+    )
 
 
 def _parse_claim_name(value: str) -> str:

@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     oidc_user_id_claim: str = "sub"
     oidc_username_claim: str = "preferred_username"
     oidc_email_claim: str = "email"
+    oidc_allow_insecure_http_for_local_development: bool = False
 
     # database settings
     db_user: str | None = None
