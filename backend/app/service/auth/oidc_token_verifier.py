@@ -46,7 +46,7 @@ class OidcTokenVerifier:
     def has_signing_key(self, key_id: str) -> bool:
         return key_id in self.signing_keys
 
-    def has_signing_keys(self) -> bool:
+    def has_usable_signing_keys(self) -> bool:
         return bool(self.signing_keys)
 
     # The JWKS is the provider's public key set. We keep the usable signing keys

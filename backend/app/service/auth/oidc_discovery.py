@@ -197,7 +197,7 @@ class OidcDiscoveryClient:
             leeway=self.config.leeway,
         )
         verifier = OidcTokenVerifier(config=verifier_config, jwks=jwks)
-        if not verifier.has_signing_keys():
+        if not verifier.has_usable_signing_keys():
             raise OidcDiscoveryError("OIDC JWKS has no usable signing key")
         return verifier
 
