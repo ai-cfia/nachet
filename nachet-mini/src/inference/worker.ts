@@ -10,6 +10,7 @@ import {
   env,
 } from "@huggingface/transformers";
 import type { ModelConfig, WorkerInMessage, WorkerOutMessage } from "./models";
+import { huggingFaceFileUrl } from "./models";
 import type { InferenceResult, InferenceBox } from "@common/types";
 import {
   loadDetector,
@@ -18,6 +19,12 @@ import {
   patchProcessorSize,
 } from "./detector";
 import { createSerialQueue } from "./serialQueue";
+import { computeCam } from "./cam";
+
+// Class Activation Mapping runs only when the loaded classifier exposes the
+// `swin_layernorm` output (the patched 101spp model); otherwise it's skipped.
+// One heatmap is produced per top-K class so the UI can show which regions
+// drive each candidate species.
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -551,19 +558,30 @@ const classifyBoxes = async (
 
       const cropImage = await RawImage.read(cropUrl);
       const clsInputs = await classifierProcessor(cropImage);
-      const clsOutputs = await classifierModel(clsInputs);
 
-      const logits = clsOutputs.logits[0];
-      const probs = new Tensor(
-        "float32",
-        softmax(logits.data as Float32Array),
-        logits.dims,
-      );
+      // Run the underlying ORT session directly (instead of the high-level
+      // classifierModel(clsInputs)) so we can also read the intermediate
+      // `swin_layernorm` output for DFF. The transformers.js wrapper keeps only
+      // recognized outputs (logits) and drops the rest. logits are identical.
+      const session = classifierModel.sessions.model;
+      const pv = clsInputs.pixel_values;
+      const rawOut = await session.run({ pixel_values: pv.ort_tensor ?? pv });
+
+      // squeeze batch dim to match the previous `clsOutputs.logits[0]` shape
+      const logits = {
+        data: rawOut.logits.data as Float32Array,
+        dims: [rawOut.logits.dims[rawOut.logits.dims.length - 1]],
+      };
+      const probs = new Tensor("float32", softmax(logits.data), logits.dims);
       const [topValues, topIndices] = await topk(probs, config.classifierTopK);
 
       const clsId2label = classifierModel.config?.id2label ?? {};
       const topValList = topValues.tolist() as number[];
-      const topIdxList = topIndices.tolist() as number[];
+      // tolist() of an int64 index tensor yields BigInt; coerce to Number so
+      // downstream arithmetic (CAM weight indexing) doesn't mix BigInt + Number.
+      const topIdxList = (topIndices.tolist() as Array<number | bigint>).map(
+        Number,
+      );
 
       const classResults = topIdxList.map((idx: number, j: number) => ({
         label: clsId2label[idx] ?? `LABEL_${idx}`,
@@ -601,6 +619,44 @@ const classifyBoxes = async (
           minBoxSize: config.minBoxSize,
         },
       });
+
+      // ── Class Activation Mapping ─────────────────────────────────────────
+      // Only when the classifier declares head weights (`classifierHeadFile`)
+      // and exposes `swin_layernorm` (1, tokens, channels) — i.e. the patched
+      // model. One heatmap per top-K class so the UI can show which regions
+      // drive each candidate species. Streamed per box so maps arrive after
+      // each seed is classified.
+      const headFile = config.classifierHeadFile;
+      const featTensor = rawOut.swin_layernorm as
+        | { data?: Float32Array; dims?: number[] }
+        | undefined;
+      if (headFile && featTensor?.data && featTensor.dims?.length === 3) {
+        try {
+          const [, tokens, channels] = featTensor.dims;
+          const cam = await computeCam(
+            featTensor.data,
+            tokens,
+            channels,
+            topIdxList,
+            huggingFaceFileUrl(config.classifierModel, headFile),
+          );
+          send({
+            type: "cam-result",
+            imageIndex,
+            modelConfigId,
+            boxId: boxes[i].boxId,
+            grid: cam.grid,
+            classes: topIdxList.map((idx: number, j: number) => ({
+              classIndex: idx,
+              label: classResults[j]?.label ?? `LABEL_${idx}`,
+              score: classResults[j]?.score ?? 0,
+              heatmap: Array.from(cam.maps[j]),
+            })),
+          });
+        } catch (e) {
+          console.warn("[worker] CAM failed for box", i, e);
+        }
+      }
     } finally {
       if (cropUrl) URL.revokeObjectURL(cropUrl);
     }

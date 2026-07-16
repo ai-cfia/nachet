@@ -15,6 +15,12 @@ dist-ssr
 # Local-only SAM 3 CLI scripts (kept out of the PR; model work lives in the export repo)
 tmp_sam3_scripts/
 
+# Locally-bundled ONNX weights (large; served from public/models in dev only).
+# Keep config/preprocessor JSON tracked, but never commit the weights.
+*.onnx
+*.onnx_data
+onnx/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

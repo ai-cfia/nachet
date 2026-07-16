@@ -150,6 +150,11 @@ const main = {
     etaTooltip:
       "Estimated time remaining. Accuracy improves as more inferences are completed.",
   },
+  cam: {
+    rank: "Top {{n}}",
+    overlayLabel: "overlay top {{n}}",
+    overlayTooltip: "Overlay this prediction rank on all seeds",
+  },
 } as const;
 
 export default main;

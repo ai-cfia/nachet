@@ -27,6 +27,8 @@ export interface ModelConfig {
   detectorThreshold: number;
   /** Number of top classification labels to keep per detected region */
   classifierTopK: number;
+  /** Classifier-head weights filename on HF; enables CAM when set. */
+  classifierHeadFile?: string;
   /** Optional ONNX filename for the detector (without .onnx), defaults to "model" */
   detectorModelFileName?: string;
   /** Minimum bounding-box size (longest dimension, px) for reliable classification */
@@ -82,6 +84,13 @@ export interface ClassifierModelEntry {
   topK: number;
   /** Minimum bounding-box size (longest dimension, px) for reliable classification */
   minBoxSize: number;
+  /**
+   * Filename of the extracted classifier-head weights hosted alongside the
+   * model on Hugging Face (e.g. "classifier_head_101spp.f32.bin"). Set only for
+   * models patched to expose `swin_layernorm`; its presence is what enables the
+   * in-browser Class Activation Maps for that model.
+   */
+  classifierHeadFile?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -124,6 +133,24 @@ export type WorkerOutMessage =
       imageIndex: number;
       modelConfigId: string;
       result: InferenceResult;
+    }
+  | {
+      // Class Activation Maps for one classified box: one heatmap per top-K
+      // class, showing which regions drive that species' score. Streamed
+      // separately so boxes render immediately and overlays arrive per seed.
+      type: "cam-result";
+      imageIndex: number;
+      modelConfigId: string;
+      boxId: string;
+      /** spatial grid side (e.g. 12 → 12×12 = 144 tokens). */
+      grid: number;
+      /** Per top-K class: index, label, score, and its `grid*grid` heatmap [0,1]. */
+      classes: {
+        classIndex: number;
+        label: string;
+        score: number;
+        heatmap: number[];
+      }[];
     }
   | { type: "error"; message: string };
 
@@ -199,6 +226,18 @@ export const CLASSIFIER_MODELS: ClassifierModelEntry[] = [
     minBoxSize: 384,
   },
   {
+    id: "swin-L 101spp CAM",
+    // Same 101spp model, but this repo's onnx/model.onnx is the patched FP16
+    // export that also outputs `swin_layernorm`. Selecting this entry enables
+    // the per-species Class Activation Maps in the results panel; the plain
+    // "swin-L 101spp" entry above has no such output, so that UI stays hidden.
+    model: "cfia-ai-lab/swin-large-patch4-window12-384-in22k-101spp-ft-dff",
+    topK: 5,
+    minBoxSize: 384,
+    // Extracted head weights (101 × 1536 float32) hosted alongside the model.
+    classifierHeadFile: "classifier_head_101spp.f32.bin",
+  },
+  {
     id: "vit-base-224 0spp",
     model: "Xenova/vit-base-patch16-224",
     topK: 5,
@@ -218,6 +257,14 @@ export const huggingFaceUrl = (modelId: string): string => {
   return `https://huggingface.co/${modelId}`;
 };
 
+/** Build the download URL for a file hosted in a Hugging Face model repo. */
+export const huggingFaceFileUrl = (
+  modelId: string,
+  filename: string,
+): string => {
+  return `https://huggingface.co/${modelId}/resolve/main/${filename}`;
+};
+
 /** Assemble a ModelConfig from independent detector and classifier selections. */
 export const buildModelConfig = (
   detector: DetectorModelEntry,
@@ -229,6 +276,7 @@ export const buildModelConfig = (
     classifierModel: classifier.model,
     detectorThreshold: detector.threshold,
     classifierTopK: classifier.topK,
+    classifierHeadFile: classifier.classifierHeadFile,
     detectorModelFileName: detector.modelFileName,
     minBoxSize: classifier.minBoxSize,
     // Multi-component / text-promptable detector fields. Undefined for the

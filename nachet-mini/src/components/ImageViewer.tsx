@@ -5,6 +5,7 @@ import { getUnscaledCoordinates, getScaledBounds } from "@common/imageutils";
 import InferenceOverlay from "@components/InferenceOverlay";
 import { useIsPortrait } from "@hooks/useIsPortrait";
 import { useBoxEditStore, generateUserBoxId } from "@stores/useBoxEditStore";
+import { useInferenceStore } from "@stores/useInferenceStore";
 
 interface Props {
   src: string | undefined;
@@ -18,6 +19,15 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const isPortrait = useIsPortrait();
+
+  // CAM heatmaps (keyed "imageIndex:modelConfigId:boxId"); the active result key
+  // gives the "imageIndex:modelConfigId" prefix for the shown result. `camRank`
+  // holds the toggled prediction rank for that run — each box shows its own
+  // rank-N species map.
+  const camResults = useInferenceStore((s) => s.camResults);
+  const camRank = useInferenceStore((s) => s.camRank);
+  const activeResultKey = useInferenceStore((s) => s.activeResultKey);
+  const activeRank = activeResultKey ? camRank.get(activeResultKey) : undefined;
 
   // Box edit store
   const isEditing = useBoxEditStore((s) => s.isEditing);
@@ -222,33 +232,47 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
           )}
           {/* Boxes */}
           {containerSize.width > 0 &&
-            displayBoxes.map((box, i) => (
-              <InferenceOverlay
-                key={isEditing ? `edit-${i}` : box.boxId}
-                index={i}
-                imageWidth={imgW}
-                imageHeight={imgH}
-                box={box}
-                canvasWidth={containerSize.width}
-                canvasHeight={containerSize.height}
-                label={
-                  isEditing
-                    ? box.label || `Box ${i + 1}`
-                    : (result?.classifications[i] ?? "")
-                }
-                visible={true}
-                totalBoxes={displayBoxes.length}
-                isClassifying={
-                  isEditing ? false : result?.classifications[i] === ""
-                }
-                minBoxSize={result?.minBoxSize ?? 0}
-                editMode={isEditing}
-                isEditSelected={isEditing && selectedBoxIndex === i}
-                onBoxUpdate={isEditing ? updateBox : undefined}
-                onBoxDelete={isEditing ? deleteBox : undefined}
-                onBoxSelect={isEditing ? setSelectedBoxIndex : undefined}
-              />
-            ))}
+            displayBoxes.map((box, i) => {
+              // CAM heatmap for this box at the toggled prediction rank (if any).
+              const camKey =
+                !isEditing && activeResultKey && activeRank !== undefined
+                  ? `${activeResultKey}:${box.boxId}`
+                  : null;
+              const camRes = camKey ? camResults.get(camKey) : undefined;
+              const camEntry =
+                camRes && activeRank !== undefined
+                  ? camRes.classes[activeRank]
+                  : undefined;
+              return (
+                <InferenceOverlay
+                  key={isEditing ? `edit-${i}` : box.boxId}
+                  index={i}
+                  imageWidth={imgW}
+                  imageHeight={imgH}
+                  box={box}
+                  canvasWidth={containerSize.width}
+                  canvasHeight={containerSize.height}
+                  label={
+                    isEditing
+                      ? box.label || `Box ${i + 1}`
+                      : (result?.classifications[i] ?? "")
+                  }
+                  visible={true}
+                  totalBoxes={displayBoxes.length}
+                  isClassifying={
+                    isEditing ? false : result?.classifications[i] === ""
+                  }
+                  minBoxSize={result?.minBoxSize ?? 0}
+                  editMode={isEditing}
+                  isEditSelected={isEditing && selectedBoxIndex === i}
+                  camHeatmap={camEntry?.heatmap}
+                  camGrid={camEntry ? camRes?.grid : undefined}
+                  onBoxUpdate={isEditing ? updateBox : undefined}
+                  onBoxDelete={isEditing ? deleteBox : undefined}
+                  onBoxSelect={isEditing ? setSelectedBoxIndex : undefined}
+                />
+              );
+            })}
         </Box>
       ) : (
         <Typography
