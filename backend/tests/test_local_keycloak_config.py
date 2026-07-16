@@ -244,6 +244,8 @@ def test_local_keycloak_documentation_uses_one_frontend_origin() -> None:
     developer_guide = (REPOSITORY_ROOT / "DEVELOPER.md").read_text()
 
     assert "npm run dev -- --port 5173" in developer_guide
+    assert "uv run hypercorn -b :5174 app/main:app" in developer_guide
+    assert "docker compose --profile oidc up -d --build nachet-backend" in developer_guide
     assert "npm run dev -- --port 12438" not in developer_guide
     assert LOCAL_ISSUER in developer_guide
     assert "OIDC_DISCOVERY_URL" not in developer_guide

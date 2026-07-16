@@ -264,30 +264,39 @@ request flow, validation rules, and current identity limitation.
 
 #### Local Keycloak
 
-Local Keycloak uses a certificate created on each developer's machine. The
-certificate files are ignored by Git.
+Use this setup when you want to run Nachet with a real OIDC login without using
+a Microsoft Entra account. It assumes that you have already completed the local
+database, blob storage, backend, and frontend setup earlier in this guide.
 
-Install `mkcert` first:
+Keycloak serves its login and metadata endpoints over HTTPS. Each developer
+creates a certificate on their own machine, so no certificate or private key is
+shared through the repository.
 
-| System | Command |
+##### 1. Install `mkcert`
+
+| Operating system | Installation |
 | --- | --- |
 | macOS | `brew install mkcert` |
 | Windows | `choco install mkcert` or `scoop install mkcert` |
-| Linux | Install `libnss3-tools`, then install `mkcert` from your package manager or the official release |
+| Linux | Install `libnss3-tools`, then install `mkcert` from your package manager or its official release |
 
 Firefox users on macOS may also need `brew install nss`.
 
-Generate and trust the certificate from the repository root:
+##### 2. Create the local certificate
+
+Run the setup script from the repository root:
 
 ```bash
 python keycloak/setup_local_tls.py
 ```
 
-The script creates a certificate for `keycloak.localhost`, installs the local
-CA in the system trust store, and copies the public CA for the backend. It never
-copies the CA private key.
+The script asks `mkcert` to trust its local certificate authority, creates a
+certificate for `keycloak.localhost`, and places the public CA certificate where
+the backend can read it. The CA private key stays in the local `mkcert` store.
+Git ignores everything generated under `keycloak/local-certs/`.
 
-If the hostname does not resolve, the script prints the hosts-file entry to add:
+If `keycloak.localhost` does not resolve, the script prints the hosts-file entry
+you need:
 
 ```text
 127.0.0.1 keycloak.localhost
@@ -296,49 +305,110 @@ If the hostname does not resolve, the script prints the hosts-file entry to add:
 The hosts file is `/etc/hosts` on macOS and Linux, and
 `C:\Windows\System32\drivers\etc\hosts` on Windows.
 
-Copy the frontend and backend environment templates. Set
-`VITE_AUTH_PROVIDER="oidc"` in the frontend and `AUTH_PROVIDER="oidc"` in the
-backend. The templates already contain the local issuer and CA path.
+##### 3. Select OIDC in the local environment files
 
-Start Keycloak:
+If you do not already have local environment files, create them from the
+templates:
+
+```bash
+cp backend/.env.template backend/.env.local
+cp frontend/.env.template frontend/.env.config.local
+```
+
+Set the backend provider in `backend/.env.local`:
+
+```bash
+AUTH_PROVIDER="oidc"
+OIDC_ISSUER="https://keycloak.localhost:8443/realms/nachet"
+OIDC_AUDIENCE="nachet-api"
+OIDC_CA_BUNDLE="../keycloak/local-certs/ca/rootCA.pem"
+```
+
+Set the frontend provider in `frontend/.env.config.local`:
+
+```bash
+VITE_AUTH_PROVIDER="oidc"
+VITE_OIDC_AUTHORITY="https://keycloak.localhost:8443/realms/nachet"
+VITE_OIDC_CLIENT_ID="nachet-frontend"
+VITE_OIDC_SCOPE="openid profile email"
+VITE_OIDC_API_SCOPE_CLAIM="nachet-api"
+```
+
+Keep the database, storage, and other local values from the normal setup. If
+you run the backend in Docker, make the same OIDC change in
+`backend/.env.container.local`.
+
+##### 4. Start Keycloak
 
 ```bash
 docker compose --profile oidc up -d nachet-keycloak
 ```
 
-Check that discovery is available over trusted HTTPS:
+Open the discovery document to confirm that the browser trusts the certificate:
 
-```bash
-curl --fail \
-  https://keycloak.localhost:8443/realms/nachet/.well-known/openid-configuration
+```text
+https://keycloak.localhost:8443/realms/nachet/.well-known/openid-configuration
 ```
 
-Run the frontend on the configured callback origin:
+The page should open without a certificate warning, and its `issuer` value
+should match the URL above exactly.
+
+##### 5. Start the backend
+
+For a backend running directly on your machine:
 
 ```bash
-nachet/frontend$ npm run dev -- --port 5173
+cd backend
+export $(grep -v '^#' .env.local | xargs)
+uv run hypercorn -b :5174 app/main:app
 ```
 
-Then sign in with either local account:
+For a backend running in Docker, create
+`backend/.env.container.local` from the backend template, select OIDC in that
+file, then run:
+
+```bash
+docker compose --profile oidc up -d --build nachet-backend
+```
+
+The container receives only the public local CA. It does not receive the
+Keycloak server key or the local CA private key.
+
+When the backend runs in Docker, set these frontend values to the published
+backend port:
+
+```bash
+VITE_BACKEND_URL="http://localhost:12435"
+VITE_LOG_API_URL="http://localhost:12435/logs"
+```
+
+##### 6. Start the frontend and sign in
+
+```bash
+cd frontend
+export $(grep -v '^#' .env.config.local | xargs)
+npm run dev -- --port 5173
+```
+
+Open <http://localhost:5173> and sign in with either account:
 
 | Username | Password | Purpose |
 | --- | --- | --- |
 | `nachet-admin` | `nachet-local` | Matches the seeded local Nachet user and can exercise protected workflows. |
 | `nachet-user` | `nachet-local` | Has a second UUID and can exercise the registration path. |
 
-The browser, host backend, and container backend all use
-`https://keycloak.localhost:8443/realms/nachet`. The browser trusts the CA
-installed by `mkcert`. A host backend reads the public CA through
-`OIDC_CA_BUNDLE`. Compose mounts the same public CA into the backend container.
+After sign-in, confirm that Nachet displays the user's OID and loads protected
+data such as directories. A `401` usually means the token was rejected. A `503`
+usually means the backend could not reach or trust Keycloak.
 
-Stop the local provider with:
+##### 7. Stop Keycloak
 
 ```bash
 docker compose --profile oidc stop nachet-keycloak
 ```
 
-The local service uses Keycloak's file-based development database and fixed
-test passwords. Use it only on a developer machine.
+This realm uses fixed test passwords and Keycloak's file-based development
+database. Do not reuse it in a shared or deployed environment.
 
 ### Frontend setup
 
