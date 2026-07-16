@@ -4,11 +4,12 @@ import { computeCam } from "../cam";
 const NUM_CLASSES = 101;
 const NUM_FEATURES = 1536;
 
-// A synthetic classifier head: every weight is zero except W[class 0][channel 0]
-// = 1. That makes the CAM for class 0 exactly feature channel 0 across tokens,
-// so we can predict the normalized output by hand.
+// A synthetic classifier head: class 0 reads feature channel 0, class 1 reads
+// channel 1 (all other weights zero). So each class's CAM is exactly that one
+// feature channel across tokens, and we can predict the output by hand.
 const head = new Float32Array(NUM_CLASSES * NUM_FEATURES);
-head[0] = 1;
+head[0] = 1; // W[class 0][channel 0]
+head[NUM_FEATURES + 1] = 1; // W[class 1][channel 1]
 
 // Build a (tokens x NUM_FEATURES) feature block where only channel 0 carries a
 // signal; the value per token is given by `channel0`.
@@ -17,6 +18,22 @@ const makeFeatures = (channel0: number[]): Float32Array => {
   channel0.forEach((v, t) => {
     f[t * NUM_FEATURES] = v;
   });
+  return f;
+};
+
+// Build features that carry a signal in specific channels (others zero), one
+// value per token — lets class 0 (channel 0) and class 1 (channel 1) be driven
+// independently to exercise the shared cross-class scale.
+const makeChannelFeatures = (
+  perChannel: Record<number, number[]>,
+): Float32Array => {
+  const tokens = Math.max(...Object.values(perChannel).map((a) => a.length));
+  const f = new Float32Array(tokens * NUM_FEATURES);
+  for (const [ch, vals] of Object.entries(perChannel)) {
+    vals.forEach((v, t) => {
+      f[t * NUM_FEATURES + Number(ch)] = v;
+    });
+  }
   return f;
 };
 
@@ -75,7 +92,7 @@ describe("computeCam", () => {
     for (const m of maps) expect(m).toHaveLength(4);
   });
 
-  it("normalizes positive contributions to [0, 1] by their max", async () => {
+  it("normalizes non-negative contributions to [0, 1]", async () => {
     const { maps } = await computeCam(
       makeFeatures([0, 1, 2, 3]),
       4,
@@ -88,6 +105,40 @@ describe("computeCam", () => {
     expect(map[1]).toBeCloseTo(1 / 3, 6);
     expect(map[2]).toBeCloseTo(2 / 3, 6);
     expect(map[3]).toBeCloseTo(1, 6);
+  });
+
+  it("scales by the max without subtracting a min (preserves magnitude)", async () => {
+    // [2,3,4,5] → /max(5) → [0.4, 0.6, 0.8, 1]. No min subtraction, so a map
+    // that never drops near zero stays warm across the board.
+    const { maps } = await computeCam(
+      makeFeatures([2, 3, 4, 5]),
+      4,
+      NUM_FEATURES,
+      [0],
+      headUrl,
+    );
+    const map = Array.from(maps[0]);
+    expect(map[0]).toBeCloseTo(0.4, 6);
+    expect(map[1]).toBeCloseTo(0.6, 6);
+    expect(map[2]).toBeCloseTo(0.8, 6);
+    expect(map[3]).toBeCloseTo(1, 6);
+  });
+
+  it("shares one scale across the top-k maps so weaker classes read dim", async () => {
+    // class 0 has a strong patch (10), class 1 a weak one (2). With a shared
+    // scale, class 1 must not saturate to 1 — it stays proportionally dim
+    // (2/10 = 0.2) rather than each map filling [0, 1] on its own.
+    const features = makeChannelFeatures({ 0: [0, 10, 0, 0], 1: [0, 0, 2, 0] });
+    const { maps } = await computeCam(
+      features,
+      4,
+      NUM_FEATURES,
+      [0, 1],
+      headUrl,
+    );
+    expect(Array.from(maps[0])).toEqual([0, 1, 0, 0]);
+    expect(maps[1][2]).toBeCloseTo(0.2, 6);
+    expect(maps[1][0]).toBeCloseTo(0, 6);
   });
 
   it("ReLUs all-negative contributions to a blank (all-cold) map", async () => {
@@ -121,7 +172,8 @@ describe("computeCam", () => {
   });
 
   it("maps uniform positive support to a uniformly hot map", async () => {
-    // Uniform positive support → every token is the max → all 1 (uniformly hot).
+    // Every token equals the max → all 1. (The divide-by-zero guard only kicks
+    // in when nothing is positive; the all-negative case above covers that.)
     const { maps } = await computeCam(
       makeFeatures([5, 5, 5, 5]),
       4,

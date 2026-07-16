@@ -79,31 +79,37 @@ export async function computeCam(
 
   const W = await loadHead(headUrl);
 
+  // First pass: per-token contribution for each requested class with ReLU
+  // (a negative contribution is evidence against the class, so it's clamped to
+  // 0 and renders cold). Track the single largest positive contribution across
+  // ALL requested classes — that shared maximum sets one common scale.
+  let globalMax = 0;
   const maps = classIndices.map((rawC) => {
     const c = Number(rawC); // guard against BigInt indices from int64 tensors
     const map = new Float32Array(tokens);
     if (!Number.isFinite(c) || c < 0 || c >= NUM_CLASSES) return map; // blank
     const wOff = c * NUM_FEATURES;
-    let mx = 0;
     for (let t = 0; t < tokens; t++) {
       let s = 0;
       const fOff = t * channels;
       for (let ch = 0; ch < channels; ch++) {
         s += features[fOff + ch] * W[wOff + ch];
       }
-      // ReLU (Grad-CAM convention): keep only positive support. A negative
-      // contribution lowers the class score, so it should read as cold — not
-      // get stretched into a hot region by min-max normalization.
       const relu = s > 0 ? s : 0;
       map[t] = relu;
-      if (relu > mx) mx = relu;
+      if (relu > globalMax) globalMax = relu;
     }
-    // Normalize by the max so red = strongest positive support; tokens with no
-    // positive support stay 0 (blue). If nothing is positive, the map is blank.
-    const scale = mx || 1;
-    for (let t = 0; t < tokens; t++) map[t] = map[t] / scale;
     return map;
   });
+
+  // Second pass: normalize every map by the one shared maximum (not each map's
+  // own max), so intensity is comparable across the top-k classes. A strongly
+  // supported class stays hot; a weakly supported one reads dim (mostly blue)
+  // instead of being stretched to fill [0, 1] on its own.
+  const scale = globalMax || 1;
+  for (const map of maps) {
+    for (let t = 0; t < tokens; t++) map[t] /= scale;
+  }
 
   return { grid, maps };
 }
