@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import ssl
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -53,13 +54,10 @@ class OidcDiscoveryConfig:
     cache_ttl: timedelta = DEFAULT_DISCOVERY_CACHE_TTL
     request_timeout: float = DEFAULT_REQUEST_TIMEOUT_SECONDS
     unknown_key_refresh_cooldown: timedelta = DEFAULT_UNKNOWN_KEY_REFRESH_COOLDOWN
-    require_https_metadata: bool = True
+    ca_bundle: str | None = None
 
     def __post_init__(self) -> None:
-        validate_oidc_issuer_url(
-            self.issuer,
-            require_https=self.require_https_metadata,
-        )
+        validate_oidc_issuer_url(self.issuer)
 
 
 @dataclass(frozen=True)
@@ -77,11 +75,12 @@ class OidcDiscoveryClient:
     ) -> None:
         self.config = config
         self.discovery_url = self._build_discovery_url(self.config.issuer)
-        self._http_client_factory = (
-            http_client_factory
-            if http_client_factory is not None
-            else self._create_http_client
-        )
+        self._ssl_context: ssl.SSLContext | None = None
+        if http_client_factory is None:
+            self._ssl_context = self._create_ssl_context()
+            self._http_client_factory = self._create_http_client
+        else:
+            self._http_client_factory = http_client_factory
         self._cache_clock = cache_clock if cache_clock is not None else _utc_now
         self._cached_verifier: CachedOidcVerifier | None = None
         self._last_unknown_key_refresh_at: datetime | None = None
@@ -93,9 +92,31 @@ class OidcDiscoveryClient:
         issuer_without_trailing_slash = issuer.rstrip("/")
         return f"{issuer_without_trailing_slash}/.well-known/openid-configuration"
 
+    # Start with HTTPX's normal public roots, then add a configured private CA.
+    # Certificate and hostname verification remain enabled.
+    def _create_ssl_context(self) -> ssl.SSLContext:
+        ssl_context = httpx.create_ssl_context()
+        ca_bundle = self.config.ca_bundle
+        if ca_bundle is None:
+            return ssl_context
+
+        try:
+            ssl_context.load_verify_locations(cafile=ca_bundle)
+        except OSError as error:
+            raise OidcDiscoveryError("Unable to load OIDC CA bundle") from error
+
+        return ssl_context
+
     # Keep provider calls bounded so auth does not hang on a slow identity provider.
     def _create_http_client(self) -> httpx.AsyncClient:
-        return httpx.AsyncClient(timeout=self.config.request_timeout)
+        ssl_context = self._ssl_context
+        if ssl_context is None:
+            raise RuntimeError("OIDC SSL context is not initialized")
+
+        return httpx.AsyncClient(
+            timeout=self.config.request_timeout,
+            verify=ssl_context,
+        )
 
     # Cache reads happen before and after taking the lock. That lets normal
     # requests avoid locking while concurrent refreshes still collapse to one load.
@@ -217,10 +238,7 @@ class OidcDiscoveryClient:
 
         # Validate the provider-supplied JWKS URI before requesting it.
         try:
-            validated_jwks_uri = validate_oidc_jwks_uri(
-                jwks_uri,
-                require_https=self.config.require_https_metadata,
-            )
+            validated_jwks_uri = validate_oidc_jwks_uri(jwks_uri)
         except OidcEndpointError as error:
             raise OidcDiscoveryError(str(error)) from error
 

@@ -2,7 +2,7 @@
   "realm": "nachet",
   "displayName": "Nachet Local Development",
   "enabled": true,
-  "sslRequired": "none",
+  "sslRequired": "all",
   "registrationAllowed": false,
   "resetPasswordAllowed": false,
   "rememberMe": false,

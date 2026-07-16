@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import ssl
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -135,7 +137,6 @@ def create_client(
     *,
     issuer: str = ISSUER,
     audience: str = AUDIENCE,
-    require_https_metadata: bool = True,
     clock: MutableClock | None = None,
 ) -> OidcDiscoveryClient:
     transport = httpx.MockTransport(provider.handle_request)
@@ -143,7 +144,6 @@ def create_client(
         config=OidcDiscoveryConfig(
             issuer=issuer,
             audience=audience,
-            require_https_metadata=require_https_metadata,
         ),
         http_client_factory=lambda: httpx.AsyncClient(transport=transport),
         cache_clock=clock or MutableClock(datetime.now(timezone.utc)),
@@ -272,7 +272,7 @@ async def test_uses_cached_verifier_before_ttl_expires() -> None:
     assert provider.count_requests(JWKS_URI) == 1
 
 
-def test_rejects_http_issuer_by_default() -> None:
+def test_rejects_http_issuer() -> None:
     with pytest.raises(ValueError, match="OIDC issuer must use HTTPS"):
         OidcDiscoveryClient(
             OidcDiscoveryConfig(
@@ -283,7 +283,7 @@ def test_rejects_http_issuer_by_default() -> None:
 
 
 @pytest.mark.asyncio
-async def test_rejects_http_jwks_by_default() -> None:
+async def test_rejects_http_jwks() -> None:
     insecure_jwks_uri = "http://keys.example/realms/nachet/certs"
     provider = MockOidcProvider(jwks_uri=insecure_jwks_uri)
     client = create_client(provider)
@@ -295,49 +295,102 @@ async def test_rejects_http_jwks_by_default() -> None:
     assert provider.requests == [DISCOVERY_URL]
 
 
-@pytest.mark.asyncio
-async def test_accepts_http_discovery_and_jwks_when_https_is_not_required() -> None:
-    local_issuer = "http://keycloak.localhost:8080/realms/nachet"
-    local_discovery_url = f"{local_issuer}/.well-known/openid-configuration"
-    local_jwks_uri = f"{local_issuer}/protocol/openid-connect/certs"
-    private_key = create_private_key()
-    provider = MockOidcProvider(
-        issuer=local_issuer,
-        discovery_url=local_discovery_url,
-        jwks_uri=local_jwks_uri,
-        jwks=jwks_from_key(private_key),
-    )
-    client = create_client(
-        provider,
-        issuer=local_issuer,
-        require_https_metadata=False,
-    )
+def test_custom_ca_bundle_is_added_to_default_httpx_trust(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    ca_bundle = tmp_path / "local-ca.pem"
+    ca_bundle.write_text("test certificate")
+    loaded_ca_files: list[str] = []
 
-    await client.get_verifier()
+    class RecordingSslContext(ssl.SSLContext):
+        def __new__(cls) -> RecordingSslContext:
+            return super().__new__(cls, ssl.PROTOCOL_TLS_CLIENT)
 
-    assert provider.requests == [local_discovery_url, local_jwks_uri]
+        def load_verify_locations(
+            self,
+            cafile: Any = None,
+            capath: Any = None,
+            cadata: Any = None,
+        ) -> None:
+            if cafile is not None:
+                loaded_ca_files.append(cafile)
 
+    monkeypatch.setattr(httpx, "create_ssl_context", RecordingSslContext)
 
-@pytest.mark.asyncio
-async def test_allows_cross_origin_http_jwks_when_https_is_not_required() -> None:
-    local_issuer = "http://keycloak.localhost:8080/realms/nachet"
-    discovery_url = f"{local_issuer}/.well-known/openid-configuration"
-    private_key = create_private_key()
-    provider = MockOidcProvider(
-        issuer=local_issuer,
-        discovery_url=discovery_url,
-        jwks_uri="http://metadata.internal/keys",
-        jwks=jwks_from_key(private_key),
-    )
-    client = create_client(
-        provider,
-        issuer=local_issuer,
-        require_https_metadata=False,
+    client = OidcDiscoveryClient(
+        OidcDiscoveryConfig(
+            issuer=ISSUER,
+            audience=AUDIENCE,
+            ca_bundle=str(ca_bundle),
+        )
     )
 
-    await client.get_verifier()
+    assert client.config.ca_bundle == str(ca_bundle)
+    assert loaded_ca_files == [str(ca_bundle)]
 
-    assert provider.requests == [discovery_url, "http://metadata.internal/keys"]
+
+def test_default_httpx_trust_is_unchanged_without_custom_ca(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    load_called = False
+
+    class RecordingSslContext(ssl.SSLContext):
+        def __new__(cls) -> RecordingSslContext:
+            return super().__new__(cls, ssl.PROTOCOL_TLS_CLIENT)
+
+        def load_verify_locations(
+            self,
+            cafile: Any = None,
+            capath: Any = None,
+            cadata: Any = None,
+        ) -> None:
+            nonlocal load_called
+            load_called = True
+
+    monkeypatch.setattr(httpx, "create_ssl_context", RecordingSslContext)
+
+    OidcDiscoveryClient(
+        OidcDiscoveryConfig(
+            issuer=ISSUER,
+            audience=AUDIENCE,
+        )
+    )
+
+    assert load_called is False
+
+
+@pytest.mark.parametrize("ca_contents", ["", "not a certificate"])
+def test_invalid_ca_bundle_fails_during_client_initialization(
+    tmp_path: Path,
+    ca_contents: str,
+) -> None:
+    ca_bundle = tmp_path / "invalid-ca.pem"
+    ca_bundle.write_text(ca_contents)
+
+    with pytest.raises(OidcDiscoveryError, match="CA bundle"):
+        OidcDiscoveryClient(
+            OidcDiscoveryConfig(
+                issuer=ISSUER,
+                audience=AUDIENCE,
+                ca_bundle=str(ca_bundle),
+            )
+        )
+
+
+def test_missing_ca_bundle_fails_during_client_initialization(
+    tmp_path: Path,
+) -> None:
+    missing_ca_bundle = tmp_path / "missing-ca.pem"
+
+    with pytest.raises(OidcDiscoveryError, match="CA bundle"):
+        OidcDiscoveryClient(
+            OidcDiscoveryConfig(
+                issuer=ISSUER,
+                audience=AUDIENCE,
+                ca_bundle=str(missing_ca_bundle),
+            )
+        )
 
 
 @pytest.mark.asyncio

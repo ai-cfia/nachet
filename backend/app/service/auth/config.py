@@ -52,7 +52,7 @@ class BackendAuthConfig:
             discovery = OidcDiscoveryConfig(
                 issuer=issuer,
                 audience=audience,
-                require_https_metadata=settings.oidc_require_https_metadata,
+                ca_bundle=_parse_optional_setting(settings.oidc_ca_bundle),
             )
 
             oidc = OidcAuthConfig(
@@ -82,6 +82,14 @@ def _parse_required_setting(value: str | None, setting_name: str) -> str:
     if not normalized_value:
         raise ValueError(f"{setting_name} is required when AUTH_PROVIDER is oidc")
     return normalized_value
+
+
+def _parse_optional_setting(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    normalized_value = value.strip()
+    return normalized_value or None
 
 
 def _parse_claim_name(value: str) -> str:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -226,7 +227,7 @@ def test_oidc_provider_accepts_https_issuer() -> None:
     assert auth_config.oidc.discovery.issuer == ISSUER
 
 
-def test_oidc_provider_rejects_http_issuer_by_default() -> None:
+def test_oidc_provider_rejects_http_issuer() -> None:
     with pytest.raises(ValueError, match="OIDC issuer must use HTTPS"):
         create_auth_config(
             auth_provider="oidc",
@@ -235,18 +236,48 @@ def test_oidc_provider_rejects_http_issuer_by_default() -> None:
         )
 
 
-def test_oidc_provider_accepts_http_when_https_metadata_is_not_required() -> None:
-    issuer = "http://keycloak.localhost:8080/realms/nachet"
+def test_oidc_provider_passes_ca_bundle_to_discovery_config() -> None:
     auth_config = create_auth_config(
         auth_provider="oidc",
-        oidc_issuer=issuer,
+        oidc_issuer=ISSUER,
         oidc_audience=AUDIENCE,
-        oidc_require_https_metadata=False,
+        oidc_ca_bundle="/local-certs/ca/rootCA.pem",
     )
 
     assert auth_config.oidc is not None
-    assert auth_config.oidc.discovery.issuer == issuer
-    assert auth_config.oidc.discovery.require_https_metadata is False
+    assert auth_config.oidc.discovery.ca_bundle == "/local-certs/ca/rootCA.pem"
+
+
+@pytest.mark.parametrize("ca_contents", ["", "not a certificate"])
+def test_oidc_authenticator_rejects_invalid_ca_bundle_during_initialization(
+    tmp_path: Path,
+    ca_contents: str,
+) -> None:
+    ca_bundle = tmp_path / "invalid-ca.pem"
+    ca_bundle.write_text(ca_contents)
+    settings = config_module.Settings(
+        auth_provider="oidc",
+        oidc_issuer=ISSUER,
+        oidc_audience=AUDIENCE,
+        oidc_ca_bundle=str(ca_bundle),
+    )
+
+    with pytest.raises(OidcDiscoveryError, match="CA bundle"):
+        JWTAuthenticator(settings)
+
+
+def test_oidc_authenticator_rejects_missing_ca_bundle_during_initialization(
+    tmp_path: Path,
+) -> None:
+    settings = config_module.Settings(
+        auth_provider="oidc",
+        oidc_issuer=ISSUER,
+        oidc_audience=AUDIENCE,
+        oidc_ca_bundle=str(tmp_path / "missing-ca.pem"),
+    )
+
+    with pytest.raises(OidcDiscoveryError, match="CA bundle"):
+        JWTAuthenticator(settings)
 
 
 @pytest.mark.parametrize(

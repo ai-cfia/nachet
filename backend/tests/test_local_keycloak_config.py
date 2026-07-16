@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 from pathlib import Path
+from types import ModuleType
 from uuid import UUID
 
+import pytest
 import yaml
 
 
@@ -11,8 +14,13 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 COMPOSE_PATH = REPOSITORY_ROOT / "docker-compose.yaml"
 REALM_PATH = REPOSITORY_ROOT / "keycloak" / "nachet-realm.json"
 BACKEND_DOCKERIGNORE_PATH = REPOSITORY_ROOT / "backend" / ".dockerignore"
+TLS_SETUP_PATH = REPOSITORY_ROOT / "keycloak" / "setup_local_tls.py"
+LOCAL_CA_DIRECTORY = REPOSITORY_ROOT / "keycloak" / "local-certs" / "ca"
+LOCAL_SERVER_CERT_DIRECTORY = (
+    REPOSITORY_ROOT / "keycloak" / "local-certs" / "server"
+)
 
-LOCAL_ISSUER = "http://keycloak.localhost:8080/realms/nachet"
+LOCAL_ISSUER = "https://keycloak.localhost:8443/realms/nachet"
 LOCAL_ADMIN_USER_ID = "8ea46a6b-7d37-4fbb-a66f-775112376e16"
 LOCAL_FRONTEND_ORIGINS = {
     "http://localhost:5173",
@@ -26,6 +34,16 @@ def load_compose() -> dict:
 
 def load_realm() -> dict:
     return json.loads(REALM_PATH.read_text())
+
+
+def load_tls_setup_module() -> ModuleType:
+    spec = importlib.util.spec_from_file_location("setup_local_tls", TLS_SETUP_PATH)
+    if spec is None or spec.loader is None:
+        raise AssertionError("Unable to load local TLS setup script")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def get_client(realm: dict, client_id: str) -> dict:
@@ -54,12 +72,24 @@ def test_compose_runs_a_pinned_local_keycloak_with_fixed_issuer() -> None:
 
     assert service["image"].startswith("quay.io/keycloak/keycloak:")
     assert not service["image"].endswith(":latest")
-    assert service["command"] == ["start-dev", "--import-realm"]
-    assert service["environment"]["KC_HOSTNAME"] == "http://keycloak.localhost:8080"
+    assert service["command"] == ["start", "--import-realm"]
+    assert service["environment"]["KC_DB"] == "dev-file"
+    assert service["environment"]["KC_CACHE"] == "local"
+    assert service["environment"]["KC_HOSTNAME"] == "https://keycloak.localhost:8443"
+    assert service["environment"]["KC_HTTP_ENABLED"] == "false"
+    assert service["environment"]["KC_HTTP_MANAGEMENT_SCHEME"] == "http"
+    assert (
+        service["environment"]["KC_HTTPS_CERTIFICATE_FILE"]
+        == "/opt/keycloak/conf/tls/keycloak.pem"
+    )
+    assert (
+        service["environment"]["KC_HTTPS_CERTIFICATE_KEY_FILE"]
+        == "/opt/keycloak/conf/tls/keycloak-key.pem"
+    )
     assert "KC_HOSTNAME_BACKCHANNEL_DYNAMIC" not in service["environment"]
     assert set(service["ports"]) == {
-        "127.0.0.1:8080:8080",
-        "[::1]:8080:8080",
+        "127.0.0.1:8443:8443",
+        "[::1]:8443:8443",
     }
     assert service["mem_limit"] == "1g"
 
@@ -79,10 +109,17 @@ def test_keycloak_network_is_shared_only_with_the_backend() -> None:
             assert keycloak_network not in service.get("networks", [])
 
 
-def test_compose_does_not_override_backend_oidc_configuration() -> None:
+def test_backend_container_receives_only_the_public_local_ca() -> None:
     backend_service = load_compose()["services"]["nachet-backend"]
 
-    assert "environment" not in backend_service
+    assert backend_service["environment"] == {
+        "OIDC_CA_BUNDLE": "/opt/nachet/local-ca/rootCA.pem"
+    }
+    assert (
+        "./keycloak/local-certs/ca:/opt/nachet/local-ca:ro"
+        in backend_service["volumes"]
+    )
+    assert all("local-certs/server" not in volume for volume in backend_service["volumes"])
 
 
 def test_compose_backend_builds_from_an_existing_dockerfile() -> None:
@@ -108,6 +145,14 @@ def test_compose_imports_the_realm_read_only() -> None:
         "./keycloak/nachet-realm.json:/opt/keycloak/data/import/nachet-realm.json:ro"
         in service["volumes"]
     )
+    assert (
+        "./keycloak/local-certs/server:/opt/keycloak/conf/tls:ro"
+        in service["volumes"]
+    )
+
+
+def test_realm_requires_https_for_all_requests() -> None:
+    assert load_realm()["sslRequired"] == "all"
 
 
 def test_realm_configures_a_public_pkce_frontend_client() -> None:
@@ -192,7 +237,11 @@ def test_environment_templates_use_the_same_local_keycloak_contract() -> None:
         in backend_template
     )
     assert "OIDC_DISCOVERY_URL" not in backend_template
-    assert 'OIDC_REQUIRE_HTTPS_METADATA="false"' in backend_template
+    assert "OIDC_REQUIRE_HTTPS_METADATA" not in backend_template
+    assert (
+        'OIDC_CA_BUNDLE="../keycloak/local-certs/ca/rootCA.pem"'
+        in backend_template
+    )
 
 
 def test_local_keycloak_documentation_uses_one_frontend_origin() -> None:
@@ -202,3 +251,71 @@ def test_local_keycloak_documentation_uses_one_frontend_origin() -> None:
     assert "npm run dev -- --port 12438" not in developer_guide
     assert LOCAL_ISSUER in developer_guide
     assert "OIDC_DISCOVERY_URL" not in developer_guide
+    assert "OIDC_REQUIRE_HTTPS_METADATA" not in developer_guide
+    assert "python keycloak/setup_local_tls.py" in developer_guide
+
+
+def test_generated_local_certificates_are_ignored() -> None:
+    for directory in (LOCAL_CA_DIRECTORY, LOCAL_SERVER_CERT_DIRECTORY):
+        ignore_file = directory / ".gitignore"
+        assert ignore_file.is_file()
+        assert ignore_file.read_text().splitlines() == ["*", "!.gitignore"]
+
+
+def test_tls_setup_copies_only_the_public_ca(tmp_path: Path) -> None:
+    module = load_tls_setup_module()
+    ca_root = tmp_path / "mkcert-ca"
+    destination = tmp_path / "repository-ca"
+    ca_root.mkdir()
+    (ca_root / "rootCA.pem").write_text("public CA")
+    (ca_root / "rootCA-key.pem").write_text("private CA key")
+
+    module.copy_public_ca(ca_root, destination)
+
+    assert (destination / "rootCA.pem").read_text() == "public CA"
+    assert not (destination / "rootCA-key.pem").exists()
+
+
+def test_tls_setup_generates_server_certificate_and_copies_public_ca(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    module = load_tls_setup_module()
+    server_directory = tmp_path / "server"
+    ca_directory = tmp_path / "ca"
+    mkcert_ca_root = tmp_path / "mkcert-ca"
+    mkcert_ca_root.mkdir()
+    (mkcert_ca_root / "rootCA.pem").write_text("public CA")
+    commands: list[list[str]] = []
+
+    def fake_run(command: list[str], *, capture_output: bool = False) -> str:
+        commands.append(command)
+        if "-cert-file" in command:
+            certificate_path = Path(command[command.index("-cert-file") + 1])
+            private_key_path = Path(command[command.index("-key-file") + 1])
+            certificate_path.write_text("certificate")
+            private_key_path.write_text("private key")
+        if "-CAROOT" in command:
+            return str(mkcert_ca_root)
+        return ""
+
+    monkeypatch.setattr(module.shutil, "which", lambda command: "/usr/bin/mkcert")
+    monkeypatch.setattr(module, "_run", fake_run)
+    monkeypatch.setattr(module, "_hostname_resolves", lambda: True)
+    monkeypatch.setattr(module, "SERVER_CERT_DIRECTORY", server_directory)
+    monkeypatch.setattr(module, "CA_CERT_DIRECTORY", ca_directory)
+
+    assert module.main() == 0
+    assert commands == [
+        ["/usr/bin/mkcert", "-install"],
+        [
+            "/usr/bin/mkcert",
+            "-cert-file",
+            str(server_directory / "keycloak.pem"),
+            "-key-file",
+            str(server_directory / "keycloak-key.pem"),
+            "keycloak.localhost",
+        ],
+        ["/usr/bin/mkcert", "-CAROOT"],
+    ]
+    assert (ca_directory / "rootCA.pem").read_text() == "public CA"

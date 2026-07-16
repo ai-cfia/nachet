@@ -31,6 +31,10 @@ class JWTAuthenticator:
             None
         )
         self._oidc_discovery_client: OidcDiscoveryClient | None = None
+        if self._config.provider is AuthProvider.OIDC:
+            self._oidc_discovery_client = OidcDiscoveryClient(
+                self._get_oidc_config().discovery
+            )
 
     def _get_azure_auth_scheme(self) -> SingleTenantAzureAuthorizationCodeBearer:
         """Initialize and return the Azure AD auth scheme"""
@@ -62,12 +66,10 @@ class JWTAuthenticator:
         return azure_config
 
     def _get_oidc_discovery_client(self) -> OidcDiscoveryClient:
-        if self._oidc_discovery_client is None:
-            self._oidc_discovery_client = OidcDiscoveryClient(
-                self._get_oidc_config().discovery
-            )
-
-        return self._oidc_discovery_client
+        oidc_discovery_client = self._oidc_discovery_client
+        if oidc_discovery_client is None:
+            raise RuntimeError("OIDC authentication is not configured")
+        return oidc_discovery_client
 
     def _get_oidc_config(self) -> OidcAuthConfig:
         oidc_config = self._config.oidc

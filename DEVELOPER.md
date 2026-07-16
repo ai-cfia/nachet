@@ -227,17 +227,16 @@ Use these values for the OIDC path:
 
 ```bash
 AUTH_PROVIDER="oidc"
-OIDC_ISSUER="http://keycloak.localhost:8080/realms/nachet"
+OIDC_ISSUER="https://keycloak.localhost:8443/realms/nachet"
 OIDC_AUDIENCE="nachet-api"
 OIDC_USER_ID_CLAIM="sub"
 OIDC_USERNAME_CLAIM="preferred_username"
 OIDC_EMAIL_CLAIM="email"
-OIDC_REQUIRE_HTTPS_METADATA="false"
+OIDC_CA_BUNDLE="../keycloak/local-certs/ca/rootCA.pem"
 ```
 
-OIDC metadata requires HTTPS by default. The local Keycloak setup deliberately
-turns this check off because `start-dev` serves metadata over HTTP. Keep it
-enabled for any shared or deployed provider.
+OIDC discovery and JWKS always use HTTPS. `OIDC_CA_BUNDLE` adds a private CA to
+the normal HTTPX trust store when a provider does not use a public certificate.
 
 The claim selected by `OIDC_USER_ID_CLAIM` must currently contain a UUID. This
 keeps the existing route and database contract intact. Supporting non-UUID
@@ -265,17 +264,56 @@ request flow, validation rules, and current identity limitation.
 
 #### Local Keycloak
 
-Start the local identity provider from the repository root:
+Local Keycloak uses a certificate created on each developer's machine. The
+certificate files are ignored by Git.
+
+Install `mkcert` first:
+
+| System | Command |
+| --- | --- |
+| macOS | `brew install mkcert` |
+| Windows | `choco install mkcert` or `scoop install mkcert` |
+| Linux | Install `libnss3-tools`, then install `mkcert` from your package manager or the official release |
+
+Firefox users on macOS may also need `brew install nss`.
+
+Generate and trust the certificate from the repository root:
+
+```bash
+python keycloak/setup_local_tls.py
+```
+
+The script creates a certificate for `keycloak.localhost`, installs the local
+CA in the system trust store, and copies the public CA for the backend. It never
+copies the CA private key.
+
+If the hostname does not resolve, the script prints the hosts-file entry to add:
+
+```text
+127.0.0.1 keycloak.localhost
+```
+
+The hosts file is `/etc/hosts` on macOS and Linux, and
+`C:\Windows\System32\drivers\etc\hosts` on Windows.
+
+Copy the frontend and backend environment templates. Set
+`VITE_AUTH_PROVIDER="oidc"` in the frontend and `AUTH_PROVIDER="oidc"` in the
+backend. The templates already contain the local issuer and CA path.
+
+Start Keycloak:
 
 ```bash
 docker compose --profile oidc up -d nachet-keycloak
 ```
 
-Copy the environment templates as usual. In the frontend config, change
-`VITE_AUTH_PROVIDER` to `oidc`. In the backend config, change `AUTH_PROVIDER`
-to `oidc`.
+Check that discovery is available over trusted HTTPS:
 
-Run the frontend on the callback origin configured in the template:
+```bash
+curl --fail \
+  https://keycloak.localhost:8443/realms/nachet/.well-known/openid-configuration
+```
+
+Run the frontend on the configured callback origin:
 
 ```bash
 nachet/frontend$ npm run dev -- --port 5173
@@ -288,22 +326,10 @@ Then sign in with either local account:
 | `nachet-admin` | `nachet-local` | Matches the seeded local Nachet user and can exercise protected workflows. |
 | `nachet-user` | `nachet-local` | Has a second UUID and can exercise the registration path. |
 
-The browser, a host-run backend, and a container backend all use
-`http://keycloak.localhost:8080/realms/nachet` as the issuer. The Compose
-network provides `keycloak.localhost` as an alias for the Keycloak service.
-Browsers and many host tools treat `.localhost` as loopback, but host name
-resolution can vary by runtime. Before running the backend on the host, verify
-that its HTTP client can reach discovery:
-
-```bash
-nachet/backend$ uv run python -c \
-  'import httpx; print(httpx.get("http://keycloak.localhost:8080/realms/nachet/.well-known/openid-configuration").status_code)'
-```
-
-The command should print `200`. If it cannot resolve the name, run the backend
-in Compose or add `keycloak.localhost` to your local hosts configuration. The
-backend uses the configured issuer as-is; it does not infer the deployment
-environment from the hostname.
+The browser, host backend, and container backend all use
+`https://keycloak.localhost:8443/realms/nachet`. The browser trusts the CA
+installed by `mkcert`. A host backend reads the public CA through
+`OIDC_CA_BUNDLE`. Compose mounts the same public CA into the backend container.
 
 Stop the local provider with:
 
@@ -311,8 +337,8 @@ Stop the local provider with:
 docker compose --profile oidc stop nachet-keycloak
 ```
 
-The realm uses Keycloak's development mode, fixed local passwords, and HTTP.
-Do not use this realm configuration for a shared or production environment.
+The local service uses Keycloak's file-based development database and fixed
+test passwords. Use it only on a developer machine.
 
 ### Frontend setup
 

@@ -50,18 +50,25 @@ services:
     profiles:
       - oidc
     command:
-      - start-dev
+      - start
       - --import-realm
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_BOOTSTRAP_ADMIN_PASSWORD:-nachet-local}
+      KC_DB: dev-file
+      KC_CACHE: local
       KC_HEALTH_ENABLED: "true"
-      KC_HOSTNAME: http://keycloak.localhost:8080
+      KC_HOSTNAME: https://keycloak.localhost:8443
+      KC_HTTP_ENABLED: "false"
+      KC_HTTP_MANAGEMENT_SCHEME: http
+      KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/conf/tls/keycloak.pem
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/conf/tls/keycloak-key.pem
     ports:
-      - "127.0.0.1:8080:8080"
-      - "[::1]:8080:8080"
+      - "127.0.0.1:8443:8443"
+      - "[::1]:8443:8443"
     volumes:
       - ./keycloak/nachet-realm.json:/opt/keycloak/data/import/nachet-realm.json:ro
+      - ./keycloak/local-certs/server:/opt/keycloak/conf/tls:ro
     mem_limit: 1g
     healthcheck:
       test:
@@ -94,8 +101,12 @@ services:
       # - ./nachet-backend/.env.secrets.local
       # - ./nachet-backend/.env.config.local
       - ./backend/.env.container.local
+    environment:
+      OIDC_CA_BUNDLE: /opt/nachet/local-ca/rootCA.pem
     ports:
       - "12435:5174"
+    volumes:
+      - ./keycloak/local-certs/ca:/opt/nachet/local-ca:ro
     extra_hosts:
       - host.docker.internal:host-gateway
     depends_on:
