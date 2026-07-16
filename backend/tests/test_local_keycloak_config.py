@@ -192,10 +192,7 @@ def test_environment_templates_use_the_same_local_keycloak_contract() -> None:
         in backend_template
     )
     assert "OIDC_DISCOVERY_URL" not in backend_template
-    assert (
-        'OIDC_ALLOW_INSECURE_HTTP_FOR_LOCAL_DEVELOPMENT="true"'
-        in backend_template
-    )
+    assert 'OIDC_REQUIRE_HTTPS_METADATA="false"' in backend_template
 
 
 def test_local_keycloak_documentation_uses_one_frontend_origin() -> None:

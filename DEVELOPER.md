@@ -232,11 +232,12 @@ OIDC_AUDIENCE="nachet-api"
 OIDC_USER_ID_CLAIM="sub"
 OIDC_USERNAME_CLAIM="preferred_username"
 OIDC_EMAIL_CLAIM="email"
-OIDC_ALLOW_INSECURE_HTTP_FOR_LOCAL_DEVELOPMENT="true"
+OIDC_REQUIRE_HTTPS_METADATA="false"
 ```
 
-The HTTP exception is limited to the local Keycloak workflow. Other OIDC
-deployments should use HTTPS and leave it disabled.
+OIDC metadata requires HTTPS by default. The local Keycloak setup deliberately
+turns this check off because `start-dev` serves metadata over HTTP. Keep it
+enabled for any shared or deployed provider.
 
 The claim selected by `OIDC_USER_ID_CLAIM` must currently contain a UUID. This
 keeps the existing route and database contract intact. Supporting non-UUID
@@ -288,10 +289,21 @@ Then sign in with either local account:
 | `nachet-user` | `nachet-local` | Has a second UUID and can exercise the registration path. |
 
 The browser, a host-run backend, and a container backend all use
-`http://keycloak.localhost:8080/realms/nachet` as the issuer. On the host,
-`.localhost` resolves to the loopback interface. On the dedicated Docker
-network, the same name is an alias for the Keycloak service. This lets every
-client use normal issuer-based OIDC discovery without a second internal URL.
+`http://keycloak.localhost:8080/realms/nachet` as the issuer. The Compose
+network provides `keycloak.localhost` as an alias for the Keycloak service.
+Browsers and many host tools treat `.localhost` as loopback, but host name
+resolution can vary by runtime. Before running the backend on the host, verify
+that its HTTP client can reach discovery:
+
+```bash
+nachet/backend$ uv run python -c \
+  'import httpx; print(httpx.get("http://keycloak.localhost:8080/realms/nachet/.well-known/openid-configuration").status_code)'
+```
+
+The command should print `200`. If it cannot resolve the name, run the backend
+in Compose or add `keycloak.localhost` to your local hosts configuration. The
+backend uses the configured issuer as-is; it does not infer the deployment
+environment from the hostname.
 
 Stop the local provider with:
 

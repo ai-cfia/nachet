@@ -135,9 +135,7 @@ def create_client(
     *,
     issuer: str = ISSUER,
     audience: str = AUDIENCE,
-    cache_ttl: timedelta = timedelta(hours=24),
-    unknown_key_refresh_cooldown: timedelta = timedelta(minutes=1),
-    allow_insecure_http_for_local_development: bool = False,
+    require_https_metadata: bool = True,
     clock: MutableClock | None = None,
 ) -> OidcDiscoveryClient:
     transport = httpx.MockTransport(provider.handle_request)
@@ -145,11 +143,7 @@ def create_client(
         config=OidcDiscoveryConfig(
             issuer=issuer,
             audience=audience,
-            cache_ttl=cache_ttl,
-            unknown_key_refresh_cooldown=unknown_key_refresh_cooldown,
-            allow_insecure_http_for_local_development=(
-                allow_insecure_http_for_local_development
-            ),
+            require_https_metadata=require_https_metadata,
         ),
         http_client_factory=lambda: httpx.AsyncClient(transport=transport),
         cache_clock=clock or MutableClock(datetime.now(timezone.utc)),
@@ -267,7 +261,7 @@ async def test_uses_cached_verifier_before_ttl_expires() -> None:
     private_key = create_private_key()
     clock = MutableClock(datetime(2026, 1, 1, tzinfo=timezone.utc))
     provider = MockOidcProvider(jwks=jwks_from_key(private_key))
-    client = create_client(provider, cache_ttl=timedelta(hours=24), clock=clock)
+    client = create_client(provider, clock=clock)
 
     first_verifier = await client.get_verifier()
     clock.advance(timedelta(hours=23, minutes=59))
@@ -278,7 +272,7 @@ async def test_uses_cached_verifier_before_ttl_expires() -> None:
     assert provider.count_requests(JWKS_URI) == 1
 
 
-def test_rejects_insecure_remote_issuer_before_request() -> None:
+def test_rejects_http_issuer_by_default() -> None:
     with pytest.raises(ValueError, match="OIDC issuer must use HTTPS"):
         OidcDiscoveryClient(
             OidcDiscoveryConfig(
@@ -289,7 +283,7 @@ def test_rejects_insecure_remote_issuer_before_request() -> None:
 
 
 @pytest.mark.asyncio
-async def test_rejects_insecure_remote_jwks_before_request() -> None:
+async def test_rejects_http_jwks_by_default() -> None:
     insecure_jwks_uri = "http://keys.example/realms/nachet/certs"
     provider = MockOidcProvider(jwks_uri=insecure_jwks_uri)
     client = create_client(provider)
@@ -302,7 +296,7 @@ async def test_rejects_insecure_remote_jwks_before_request() -> None:
 
 
 @pytest.mark.asyncio
-async def test_accepts_local_http_discovery_and_jwks_when_explicitly_enabled() -> None:
+async def test_accepts_http_discovery_and_jwks_when_https_is_not_required() -> None:
     local_issuer = "http://keycloak.localhost:8080/realms/nachet"
     local_discovery_url = f"{local_issuer}/.well-known/openid-configuration"
     local_jwks_uri = f"{local_issuer}/protocol/openid-connect/certs"
@@ -316,7 +310,7 @@ async def test_accepts_local_http_discovery_and_jwks_when_explicitly_enabled() -
     client = create_client(
         provider,
         issuer=local_issuer,
-        allow_insecure_http_for_local_development=True,
+        require_https_metadata=False,
     )
 
     await client.get_verifier()
@@ -325,24 +319,25 @@ async def test_accepts_local_http_discovery_and_jwks_when_explicitly_enabled() -
 
 
 @pytest.mark.asyncio
-async def test_rejects_insecure_jwks_from_a_different_origin() -> None:
+async def test_allows_cross_origin_http_jwks_when_https_is_not_required() -> None:
     local_issuer = "http://keycloak.localhost:8080/realms/nachet"
     discovery_url = f"{local_issuer}/.well-known/openid-configuration"
+    private_key = create_private_key()
     provider = MockOidcProvider(
         issuer=local_issuer,
         discovery_url=discovery_url,
         jwks_uri="http://metadata.internal/keys",
+        jwks=jwks_from_key(private_key),
     )
     client = create_client(
         provider,
         issuer=local_issuer,
-        allow_insecure_http_for_local_development=True,
+        require_https_metadata=False,
     )
 
-    with pytest.raises(OidcDiscoveryError, match="must use HTTPS"):
-        await client.get_verifier()
+    await client.get_verifier()
 
-    assert provider.requests == [discovery_url]
+    assert provider.requests == [discovery_url, "http://metadata.internal/keys"]
 
 
 @pytest.mark.asyncio
@@ -363,7 +358,7 @@ async def test_refreshes_verifier_after_ttl_expires() -> None:
     second_private_key = create_private_key()
     clock = MutableClock(datetime(2026, 1, 1, tzinfo=timezone.utc))
     provider = MockOidcProvider(jwks=jwks_from_key(first_private_key))
-    client = create_client(provider, cache_ttl=timedelta(hours=24), clock=clock)
+    client = create_client(provider, clock=clock)
 
     first_verifier = await client.get_verifier()
     provider.jwks = jwks_from_key(second_private_key)
@@ -475,7 +470,7 @@ async def test_expired_cache_is_not_used_when_refresh_fails() -> None:
     private_key = create_private_key()
     clock = MutableClock(datetime(2026, 1, 1, tzinfo=timezone.utc))
     provider = MockOidcProvider(jwks=jwks_from_key(private_key))
-    client = create_client(provider, cache_ttl=timedelta(hours=24), clock=clock)
+    client = create_client(provider, clock=clock)
     await client.get_verifier()
 
     provider.discovery_status = 503

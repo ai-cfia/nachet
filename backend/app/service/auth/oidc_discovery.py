@@ -53,13 +53,12 @@ class OidcDiscoveryConfig:
     cache_ttl: timedelta = DEFAULT_DISCOVERY_CACHE_TTL
     request_timeout: float = DEFAULT_REQUEST_TIMEOUT_SECONDS
     unknown_key_refresh_cooldown: timedelta = DEFAULT_UNKNOWN_KEY_REFRESH_COOLDOWN
-    allow_insecure_http_for_local_development: bool = False
+    require_https_metadata: bool = True
 
     def __post_init__(self) -> None:
-        allow_local_http = self.allow_insecure_http_for_local_development
         validate_oidc_issuer_url(
             self.issuer,
-            allow_insecure_http_for_local_development=allow_local_http,
+            require_https=self.require_https_metadata,
         )
 
 
@@ -220,7 +219,7 @@ class OidcDiscoveryClient:
         try:
             validated_jwks_uri = validate_oidc_jwks_uri(
                 jwks_uri,
-                discovery_url=self.discovery_url,
+                require_https=self.config.require_https_metadata,
             )
         except OidcEndpointError as error:
             raise OidcDiscoveryError(str(error)) from error

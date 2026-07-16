@@ -315,20 +315,19 @@ settings.
 discovered `jwks_uri` with `httpx.URL`, the same URL parser used for the network
 requests.
 
-OIDC endpoints must use HTTPS. The issuer cannot contain credentials, a query
-string, or a fragment. Normal HTTPX certificate verification remains enabled
-for HTTPS requests.
+OIDC endpoints use HTTPS by default. The issuer cannot contain credentials, a
+query string, or a fragment. Normal HTTPX certificate verification remains
+enabled for HTTPS requests.
 
-The local Keycloak setup is the only HTTP exception. It requires
-`OIDC_ALLOW_INSECURE_HTTP_FOR_LOCAL_DEVELOPMENT=true`. The issuer must use a
-loopback host, and `NACHET_ENV` must be `local` or `development`. An HTTP
-`jwks_uri` is accepted only from the discovery URL's exact origin. Remote and
-private-network HTTP issuers remain rejected.
+`OIDC_REQUIRE_HTTPS_METADATA` controls this transport check and defaults to
+`true`. The local Keycloak template sets it to `false` because `start-dev`
+serves metadata over HTTP. Keep it enabled for shared and deployed providers.
 
-The local issuer uses `keycloak.localhost`. The host resolves this name to its
-loopback interface, while the Compose network provides the same name as a
-Keycloak service alias. Host and container backends therefore use the same
-issuer and the standard issuer-derived discovery URL.
+The local issuer uses `keycloak.localhost`. The Compose network provides that
+name as a Keycloak service alias. A host-run backend uses the same issuer, but
+host name resolution varies by runtime and should be checked before startup.
+This hostname is a deployment choice; the backend does not use it to decide
+whether HTTP is safe.
 
 ### Discovery and JWKS loading
 
@@ -426,10 +425,12 @@ The repository includes a local Keycloak realm and a pinned Keycloak service:
 docker compose --profile oidc up -d nachet-keycloak
 ```
 
-The issuer is `http://keycloak.localhost:8080/realms/nachet` for the browser,
-host backend, and container backend. The realm provides `nachet-admin` for the
-seeded local user and `nachet-user` for the registration path. Both use the
-local password `nachet-local`.
+The configured issuer is
+`http://keycloak.localhost:8080/realms/nachet`. The browser and container
+backend are configured with this value. A host-run backend can use the same
+issuer when its HTTP client resolves `keycloak.localhost`. The realm provides
+`nachet-admin` for the seeded local user and `nachet-user` for the registration
+path. Both use the local password `nachet-local`.
 
 See the Local Keycloak section in [DEVELOPER.md](../../DEVELOPER.md) for the
 frontend and backend setup.

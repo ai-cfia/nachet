@@ -226,7 +226,7 @@ def test_oidc_provider_accepts_https_issuer() -> None:
     assert auth_config.oidc.discovery.issuer == ISSUER
 
 
-def test_oidc_provider_rejects_http_issuer() -> None:
+def test_oidc_provider_rejects_http_issuer_by_default() -> None:
     with pytest.raises(ValueError, match="OIDC issuer must use HTTPS"):
         create_auth_config(
             auth_provider="oidc",
@@ -235,33 +235,23 @@ def test_oidc_provider_rejects_http_issuer() -> None:
         )
 
 
-@pytest.mark.parametrize(
-    "issuer",
-    [
-        "http://keycloak.localhost:8080/realms/nachet",
-        "http://127.0.0.1:8080/realms/nachet",
-        "http://[::1]:8080/realms/nachet",
-    ],
-)
-def test_oidc_provider_accepts_explicit_local_http_issuer(issuer: str) -> None:
+def test_oidc_provider_accepts_http_when_https_metadata_is_not_required() -> None:
+    issuer = "http://keycloak.localhost:8080/realms/nachet"
     auth_config = create_auth_config(
         auth_provider="oidc",
-        nachet_env="development",
         oidc_issuer=issuer,
         oidc_audience=AUDIENCE,
-        oidc_allow_insecure_http_for_local_development=True,
+        oidc_require_https_metadata=False,
     )
 
     assert auth_config.oidc is not None
     assert auth_config.oidc.discovery.issuer == issuer
+    assert auth_config.oidc.discovery.require_https_metadata is False
 
 
 @pytest.mark.parametrize(
     "issuer",
     [
-        "http://keycloak:8080/realms/nachet",
-        "http://192.168.1.10:8080/realms/nachet",
-        "http://idp.example/realms/nachet",
         "https://user:password@idp.example/realms/nachet",
         "https://idp.example/realms/nachet?tenant=one",
         "https://idp.example/realms/nachet#keys",
@@ -273,39 +263,6 @@ def test_oidc_provider_rejects_unsafe_issuer_urls(issuer: str) -> None:
             auth_provider="oidc",
             oidc_issuer=issuer,
             oidc_audience=AUDIENCE,
-        )
-
-
-@pytest.mark.parametrize(
-    "issuer",
-    [
-        "http://keycloak:8080/realms/nachet",
-        "http://192.168.1.10:8080/realms/nachet",
-        "http://idp.example/realms/nachet",
-    ],
-)
-def test_local_http_setting_does_not_allow_remote_issuers(issuer: str) -> None:
-    with pytest.raises(ValueError, match="OIDC issuer must use HTTPS"):
-        create_auth_config(
-            auth_provider="oidc",
-            nachet_env="development",
-            oidc_issuer=issuer,
-            oidc_audience=AUDIENCE,
-            oidc_allow_insecure_http_for_local_development=True,
-        )
-
-
-@pytest.mark.parametrize("nachet_env", ["staging", "production"])
-def test_local_http_setting_is_rejected_outside_local_environments(
-    nachet_env: str,
-) -> None:
-    with pytest.raises(ValueError, match="local or development"):
-        create_auth_config(
-            auth_provider="oidc",
-            nachet_env=nachet_env,
-            oidc_issuer="http://localhost:8080/realms/nachet",
-            oidc_audience=AUDIENCE,
-            oidc_allow_insecure_http_for_local_development=True,
         )
 
 
