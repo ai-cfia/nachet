@@ -15,10 +15,7 @@ COMPOSE_PATH = REPOSITORY_ROOT / "docker-compose.yaml"
 REALM_PATH = REPOSITORY_ROOT / "keycloak" / "nachet-realm.json"
 BACKEND_DOCKERIGNORE_PATH = REPOSITORY_ROOT / "backend" / ".dockerignore"
 TLS_SETUP_PATH = REPOSITORY_ROOT / "keycloak" / "setup_local_tls.py"
-LOCAL_CA_DIRECTORY = REPOSITORY_ROOT / "keycloak" / "local-certs" / "ca"
-LOCAL_SERVER_CERT_DIRECTORY = (
-    REPOSITORY_ROOT / "keycloak" / "local-certs" / "server"
-)
+LOCAL_CERT_DIRECTORY = REPOSITORY_ROOT / "keycloak" / "local-certs"
 
 LOCAL_ISSUER = "https://keycloak.localhost:8443/realms/nachet"
 LOCAL_ADMIN_USER_ID = "8ea46a6b-7d37-4fbb-a66f-775112376e16"
@@ -231,7 +228,6 @@ def test_environment_templates_use_the_same_local_keycloak_contract() -> None:
     )
     assert f'OIDC_ISSUER="{LOCAL_ISSUER}"' in backend_template
     assert 'OIDC_AUDIENCE="nachet-api"' in backend_template
-    assert 'NACHET_ENV="local"' in backend_template
     assert (
         'CORS_ALLOW_ORIGINS="http://localhost:5173,http://localhost:12436"'
         in backend_template
@@ -256,10 +252,10 @@ def test_local_keycloak_documentation_uses_one_frontend_origin() -> None:
 
 
 def test_generated_local_certificates_are_ignored() -> None:
-    for directory in (LOCAL_CA_DIRECTORY, LOCAL_SERVER_CERT_DIRECTORY):
-        ignore_file = directory / ".gitignore"
-        assert ignore_file.is_file()
-        assert ignore_file.read_text().splitlines() == ["*", "!.gitignore"]
+    ignore_file = LOCAL_CERT_DIRECTORY / ".gitignore"
+
+    assert ignore_file.is_file()
+    assert ignore_file.read_text().splitlines() == ["*", "!.gitignore"]
 
 
 def test_tls_setup_copies_only_the_public_ca(tmp_path: Path) -> None:

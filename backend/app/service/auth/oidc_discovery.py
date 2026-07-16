@@ -32,7 +32,6 @@ DEFAULT_UNKNOWN_KEY_REFRESH_COOLDOWN = timedelta(minutes=1)
 
 AllowedAlgorithms = tuple[str, ...]
 RequiredClaims = tuple[str, ...]
-HttpClientFactory = Callable[[], httpx.AsyncClient]
 CacheClock = Callable[[], datetime]
 
 
@@ -70,17 +69,15 @@ class OidcDiscoveryClient:
     def __init__(
         self,
         config: OidcDiscoveryConfig,
-        http_client_factory: HttpClientFactory | None = None,
+        mock_transport: httpx.MockTransport | None = None,
         cache_clock: CacheClock | None = None,
     ) -> None:
         self.config = config
         self.discovery_url = self._build_discovery_url(self.config.issuer)
-        self._ssl_context: ssl.SSLContext | None = None
-        if http_client_factory is None:
-            self._ssl_context = self._create_ssl_context()
-            self._http_client_factory = self._create_http_client
-        else:
-            self._http_client_factory = http_client_factory
+        # The discovery client always owns production TLS configuration. Tests
+        # replace only network I/O through HTTPX's in-memory mock transport.
+        self._ssl_context = self._create_ssl_context()
+        self._mock_transport = mock_transport
         self._cache_clock = cache_clock if cache_clock is not None else _utc_now
         self._cached_verifier: CachedOidcVerifier | None = None
         self._last_unknown_key_refresh_at: datetime | None = None
@@ -109,13 +106,10 @@ class OidcDiscoveryClient:
 
     # Keep provider calls bounded so auth does not hang on a slow identity provider.
     def _create_http_client(self) -> httpx.AsyncClient:
-        ssl_context = self._ssl_context
-        if ssl_context is None:
-            raise RuntimeError("OIDC SSL context is not initialized")
-
         return httpx.AsyncClient(
             timeout=self.config.request_timeout,
-            verify=ssl_context,
+            verify=self._ssl_context,
+            transport=self._mock_transport,
         )
 
     # Cache reads happen before and after taking the lock. That lets normal
@@ -194,7 +188,7 @@ class OidcDiscoveryClient:
 
     # Cache only after discovery and JWKS both pass shape and issuer validation.
     async def _refresh_verifier(self) -> OidcTokenVerifier:
-        async with self._http_client_factory() as client:
+        async with self._create_http_client() as client:
             discovery_metadata = await self._fetch_discovery_metadata(client)
             jwks_uri = discovery_metadata["jwks_uri"]
             jwks = await self._fetch_jwks(client, jwks_uri)

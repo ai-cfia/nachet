@@ -145,7 +145,7 @@ def create_client(
             issuer=issuer,
             audience=audience,
         ),
-        http_client_factory=lambda: httpx.AsyncClient(transport=transport),
+        mock_transport=transport,
         cache_clock=clock or MutableClock(datetime.now(timezone.utc)),
     )
 
@@ -358,6 +358,20 @@ def test_default_httpx_trust_is_unchanged_without_custom_ca(
     )
 
     assert load_called is False
+
+
+def test_mock_transport_keeps_verified_ssl_context_initialized() -> None:
+    transport = httpx.MockTransport(lambda request: httpx.Response(200))
+    client = OidcDiscoveryClient(
+        OidcDiscoveryConfig(
+            issuer=ISSUER,
+            audience=AUDIENCE,
+        ),
+        mock_transport=transport,
+    )
+
+    assert client._ssl_context.verify_mode == ssl.CERT_REQUIRED
+    assert client._ssl_context.check_hostname is True
 
 
 @pytest.mark.parametrize("ca_contents", ["", "not a certificate"])

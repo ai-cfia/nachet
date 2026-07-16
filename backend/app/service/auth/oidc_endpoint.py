@@ -7,7 +7,9 @@ class OidcEndpointError(ValueError):
     """Raised when an OIDC endpoint does not meet Nachet's URL policy."""
 
 
-def validate_oidc_issuer_url(issuer: str) -> str:
+def validate_oidc_issuer_url(
+    issuer: str,
+) -> str:
     """Validate an issuer URL without changing its exact configured value."""
     return _validate_oidc_endpoint(
         issuer,
@@ -16,7 +18,9 @@ def validate_oidc_issuer_url(issuer: str) -> str:
     )
 
 
-def validate_oidc_jwks_uri(jwks_uri: str) -> str:
+def validate_oidc_jwks_uri(
+    jwks_uri: str,
+) -> str:
     """Validate a provider-supplied JWKS URI before requesting it."""
     return _validate_oidc_endpoint(
         jwks_uri,
@@ -37,8 +41,10 @@ def _validate_oidc_endpoint(
         endpoint_name=endpoint_name,
         allow_query=allow_query,
     )
-    if parsed_endpoint.scheme != "https":
-        raise OidcEndpointError(f"{endpoint_name} must use HTTPS")
+    _validate_oidc_endpoint_transport(
+        parsed_endpoint,
+        endpoint_name=endpoint_name,
+    )
     return endpoint
 
 
@@ -71,3 +77,12 @@ def _validate_oidc_endpoint_shape(
 
     if not allow_query and parsed_endpoint.query:
         raise OidcEndpointError(f"{endpoint_name} must not contain a query string")
+
+
+def _validate_oidc_endpoint_transport(
+    parsed_endpoint: httpx.URL,
+    *,
+    endpoint_name: str,
+) -> None:
+    if parsed_endpoint.scheme != "https":
+        raise OidcEndpointError(f"{endpoint_name} must use HTTPS")
