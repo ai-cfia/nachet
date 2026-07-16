@@ -1,12 +1,24 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { render, cleanup, fireEvent } from "@testing-library/react";
+import {
+  render as rtlRender,
+  cleanup,
+  fireEvent,
+} from "@testing-library/react";
+import { I18nextProvider } from "react-i18next";
+import type { ReactElement } from "react";
 import type { InferenceBox, InferenceResult } from "@common/types";
 import {
   useInferenceStore,
   boxKey,
   type CamBoxResult,
 } from "@stores/useInferenceStore";
+import i18n from "../../i18n";
 import CamRankToggles from "../CamRankToggles";
+
+// Render through the i18n provider so the component's t() calls resolve to the
+// (English by default) translations rather than raw keys.
+const render = (ui: ReactElement) =>
+  rtlRender(<I18nextProvider i18n={i18n}>{ui}</I18nextProvider>);
 
 const RESULT_KEY = "0:model-a";
 

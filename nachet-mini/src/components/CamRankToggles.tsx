@@ -1,6 +1,7 @@
 import { Box, IconButton, Tooltip } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import { useTranslation } from "react-i18next";
 import type { InferenceResult } from "@common/types";
 import { useInferenceStore } from "@stores/useInferenceStore";
 
@@ -20,6 +21,7 @@ interface Props {
 }
 
 const CamRankToggles = ({ resultKey, result }: Props) => {
+  const { t } = useTranslation("main");
   const camResults = useInferenceStore((s) => s.camResults);
   const camRank = useInferenceStore((s) => s.camRank);
   const toggleCamRank = useInferenceStore((s) => s.toggleCamRank);
@@ -67,12 +69,12 @@ const CamRankToggles = ({ resultKey, result }: Props) => {
               "&:hover": { backgroundColor: on ? "#E3F2FD" : "#F5F5F5" },
             }}
           >
-            <Box sx={{ flex: 1 }}>{`Top ${r + 1}`}</Box>
-            <Tooltip title="Overlay this prediction rank on all seeds">
+            <Box sx={{ flex: 1 }}>{t("cam.rank", { n: r + 1 })}</Box>
+            <Tooltip title={t("cam.overlayTooltip")}>
               <IconButton
                 size="small"
                 sx={{ padding: "0.2vh" }}
-                aria-label={`overlay top ${r + 1}`}
+                aria-label={t("cam.overlayLabel", { n: r + 1 })}
                 aria-pressed={on}
                 onClick={(e) => {
                   e.stopPropagation();

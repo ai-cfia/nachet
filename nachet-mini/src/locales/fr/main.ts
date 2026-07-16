@@ -152,6 +152,11 @@ const main = {
     etaTooltip:
       "Temps restant estimé. La précision s'améliore avec chaque identification complétée.",
   },
+  cam: {
+    rank: "Top {{n}}",
+    overlayLabel: "superposer top {{n}}",
+    overlayTooltip: "Superposer ce rang de prédiction sur toutes les graines",
+  },
 } as const;
 
 export default main;
