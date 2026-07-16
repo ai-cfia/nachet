@@ -10,7 +10,7 @@ import {
   env,
 } from "@huggingface/transformers";
 import type { ModelConfig, WorkerInMessage, WorkerOutMessage } from "./models";
-import { CLASSIFIER_HEAD_FILENAME, huggingFaceFileUrl } from "./models";
+import { huggingFaceFileUrl } from "./models";
 import type { InferenceResult, InferenceBox } from "@common/types";
 import {
   loadDetector,
@@ -621,14 +621,16 @@ const classifyBoxes = async (
       });
 
       // ── Class Activation Mapping ─────────────────────────────────────────
-      // Only when the loaded classifier is the patched model exposing
-      // `swin_layernorm` (1, tokens, channels). One heatmap per top-K class so
-      // the UI can show which regions drive each candidate species. Streamed
-      // per box so maps arrive after each seed is classified.
+      // Only when the classifier declares head weights (`classifierHeadFile`)
+      // and exposes `swin_layernorm` (1, tokens, channels) — i.e. the patched
+      // model. One heatmap per top-K class so the UI can show which regions
+      // drive each candidate species. Streamed per box so maps arrive after
+      // each seed is classified.
+      const headFile = config.classifierHeadFile;
       const featTensor = rawOut.swin_layernorm as
         | { data?: Float32Array; dims?: number[] }
         | undefined;
-      if (featTensor?.data && featTensor.dims?.length === 3) {
+      if (headFile && featTensor?.data && featTensor.dims?.length === 3) {
         try {
           const [, tokens, channels] = featTensor.dims;
           const cam = await computeCam(
@@ -636,10 +638,7 @@ const classifyBoxes = async (
             tokens,
             channels,
             topIdxList,
-            huggingFaceFileUrl(
-              config.classifierModel,
-              CLASSIFIER_HEAD_FILENAME,
-            ),
+            huggingFaceFileUrl(config.classifierModel, headFile),
           );
           send({
             type: "cam-result",

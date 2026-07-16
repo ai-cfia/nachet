@@ -57,11 +57,12 @@ export interface CamResult {
 
 /**
  * Compute CAM heatmaps for the given class indices.
- * @param features flat `swin_layernorm` data, layout (1, tokens, channels).
- * @param tokens   spatial tokens (e.g. 144).
- * @param channels feature dim (must be 1536 to match the head).
- * @param classIndices which class rows of W to map (e.g. the top-K indices).
- * @param headUrl  URL of the classifier head weights (hosted on Hugging Face).
+ *
+ * `features` is the flat `swin_layernorm` data laid out (1, tokens, channels);
+ * `tokens` is the spatial token count (e.g. 144) and `channels` the feature dim
+ * (must be 1536 to match the head). `classIndices` selects which class rows of W
+ * to map (the top-K indices), and `headUrl` points at the classifier head
+ * weights hosted on Hugging Face.
  */
 export async function computeCam(
   features: Float32Array,
