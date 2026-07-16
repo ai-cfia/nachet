@@ -7,8 +7,8 @@ import { useInferenceStore } from "@stores/useInferenceStore";
 /**
  * Global CAM rank toggles shown under a run in the Images panel.
  *
- * One toggle per prediction rank ("Concept 1" = each seed's top-1 species,
- * "Concept 2" = each seed's 2nd, …). Turning one on overlays that rank's
+ * One toggle per prediction rank ("Top 1" = each seed's top-1 species,
+ * "Top 2" = each seed's 2nd, …). Turning one on overlays that rank's
  * activation map on *every* seed of the run at once; single-select (not
  * stackable), so one rank shows at a time.
  */
@@ -67,12 +67,12 @@ const CamRankToggles = ({ resultKey, result }: Props) => {
               "&:hover": { backgroundColor: on ? "#E3F2FD" : "#F5F5F5" },
             }}
           >
-            <Box sx={{ flex: 1 }}>{`Concept ${r + 1}`}</Box>
+            <Box sx={{ flex: 1 }}>{`Top ${r + 1}`}</Box>
             <Tooltip title="Overlay this prediction rank on all seeds">
               <IconButton
                 size="small"
                 sx={{ padding: "0.2vh" }}
-                aria-label={`overlay concept ${r + 1}`}
+                aria-label={`overlay top ${r + 1}`}
                 aria-pressed={on}
                 onClick={(e) => {
                   e.stopPropagation();

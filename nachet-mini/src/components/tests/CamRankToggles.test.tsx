@@ -72,14 +72,14 @@ describe("CamRankToggles", () => {
     expect(container.querySelector('[data-testid="cam-rank-0"]')).toBeNull();
   });
 
-  it("renders one toggle per CAM class, labelled Concept 1..N", () => {
+  it("renders one toggle per CAM class, labelled Top 1..N", () => {
     seedCam("box-1", 3);
     const { getByTestId } = render(
       <CamRankToggles resultKey={RESULT_KEY} result={makeResult(["box-1"])} />,
     );
-    expect(getByTestId("cam-rank-0")).toHaveTextContent("Concept 1");
-    expect(getByTestId("cam-rank-1")).toHaveTextContent("Concept 2");
-    expect(getByTestId("cam-rank-2")).toHaveTextContent("Concept 3");
+    expect(getByTestId("cam-rank-0")).toHaveTextContent("Top 1");
+    expect(getByTestId("cam-rank-1")).toHaveTextContent("Top 2");
+    expect(getByTestId("cam-rank-2")).toHaveTextContent("Top 3");
   });
 
   it("derives the rank count from the first box that has CAM data", () => {
@@ -132,7 +132,7 @@ describe("CamRankToggles", () => {
     const { getByLabelText } = render(
       <CamRankToggles resultKey={RESULT_KEY} result={makeResult(["box-1"])} />,
     );
-    fireEvent.click(getByLabelText("overlay concept 2"));
+    fireEvent.click(getByLabelText("overlay top 2"));
     // stopPropagation means only the button handler runs, not the row's too;
     // a single toggle leaves rank 1 active rather than cancelling itself out.
     expect(useInferenceStore.getState().camRank.get(RESULT_KEY)).toBe(1);
