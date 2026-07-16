@@ -67,7 +67,10 @@ const seedCam = (boxId: string, classCount: number) => {
 };
 
 describe("CamRankToggles", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Force a deterministic language so text/aria-label assertions don't depend
+    // on the runner's detected locale (CI can resolve to French).
+    await i18n.changeLanguage("en");
     useInferenceStore.setState({
       camResults: new Map(),
       camRank: new Map(),
