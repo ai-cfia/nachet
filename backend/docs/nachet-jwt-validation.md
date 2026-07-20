@@ -410,7 +410,7 @@ A provider outage does not claim that the user's token is invalid.
 Run the focused backend auth tests from `backend/`:
 
 ```bash
-uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py tests/test_local_keycloak_config.py -q
+uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py -q
 ```
 
 The tests cover token validation, discovery and JWKS shape, cache refresh,
@@ -422,8 +422,9 @@ identity compatibility, and protection of Nachet-owned user fields.
 The repository includes a local Keycloak realm and a pinned Keycloak service:
 
 ```bash
-python keycloak/setup_local_tls.py
-docker compose --profile oidc up -d nachet-keycloak
+./keycloak/setup_local_tls.sh
+docker compose --profile oidc up -d --wait nachet-keycloak
+./keycloak/verify_local_setup.sh
 ```
 
 The configured issuer is

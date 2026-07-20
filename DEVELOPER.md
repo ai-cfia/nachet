@@ -256,7 +256,7 @@ different implementations:
 Run the focused backend auth tests with:
 
 ```bash
-uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py tests/test_local_keycloak_config.py -q
+uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py -q
 ```
 
 See [backend token validation](backend/docs/nachet-jwt-validation.md) for the
@@ -264,21 +264,85 @@ request flow, validation rules, and current identity limitation.
 
 #### Local Keycloak
 
-Use this setup when you want to run Nachet with a real OIDC login without using
-a Microsoft Entra account. It assumes that you have already completed the local
-database, blob storage, backend, and frontend setup earlier in this guide.
+Use this setup to sign in locally without a Microsoft Entra account. Complete
+the database, storage, backend, and frontend setup first.
 
-Keycloak serves its login and metadata endpoints over HTTPS. Each developer
-creates a certificate on their own machine, so no certificate or private key is
-shared through the repository.
+Keycloak runs in Docker and serves its OIDC endpoints over HTTPS. The setup
+script creates a certificate for your machine; certificates and private keys
+are not stored in the repository.
+
+##### Where this setup works
+
+The backend can run on your machine or in Docker. Both options have been tested
+on macOS. Keycloak runs in Docker in either case.
+
+| Setup | How the backend reaches Keycloak | Status |
+| --- | --- | --- |
+| Backend on your machine | Connects through the published HTTPS port | Tested on macOS |
+| Backend in Docker | Connects through the Docker network | Tested on macOS |
+| Remote containers with VS Code port forwarding | Requires a separate network setup | Not tested |
+
+The browser and backend must use the same issuer URL. On your machine,
+`keycloak.localhost` resolves to `127.0.0.1`. Inside Docker, the same name is a
+network alias for the Keycloak container.
+
+```mermaid
+flowchart LR
+    subgraph host["Developer machine"]
+        browser["Browser and frontend"]
+        hosts["Host resolver<br/>keycloak.localhost = 127.0.0.1"]
+        published["Published HTTPS port<br/>127.0.0.1:8443"]
+        browser_ca["Browser trust store<br/>developer's mkcert CA"]
+    end
+
+    subgraph docker["Docker Compose"]
+        backend["Nachet backend"]
+        docker_dns["Docker DNS alias<br/>keycloak.localhost"]
+        backend_ca["Mounted public CA<br/>rootCA.pem"]
+        keycloak["Keycloak<br/>HTTPS on port 8443"]
+    end
+
+    browser -->|"resolve issuer hostname"| hosts
+    hosts --> published
+    published -->|"HTTPS"| keycloak
+    backend -->|"resolve issuer hostname"| docker_dns
+    docker_dns -->|"HTTPS"| keycloak
+    browser_ca -.->|"trusts certificate"| browser
+    backend_ca -.->|"loaded by HTTPX"| backend
+```
+
+Only the hosts file on your machine is changed. The backend container uses
+Docker DNS and does not need its own hosts-file entry.
+
+After the hostname is resolved, sign-in and token validation work like this:
+
+```mermaid
+sequenceDiagram
+    participant Browser as Browser / frontend
+    participant Keycloak
+    participant Backend as Nachet backend
+
+    Browser->>Keycloak: Load OIDC metadata over HTTPS
+    Browser->>Keycloak: Sign in with authorization code and PKCE
+    Keycloak-->>Browser: Return an access token
+    Browser->>Backend: Send API request with Bearer token
+    opt Verifier cache needs keys
+        Backend->>Keycloak: Load discovery metadata and JWKS over HTTPS
+        Keycloak-->>Backend: Return issuer metadata and public signing keys
+    end
+    Backend->>Backend: Verify signature, issuer, audience, and time claims
+    Backend-->>Browser: Return the protected API response
+```
+
+The backend checks the token locally with Keycloak's public signing keys. It
+does not send each token back to Keycloak.
 
 ##### 1. Install `mkcert`
 
 | Operating system | Installation |
 | --- | --- |
 | macOS | `brew install mkcert` |
-| Windows | `choco install mkcert` or `scoop install mkcert` |
-| Linux | Install `libnss3-tools`, then install `mkcert` from your package manager or its official release |
+| Linux or WSL | Install `libnss3-tools`, then install `mkcert` from your package manager or its official release |
 
 Firefox users on macOS may also need `brew install nss`.
 
@@ -287,7 +351,7 @@ Firefox users on macOS may also need `brew install nss`.
 Run the setup script from the repository root:
 
 ```bash
-python keycloak/setup_local_tls.py
+./keycloak/setup_local_tls.sh
 ```
 
 The script asks `mkcert` to trust its local certificate authority, creates a
@@ -295,15 +359,14 @@ certificate for `keycloak.localhost`, and places the public CA certificate where
 the backend can read it. The CA private key stays in the local `mkcert` store.
 Git ignores everything generated under `keycloak/local-certs/`.
 
-If `keycloak.localhost` does not resolve, the script prints the hosts-file entry
-you need:
+`keycloak.localhost` must resolve to the loopback interface on the developer
+machine. Add this entry if it does not already resolve:
 
 ```text
 127.0.0.1 keycloak.localhost
 ```
 
-The hosts file is `/etc/hosts` on macOS and Linux, and
-`C:\Windows\System32\drivers\etc\hosts` on Windows.
+The hosts file is `/etc/hosts` on macOS, Linux, and WSL.
 
 ##### 3. Select OIDC in the local environment files
 
@@ -341,7 +404,8 @@ you run the backend in Docker, make the same OIDC change in
 ##### 4. Start Keycloak
 
 ```bash
-docker compose --profile oidc up -d nachet-keycloak
+docker compose --profile oidc up -d --wait nachet-keycloak
+./keycloak/verify_local_setup.sh
 ```
 
 Open the discovery document to confirm that the browser trusts the certificate:
@@ -352,6 +416,9 @@ https://keycloak.localhost:8443/realms/nachet/.well-known/openid-configuration
 
 The page should open without a certificate warning, and its `issuer` value
 should match the URL above exactly.
+
+The Keycloak configuration choices and links to the official documentation are
+in [keycloak/README.md](keycloak/README.md).
 
 ##### 5. Start the backend
 

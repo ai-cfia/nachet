@@ -6,4 +6,3 @@
 .ruff_cache
 .coverage*
 htmlcov
-sbom.json

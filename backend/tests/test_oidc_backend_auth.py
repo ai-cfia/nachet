@@ -248,6 +248,18 @@ def test_oidc_provider_passes_ca_bundle_to_discovery_config() -> None:
     assert auth_config.oidc.discovery.ca_bundle == "/local-certs/ca/rootCA.pem"
 
 
+def test_oidc_provider_treats_blank_ca_bundle_as_unconfigured() -> None:
+    auth_config = create_auth_config(
+        auth_provider="oidc",
+        oidc_issuer=ISSUER,
+        oidc_audience=AUDIENCE,
+        oidc_ca_bundle="   ",
+    )
+
+    assert auth_config.oidc is not None
+    assert auth_config.oidc.discovery.ca_bundle is None
+
+
 @pytest.mark.parametrize("ca_contents", ["", "not a certificate"])
 def test_oidc_authenticator_rejects_invalid_ca_bundle_during_initialization(
     tmp_path: Path,
