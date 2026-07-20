@@ -271,59 +271,80 @@ Keycloak runs in Docker and serves its OIDC endpoints over HTTPS. The setup
 script creates a certificate for your machine; certificates and private keys
 are not stored in the repository.
 
-##### Where this setup works
+##### Local network layouts
 
-The backend can run on your machine or in Docker. Both options have been tested
-on macOS. Keycloak runs in Docker in either case.
+Keycloak stays in Docker in each layout below. Direct, container, and remote
+describe where the Nachet frontend and backend run.
 
-| Setup | How the backend reaches Keycloak | Status |
-| --- | --- | --- |
-| Backend on your machine | Connects through the published HTTPS port | Tested on macOS |
-| Backend in Docker | Connects through the Docker network | Tested on macOS |
-| Remote containers with VS Code port forwarding | Requires a separate network setup | Not tested |
+| Setup | Frontend | Browser to Keycloak | Backend to Keycloak | Status |
+| --- | --- | --- | --- | --- |
+| Direct | Vite on `http://localhost:5173` | Published HTTPS port | Published HTTPS port | Tested on macOS |
+| Container | Vite on `http://localhost:5173` | Published HTTPS port | Docker network alias | Tested on macOS |
+| Remote | Vite through VS Code port forwarding | Local HTTPS proxy | Docker network alias on the remote machine | Not tested |
 
-The browser and backend must use the same issuer URL. On your machine,
-`keycloak.localhost` resolves to `127.0.0.1`. Inside Docker, the same name is a
-network alias for the Keycloak container.
+Every path uses the same issuer:
+`https://keycloak.localhost:8443/realms/nachet`.
+
+###### Direct
 
 ```mermaid
 flowchart LR
-    subgraph host["Developer machine"]
-        browser["Browser and frontend"]
-        hosts["Host resolver<br/>keycloak.localhost = 127.0.0.1"]
-        published["Published HTTPS port<br/>127.0.0.1:8443"]
-        browser_ca["Browser trust store<br/>developer's mkcert CA"]
-    end
-
-    subgraph docker["Docker Compose"]
-        backend["Nachet backend"]
-        docker_dns["Docker DNS alias<br/>keycloak.localhost"]
-        backend_ca["Mounted public CA<br/>rootCA.pem"]
-        keycloak["Keycloak<br/>HTTPS on port 8443"]
-    end
-
-    browser -->|"resolve issuer hostname"| hosts
-    hosts --> published
-    published -->|"HTTPS"| keycloak
-    backend -->|"resolve issuer hostname"| docker_dns
-    docker_dns -->|"HTTPS"| keycloak
-    browser_ca -.->|"trusts certificate"| browser
-    backend_ca -.->|"loaded by HTTPX"| backend
+    browser["Browser"] -->|"loads frontend over HTTP"| frontend["Vite<br/>http://localhost:5173"]
+    browser -->|"API over HTTP"| backend["Nachet backend<br/>http://localhost:5174"]
+    browser -->|"OIDC over HTTPS"| endpoint["keycloak.localhost<br/>127.0.0.1:8443"]
+    backend -->|"Discovery and JWKS over HTTPS"| endpoint
+    endpoint --> keycloak["Keycloak container"]
 ```
 
-Only the hosts file on your machine is changed. The backend container uses
-Docker DNS and does not need its own hosts-file entry.
+###### Container
+
+```mermaid
+flowchart LR
+    browser["Browser"] -->|"loads frontend over HTTP"| frontend["Vite<br/>http://localhost:5173"]
+    browser -->|"API over HTTP"| backend_port["Published backend port<br/>localhost:12435"]
+    backend_port --> backend["Nachet backend container"]
+    browser -->|"OIDC over HTTPS"| endpoint["keycloak.localhost<br/>127.0.0.1:8443"]
+    endpoint --> keycloak["Keycloak container"]
+    backend -->|"Discovery and JWKS over HTTPS"| alias["Docker DNS alias<br/>keycloak.localhost"]
+    alias --> keycloak
+```
+
+###### Remote
+
+```mermaid
+flowchart LR
+    browser["Browser"] -->|"loads frontend over HTTP"| frontend_forward["VS Code forwarded port<br/>http://localhost:5173"]
+    frontend_forward --> frontend["Remote Vite server"]
+    browser -->|"API over HTTP"| backend_forward["VS Code forwarded backend port"]
+    backend_forward --> backend["Remote Nachet backend container"]
+    browser -.->|"OIDC over HTTPS"| proxy["Local HTTPS proxy<br/>keycloak.localhost:8443<br/>required, not tested"]
+    proxy -.-> keycloak["Remote Keycloak container"]
+    backend -->|"Discovery and JWKS over HTTPS"| alias["Docker DNS alias<br/>keycloak.localhost"]
+    alias --> keycloak
+```
+
+The hosts-file entry is added only to the developer machine. Containers resolve
+`keycloak.localhost` through Docker DNS. The browser trusts the developer's
+local CA, and the backend loads its public certificate through `OIDC_CA_BUNDLE`.
+
+The frontend itself uses HTTP for local development. The HTTPS connections in
+these diagrams are the OIDC requests to Keycloak. The remote layout also needs
+a local proxy that exposes the remote Keycloak container at
+`https://keycloak.localhost:8443`. That proxy has not been tested or added to
+this guide yet.
 
 After the hostname is resolved, sign-in and token validation work like this:
 
 ```mermaid
 sequenceDiagram
-    participant Browser as Browser / frontend
+    participant Browser as Browser running the frontend
     participant Keycloak
     participant Backend as Nachet backend
 
     Browser->>Keycloak: Load OIDC metadata over HTTPS
-    Browser->>Keycloak: Sign in with authorization code and PKCE
+    Browser->>Keycloak: Start sign-in with a PKCE challenge
+    Keycloak-->>Browser: Redirect with an authorization code
+    Browser->>Keycloak: Exchange the code and PKCE verifier
     Keycloak-->>Browser: Return an access token
     Browser->>Backend: Send API request with Bearer token
     opt Verifier cache needs keys
