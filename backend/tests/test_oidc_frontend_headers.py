@@ -39,18 +39,23 @@ async def test_oidc_frontend_csp_allows_the_configured_issuer_origin() -> None:
         response = await client.get("/")
 
     csp = response.headers["content-security-policy"]
-    assert "connect-src 'self'" in csp
-    assert "frame-src 'self'" in csp
-    assert "https://keycloak.localhost:8443" in csp
-    assert "https://keycloak.localhost:8443/realms/nachet" not in csp
+    directives: dict[str, set[str]] = {}
+    for directive in csp.split(";"):
+        parts = directive.split()
+        if parts:
+            directives[parts[0]] = set(parts[1:])
 
-    directives = {
-        directive.partition(" ")[0]: directive
-        for directive in csp.split("; ")
-        if directive
-    }
-    assert "https://keycloak.localhost:8443" in directives["connect-src"]
-    assert "https://keycloak.localhost:8443" in directives["frame-src"]
+    provider_origin = "https://keycloak.localhost:8443"
+    provider_issuer = f"{provider_origin}/realms/nachet"
+    connect_sources = directives["connect-src"]
+    frame_sources = directives["frame-src"]
+
+    assert "'self'" in connect_sources
+    assert "'self'" in frame_sources
+    assert provider_origin in connect_sources
+    assert provider_origin in frame_sources
+    assert provider_issuer not in connect_sources
+    assert provider_issuer not in frame_sources
 
 
 @pytest.mark.asyncio

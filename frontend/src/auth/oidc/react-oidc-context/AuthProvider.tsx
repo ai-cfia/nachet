@@ -63,34 +63,7 @@ export const AuthProvider = ({
   onSigninCallback,
   ...settings
 }: AuthProviderProps) => {
-  const managerSettings = useMemo<UserManagerSettings>(
-    () => ({
-      authority: settings.authority,
-      client_id: settings.client_id,
-      redirect_uri: settings.redirect_uri,
-      post_logout_redirect_uri: settings.post_logout_redirect_uri,
-      response_type: settings.response_type,
-      scope: settings.scope,
-      silent_redirect_uri: settings.silent_redirect_uri,
-      automaticSilentRenew: settings.automaticSilentRenew,
-      userStore: settings.userStore,
-    }),
-    [
-      settings.authority,
-      settings.client_id,
-      settings.redirect_uri,
-      settings.post_logout_redirect_uri,
-      settings.response_type,
-      settings.scope,
-      settings.silent_redirect_uri,
-      settings.automaticSilentRenew,
-      settings.userStore,
-    ],
-  );
-  const userManager = useMemo(
-    () => new UserManager(managerSettings),
-    [managerSettings],
-  );
+  const [userManager] = useState(() => new UserManager(settings));
   const [state, setState] = useState<AuthState>(initialAuthState);
   const didInitialize = useRef(false);
 
@@ -181,7 +154,7 @@ export const AuthProvider = ({
   const value = useMemo(
     () => ({
       ...state,
-      settings: managerSettings,
+      settings: userManager.settings,
       events: userManager.events,
       signinRedirect: (args?: SigninRedirectArgs) =>
         userManager.signinRedirect(args),
@@ -191,7 +164,7 @@ export const AuthProvider = ({
       removeUser: () => userManager.removeUser(),
       clearStaleState: () => userManager.clearStaleState(),
     }),
-    [managerSettings, state, userManager],
+    [state, userManager],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
