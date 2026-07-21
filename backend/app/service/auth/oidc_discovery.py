@@ -74,8 +74,7 @@ class OidcDiscoveryClient:
     ) -> None:
         self.config = config
         self.discovery_url = self._build_discovery_url(self.config.issuer)
-        # The discovery client always owns production TLS configuration. Tests
-        # replace only network I/O through HTTPX's in-memory mock transport.
+        # Tests replace only the HTTP transport, leaving SSL setup unchanged.
         self._ssl_context = self._create_ssl_context()
         self._mock_transport = mock_transport
         self._cache_clock = cache_clock if cache_clock is not None else _utc_now

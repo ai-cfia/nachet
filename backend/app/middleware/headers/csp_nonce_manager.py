@@ -61,8 +61,8 @@ class CSPNonceManager:
             >>> "nonce-abc123xyz" in header
             True
         """
-        # OIDC uses direct requests and a hidden iframe for session checks. Both
-        # browser paths are limited to the validated provider origin.
+        # Allow OIDC requests and session iframes only from the configured
+        # provider origin.
         provider_origin = f" {auth_provider_origin}" if auth_provider_origin else ""
 
         # Base CSP directives
