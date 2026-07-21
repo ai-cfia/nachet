@@ -94,10 +94,11 @@ def _parse_required_setting(value: str | None, setting_name: str) -> str:
 
 
 def _parse_optional_setting(value: str | None) -> str | None:
-    if not value:
+    if value is None:
         return None
 
-    return value.strip() or None
+    normalized_value = value.strip()
+    return normalized_value if normalized_value else None
 
 
 def _parse_claim_name(value: str) -> str:
