@@ -22,15 +22,19 @@
       "serviceAccountsEnabled": false,
       "redirectUris": [
         "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:12435",
         "http://localhost:12436"
       ],
       "webOrigins": [
         "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:12435",
         "http://localhost:12436"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:5173##http://localhost:12436"
+        "post.logout.redirect.uris": "http://localhost:5173##http://localhost:5174##http://localhost:12435##http://localhost:12436"
       },
       "defaultClientScopes": [
         "basic",

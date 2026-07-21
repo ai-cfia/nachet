@@ -6,7 +6,7 @@
  *
  * Original project is MIT licensed. See LICENSE in this directory.
  */
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   UserManager,
   type SigninRedirectArgs,
@@ -92,9 +92,15 @@ export const AuthProvider = ({
     [managerSettings],
   );
   const [state, setState] = useState<AuthState>(initialAuthState);
+  const didInitialize = useRef(false);
 
   useEffect(() => {
-    let isMounted = true;
+    // React StrictMode replays effects in development. An authorization code
+    // can only be exchanged once, so initialization must run once per mount.
+    if (didInitialize.current) {
+      return;
+    }
+    didInitialize.current = true;
 
     const initialise = async (): Promise<void> => {
       try {
@@ -105,10 +111,6 @@ export const AuthProvider = ({
           await onSigninCallback?.(user ?? null);
         } else {
           user = await userManager.getUser();
-        }
-
-        if (!isMounted) {
-          return;
         }
 
         const authenticatedUser = user ?? null;
@@ -122,10 +124,6 @@ export const AuthProvider = ({
           error: null,
         });
       } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
         setState({
           isLoading: false,
           isAuthenticated: false,
@@ -136,10 +134,6 @@ export const AuthProvider = ({
     };
 
     void initialise();
-
-    return () => {
-      isMounted = false;
-    };
   }, [onSigninCallback, skipSigninCallback, userManager]);
 
   useEffect(() => {

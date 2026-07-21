@@ -39,13 +39,18 @@ class CSPNonceManager:
         return secrets.token_urlsafe(length)
 
     @staticmethod
-    def build_csp_header(nonce: str, include_report_uri: bool = False) -> str:
+    def build_csp_header(
+        nonce: str,
+        include_report_uri: bool = False,
+        auth_provider_origin: str | None = None,
+    ) -> str:
         """
         Build a Content Security Policy header with the given nonce.
 
         Args:
             nonce: The nonce value to include in the CSP header
             include_report_uri: Whether to include CSP violation reporting
+            auth_provider_origin: Trusted origin used by browser authentication
 
         Returns:
             Complete CSP header string
@@ -56,6 +61,10 @@ class CSPNonceManager:
             >>> "nonce-abc123xyz" in header
             True
         """
+        # OIDC uses direct requests and a hidden iframe for session checks. Both
+        # browser paths are limited to the validated provider origin.
+        provider_origin = f" {auth_provider_origin}" if auth_provider_origin else ""
+
         # Base CSP directives
         csp_parts = [
             "default-src 'self'",
@@ -63,8 +72,10 @@ class CSPNonceManager:
             f"style-src 'self' 'nonce-{nonce}'",
             "img-src 'self' data: blob:",
             "font-src 'self' data:",
-            "connect-src 'self' https://login.microsoftonline.com https://*.msauth.net https://*.msftauth.net https://*.msftauthimages.net https://*.msauthimages.net https://*.msidentity.com",
-            "frame-src 'self' https://*.microsoftonline.com https://*.msauth.net https://*.msftauth.net https://*.msftauthimages.net https://*.msauthimages.net https://*.msidentity.com",
+            "connect-src 'self' https://login.microsoftonline.com https://*.msauth.net https://*.msftauth.net https://*.msftauthimages.net https://*.msauthimages.net https://*.msidentity.com"
+            f"{provider_origin}",
+            "frame-src 'self' https://*.microsoftonline.com https://*.msauth.net https://*.msftauth.net https://*.msftauthimages.net https://*.msauthimages.net https://*.msidentity.com"
+            f"{provider_origin}",
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",

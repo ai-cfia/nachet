@@ -29,6 +29,14 @@ def validate_oidc_jwks_uri(
     )
 
 
+def get_oidc_issuer_origin(issuer: str) -> str:
+    """Return the validated scheme, host, and port used by browser policy."""
+    validate_oidc_issuer_url(issuer)
+    parsed_issuer = httpx.URL(issuer)
+    issuer_origin = parsed_issuer.copy_with(path="/", query=None, fragment=None)
+    return str(issuer_origin).rstrip("/")
+
+
 def _validate_oidc_endpoint(
     endpoint: str,
     *,

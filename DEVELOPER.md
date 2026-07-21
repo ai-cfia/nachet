@@ -282,6 +282,10 @@ describe where the Nachet frontend and backend run.
 | Container | Vite on `http://localhost:5173` | Published HTTPS port | Docker network alias | Tested on macOS |
 | Remote | Vite through VS Code port forwarding | Local HTTPS proxy | Docker network alias on the remote machine | Not tested |
 
+The direct and container backends can also serve the built frontend. In that
+case, use the backend URL as the OIDC redirect URL: `http://localhost:5174` for
+the host backend or `http://localhost:12435` for the container backend.
+
 Every path uses the same issuer:
 `https://keycloak.localhost:8443/realms/nachet`.
 
@@ -328,10 +332,11 @@ The hosts-file entry is added only to the developer machine. Containers resolve
 local CA, and the backend loads its public certificate through `OIDC_CA_BUNDLE`.
 
 The frontend itself uses HTTP for local development. The HTTPS connections in
-these diagrams are the OIDC requests to Keycloak. The remote layout also needs
-a local proxy that exposes the remote Keycloak container at
-`https://keycloak.localhost:8443`. That proxy has not been tested or added to
-this guide yet.
+these diagrams are the OIDC requests to Keycloak.
+
+Remote development is not supported by this guide yet. It needs a local HTTPS
+proxy so the browser can reach the remote Keycloak container at
+`https://keycloak.localhost:8443`. We still need to choose and test that proxy.
 
 After the hostname is resolved, sign-in and token validation work like this:
 
@@ -357,6 +362,10 @@ sequenceDiagram
 
 The backend checks the token locally with Keycloak's public signing keys. It
 does not send each token back to Keycloak.
+
+If Keycloak rotates its signing key, the backend refreshes the JWKS when it
+receives a token with a new key ID. A normal Keycloak restart does not require
+a backend restart.
 
 ##### 1. Install `mkcert`
 
@@ -438,6 +447,10 @@ https://keycloak.localhost:8443/realms/nachet/.well-known/openid-configuration
 The page should open without a certificate warning, and its `issuer` value
 should match the URL above exactly.
 
+The imported realm allows the local Vite and backend URLs as login redirects
+and browser origins. The verification script checks each URL and confirms that
+Keycloak rejects an unlisted origin.
+
 The Keycloak configuration choices and links to the official documentation are
 in [keycloak/README.md](keycloak/README.md).
 
@@ -472,13 +485,57 @@ VITE_LOG_API_URL="http://localhost:12435/logs"
 
 ##### 6. Start the frontend and sign in
 
+Use Vite for normal frontend development. If your change affects authentication
+or frontend startup, also test the built frontend through the backend.
+
+###### Run Vite on your machine
+
+Vite runs on your machine whether the backend runs directly or in Docker. Use
+`http://localhost:5174` for a backend running on your machine, or
+`http://localhost:12435` for a backend running in Docker. Set
+`VITE_BACKEND_URL` to that URL and `VITE_LOG_API_URL` to its `/logs` endpoint
+before starting Vite.
+
+The backend environment template already allows requests from
+`http://localhost:5173` through CORS.
+
 ```bash
 cd frontend
 export $(grep -v '^#' .env.config.local | xargs)
 npm run dev -- --port 5173
 ```
 
-Open <http://localhost:5173> and sign in with either account:
+Open <http://localhost:5173>.
+
+###### Run through the backend
+
+Set these values in `frontend/.env.config.local` before building:
+
+```bash
+VITE_BACKEND_URL="http://localhost:5174"
+VITE_LOG_API_URL="http://localhost:5174/logs"
+VITE_OIDC_REDIRECT_URI="http://localhost:5174"
+VITE_OIDC_POST_LOGOUT_REDIRECT_URI="http://localhost:5174"
+```
+
+Use `http://localhost:12435` instead when the backend runs in Docker. Then build
+the frontend and upload it to the local frontend blob container:
+
+```bash
+cd frontend
+npm run build
+cd ../backend
+uv run app/scripts/push_frontend_to_blob.py --clean
+```
+
+Open the backend URL for the setup you are testing:
+
+- <http://localhost:5174> when the backend runs on your machine;
+- <http://localhost:12435> when the backend runs in Docker.
+
+###### Check sign-in
+
+Sign in with either account:
 
 | Username | Password | Purpose |
 | --- | --- | --- |

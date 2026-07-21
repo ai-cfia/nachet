@@ -295,7 +295,13 @@ async def lifespan(app: FastAPI):
     print("Lifespan App shutdown complete!")
 
 
-def create_app(settings: Settings, router: APIRouter, lifespan=None):
+def create_app(
+    settings: Settings,
+    router: APIRouter,
+    lifespan=None,
+    *,
+    auth_provider_origin: str | None = None,
+):
     app = FastAPI(
         lifespan=lifespan, docs_url=settings.swagger_path, root_path=settings.base_path
     )
@@ -316,7 +322,12 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     )
 
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
-    app.add_middleware(HeadersMiddleware, preset=settings.security_headers_preset)
+
+    app.add_middleware(
+        HeadersMiddleware,
+        preset=settings.security_headers_preset,
+        auth_provider_origin=auth_provider_origin,
+    )
     app.add_middleware(SlowAPIMiddleware)
     app.add_middleware(
         LoggingMiddleware

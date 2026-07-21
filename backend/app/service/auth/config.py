@@ -5,6 +5,7 @@ from enum import Enum
 
 from app.api.config import Settings
 from app.service.auth.oidc_discovery import OidcDiscoveryConfig
+from app.service.auth.oidc_endpoint import get_oidc_issuer_origin
 
 
 class AuthProvider(str, Enum):
@@ -31,6 +32,14 @@ class BackendAuthConfig:
     provider: AuthProvider
     azure: AzureAuthConfig | None
     oidc: OidcAuthConfig | None
+
+    @property
+    def browser_provider_origin(self) -> str | None:
+        """Return the provider origin that the browser may contact directly."""
+        if self.oidc is None:
+            return None
+
+        return get_oidc_issuer_origin(self.oidc.discovery.issuer)
 
     @classmethod
     def from_settings(cls, settings: Settings) -> BackendAuthConfig:

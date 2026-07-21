@@ -22,6 +22,7 @@ class HeadersMiddleware(BaseHTTPMiddleware):
         ],
         preset: str | None = None,
         use_csp_nonce: bool = True,
+        auth_provider_origin: str | None = None,
         **custom_headers: Any,
     ):
         headers = PRESETS.get(preset, {}).copy() if preset else {}
@@ -37,6 +38,7 @@ class HeadersMiddleware(BaseHTTPMiddleware):
 
         self.headers = headers
         self.use_csp_nonce = use_csp_nonce
+        self.auth_provider_origin = auth_provider_origin
         super().__init__(app)
 
     async def dispatch(
@@ -51,7 +53,10 @@ class HeadersMiddleware(BaseHTTPMiddleware):
         for header_name, header_value in self.headers.items():
             # Replace CSP header with nonce-based version if enabled
             if header_name == "Content-Security-Policy" and self.use_csp_nonce:
-                header_value = CSPNonceManager.build_csp_header(nonce)
+                header_value = CSPNonceManager.build_csp_header(
+                    nonce,
+                    auth_provider_origin=self.auth_provider_origin,
+                )
 
             response.headers[header_name] = header_value
 

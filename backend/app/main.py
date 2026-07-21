@@ -2,17 +2,24 @@
 # from fastapi import FastAPI
 from app.api.routes import router as api_router
 from app.api.config import create_app, get_settings, lifespan
+from app.service.auth.config import BackendAuthConfig
 from dbos import DBOS, DBOSConfig
 
 # Share one validated settings instance across startup, lifespan, and auth.
 settings = get_settings()
+auth_config = BackendAuthConfig.from_settings(settings)
 # Conditional import for debug routes
 if settings.nachet_env == "development":
     from app.api.dev_routes import router as debug_router
 
     api_router.include_router(debug_router)
 
-app = create_app(settings, api_router, lifespan=lifespan)
+app = create_app(
+    settings,
+    api_router,
+    lifespan=lifespan,
+    auth_provider_origin=auth_config.browser_provider_origin,
+)
 
 dbos_config = DBOSConfig(
     name="nachet-dbos",
