@@ -2,7 +2,7 @@
 set -eu
 
 KEYCLOAK_HOST="keycloak.localhost"
-SCRIPT_DIRECTORY=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+SCRIPT_DIRECTORY=$(CDPATH='' cd "$(dirname "$0")" && pwd)
 SERVER_CERT_DIRECTORY="$SCRIPT_DIRECTORY/local-certs/server"
 CA_CERT_DIRECTORY="$SCRIPT_DIRECTORY/local-certs/ca"
 

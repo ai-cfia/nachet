@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-SCRIPT_DIRECTORY=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-REPOSITORY_ROOT=$(CDPATH='' cd -- "$SCRIPT_DIRECTORY/.." && pwd)
+SCRIPT_DIRECTORY=$(CDPATH='' cd "$(dirname "$0")" && pwd)
+REPOSITORY_ROOT=$(CDPATH='' cd "$SCRIPT_DIRECTORY/.." && pwd)
 CA_CERTIFICATE="$SCRIPT_DIRECTORY/local-certs/ca/rootCA.pem"
 EXPECTED_ISSUER="https://keycloak.localhost:8443/realms/nachet"
 DISCOVERY_URL="$EXPECTED_ISSUER/.well-known/openid-configuration"
