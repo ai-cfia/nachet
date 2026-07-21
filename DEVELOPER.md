@@ -389,6 +389,10 @@ certificate for `keycloak.localhost`, and places the public CA certificate where
 the backend can read it. The CA private key stays in the local `mkcert` store.
 Git ignores everything generated under `keycloak/local-certs/`.
 
+The Keycloak private key remains at mode `0600`. When Compose starts Keycloak,
+it uses the developer's UID so the container can read the bind-mounted key. It
+keeps the image's group `0` so Keycloak can still write to its own directories.
+
 `keycloak.localhost` must resolve to the loopback interface on the developer
 machine. Add this entry if it does not already resolve:
 
@@ -428,13 +432,23 @@ VITE_OIDC_API_SCOPE_CLAIM="nachet-api"
 ```
 
 Keep the database, storage, and other local values from the normal setup. If
-you run the backend in Docker, make the same OIDC change in
-`backend/.env.container.local`.
+you run the backend in Docker, put the same issuer and audience in
+`backend/.env.container.local`, but use the path mounted inside the container:
+
+```bash
+AUTH_PROVIDER="oidc"
+OIDC_ISSUER="https://keycloak.localhost:8443/realms/nachet"
+OIDC_AUDIENCE="nachet-api"
+OIDC_CA_BUNDLE="/opt/nachet/local-ca/rootCA.pem"
+```
+
+The value stays in the backend environment file so another OIDC provider can
+use a different CA bundle or the normal public trust store.
 
 ##### 4. Start Keycloak
 
 ```bash
-docker compose --profile oidc up -d --wait nachet-keycloak
+KEYCLOAK_UID="$(id -u)" docker compose --profile oidc up -d --wait nachet-keycloak
 ./keycloak/verify_local_setup.sh
 ```
 
@@ -449,7 +463,8 @@ should match the URL above exactly.
 
 The imported realm allows the local Vite and backend URLs as login redirects
 and browser origins. The verification script checks each URL and confirms that
-Keycloak rejects an unlisted origin.
+Keycloak rejects an unlisted origin. It does not complete a browser sign-in or
+call Nachet's API; those checks are in step 6.
 
 The Keycloak configuration choices and links to the official documentation are
 in [keycloak/README.md](keycloak/README.md).
@@ -543,8 +558,13 @@ Sign in with either account:
 | `nachet-user` | `nachet-local` | Has a second UUID and can exercise the registration path. |
 
 After sign-in, confirm that Nachet displays the user's OID and loads protected
-data such as directories. A `401` usually means the token was rejected. A `503`
-usually means the backend could not reach or trust Keycloak.
+data such as directories, then sign out. For authentication changes, repeat
+this check with Vite and with the frontend served by the backend. Test both a
+host backend and a container backend when the change touches networking or
+container configuration.
+
+A `401` usually means the token was rejected. A `503` usually means the backend
+could not reach or trust Keycloak.
 
 ##### 7. Stop Keycloak
 

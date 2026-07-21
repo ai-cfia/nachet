@@ -72,10 +72,8 @@ class CSPNonceManager:
             f"style-src 'self' 'nonce-{nonce}'",
             "img-src 'self' data: blob:",
             "font-src 'self' data:",
-            "connect-src 'self' https://login.microsoftonline.com https://*.msauth.net https://*.msftauth.net https://*.msftauthimages.net https://*.msauthimages.net https://*.msidentity.com"
-            f"{provider_origin}",
-            "frame-src 'self' https://*.microsoftonline.com https://*.msauth.net https://*.msftauth.net https://*.msftauthimages.net https://*.msauthimages.net https://*.msidentity.com"
-            f"{provider_origin}",
+            f"connect-src 'self' https://login.microsoftonline.com https://*.msauth.net https://*.msftauth.net https://*.msftauthimages.net https://*.msauthimages.net https://*.msidentity.com{provider_origin}",
+            f"frame-src 'self' https://*.microsoftonline.com https://*.msauth.net https://*.msftauth.net https://*.msftauthimages.net https://*.msauthimages.net https://*.msidentity.com{provider_origin}",
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",

@@ -47,6 +47,7 @@ services:
   nachet-keycloak:
     container_name: nachet-keycloak
     image: quay.io/keycloak/keycloak:26.7.0
+    user: "${KEYCLOAK_UID:-1000}:0"
     profiles:
       - oidc
     command:
@@ -100,8 +101,6 @@ services:
       # - ./nachet-backend/.env.secrets.local
       # - ./nachet-backend/.env.config.local
       - ./backend/.env.container.local
-    environment:
-      OIDC_CA_BUNDLE: /opt/nachet/local-ca/rootCA.pem
     ports:
       - "12435:5174"
     volumes:
