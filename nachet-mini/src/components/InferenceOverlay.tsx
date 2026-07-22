@@ -592,12 +592,14 @@ const InferenceOverlay = ({
             pointerEvents: "none",
             boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
             display: isLayersOpen ? "block" : "none",
+            transform: isPortrait ? "rotate(90deg)" : "none",
           }}
         >
           {zIndex}
         </Box>
       )}
 
+      {/* Layers button */}
       {!editMode && (
         <Tooltip title="Layers" placement="top">
           <IconButton
@@ -620,7 +622,10 @@ const InferenceOverlay = ({
             aria-controls={isLayersOpen ? "layers-menu" : undefined}
             aria-haspopup="true"
           >
-            <LayersOutlined fontSize="small" />
+            <LayersOutlined
+              fontSize="small"
+              sx={{ transform: isPortrait ? "rotate(90deg)" : "none" }}
+            />
           </IconButton>
         </Tooltip>
       )}

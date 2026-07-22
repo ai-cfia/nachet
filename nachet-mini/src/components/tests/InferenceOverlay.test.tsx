@@ -639,6 +639,50 @@ describe("InferenceOverlay", () => {
       const labelEl = getByTestId("inference-overlay-label-0");
       expect(window.getComputedStyle(labelEl).transform).toBe("none");
     });
+
+    it("counter-rotates the layers icon to stay upright in portrait", () => {
+      vi.mocked(useIsPortrait).mockReturnValue(true);
+      const { container } = renderOverlay({ editMode: false, index: 0 });
+
+      const icon = container.querySelector<SVGSVGElement>(
+        '[aria-label="layers"] svg',
+      );
+      expect(icon).not.toBeNull();
+      expect(window.getComputedStyle(icon!).transform).not.toBe("none");
+    });
+
+    it("does not rotate the layers icon in landscape orientation", () => {
+      vi.mocked(useIsPortrait).mockReturnValue(false);
+      const { container } = renderOverlay({ editMode: false, index: 0 });
+
+      const icon = container.querySelector<SVGSVGElement>(
+        '[aria-label="layers"] svg',
+      );
+      expect(icon).not.toBeNull();
+      expect(window.getComputedStyle(icon!).transform).toBe("none");
+    });
+
+    it("counter-rotates the z-index badge to stay upright in portrait", async () => {
+      vi.mocked(useIsPortrait).mockReturnValue(true);
+      const { getByTestId } = renderOverlay({ editMode: false, index: 0 });
+
+      await page.getByRole("button", { name: "layers" }).click();
+      await expect.element(page.getByTestId("z-index-badge-0")).toBeVisible();
+
+      const badge = getByTestId("z-index-badge-0");
+      expect(window.getComputedStyle(badge).transform).not.toBe("none");
+    });
+
+    it("does not rotate the z-index badge in landscape orientation", async () => {
+      vi.mocked(useIsPortrait).mockReturnValue(false);
+      const { getByTestId } = renderOverlay({ editMode: false, index: 0 });
+
+      await page.getByRole("button", { name: "layers" }).click();
+      await expect.element(page.getByTestId("z-index-badge-0")).toBeVisible();
+
+      const badge = getByTestId("z-index-badge-0");
+      expect(window.getComputedStyle(badge).transform).toBe("none");
+    });
   });
 
   describe("label position", () => {
