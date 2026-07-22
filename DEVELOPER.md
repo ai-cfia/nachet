@@ -163,6 +163,9 @@ nachet$ docker compose -f docker-compose.yaml up -d grafana loki alloy
 ```bash
 nachet$ cd backend
 
+# first-time setup: create the local Dockerfile used by Compose
+nachet/backend$ cp Dockerfile Dockerfile.local
+
 # enter your own values in the .env.local file
 nachet/backend$ cp .env.template .env.local
 nachet/backend$ nano .env.local
@@ -237,6 +240,8 @@ OIDC_CA_BUNDLE="../keycloak/local-certs/ca/rootCA.pem"
 
 OIDC discovery and JWKS always use HTTPS. `OIDC_CA_BUNDLE` adds a private CA to
 the normal HTTPX trust store when a provider does not use a public certificate.
+When the backend runs in Docker, set `OIDC_CA_BUNDLE` in
+`backend/.env.container.local` to `/opt/nachet/local-ca/rootCA.pem`.
 
 The claim selected by `OIDC_USER_ID_CLAIM` must currently contain a UUID. This
 keeps the existing route and database contract intact. Supporting non-UUID
@@ -256,13 +261,43 @@ different implementations:
 Run the focused backend auth tests with:
 
 ```bash
-uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py -q
+nachet/backend$ uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py -q
 ```
 
 See [backend token validation](backend/docs/nachet-jwt-validation.md) for the
 request flow, validation rules, and current identity limitation.
 
-#### Local Keycloak
+### Frontend setup
+
+```bash
+nachet$ cd frontend
+
+# enter your own values in the .env.config.local file
+nachet/frontend$ cp .env.template .env.config.local
+nachet/frontend$ nano .env.config.local
+nachet/frontend$ npm run update
+nachet/frontend$ npm run test
+
+# run dev with env vars from .env.config.local
+# nachet/frontend$ source .env.config.local # requires export keyword in the file
+nachet/frontend$ export $(grep -v '^#' .env.config.local | xargs)
+nachet/frontend$ npm run dev -- --port 5173
+
+# unset env vars
+nachet/frontend$ unset $(grep -v '^#' .env.config.local | grep -v '^$' | cut -d= -f1)
+```
+
+Use these values for the OIDC frontend:
+
+```bash
+VITE_AUTH_PROVIDER="oidc"
+VITE_OIDC_AUTHORITY="https://keycloak.localhost:8443/realms/nachet"
+VITE_OIDC_CLIENT_ID="nachet-frontend"
+VITE_OIDC_SCOPE="openid profile email"
+VITE_OIDC_API_SCOPE_CLAIM="nachet-api"
+```
+
+### Local Keycloak
 
 Use this setup to sign in locally without a Microsoft Entra account. Complete
 the database, storage, backend, and frontend setup first.
@@ -381,7 +416,7 @@ Firefox users on macOS may also need `brew install nss`.
 Run the setup script from the repository root:
 
 ```bash
-./keycloak/setup_local_tls.sh
+nachet$ ./keycloak/setup_local_tls.sh
 ```
 
 The script asks `mkcert` to trust its local certificate authority, creates a
@@ -404,52 +439,16 @@ The hosts file is `/etc/hosts` on macOS, Linux, and WSL.
 
 ##### 3. Select OIDC in the local environment files
 
-If you do not already have local environment files, create them from the
-templates:
-
-```bash
-cp backend/.env.template backend/.env.local
-cp frontend/.env.template frontend/.env.config.local
-```
-
-Set the backend provider in `backend/.env.local`:
-
-```bash
-AUTH_PROVIDER="oidc"
-OIDC_ISSUER="https://keycloak.localhost:8443/realms/nachet"
-OIDC_AUDIENCE="nachet-api"
-OIDC_CA_BUNDLE="../keycloak/local-certs/ca/rootCA.pem"
-```
-
-Set the frontend provider in `frontend/.env.config.local`:
-
-```bash
-VITE_AUTH_PROVIDER="oidc"
-VITE_OIDC_AUTHORITY="https://keycloak.localhost:8443/realms/nachet"
-VITE_OIDC_CLIENT_ID="nachet-frontend"
-VITE_OIDC_SCOPE="openid profile email"
-VITE_OIDC_API_SCOPE_CLAIM="nachet-api"
-```
-
-Keep the database, storage, and other local values from the normal setup. If
-you run the backend in Docker, put the same issuer and audience in
-`backend/.env.container.local`, but use the path mounted inside the container:
-
-```bash
-AUTH_PROVIDER="oidc"
-OIDC_ISSUER="https://keycloak.localhost:8443/realms/nachet"
-OIDC_AUDIENCE="nachet-api"
-OIDC_CA_BUNDLE="/opt/nachet/local-ca/rootCA.pem"
-```
-
-The value stays in the backend environment file so another OIDC provider can
-use a different CA bundle or the normal public trust store.
+Use the OIDC values from the backend and frontend setup sections above. Put
+the backend values in `backend/.env.local` or `backend/.env.container.local`,
+depending on where the backend runs, and put the frontend values in
+`frontend/.env.config.local`.
 
 ##### 4. Start Keycloak
 
 ```bash
-KEYCLOAK_UID="$(id -u)" docker compose --profile oidc up -d --wait nachet-keycloak
-./keycloak/verify_local_setup.sh
+nachet$ KEYCLOAK_UID="$(id -u)" docker compose --profile oidc up -d --wait nachet-keycloak
+nachet$ ./keycloak/verify_local_setup.sh
 ```
 
 Open the discovery document to confirm that the browser trusts the certificate:
@@ -474,9 +473,9 @@ in [keycloak/README.md](keycloak/README.md).
 For a backend running directly on your machine:
 
 ```bash
-cd backend
-export $(grep -v '^#' .env.local | xargs)
-uv run hypercorn -b :5174 app/main:app
+nachet$ cd backend
+nachet/backend$ export $(grep -v '^#' .env.local | xargs)
+nachet/backend$ uv run hypercorn -b :5174 app/main:app
 ```
 
 For a backend running in Docker, create
@@ -484,7 +483,7 @@ For a backend running in Docker, create
 file, then run:
 
 ```bash
-docker compose --profile oidc up -d --build nachet-backend
+nachet$ docker compose --profile oidc up -d --build nachet-backend
 ```
 
 The container receives only the public local CA. It does not receive the
@@ -515,9 +514,9 @@ The backend environment template already allows requests from
 `http://localhost:5173` through CORS.
 
 ```bash
-cd frontend
-export $(grep -v '^#' .env.config.local | xargs)
-npm run dev -- --port 5173
+nachet$ cd frontend
+nachet/frontend$ export $(grep -v '^#' .env.config.local | xargs)
+nachet/frontend$ npm run dev -- --port 5173
 ```
 
 Open <http://localhost:5173>.
@@ -537,10 +536,10 @@ Use `http://localhost:12435` instead when the backend runs in Docker. Then build
 the frontend and upload it to the local frontend blob container:
 
 ```bash
-cd frontend
-npm run build
-cd ../backend
-uv run app/scripts/push_frontend_to_blob.py --clean
+nachet$ cd frontend
+nachet/frontend$ npm run build
+nachet/frontend$ cd ../backend
+nachet/backend$ uv run app/scripts/push_frontend_to_blob.py --clean
 ```
 
 Open the backend URL for the setup you are testing:
@@ -569,31 +568,11 @@ could not reach or trust Keycloak.
 ##### 7. Stop Keycloak
 
 ```bash
-docker compose --profile oidc stop nachet-keycloak
+nachet$ docker compose --profile oidc stop nachet-keycloak
 ```
 
 This realm uses fixed test passwords and Keycloak's file-based development
 database. Do not reuse it in a shared or deployed environment.
-
-### Frontend setup
-
-```bash
-nachet$ cd frontend
-
-# enter your own values in the .env.config.local file
-nachet/frontend$ cp .env.template .env.config.local
-nachet/frontend$ nano .env.config.local
-nachet/frontend$ npm run update
-nachet/frontend$ npm run test
-
-# run dev with env vars from .env.config.local
-# nachet/frontend$ source .env.config.local # requires export keyword in the file
-nachet/frontend$ export $(grep -v '^#' .env.config.local | xargs)
-nachet/frontend$ npm run dev -- --port 5173
-
-# unset env vars
-nachet/frontend$ unset $(grep -v '^#' .env.config.local | grep -v '^$' | cut -d= -f1)
-```
 
 ### Update the compose file as needed
 

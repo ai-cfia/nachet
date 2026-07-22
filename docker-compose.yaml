@@ -81,7 +81,7 @@ services:
       retries: 12
       start_period: 30s
     networks:
-      nachet-oidc-network:
+      nachet-local-network:
         aliases:
           - keycloak.localhost
 
@@ -91,7 +91,7 @@ services:
     # uncomment these to build backend from source
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.local
     image: local/nachet-backend:latest
 
     # uncomment these to use prebuilt image from ghcr
@@ -113,7 +113,6 @@ services:
     # network_mode: bridge
     networks:
       - nachet-local-network
-      - nachet-oidc-network
 
   # optional frontend service, uncomment to use
   # for debugging dev build
@@ -512,6 +511,5 @@ services:
 
 networks:
   nachet-local-network: {}
-  nachet-oidc-network: {}
   nachet-network:
     external: true
