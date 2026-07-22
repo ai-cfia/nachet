@@ -66,10 +66,9 @@ class JWTAuthenticator:
         return azure_config
 
     def _get_oidc_discovery_client(self) -> OidcDiscoveryClient:
-        oidc_discovery_client = self._oidc_discovery_client
-        if oidc_discovery_client is None:
+        if self._oidc_discovery_client is None:
             raise RuntimeError("OIDC authentication is not configured")
-        return oidc_discovery_client
+        return self._oidc_discovery_client
 
     def _get_oidc_config(self) -> OidcAuthConfig:
         oidc_config = self._config.oidc

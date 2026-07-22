@@ -3,23 +3,17 @@ from httpx import ASGITransport, AsyncClient
 import pytest
 
 from app.api.config import Settings, create_app
-from app.service.auth.config import BackendAuthConfig
 
 
 # Use Nachet's middleware stack so the test checks the CSP served with the frontend.
 def create_frontend_app(settings: Settings):
     router = APIRouter()
-    auth_config = BackendAuthConfig.from_settings(settings)
 
     @router.get("/")
     async def frontend_root() -> dict[str, str]:
         return {"status": "ok"}
 
-    return create_app(
-        settings,
-        router,
-        auth_provider_origin=auth_config.browser_provider_origin,
-    )
+    return create_app(settings, router)
 
 
 @pytest.mark.asyncio

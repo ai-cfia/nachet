@@ -299,9 +299,11 @@ def create_app(
     settings: Settings,
     router: APIRouter,
     lifespan=None,
-    *,
-    auth_provider_origin: str | None = None,
 ):
+    # Delay this import because the auth package also imports Settings.
+    from app.service.auth.config import BackendAuthConfig
+
+    auth_config = BackendAuthConfig.from_settings(settings)
     app = FastAPI(
         lifespan=lifespan, docs_url=settings.swagger_path, root_path=settings.base_path
     )
@@ -326,7 +328,7 @@ def create_app(
     app.add_middleware(
         HeadersMiddleware,
         preset=settings.security_headers_preset,
-        auth_provider_origin=auth_provider_origin,
+        auth_provider_origin=auth_config.browser_provider_origin,
     )
     app.add_middleware(SlowAPIMiddleware)
     app.add_middleware(
