@@ -2,8 +2,7 @@
 name: Frontend Renovate
 
 permissions:
-  actions: write
-  contents: write
+  contents: read
   pull-requests: read
 
 concurrency:
@@ -37,18 +36,25 @@ jobs:
   bump-version:
     name: Bump version
     needs: [versions]
-    if: ${{ !cancelled() && needs.versions.result == 'success' }}
+    if: >-
+      ${{
+        !cancelled() &&
+        needs.versions.result == 'success' &&
+        (github.event.pull_request.user.login == 'renovate[bot]' ||
+         github.event.pull_request.user.login == 'github-actions[bot]') &&
+        github.event.pull_request.head.repo.full_name == github.repository
+      }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: read
+      actions: write
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.base.ref }}
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -119,7 +125,7 @@ jobs:
       - name: Check if bump is needed
         id: check
         run: |
-          git diff --exit-code || echo "changed=true" >> $GITHUB_OUTPUT
+          git diff --exit-code || echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Commit & push changes
         if: steps.check.outputs.changed == 'true'
@@ -133,7 +139,7 @@ jobs:
 
       - name: Run frontend checks
         if: steps.check.outputs.changed == 'true'
-        run: |
-          gh workflow run frontend-lint.yml --ref "${{ github.head_ref }}"
+        run: gh workflow run frontend-lint.yml --ref "$PR_HEAD_REF"
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_HEAD_REF: ${{ github.head_ref }}
