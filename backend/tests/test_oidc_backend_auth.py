@@ -295,7 +295,7 @@ def test_oidc_authenticator_rejects_missing_ca_bundle_during_initialization(
 @pytest.mark.parametrize(
     "issuer",
     [
-        "https://user:password@idp.example/realms/nachet",
+        "https://user:password@idp.example/realms/nachet",  # trufflehog:ignore
         "https://idp.example/realms/nachet?tenant=one",
         "https://idp.example/realms/nachet#keys",
     ],
