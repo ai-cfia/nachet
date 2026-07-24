@@ -163,6 +163,9 @@ nachet$ docker compose -f docker-compose.yaml up -d grafana loki alloy
 ```bash
 nachet$ cd backend
 
+# first-time setup: create the local Dockerfile used by Compose
+nachet/backend$ cp Dockerfile Dockerfile.local
+
 # enter your own values in the .env.local file
 nachet/backend$ cp .env.template .env.local
 nachet/backend$ nano .env.local
@@ -227,24 +230,25 @@ Use these values for the OIDC path:
 
 ```bash
 AUTH_PROVIDER="oidc"
-OIDC_ISSUER="https://<provider-issuer>"
-OIDC_AUDIENCE="<nachet-api-audience>"
+OIDC_ISSUER="https://keycloak.localhost:8443/realms/nachet"
+OIDC_AUDIENCE="nachet-api"
 OIDC_USER_ID_CLAIM="sub"
 OIDC_USERNAME_CLAIM="preferred_username"
 OIDC_EMAIL_CLAIM="email"
+OIDC_CA_BUNDLE="../keycloak/local-certs/ca/rootCA.pem"
 ```
 
-OIDC issuer and JWKS endpoints must use HTTPS. A follow-up PR will define and
-document the supported local Keycloak setup.
+OIDC discovery and JWKS always use HTTPS. `OIDC_CA_BUNDLE` adds a private CA to
+the normal HTTPX trust store when a provider does not use a public certificate.
+When the backend runs in Docker, set `OIDC_CA_BUNDLE` in
+`backend/.env.container.local` to `/opt/nachet/local-ca/rootCA.pem`.
 
 The claim selected by `OIDC_USER_ID_CLAIM` must currently contain a UUID. This
-keeps the existing route and database contract intact. The Keycloak follow-up
-will test this with Nachet's existing UUID registration process. Supporting
-non-UUID subjects or linking multiple providers to one user is tracked
-separately.
+keeps the existing route and database contract intact. Supporting non-UUID
+subjects or linking multiple providers to one user is tracked separately.
 
-Use a separate database for the Keycloak test. We have not decided how Keycloak
-accounts should be linked to existing Entra users yet.
+Use a separate local database for Keycloak. Nachet does not yet link Keycloak
+accounts to existing Entra accounts.
 
 The frontend and backend use different provider names because they select
 different implementations:
@@ -257,12 +261,11 @@ different implementations:
 Run the focused backend auth tests with:
 
 ```bash
-uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py -q
+nachet/backend$ uv run pytest tests/test_oidc_token_verifier.py tests/test_oidc_discovery.py tests/test_oidc_backend_auth.py -q
 ```
 
 See [backend token validation](backend/docs/nachet-jwt-validation.md) for the
-request flow, validation rules, and current identity limitation. Local Keycloak
-setup is not included yet.
+request flow, validation rules, and current identity limitation.
 
 ### Frontend setup
 
@@ -278,11 +281,298 @@ nachet/frontend$ npm run test
 # run dev with env vars from .env.config.local
 # nachet/frontend$ source .env.config.local # requires export keyword in the file
 nachet/frontend$ export $(grep -v '^#' .env.config.local | xargs)
-nachet/frontend$ npm run dev -- --port 12438
+nachet/frontend$ npm run dev -- --port 5173
 
 # unset env vars
 nachet/frontend$ unset $(grep -v '^#' .env.config.local | grep -v '^$' | cut -d= -f1)
 ```
+
+Use these values for the OIDC frontend:
+
+```bash
+VITE_AUTH_PROVIDER="oidc"
+VITE_OIDC_AUTHORITY="https://keycloak.localhost:8443/realms/nachet"
+VITE_OIDC_CLIENT_ID="nachet-frontend"
+VITE_OIDC_SCOPE="openid profile email"
+VITE_OIDC_API_SCOPE_CLAIM="nachet-api"
+```
+
+### Local Keycloak
+
+Use this setup to sign in locally without a Microsoft Entra account. Complete
+the database, storage, backend, and frontend setup first.
+
+Keycloak runs in Docker and serves its OIDC endpoints over HTTPS. The setup
+script creates a certificate for your machine; certificates and private keys
+are not stored in the repository.
+
+##### Local network layouts
+
+Keycloak stays in Docker in each layout below. Direct, container, and remote
+describe where the Nachet frontend and backend run.
+
+| Setup | Frontend | Browser to Keycloak | Backend to Keycloak | Status |
+| --- | --- | --- | --- | --- |
+| Direct | Vite on `http://localhost:5173` | Published HTTPS port | Published HTTPS port | Tested on macOS |
+| Container | Vite on `http://localhost:5173` | Published HTTPS port | Docker network alias | Tested on macOS |
+| Remote | Vite through VS Code port forwarding | Local HTTPS proxy | Docker network alias on the remote machine | Not tested |
+
+The direct and container backends can also serve the built frontend. In that
+case, use the backend URL as the OIDC redirect URL: `http://localhost:5174` for
+the host backend or `http://localhost:12435` for the container backend.
+
+Every path uses the same issuer:
+`https://keycloak.localhost:8443/realms/nachet`.
+
+###### Direct
+
+```mermaid
+flowchart LR
+    browser["Browser"] -->|"loads frontend over HTTP"| frontend["Vite<br/>http://localhost:5173"]
+    browser -->|"API over HTTP"| backend["Nachet backend<br/>http://localhost:5174"]
+    browser -->|"OIDC over HTTPS"| endpoint["keycloak.localhost<br/>127.0.0.1:8443"]
+    backend -->|"Discovery and JWKS over HTTPS"| endpoint
+    endpoint --> keycloak["Keycloak container"]
+```
+
+###### Container
+
+```mermaid
+flowchart LR
+    browser["Browser"] -->|"loads frontend over HTTP"| frontend["Vite<br/>http://localhost:5173"]
+    browser -->|"API over HTTP"| backend_port["Published backend port<br/>localhost:12435"]
+    backend_port --> backend["Nachet backend container"]
+    browser -->|"OIDC over HTTPS"| endpoint["keycloak.localhost<br/>127.0.0.1:8443"]
+    endpoint --> keycloak["Keycloak container"]
+    backend -->|"Discovery and JWKS over HTTPS"| alias["Docker DNS alias<br/>keycloak.localhost"]
+    alias --> keycloak
+```
+
+###### Remote
+
+```mermaid
+flowchart LR
+    browser["Browser"] -->|"loads frontend over HTTP"| frontend_forward["VS Code forwarded port<br/>http://localhost:5173"]
+    frontend_forward --> frontend["Remote Vite server"]
+    browser -->|"API over HTTP"| backend_forward["VS Code forwarded backend port"]
+    backend_forward --> backend["Remote Nachet backend container"]
+    browser -.->|"OIDC over HTTPS"| proxy["Local HTTPS proxy<br/>keycloak.localhost:8443<br/>required, not tested"]
+    proxy -.-> keycloak["Remote Keycloak container"]
+    backend -->|"Discovery and JWKS over HTTPS"| alias["Docker DNS alias<br/>keycloak.localhost"]
+    alias --> keycloak
+```
+
+The hosts-file entry is added only to the developer machine. Containers resolve
+`keycloak.localhost` through Docker DNS. The browser trusts the developer's
+local CA, and the backend loads its public certificate through `OIDC_CA_BUNDLE`.
+
+The frontend itself uses HTTP for local development. The HTTPS connections in
+these diagrams are the OIDC requests to Keycloak.
+
+Remote development is not supported by this guide yet. It needs a local HTTPS
+proxy so the browser can reach the remote Keycloak container at
+`https://keycloak.localhost:8443`. We still need to choose and test that proxy.
+
+After the hostname is resolved, sign-in and token validation work like this:
+
+```mermaid
+sequenceDiagram
+    participant Browser as Browser running the frontend
+    participant Keycloak
+    participant Backend as Nachet backend
+
+    Browser->>Keycloak: Load OIDC metadata over HTTPS
+    Browser->>Keycloak: Start sign-in with a PKCE challenge
+    Keycloak-->>Browser: Redirect with an authorization code
+    Browser->>Keycloak: Exchange the code and PKCE verifier
+    Keycloak-->>Browser: Return an access token
+    Browser->>Backend: Send API request with Bearer token
+    opt Verifier cache needs keys
+        Backend->>Keycloak: Load discovery metadata and JWKS over HTTPS
+        Keycloak-->>Backend: Return issuer metadata and public signing keys
+    end
+    Backend->>Backend: Verify signature, issuer, audience, and time claims
+    Backend-->>Browser: Return the protected API response
+```
+
+The backend checks the token locally with Keycloak's public signing keys. It
+does not send each token back to Keycloak.
+
+If Keycloak rotates its signing key, the backend refreshes the JWKS when it
+receives a token with a new key ID. A normal Keycloak restart does not require
+a backend restart.
+
+##### 1. Install `mkcert`
+
+| Operating system | Installation |
+| --- | --- |
+| macOS | `brew install mkcert` |
+| Linux or WSL | Install `libnss3-tools`, then install `mkcert` from your package manager or its official release |
+
+Firefox users on macOS may also need `brew install nss`.
+
+##### 2. Create the local certificate
+
+Run the setup script from the repository root:
+
+```bash
+nachet$ ./keycloak/setup_local_tls.sh
+```
+
+The script asks `mkcert` to trust its local certificate authority, creates a
+certificate for `keycloak.localhost`, and places the public CA certificate where
+the backend can read it. The CA private key stays in the local `mkcert` store.
+Git ignores everything generated under `keycloak/local-certs/`.
+
+The Keycloak private key remains at mode `0600`. When Compose starts Keycloak,
+it uses the developer's UID so the container can read the bind-mounted key. It
+keeps the image's group `0` so Keycloak can still write to its own directories.
+
+`keycloak.localhost` must resolve to the loopback interface on the developer
+machine. Add this entry if it does not already resolve:
+
+```text
+127.0.0.1 keycloak.localhost
+```
+
+The hosts file is `/etc/hosts` on macOS, Linux, and WSL.
+
+##### 3. Select OIDC in the local environment files
+
+Use the OIDC values from the backend and frontend setup sections above. Put
+the backend values in `backend/.env.local` or `backend/.env.container.local`,
+depending on where the backend runs, and put the frontend values in
+`frontend/.env.config.local`.
+
+##### 4. Start Keycloak
+
+```bash
+nachet$ KEYCLOAK_UID="$(id -u)" docker compose --profile oidc up -d --wait nachet-keycloak
+nachet$ ./keycloak/verify_local_setup.sh
+```
+
+Open the discovery document to confirm that the browser trusts the certificate:
+
+```text
+https://keycloak.localhost:8443/realms/nachet/.well-known/openid-configuration
+```
+
+The page should open without a certificate warning, and its `issuer` value
+should match the URL above exactly.
+
+The imported realm allows the local Vite and backend URLs as login redirects
+and browser origins. The verification script checks each URL and confirms that
+Keycloak rejects an unlisted origin. It does not complete a browser sign-in or
+call Nachet's API; those checks are in step 6.
+
+The Keycloak configuration choices and links to the official documentation are
+in [keycloak/README.md](keycloak/README.md).
+
+##### 5. Start the backend
+
+For a backend running directly on your machine:
+
+```bash
+nachet$ cd backend
+nachet/backend$ export $(grep -v '^#' .env.local | xargs)
+nachet/backend$ uv run hypercorn -b :5174 app/main:app
+```
+
+For a backend running in Docker, create
+`backend/.env.container.local` from the backend template, select OIDC in that
+file, then run:
+
+```bash
+nachet$ docker compose --profile oidc up -d --build nachet-backend
+```
+
+The container receives only the public local CA. It does not receive the
+Keycloak server key or the local CA private key.
+
+When the backend runs in Docker, set these frontend values to the published
+backend port:
+
+```bash
+VITE_BACKEND_URL="http://localhost:12435"
+VITE_LOG_API_URL="http://localhost:12435/logs"
+```
+
+##### 6. Start the frontend and sign in
+
+Use Vite for normal frontend development. If your change affects authentication
+or frontend startup, also test the built frontend through the backend.
+
+###### Run Vite on your machine
+
+Vite runs on your machine whether the backend runs directly or in Docker. Use
+`http://localhost:5174` for a backend running on your machine, or
+`http://localhost:12435` for a backend running in Docker. Set
+`VITE_BACKEND_URL` to that URL and `VITE_LOG_API_URL` to its `/logs` endpoint
+before starting Vite.
+
+The backend environment template already allows requests from
+`http://localhost:5173` through CORS.
+
+```bash
+nachet$ cd frontend
+nachet/frontend$ export $(grep -v '^#' .env.config.local | xargs)
+nachet/frontend$ npm run dev -- --port 5173
+```
+
+Open <http://localhost:5173>.
+
+###### Run through the backend
+
+Set these values in `frontend/.env.config.local` before building:
+
+```bash
+VITE_BACKEND_URL="http://localhost:5174"
+VITE_LOG_API_URL="http://localhost:5174/logs"
+VITE_OIDC_REDIRECT_URI="http://localhost:5174"
+VITE_OIDC_POST_LOGOUT_REDIRECT_URI="http://localhost:5174"
+```
+
+Use `http://localhost:12435` instead when the backend runs in Docker. Then build
+the frontend and upload it to the local frontend blob container:
+
+```bash
+nachet$ cd frontend
+nachet/frontend$ npm run build
+nachet/frontend$ cd ../backend
+nachet/backend$ uv run app/scripts/push_frontend_to_blob.py --clean
+```
+
+Open the backend URL for the setup you are testing:
+
+- <http://localhost:5174> when the backend runs on your machine;
+- <http://localhost:12435> when the backend runs in Docker.
+
+###### Check sign-in
+
+Sign in with either account:
+
+| Username | Password | Purpose |
+| --- | --- | --- |
+| `nachet-admin` | `nachet-local` | Matches the seeded local Nachet user and can exercise protected workflows. |
+| `nachet-user` | `nachet-local` | Has a second UUID and can exercise the registration path. |
+
+After sign-in, confirm that Nachet displays the user's OID and loads protected
+data such as directories, then sign out. For authentication changes, repeat
+this check with Vite and with the frontend served by the backend. Test both a
+host backend and a container backend when the change touches networking or
+container configuration.
+
+A `401` usually means the token was rejected. A `503` usually means the backend
+could not reach or trust Keycloak.
+
+##### 7. Stop Keycloak
+
+```bash
+nachet$ docker compose --profile oidc stop nachet-keycloak
+```
+
+This realm uses fixed test passwords and Keycloak's file-based development
+database. Do not reuse it in a shared or deployed environment.
 
 ### Update the compose file as needed
 
@@ -478,7 +768,7 @@ At this point you will have the full stack, you will be able to test integration
 - build the generated OIDC client output and types `nachet/frontend $ npm run build:oidc-client-ts`
 - build your changes locally `nachet/frontend $ npm run build`
 - push the new build to blob storage `nachet/backend $ uv run app/scripts/push_frontend_to_blob.py --clean`
-- you can also debug by running the frontend in dev mode and connecting to the backend `nachet/frontend $ npm run dev -- --port 12438`
+- you can also debug by running the frontend in dev mode and connecting to the backend `nachet/frontend $ npm run dev -- --port 5173`
 - you can also run the frontend in a container `nachet $ docker compose -f docker-compose.yaml build nachet-frontend --no-cache && docker compose -f docker-compose.yaml up -d nachet-frontend --force-recreate`
 
 ### Regenerating Frontend API Types

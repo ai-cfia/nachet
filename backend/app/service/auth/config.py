@@ -5,6 +5,7 @@ from enum import Enum
 
 from app.api.config import Settings
 from app.service.auth.oidc_discovery import OidcDiscoveryConfig
+from app.service.auth.oidc_endpoint import get_oidc_issuer_origin
 
 
 class AuthProvider(str, Enum):
@@ -32,6 +33,14 @@ class BackendAuthConfig:
     azure: AzureAuthConfig | None
     oidc: OidcAuthConfig | None
 
+    @property
+    def browser_provider_origin(self) -> str | None:
+        """Return the provider origin that the browser may contact directly."""
+        if self.oidc is None:
+            return None
+
+        return get_oidc_issuer_origin(self.oidc.discovery.issuer)
+
     @classmethod
     def from_settings(cls, settings: Settings) -> BackendAuthConfig:
         provider = _parse_auth_provider(settings.auth_provider)
@@ -49,12 +58,14 @@ class BackendAuthConfig:
                 settings.oidc_audience,
                 "OIDC audience",
             )
+            discovery = OidcDiscoveryConfig(
+                issuer=issuer,
+                audience=audience,
+                ca_bundle=_parse_optional_setting(settings.oidc_ca_bundle),
+            )
 
             oidc = OidcAuthConfig(
-                discovery=OidcDiscoveryConfig(
-                    issuer=issuer,
-                    audience=audience,
-                ),
+                discovery=discovery,
                 user_id_claim=_parse_claim_name(settings.oidc_user_id_claim),
                 username_claim=_parse_claim_name(settings.oidc_username_claim),
                 email_claim=_parse_claim_name(settings.oidc_email_claim),
@@ -80,6 +91,14 @@ def _parse_required_setting(value: str | None, setting_name: str) -> str:
     if not normalized_value:
         raise ValueError(f"{setting_name} is required when AUTH_PROVIDER is oidc")
     return normalized_value
+
+
+def _parse_optional_setting(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    normalized_value = value.strip()
+    return normalized_value if normalized_value else None
 
 
 def _parse_claim_name(value: str) -> str:

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import ssl
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -135,8 +137,6 @@ def create_client(
     *,
     issuer: str = ISSUER,
     audience: str = AUDIENCE,
-    cache_ttl: timedelta = timedelta(hours=24),
-    unknown_key_refresh_cooldown: timedelta = timedelta(minutes=1),
     clock: MutableClock | None = None,
 ) -> OidcDiscoveryClient:
     transport = httpx.MockTransport(provider.handle_request)
@@ -144,10 +144,8 @@ def create_client(
         config=OidcDiscoveryConfig(
             issuer=issuer,
             audience=audience,
-            cache_ttl=cache_ttl,
-            unknown_key_refresh_cooldown=unknown_key_refresh_cooldown,
         ),
-        http_client_factory=lambda: httpx.AsyncClient(transport=transport),
+        mock_transport=transport,
         cache_clock=clock or MutableClock(datetime.now(timezone.utc)),
     )
 
@@ -211,6 +209,51 @@ async def test_rejects_malformed_jwks_without_keys_array() -> None:
         await client.get_verifier()
 
 
+@pytest.mark.asyncio
+async def test_rejects_malformed_jwks_with_non_object_key() -> None:
+    provider = MockOidcProvider(jwks={"keys": ["not-a-jwk-object"]})
+    client = create_client(provider)
+
+    with pytest.raises(OidcDiscoveryError, match="JWK objects"):
+        await client.get_verifier()
+
+
+@pytest.mark.asyncio
+async def test_ignores_malformed_jwk_when_a_usable_signing_key_exists() -> None:
+    private_key = create_private_key()
+    malformed_jwk = {"kid": "malformed-key", "alg": SIGNING_ALGORITHM, "use": "sig"}
+    provider = MockOidcProvider(
+        jwks={"keys": [malformed_jwk, public_jwk_from_key(private_key)]}
+    )
+    client = create_client(provider)
+    token = sign_token(private_key, create_claims())
+
+    claims = await client.verify(token)
+
+    assert claims["sub"] == "user-subject"
+
+
+@pytest.mark.asyncio
+async def test_rejects_jwks_without_a_usable_signing_key() -> None:
+    malformed_jwk = {"kid": KEY_ID, "alg": SIGNING_ALGORITHM, "use": "sig"}
+    provider = MockOidcProvider(jwks={"keys": [malformed_jwk]})
+    client = create_client(provider)
+
+    with pytest.raises(OidcDiscoveryError, match="usable signing key"):
+        await client.get_verifier()
+
+
+@pytest.mark.asyncio
+async def test_discovery_redirect_fails_closed_without_following_location() -> None:
+    provider = MockOidcProvider(discovery_status=302)
+    client = create_client(provider)
+
+    with pytest.raises(OidcDiscoveryError, match="Unable to load OIDC discovery"):
+        await client.get_verifier()
+
+    assert provider.requests == [DISCOVERY_URL]
+
+
 # Fresh cache entries should be reused so normal API requests do not refetch
 # provider metadata on every token validation.
 @pytest.mark.asyncio
@@ -218,7 +261,7 @@ async def test_uses_cached_verifier_before_ttl_expires() -> None:
     private_key = create_private_key()
     clock = MutableClock(datetime(2026, 1, 1, tzinfo=timezone.utc))
     provider = MockOidcProvider(jwks=jwks_from_key(private_key))
-    client = create_client(provider, cache_ttl=timedelta(hours=24), clock=clock)
+    client = create_client(provider, clock=clock)
 
     first_verifier = await client.get_verifier()
     clock.advance(timedelta(hours=23, minutes=59))
@@ -229,7 +272,7 @@ async def test_uses_cached_verifier_before_ttl_expires() -> None:
     assert provider.count_requests(JWKS_URI) == 1
 
 
-def test_rejects_insecure_remote_issuer_before_request() -> None:
+def test_rejects_http_issuer() -> None:
     with pytest.raises(ValueError, match="OIDC issuer must use HTTPS"):
         OidcDiscoveryClient(
             OidcDiscoveryConfig(
@@ -240,13 +283,136 @@ def test_rejects_insecure_remote_issuer_before_request() -> None:
 
 
 @pytest.mark.asyncio
-async def test_rejects_insecure_remote_jwks_before_request() -> None:
+async def test_rejects_http_jwks() -> None:
     insecure_jwks_uri = "http://keys.example/realms/nachet/certs"
     provider = MockOidcProvider(jwks_uri=insecure_jwks_uri)
     client = create_client(provider)
 
     # Reject the JWKS URI before a second request leaves the backend.
     with pytest.raises(OidcDiscoveryError, match="JWKS URI must use HTTPS"):
+        await client.get_verifier()
+
+    assert provider.requests == [DISCOVERY_URL]
+
+
+def test_custom_ca_bundle_is_added_to_default_httpx_trust(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    ca_bundle = tmp_path / "local-ca.pem"
+    ca_bundle.write_text("test certificate")
+    loaded_ca_files: list[str] = []
+
+    class RecordingSslContext(ssl.SSLContext):
+        def __new__(cls) -> RecordingSslContext:
+            return super().__new__(cls, ssl.PROTOCOL_TLS_CLIENT)
+
+        def load_verify_locations(
+            self,
+            cafile: Any = None,
+            capath: Any = None,
+            cadata: Any = None,
+        ) -> None:
+            if cafile is not None:
+                loaded_ca_files.append(cafile)
+
+    monkeypatch.setattr(httpx, "create_ssl_context", RecordingSslContext)
+
+    client = OidcDiscoveryClient(
+        OidcDiscoveryConfig(
+            issuer=ISSUER,
+            audience=AUDIENCE,
+            ca_bundle=str(ca_bundle),
+        )
+    )
+
+    assert client.config.ca_bundle == str(ca_bundle)
+    assert loaded_ca_files == [str(ca_bundle)]
+
+
+def test_default_httpx_trust_is_unchanged_without_custom_ca(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    load_called = False
+
+    class RecordingSslContext(ssl.SSLContext):
+        def __new__(cls) -> RecordingSslContext:
+            return super().__new__(cls, ssl.PROTOCOL_TLS_CLIENT)
+
+        def load_verify_locations(
+            self,
+            cafile: Any = None,
+            capath: Any = None,
+            cadata: Any = None,
+        ) -> None:
+            nonlocal load_called
+            load_called = True
+
+    monkeypatch.setattr(httpx, "create_ssl_context", RecordingSslContext)
+
+    OidcDiscoveryClient(
+        OidcDiscoveryConfig(
+            issuer=ISSUER,
+            audience=AUDIENCE,
+        )
+    )
+
+    assert load_called is False
+
+
+def test_mock_transport_keeps_verified_ssl_context_initialized() -> None:
+    transport = httpx.MockTransport(lambda request: httpx.Response(200))
+    client = OidcDiscoveryClient(
+        OidcDiscoveryConfig(
+            issuer=ISSUER,
+            audience=AUDIENCE,
+        ),
+        mock_transport=transport,
+    )
+
+    assert client._ssl_context.verify_mode == ssl.CERT_REQUIRED
+    assert client._ssl_context.check_hostname is True
+
+
+@pytest.mark.parametrize("ca_contents", ["", "not a certificate"])
+def test_invalid_ca_bundle_fails_during_client_initialization(
+    tmp_path: Path,
+    ca_contents: str,
+) -> None:
+    ca_bundle = tmp_path / "invalid-ca.pem"
+    ca_bundle.write_text(ca_contents)
+
+    with pytest.raises(OidcDiscoveryError, match="CA bundle"):
+        OidcDiscoveryClient(
+            OidcDiscoveryConfig(
+                issuer=ISSUER,
+                audience=AUDIENCE,
+                ca_bundle=str(ca_bundle),
+            )
+        )
+
+
+def test_missing_ca_bundle_fails_during_client_initialization(
+    tmp_path: Path,
+) -> None:
+    missing_ca_bundle = tmp_path / "missing-ca.pem"
+
+    with pytest.raises(OidcDiscoveryError, match="CA bundle"):
+        OidcDiscoveryClient(
+            OidcDiscoveryConfig(
+                issuer=ISSUER,
+                audience=AUDIENCE,
+                ca_bundle=str(missing_ca_bundle),
+            )
+        )
+
+
+@pytest.mark.asyncio
+async def test_rejects_malformed_jwks_uri_with_discovery_error() -> None:
+    provider = MockOidcProvider(jwks_uri="http://[::1/keys")
+    client = create_client(provider)
+
+    with pytest.raises(OidcDiscoveryError, match="valid URL"):
         await client.get_verifier()
 
     assert provider.requests == [DISCOVERY_URL]
@@ -259,7 +425,7 @@ async def test_refreshes_verifier_after_ttl_expires() -> None:
     second_private_key = create_private_key()
     clock = MutableClock(datetime(2026, 1, 1, tzinfo=timezone.utc))
     provider = MockOidcProvider(jwks=jwks_from_key(first_private_key))
-    client = create_client(provider, cache_ttl=timedelta(hours=24), clock=clock)
+    client = create_client(provider, clock=clock)
 
     first_verifier = await client.get_verifier()
     provider.jwks = jwks_from_key(second_private_key)
@@ -371,7 +537,7 @@ async def test_expired_cache_is_not_used_when_refresh_fails() -> None:
     private_key = create_private_key()
     clock = MutableClock(datetime(2026, 1, 1, tzinfo=timezone.utc))
     provider = MockOidcProvider(jwks=jwks_from_key(private_key))
-    client = create_client(provider, cache_ttl=timedelta(hours=24), clock=clock)
+    client = create_client(provider, clock=clock)
     await client.get_verifier()
 
     provider.discovery_status = 503

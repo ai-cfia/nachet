@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     oidc_user_id_claim: str = "sub"
     oidc_username_claim: str = "preferred_username"
     oidc_email_claim: str = "email"
+    oidc_ca_bundle: str | None = None
 
     # database settings
     db_user: str | None = None
@@ -294,7 +295,15 @@ async def lifespan(app: FastAPI):
     print("Lifespan App shutdown complete!")
 
 
-def create_app(settings: Settings, router: APIRouter, lifespan=None):
+def create_app(
+    settings: Settings,
+    router: APIRouter,
+    lifespan=None,
+):
+    # Delay this import because the auth package also imports Settings.
+    from app.service.auth.config import BackendAuthConfig
+
+    auth_config = BackendAuthConfig.from_settings(settings)
     app = FastAPI(
         lifespan=lifespan, docs_url=settings.swagger_path, root_path=settings.base_path
     )
@@ -315,7 +324,12 @@ def create_app(settings: Settings, router: APIRouter, lifespan=None):
     )
 
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
-    app.add_middleware(HeadersMiddleware, preset=settings.security_headers_preset)
+
+    app.add_middleware(
+        HeadersMiddleware,
+        preset=settings.security_headers_preset,
+        auth_provider_origin=auth_config.browser_provider_origin,
+    )
     app.add_middleware(SlowAPIMiddleware)
     app.add_middleware(
         LoggingMiddleware

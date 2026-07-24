@@ -10,15 +10,18 @@ from jwt.exceptions import (
     ImmatureSignatureError,
     InvalidAudienceError,
     InvalidIssuerError,
+    InvalidKeyError,
     InvalidSignatureError,
     InvalidTokenError,
     MissingRequiredClaimError,
+    PyJWKError,
 )
 
 from app.service.auth.openid_config import AllowedPublicKeys
 
 DEFAULT_ALLOWED_ALGORITHMS = ("RS256",)
-REQUIRED_ACCESS_TOKEN_CLAIMS = ("exp", "aud", "iat", "nbf", "iss", "sub")
+# `nbf` is optional in JWTs. PyJWT still checks it when a provider includes it.
+REQUIRED_ACCESS_TOKEN_CLAIMS = ("exp", "aud", "iat", "iss", "sub")
 
 
 class OidcTokenValidationError(ValueError):
@@ -42,6 +45,9 @@ class OidcTokenVerifier:
     # Discovery can check key availability without reaching into verifier internals.
     def has_signing_key(self, key_id: str) -> bool:
         return key_id in self.signing_keys
+
+    def has_usable_signing_keys(self) -> bool:
+        return bool(self.signing_keys)
 
     # The JWKS is the provider's public key set. We keep the usable signing keys
     # and store them by `kid` so each token can name the key that should verify it.
@@ -78,7 +84,10 @@ class OidcTokenVerifier:
         if algorithm not in self.config.allowed_algorithms:
             return None
 
-        return key_id, jwt.PyJWK(jwk, algorithm).key
+        try:
+            return key_id, jwt.PyJWK(jwk, algorithm).key
+        except (InvalidKeyError, PyJWKError):
+            return None
 
     # This is the verifier entry point. It chooses the key named by the token
     # header, then returns claims only after the signature and claim checks pass.

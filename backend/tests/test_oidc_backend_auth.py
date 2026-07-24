@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -120,6 +121,12 @@ def create_oidc_claims(**overrides: Any) -> dict[str, Any]:
     return claims
 
 
+def create_oidc_claims_without_not_before(**overrides: Any) -> dict[str, Any]:
+    claims = create_oidc_claims(**overrides)
+    del claims["nbf"]
+    return claims
+
+
 def install_fake_oidc_client(
     monkeypatch: pytest.MonkeyPatch,
     authenticator: JWTAuthenticator,
@@ -229,12 +236,65 @@ def test_oidc_provider_rejects_http_issuer() -> None:
         )
 
 
+def test_oidc_provider_passes_ca_bundle_to_discovery_config() -> None:
+    auth_config = create_auth_config(
+        auth_provider="oidc",
+        oidc_issuer=ISSUER,
+        oidc_audience=AUDIENCE,
+        oidc_ca_bundle="/local-certs/ca/rootCA.pem",
+    )
+
+    assert auth_config.oidc is not None
+    assert auth_config.oidc.discovery.ca_bundle == "/local-certs/ca/rootCA.pem"
+
+
+def test_oidc_provider_treats_blank_ca_bundle_as_unconfigured() -> None:
+    auth_config = create_auth_config(
+        auth_provider="oidc",
+        oidc_issuer=ISSUER,
+        oidc_audience=AUDIENCE,
+        oidc_ca_bundle="   ",
+    )
+
+    assert auth_config.oidc is not None
+    assert auth_config.oidc.discovery.ca_bundle is None
+
+
+@pytest.mark.parametrize("ca_contents", ["", "not a certificate"])
+def test_oidc_authenticator_rejects_invalid_ca_bundle_during_initialization(
+    tmp_path: Path,
+    ca_contents: str,
+) -> None:
+    ca_bundle = tmp_path / "invalid-ca.pem"
+    ca_bundle.write_text(ca_contents)
+    settings = config_module.Settings(
+        auth_provider="oidc",
+        oidc_issuer=ISSUER,
+        oidc_audience=AUDIENCE,
+        oidc_ca_bundle=str(ca_bundle),
+    )
+
+    with pytest.raises(OidcDiscoveryError, match="CA bundle"):
+        JWTAuthenticator(settings)
+
+
+def test_oidc_authenticator_rejects_missing_ca_bundle_during_initialization(
+    tmp_path: Path,
+) -> None:
+    settings = config_module.Settings(
+        auth_provider="oidc",
+        oidc_issuer=ISSUER,
+        oidc_audience=AUDIENCE,
+        oidc_ca_bundle=str(tmp_path / "missing-ca.pem"),
+    )
+
+    with pytest.raises(OidcDiscoveryError, match="CA bundle"):
+        JWTAuthenticator(settings)
+
+
 @pytest.mark.parametrize(
     "issuer",
     [
-        "http://keycloak:8080/realms/nachet",
-        "http://192.168.1.10:8080/realms/nachet",
-        "http://idp.example/realms/nachet",
         "https://user:password@idp.example/realms/nachet",
         "https://idp.example/realms/nachet?tenant=one",
         "https://idp.example/realms/nachet#keys",
@@ -383,6 +443,25 @@ async def test_valid_oidc_token_returns_user_without_azure_version_claim(
     assert "ver" not in claims
     assert request.state.user is user
     assert oidc_client.verified_tokens == [ACCESS_TOKEN]
+
+
+@pytest.mark.asyncio
+async def test_oidc_user_allows_optional_not_before_claim(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    set_oidc_settings(monkeypatch)
+    authenticator = JWTAuthenticator()
+    claims = create_oidc_claims_without_not_before()
+    install_fake_oidc_client(
+        monkeypatch,
+        authenticator,
+        FakeOidcDiscoveryClient(claims=claims),
+    )
+
+    user = await authenticator(create_request(), no_security_scopes())
+
+    assert user.oid == claims["sub"]
+    assert user.nbf is None
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import ssl
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -31,7 +32,6 @@ DEFAULT_UNKNOWN_KEY_REFRESH_COOLDOWN = timedelta(minutes=1)
 
 AllowedAlgorithms = tuple[str, ...]
 RequiredClaims = tuple[str, ...]
-HttpClientFactory = Callable[[], httpx.AsyncClient]
 CacheClock = Callable[[], datetime]
 
 
@@ -53,6 +53,7 @@ class OidcDiscoveryConfig:
     cache_ttl: timedelta = DEFAULT_DISCOVERY_CACHE_TTL
     request_timeout: float = DEFAULT_REQUEST_TIMEOUT_SECONDS
     unknown_key_refresh_cooldown: timedelta = DEFAULT_UNKNOWN_KEY_REFRESH_COOLDOWN
+    ca_bundle: str | None = None
 
     def __post_init__(self) -> None:
         validate_oidc_issuer_url(self.issuer)
@@ -68,16 +69,14 @@ class OidcDiscoveryClient:
     def __init__(
         self,
         config: OidcDiscoveryConfig,
-        http_client_factory: HttpClientFactory | None = None,
+        mock_transport: httpx.MockTransport | None = None,
         cache_clock: CacheClock | None = None,
     ) -> None:
         self.config = config
         self.discovery_url = self._build_discovery_url(self.config.issuer)
-        self._http_client_factory = (
-            http_client_factory
-            if http_client_factory is not None
-            else self._create_http_client
-        )
+        # Tests replace only the HTTP transport, leaving SSL setup unchanged.
+        self._ssl_context = self._create_ssl_context()
+        self._mock_transport = mock_transport
         self._cache_clock = cache_clock if cache_clock is not None else _utc_now
         self._cached_verifier: CachedOidcVerifier | None = None
         self._last_unknown_key_refresh_at: datetime | None = None
@@ -89,9 +88,28 @@ class OidcDiscoveryClient:
         issuer_without_trailing_slash = issuer.rstrip("/")
         return f"{issuer_without_trailing_slash}/.well-known/openid-configuration"
 
+    # Start with HTTPX's normal public roots, then add a configured private CA.
+    # Certificate and hostname verification remain enabled.
+    def _create_ssl_context(self) -> ssl.SSLContext:
+        ssl_context = httpx.create_ssl_context()
+        ca_bundle = self.config.ca_bundle
+        if ca_bundle is None:
+            return ssl_context
+
+        try:
+            ssl_context.load_verify_locations(cafile=ca_bundle)
+        except OSError as error:
+            raise OidcDiscoveryError("Unable to load OIDC CA bundle") from error
+
+        return ssl_context
+
     # Keep provider calls bounded so auth does not hang on a slow identity provider.
     def _create_http_client(self) -> httpx.AsyncClient:
-        return httpx.AsyncClient(timeout=self.config.request_timeout)
+        return httpx.AsyncClient(
+            timeout=self.config.request_timeout,
+            verify=self._ssl_context,
+            transport=self._mock_transport,
+        )
 
     # Cache reads happen before and after taking the lock. That lets normal
     # requests avoid locking while concurrent refreshes still collapse to one load.
@@ -169,7 +187,7 @@ class OidcDiscoveryClient:
 
     # Cache only after discovery and JWKS both pass shape and issuer validation.
     async def _refresh_verifier(self) -> OidcTokenVerifier:
-        async with self._http_client_factory() as client:
+        async with self._create_http_client() as client:
             discovery_metadata = await self._fetch_discovery_metadata(client)
             jwks_uri = discovery_metadata["jwks_uri"]
             jwks = await self._fetch_jwks(client, jwks_uri)
@@ -191,7 +209,10 @@ class OidcDiscoveryClient:
             required_claims=self.config.required_claims,
             leeway=self.config.leeway,
         )
-        return OidcTokenVerifier(config=verifier_config, jwks=jwks)
+        verifier = OidcTokenVerifier(config=verifier_config, jwks=jwks)
+        if not verifier.has_usable_signing_keys():
+            raise OidcDiscoveryError("OIDC JWKS has no usable signing key")
+        return verifier
 
     # Accept discovery metadata only from the configured issuer and only when it
     # provides a JWKS endpoint.
@@ -210,9 +231,7 @@ class OidcDiscoveryClient:
 
         # Validate the provider-supplied JWKS URI before requesting it.
         try:
-            validated_jwks_uri = validate_oidc_jwks_uri(
-                jwks_uri,
-            )
+            validated_jwks_uri = validate_oidc_jwks_uri(jwks_uri)
         except OidcEndpointError as error:
             raise OidcDiscoveryError(str(error)) from error
 
@@ -225,8 +244,12 @@ class OidcDiscoveryClient:
         jwks_uri: str,
     ) -> dict[str, Any]:
         jwks = await self._get_json(client, jwks_uri, "JWKS")
-        if not isinstance(jwks.get("keys"), list):
+        keys = jwks.get("keys")
+        if not isinstance(keys, list):
             raise OidcDiscoveryError("OIDC JWKS must contain a keys array")
+        for key in keys:
+            if not isinstance(key, dict):
+                raise OidcDiscoveryError("OIDC JWKS keys must be JWK objects")
 
         return jwks
 

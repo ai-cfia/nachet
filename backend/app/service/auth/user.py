@@ -29,9 +29,9 @@ class Claims(BaseModel):
         ...,
         description="Specifies when the authentication for this token occurred.",
     )
-    nbf: int = Field(
-        ...,
-        description="Specifies the time after which the JWT can be processed.",
+    nbf: Optional[int] = Field(
+        default=None,
+        description="Specifies the time after which the JWT can be processed, when provided.",
     )
     exp: int = Field(
         ...,

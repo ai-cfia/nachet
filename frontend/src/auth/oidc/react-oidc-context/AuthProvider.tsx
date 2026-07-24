@@ -6,7 +6,7 @@
  *
  * Original project is MIT licensed. See LICENSE in this directory.
  */
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   UserManager,
   type SigninRedirectArgs,
@@ -63,38 +63,17 @@ export const AuthProvider = ({
   onSigninCallback,
   ...settings
 }: AuthProviderProps) => {
-  const managerSettings = useMemo<UserManagerSettings>(
-    () => ({
-      authority: settings.authority,
-      client_id: settings.client_id,
-      redirect_uri: settings.redirect_uri,
-      post_logout_redirect_uri: settings.post_logout_redirect_uri,
-      response_type: settings.response_type,
-      scope: settings.scope,
-      silent_redirect_uri: settings.silent_redirect_uri,
-      automaticSilentRenew: settings.automaticSilentRenew,
-      userStore: settings.userStore,
-    }),
-    [
-      settings.authority,
-      settings.client_id,
-      settings.redirect_uri,
-      settings.post_logout_redirect_uri,
-      settings.response_type,
-      settings.scope,
-      settings.silent_redirect_uri,
-      settings.automaticSilentRenew,
-      settings.userStore,
-    ],
-  );
-  const userManager = useMemo(
-    () => new UserManager(managerSettings),
-    [managerSettings],
-  );
+  const [userManager] = useState(() => new UserManager(settings));
   const [state, setState] = useState<AuthState>(initialAuthState);
+  const didInitialize = useRef(false);
 
   useEffect(() => {
-    let isMounted = true;
+    // React StrictMode replays effects in development. An authorization code
+    // can only be exchanged once, so initialization must run once per mount.
+    if (didInitialize.current) {
+      return;
+    }
+    didInitialize.current = true;
 
     const initialise = async (): Promise<void> => {
       try {
@@ -105,10 +84,6 @@ export const AuthProvider = ({
           await onSigninCallback?.(user ?? null);
         } else {
           user = await userManager.getUser();
-        }
-
-        if (!isMounted) {
-          return;
         }
 
         const authenticatedUser = user ?? null;
@@ -122,10 +97,6 @@ export const AuthProvider = ({
           error: null,
         });
       } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
         setState({
           isLoading: false,
           isAuthenticated: false,
@@ -136,10 +107,6 @@ export const AuthProvider = ({
     };
 
     void initialise();
-
-    return () => {
-      isMounted = false;
-    };
   }, [onSigninCallback, skipSigninCallback, userManager]);
 
   useEffect(() => {
@@ -187,7 +154,7 @@ export const AuthProvider = ({
   const value = useMemo(
     () => ({
       ...state,
-      settings: managerSettings,
+      settings: userManager.settings,
       events: userManager.events,
       signinRedirect: (args?: SigninRedirectArgs) =>
         userManager.signinRedirect(args),
@@ -197,7 +164,7 @@ export const AuthProvider = ({
       removeUser: () => userManager.removeUser(),
       clearStaleState: () => userManager.clearStaleState(),
     }),
-    [managerSettings, state, userManager],
+    [state, userManager],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
