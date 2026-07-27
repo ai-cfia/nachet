@@ -8,7 +8,8 @@ const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 const fields = {
   version: pkg.version,
   name: pkg.name,
-//   description: pkg.description,
+  description: pkg.description,
+  versionLong: hash ? `${pkg.version}-${hash}` : undefined,
   versionDate: new Date().toISOString(),
 };
 
@@ -21,6 +22,8 @@ const out = `// generated file, do not edit
 export interface TsAppVersion {
     version: string;
     name: string;
+    description?: string;
+    versionLong?: string;
     versionDate: string;
 }
 
