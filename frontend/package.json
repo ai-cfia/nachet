@@ -1,7 +1,7 @@
 {
   "name": "nachet-frontend",
   "private": true,
-  "version": "3.0.3",
+  "version": "3.0.4",
   "acia-cfia": {
     "backend-version": "2.9.4"
   },
@@ -21,7 +21,8 @@
     "test": "vitest",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
-    "playwright:install-deps": "npx playwright install-deps"
+    "playwright:install-deps": "npx playwright install-deps",
+    "version": "node scripts/gen-version.mjs"
   },
   "dependencies": {
     "@azure/msal-browser": "^4.22.1",
