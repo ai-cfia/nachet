@@ -83,6 +83,23 @@ const popups = {
     },
   },
 
+  // Messages de validation partagés utilisés par les popups (voir useZodFieldValidation)
+  validation: {
+    invalidMagnification: "Le grossissement doit être un nombre positif",
+    magnification: {
+      tooSmall: "Le grossissement doit être d'au moins 0,1",
+      tooLarge: "Le grossissement ne peut pas dépasser 1000",
+    },
+    imageName: {
+      empty: "Le préfixe d'identifiant d'échantillon est requis",
+      tooLong: "Le préfixe d'identifiant d'échantillon est trop long",
+    },
+    description: {
+      empty: "La description de l'échantillon est requise",
+      tooLong: "La description de l'échantillon est trop longue",
+    },
+  },
+
   // Fenêtre de métadonnées d'image
   imageMetadata: {
     title: "Modifier les métadonnées de l'image",
