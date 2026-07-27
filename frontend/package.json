@@ -21,7 +21,8 @@
     "test": "vitest",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
-    "playwright:install-deps": "npx playwright install-deps"
+    "playwright:install-deps": "npx playwright install-deps",
+    "version": "node scripts/gen-version.mjs"
   },
   "dependencies": {
     "@azure/msal-browser": "^4.22.1",
