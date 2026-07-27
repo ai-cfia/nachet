@@ -36,14 +36,7 @@ jobs:
   bump-version:
     name: Bump version
     needs: [versions]
-    if: >-
-      ${{
-        !cancelled() &&
-        needs.versions.result == 'success' &&
-        (github.event.pull_request.user.login == 'renovate[bot]' ||
-         github.event.pull_request.user.login == 'github-actions[bot]') &&
-        github.event.pull_request.head.repo.full_name == github.repository
-      }}
+    if: ${{ !cancelled() && needs.versions.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
