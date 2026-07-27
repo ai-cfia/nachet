@@ -6,18 +6,6 @@ const OUT = "src/_versions.ts";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 
-const git = (cmd) => {
-  try {
-    return (
-      execSync(cmd, { stdio: ["ignore", "pipe", "ignore"] })
-        .toString()
-        .trim() || undefined
-    );
-  } catch {
-    return undefined;
-  }
-};
-
 const fields = {
   version: pkg.version,
   name: pkg.name,
