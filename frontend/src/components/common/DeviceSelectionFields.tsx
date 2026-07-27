@@ -46,20 +46,29 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
     );
   }, [devicesData, selectedBrandId]);
 
-  // Brand list with a trailing "None" option
+  // Brand list with a trailing "None" option.
+  // Filter any backend-provided NIL entry so we don't duplicate the injected one.
   const brandOptions = useMemo(() => {
-    if (!devicesData) return [noneOption];
-    return [...devicesData.devices, noneOption];
+    const backendBrands = (devicesData?.devices || []).filter(
+      (brand) => brand.id !== NONE_ID,
+    );
+    return [...backendBrands, noneOption];
   }, [devicesData, noneOption]);
 
   // Filter models based on selected brand, plus a "None" option
   const availableModels = useMemo(() => {
-    return [...(selectedBrand?.models || []), noneOption];
+    const backendModels = (selectedBrand?.models || []).filter(
+      (model) => model.id !== NONE_ID,
+    );
+    return [...backendModels, noneOption];
   }, [selectedBrand, noneOption]);
 
   // Filter lenses based on selected brand, plus a "None" option
   const availableLenses = useMemo(() => {
-    return [...(selectedBrand?.lenses || []), noneOption];
+    const backendLenses = (selectedBrand?.lenses || []).filter(
+      (lens) => lens.id !== NONE_ID,
+    );
+    return [...backendLenses, noneOption];
   }, [selectedBrand, noneOption]);
 
   const handleBrandChange = (brandId: string) => {
