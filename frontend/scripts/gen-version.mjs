@@ -18,8 +18,6 @@ const git = (cmd) => {
   }
 };
 
-const hash = git("git rev-parse --short HEAD");
-
 const fields = {
   version: pkg.version,
   name: pkg.name,
