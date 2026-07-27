@@ -30,8 +30,7 @@ import {
   ERROR_KEY_MAPPINGS,
 } from "@hooks/useZodFieldValidation";
 
-const NONE_ID = "none";
-
+const NONE_ID = "00000000-0000-0000-0000-000000000000";
 interface SampleMetadataPopupProps {
   devicesData: ApiDevicesResponse | null;
 }
@@ -139,7 +138,7 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
 
     // Validate sample metadata using Zod with i18n
     const trayCodeResult = trayCodeSchema.safeParse(trayCode);
-    if (trayCode !== "none" && !trayCodeResult.success) {
+    if (!trayCodeResult.success) {
       setTrayCodeError(t("batchUpload.metadataSection.trayCodeRequired"));
       isValid = false;
     } else {

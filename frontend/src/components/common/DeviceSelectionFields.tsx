@@ -3,8 +3,7 @@ import { Box, FormControl, InputLabel, MenuItem, Select } from "@mui/material";
 import { ApiDevicesResponse } from "@common/types";
 import { useTranslation } from "react-i18next";
 
-const NONE_ID = "none";
-
+const NONE_ID = "00000000-0000-0000-0000-000000000000";
 interface DeviceSelectionFieldsProps {
   selectedBrandId: string;
   selectedModelId: string;
