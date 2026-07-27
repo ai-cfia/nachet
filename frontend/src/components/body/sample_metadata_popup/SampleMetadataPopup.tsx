@@ -68,7 +68,7 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
 
       // Load sample metadata
       setTrayCode(() => sampleMetadata.trayCode);
-      setMagnification(() => sampleMetadata.magnification);
+      setMagnification(() => Math.max(sampleMetadata.magnification, 0.1));
       setSampleIdPrefix(() => sampleMetadata.sampleIdPrefix);
       setSampleDescription(() => sampleMetadata.sampleDescription);
 

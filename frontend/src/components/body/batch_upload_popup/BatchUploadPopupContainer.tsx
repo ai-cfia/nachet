@@ -333,7 +333,7 @@ export const BatchUploadPopupContainer = (
     setDeviceBrandId("");
     setDeviceModelId("");
     setDeviceLensId("");
-    setMagnification(0);
+    setMagnification(0.1);
     setFiles(null);
     setFileCount(0);
     folderNameManuallyEdited.current = false;
