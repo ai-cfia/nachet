@@ -2,6 +2,8 @@
 export interface TsAppVersion {
     version: string;
     name: string;
+    description?: string;
+    versionLong?: string;
     versionDate: string;
 }
 

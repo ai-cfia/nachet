@@ -1,9 +1,20 @@
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { execSync } from 'node:child_process';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 
-const OUT = "src/_versions.ts";
+const OUT = 'src/_versions.ts';
 
-const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+
+const git = (cmd) => {
+  try {
+    return execSync(cmd, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const hash = git('git rev-parse --short HEAD');
 
 const fields = {
   version: pkg.version,
@@ -16,7 +27,7 @@ const fields = {
 const body = Object.entries(fields)
   .filter(([, v]) => v !== undefined)
   .map(([k, v]) => `    ${k}: ${JSON.stringify(v)},`)
-  .join("\n");
+  .join('\n');
 
 const out = `// generated file, do not edit
 export interface TsAppVersion {
