@@ -19,7 +19,8 @@
     "test:a11y": "playwright test --config playwright.config.ts",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
-    "playwright:install-deps": "npx playwright install-deps"
+    "playwright:install-deps": "npx playwright install-deps",
+    "version": "node ../scripts/gen-version.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
