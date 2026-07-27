@@ -150,9 +150,13 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
       const issue = magnificationResult.error.issues[0];
       // Map Zod error codes to specific translation keys
       if (issue.code === "too_small") {
-        setMagnificationError(t("validation.magnification.tooSmall"));
+        setMagnificationError(
+          t("deviceInfo.validation.magnification.tooSmall"),
+        );
       } else if (issue.code === "too_big") {
-        setMagnificationError(t("validation.magnification.tooLarge"));
+        setMagnificationError(
+          t("deviceInfo.validation.magnification.tooLarge"),
+        );
       } else {
         const errorKey = getZodErrorKey(magnificationResult.error);
         setMagnificationError(t(errorKey));
