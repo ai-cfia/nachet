@@ -3,6 +3,8 @@ import { Box, FormControl, InputLabel, MenuItem, Select } from "@mui/material";
 import { ApiDevicesResponse } from "@common/types";
 import { useTranslation } from "react-i18next";
 
+const NONE_ID = "none";
+
 interface DeviceSelectionFieldsProps {
   selectedBrandId: string;
   selectedModelId: string;
@@ -31,6 +33,12 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
   lensError,
 }) => {
   const { t } = useTranslation("popups");
+
+  const noneOption = useMemo(
+    () => ({ id: NONE_ID, name: t("deviceInfo.none"), models: [], lenses: [] }),
+    [t],
+  );
+
   // Get the selected brand object
   const selectedBrand = useMemo(() => {
     if (!devicesData || !selectedBrandId) return null;
@@ -39,22 +47,36 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
     );
   }, [devicesData, selectedBrandId]);
 
-  // Filter models based on selected brand
-  const availableModels = useMemo(() => {
-    return selectedBrand?.models || [];
-  }, [selectedBrand]);
+  // Brand list with a trailing "None" option
+  const brandOptions = useMemo(() => {
+    if (!devicesData) return [noneOption];
+    return [...devicesData.devices, noneOption];
+  }, [devicesData, noneOption]);
 
-  // Filter lenses based on selected brand
+  // Filter models based on selected brand, plus a "None" option
+  const availableModels = useMemo(() => {
+    return [...(selectedBrand?.models || []), noneOption];
+  }, [selectedBrand, noneOption]);
+
+  // Filter lenses based on selected brand, plus a "None" option
   const availableLenses = useMemo(() => {
-    return selectedBrand?.lenses || [];
-  }, [selectedBrand]);
+    return [...(selectedBrand?.lenses || []), noneOption];
+  }, [selectedBrand, noneOption]);
 
   const handleBrandChange = (brandId: string) => {
     onBrandChange(brandId);
-    // Reset model and lens when brand changes
-    onModelChange("");
-    onLensChange("");
+    // If brand is None, cascade None down. Otherwise reset model and lens.
+    if (brandId === NONE_ID) {
+      onModelChange(NONE_ID);
+      onLensChange(NONE_ID);
+    } else {
+      onModelChange("");
+      onLensChange("");
+    }
   };
+
+  const subFieldsDisabled =
+    !selectedBrandId || selectedBrandId === NONE_ID || disabled;
 
   return (
     <Box
@@ -79,7 +101,7 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
           <MenuItem value="">
             <em>{t("deviceInfo.selectBrand")}</em>
           </MenuItem>
-          {devicesData?.devices.map((brand) => (
+          {brandOptions.map((brand) => (
             <MenuItem key={brand.id} value={brand.id}>
               {brand.name}
             </MenuItem>
@@ -111,7 +133,7 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
         {/* Model Dropdown */}
         <FormControl
           sx={{ width: "calc(50% - 5px)" }}
-          disabled={!selectedBrandId || disabled}
+          disabled={subFieldsDisabled}
           error={!!modelError}
         >
           <InputLabel id="device-model-label">
@@ -149,7 +171,7 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
         {/* Lens Dropdown */}
         <FormControl
           sx={{ width: "calc(50% - 5px)" }}
-          disabled={!selectedBrandId || disabled}
+          disabled={subFieldsDisabled}
           error={!!lensError}
         >
           <InputLabel id="device-lens-label">

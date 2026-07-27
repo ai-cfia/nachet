@@ -60,10 +60,26 @@ const popups = {
     selectBrand: "Sélectionner une marque",
     selectModel: "Sélectionner un modèle",
     selectLens: "Sélectionner une lentille",
+    none: "Aucun",
     errors: {
       brandRequired: "La marque de l'appareil est requise",
       modelRequired: "Le modèle de l'appareil est requis",
       lensRequired: "La lentille de l'appareil est requise",
+    },
+    validation: {
+      invalidMagnification: "Le grossissement doit être un nombre positif",
+      magnification: {
+        tooSmall: "Le grossissement doit être d'au moins 0,1",
+        tooLarge: "Le grossissement ne peut pas dépasser 1000",
+      },
+      imageName: {
+        empty: "Le préfixe d'identifiant d'échantillon est requis",
+        tooLong: "Le préfixe d'identifiant d'échantillon est trop long",
+      },
+      description: {
+        empty: "La description de l'échantillon est requise",
+        tooLong: "La description de l'échantillon est trop longue",
+      },
     },
   },
 
@@ -162,6 +178,7 @@ const popups = {
         "Seulement lettres, chiffres, points et espaces. Pas d'espaces ou de points consécutifs. Auto-normalisé en perdant le focus.",
       sampleDescriptionRequired: "La description de l'échantillon est requise",
       magnificationRequired: "Le grossissement est requis",
+      none: "Aucun",
     },
     deviceSection: {
       heading: "Informations sur l'appareil",
@@ -203,6 +220,18 @@ const popups = {
       speciesRequired: "L'espèce est requise",
       filesRequired: "Veuillez sélectionner au moins un fichier",
       invalidMagnification: "Le grossissement doit être un nombre positif",
+      magnification: {
+        tooSmall: "Le grossissement doit être d'au moins 0,1",
+        tooLarge: "Le grossissement ne peut pas dépasser 1000",
+      },
+      imageName: {
+        empty: "Le préfixe d'identifiant d'échantillon est requis",
+        tooLong: "Le préfixe d'identifiant d'échantillon est trop long",
+      },
+      description: {
+        empty: "La description de l'échantillon est requise",
+        tooLong: "La description de l'échantillon est trop longue",
+      },
     },
   },
 

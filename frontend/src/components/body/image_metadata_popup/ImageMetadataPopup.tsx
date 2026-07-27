@@ -121,9 +121,9 @@ const ImageMetadataPopup: React.FC<ImageMetadataPopupProps> = (props) => {
       const issue = imageNameResult.error.issues[0];
       // Map Zod error codes to specific translation keys
       if (issue.code === "too_small") {
-        setImageNameError(t("validation.imageName.empty"));
+        setImageNameError(t("deviceInfo.validation.imageName.empty"));
       } else if (issue.code === "too_big") {
-        setImageNameError(t("validation.imageName.tooLong"));
+        setImageNameError(t("deviceInfo.validation.imageName.tooLong"));
       } else {
         const errorKey = getZodErrorKey(imageNameResult.error);
         setImageNameError(t(errorKey));
@@ -191,9 +191,11 @@ const ImageMetadataPopup: React.FC<ImageMetadataPopupProps> = (props) => {
       const issue = sampleDescriptionResult.error.issues[0];
       // Map Zod error codes to specific translation keys
       if (issue.code === "too_small") {
-        setSampleDescriptionError(t("validation.description.empty"));
+        setSampleDescriptionError(t("deviceInfo.validation.description.empty"));
       } else if (issue.code === "too_big") {
-        setSampleDescriptionError(t("validation.description.tooLong"));
+        setSampleDescriptionError(
+          t("deviceInfo.validation.description.tooLong"),
+        );
       } else {
         const errorKey = getZodErrorKey(sampleDescriptionResult.error);
         setSampleDescriptionError(t(errorKey));

@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
-import { ApiDevicesResponse } from "@common/types";
+import { ApiDevicesResponse, ApiDeviceBrand } from "@common/types";
 import { useDeviceStore } from "@stores/useDeviceStore";
 import { useModalStore } from "@stores/useModalStore";
 import {
@@ -29,6 +29,8 @@ import {
   useZodFieldValidation,
   ERROR_KEY_MAPPINGS,
 } from "@hooks/useZodFieldValidation";
+
+const NONE_ID = "none";
 
 interface SampleMetadataPopupProps {
   devicesData: ApiDevicesResponse | null;
@@ -51,7 +53,7 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
 
   // Initialize sample metadata state
   const [trayCode, setTrayCode] = useState<string>("");
-  const [magnification, setMagnification] = useState<number>(0);
+  const [magnification, setMagnification] = useState<number>(0.1);
   const [sampleIdPrefix, setSampleIdPrefix] = useState<string>("");
   const [sampleDescription, setSampleDescription] = useState<string>("");
 
@@ -109,9 +111,10 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
   const validateAndSave = (): boolean => {
     let isValid = true;
 
-    // Validate device selection using Zod with i18n
+    // Validate device selection using Zod with i18n.
+    // "none" is an accepted answer (device unknown), so treat it as filled.
     const brandResult = deviceIdValidationSchema.safeParse(selectedBrandId);
-    if (!brandResult.success) {
+    if (selectedBrandId !== NONE_ID && !brandResult.success) {
       setBrandError(t("deviceInfo.errors.brandRequired"));
       isValid = false;
     } else {
@@ -119,7 +122,7 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
     }
 
     const modelResult = deviceIdValidationSchema.safeParse(selectedModelId);
-    if (!modelResult.success) {
+    if (selectedModelId !== NONE_ID && !modelResult.success) {
       setModelError(t("deviceInfo.errors.modelRequired"));
       isValid = false;
     } else {
@@ -127,7 +130,7 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
     }
 
     const lensResult = deviceIdValidationSchema.safeParse(selectedLensId);
-    if (!lensResult.success) {
+    if (selectedLensId !== NONE_ID && !lensResult.success) {
       setLensError(t("deviceInfo.errors.lensRequired"));
       isValid = false;
     } else {
@@ -136,7 +139,7 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
 
     // Validate sample metadata using Zod with i18n
     const trayCodeResult = trayCodeSchema.safeParse(trayCode);
-    if (!trayCodeResult.success) {
+    if (trayCode !== "none" && !trayCodeResult.success) {
       setTrayCodeError(t("batchUpload.metadataSection.trayCodeRequired"));
       isValid = false;
     } else {
@@ -166,9 +169,9 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
       const issue = sampleIdPrefixResult.error.issues[0];
       // Map Zod error codes to specific translation keys
       if (issue.code === "too_small") {
-        setSampleIdPrefixError(t("validation.imageName.empty"));
+        setSampleIdPrefixError(t("deviceInfo.validation.imageName.empty"));
       } else if (issue.code === "too_big") {
-        setSampleIdPrefixError(t("validation.imageName.tooLong"));
+        setSampleIdPrefixError(t("deviceInfo.validation.imageName.tooLong"));
       } else {
         const errorKey = getZodErrorKey(sampleIdPrefixResult.error);
         setSampleIdPrefixError(t(errorKey));
@@ -185,9 +188,11 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
       const issue = sampleDescriptionResult.error.issues[0];
       // Map Zod error codes to specific translation keys
       if (issue.code === "too_small") {
-        setSampleDescriptionError(t("validation.description.empty"));
+        setSampleDescriptionError(t("deviceInfo.validation.description.empty"));
       } else if (issue.code === "too_big") {
-        setSampleDescriptionError(t("validation.description.tooLong"));
+        setSampleDescriptionError(
+          t("deviceInfo.validation.description.tooLong"),
+        );
       } else {
         const errorKey = getZodErrorKey(sampleDescriptionResult.error);
         setSampleDescriptionError(t(errorKey));
@@ -228,23 +233,38 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
     closeSampleMetadataPopup();
   };
 
+  // Synthetic "None" option used to resolve the display box when the
+  // user selects None (device unknown).
+  const noneOption: ApiDeviceBrand = useMemo(
+    () => ({
+      id: NONE_ID,
+      name: t("deviceInfo.none"),
+      description: "",
+      models: [],
+      lenses: [],
+    }),
+    [t],
+  );
+
   // Get the selected brand object for display
   const selectedBrand = useMemo(() => {
-    if (!props.devicesData || !selectedBrandId) return null;
+    if (!selectedBrandId) return null;
+    if (selectedBrandId === NONE_ID) return noneOption;
+    if (!props.devicesData) return null;
     return (
       props.devicesData.devices.find((brand) => brand.id === selectedBrandId) ||
       null
     );
-  }, [props.devicesData, selectedBrandId]);
+  }, [props.devicesData, selectedBrandId, noneOption]);
 
-  // Get available models/lenses for display
+  // Get available models/lenses for display, including the None option
   const availableModels = useMemo(() => {
-    return selectedBrand?.models || [];
-  }, [selectedBrand]);
+    return [...(selectedBrand?.models || []), noneOption];
+  }, [selectedBrand, noneOption]);
 
   const availableLenses = useMemo(() => {
-    return selectedBrand?.lenses || [];
-  }, [selectedBrand]);
+    return [...(selectedBrand?.lenses || []), noneOption];
+  }, [selectedBrand, noneOption]);
 
   return (
     <Dialog

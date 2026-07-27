@@ -60,10 +60,26 @@ const popups = {
     selectBrand: "Select a brand",
     selectModel: "Select a model",
     selectLens: "Select a lens",
+    none: "None",
     errors: {
       brandRequired: "Device brand is required",
       modelRequired: "Device model is required",
       lensRequired: "Device lens is required",
+    },
+    validation: {
+      invalidMagnification: "Magnification must be a positive number",
+      magnification: {
+        tooSmall: "Magnification must be at least 0.1",
+        tooLarge: "Magnification cannot exceed 1000",
+      },
+      imageName: {
+        empty: "Sample ID prefix is required",
+        tooLong: "Sample ID prefix is too long",
+      },
+      description: {
+        empty: "Sample description is required",
+        tooLong: "Sample description is too long",
+      },
     },
   },
 
@@ -160,6 +176,7 @@ const popups = {
         "Only letters, numbers, periods, and spaces. No consecutive spaces or periods. Auto-normalized on blur.",
       sampleDescriptionRequired: "Sample description is required",
       magnificationRequired: "Magnification is required",
+      none: "None",
     },
     deviceSection: {
       heading: "Device Information",
@@ -201,6 +218,18 @@ const popups = {
       speciesRequired: "Species is required",
       filesRequired: "Please select at least one file",
       invalidMagnification: "Magnification must be a positive number",
+      magnification: {
+        tooSmall: "Magnification must be at least 0.1",
+        tooLarge: "Magnification cannot exceed 1000",
+      },
+      imageName: {
+        empty: "Sample ID prefix is required",
+        tooLong: "Sample ID prefix is too long",
+      },
+      description: {
+        empty: "Sample description is required",
+        tooLong: "Sample description is too long",
+      },
     },
   },
 

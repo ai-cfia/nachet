@@ -77,6 +77,9 @@ export const SampleMetadataFields = (props: SampleMetadataFieldsProps) => {
           <MenuItem value="">
             <em>{t("batchUpload.metadataSection.selectTrayCode")}</em>
           </MenuItem>
+          <MenuItem value="none">
+            {t("batchUpload.metadataSection.none")}
+          </MenuItem>
           <MenuItem value="A">A</MenuItem>
           <MenuItem value="B">B</MenuItem>
           <MenuItem value="C">C</MenuItem>
@@ -95,7 +98,7 @@ export const SampleMetadataFields = (props: SampleMetadataFieldsProps) => {
           }
           slotProps={{
             htmlInput: {
-              min: 0.2,
+              min: 0.1,
               max: 1000,
               step: 0.1,
               style: { textAlign: "center" },
