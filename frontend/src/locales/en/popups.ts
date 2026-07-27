@@ -83,6 +83,23 @@ const popups = {
     },
   },
 
+  // Shared validation messages used across popup components (see useZodFieldValidation)
+  validation: {
+    invalidMagnification: "Magnification must be a positive number",
+    magnification: {
+      tooSmall: "Magnification must be at least 0.1",
+      tooLarge: "Magnification cannot exceed 1000",
+    },
+    imageName: {
+      empty: "Sample ID prefix is required",
+      tooLong: "Sample ID prefix is too long",
+    },
+    description: {
+      empty: "Sample description is required",
+      tooLong: "Sample description is too long",
+    },
+  },
+
   // Image Metadata Popup
   imageMetadata: {
     title: "Edit Image Metadata",
