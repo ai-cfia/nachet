@@ -105,6 +105,7 @@ jobs:
             echo "Version is already bumped."
           else
             npm version "$desired_version" --no-git-tag-version
+            node ../.github/scripts/update-version-metadata.mjs
           fi
 
       - name: Update lock file
