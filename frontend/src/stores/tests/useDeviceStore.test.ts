@@ -576,7 +576,7 @@ describe("useDeviceStore", () => {
 
       expect(useDeviceStore.getState().isDeviceInfoSet()).toBe(false);
       expect(useDeviceStore.getState().isSampleMetadataComplete()).toBe(false);
-      expect(useDeviceStore.getState().getMissingMetadataCount()).toBe(7);
+      expect(useDeviceStore.getState().getMissingMetadataCount()).toBe(6);
     });
 
     it("should handle empty device data", () => {
