@@ -1,7 +1,6 @@
 name: Nachet Mini Renovate
 
 permissions:
-  actions: write
   contents: write
   pull-requests: read
 
@@ -26,7 +25,7 @@ defaults:
 
 jobs:
   versions:
-    if: ${{ github.event.pull_request.user.login == 'renovate[bot]' || github.event.pull_request.user.login == 'github-actions[bot]' }}
+    if: ${{ github.actor == 'renovate[bot]' }}
     uses: ./.github/workflows/reusable-frontend-versions.yml
     with:
       working-directory: nachet-mini
@@ -126,9 +125,3 @@ jobs:
           pull: "--rebase --autostash"
           author_name: "github-actions[bot]"
           author_email: "github-actions[bot]@users.noreply.github.com"
-
-      - name: Run nachet-mini checks
-        run: |
-          gh workflow run nachet-mini-lint.yml --ref "${{ github.head_ref }}"
-        env:
-          GH_TOKEN: ${{ github.token }}

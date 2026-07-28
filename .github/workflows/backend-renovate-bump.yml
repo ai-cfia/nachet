@@ -2,7 +2,6 @@
 name: Backend Renovate
 
 permissions:
-  actions: read
   contents: read
   pull-requests: read
 
@@ -28,11 +27,10 @@ defaults:
 jobs:
   bump-version:
     name: Bump version
-    if: ${{ (github.event.pull_request.user.login == 'renovate[bot]' || github.event.pull_request.user.login == 'github-actions[bot]') && github.event.pull_request.head.repo.full_name == github.repository }}
+    if: ${{ github.actor == 'renovate[bot]' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     permissions:
-      actions: read
-      contents: read
+      contents: write
       pull-requests: read
     steps:
       - name: Checkout PR branch
@@ -96,8 +94,6 @@ jobs:
 
       - name: Commit & push changes
         if: steps.check.outputs.changed == 'true'
-        permissions:
-          contents: write
         uses: EndBug/add-and-commit@ebe9b51bb11d033d228e1a1c3f23ad5bd4110c81
         with:
           message: "chore: bump backend version for Renovate PRs"
@@ -105,9 +101,3 @@ jobs:
           pull: "--rebase --autostash"
           author_name: "github-actions[bot]"
           author_email: "github-actions[bot]@users.noreply.github.com"
-
-      - name: Run backend checks
-        run: |
-          gh workflow run backend-lint.yml --ref "${{ github.head_ref }}"
-        env:
-          GH_TOKEN: ${{ github.token }}
