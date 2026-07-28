@@ -60,7 +60,6 @@ const popups = {
     selectBrand: "Sélectionner une marque",
     selectModel: "Sélectionner un modèle",
     selectLens: "Sélectionner une lentille",
-    none: "Aucun",
     errors: {
       brandRequired: "La marque de l'appareil est requise",
       modelRequired: "Le modèle de l'appareil est requis",
@@ -195,7 +194,6 @@ const popups = {
         "Seulement lettres, chiffres, points et espaces. Pas d'espaces ou de points consécutifs. Auto-normalisé en perdant le focus.",
       sampleDescriptionRequired: "La description de l'échantillon est requise",
       magnificationRequired: "Le grossissement est requis",
-      none: "Aucun",
     },
     deviceSection: {
       heading: "Informations sur l'appareil",

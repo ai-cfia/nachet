@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { colours } from "../../../styles/colours";
-import { ApiDevicesResponse, ApiDeviceBrand } from "@common/types";
+import { ApiDevicesResponse } from "@common/types";
 import { useDeviceStore } from "@stores/useDeviceStore";
 import { useModalStore } from "@stores/useModalStore";
 import {
@@ -30,7 +30,6 @@ import {
   ERROR_KEY_MAPPINGS,
 } from "@hooks/useZodFieldValidation";
 
-const NONE_ID = "00000000-0000-0000-0000-000000000000";
 interface SampleMetadataPopupProps {
   devicesData: ApiDevicesResponse | null;
 }
@@ -111,9 +110,8 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
     let isValid = true;
 
     // Validate device selection using Zod with i18n.
-    // "none" is an accepted answer (device unknown), so treat it as filled.
     const brandResult = deviceIdValidationSchema.safeParse(selectedBrandId);
-    if (selectedBrandId !== NONE_ID && !brandResult.success) {
+    if (!brandResult.success) {
       setBrandError(t("deviceInfo.errors.brandRequired"));
       isValid = false;
     } else {
@@ -121,7 +119,7 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
     }
 
     const modelResult = deviceIdValidationSchema.safeParse(selectedModelId);
-    if (selectedModelId !== NONE_ID && !modelResult.success) {
+    if (!modelResult.success) {
       setModelError(t("deviceInfo.errors.modelRequired"));
       isValid = false;
     } else {
@@ -129,7 +127,7 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
     }
 
     const lensResult = deviceIdValidationSchema.safeParse(selectedLensId);
-    if (selectedLensId !== NONE_ID && !lensResult.success) {
+    if (!lensResult.success) {
       setLensError(t("deviceInfo.errors.lensRequired"));
       isValid = false;
     } else {
@@ -236,38 +234,18 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
     closeSampleMetadataPopup();
   };
 
-  // Synthetic "None" option used to resolve the display box when the
-  // user selects None (device unknown).
-  const noneOption: ApiDeviceBrand = useMemo(
-    () => ({
-      id: NONE_ID,
-      name: t("deviceInfo.none"),
-      description: "",
-      models: [],
-      lenses: [],
-    }),
-    [t],
-  );
-
   // Get the selected brand object for display
   const selectedBrand = useMemo(() => {
-    if (!selectedBrandId) return null;
-    if (selectedBrandId === NONE_ID) return noneOption;
-    if (!props.devicesData) return null;
+    if (!selectedBrandId || !props.devicesData) return null;
     return (
       props.devicesData.devices.find((brand) => brand.id === selectedBrandId) ||
       null
     );
-  }, [props.devicesData, selectedBrandId, noneOption]);
+  }, [props.devicesData, selectedBrandId]);
 
-  // Get available models/lenses for display, including the None option
-  const availableModels = useMemo(() => {
-    return [...(selectedBrand?.models || []), noneOption];
-  }, [selectedBrand, noneOption]);
-
-  const availableLenses = useMemo(() => {
-    return [...(selectedBrand?.lenses || []), noneOption];
-  }, [selectedBrand, noneOption]);
+  // Models/lenses of the selected brand, for the summary display
+  const availableModels = selectedBrand?.models || [];
+  const availableLenses = selectedBrand?.lenses || [];
 
   return (
     <Dialog

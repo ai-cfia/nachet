@@ -33,11 +33,6 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
 }) => {
   const { t } = useTranslation("popups");
 
-  const noneOption = useMemo(
-    () => ({ id: NONE_ID, name: t("deviceInfo.none"), models: [], lenses: [] }),
-    [t],
-  );
-
   // Get the selected brand object
   const selectedBrand = useMemo(() => {
     if (!devicesData || !selectedBrandId) return null;
@@ -46,30 +41,12 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
     );
   }, [devicesData, selectedBrandId]);
 
-  // Brand list with a trailing "None" option.
-  // Filter any backend-provided NIL entry so we don't duplicate the injected one.
-  const brandOptions = useMemo(() => {
-    const backendBrands = (devicesData?.devices || []).filter(
-      (brand) => brand.id !== NONE_ID,
-    );
-    return [...backendBrands, noneOption];
-  }, [devicesData, noneOption]);
+  // Brand list as provided by the backend (includes the "None" brand)
+  const brandOptions = devicesData?.devices || [];
 
-  // Filter models based on selected brand, plus a "None" option
-  const availableModels = useMemo(() => {
-    const backendModels = (selectedBrand?.models || []).filter(
-      (model) => model.id !== NONE_ID,
-    );
-    return [...backendModels, noneOption];
-  }, [selectedBrand, noneOption]);
-
-  // Filter lenses based on selected brand, plus a "None" option
-  const availableLenses = useMemo(() => {
-    const backendLenses = (selectedBrand?.lenses || []).filter(
-      (lens) => lens.id !== NONE_ID,
-    );
-    return [...backendLenses, noneOption];
-  }, [selectedBrand, noneOption]);
+  // Models and lenses belonging to the selected brand
+  const availableModels = selectedBrand?.models || [];
+  const availableLenses = selectedBrand?.lenses || [];
 
   const handleBrandChange = (brandId: string) => {
     onBrandChange(brandId);

@@ -60,7 +60,6 @@ const popups = {
     selectBrand: "Select a brand",
     selectModel: "Select a model",
     selectLens: "Select a lens",
-    none: "None",
     errors: {
       brandRequired: "Device brand is required",
       modelRequired: "Device model is required",
@@ -193,7 +192,6 @@ const popups = {
         "Only letters, numbers, periods, and spaces. No consecutive spaces or periods. Auto-normalized on blur.",
       sampleDescriptionRequired: "Sample description is required",
       magnificationRequired: "Magnification is required",
-      none: "None",
     },
     deviceSection: {
       heading: "Device Information",
