@@ -148,13 +148,9 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
       const issue = magnificationResult.error.issues[0];
       // Map Zod error codes to specific translation keys
       if (issue.code === "too_small") {
-        setMagnificationError(
-          t("deviceInfo.validation.magnification.tooSmall"),
-        );
+        setMagnificationError(t("validation.magnification.tooSmall"));
       } else if (issue.code === "too_big") {
-        setMagnificationError(
-          t("deviceInfo.validation.magnification.tooLarge"),
-        );
+        setMagnificationError(t("validation.magnification.tooLarge"));
       } else {
         const errorKey = getZodErrorKey(magnificationResult.error);
         setMagnificationError(t(errorKey));
@@ -170,9 +166,9 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
       const issue = sampleIdPrefixResult.error.issues[0];
       // Map Zod error codes to specific translation keys
       if (issue.code === "too_small") {
-        setSampleIdPrefixError(t("deviceInfo.validation.imageName.empty"));
+        setSampleIdPrefixError(t("validation.imageName.empty"));
       } else if (issue.code === "too_big") {
-        setSampleIdPrefixError(t("deviceInfo.validation.imageName.tooLong"));
+        setSampleIdPrefixError(t("validation.imageName.tooLong"));
       } else {
         const errorKey = getZodErrorKey(sampleIdPrefixResult.error);
         setSampleIdPrefixError(t(errorKey));
@@ -189,11 +185,9 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
       const issue = sampleDescriptionResult.error.issues[0];
       // Map Zod error codes to specific translation keys
       if (issue.code === "too_small") {
-        setSampleDescriptionError(t("deviceInfo.validation.description.empty"));
+        setSampleDescriptionError(t("validation.description.empty"));
       } else if (issue.code === "too_big") {
-        setSampleDescriptionError(
-          t("deviceInfo.validation.description.tooLong"),
-        );
+        setSampleDescriptionError(t("validation.description.tooLong"));
       } else {
         const errorKey = getZodErrorKey(sampleDescriptionResult.error);
         setSampleDescriptionError(t(errorKey));

@@ -65,38 +65,6 @@ const popups = {
       modelRequired: "Device model is required",
       lensRequired: "Device lens is required",
     },
-    validation: {
-      invalidMagnification: "Magnification must be a positive number",
-      magnification: {
-        tooSmall: "Magnification must be at least 0.1",
-        tooLarge: "Magnification cannot exceed 1000",
-      },
-      imageName: {
-        empty: "Sample ID prefix is required",
-        tooLong: "Sample ID prefix is too long",
-      },
-      description: {
-        empty: "Sample description is required",
-        tooLong: "Sample description is too long",
-      },
-    },
-  },
-
-  // Shared validation messages used across popup components (see useZodFieldValidation)
-  validation: {
-    invalidMagnification: "Magnification must be a positive number",
-    magnification: {
-      tooSmall: "Magnification must be at least 0.1",
-      tooLarge: "Magnification cannot exceed 1000",
-    },
-    imageName: {
-      empty: "Sample ID prefix is required",
-      tooLong: "Sample ID prefix is too long",
-    },
-    description: {
-      empty: "Sample description is required",
-      tooLong: "Sample description is too long",
-    },
   },
 
   // Image Metadata Popup
@@ -233,18 +201,6 @@ const popups = {
       speciesRequired: "Species is required",
       filesRequired: "Please select at least one file",
       invalidMagnification: "Magnification must be a positive number",
-      magnification: {
-        tooSmall: "Magnification must be at least 0.1",
-        tooLarge: "Magnification cannot exceed 1000",
-      },
-      imageName: {
-        empty: "Sample ID prefix is required",
-        tooLong: "Sample ID prefix is too long",
-      },
-      description: {
-        empty: "Sample description is required",
-        tooLong: "Sample description is too long",
-      },
     },
   },
 
@@ -347,6 +303,38 @@ const popups = {
     minutesAgo: "{{count}} minute(s) ago",
     hoursAgo: "{{count}} hour(s) ago",
     daysAgo: "{{count}} day(s) ago",
+  },
+
+  // Popup Validation Messages
+  validation: {
+    invalidMagnification: "Magnification must be a positive number",
+    magnification: {
+      tooSmall: "Magnification must be at least 0.1",
+      tooLarge: "Magnification cannot exceed 1000",
+    },
+    imageName: {
+      empty: "Sample ID prefix is required",
+      tooLong: "Sample ID prefix is too long",
+    },
+    description: {
+      empty: "Sample description is required",
+      tooLong: "Sample description is too long",
+    },
+    // Fallback Zod issues messages
+    generic: {
+      required: "This field is required",
+      invalid: "Invalid value",
+      invalidType: "Expected {{expected}}, received {{received}}",
+      tooSmall: "Must be at least {{minimum}}",
+      tooLarge: "Must be at most {{maximum}}",
+      tooSmallString: "Must be at least {{minimum}} characters",
+      tooLargeString: "Must be at most {{maximum}} characters",
+      notInteger: "Must be a whole number",
+      notNumber: "Must be a number",
+      invalidString: "Invalid format",
+      invalidEnum: "Invalid selection",
+      custom: "Validation error",
+    },
   },
 } as const;
 

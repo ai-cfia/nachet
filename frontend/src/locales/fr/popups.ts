@@ -65,38 +65,6 @@ const popups = {
       modelRequired: "Le modèle de l'appareil est requis",
       lensRequired: "La lentille de l'appareil est requise",
     },
-    validation: {
-      invalidMagnification: "Le grossissement doit être un nombre positif",
-      magnification: {
-        tooSmall: "Le grossissement doit être d'au moins 0,1",
-        tooLarge: "Le grossissement ne peut pas dépasser 1000",
-      },
-      imageName: {
-        empty: "Le préfixe d'identifiant d'échantillon est requis",
-        tooLong: "Le préfixe d'identifiant d'échantillon est trop long",
-      },
-      description: {
-        empty: "La description de l'échantillon est requise",
-        tooLong: "La description de l'échantillon est trop longue",
-      },
-    },
-  },
-
-  // Messages de validation partagés utilisés par les popups (voir useZodFieldValidation)
-  validation: {
-    invalidMagnification: "Le grossissement doit être un nombre positif",
-    magnification: {
-      tooSmall: "Le grossissement doit être d'au moins 0,1",
-      tooLarge: "Le grossissement ne peut pas dépasser 1000",
-    },
-    imageName: {
-      empty: "Le préfixe d'identifiant d'échantillon est requis",
-      tooLong: "Le préfixe d'identifiant d'échantillon est trop long",
-    },
-    description: {
-      empty: "La description de l'échantillon est requise",
-      tooLong: "La description de l'échantillon est trop longue",
-    },
   },
 
   // Fenêtre de métadonnées d'image
@@ -235,18 +203,6 @@ const popups = {
       speciesRequired: "L'espèce est requise",
       filesRequired: "Veuillez sélectionner au moins un fichier",
       invalidMagnification: "Le grossissement doit être un nombre positif",
-      magnification: {
-        tooSmall: "Le grossissement doit être d'au moins 0,1",
-        tooLarge: "Le grossissement ne peut pas dépasser 1000",
-      },
-      imageName: {
-        empty: "Le préfixe d'identifiant d'échantillon est requis",
-        tooLong: "Le préfixe d'identifiant d'échantillon est trop long",
-      },
-      description: {
-        empty: "La description de l'échantillon est requise",
-        tooLong: "La description de l'échantillon est trop longue",
-      },
     },
   },
 
@@ -354,6 +310,38 @@ const popups = {
     minutesAgo: "Il y a {{count}} minute(s)",
     hoursAgo: "Il y a {{count}} heure(s)",
     daysAgo: "Il y a {{count}} jour(s)",
+  },
+
+  // Messages de validation
+  validation: {
+    invalidMagnification: "Le grossissement doit être un nombre positif",
+    magnification: {
+      tooSmall: "Le grossissement doit être d'au moins 0,1",
+      tooLarge: "Le grossissement ne peut pas dépasser 1000",
+    },
+    imageName: {
+      empty: "Le préfixe d'identifiant d'échantillon est requis",
+      tooLong: "Le préfixe d'identifiant d'échantillon est trop long",
+    },
+    description: {
+      empty: "La description de l'échantillon est requise",
+      tooLong: "La description de l'échantillon est trop longue",
+    },
+    // Messages de repli pour les erreurs Zod non mappées
+    generic: {
+      required: "Ce champ est requis",
+      invalid: "Valeur invalide",
+      invalidType: "Type attendu {{expected}}, reçu {{received}}",
+      tooSmall: "Doit être au moins {{minimum}}",
+      tooLarge: "Doit être au maximum {{maximum}}",
+      tooSmallString: "Doit contenir au moins {{minimum}} caractères",
+      tooLargeString: "Doit contenir au maximum {{maximum}} caractères",
+      notInteger: "Doit être un nombre entier",
+      notNumber: "Doit être un nombre",
+      invalidString: "Format invalide",
+      invalidEnum: "Sélection invalide",
+      custom: "Erreur de validation",
+    },
   },
 } as const;
 
