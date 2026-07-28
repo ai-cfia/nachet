@@ -40,6 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v6
@@ -128,3 +129,10 @@ jobs:
           pull: "--rebase --autostash"
           author_name: "github-actions[bot]"
           author_email: "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run frontend checks
+        if: steps.check.outputs.changed == 'true'
+        run: gh workflow run frontend-lint.yml --ref "$PR_HEAD_REF"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_HEAD_REF: ${{ github.head_ref }}

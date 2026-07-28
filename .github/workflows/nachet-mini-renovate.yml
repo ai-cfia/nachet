@@ -1,6 +1,7 @@
 name: Nachet Mini Renovate
 
 permissions:
+  actions: write
   contents: write
   pull-requests: read
 
@@ -125,3 +126,9 @@ jobs:
           pull: "--rebase --autostash"
           author_name: "github-actions[bot]"
           author_email: "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run nachet-mini checks
+        run: |
+          gh workflow run nachet-mini-lint.yml --ref "${{ github.head_ref }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
