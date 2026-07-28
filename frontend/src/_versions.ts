@@ -1,13 +1,14 @@
+// generated file, do not edit
 export interface TsAppVersion {
-    version: string;
-    name: string;
-    description?: string;
-    versionLong?: string;
-    versionDate: string;
-    gitCommitHash?: string;
-    gitCommitDate?: string;
-    gitTag?: string;
-};
+  version: string;
+  name: string;
+  description?: string;
+  versionLong?: string;
+  versionDate: string;
+  gitCommitHash?: string;
+  gitCommitDate?: string;
+  gitTag?: string;
+}
 export const versions: TsAppVersion = {
     version: '3.0.5',
     name: 'nachet-frontend',

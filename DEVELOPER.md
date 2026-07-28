@@ -760,7 +760,7 @@ At this point you will have the full stack, you will be able to test integration
 ## Frontend changes
 
 - When making changes to the frontend, ensure that you test the application in different browsers for compatibility.
-- the first step should be to bump the version in the `frontend/package.json` file.
+- the first step should be to run `npm version patch` from `nachet/frontend`; this updates `package.json`, `package-lock.json`, and `src/_versions.ts`.
 - run the sbom generation script to update the software bill of materials `nachet $ ./generate-sbom.sh frontend`
 - run `npm run prestart`
 - ensure you have .env.config.local in frontend/ and .env.local in backend/
