@@ -17,6 +17,9 @@ npm ci
 
 ## Development
 
+Before making changes, run `npm version patch`. This updates `package.json`,
+`package-lock.json`, and `src/_versions.ts`.
+
 ```bash
 npm run dev
 ```
