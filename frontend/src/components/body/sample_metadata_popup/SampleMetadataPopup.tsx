@@ -51,7 +51,7 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
 
   // Initialize sample metadata state
   const [trayCode, setTrayCode] = useState<string>("");
-  const [magnification, setMagnification] = useState<number>(0.1);
+  const [magnification, setMagnification] = useState<number>(1);
   const [sampleIdPrefix, setSampleIdPrefix] = useState<string>("");
   const [sampleDescription, setSampleDescription] = useState<string>("");
 
@@ -67,7 +67,7 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
 
       // Load sample metadata
       setTrayCode(() => sampleMetadata.trayCode);
-      setMagnification(() => Math.max(sampleMetadata.magnification, 0.1));
+      setMagnification(() => sampleMetadata.magnification);
       setSampleIdPrefix(() => sampleMetadata.sampleIdPrefix);
       setSampleDescription(() => sampleMetadata.sampleDescription);
 
@@ -109,7 +109,7 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
   const validateAndSave = (): boolean => {
     let isValid = true;
 
-    // Validate device selection using Zod with i18n.
+    // Validate device selection using Zod with i18n
     const brandResult = deviceIdValidationSchema.safeParse(selectedBrandId);
     if (!brandResult.success) {
       setBrandError(t("deviceInfo.errors.brandRequired"));
@@ -230,16 +230,21 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
 
   // Get the selected brand object for display
   const selectedBrand = useMemo(() => {
-    if (!selectedBrandId || !props.devicesData) return null;
+    if (!props.devicesData || !selectedBrandId) return null;
     return (
       props.devicesData.devices.find((brand) => brand.id === selectedBrandId) ||
       null
     );
   }, [props.devicesData, selectedBrandId]);
 
-  // Models/lenses of the selected brand, for the summary display
-  const availableModels = selectedBrand?.models || [];
-  const availableLenses = selectedBrand?.lenses || [];
+  // Get available models/lenses for display
+  const availableModels = useMemo(() => {
+    return selectedBrand?.models || [];
+  }, [selectedBrand]);
+
+  const availableLenses = useMemo(() => {
+    return selectedBrand?.lenses || [];
+  }, [selectedBrand]);
 
   return (
     <Dialog

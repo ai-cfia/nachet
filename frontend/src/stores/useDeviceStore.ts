@@ -47,7 +47,7 @@ export const useDeviceStore = create<DeviceState>()(
       },
       sampleMetadata: {
         trayCode: "",
-        magnification: 0.1,
+        magnification: 1,
         sampleIdPrefix: "",
         sampleDescription: "",
       },
@@ -70,7 +70,7 @@ export const useDeviceStore = create<DeviceState>()(
         set({
           sampleMetadata: {
             trayCode: "",
-            magnification: 0.1,
+            magnification: 1,
             sampleIdPrefix: "",
             sampleDescription: "",
           },

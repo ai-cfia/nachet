@@ -44,9 +44,15 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
   // Brand list as provided by the backend (includes the "None" brand)
   const brandOptions = devicesData?.devices || [];
 
-  // Models and lenses belonging to the selected brand
-  const availableModels = selectedBrand?.models || [];
-  const availableLenses = selectedBrand?.lenses || [];
+  // Filter models based on selected brand
+  const availableModels = useMemo(() => {
+    return selectedBrand?.models || [];
+  }, [selectedBrand]);
+
+  // Filter lenses based on selected brand
+  const availableLenses = useMemo(() => {
+    return selectedBrand?.lenses || [];
+  }, [selectedBrand]);
 
   const handleBrandChange = (brandId: string) => {
     onBrandChange(brandId);

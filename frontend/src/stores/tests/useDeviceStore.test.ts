@@ -317,7 +317,7 @@ describe("useDeviceStore", () => {
 
       const { sampleMetadata } = useDeviceStore.getState();
       expect(sampleMetadata.trayCode).toBe("");
-      expect(sampleMetadata.magnification).toBe(0.1);
+      expect(sampleMetadata.magnification).toBe(1);
       expect(sampleMetadata.sampleIdPrefix).toBe("");
       expect(sampleMetadata.sampleDescription).toBe("");
     });

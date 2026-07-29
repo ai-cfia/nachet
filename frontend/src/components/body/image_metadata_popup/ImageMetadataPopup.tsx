@@ -56,7 +56,7 @@ const ImageMetadataPopup: React.FC<ImageMetadataPopupProps> = (props) => {
 
   // Initialize sample metadata state
   const [trayCode, setTrayCode] = useState<string>("");
-  const [magnification, setMagnification] = useState<number>(0);
+  const [magnification, setMagnification] = useState<number>(1);
   const [sampleDescription, setSampleDescription] = useState<string>("");
 
   // Load image-specific data when popup opens
@@ -78,7 +78,7 @@ const ImageMetadataPopup: React.FC<ImageMetadataPopupProps> = (props) => {
 
         // Load sample metadata
         setTrayCode(() => currentImage.trayCode || "");
-        setMagnification(() => currentImage.magnification || 0);
+        setMagnification(() => currentImage.magnification || 1);
         setSampleDescription(() => currentImage.imageDescription || "");
       }
     }
