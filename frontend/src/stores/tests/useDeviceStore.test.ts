@@ -317,7 +317,7 @@ describe("useDeviceStore", () => {
 
       const { sampleMetadata } = useDeviceStore.getState();
       expect(sampleMetadata.trayCode).toBe("");
-      expect(sampleMetadata.magnification).toBe(0);
+      expect(sampleMetadata.magnification).toBe(1);
       expect(sampleMetadata.sampleIdPrefix).toBe("");
       expect(sampleMetadata.sampleDescription).toBe("");
     });
@@ -576,7 +576,7 @@ describe("useDeviceStore", () => {
 
       expect(useDeviceStore.getState().isDeviceInfoSet()).toBe(false);
       expect(useDeviceStore.getState().isSampleMetadataComplete()).toBe(false);
-      expect(useDeviceStore.getState().getMissingMetadataCount()).toBe(7);
+      expect(useDeviceStore.getState().getMissingMetadataCount()).toBe(6);
     });
 
     it("should handle empty device data", () => {

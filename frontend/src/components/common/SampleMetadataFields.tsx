@@ -95,7 +95,7 @@ export const SampleMetadataFields = (props: SampleMetadataFieldsProps) => {
           }
           slotProps={{
             htmlInput: {
-              min: 0.2,
+              min: 0.1,
               max: 1000,
               step: 0.1,
               style: { textAlign: "center" },

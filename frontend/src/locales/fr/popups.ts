@@ -311,6 +311,38 @@ const popups = {
     hoursAgo: "Il y a {{count}} heure(s)",
     daysAgo: "Il y a {{count}} jour(s)",
   },
+
+  // Messages de validation
+  validation: {
+    invalidMagnification: "Le grossissement doit être un nombre positif",
+    magnification: {
+      tooSmall: "Le grossissement doit être d'au moins 0,1",
+      tooLarge: "Le grossissement ne peut pas dépasser 1000",
+    },
+    imageName: {
+      empty: "Le préfixe d'identifiant d'échantillon est requis",
+      tooLong: "Le préfixe d'identifiant d'échantillon est trop long",
+    },
+    description: {
+      empty: "La description de l'échantillon est requise",
+      tooLong: "La description de l'échantillon est trop longue",
+    },
+    // Messages de repli pour les erreurs Zod non mappées
+    generic: {
+      required: "Ce champ est requis",
+      invalid: "Valeur invalide",
+      invalidType: "Type attendu {{expected}}, reçu {{received}}",
+      tooSmall: "Doit être au moins {{minimum}}",
+      tooLarge: "Doit être au maximum {{maximum}}",
+      tooSmallString: "Doit contenir au moins {{minimum}} caractères",
+      tooLargeString: "Doit contenir au maximum {{maximum}} caractères",
+      notInteger: "Doit être un nombre entier",
+      notNumber: "Doit être un nombre",
+      invalidString: "Format invalide",
+      invalidEnum: "Sélection invalide",
+      custom: "Erreur de validation",
+    },
+  },
 } as const;
 
 export default popups;

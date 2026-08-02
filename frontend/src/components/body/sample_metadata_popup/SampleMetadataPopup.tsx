@@ -51,7 +51,7 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
 
   // Initialize sample metadata state
   const [trayCode, setTrayCode] = useState<string>("");
-  const [magnification, setMagnification] = useState<number>(0);
+  const [magnification, setMagnification] = useState<number>(1);
   const [sampleIdPrefix, setSampleIdPrefix] = useState<string>("");
   const [sampleDescription, setSampleDescription] = useState<string>("");
 

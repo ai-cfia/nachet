@@ -3,6 +3,7 @@ import { Box, FormControl, InputLabel, MenuItem, Select } from "@mui/material";
 import { ApiDevicesResponse } from "@common/types";
 import { useTranslation } from "react-i18next";
 
+const NONE_ID = "00000000-0000-0000-0000-000000000000";
 interface DeviceSelectionFieldsProps {
   selectedBrandId: string;
   selectedModelId: string;
@@ -31,6 +32,7 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
   lensError,
 }) => {
   const { t } = useTranslation("popups");
+
   // Get the selected brand object
   const selectedBrand = useMemo(() => {
     if (!devicesData || !selectedBrandId) return null;
@@ -38,6 +40,9 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
       devicesData.devices.find((brand) => brand.id === selectedBrandId) || null
     );
   }, [devicesData, selectedBrandId]);
+
+  // Brand list as provided by the backend (includes the "None" brand)
+  const brandOptions = devicesData?.devices || [];
 
   // Filter models based on selected brand
   const availableModels = useMemo(() => {
@@ -51,10 +56,18 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
 
   const handleBrandChange = (brandId: string) => {
     onBrandChange(brandId);
-    // Reset model and lens when brand changes
-    onModelChange("");
-    onLensChange("");
+    // If brand is None, cascade None down. Otherwise reset model and lens.
+    if (brandId === NONE_ID) {
+      onModelChange(NONE_ID);
+      onLensChange(NONE_ID);
+    } else {
+      onModelChange("");
+      onLensChange("");
+    }
   };
+
+  const subFieldsDisabled =
+    !selectedBrandId || selectedBrandId === NONE_ID || disabled;
 
   return (
     <Box
@@ -79,7 +92,7 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
           <MenuItem value="">
             <em>{t("deviceInfo.selectBrand")}</em>
           </MenuItem>
-          {devicesData?.devices.map((brand) => (
+          {brandOptions.map((brand) => (
             <MenuItem key={brand.id} value={brand.id}>
               {brand.name}
             </MenuItem>
@@ -111,7 +124,7 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
         {/* Model Dropdown */}
         <FormControl
           sx={{ width: "calc(50% - 5px)" }}
-          disabled={!selectedBrandId || disabled}
+          disabled={subFieldsDisabled}
           error={!!modelError}
         >
           <InputLabel id="device-model-label">
@@ -149,7 +162,7 @@ export const DeviceSelectionFields: React.FC<DeviceSelectionFieldsProps> = ({
         {/* Lens Dropdown */}
         <FormControl
           sx={{ width: "calc(50% - 5px)" }}
-          disabled={!selectedBrandId || disabled}
+          disabled={subFieldsDisabled}
           error={!!lensError}
         >
           <InputLabel id="device-lens-label">

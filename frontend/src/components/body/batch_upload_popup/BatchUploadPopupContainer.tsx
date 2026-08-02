@@ -94,7 +94,7 @@ export const BatchUploadPopupContainer = (
   const [deviceBrandId, setDeviceBrandId] = useState<string>("");
   const [deviceModelId, setDeviceModelId] = useState<string>("");
   const [deviceLensId, setDeviceLensId] = useState<string>("");
-  const [magnification, setMagnification] = useState<number>(0);
+  const [magnification, setMagnification] = useState<number>(1);
 
   // Track if user has manually edited folder name
   const folderNameManuallyEdited = useRef<boolean>(false);
@@ -333,7 +333,7 @@ export const BatchUploadPopupContainer = (
     setDeviceBrandId("");
     setDeviceModelId("");
     setDeviceLensId("");
-    setMagnification(0);
+    setMagnification(1);
     setFiles(null);
     setFileCount(0);
     folderNameManuallyEdited.current = false;

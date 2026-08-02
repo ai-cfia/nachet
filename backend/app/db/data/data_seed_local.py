@@ -69,8 +69,37 @@ async def seed_dev_data(sessionmanager: SessionManager) -> None:
         os.getenv("CFIA_ADMIN_ROLE_ID", "87654321-4321-4321-4321-210987654321")
     )
 
+    NIL = uuid.UUID("00000000-0000-0000-0000-000000000000")
+
     # Add device brand (Tagarno), models, and lenses
     async with async_session.begin() as session:
+        # Null device brand, model, and lens for "none" selection
+        null_brand = DeviceBrand(
+            id=NIL,
+            name="None",
+            description="No device brand selected",
+            active=True,
+        )
+        session.add(null_brand)
+
+        null_model = DeviceModel(
+            id=NIL,
+            device_brand_id=NIL,
+            name="None",
+            description="No device model selected",
+            active=True,
+        )
+        session.add(null_model)
+
+        null_lens = DeviceLens(
+            id=NIL,
+            device_brand_id=NIL,
+            name="None",
+            description="No device lens selected",
+            active=True,
+        )
+        session.add(null_lens)
+
         # Tagarno brand
         tagarno_brand = DeviceBrand(
             id=uuid.UUID("7b6e7736-6fb7-4895-b6d5-c521621705b3"),
