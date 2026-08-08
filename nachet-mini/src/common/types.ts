@@ -14,6 +14,23 @@ export interface InferenceBox extends BoxCoordinates {
   bboxSource: "model" | "user";
 }
 
+export interface RankedPrediction {
+  label: string;
+  score: number;
+}
+
+export interface SpeciesTaxonomy {
+  label: string;
+  family: RankedPrediction;
+  genus: RankedPrediction;
+}
+
+export interface BoxTaxonomy {
+  families: RankedPrediction[];
+  genera: RankedPrediction[];
+  candidates: SpeciesTaxonomy[];
+}
+
 export interface BoxCSS {
   minWidth: number;
   minHeight: number;
@@ -27,7 +44,9 @@ export interface InferenceResult {
   scores: number[];
   classifications: string[];
   boxes: InferenceBox[];
-  topN: Array<Array<{ score: number; label: string }>>;
+  topN: RankedPrediction[][];
+  /** Soft taxonomy totals for each box when every model label is mapped. */
+  taxonomy?: Array<BoxTaxonomy | undefined>;
   overlapping: boolean[];
   overlappingIndices: number[];
   labelOccurrence: { [key: string]: number };

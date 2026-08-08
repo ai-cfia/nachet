@@ -15,7 +15,7 @@ import {
   useRef,
 } from "react";
 import type { InferenceBox } from "@common/types";
-import { jetColor } from "@common/heatmapColors";
+import { drawCamHeatmap } from "@common/heatmapColors";
 import { getScaledBounds, getUnscaledCoordinates } from "@common/imageutils";
 import { useIsPortrait } from "@hooks/useIsPortrait";
 import {
@@ -55,6 +55,7 @@ interface Props {
   minBoxSize: number;
   editMode?: boolean;
   isEditSelected?: boolean;
+  isViewSelected?: boolean;
   /** CAM heatmap (grid*grid floats in [0,1]) to overlay as a jet map, or none. */
   camHeatmap?: number[];
   /** spatial grid side for `camHeatmap` (e.g. 12). */
@@ -83,6 +84,7 @@ const InferenceOverlay = ({
   minBoxSize,
   editMode = false,
   isEditSelected = false,
+  isViewSelected = false,
   camHeatmap,
   camGrid,
   onBoxUpdate,
@@ -106,7 +108,7 @@ const InferenceOverlay = ({
   const camCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const baseZ = index;
-  const zIndex = baseZ + zOffset + (isEditSelected ? 100 : 0);
+  const zIndex = baseZ + zOffset + (isEditSelected || isViewSelected ? 100 : 0);
   const isLayersOpen = Boolean(layersAnchorEl);
 
   const { scaledHeight, scaledWidth, scaledTopX, scaledTopY } = getScaledBounds(
@@ -145,51 +147,7 @@ const InferenceOverlay = ({
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (editMode || !camHeatmap || !camGrid) return;
-    const g = camGrid;
-    if (g * g !== camHeatmap.length) return;
-
-    const JET_ALPHA = 140; // ~0.55, lets the seed show through
-    const F = 192; // fine grid side for smooth value-space interpolation
-    const span = g - 1;
-
-    // Bilinear sample of the (g x g) heatmap at fractional (fx, fy) in [0, g-1].
-    const sample = (fx: number, fy: number) => {
-      const x0 = Math.floor(fx);
-      const y0 = Math.floor(fy);
-      const x1 = Math.min(x0 + 1, g - 1);
-      const y1 = Math.min(y0 + 1, g - 1);
-      const dx = fx - x0;
-      const dy = fy - y0;
-      return (
-        camHeatmap[y0 * g + x0] * (1 - dx) * (1 - dy) +
-        camHeatmap[y0 * g + x1] * dx * (1 - dy) +
-        camHeatmap[y1 * g + x0] * (1 - dx) * dy +
-        camHeatmap[y1 * g + x1] * dx * dy
-      );
-    };
-
-    const fine = document.createElement("canvas");
-    fine.width = F;
-    fine.height = F;
-    const fctx = fine.getContext("2d");
-    if (!fctx) return;
-    const img = fctx.createImageData(F, F);
-
-    for (let j = 0; j < F; j++) {
-      const fy = (j / (F - 1)) * span;
-      for (let i = 0; i < F; i++) {
-        const fx = (i / (F - 1)) * span;
-        const [r, gg, b] = jetColor(sample(fx, fy));
-        const o = (j * F + i) * 4;
-        img.data[o] = r;
-        img.data[o + 1] = gg;
-        img.data[o + 2] = b;
-        img.data[o + 3] = JET_ALPHA;
-      }
-    }
-    fctx.putImageData(img, 0, 0);
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(fine, 0, 0, canvas.width, canvas.height);
+    drawCamHeatmap(ctx, canvas.width, canvas.height, camHeatmap, camGrid);
   }, [camHeatmap, camGrid, editMode, scaledWidth, scaledHeight]);
 
   // Window-level mouse handlers for drag/resize
@@ -352,7 +310,19 @@ const InferenceOverlay = ({
   const borderColor = small ? "rgba(255,0,0,0.7)" : "rgba(128,0,128,0.7)";
   const hoverBg = small ? "rgba(255,0,0,0.12)" : "rgba(128,0,128,0.12)";
   const labelAtBottom = box.topY < 40;
-  const effectiveSelected = editMode ? isEditSelected : isSelected;
+  const isInspectionSelected = !editMode && isViewSelected;
+  const effectiveSelected = editMode
+    ? isEditSelected
+    : isInspectionSelected || isSelected;
+  const controlsSelected = editMode ? isEditSelected : isSelected;
+  const activeColor =
+    (editMode && isEditSelected) || isInspectionSelected
+      ? "#1565c0"
+      : borderColor;
+  const activeBackground =
+    (editMode && isEditSelected) || isInspectionSelected
+      ? "rgba(21,101,192,0.12)"
+      : hoverBg;
 
   const sx = {
     position: "absolute",
@@ -362,21 +332,29 @@ const InferenceOverlay = ({
     maxHeight: scaledHeight,
     left: scaledTopX,
     top: scaledTopY,
-    border: `2px solid ${editMode ? (isEditSelected ? "#1565c0" : borderColor) : borderColor}`,
+    border: `2px solid ${activeColor}`,
+    outline: isInspectionSelected ? "2px solid rgba(21,101,192,0.35)" : 0,
+    outlineOffset: isInspectionSelected ? 1 : 0,
     borderRadius: 0,
     display: visible ? "block" : "none",
     zIndex,
-    cursor: editMode ? (isDragging ? "grabbing" : "grab") : "default",
+    cursor: editMode
+      ? isDragging
+        ? "grabbing"
+        : "grab"
+      : onBoxSelect
+        ? "pointer"
+        : "default",
     ...(effectiveSelected && {
-      bgcolor: editMode ? "rgba(21,101,192,0.12)" : hoverBg,
-      border: `2px solid ${editMode ? "#1565c0" : borderColor}`,
+      bgcolor: activeBackground,
+      borderColor: activeColor,
     }),
     "& .layersBtn, & .deleteBtn": {
       opacity: 0,
       pointerEvents: "none",
       transition: "opacity 150ms ease, transform 150ms ease",
       filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))",
-      ...(effectiveSelected && {
+      ...(controlsSelected && {
         opacity: 1,
         pointerEvents: "auto",
         transform: "scale(1.05)",
@@ -386,8 +364,8 @@ const InferenceOverlay = ({
       }),
     },
     "&:hover": {
-      bgcolor: editMode ? "rgba(21,101,192,0.12)" : hoverBg,
-      border: `2px solid ${editMode ? "#1565c0" : borderColor}`,
+      bgcolor: isInspectionSelected ? activeBackground : hoverBg,
+      borderColor: isInspectionSelected ? activeColor : borderColor,
       "& .layersBtn, & .deleteBtn": {
         opacity: 1,
         pointerEvents: "auto",
@@ -477,6 +455,19 @@ const InferenceOverlay = ({
       data-testid={`inference-overlay-${index}`}
       sx={sx}
       onMouseDown={editMode ? handleBoxMouseDown : undefined}
+      onClick={!editMode ? () => onBoxSelect?.(index) : undefined}
+      role={!editMode && onBoxSelect ? "button" : undefined}
+      tabIndex={!editMode && onBoxSelect ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (
+          !editMode &&
+          onBoxSelect &&
+          (event.key === "Enter" || event.key === " ")
+        ) {
+          event.preventDefault();
+          onBoxSelect(index);
+        }
+      }}
     >
       {/* CAM overlay: the selected class's jet heatmap for this box */}
       {camHeatmap && camGrid && !editMode && (

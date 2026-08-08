@@ -42,6 +42,7 @@ vi.mock("@components/InferenceOverlay", async () => {
           "data-edit-mode": String(props.editMode ?? false),
           "data-is-classifying": String(props.isClassifying ?? false),
           "data-is-edit-selected": String(props.isEditSelected ?? false),
+          "data-is-view-selected": String(props.isViewSelected ?? false),
           "data-canvas-width": String(props.canvasWidth ?? ""),
           "data-canvas-height": String(props.canvasHeight ?? ""),
           "data-min-box-size": String(props.minBoxSize ?? ""),
@@ -207,6 +208,10 @@ const defaultProps = {
   src: undefined as string | undefined,
   imageDims: [800, 600] as number[],
   result: null as InferenceResult | null,
+  selectedBoxId: null as string | null,
+  onSelectedBoxIdChange: undefined as
+    | ((boxId: string | null) => void)
+    | undefined,
 };
 
 // Wrap in an explicitly sized div so CSS percentages resolve to real pixels,
@@ -380,6 +385,34 @@ describe("ImageViewer", () => {
       await expect
         .element(page.getByTestId("inference-overlay-0"))
         .toHaveAttribute("data-has-on-box-select", "false");
+    });
+
+    it("selects a result box through its stable box id", () => {
+      const onSelectedBoxIdChange = vi.fn();
+      const { getByTestId } = renderViewer({
+        src: SRC,
+        result: makeResult(1),
+        onSelectedBoxIdChange,
+      });
+
+      fireEvent.click(getByTestId("overlay-select-0"));
+      expect(onSelectedBoxIdChange).toHaveBeenCalledWith("box-0");
+    });
+
+    it("marks only the matching result box as selected", async () => {
+      renderViewer({
+        src: SRC,
+        result: makeResult(2),
+        selectedBoxId: "box-1",
+        onSelectedBoxIdChange: vi.fn(),
+      });
+
+      await expect
+        .element(page.getByTestId("inference-overlay-0"))
+        .toHaveAttribute("data-is-view-selected", "false");
+      await expect
+        .element(page.getByTestId("inference-overlay-1"))
+        .toHaveAttribute("data-is-view-selected", "true");
     });
   });
 

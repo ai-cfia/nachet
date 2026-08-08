@@ -11,11 +11,19 @@ interface Props {
   src: string | undefined;
   imageDims: number[];
   result: InferenceResult | null;
+  selectedBoxId?: string | null;
+  onSelectedBoxIdChange?: (boxId: string | null) => void;
 }
 
 const MIN_DRAW_PX = 20;
 
-const ImageViewer = ({ src, imageDims, result }: Props) => {
+const ImageViewer = ({
+  src,
+  imageDims,
+  result,
+  selectedBoxId = null,
+  onSelectedBoxIdChange,
+}: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const isPortrait = useIsPortrait();
@@ -265,11 +273,18 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
                   minBoxSize={result?.minBoxSize ?? 0}
                   editMode={isEditing}
                   isEditSelected={isEditing && selectedBoxIndex === i}
+                  isViewSelected={!isEditing && selectedBoxId === box.boxId}
                   camHeatmap={camEntry?.heatmap}
                   camGrid={camEntry ? camRes?.grid : undefined}
                   onBoxUpdate={isEditing ? updateBox : undefined}
                   onBoxDelete={isEditing ? deleteBox : undefined}
-                  onBoxSelect={isEditing ? setSelectedBoxIndex : undefined}
+                  onBoxSelect={
+                    isEditing
+                      ? setSelectedBoxIndex
+                      : onSelectedBoxIdChange
+                        ? () => onSelectedBoxIdChange(box.boxId)
+                        : undefined
+                  }
                 />
               );
             })}

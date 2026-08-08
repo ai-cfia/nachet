@@ -40,6 +40,7 @@ const defaultProps = {
   minBoxSize: 10,
   editMode: false as boolean | undefined,
   isEditSelected: false as boolean | undefined,
+  isViewSelected: false as boolean | undefined,
 };
 
 type Callbacks = {
@@ -172,6 +173,43 @@ describe("InferenceOverlay", () => {
 
       fireEvent.mouseDown(getByTestId("inference-overlay-0"));
       expect(onBoxSelect).not.toHaveBeenCalled();
+    });
+
+    it("selects the box on click", () => {
+      const onBoxSelect = vi.fn();
+      const { getByTestId } = renderOverlay(
+        { editMode: false, index: 3 },
+        { onBoxSelect },
+      );
+
+      fireEvent.click(getByTestId("inference-overlay-3"));
+      expect(onBoxSelect).toHaveBeenCalledWith(3);
+    });
+
+    it.each(["Enter", " "])("selects the box with the %s key", (key) => {
+      const onBoxSelect = vi.fn();
+      const { getByTestId } = renderOverlay(
+        { editMode: false, index: 2 },
+        { onBoxSelect },
+      );
+
+      fireEvent.keyDown(getByTestId("inference-overlay-2"), { key });
+      expect(onBoxSelect).toHaveBeenCalledWith(2);
+    });
+
+    it("elevates and outlines the inspected box", () => {
+      const { getByTestId } = renderOverlay({
+        editMode: false,
+        index: 2,
+        isViewSelected: true,
+      });
+
+      const overlay = getByTestId("inference-overlay-2");
+      const computed = window.getComputedStyle(overlay);
+      expect(computed.zIndex).toBe("102");
+      expect(computed.borderTopWidth).toBe("2px");
+      expect(computed.borderTopColor).toBe("rgb(21, 101, 192)");
+      expect(computed.outlineWidth).toBe("2px");
     });
 
     it("opens the layers menu with both actions", async () => {

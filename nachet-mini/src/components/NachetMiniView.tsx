@@ -1,5 +1,6 @@
 import {
   useRef,
+  useState,
   type Dispatch,
   type RefObject,
   type SetStateAction,
@@ -227,6 +228,24 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
   } = props;
 
   const hasRequestedPermission = useRef(false);
+  const inspectionContext = `${currentIndex}:${activeResultKey ?? ""}:${isEditing}`;
+  const [inspectionSelection, setInspectionSelection] = useState<{
+    context: string;
+    boxId: string | null;
+  }>({ context: inspectionContext, boxId: null });
+
+  if (inspectionSelection.context !== inspectionContext) {
+    setInspectionSelection({ context: inspectionContext, boxId: null });
+  }
+
+  const selectedBoxId = inspectionSelection.boxId;
+
+  const handleSelectedBoxIdChange = (boxId: string | null) => {
+    setInspectionSelection((selection) => {
+      const nextBoxId = !boxId || selection.boxId === boxId ? null : boxId;
+      return { context: inspectionContext, boxId: nextBoxId };
+    });
+  };
 
   const handleCameraChange = (e: SelectChangeEvent<string>) => {
     setActiveDeviceId(e.target.value);
@@ -482,6 +501,8 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
                   src={currentImage?.src}
                   imageDims={currentImage?.imageDims ?? []}
                   result={currentResult}
+                  selectedBoxId={selectedBoxId}
+                  onSelectedBoxIdChange={handleSelectedBoxIdChange}
                 />
               )}
             </Box>
@@ -521,6 +542,11 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
               result={currentResult}
               switchTable={switchTable}
               onSwitchTableChange={setSwitchTable}
+              activeResultKey={activeResultKey}
+              imageSrc={currentImage?.src}
+              imageDims={currentImage?.imageDims ?? []}
+              selectedBoxId={selectedBoxId}
+              onSelectedBoxIdChange={handleSelectedBoxIdChange}
             />
           </Box>
         </Box>

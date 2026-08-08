@@ -8,24 +8,67 @@ import enMain from "../../locales/en/main";
 import frMain from "../../locales/fr/main";
 import type { InferenceResult } from "@common/types";
 import ResultsTable from "../ResultsTable";
+import { useState } from "react";
 
 const makeResult = (
   overrides: Partial<InferenceResult> = {},
-): InferenceResult => ({
-  scores: [],
-  classifications: [],
-  boxes: [],
-  topN: [],
-  overlapping: [],
-  overlappingIndices: [],
-  labelOccurrence: {},
-  totalBoxes: 0,
-  models: [],
-  completedAt: "",
-  isActive: false,
-  minBoxSize: 10,
-  ...overrides,
-});
+): InferenceResult => {
+  const classifications = overrides.classifications ?? [];
+  return {
+    scores: [],
+    classifications,
+    boxes:
+      overrides.boxes ??
+      classifications.map((label, index) => ({
+        topX: index * 10,
+        topY: index * 10,
+        bottomX: index * 10 + 50,
+        bottomY: index * 10 + 50,
+        inferenceId: "test",
+        boxId: `box-${index}`,
+        classId: label,
+        label,
+        isVerified: false,
+        bboxSource: "model",
+      })),
+    topN: [],
+    overlapping: [],
+    overlappingIndices: [],
+    labelOccurrence: {},
+    totalBoxes: classifications.length,
+    models: [],
+    completedAt: "",
+    isActive: false,
+    minBoxSize: 10,
+    ...overrides,
+  };
+};
+
+interface TableHarnessProps {
+  result: InferenceResult | null;
+  switchTable: boolean;
+  onSwitchTableChange: (value: boolean) => void;
+}
+
+const TableHarness = ({
+  result,
+  switchTable,
+  onSwitchTableChange,
+}: TableHarnessProps) => {
+  const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
+  return (
+    <ResultsTable
+      result={result}
+      switchTable={switchTable}
+      onSwitchTableChange={onSwitchTableChange}
+      activeResultKey="0:test"
+      imageSrc="data:image/png;base64,test"
+      imageDims={[100, 100]}
+      selectedBoxId={selectedBoxId}
+      onSelectedBoxIdChange={setSelectedBoxId}
+    />
+  );
+};
 
 const renderTable = (
   result: InferenceResult | null,
@@ -34,7 +77,7 @@ const renderTable = (
 ) =>
   render(
     <I18nextProvider i18n={i18n}>
-      <ResultsTable
+      <TableHarness
         result={result}
         switchTable={switchTable}
         onSwitchTableChange={onSwitchTableChange}
@@ -264,9 +307,7 @@ describe("ResultsTable", () => {
 
     it("does not show topN details before clicking a row", async () => {
       renderTable(result, false);
-      expect(
-        await page.getByText(enMain.resultsTable.topResults).all(),
-      ).toHaveLength(0);
+      expect(await page.getByTestId("seed-inspector").all()).toHaveLength(0);
     });
 
     it("expands a row to show top results on click", async () => {
@@ -274,7 +315,7 @@ describe("ResultsTable", () => {
       const { getAllByRole } = renderTable(result, false);
       await user.click(getAllByRole("row")[0]);
       await expect
-        .element(page.getByText(enMain.resultsTable.topResults))
+        .element(page.getByText(enMain.resultsTable.speciesPredictions))
         .toBeVisible();
     });
 
@@ -282,8 +323,15 @@ describe("ResultsTable", () => {
       const user = userEvent.setup();
       const { getAllByRole } = renderTable(result, false);
       await user.click(getAllByRole("row")[0]);
-      await expect.element(page.getByText(/Wheat: 90.00%/)).toBeVisible();
-      await expect.element(page.getByText(/Rye: 7.00%/)).toBeVisible();
+      await expect
+        .element(page.getByText("Rye", { exact: true }))
+        .toBeVisible();
+      await expect
+        .element(page.getByText("90.00%", { exact: true }))
+        .toBeVisible();
+      await expect
+        .element(page.getByText("7.00%", { exact: true }))
+        .toBeVisible();
     });
 
     it("collapses an expanded row on second click", async () => {
@@ -291,12 +339,10 @@ describe("ResultsTable", () => {
       const { getAllByRole } = renderTable(result, false);
       await user.click(getAllByRole("row")[0]);
       await expect
-        .element(page.getByText(enMain.resultsTable.topResults))
+        .element(page.getByText(enMain.resultsTable.speciesPredictions))
         .toBeVisible();
       await user.click(getAllByRole("row")[0]);
-      expect(
-        await page.getByText(enMain.resultsTable.topResults).all(),
-      ).toHaveLength(0);
+      expect(await page.getByTestId("seed-inspector").all()).toHaveLength(0);
     });
 
     it("switches expansion to the newly clicked row", async () => {
@@ -315,11 +361,11 @@ describe("ResultsTable", () => {
       );
 
       await user.click(getAllByRole("row")[0]);
-      await expect.element(page.getByText(/Wheat top: 90\.00%/)).toBeVisible();
+      await expect.element(page.getByText("Wheat top")).toBeVisible();
 
       await user.click(getByText("Rye"));
-      expect(await page.getByText(/Wheat top: 90\.00%/).all()).toHaveLength(0);
-      await expect.element(page.getByText(/Rye top: 80\.00%/)).toBeVisible();
+      expect(await page.getByText("Wheat top").all()).toHaveLength(0);
+      await expect.element(page.getByText("Rye top")).toBeVisible();
     });
 
     it("does not expand a classifying row when clicked", async () => {
@@ -327,9 +373,7 @@ describe("ResultsTable", () => {
       const classifyingResult = makeClassificationResult([""], [0]);
       const { getAllByRole } = renderTable(classifyingResult, false);
       await user.click(getAllByRole("row")[0]);
-      expect(
-        await page.getByText(enMain.resultsTable.topResults).all(),
-      ).toHaveLength(0);
+      expect(await page.getByTestId("seed-inspector").all()).toHaveLength(0);
     });
 
     it("does not expand a row that has no top results", async () => {
@@ -338,9 +382,7 @@ describe("ResultsTable", () => {
       const { getAllByRole } = renderTable(resultWithoutTopN, false);
 
       await user.click(getAllByRole("row")[0]);
-      expect(
-        await page.getByText(enMain.resultsTable.topResults).all(),
-      ).toHaveLength(0);
+      expect(await page.getByTestId("seed-inspector").all()).toHaveLength(0);
     });
   });
 
@@ -354,7 +396,9 @@ describe("ResultsTable", () => {
       const user = userEvent.setup();
       const { getAllByRole } = renderTable(result, false);
       await user.click(getAllByRole("row")[0]);
-      await expect.element(page.getByText(/Rye: < 0\.01%/)).toBeVisible();
+      await expect
+        .element(page.getByText("< 0.01%", { exact: true }))
+        .toBeVisible();
     });
 
     it("formats a score of exactly 0.0001 normally (not as < 0.01%)", async () => {
@@ -366,7 +410,9 @@ describe("ResultsTable", () => {
       const user = userEvent.setup();
       const { getAllByRole } = renderTable(result, false);
       await user.click(getAllByRole("row")[0]);
-      await expect.element(page.getByText(/Rye: 0\.01%/)).toBeVisible();
+      await expect
+        .element(page.getByText("0.01%", { exact: true }))
+        .toBeVisible();
     });
 
     it("formats a score of 0 as '0.00%' (not < 0.01%)", async () => {
@@ -378,7 +424,9 @@ describe("ResultsTable", () => {
       const user = userEvent.setup();
       const { getAllByRole } = renderTable(result, false);
       await user.click(getAllByRole("row")[0]);
-      await expect.element(page.getByText(/Rye: 0\.00%/)).toBeVisible();
+      await expect
+        .element(page.getByText("0.00%", { exact: true }))
+        .toBeVisible();
     });
 
     it("formats a normal score with two decimal places", async () => {
@@ -391,7 +439,7 @@ describe("ResultsTable", () => {
       const { getAllByRole } = renderTable(result, false);
       await user.click(getAllByRole("row")[0]);
       await expect
-        .element(page.getByText(/Canary Grass: 56\.78%/))
+        .element(page.getByText("56.78%", { exact: true }))
         .toBeVisible();
     });
   });
@@ -420,7 +468,7 @@ describe("ResultsTable", () => {
       // Switch to classification mode
       rerender(
         <I18nextProvider i18n={i18n}>
-          <ResultsTable
+          <TableHarness
             result={result}
             switchTable={false}
             onSwitchTableChange={vi.fn()}
@@ -445,7 +493,7 @@ describe("ResultsTable", () => {
 
       rerender(
         <I18nextProvider i18n={i18n}>
-          <ResultsTable
+          <TableHarness
             result={result}
             switchTable={false}
             onSwitchTableChange={vi.fn()}
@@ -497,7 +545,7 @@ describe("ResultsTable", () => {
       const { getAllByRole } = renderTable(result, false);
       await user.click(getAllByRole("row")[0]);
       await expect
-        .element(page.getByText(frMain.resultsTable.topResults))
+        .element(page.getByText(frMain.resultsTable.speciesPredictions))
         .toBeVisible();
     });
   });

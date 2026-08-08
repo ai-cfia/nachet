@@ -9,68 +9,45 @@ import {
   CardHeader,
   CircularProgress,
   IconButton,
-  Typography,
 } from "@mui/material";
 import SwitchLeftIcon from "@mui/icons-material/SwitchLeft";
 import CropFreeIcon from "@mui/icons-material/CropFree";
 import LabelIcon from "@mui/icons-material/Label";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import type { InferenceResult } from "@common/types";
 import { useTranslation } from "react-i18next";
+import SeedInspector from "@components/SeedInspector";
+import { useInferenceStore } from "@stores/useInferenceStore";
 
 interface Props {
   result: InferenceResult | null;
   switchTable: boolean;
   onSwitchTableChange: (value: boolean) => void;
+  activeResultKey: string | null;
+  imageSrc: string | undefined;
+  imageDims: number[];
+  selectedBoxId: string | null;
+  onSelectedBoxIdChange: (boxId: string | null) => void;
 }
 
-const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
+const ResultsTable = ({
+  result,
+  switchTable,
+  onSwitchTableChange,
+  activeResultKey,
+  imageSrc,
+  imageDims,
+  selectedBoxId,
+  onSelectedBoxIdChange,
+}: Props) => {
   const { t } = useTranslation("main");
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [selectedLabel, setSelectedLabel] = useState<string>("all");
+  const camResults = useInferenceStore((state) => state.camResults);
 
   const handleSelect = (key: string): void => {
     setSelectedLabel(selectedLabel === key ? "all" : key);
   };
-
-  const handleRowClick = (rowId: string): void => {
-    setExpandedRow(expandedRow === rowId ? null : rowId);
-  };
-
-  const renderTopResults = (topN: Array<{ score: number; label: string }>) => (
-    <>
-      <Typography
-        variant="subtitle2"
-        style={{
-          fontWeight: "bold",
-          marginTop: "-15px",
-          paddingTop: "0px",
-          paddingBottom: "4px",
-          fontSize: "0.75em",
-        }}
-      >
-        {t("resultsTable.topResults")}
-      </Typography>
-      {topN.map((item, i) => {
-        const pct =
-          item.score > 0 && item.score < 0.0001
-            ? "< 0.01%"
-            : `${(item.score * 100).toFixed(2)}%`;
-        return (
-          <Typography
-            key={i}
-            variant="body2"
-            style={{
-              fontSize: "0.75em",
-              paddingTop: "1px",
-              paddingBottom: "1px",
-            }}
-          >
-            {`${i + 1}. ${item.label}: ${pct}`}
-          </Typography>
-        );
-      })}
-    </>
-  );
 
   const labelOccurrence = result?.labelOccurrence ?? {};
   const classifications = result?.classifications ?? [];
@@ -241,17 +218,28 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
             {/* Classification detail table */}
             {!switchTable &&
               classifications.map((prediction, classIdx) => {
-                const rowId = `box-${classIdx}`;
+                const box = result?.boxes[classIdx];
+                if (!box) return null;
+                const rowId = `box-${box.boxId}`;
                 const boxTopN = topN[classIdx] ?? [];
                 const hasTopResults = boxTopN.length > 0;
                 const score = boxTopN[0]?.score ?? scores[classIdx] ?? 0;
-                const isExpanded = expandedRow === rowId;
+                const isExpanded = selectedBoxId === box.boxId;
                 const isBoxClassifying = prediction === "";
-                const isExpandable = !isBoxClassifying && hasTopResults;
+                const isExpandable =
+                  !isBoxClassifying && hasTopResults && Boolean(imageSrc);
+                const cam = activeResultKey
+                  ? camResults.get(`${activeResultKey}:${box.boxId}`)
+                  : undefined;
                 const visible =
                   selectedLabel === "all" ||
                   selectedLabel === prediction ||
                   isBoxClassifying;
+                const toggleInspection = () => {
+                  if (isExpandable) {
+                    onSelectedBoxIdChange(isExpanded ? null : box.boxId);
+                  }
+                };
 
                 if (!visible) return null;
 
@@ -259,14 +247,24 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                   <React.Fragment key={rowId}>
                     <TableRow
                       aria-expanded={isExpandable ? isExpanded : undefined}
+                      aria-selected={isExpanded}
+                      tabIndex={isExpandable ? 0 : undefined}
                       sx={{
+                        backgroundColor: isExpanded ? "action.selected" : null,
                         "&:hover": {
                           backgroundColor: "#F5F5F5",
                           transition: "0.1s ease-in-out all",
                         },
                       }}
-                      onClick={() => {
-                        if (isExpandable) handleRowClick(rowId);
+                      onClick={toggleInspection}
+                      onKeyDown={(event) => {
+                        if (
+                          isExpandable &&
+                          (event.key === "Enter" || event.key === " ")
+                        ) {
+                          event.preventDefault();
+                          toggleInspection();
+                        }
                       }}
                     >
                       <TableCell
@@ -280,24 +278,20 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                           paddingLeft: "0.8vh",
                         }}
                       >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            flexWrap: "wrap",
+                        <Box
+                          component="span"
+                          sx={{
+                            whiteSpace: "nowrap",
+                            color: isBoxClassifying
+                              ? "text.secondary"
+                              : "text.primary",
+                            fontWeight: 500,
                           }}
                         >
-                          <LabelIcon
-                            style={{
-                              color: isBoxClassifying ? "#9e9e9e" : "#1565c0",
-                              fontSize: "1.8vh",
-                              paddingRight: "0.3vw",
-                            }}
-                          />
-                          <span style={{ width: "0.7vw", textAlign: "left" }}>
-                            {classIdx + 1}
-                          </span>
-                        </div>
+                          {t("resultsTable.seedNumber", {
+                            number: classIdx + 1,
+                          })}
+                        </Box>
                       </TableCell>
                       <TableCell
                         align="center"
@@ -346,17 +340,45 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                             : "inherit",
                         }}
                       >
-                        {isBoxClassifying
-                          ? "..."
-                          : `${(score * 100).toFixed(0)}%`}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "flex-end",
+                            gap: 0.25,
+                          }}
+                        >
+                          <span>
+                            {isBoxClassifying
+                              ? "..."
+                              : `${(score * 100).toFixed(0)}%`}
+                          </span>
+                          {isExpandable &&
+                            (isExpanded ? (
+                              <KeyboardArrowUpIcon
+                                aria-hidden
+                                sx={{ fontSize: "1.6vh" }}
+                              />
+                            ) : (
+                              <KeyboardArrowDownIcon
+                                aria-hidden
+                                sx={{ fontSize: "1.6vh" }}
+                              />
+                            ))}
+                        </Box>
                       </TableCell>
                     </TableRow>
                     {isExpanded && isExpandable && (
                       <TableRow>
-                        <TableCell colSpan={3}>
-                          <Box p={2}>
-                            {boxTopN.length > 0 && renderTopResults(boxTopN)}
-                          </Box>
+                        <TableCell colSpan={3} sx={{ p: 1.25 }}>
+                          <SeedInspector
+                            imageSrc={imageSrc ?? ""}
+                            imageDims={imageDims}
+                            box={box}
+                            taxonomy={result?.taxonomy?.[classIdx]}
+                            topResults={boxTopN}
+                            cam={cam}
+                          />
                         </TableCell>
                       </TableRow>
                     )}

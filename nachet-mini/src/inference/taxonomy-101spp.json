@@ -1,0 +1,406 @@
+{
+  "Agrostemma githago": {
+    "family": "Caryophyllaceae",
+    "genus": "Agrostemma"
+  },
+  "Agrostis canina": {
+    "family": "Poaceae",
+    "genus": "Agrostis"
+  },
+  "Allium vineale": {
+    "family": "Amaryllidaceae",
+    "genus": "Allium"
+  },
+  "Amaranthus albus": {
+    "family": "Amaranthaceae",
+    "genus": "Amaranthus"
+  },
+  "Amaranthus palmeri": {
+    "family": "Amaranthaceae",
+    "genus": "Amaranthus"
+  },
+  "Amaranthus powellii": {
+    "family": "Amaranthaceae",
+    "genus": "Amaranthus"
+  },
+  "Amaranthus retroflexus": {
+    "family": "Amaranthaceae",
+    "genus": "Amaranthus"
+  },
+  "Amaranthus tuberculatus": {
+    "family": "Amaranthaceae",
+    "genus": "Amaranthus"
+  },
+  "Ambrosia artemisiifolia": {
+    "family": "Asteraceae",
+    "genus": "Ambrosia"
+  },
+  "Ambrosia psilostachya": {
+    "family": "Asteraceae",
+    "genus": "Ambrosia"
+  },
+  "Ambrosia trifida": {
+    "family": "Asteraceae",
+    "genus": "Ambrosia"
+  },
+  "Anthoxanthum aristatum": {
+    "family": "Poaceae",
+    "genus": "Anthoxanthum"
+  },
+  "Anthoxanthum odoratum": {
+    "family": "Poaceae",
+    "genus": "Anthoxanthum"
+  },
+  "Apera spica-venti": {
+    "family": "Poaceae",
+    "genus": "Apera"
+  },
+  "Asclepias syriaca": {
+    "family": "Apocynaceae",
+    "genus": "Asclepias"
+  },
+  "Asclepias tuberosa": {
+    "family": "Apocynaceae",
+    "genus": "Asclepias"
+  },
+  "Avena fatua": {
+    "family": "Poaceae",
+    "genus": "Avena"
+  },
+  "Avena sativa": {
+    "family": "Poaceae",
+    "genus": "Avena"
+  },
+  "Bassia scoparia": {
+    "family": "Chenopodiaceae",
+    "genus": "Bassia"
+  },
+  "Berteroa incana": {
+    "family": "Brassicaceae",
+    "genus": "Berteroa"
+  },
+  "Brassica juncea": {
+    "family": "Brassicaceae",
+    "genus": "Brassica"
+  },
+  "Brassica napus": {
+    "family": "Brassicaceae",
+    "genus": "Brassica"
+  },
+  "Brassica nigra": {
+    "family": "Brassicaceae",
+    "genus": "Brassica"
+  },
+  "Bromus diandrus": {
+    "family": "Poaceae",
+    "genus": "Bromus"
+  },
+  "Bromus hordeaceus": {
+    "family": "Poaceae",
+    "genus": "Bromus"
+  },
+  "Bromus inermis": {
+    "family": "Poaceae",
+    "genus": "Bromus"
+  },
+  "Bromus japonicus": {
+    "family": "Poaceae",
+    "genus": "Bromus"
+  },
+  "Bromus riparius": {
+    "family": "Poaceae",
+    "genus": "Bromus"
+  },
+  "Bromus secalinus": {
+    "family": "Poaceae",
+    "genus": "Bromus"
+  },
+  "Buglossoides arvensis": {
+    "family": "Boraginaceae",
+    "genus": "Buglossoides"
+  },
+  "Calystegia sepium": {
+    "family": "Convolvulaceae",
+    "genus": "Calystegia"
+  },
+  "Carduus nutans": {
+    "family": "Asteraceae",
+    "genus": "Carduus"
+  },
+  "Carthamus tinctorius": {
+    "family": "Asteraceae",
+    "genus": "Carthamus"
+  },
+  "Cenchrus longispinus": {
+    "family": "Poaceae",
+    "genus": "Cenchrus"
+  },
+  "Centaurea calcitrapa": {
+    "family": "Asteraceae",
+    "genus": "Centaurea"
+  },
+  "Centaurea diffusa": {
+    "family": "Asteraceae",
+    "genus": "Centaurea"
+  },
+  "Centaurea melitensis": {
+    "family": "Asteraceae",
+    "genus": "Centaurea"
+  },
+  "Centaurea solstitialis": {
+    "family": "Asteraceae",
+    "genus": "Centaurea"
+  },
+  "Centaurea stoebe": {
+    "family": "Asteraceae",
+    "genus": "Centaurea"
+  },
+  "Cirsium arvense": {
+    "family": "Asteraceae",
+    "genus": "Cirsium"
+  },
+  "Cirsium vulgare": {
+    "family": "Asteraceae",
+    "genus": "Cirsium"
+  },
+  "Conringia orientalis": {
+    "family": "Brassicaceae",
+    "genus": "Conringia"
+  },
+  "Convolvulus arvensis": {
+    "family": "Convolvulaceae",
+    "genus": "Convolvulus"
+  },
+  "Cuscuta campestris": {
+    "family": "Convolvulaceae",
+    "genus": "Cuscuta"
+  },
+  "Cuscuta europaea": {
+    "family": "Convolvulaceae",
+    "genus": "Cuscuta"
+  },
+  "Cuscuta gronovii": {
+    "family": "Convolvulaceae",
+    "genus": "Cuscuta"
+  },
+  "Cyclachaena xanthiifolia": {
+    "family": "Asteraceae",
+    "genus": "Cyclachaena"
+  },
+  "Cynoglossum officinale": {
+    "family": "Boraginaceae",
+    "genus": "Cynoglossum"
+  },
+  "Datura stramonium": {
+    "family": "Solanaceae",
+    "genus": "Datura"
+  },
+  "Echium vulgare": {
+    "family": "Boraginaceae",
+    "genus": "Echium"
+  },
+  "Euphorbia cyparissias": {
+    "family": "Euphorbiaceae",
+    "genus": "Euphorbia"
+  },
+  "Euphorbia esula": {
+    "family": "Euphorbiaceae",
+    "genus": "Euphorbia"
+  },
+  "Fallopia convolvulus": {
+    "family": "Polygonaceae",
+    "genus": "Fallopia"
+  },
+  "Galega officinalis": {
+    "family": "Fabaceae",
+    "genus": "Galega"
+  },
+  "Galega orientalis": {
+    "family": "Fabaceae",
+    "genus": "Galega"
+  },
+  "Galeopsis tetrahit": {
+    "family": "Lamiaceae",
+    "genus": "Galeopsis"
+  },
+  "Galium aparine": {
+    "family": "Rubiaceae",
+    "genus": "Galium"
+  },
+  "Galium spurium": {
+    "family": "Rubiaceae",
+    "genus": "Galium"
+  },
+  "Gypsophila vaccaria": {
+    "family": "Caryophyllaceae",
+    "genus": "Gypsophila"
+  },
+  "Heracleum mantegazzianum": {
+    "family": "Apiaceae",
+    "genus": "Heracleum"
+  },
+  "Heracleum sosnowskyi": {
+    "family": "Apiaceae",
+    "genus": "Heracleum"
+  },
+  "Heracleum sphondylium": {
+    "family": "Apiaceae",
+    "genus": "Heracleum"
+  },
+  "Iva axillaris": {
+    "family": "Asteraceae",
+    "genus": "Iva"
+  },
+  "Jacobaea vulgaris": {
+    "family": "Asteraceae",
+    "genus": "Jacobaea"
+  },
+  "Lactuca sativa": {
+    "family": "Asteraceae",
+    "genus": "Lactuca"
+  },
+  "Lactuca serriola": {
+    "family": "Asteraceae",
+    "genus": "Lactuca"
+  },
+  "Linaria vulgaris": {
+    "family": "Plantaginaceae",
+    "genus": "Linaria"
+  },
+  "Lithospermum officinale": {
+    "family": "Boraginaceae",
+    "genus": "Lithospermum"
+  },
+  "Lolium persicum": {
+    "family": "Poaceae",
+    "genus": "Lolium"
+  },
+  "Lolium temulentum": {
+    "family": "Poaceae",
+    "genus": "Lolium"
+  },
+  "Medicago lupulina": {
+    "family": "Fabaceae",
+    "genus": "Medicago"
+  },
+  "Medicago sativa": {
+    "family": "Fabaceae",
+    "genus": "Medicago"
+  },
+  "Neslia paniculata": {
+    "family": "Brassicaceae",
+    "genus": "Neslia"
+  },
+  "Polygonum aviculare": {
+    "family": "Polygonaceae",
+    "genus": "Polygonum"
+  },
+  "Ranunculus acris": {
+    "family": "Ranunculaceae",
+    "genus": "Ranunculus"
+  },
+  "Saponaria officinalis": {
+    "family": "Caryophyllaceae",
+    "genus": "Saponaria"
+  },
+  "Silene latifolia": {
+    "family": "Caryophyllaceae",
+    "genus": "Silene"
+  },
+  "Silene noctiflora": {
+    "family": "Caryophyllaceae",
+    "genus": "Silene"
+  },
+  "Silene vulgaris": {
+    "family": "Caryophyllaceae",
+    "genus": "Silene"
+  },
+  "Sinapis alba": {
+    "family": "Brassicaceae",
+    "genus": "Sinapis"
+  },
+  "Sinapis arvensis": {
+    "family": "Brassicaceae",
+    "genus": "Sinapis"
+  },
+  "Solanum americanum": {
+    "family": "Solanaceae",
+    "genus": "Solanum"
+  },
+  "Solanum carolinense": {
+    "family": "Solanaceae",
+    "genus": "Solanum"
+  },
+  "Solanum elaeagnifolium": {
+    "family": "Solanaceae",
+    "genus": "Solanum"
+  },
+  "Solanum emulans": {
+    "family": "Solanaceae",
+    "genus": "Solanum"
+  },
+  "Solanum nigrum": {
+    "family": "Solanaceae",
+    "genus": "Solanum"
+  },
+  "Solanum rostratum": {
+    "family": "Solanaceae",
+    "genus": "Solanum"
+  },
+  "Sonchus arvensis": {
+    "family": "Asteraceae",
+    "genus": "Sonchus"
+  },
+  "Sorghum bicolor": {
+    "family": "Poaceae",
+    "genus": "Sorghum"
+  },
+  "Sorghum halepense": {
+    "family": "Poaceae",
+    "genus": "Sorghum"
+  },
+  "Thlaspi arvense": {
+    "family": "Brassicaceae",
+    "genus": "Thlaspi"
+  },
+  "Tripleurospermum inodorum": {
+    "family": "Asteraceae",
+    "genus": "Tripleurospermum"
+  },
+  "Tripleurospermum maritimum": {
+    "family": "Asteraceae",
+    "genus": "Tripleurospermum"
+  },
+  "Ulex europaeus": {
+    "family": "Fabaceae",
+    "genus": "Ulex"
+  },
+  "Vicia americana": {
+    "family": "Fabaceae",
+    "genus": "Vicia"
+  },
+  "Vicia cracca": {
+    "family": "Fabaceae",
+    "genus": "Vicia"
+  },
+  "Vicia pannonica": {
+    "family": "Fabaceae",
+    "genus": "Vicia"
+  },
+  "Vicia villosa": {
+    "family": "Fabaceae",
+    "genus": "Vicia"
+  },
+  "Viola arvensis": {
+    "family": "Violaceae",
+    "genus": "Viola"
+  },
+  "Viola odorata": {
+    "family": "Violaceae",
+    "genus": "Viola"
+  },
+  "Xanthium strumarium": {
+    "family": "Asteraceae",
+    "genus": "Xanthium"
+  }
+}

@@ -32,8 +32,21 @@ vi.mock("@components/WebcamCapture", () => ({
 }));
 
 vi.mock("@components/ImageViewer", () => ({
-  default: ({ src }: { src?: string }) => (
-    <div data-testid="image-viewer">{src ?? "no-image"}</div>
+  default: ({
+    src,
+    selectedBoxId,
+    onSelectedBoxIdChange,
+  }: {
+    src?: string;
+    selectedBoxId?: string | null;
+    onSelectedBoxIdChange?: (boxId: string | null) => void;
+  }) => (
+    <div data-testid="image-viewer" data-selected-box={selectedBoxId ?? ""}>
+      {src ?? "no-image"}
+      <button onClick={() => onSelectedBoxIdChange?.("box-1")}>
+        select tray box
+      </button>
+    </div>
   ),
 }));
 
@@ -71,16 +84,26 @@ vi.mock("@components/ResultsTable", () => ({
   default: ({
     switchTable,
     onSwitchTableChange,
+    selectedBoxId,
+    onSelectedBoxIdChange,
   }: {
     switchTable: boolean;
     onSwitchTableChange: (value: boolean) => void;
+    selectedBoxId: string | null;
+    onSelectedBoxIdChange: (boxId: string | null) => void;
   }) => (
-    <button
-      data-testid="results-table"
-      onClick={() => onSwitchTableChange(!switchTable)}
-    >
-      {switchTable ? "labels" : "classifications"}
-    </button>
+    <div>
+      <button
+        data-testid="results-table"
+        data-selected-box={selectedBoxId ?? ""}
+        onClick={() => onSwitchTableChange(!switchTable)}
+      >
+        {switchTable ? "labels" : "classifications"}
+      </button>
+      <button onClick={() => onSelectedBoxIdChange("box-1")}>
+        select result row
+      </button>
+    </div>
   ),
 }));
 
@@ -411,6 +434,77 @@ describe("NachetMiniView", () => {
     expect(props.onRunInference).toHaveBeenCalledTimes(1);
   });
 
+  it("shares inspection selection between the tray and results", async () => {
+    const props = makeProps({
+      isWebcamActive: false,
+      currentImage: makeImage(),
+      currentResult: makeResult(),
+      activeResultKey: "0:model",
+    });
+
+    renderView(props);
+    await page.getByRole("button", { name: "select tray box" }).click();
+
+    await expect
+      .element(page.getByTestId("image-viewer"))
+      .toHaveAttribute("data-selected-box", "box-1");
+    await expect
+      .element(page.getByTestId("results-table"))
+      .toHaveAttribute("data-selected-box", "box-1");
+  });
+
+  it("clears inspection selection when the image, run, or mode changes", async () => {
+    const props = makeProps({
+      isWebcamActive: false,
+      currentImage: makeImage(),
+      currentResult: makeResult(),
+      activeResultKey: "0:model-a",
+    });
+    const view = renderView(props);
+    await page.getByRole("button", { name: "select result row" }).click();
+    await expect
+      .element(page.getByTestId("results-table"))
+      .toHaveAttribute("data-selected-box", "box-1");
+
+    view.rerender(
+      <I18nextProvider i18n={i18n}>
+        <NachetMiniView {...props} currentIndex={1} />
+      </I18nextProvider>,
+    );
+    await expect
+      .element(page.getByTestId("results-table"))
+      .toHaveAttribute("data-selected-box", "");
+
+    await page.getByRole("button", { name: "select result row" }).click();
+    view.rerender(
+      <I18nextProvider i18n={i18n}>
+        <NachetMiniView
+          {...props}
+          currentIndex={1}
+          activeResultKey="0:model-b"
+        />
+      </I18nextProvider>,
+    );
+    await expect
+      .element(page.getByTestId("results-table"))
+      .toHaveAttribute("data-selected-box", "");
+
+    await page.getByRole("button", { name: "select result row" }).click();
+    view.rerender(
+      <I18nextProvider i18n={i18n}>
+        <NachetMiniView
+          {...props}
+          currentIndex={1}
+          activeResultKey="0:model-b"
+          isEditing
+        />
+      </I18nextProvider>,
+    );
+    await expect
+      .element(page.getByTestId("results-table"))
+      .toHaveAttribute("data-selected-box", "");
+  });
+
   it("renders edit controls and uses identify to classify edited boxes", async () => {
     const props = makeProps({
       isWebcamActive: false,
@@ -452,7 +546,9 @@ describe("NachetMiniView", () => {
     await page.getByRole("button", { name: "select image" }).click();
     expect(props.onSelectImage).toHaveBeenCalledWith(1);
 
-    await page.getByRole("button", { name: "select result" }).click();
+    await page
+      .getByRole("button", { name: "select result", exact: true })
+      .click();
     expect(props.onSelectResult).toHaveBeenCalledWith("1:model");
 
     await page.getByRole("button", { name: "remove image" }).click();

@@ -11,7 +11,12 @@ import {
 } from "@huggingface/transformers";
 import type { ModelConfig, WorkerInMessage, WorkerOutMessage } from "./models";
 import { huggingFaceFileUrl } from "./models";
-import type { InferenceResult, InferenceBox } from "@common/types";
+import type {
+  BoxTaxonomy,
+  InferenceResult,
+  InferenceBox,
+  RankedPrediction,
+} from "@common/types";
 import {
   loadDetector,
   runDetector,
@@ -20,6 +25,7 @@ import {
 } from "./detector";
 import { createSerialQueue } from "./serialQueue";
 import { computeCam } from "./cam";
+import { aggregateTaxonomyProbabilities } from "./taxonomy";
 
 // Class Activation Mapping runs only when the loaded classifier exposes the
 // `swin_layernorm` output (the patched 101spp model); otherwise it's skipped.
@@ -290,7 +296,8 @@ const handleMessage = async (data: WorkerInMessage): Promise<void> => {
       const boxes: InferenceBox[] = [];
       const scores: number[] = [];
       const classifications: string[] = [];
-      const topNResults: Array<Array<{ score: number; label: string }>> = [];
+      const topNResults: RankedPrediction[][] = [];
+      const taxonomyResults: Array<BoxTaxonomy | undefined> = [];
 
       for (let i = 0; i < detections.boxes.length; i++) {
         const [xmin, ymin, xmax, ymax] = detections.boxes[i];
@@ -317,6 +324,7 @@ const handleMessage = async (data: WorkerInMessage): Promise<void> => {
         scores.push(score);
         classifications.push(""); // sentinel: not yet classified
         topNResults.push([]);
+        taxonomyResults.push(undefined);
       }
 
       // Send partial result: all boxes visible, no classifications yet
@@ -355,6 +363,7 @@ const handleMessage = async (data: WorkerInMessage): Promise<void> => {
         scores,
         classifications,
         topNResults,
+        taxonomyResults,
         config,
         imageIndex,
         timestampedId,
@@ -367,6 +376,7 @@ const handleMessage = async (data: WorkerInMessage): Promise<void> => {
         classifications,
         boxes,
         topN: topNResults,
+        taxonomy: availableTaxonomy(taxonomyResults),
         overlapping: boxes.map(() => false),
         overlappingIndices: boxes.map(() => 0),
         labelOccurrence: buildLabelOccurrence(classifications),
@@ -443,8 +453,10 @@ const handleMessage = async (data: WorkerInMessage): Promise<void> => {
       }));
       const scores = boxes.map(() => 1);
       const classifications = boxes.map(() => "");
-      const topNResults: Array<Array<{ score: number; label: string }>> =
-        boxes.map(() => []);
+      const topNResults: RankedPrediction[][] = boxes.map(() => []);
+      const taxonomyResults: Array<BoxTaxonomy | undefined> = boxes.map(
+        () => undefined,
+      );
 
       // Send partial result showing boxes before classification
       send({
@@ -479,6 +491,7 @@ const handleMessage = async (data: WorkerInMessage): Promise<void> => {
         scores,
         classifications,
         topNResults,
+        taxonomyResults,
         config,
         imageIndex,
         modelConfigId,
@@ -491,6 +504,7 @@ const handleMessage = async (data: WorkerInMessage): Promise<void> => {
         classifications,
         boxes,
         topN: topNResults,
+        taxonomy: availableTaxonomy(taxonomyResults),
         overlapping: boxes.map(() => false),
         overlappingIndices: boxes.map(() => 0),
         labelOccurrence: buildLabelOccurrence(classifications),
@@ -544,7 +558,8 @@ const classifyBoxes = async (
   boxes: InferenceBox[],
   scores: number[],
   classifications: string[],
-  topNResults: Array<Array<{ score: number; label: string }>>,
+  topNResults: RankedPrediction[][],
+  taxonomyResults: Array<BoxTaxonomy | undefined>,
   config: ModelConfig,
   imageIndex: number,
   modelConfigId: string,
@@ -572,7 +587,8 @@ const classifyBoxes = async (
         data: rawOut.logits.data as Float32Array,
         dims: [rawOut.logits.dims[rawOut.logits.dims.length - 1]],
       };
-      const probs = new Tensor("float32", softmax(logits.data), logits.dims);
+      const probabilities = softmax(logits.data);
+      const probs = new Tensor("float32", probabilities, logits.dims);
       const [topValues, topIndices] = await topk(probs, config.classifierTopK);
 
       const clsId2label = classifierModel.config?.id2label ?? {};
@@ -595,6 +611,13 @@ const classifyBoxes = async (
 
       classifications[i] = topLabel;
       topNResults[i] = classResults;
+      taxonomyResults[i] = aggregateTaxonomyProbabilities(
+        probabilities,
+        clsId2label,
+        undefined,
+        3,
+        classResults.map(({ label }) => label),
+      );
       boxes[i] = { ...boxes[i], label: topLabel };
 
       send({
@@ -606,6 +629,7 @@ const classifyBoxes = async (
           classifications: [...classifications],
           boxes: [...boxes],
           topN: [...topNResults],
+          taxonomy: availableTaxonomy(taxonomyResults),
           overlapping: boxes.map(() => false),
           overlappingIndices: boxes.map(() => 0),
           labelOccurrence: buildLabelOccurrence(classifications),
@@ -680,6 +704,11 @@ const buildLabelOccurrence = (
   }
   return labelOccurrence;
 };
+
+const availableTaxonomy = (
+  taxonomy: Array<BoxTaxonomy | undefined>,
+): Array<BoxTaxonomy | undefined> | undefined =>
+  taxonomy.some(Boolean) ? [...taxonomy] : undefined;
 
 const emptyResult = (config: ModelConfig): InferenceResult => {
   return {
