@@ -1,0 +1,78 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: nachet-workflow-control-example
+  namespace: argo-workflows
+  labels:
+    app.kubernetes.io/name: nachet-workflow-control-example
+    app.kubernetes.io/part-of: nachet
+spec:
+  entrypoint: example-pipeline
+  serviceAccountName: argo-workflow
+  arguments:
+    parameters:
+      - name: dataset-name
+        value: example-dataset
+  templates:
+    - name: example-pipeline
+      steps:
+        - - name: validate-input
+            template: record-stage
+            arguments:
+              parameters:
+                - name: stage
+                  value: input-validated
+                - name: dataset-name
+                  value: "{{workflow.parameters.dataset-name}}"
+        - - name: await-approval
+            template: approval
+        - - name: record-approval
+            template: record-stage
+            arguments:
+              parameters:
+                - name: stage
+                  value: approval-recorded
+                - name: dataset-name
+                  value: >-
+                    {{steps.validate-input.outputs.parameters.dataset-name}}
+
+    - name: approval
+      suspend: {}
+
+    - name: record-stage
+      inputs:
+        parameters:
+          - name: stage
+          - name: dataset-name
+      outputs:
+        parameters:
+          - name: dataset-name
+            valueFrom:
+              path: /tmp/dataset-name
+      container:
+        image: >-
+          alpine:3.22.1@sha256:4bcff63911fcb4448bd4fdacec207030997caf25e9bea4045fa6c8c44de311d1
+        command:
+          - /scripts/record-stage.sh
+        env:
+          - name: STAGE
+            value: "{{inputs.parameters.stage}}"
+          - name: DATASET_NAME
+            value: "{{inputs.parameters.dataset-name}}"
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+            readOnly: true
+      volumes:
+        - name: scripts
+          configMap:
+            name: nachet-workflow-control-scripts
+            defaultMode: 0555

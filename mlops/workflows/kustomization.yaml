@@ -1,0 +1,16 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argo-workflows
+
+resources:
+  - example-workflow-template.yaml
+
+configMapGenerator:
+  - name: nachet-workflow-control-scripts
+    files:
+      - record-stage.sh=scripts/record-stage.sh
+
+generatorOptions:
+  disableNameSuffixHash: true
