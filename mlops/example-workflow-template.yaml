@@ -1,0 +1,58 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: nachet-mlops-example
+  namespace: argo-workflows
+  labels:
+    app.kubernetes.io/name: nachet-mlops-example
+    app.kubernetes.io/part-of: nachet
+spec:
+  entrypoint: example-pipeline
+  serviceAccountName: argo-workflow
+  arguments:
+    parameters:
+      - name: dataset-name
+        value: example-dataset
+  templates:
+    - name: example-pipeline
+      steps:
+        - - name: prepare
+            template: log-stage
+            arguments:
+              parameters:
+                - name: stage
+                  value: prepare
+                - name: dataset-name
+                  value: "{{workflow.parameters.dataset-name}}"
+        - - name: await-approval
+            template: approval
+        - - name: complete
+            template: log-stage
+            arguments:
+              parameters:
+                - name: stage
+                  value: complete
+                - name: dataset-name
+                  value: "{{workflow.parameters.dataset-name}}"
+
+    - name: approval
+      suspend: {}
+
+    - name: log-stage
+      inputs:
+        parameters:
+          - name: stage
+          - name: dataset-name
+      container:
+        image: alpine:3.22.1
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - printf 'stage=%s dataset=%s\n' "$STAGE" "$DATASET_NAME"
+        env:
+          - name: STAGE
+            value: "{{inputs.parameters.stage}}"
+          - name: DATASET_NAME
+            value: "{{inputs.parameters.dataset-name}}"
