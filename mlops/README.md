@@ -1,16 +1,16 @@
 # Example approval workflow
 
-`example-workflow-template.yaml` is a small workflow used to verify Nachet's
-Argo Workflows setup before model-training steps are added. It accepts a
-`dataset-name` parameter and runs three steps:
+`example-workflow-template.yaml` is a small control-flow example used to verify
+Nachet's Argo Workflows setup before model-training steps are added. It accepts
+a `dataset-name` parameter and runs three steps:
 
-1. `prepare` prints the supplied dataset name.
+1. `validate-input` checks the dataset name and publishes it as an output.
 2. `await-approval` pauses the workflow.
-3. `complete` runs after the workflow is resumed.
+3. `record-approval` consumes the validated output after the workflow resumes.
 
 The example does not process a dataset or train a model. It checks that a
-parameter reaches the run and that the run can stop for review before it
-continues.
+parameter reaches the run, that one step can pass an output to another, and
+that the run can stop for review before it continues.
 
 ## Deployment
 
@@ -33,7 +33,7 @@ kubectl apply --filename mlops/example-workflow-template.yaml
 In the Argo Workflows UI:
 
 1. Open **Workflow Templates**.
-2. Select `nachet-mlops-example`.
+2. Select `nachet-workflow-control-example`.
 3. Submit the template, using either the default dataset name or a test value.
 4. Wait for the run to stop at `await-approval`.
 5. Review the completed step, then select **Resume** to continue.
@@ -46,6 +46,6 @@ The same workflow can be submitted from the command line:
 ```bash
 argo submit \
   --namespace argo-workflows \
-  --from workflowtemplate/nachet-mlops-example \
+  --from workflowtemplate/nachet-workflow-control-example \
   --parameter dataset-name=my-dataset
 ```

@@ -2,10 +2,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
-  name: nachet-mlops-example
+  name: nachet-workflow-control-example
   namespace: argo-workflows
   labels:
-    app.kubernetes.io/name: nachet-mlops-example
+    app.kubernetes.io/name: nachet-workflow-control-example
     app.kubernetes.io/part-of: nachet
 spec:
   entrypoint: example-pipeline
@@ -17,42 +17,64 @@ spec:
   templates:
     - name: example-pipeline
       steps:
-        - - name: prepare
-            template: log-stage
+        - - name: validate-input
+            template: record-stage
             arguments:
               parameters:
                 - name: stage
-                  value: prepare
+                  value: input-validated
                 - name: dataset-name
                   value: "{{workflow.parameters.dataset-name}}"
         - - name: await-approval
             template: approval
-        - - name: complete
-            template: log-stage
+        - - name: record-approval
+            template: record-stage
             arguments:
               parameters:
                 - name: stage
-                  value: complete
+                  value: approval-recorded
                 - name: dataset-name
-                  value: "{{workflow.parameters.dataset-name}}"
+                  value: >-
+                    {{steps.validate-input.outputs.parameters.dataset-name}}
 
     - name: approval
       suspend: {}
 
-    - name: log-stage
+    - name: record-stage
       inputs:
         parameters:
           - name: stage
           - name: dataset-name
+      outputs:
+        parameters:
+          - name: dataset-name
+            valueFrom:
+              path: /tmp/dataset-name
       container:
-        image: alpine:3.22.1
+        image: >-
+          alpine:3.22.1@sha256:4bcff63911fcb4448bd4fdacec207030997caf25e9bea4045fa6c8c44de311d1
         command:
           - /bin/sh
           - -c
         args:
-          - printf 'stage=%s dataset=%s\n' "$STAGE" "$DATASET_NAME"
+          - |
+            set -eu
+            : > /tmp/dataset-name
+            if [ -z "$(printf '%s' "$DATASET_NAME" | tr -d '[:space:]')" ]; then
+              printf 'dataset-name must not be empty\n' >&2
+              exit 1
+            fi
+            printf '%s' "$DATASET_NAME" > /tmp/dataset-name
+            printf 'stage=%s dataset=%s\n' "$STAGE" "$DATASET_NAME"
         env:
           - name: STAGE
             value: "{{inputs.parameters.stage}}"
           - name: DATASET_NAME
             value: "{{inputs.parameters.dataset-name}}"
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
