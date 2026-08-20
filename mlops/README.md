@@ -1,8 +1,8 @@
 # Example approval workflow
 
-`example-workflow-template.yaml` is a small control-flow example used to verify
-Nachet's Argo Workflows setup before model-training steps are added. It accepts
-a `dataset-name` parameter and runs three steps:
+`workflows/example-workflow-template.yaml` is a small control-flow example used
+to verify Nachet's Argo Workflows setup before model-training steps are added.
+It accepts a `dataset-name` parameter and runs three steps:
 
 1. `validate-input` checks the dataset name and publishes it as an output.
 2. `await-approval` pauses the workflow.
@@ -15,8 +15,11 @@ that the run can stop for review before it continues.
 ## Deployment
 
 The template is deployed from Git. Howard's `nachet-mlops` Argo CD application
-watches this directory on Nachet's `main` branch and synchronizes its YAML files
-to the `argo-workflows` namespace.
+watches the `mlops/workflows` directory on Nachet's `main` branch and
+synchronizes its rendered resources to the `argo-workflows` namespace.
+Kustomize packages the tested `scripts/record-stage.sh` file into a ConfigMap
+that the example mounts read-only. The ConfigMap keeps a stable name because the
+`WorkflowTemplate` refers to that name directly.
 
 Merging a change updates the template in Howard; it does not start a workflow
 run. Do not apply the template manually in Howard because Argo CD owns the
@@ -25,7 +28,13 @@ deployed copy.
 For local testing outside Howard, apply it with:
 
 ```bash
-kubectl apply --filename mlops/example-workflow-template.yaml
+kubectl apply --kustomize mlops/workflows
+```
+
+Run the script checks independently with:
+
+```bash
+mlops/workflows/tests/record-stage-test.sh
 ```
 
 ## Run the workflow
