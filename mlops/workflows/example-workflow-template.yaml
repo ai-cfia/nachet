@@ -3,13 +3,13 @@ apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
   name: nachet-workflow-control-example
-  namespace: argo-workflows
+  namespace: ailab-shared
   labels:
     app.kubernetes.io/name: nachet-workflow-control-example
     app.kubernetes.io/part-of: nachet
 spec:
   entrypoint: example-pipeline
-  serviceAccountName: argo-workflow
+  serviceAccountName: nachet-workflow
   arguments:
     parameters:
       - name: dataset-name
