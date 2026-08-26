@@ -4,6 +4,7 @@ name: Detector Training Runtime
 "on":
   pull_request:
     paths:
+      - .github/scripts/install-argo-cli.sh
       - mlops/training/detector/**
       - mlops/workflows/detector-training-workflow-template.yaml
       - .github/workflows/mlops-detector-training.yml
@@ -18,8 +19,7 @@ permissions:
 
 env:
   IMAGE_NAME: ghcr.io/ai-cfia/nachet-detector-training
-  ARGO_CLI_IMAGE: >-
-    quay.io/argoproj/argocli@sha256:bf5faea1eb1b811a4406c3275e270268429d6fca7a1482bd39db4aff998d6f7b
+  ARGO_CLI_VERSION: v4.1.1
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -49,18 +49,20 @@ jobs:
           mlops/training/detector/src/coco_to_hf_dataset.py
           mlops/training/detector/src/train_detector.py
 
+      - name: Install Argo CLI
+        run: >-
+          bash .github/scripts/install-argo-cli.sh
+          "$ARGO_CLI_VERSION" "$RUNNER_TEMP/argo"
+
       - name: Validate Argo workflow template
         run: >-
-          docker run --rm
-          --volume "$GITHUB_WORKSPACE:/workspace:ro"
-          "$ARGO_CLI_IMAGE"
-          lint --offline
-          /workspace/mlops/workflows/detector-training-workflow-template.yaml
+          "$RUNNER_TEMP/argo" lint --offline
+          mlops/workflows/detector-training-workflow-template.yaml
 
   build:
     if: github.event_name == 'pull_request'
     needs: test
-    runs-on: on-prem-gh-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
@@ -83,7 +85,7 @@ jobs:
   publish:
     if: github.event_name == 'push'
     needs: test
-    runs-on: on-prem-gh-runners
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
