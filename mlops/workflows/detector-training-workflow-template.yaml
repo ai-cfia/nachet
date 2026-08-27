@@ -1,0 +1,360 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: nachet-detector-training
+  namespace: argo-workflows
+  labels:
+    app.kubernetes.io/name: nachet-detector-training
+    app.kubernetes.io/part-of: nachet
+spec:
+  entrypoint: detector-training
+  serviceAccountName: argo-workflow
+  arguments:
+    parameters:
+      - name: dataset-profile
+        description: Reviewed dataset snapshot mounted from workflow storage.
+        value: detector-smoke-v1
+        enum:
+          - detector-smoke-v1
+          - 101-species-v1
+      - name: run-profile
+        description: >-
+          Smoke is a bounded check. Full preserves the reviewed 101-species
+          settings: 24 images per batch and one accumulation step.
+        value: smoke
+        enum:
+          - smoke
+          - full
+      - name: gpu-profile
+        description: >-
+          Selects the GPU node. AI Lab 1 is the default. Training values come
+          from the run profile or explicit parameter overrides.
+        value: ai-lab-1
+        enum:
+          - ai-lab-1
+          - ai-lab-2
+          - ai-lab-3
+      - name: epochs
+        description: Positive integer, or profile-default.
+        value: profile-default
+      - name: image-size
+        description: Square detector input size, or profile-default.
+        value: profile-default
+      - name: batch-size
+        description: Per-device batch size, or profile-default.
+        value: profile-default
+      - name: gradient-accumulation-steps
+        description: Gradient accumulation steps, or profile-default.
+        value: profile-default
+      - name: warmup-steps
+        description: Non-negative warm-up steps, or profile-default.
+        value: profile-default
+      - name: learning-rate
+        description: Positive learning rate, or profile-default.
+        value: profile-default
+      - name: seed
+        description: Non-negative random seed, or profile-default.
+        value: profile-default
+      - name: resume-run-id
+        description: >-
+          Earlier failed workflow to resume, or none for a new training run.
+        value: none
+      - name: resume-checkpoint
+        description: Checkpoint name from the earlier run, or latest.
+        value: latest
+  templates:
+    - name: detector-training
+      steps:
+        - - name: validate-request
+            template: validate-request
+        - - name: train
+            template: train
+            arguments:
+              parameters:
+                - name: gpu-profile
+                  value: "{{workflow.parameters.gpu-profile}}"
+        - - name: list-checkpoints
+            template: list-checkpoints
+        - - name: review-checkpoints
+            template: checkpoint-review
+            arguments:
+              parameters:
+                - name: selected-checkpoint
+                  value: >-
+                    {{steps.list-checkpoints.outputs.parameters.checkpoint-options}}
+        - - name: validate-checkpoint-selection
+            template: validate-checkpoint-selection
+            arguments:
+              parameters:
+                - name: checkpoint-options
+                  value: >-
+                    {{steps.list-checkpoints.outputs.parameters.checkpoint-options}}
+                - name: selected-checkpoint
+                  value: >-
+                    {{steps.review-checkpoints.outputs.parameters.selected-checkpoint}}
+      outputs:
+        parameters:
+          - name: mlflow-run-id
+            valueFrom:
+              parameter: "{{steps.train.outputs.parameters.mlflow-run-id}}"
+          - name: mlflow-run-url
+            valueFrom:
+              parameter: "{{steps.train.outputs.parameters.mlflow-run-url}}"
+          - name: checkpoint-options
+            valueFrom:
+              parameter: >-
+                {{steps.list-checkpoints.outputs.parameters.checkpoint-options}}
+          - name: selected-checkpoint
+            valueFrom:
+              parameter: >-
+                {{steps.validate-checkpoint-selection.outputs.parameters.selected-checkpoint}}
+
+    - name: validate-request
+      container:
+        image: ghcr.io/ai-cfia/nachet-detector-training:0.1.0
+        imagePullPolicy: IfNotPresent
+        args:
+          - --dataset-profile
+          - "{{workflow.parameters.dataset-profile}}"
+          - --run-profile
+          - "{{workflow.parameters.run-profile}}"
+          - --gpu-profile
+          - "{{workflow.parameters.gpu-profile}}"
+          - --epochs
+          - "{{workflow.parameters.epochs}}"
+          - --image-size
+          - "{{workflow.parameters.image-size}}"
+          - --batch-size
+          - "{{workflow.parameters.batch-size}}"
+          - --gradient-accumulation-steps
+          - "{{workflow.parameters.gradient-accumulation-steps}}"
+          - --warmup-steps
+          - "{{workflow.parameters.warmup-steps}}"
+          - --learning-rate
+          - "{{workflow.parameters.learning-rate}}"
+          - --seed
+          - "{{workflow.parameters.seed}}"
+          - --resume-run-id
+          - "{{workflow.parameters.resume-run-id}}"
+          - --resume-checkpoint
+          - "{{workflow.parameters.resume-checkpoint}}"
+          - --run-id
+          - "{{workflow.name}}"
+          - --runs-root
+          - /tmp/validation
+          - --resume-runs-root
+          - /runs
+          - --dry-run
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+          - name: training-storage
+            mountPath: /inputs
+            subPath: nachet/detector-training/inputs
+            readOnly: true
+          - name: training-storage
+            mountPath: /runs
+            subPath: nachet/detector-training/runs
+            readOnly: true
+          - name: tmp
+            mountPath: /tmp
+
+    - name: train
+      inputs:
+        parameters:
+          - name: gpu-profile
+      outputs:
+        parameters:
+          - name: mlflow-run-id
+            globalName: mlflow-run-id
+            valueFrom:
+              path: "/runs/{{workflow.name}}/mlflow-run-id"
+          - name: mlflow-run-url
+            globalName: mlflow-run-url
+            valueFrom:
+              path: "/runs/{{workflow.name}}/mlflow-run-url"
+      synchronization:
+        mutexes:
+          - name: nachet-training-{{inputs.parameters.gpu-profile}}
+      nodeSelector:
+        kubernetes.io/hostname: "{{inputs.parameters.gpu-profile}}"
+      container:
+        image: ghcr.io/ai-cfia/nachet-detector-training:0.1.0
+        imagePullPolicy: IfNotPresent
+        args:
+          - --dataset-profile
+          - "{{workflow.parameters.dataset-profile}}"
+          - --run-profile
+          - "{{workflow.parameters.run-profile}}"
+          - --gpu-profile
+          - "{{inputs.parameters.gpu-profile}}"
+          - --epochs
+          - "{{workflow.parameters.epochs}}"
+          - --image-size
+          - "{{workflow.parameters.image-size}}"
+          - --batch-size
+          - "{{workflow.parameters.batch-size}}"
+          - --gradient-accumulation-steps
+          - "{{workflow.parameters.gradient-accumulation-steps}}"
+          - --warmup-steps
+          - "{{workflow.parameters.warmup-steps}}"
+          - --learning-rate
+          - "{{workflow.parameters.learning-rate}}"
+          - --seed
+          - "{{workflow.parameters.seed}}"
+          - --run-id
+          - "{{workflow.name}}"
+          - --resume-run-id
+          - "{{workflow.parameters.resume-run-id}}"
+          - --resume-checkpoint
+          - "{{workflow.parameters.resume-checkpoint}}"
+        envFrom:
+          - secretRef:
+              name: nachet-training-s3
+        env:
+          - name: KUBERNETES_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.mlflow.svc.cluster.local:5000
+          - name: MLFLOW_EXPERIMENT_NAME
+            value: RT-DETR-v2_101spp_object-detector
+          - name: MLFLOW_PUBLIC_URL
+            value: https://mlflow.inspection.alpha.canada.ca
+          - name: HF_HOME
+            value: /scratch/huggingface
+          - name: XDG_CACHE_HOME
+            value: /scratch/cache
+        resources:
+          requests:
+            nvidia.com/gpu: "1"
+          limits:
+            nvidia.com/gpu: "1"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+          - name: training-storage
+            mountPath: /inputs
+            subPath: nachet/detector-training/inputs
+            readOnly: true
+          - name: training-storage
+            mountPath: /runs
+            subPath: nachet/detector-training/runs
+          - name: scratch
+            mountPath: /scratch
+          - name: tmp
+            mountPath: /tmp
+
+    - name: list-checkpoints
+      outputs:
+        parameters:
+          - name: checkpoint-options
+            globalName: checkpoint-options
+            valueFrom:
+              path: /tmp/checkpoint-options
+      container:
+        image: ghcr.io/ai-cfia/nachet-detector-training:0.1.0
+        imagePullPolicy: IfNotPresent
+        command:
+          - python
+          - /opt/nachet-detector/src/checkpoint_selection.py
+        args:
+          - --run-id
+          - "{{workflow.name}}"
+          - list
+          - --output
+          - /tmp/checkpoint-options
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+          - name: training-storage
+            mountPath: /runs
+            subPath: nachet/detector-training/runs
+            readOnly: true
+          - name: tmp
+            mountPath: /tmp
+
+    - name: checkpoint-review
+      inputs:
+        parameters:
+          - name: selected-checkpoint
+            description: >-
+              Open the MLflow run, choose the checkpoint to evaluate, then
+              resume this node.
+      outputs:
+        parameters:
+          - name: selected-checkpoint
+            valueFrom:
+              supplied: {}
+      suspend: {}
+
+    - name: validate-checkpoint-selection
+      inputs:
+        parameters:
+          - name: checkpoint-options
+          - name: selected-checkpoint
+      outputs:
+        parameters:
+          - name: selected-checkpoint
+            globalName: selected-checkpoint
+            valueFrom:
+              path: /tmp/selected-checkpoint
+      container:
+        image: ghcr.io/ai-cfia/nachet-detector-training:0.1.0
+        imagePullPolicy: IfNotPresent
+        command:
+          - python
+          - /opt/nachet-detector/src/checkpoint_selection.py
+        args:
+          - --run-id
+          - "{{workflow.name}}"
+          - validate-selection
+          - --checkpoint-options
+          - "{{inputs.parameters.checkpoint-options}}"
+          - --selected-checkpoint
+          - "{{inputs.parameters.selected-checkpoint}}"
+          - --output
+          - /tmp/selected-checkpoint
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+          - name: training-storage
+            mountPath: /runs
+            subPath: nachet/detector-training/runs
+            readOnly: true
+          - name: tmp
+            mountPath: /tmp
+  imagePullSecrets:
+    - name: ghcr-image-pull-secret
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  volumes:
+    - name: training-storage
+      persistentVolumeClaim:
+        claimName: nachet-training-workspace-pvc
+    - name: scratch
+      emptyDir: {}
+    - name: tmp
+      emptyDir: {}

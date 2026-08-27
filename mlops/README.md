@@ -1,56 +1,31 @@
-# Example approval workflow
+# Nachet MLOps workflows
 
-`workflows/example-workflow-template.yaml` is a small control-flow example used
-to verify Nachet's Argo Workflows setup before model-training steps are added.
-It accepts a `dataset-name` parameter and runs three steps:
+This directory contains the Argo `WorkflowTemplate` resources maintained with
+Nachet. Howard deploys them to the cluster; merging a template does not start a
+workflow run.
 
-1. `validate-input` checks the dataset name and publishes it as an output.
-2. `await-approval` pauses the workflow.
-3. `record-approval` consumes the validated output after the workflow resumes.
+The Argo controller, UI, and Nachet workflows run in `argo-workflows`.
 
-The example does not process a dataset or train a model. It checks that a
-parameter reaches the run, that one step can pass an output to another, and
-that the run can stop for review before it continues.
+## Control-flow example
 
-## Deployment
+`workflows/example-workflow-template.yaml` is a small deployment check. It:
 
-The template is deployed from Git. Howard's `nachet-mlops` Argo CD application
-watches the `mlops/workflows` directory on Nachet's `main` branch and
-synchronizes its rendered resources to the `argo-workflows` namespace.
-Kustomize packages the tested `scripts/record-stage.sh` file into a ConfigMap
-that the example mounts read-only. The ConfigMap keeps a stable name because the
-`WorkflowTemplate` refers to that name directly.
+1. validates a `dataset-name` input;
+2. passes the validated value to the next step;
+3. pauses for a manual decision;
+4. records the approval after the run resumes.
 
-Merging a change updates the template in Howard; it does not start a workflow
-run. Do not apply the template manually in Howard because Argo CD owns the
-deployed copy.
+It does not process data or train a model.
 
-For local testing outside Howard, apply it with:
-
-```bash
-kubectl apply --kustomize mlops/workflows
-```
-
-Run the script checks independently with:
-
-```bash
-mlops/workflows/tests/record-stage-test.sh
-```
-
-## Run the workflow
-
-In the Argo Workflows UI:
+To run it in the Argo UI:
 
 1. Open **Workflow Templates**.
 2. Select `nachet-workflow-control-example`.
-3. Submit the template, using either the default dataset name or a test value.
-4. Wait for the run to stop at `await-approval`.
-5. Review the completed step, then select **Resume** to continue.
+3. Choose **Submit** and enter a dataset name.
+4. Wait for `await-approval` to pause.
+5. Open the paused node and resume it.
 
-For this example, resuming the workflow means approving it. Terminate the run
-if it should not continue. There is no separate approve/reject record yet.
-
-The same workflow can be submitted from the command line:
+The same template can be submitted from the command line:
 
 ```bash
 argo submit \
@@ -58,3 +33,24 @@ argo submit \
   --from workflowtemplate/nachet-workflow-control-example \
   --parameter dataset-name=my-dataset
 ```
+
+## Deployment
+
+Howard's `nachet-mlops` Argo CD application watches `mlops/workflows` on
+Nachet's `main` branch. Argo CD renders the Kustomization and synchronizes the
+result into `argo-workflows`.
+
+For local testing, apply the same Kustomization to a test cluster:
+
+```bash
+kubectl apply --kustomize mlops/workflows
+```
+
+Run the example's script test separately:
+
+```bash
+mlops/workflows/tests/record-stage-test.sh
+```
+
+The detector training workflow has its own setup and operating notes in
+[`training/README.md`](training/README.md).
