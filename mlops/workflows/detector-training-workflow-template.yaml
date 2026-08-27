@@ -3,17 +3,17 @@ apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
   name: nachet-detector-training
-  namespace: ailab-shared
+  namespace: argo-workflows
   labels:
     app.kubernetes.io/name: nachet-detector-training
     app.kubernetes.io/part-of: nachet
 spec:
   entrypoint: detector-training
-  serviceAccountName: nachet-workflow
+  serviceAccountName: argo-workflow
   arguments:
     parameters:
       - name: dataset-profile
-        description: Reviewed dataset snapshot mounted from shared storage.
+        description: Reviewed dataset snapshot mounted from workflow storage.
         value: detector-smoke-v1
         enum:
           - detector-smoke-v1
@@ -28,7 +28,8 @@ spec:
           - full
       - name: gpu-profile
         description: >-
-          AI Lab 1 is the default. AI Lab 2 and 3 must be selected explicitly.
+          Selects the GPU node. AI Lab 1 is the default. Training values come
+          from the run profile or explicit parameter overrides.
         value: ai-lab-1
         enum:
           - ai-lab-1
@@ -352,7 +353,7 @@ spec:
   volumes:
     - name: training-storage
       persistentVolumeClaim:
-        claimName: ailab-shared-pvc
+        claimName: nachet-training-workspace-pvc
     - name: scratch
       emptyDir: {}
     - name: tmp

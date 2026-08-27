@@ -5,25 +5,25 @@ Argo. It supports a short smoke run and the reviewed 101-species configuration.
 
 ## Before running it
 
-The matching Howard configuration must be deployed first. It gives the Argo
-controller access to the managed `ailab-shared` namespace and creates the
-`nachet-workflow` service account used by Nachet templates.
+The matching Howard configuration must be deployed first. It creates the
+temporary training volume and MLflow `ExternalSecret` in `argo-workflows`.
 
-The namespace also needs:
+Before starting a run:
 
-- the existing `ailab-shared-pvc` and `ghcr-image-pull-secret`;
 - a small `detector-smoke-v1` dataset for the first cluster run;
 - a reviewed `101-species-v1` snapshot before a full run;
-- a writable `nachet/detector-training/runs` directory on the shared volume;
-- the `nachet-training-s3` External Secret for MLflow artifact storage.
+- a writable `nachet/detector-training/runs` directory on the training volume.
+
+The runtime image must also be pullable. The template currently uses
+`ghcr-image-pull-secret`; this can be removed if the package is public.
 
 The workflow does not create missing datasets, credentials, or directories.
 It stops when a required input is unavailable.
 
-The shared volume must have this shape:
+For the smoke run, populate the temporary volume with this shape:
 
 ```text
-/ailab/nachet/detector-training/
+nachet/detector-training/
   inputs/
     detector-smoke-v1/
       data/
@@ -35,6 +35,10 @@ The shared volume must have this shape:
       notebooks/shell/training_config_101spp_all.yaml
   runs/
 ```
+
+The `20Gi` claim is a temporary workspace for the smoke run, not the final
+dataset store. The storage layout will change when the blob storage input is
+defined.
 
 Paths inside each dataset configuration are relative to that dataset profile.
 Absolute paths and paths that leave the selected profile are rejected.
@@ -60,13 +64,17 @@ The main inputs are:
 - `run-profile`: `smoke` or `full`;
 - `gpu-profile`: `ai-lab-1`, `ai-lab-2`, or `ai-lab-3`.
 
-AI Lab 1 is the default. The workflow uses a mutex for each physical GPU so two
-Nachet training jobs do not intentionally share the same device.
+AI Lab 1 is the default. Each GPU has one Nachet training mutex, so two
+workflows cannot select the same device at the same time. The GPU profile only
+selects the node. Training values come from the run profile or explicit
+overrides.
 
 The remaining training fields use `profile-default` unless someone needs a
 reviewed override. The full profile keeps the June 2026 settings: 50 epochs,
 640-pixel inputs, batch size 24, one gradient-accumulation step, 760 warm-up
-steps, learning rate `0.00001`, and seed `2438`.
+steps, learning rate `0.00001`, and seed `2438`. The tracked detector launchers
+do not identify the GPU or define a separate A100 recipe. AI Lab 2 and 3 use
+the same defaults until a recorded A100 run supports a different profile.
 
 Submit the template after reviewing the inputs. A new run leaves
 `resume-run-id` as `none` and `resume-checkpoint` as `latest`.
@@ -93,8 +101,8 @@ logs its metrics and parameters to that run. Transformers' MLflow callback also
 logs each checkpoint when the trainer saves it. After training, the workflow
 lists only local `checkpoint-<step>` directories that contain the model,
 optimizer, scheduler, random state, training arguments, and Trainer state
-needed for a resume. It does not upload them a second time. The shared-volume
-copy is retained so a failed run can still resume while the storage and
+needed for a resume. It does not upload them a second time. The PVC copy
+remains available so a failed run can resume while the storage and
 retention policy is being established.
 
 The workflow exposes these outputs:

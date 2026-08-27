@@ -4,9 +4,7 @@ This directory contains the Argo `WorkflowTemplate` resources maintained with
 Nachet. Howard deploys them to the cluster; merging a template does not start a
 workflow run.
 
-The Argo controller and UI run in `argo-workflows`. Nachet workflows run in the
-managed `ailab-shared` namespace, where they can use the existing shared volume
-without giving the controller access to every namespace in the cluster.
+The Argo controller, UI, and Nachet workflows run in `argo-workflows`.
 
 ## Control-flow example
 
@@ -31,7 +29,7 @@ The same template can be submitted from the command line:
 
 ```bash
 argo submit \
-  --namespace ailab-shared \
+  --namespace argo-workflows \
   --from workflowtemplate/nachet-workflow-control-example \
   --parameter dataset-name=my-dataset
 ```
@@ -40,7 +38,7 @@ argo submit \
 
 Howard's `nachet-mlops` Argo CD application watches `mlops/workflows` on
 Nachet's `main` branch. Argo CD renders the Kustomization and synchronizes the
-result into `ailab-shared`.
+result into `argo-workflows`.
 
 For local testing, apply the same Kustomization to a test cluster:
 
