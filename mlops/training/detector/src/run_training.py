@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class RunProfile:
     epochs: int
+    checkpoint_retention: int
     image_size: int
     batch_size: int
     gradient_accumulation_steps: int
@@ -40,6 +41,7 @@ class RunProfile:
 RUN_PROFILES = {
     "smoke": RunProfile(
         epochs=1,
+        checkpoint_retention=1,
         image_size=640,
         batch_size=2,
         gradient_accumulation_steps=1,
@@ -51,6 +53,7 @@ RUN_PROFILES = {
     ),
     "full": RunProfile(
         epochs=50,
+        checkpoint_retention=50,
         image_size=640,
         batch_size=24,
         gradient_accumulation_steps=1,
@@ -97,6 +100,7 @@ def effective_run_profile(
     overrides = {}
     for name in (
         "epochs",
+        "checkpoint_retention",
         "image_size",
         "batch_size",
         "gradient_accumulation_steps",
@@ -164,7 +168,7 @@ def build_command(
         "--report_to",
         "mlflow",
         "--save_total_limit",
-        str(profile.epochs),
+        str(profile.checkpoint_retention),
         "--bf16",
         "--ignore_mismatched_sizes",
         "--remove_unused_columns",
@@ -338,6 +342,7 @@ def parse_args() -> argparse.Namespace:
         help="training parameter set",
     )
     parser.add_argument("--epochs", type=profile_int, default=None)
+    parser.add_argument("--checkpoint-retention", type=profile_int, default=None)
     parser.add_argument("--image-size", type=profile_int, default=None)
     parser.add_argument("--batch-size", type=profile_int, default=None)
     parser.add_argument(
