@@ -146,6 +146,7 @@ class MlflowClient:
         self.assertEqual(result.returncode, 0, result.stderr)
         command = shlex.split(result.stdout)
         self.assertEqual(self.command_value(command, "--num_train_epochs"), "1")
+        self.assertEqual(self.command_value(command, "--save_total_limit"), "1")
         self.assertIn("--max_train_samples", command)
         self.assertIn("--max_eval_samples", command)
         self.assertFalse((self.runs / "test-run").exists())
@@ -157,6 +158,7 @@ class MlflowClient:
         command = shlex.split(result.stdout)
         expected = {
             "--num_train_epochs": "50",
+            "--save_total_limit": "50",
             "--image_square_size": "640",
             "--per_device_train_batch_size": "24",
             "--gradient_accumulation_steps": "1",
@@ -176,6 +178,8 @@ class MlflowClient:
             "7",
             "--learning-rate",
             "0.0002",
+            "--checkpoint-retention",
+            "4",
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -185,6 +189,7 @@ class MlflowClient:
             "7",
         )
         self.assertEqual(self.command_value(command, "--learning_rate"), "0.0002")
+        self.assertEqual(self.command_value(command, "--save_total_limit"), "4")
 
     def test_absolute_dataset_inputs_are_accepted(self) -> None:
         external_config = self.root / "fiftyone-output.yaml"
