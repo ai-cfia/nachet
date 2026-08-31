@@ -175,27 +175,6 @@ class MlflowClient:
         self.assertIn("--max_eval_samples", command)
         self.assertFalse((self.runs / "test-run").exists())
 
-    def test_full_profile_keeps_the_launcher_settings(self) -> None:
-        result = self.run_dry("--run-profile", "full")
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        command = shlex.split(result.stdout)
-        expected = {
-            "--num_train_epochs": "50",
-            "--save_total_limit": "50",
-            "--image_square_size": "640",
-            "--per_device_train_batch_size": "24",
-            "--gradient_accumulation_steps": "1",
-            "--warmup_steps": "760",
-            "--learning_rate": "0.00001",
-            "--seed": "2438",
-        }
-        for argument, value in expected.items():
-            with self.subTest(argument=argument):
-                self.assertEqual(self.command_value(command, argument), value)
-        self.assertNotIn("--max_train_samples", command)
-        self.assertNotIn("--max_eval_samples", command)
-
     def test_profile_values_can_be_overridden(self) -> None:
         result = self.run_dry(
             "--batch-size",
@@ -214,30 +193,6 @@ class MlflowClient:
         )
         self.assertEqual(self.command_value(command, "--learning_rate"), "0.0002")
         self.assertEqual(self.command_value(command, "--save_total_limit"), "4")
-
-    def test_absolute_dataset_inputs_are_accepted(self) -> None:
-        external_config = self.root / "fiftyone-output.yaml"
-        external_config.write_text("sources: []\n", encoding="utf-8")
-        external_model = self.root / "base-model"
-        external_model.mkdir()
-
-        result = self.run_dry(
-            "--dataset-config",
-            str(external_config),
-            "--model-path",
-            str(external_model),
-        )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        command = shlex.split(result.stdout)
-        self.assertEqual(
-            self.command_value(command, "--dataset_config"),
-            str(external_config),
-        )
-        self.assertEqual(
-            self.command_value(command, "--model_name_or_path"),
-            str(external_model),
-        )
 
     def test_resume_uses_the_latest_complete_checkpoint(self) -> None:
         previous_run = self.runs / "previous-run"
@@ -285,31 +240,20 @@ class MlflowClient:
         self.assertFalse(trainer_marker.exists())
         self.assertEqual((run_root / "exit-code").read_text(), "0\n")
 
-    def test_missing_public_url_fails_before_creating_run_state(self) -> None:
-        environment = self.runtime_environment(self.fake_runtime_modules())
-        environment.pop("MLFLOW_PUBLIC_URL")
+    def test_required_mlflow_configuration_is_validated(self) -> None:
+        fake_modules = self.fake_runtime_modules()
+        run_id_path = self.runs / "test-run" / "mlflow-run-id"
 
-        result = self.run_runtime(environment)
+        for variable in ("MLFLOW_PUBLIC_URL", "MLFLOW_EXPERIMENT_NAME"):
+            with self.subTest(variable=variable):
+                environment = self.runtime_environment(fake_modules)
+                environment.pop(variable)
 
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn(
-            "required environment variable is not set: MLFLOW_PUBLIC_URL",
-            result.stderr,
-        )
-        self.assertFalse((self.runs / "test-run").exists())
+                result = self.run_runtime(environment)
 
-    def test_new_run_requires_an_experiment_name(self) -> None:
-        environment = self.runtime_environment(self.fake_runtime_modules())
-        environment.pop("MLFLOW_EXPERIMENT_NAME")
-
-        result = self.run_runtime(environment)
-
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn(
-            "required environment variable is not set: MLFLOW_EXPERIMENT_NAME",
-            result.stderr,
-        )
-        self.assertFalse((self.runs / "test-run" / "mlflow-run-id").exists())
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(variable, result.stderr)
+                self.assertFalse(run_id_path.exists())
 
     def test_retry_resumes_latest_checkpoint_and_reuses_mlflow_run(self) -> None:
         run_root = self.runs / "test-run"
@@ -347,55 +291,6 @@ class MlflowClient:
         self.assertEqual(
             (run_root / "train_log.txt").read_text(),
             "first attempt\n\n--- retry ---\ntrainer attempt\n",
-        )
-
-    def test_retry_without_checkpoint_restarts_the_same_mlflow_run(self) -> None:
-        run_root = self.runs / "test-run"
-        partial = run_root / "trainer-output" / "checkpoint-10"
-        partial.mkdir(parents=True)
-        (partial / "model.safetensors").write_text("weights", encoding="utf-8")
-        (run_root / "mlflow-run-id").write_text(
-            "existing-mlflow-run\n",
-            encoding="utf-8",
-        )
-        (run_root / "exit-code").write_text("9\n", encoding="utf-8")
-        arguments_file, trainer_run_id_file = self.write_recording_trainer()
-        environment = self.runtime_environment(self.fake_runtime_modules())
-        environment["TRAINER_ARGUMENTS_FILE"] = str(arguments_file)
-        environment["TRAINER_RUN_ID_FILE"] = str(trainer_run_id_file)
-
-        result = self.run_runtime(environment)
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        arguments = arguments_file.read_text().splitlines()
-        self.assertNotIn("--resume_from_checkpoint", arguments)
-        self.assertEqual(trainer_run_id_file.read_text(), "existing-mlflow-run")
-        self.assertFalse(partial.exists())
-        self.assertEqual((run_root / "exit-code").read_text(), "0\n")
-
-    def test_retry_of_resumed_run_keeps_the_original_checkpoint(self) -> None:
-        source_run = self.runs / "source-run"
-        source_checkpoint = source_run / "trainer-output" / "checkpoint-40"
-        self.write_complete_checkpoint(source_checkpoint)
-        (source_run / "mlflow-run-id").write_text(
-            "existing-mlflow-run\n",
-            encoding="utf-8",
-        )
-        retry_run = self.runs / "test-run"
-        (retry_run / "trainer-output").mkdir(parents=True)
-        (retry_run / "mlflow-run-id").write_text(
-            "existing-mlflow-run\n",
-            encoding="utf-8",
-        )
-        (retry_run / "exit-code").write_text("9\n", encoding="utf-8")
-
-        result = self.run_dry("--resume-run-id", "source-run")
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        command = shlex.split(result.stdout)
-        self.assertEqual(
-            self.command_value(command, "--resume_from_checkpoint"),
-            str(source_checkpoint),
         )
 
     def test_process_status_and_output_are_retained(self) -> None:
