@@ -1,4 +1,4 @@
-"""List completed training checkpoints and validate the reviewer's selection."""
+"""List checkpoints with the expected resume files and validate a selection."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ MODEL_WEIGHT_FILES = (
 
 
 def checkpoint_is_complete(path: Path) -> bool:
-    """Return whether a checkpoint contains the state needed to resume."""
+    """Return whether the expected resume files are present."""
     if not path.is_dir():
         return False
 
@@ -33,7 +33,7 @@ def checkpoint_is_complete(path: Path) -> bool:
 
 
 def list_complete_checkpoints(trainer_output: Path) -> list[Path]:
-    """Return complete checkpoints ordered by training step."""
+    """Return checkpoints with the expected resume files, ordered by step."""
     checkpoints = []
     for path in trainer_output.iterdir():
         match = CHECKPOINT_PATTERN.fullmatch(path.name)

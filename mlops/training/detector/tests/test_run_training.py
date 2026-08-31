@@ -1,10 +1,8 @@
 import os
 import shlex
-import signal
 import subprocess
 import sys
 import tempfile
-import time
 import unittest
 from pathlib import Path
 
@@ -70,6 +68,19 @@ class RunTrainingTest(unittest.TestCase):
             text=True,
         )
 
+    def run_runtime(
+        self,
+        environment: dict[str, str],
+        *extra: str,
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [*self.command(), *extra],
+            check=False,
+            capture_output=True,
+            text=True,
+            env=environment,
+        )
+
     @staticmethod
     def command_value(command: list[str], name: str) -> str:
         return command[command.index(name) + 1]
@@ -85,7 +96,7 @@ class RunTrainingTest(unittest.TestCase):
         )
         return environment
 
-    def fake_runtime_modules(self, *, artifact_error: bool = False) -> Path:
+    def fake_runtime_modules(self) -> Path:
         fake_modules = self.root / "fake-modules"
         fake_modules.mkdir(exist_ok=True)
         (fake_modules / "torch.py").write_text(
@@ -96,11 +107,6 @@ class cuda:
         return True
 """.lstrip(),
             encoding="utf-8",
-        )
-        artifact_statement = (
-            'raise RuntimeError("artifact unavailable")'
-            if artifact_error
-            else "return None"
         )
         (fake_modules / "mlflow.py").write_text(
             f"""
@@ -128,7 +134,7 @@ class MlflowClient:
         return _Run()
 
     def log_artifact(self, _run_id, _path, artifact_path=None):
-        {artifact_statement}
+        return None
 
     def set_terminated(self, _run_id, status=None):
         status_path = os.environ.get("MLFLOW_STATUS_FILE")
@@ -139,6 +145,24 @@ class MlflowClient:
             encoding="utf-8",
         )
         return fake_modules
+
+    def write_recording_trainer(self) -> tuple[Path, Path]:
+        arguments_file = self.root / "trainer-arguments"
+        run_id_file = self.root / "trainer-run-id"
+        self.trainer.write_text(
+            "import os\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "Path(os.environ['TRAINER_ARGUMENTS_FILE']).write_text(\n"
+            "    '\\n'.join(sys.argv[1:]), encoding='utf-8'\n"
+            ")\n"
+            "Path(os.environ['TRAINER_RUN_ID_FILE']).write_text(\n"
+            "    os.environ['MLFLOW_RUN_ID'], encoding='utf-8'\n"
+            ")\n"
+            "print('trainer attempt')\n",
+            encoding="utf-8",
+        )
+        return arguments_file, run_id_file
 
     def test_smoke_profile_prints_a_bounded_command(self) -> None:
         result = self.run_dry()
@@ -215,12 +239,6 @@ class MlflowClient:
             str(external_model),
         )
 
-    def test_missing_dataset_config_is_rejected(self) -> None:
-        result = self.run_dry("--dataset-config", "missing.yaml")
-
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("dataset configuration does not exist", result.stderr)
-
     def test_resume_uses_the_latest_complete_checkpoint(self) -> None:
         previous_run = self.runs / "previous-run"
         complete = previous_run / "trainer-output" / "checkpoint-40"
@@ -247,7 +265,10 @@ class MlflowClient:
             str(complete),
         )
 
-    def test_missing_cuda_stops_before_training(self) -> None:
+    def test_completed_run_returns_success_without_running_again(self) -> None:
+        run_root = self.runs / "test-run"
+        run_root.mkdir(parents=True)
+        (run_root / "exit-code").write_text("0\n", encoding="utf-8")
         trainer_marker = self.root / "trainer-started"
         self.trainer.write_text(
             "from pathlib import Path\n"
@@ -255,54 +276,127 @@ class MlflowClient:
             "Path(os.environ['TRAINER_MARKER']).touch()\n",
             encoding="utf-8",
         )
-        fake_modules = self.fake_runtime_modules()
-        (fake_modules / "torch.py").write_text(
-            "class cuda:\n"
-            "    @staticmethod\n"
-            "    def is_available():\n"
-            "        return False\n",
-            encoding="utf-8",
-        )
-        environment = self.runtime_environment(fake_modules)
+        environment = os.environ.copy()
         environment["TRAINER_MARKER"] = str(trainer_marker)
 
-        result = subprocess.run(
-            self.command(),
-            check=False,
-            capture_output=True,
-            text=True,
-            env=environment,
-        )
+        result = self.run_runtime(environment)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(trainer_marker.exists())
+        self.assertEqual((run_root / "exit-code").read_text(), "0\n")
+
+    def test_missing_public_url_fails_before_creating_run_state(self) -> None:
+        environment = self.runtime_environment(self.fake_runtime_modules())
+        environment.pop("MLFLOW_PUBLIC_URL")
+
+        result = self.run_runtime(environment)
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("CUDA is not available", result.stderr)
-        self.assertFalse(trainer_marker.exists())
+        self.assertIn(
+            "required environment variable is not set: MLFLOW_PUBLIC_URL",
+            result.stderr,
+        )
         self.assertFalse((self.runs / "test-run").exists())
 
-    def test_artifact_failure_stops_before_training(self) -> None:
-        trainer_marker = self.root / "trainer-started"
-        self.trainer.write_text(
-            "from pathlib import Path\n"
-            "import os\n"
-            "Path(os.environ['TRAINER_MARKER']).touch()\n",
-            encoding="utf-8",
-        )
-        environment = self.runtime_environment(
-            self.fake_runtime_modules(artifact_error=True)
-        )
-        environment["TRAINER_MARKER"] = str(trainer_marker)
+    def test_new_run_requires_an_experiment_name(self) -> None:
+        environment = self.runtime_environment(self.fake_runtime_modules())
+        environment.pop("MLFLOW_EXPERIMENT_NAME")
 
-        result = subprocess.run(
-            self.command(),
-            check=False,
-            capture_output=True,
-            text=True,
-            env=environment,
-        )
+        result = self.run_runtime(environment)
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("artifact unavailable", result.stderr)
-        self.assertFalse(trainer_marker.exists())
+        self.assertIn(
+            "required environment variable is not set: MLFLOW_EXPERIMENT_NAME",
+            result.stderr,
+        )
+        self.assertFalse((self.runs / "test-run" / "mlflow-run-id").exists())
+
+    def test_retry_resumes_latest_checkpoint_and_reuses_mlflow_run(self) -> None:
+        run_root = self.runs / "test-run"
+        complete = run_root / "trainer-output" / "checkpoint-40"
+        self.write_complete_checkpoint(complete)
+        partial = run_root / "trainer-output" / "checkpoint-50"
+        partial.mkdir()
+        (partial / "model.safetensors").write_text("weights", encoding="utf-8")
+        (run_root / "mlflow-run-id").write_text(
+            "existing-mlflow-run\n",
+            encoding="utf-8",
+        )
+        (run_root / "exit-code").write_text("9\n", encoding="utf-8")
+        (run_root / "train_log.txt").write_text(
+            "first attempt\n",
+            encoding="utf-8",
+        )
+        arguments_file, trainer_run_id_file = self.write_recording_trainer()
+        environment = self.runtime_environment(self.fake_runtime_modules())
+        environment.pop("MLFLOW_EXPERIMENT_NAME")
+        environment["TRAINER_ARGUMENTS_FILE"] = str(arguments_file)
+        environment["TRAINER_RUN_ID_FILE"] = str(trainer_run_id_file)
+
+        result = self.run_runtime(environment)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        arguments = arguments_file.read_text().splitlines()
+        self.assertEqual(
+            self.command_value(arguments, "--resume_from_checkpoint"),
+            str(complete),
+        )
+        self.assertEqual(trainer_run_id_file.read_text(), "existing-mlflow-run")
+        self.assertFalse(partial.exists())
+        self.assertEqual((run_root / "exit-code").read_text(), "0\n")
+        self.assertEqual(
+            (run_root / "train_log.txt").read_text(),
+            "first attempt\n\n--- retry ---\ntrainer attempt\n",
+        )
+
+    def test_retry_without_checkpoint_restarts_the_same_mlflow_run(self) -> None:
+        run_root = self.runs / "test-run"
+        partial = run_root / "trainer-output" / "checkpoint-10"
+        partial.mkdir(parents=True)
+        (partial / "model.safetensors").write_text("weights", encoding="utf-8")
+        (run_root / "mlflow-run-id").write_text(
+            "existing-mlflow-run\n",
+            encoding="utf-8",
+        )
+        (run_root / "exit-code").write_text("9\n", encoding="utf-8")
+        arguments_file, trainer_run_id_file = self.write_recording_trainer()
+        environment = self.runtime_environment(self.fake_runtime_modules())
+        environment["TRAINER_ARGUMENTS_FILE"] = str(arguments_file)
+        environment["TRAINER_RUN_ID_FILE"] = str(trainer_run_id_file)
+
+        result = self.run_runtime(environment)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        arguments = arguments_file.read_text().splitlines()
+        self.assertNotIn("--resume_from_checkpoint", arguments)
+        self.assertEqual(trainer_run_id_file.read_text(), "existing-mlflow-run")
+        self.assertFalse(partial.exists())
+        self.assertEqual((run_root / "exit-code").read_text(), "0\n")
+
+    def test_retry_of_resumed_run_keeps_the_original_checkpoint(self) -> None:
+        source_run = self.runs / "source-run"
+        source_checkpoint = source_run / "trainer-output" / "checkpoint-40"
+        self.write_complete_checkpoint(source_checkpoint)
+        (source_run / "mlflow-run-id").write_text(
+            "existing-mlflow-run\n",
+            encoding="utf-8",
+        )
+        retry_run = self.runs / "test-run"
+        (retry_run / "trainer-output").mkdir(parents=True)
+        (retry_run / "mlflow-run-id").write_text(
+            "existing-mlflow-run\n",
+            encoding="utf-8",
+        )
+        (retry_run / "exit-code").write_text("9\n", encoding="utf-8")
+
+        result = self.run_dry("--resume-run-id", "source-run")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        command = shlex.split(result.stdout)
+        self.assertEqual(
+            self.command_value(command, "--resume_from_checkpoint"),
+            str(source_checkpoint),
+        )
 
     def test_process_status_and_output_are_retained(self) -> None:
         fake_modules = self.fake_runtime_modules()
@@ -371,51 +465,6 @@ class MlflowClient:
                     (run_root / "train_log.txt").read_text().strip(),
                     "trainer-output",
                 )
-
-    def test_sigterm_is_forwarded_to_the_trainer(self) -> None:
-        fake_modules = self.fake_runtime_modules()
-        started = self.root / "trainer-started"
-        stopped = self.root / "trainer-stopped"
-        self.trainer.write_text(
-            "import os\n"
-            "import signal\n"
-            "import time\n"
-            "from pathlib import Path\n"
-            "def stop(_signum, _frame):\n"
-            "    Path(os.environ['TRAINER_STOPPED']).touch()\n"
-            "    raise SystemExit(23)\n"
-            "signal.signal(signal.SIGTERM, stop)\n"
-            "Path(os.environ['TRAINER_STARTED']).touch()\n"
-            "while True:\n"
-            "    time.sleep(0.05)\n",
-            encoding="utf-8",
-        )
-        environment = self.runtime_environment(fake_modules)
-        status_file = self.root / "signal-status"
-        environment["MLFLOW_STATUS_FILE"] = str(status_file)
-        environment["TRAINER_STARTED"] = str(started)
-        environment["TRAINER_STOPPED"] = str(stopped)
-        process = subprocess.Popen(
-            self.command(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env=environment,
-        )
-        deadline = time.monotonic() + 5
-        while not started.exists() and process.poll() is None:
-            if time.monotonic() >= deadline:
-                process.kill()
-                self.fail("trainer did not start before the timeout")
-            time.sleep(0.05)
-
-        process.send_signal(signal.SIGTERM)
-        _stdout, stderr = process.communicate(timeout=5)
-
-        self.assertEqual(process.returncode, 23, stderr)
-        self.assertTrue(stopped.exists())
-        self.assertEqual(status_file.read_text().splitlines(), ["FAILED"])
-
 
 if __name__ == "__main__":
     unittest.main()

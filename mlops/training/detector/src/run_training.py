@@ -7,6 +7,7 @@ import contextlib
 import os
 import shlex
 import signal
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, replace
@@ -118,6 +119,14 @@ def decimal_text(value: float) -> str:
     return format(value, ".15f").rstrip("0").rstrip(".")
 
 
+def required_environment_value(name: str) -> str:
+    """Return a required, non-empty environment value."""
+    value = os.environ.get(name)
+    if value is None or not value.strip():
+        raise RuntimeError(f"required environment variable is not set: {name}")
+    return value
+
+
 def input_path(root: Path, path: Path) -> Path:
     return path if path.is_absolute() else root / path
 
@@ -215,15 +224,51 @@ def resolve_resume_checkpoint(
     if not checkpoint_is_complete(checkpoint_path):
         raise ValueError(f"checkpoint is incomplete: {checkpoint_path.name}")
 
-    mlflow_run_id_path = source_run / "mlflow-run-id"
-    if not mlflow_run_id_path.is_file():
+    mlflow_run_id = read_mlflow_run_id(source_run)
+    if mlflow_run_id is None:
         raise FileNotFoundError(
             f"MLflow run ID does not exist for resumed run {resume_run_id}"
         )
-    mlflow_run_id = mlflow_run_id_path.read_text(encoding="utf-8").strip()
-    if not mlflow_run_id:
-        raise ValueError(f"resumed run {resume_run_id} has an empty MLflow run ID")
     return checkpoint_path, mlflow_run_id
+
+
+def read_mlflow_run_id(run_root: Path) -> str | None:
+    path = run_root / "mlflow-run-id"
+    if not path.exists():
+        return None
+    if not path.is_file():
+        raise ValueError(f"MLflow run ID is not a file: {path}")
+    run_id = path.read_text(encoding="utf-8").strip()
+    if not run_id:
+        raise ValueError(f"MLflow run ID is empty: {path}")
+    return run_id
+
+
+def run_succeeded(run_root: Path) -> bool:
+    path = run_root / "exit-code"
+    if not path.exists():
+        return False
+    if not path.is_file():
+        raise ValueError(f"exit code is not a file: {path}")
+    try:
+        return int(path.read_text(encoding="utf-8").strip()) == 0
+    except ValueError as error:
+        raise ValueError(f"exit code is invalid: {path}") from error
+
+
+def remove_incomplete_checkpoints(output_path: Path) -> None:
+    if not output_path.is_dir():
+        return
+
+    # A failed save can leave an unusable checkpoint directory. Remove only
+    # incomplete checkpoints so the trainer can safely write them again.
+    for path in output_path.iterdir():
+        if (
+            path.is_dir()
+            and CHECKPOINT_PATTERN.fullmatch(path.name) is not None
+            and not checkpoint_is_complete(path)
+        ):
+            shutil.rmtree(path)
 
 
 def run_and_tee(
@@ -232,7 +277,10 @@ def run_and_tee(
     environment: dict[str, str],
     log_path: Path,
 ) -> int:
-    with log_path.open("w", encoding="utf-8") as log_handle:
+    has_previous_output = log_path.exists() and log_path.stat().st_size > 0
+    with log_path.open("a", encoding="utf-8") as log_handle:
+        if has_previous_output:
+            log_handle.write("\n--- retry ---\n")
         process = subprocess.Popen(
             command,
             cwd=cwd,
@@ -275,16 +323,17 @@ def validate_runtime() -> None:
         raise RuntimeError("CUDA is not available in the training pod")
 
 
-def open_mlflow_run(
+def get_or_create_mlflow_run(
     run_name: str,
-    dataset_config: Path,
     existing_run_id: str | None,
 ) -> tuple[MlflowClient, str]:
     import mlflow
 
     client = mlflow.MlflowClient()
     if existing_run_id is None:
-        experiment = mlflow.set_experiment(os.environ["MLFLOW_EXPERIMENT_NAME"])
+        experiment = mlflow.set_experiment(
+            required_environment_value("MLFLOW_EXPERIMENT_NAME")
+        )
         run = client.create_run(
             experiment.experiment_id,
             tags={"mlflow.runName": run_name},
@@ -293,13 +342,6 @@ def open_mlflow_run(
     else:
         client.get_run(existing_run_id)
         run_id = existing_run_id
-
-    try:
-        client.log_artifact(run_id, str(dataset_config), artifact_path="inputs")
-    except Exception:
-        with contextlib.suppress(Exception):
-            client.set_terminated(run_id, status="FAILED")
-        raise
     return client, run_id
 
 
@@ -417,14 +459,44 @@ def main() -> int:
     if not args.trainer_path.is_file():
         raise FileNotFoundError(f"trainer does not exist: {args.trainer_path}")
 
-    resume_run_id = (
+    if run_root.exists() and not run_root.is_dir():
+        raise ValueError(f"run path is not a directory: {run_root}")
+    retrying = run_root.is_dir()
+    if retrying and run_succeeded(run_root):
+        return 0
+
+    requested_resume_run_id = (
         None if args.resume_run_id in (None, "", "none") else args.resume_run_id
     )
-    resume_checkpoint, existing_mlflow_run_id = resolve_resume_checkpoint(
-        args.resume_runs_root or args.runs_root,
-        resume_run_id,
-        args.resume_checkpoint,
-    )
+    if retrying:
+        checkpoints = (
+            list_complete_checkpoints(output_path) if output_path.is_dir() else []
+        )
+        resume_checkpoint = checkpoints[-1] if checkpoints else None
+        existing_mlflow_run_id = read_mlflow_run_id(run_root)
+
+        # Prefer progress from this attempt. If it failed before saving a new
+        # checkpoint, retry from the checkpoint the run originally received.
+        if resume_checkpoint is None and requested_resume_run_id is not None:
+            resume_checkpoint, resumed_mlflow_run_id = resolve_resume_checkpoint(
+                args.resume_runs_root or args.runs_root,
+                requested_resume_run_id,
+                args.resume_checkpoint,
+            )
+            if (
+                existing_mlflow_run_id is not None
+                and existing_mlflow_run_id != resumed_mlflow_run_id
+            ):
+                raise ValueError(
+                    "retry and resumed checkpoint refer to different MLflow runs"
+                )
+            existing_mlflow_run_id = resumed_mlflow_run_id
+    else:
+        resume_checkpoint, existing_mlflow_run_id = resolve_resume_checkpoint(
+            args.resume_runs_root or args.runs_root,
+            requested_resume_run_id,
+            args.resume_checkpoint,
+        )
     command = build_command(
         args.trainer_path,
         dataset_config,
@@ -438,28 +510,36 @@ def main() -> int:
         print(shlex.join(command))
         return 0
 
+    mlflow_public_url = required_environment_value("MLFLOW_PUBLIC_URL")
     mlflow_client = None
     mlflow_run_id = None
     try:
         validate_runtime()
-        run_root.mkdir(parents=True, exist_ok=False)
-        output_path.mkdir()
-        mlflow_client, mlflow_run_id = open_mlflow_run(
+        run_root.mkdir(parents=True, exist_ok=True)
+        output_path.mkdir(exist_ok=True)
+        remove_incomplete_checkpoints(output_path)
+        (run_root / "exit-code").unlink(missing_ok=True)
+        mlflow_client, mlflow_run_id = get_or_create_mlflow_run(
             args.run_id,
-            dataset_config,
             existing_mlflow_run_id,
+        )
+        # Persist the MLflow identity before training so retries reuse the run.
+        (run_root / "mlflow-run-id").write_text(
+            f"{mlflow_run_id}\n",
+            encoding="utf-8",
+        )
+        mlflow_client.log_artifact(
+            mlflow_run_id,
+            str(dataset_config),
+            artifact_path="inputs",
         )
         mlflow_experiment_id = str(
             mlflow_client.get_run(mlflow_run_id).info.experiment_id
         )
         mlflow_run_url = build_mlflow_run_url(
-            os.environ["MLFLOW_PUBLIC_URL"],
+            mlflow_public_url,
             mlflow_experiment_id,
             mlflow_run_id,
-        )
-        (run_root / "mlflow-run-id").write_text(
-            f"{mlflow_run_id}\n",
-            encoding="utf-8",
         )
         (run_root / "mlflow-run-url").write_text(
             f"{mlflow_run_url}\n",
@@ -475,13 +555,14 @@ def main() -> int:
             environment,
             run_root / "train_log.txt",
         )
-        (run_root / "exit-code").write_text(
-            f"{return_code}\n",
-            encoding="utf-8",
-        )
         mlflow_client.set_terminated(
             mlflow_run_id,
             status="FINISHED" if return_code == 0 else "FAILED",
+        )
+        # Write the exit code last so only a finished attempt is marked successful.
+        (run_root / "exit-code").write_text(
+            f"{return_code}\n",
+            encoding="utf-8",
         )
         return return_code
     except Exception:
