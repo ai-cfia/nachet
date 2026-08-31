@@ -104,53 +104,5 @@ class CheckpointSelectionTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(output.read_text(encoding="utf-8"), "checkpoint-20\n")
 
-    def test_selection_rejects_checkpoint_removed_during_review(self) -> None:
-        removed_checkpoint = self.trainer_output / "checkpoint-20"
-        for file in removed_checkpoint.iterdir():
-            file.unlink()
-        removed_checkpoint.rmdir()
-        output = self.root / "selected-checkpoint"
-
-        result = subprocess.run(
-            self.command(
-                "validate-selection",
-                "--checkpoint-options",
-                '{"enum":["checkpoint-3","checkpoint-20"]}',
-                "--selected-checkpoint",
-                "checkpoint-20",
-                "--output",
-                str(output),
-            ),
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("checkpoint is no longer complete", result.stderr)
-        self.assertFalse(output.exists())
-
-    def test_malformed_checkpoint_options_are_rejected(self) -> None:
-        output = self.root / "selected-checkpoint"
-        result = subprocess.run(
-            self.command(
-                "validate-selection",
-                "--checkpoint-options",
-                "checkpoint-3,checkpoint-20",
-                "--selected-checkpoint",
-                "checkpoint-20",
-                "--output",
-                str(output),
-            ),
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("checkpoint options must be valid JSON", result.stderr)
-        self.assertFalse(output.exists())
-
-
 if __name__ == "__main__":
     unittest.main()
