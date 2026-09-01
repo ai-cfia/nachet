@@ -29,6 +29,5 @@ on:
 jobs:
   python-lint:
     uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-python-mono.yml@main
-    secrets: inherit
     with:
       working-directory: mlops/training/detector

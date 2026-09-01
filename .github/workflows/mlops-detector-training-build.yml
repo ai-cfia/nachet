@@ -14,8 +14,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
-  id-token: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -44,6 +42,9 @@ jobs:
 
   build-and-push-image:
     needs: get-version
+    permissions:
+      contents: read
+      packages: write
     uses: ai-cfia/github-workflows/.github/workflows/workflow-build-push-container-github-registry-mono.yml@main
     with:
       working-directory: mlops/training/detector
@@ -66,4 +67,3 @@ jobs:
       image-name: ghcr.io/ai-cfia/nachet-detector-training
       image-label: detector training
       release-version: ${{ needs.get-version.outputs.app-version }}
-    secrets: inherit
