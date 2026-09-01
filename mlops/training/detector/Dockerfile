@@ -3,6 +3,11 @@ FROM nvcr.io/nvidia/pytorch:25.10-py3@sha256:42263b2424fc237b34c4fc4a91c30d603c5
 USER root
 WORKDIR /opt/nachet-detector
 
+# OpenCV's native libraries depend on libxcb even when using the headless wheel.
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends libxcb1 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 
 RUN python -m pip install --no-cache-dir -r requirements.txt
