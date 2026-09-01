@@ -16,13 +16,13 @@ on:
       - opened
       - synchronize
     paths:
-      - "mlops/**"
+      - "mlops/training/**"
       - ".github/workflows/mlops-lint.yml"
   push:
     branches:
       - main
     paths:
-      - "mlops/**"
+      - "mlops/training/**"
       - ".github/workflows/mlops-lint.yml"
   workflow_dispatch:
 
