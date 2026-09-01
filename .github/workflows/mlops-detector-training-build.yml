@@ -1,0 +1,69 @@
+---
+name: Detector training build and publish
+
+on:
+  pull_request:
+    types:
+      - opened
+      - closed
+      - synchronize
+    paths:
+      - "mlops/training/detector/**"
+      - ".github/workflows/mlops-detector-training-build.yml"
+      - ".github/workflows/reusable-sign-container-images.yml"
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  get-version:
+    if: github.event.action != 'closed' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    outputs:
+      app-version: ${{ steps.version.outputs.app-version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Read image version
+        id: version
+        run: |
+          version="$(tr -d '[:space:]' < mlops/training/detector/VERSION)"
+          if [ -z "$version" ]; then
+            echo "VERSION must not be empty" >&2
+            exit 1
+          fi
+          echo "app-version=$version" >> "$GITHUB_OUTPUT"
+
+  build-and-push-image:
+    needs: get-version
+    uses: ai-cfia/github-workflows/.github/workflows/workflow-build-push-container-github-registry-mono.yml@main
+    with:
+      working-directory: mlops/training/detector
+      container-name: nachet-detector-training
+      tag: ${{ github.sha }}
+      release-version: ${{ needs.get-version.outputs.app-version }}
+      registry: ghcr.io/ai-cfia
+    secrets: inherit
+
+  sign-images:
+    needs:
+      - get-version
+      - build-and-push-image
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    uses: ./.github/workflows/reusable-sign-container-images.yml
+    with:
+      image-name: ghcr.io/ai-cfia/nachet-detector-training
+      image-label: detector training
+      release-version: ${{ needs.get-version.outputs.app-version }}
+    secrets: inherit
