@@ -1,7 +1,0 @@
-target-version = "py311"
-
-# The migrated trainer files retain their reviewed source. Keep their existing
-# lint exceptions scoped to those files.
-[per-file-ignores]
-"detector/src/coco_to_hf_dataset.py" = ["F541"]
-"detector/src/train_detector.py" = ["F841"]
