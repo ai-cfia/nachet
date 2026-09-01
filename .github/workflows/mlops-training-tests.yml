@@ -1,5 +1,5 @@
 ---
-name: Detector training tests
+name: MLOps training tests
 
 permissions:
   contents: read
@@ -14,24 +14,23 @@ on:
       - opened
       - synchronize
     paths:
-      - "mlops/training/detector/**"
-      - ".github/workflows/mlops-detector-training-tests.yml"
+      - "mlops/training/**"
+      - ".github/workflows/mlops-training-tests.yml"
   push:
     branches:
       - main
     paths:
-      - "mlops/training/detector/**"
-      - ".github/workflows/mlops-detector-training-tests.yml"
+      - "mlops/training/**"
+      - ".github/workflows/mlops-training-tests.yml"
   workflow_dispatch:
 
-defaults:
-  run:
-    working-directory: mlops/training/detector
-
 jobs:
-  test:
+  detector-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: mlops/training/detector
 
     steps:
       - name: Checkout code

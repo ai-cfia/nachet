@@ -1,5 +1,5 @@
 ---
-name: Training Python lint
+name: MLOps lint
 
 permissions:
   contents: read
@@ -16,18 +16,18 @@ on:
       - opened
       - synchronize
     paths:
-      - "mlops/training/**"
-      - ".github/workflows/mlops-training-lint.yml"
+      - "mlops/**"
+      - ".github/workflows/mlops-lint.yml"
   push:
     branches:
       - main
     paths:
-      - "mlops/training/**"
-      - ".github/workflows/mlops-training-lint.yml"
+      - "mlops/**"
+      - ".github/workflows/mlops-lint.yml"
   workflow_dispatch:
 
 jobs:
-  python-lint:
+  training-python-lint:
     uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-python-mono.yml@main
     with:
       working-directory: mlops/training
