@@ -10,7 +10,8 @@ RUN apt-get update \
 
 COPY requirements.txt .
 
-RUN python -m pip install --no-cache-dir -r requirements.txt
+# Install alongside the CUDA-enabled PyTorch provided by the NVIDIA base image.
+RUN uv pip install --system --break-system-packages --no-cache -r requirements.txt
 
 COPY src ./src
 
