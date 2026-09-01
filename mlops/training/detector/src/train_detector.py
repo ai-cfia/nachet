@@ -57,7 +57,7 @@
 import logging
 import os
 import sys
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from functools import partial
 from typing import Any, Optional, Union
@@ -69,6 +69,7 @@ from datasets import concatenate_datasets, load_dataset
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 
 from coco_to_hf_dataset import load_coco_as_hf_dataset
+from detector_transforms import build_train_transform, build_validation_transform
 
 import transformers
 from transformers import (
@@ -79,7 +80,7 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
-from transformers.image_processing_utils import BatchFeature
+from transformers.image_processing_utils import BaseImageProcessor, BatchFeature
 from transformers.image_transforms import center_to_corners_format
 from transformers.trainer import EvalPrediction
 from transformers.utils import check_min_version
@@ -563,7 +564,16 @@ class ModelArguments:
     )
 
 
-def main():
+TransformBuilder = Callable[[BaseImageProcessor, int], A.Compose]
+
+
+# Callers provide the transform builders; this function owns the shared detector
+# setup, training, evaluation, and outputs.
+def train_detector(
+    train_transform_builder: TransformBuilder,
+    validation_transform_builder: TransformBuilder,
+) -> None:
+    """Run detector training with caller-supplied transform builders."""
     # See all possible arguments in src/transformers/training_args.py
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
@@ -856,60 +866,11 @@ def main():
         **common_pretrained_args,
     )
 
-    # ------------------------------------------------------------------------------------------------
-    # Define image augmentations and dataset transforms
-    # ------------------------------------------------------------------------------------------------
+    # Build transforms after loading the image processor because normalization
+    # uses its model-specific statistics.
     max_size = data_args.image_square_size
-    train_augment_and_transform = A.Compose(
-        [
-            # A.Compose(
-            #     [
-            #         A.SmallestMaxSize(max_size=max_size, p=1.0),
-            #         A.RandomSizedBBoxSafeCrop(height=max_size, width=max_size, p=1.0),
-            #     ],
-            #     p=0.2,
-            # ),
-            # A.SmallestMaxSize(max_size=max_size, p=1.0),
-            A.Perspective(p=0.1),
-            A.HorizontalFlip(p=0.3),
-            A.VerticalFlip(p=0.3),
-            A.Rotate(360),
-            A.OneOf(
-                [
-                    A.RandomBrightnessContrast(
-                        brightness_limit=0.2, contrast_limit=0.2, p=1.0
-                    ),
-                    A.ColorJitter(
-                        brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1, p=1.0
-                    ),
-                    A.CLAHE(clip_limit=4.0, tile_grid_size=(8, 8), p=1.0),
-                ],
-                p=0.5,
-            ),
-            A.OneOf(
-                [
-                    A.Blur(blur_limit=7, p=1),
-                    A.MotionBlur(blur_limit=7, p=1),
-                    A.Defocus(radius=(1, 5), alias_blur=(0.1, 0.25), p=1),
-                ],
-                p=0.2,
-            ),
-            # A.Resize(height=max_size, width=max_size),
-            # A.CenterCrop(height=max_size, width=max_size),
-            A.Normalize(mean=image_processor.image_mean, std=image_processor.image_std),
-        ],
-        bbox_params=A.BboxParams(
-            format="coco", label_fields=["category"], clip=True, min_area=25
-        ),
-    )
-    validation_transform = A.Compose(
-        [
-            # A.Resize(height=max_size, width=max_size),
-            # A.CenterCrop(height=max_size, width=max_size),
-            A.Normalize(mean=image_processor.image_mean, std=image_processor.image_std),
-        ],
-        bbox_params=A.BboxParams(format="coco", label_fields=["category"], clip=True),
-    )
+    train_augment_and_transform = train_transform_builder(image_processor, max_size)
+    validation_transform = validation_transform_builder(image_processor, max_size)
 
     # Make transform functions for batch and apply for dataset splits
     train_transform_batch = partial(
@@ -991,6 +952,11 @@ def main():
         trainer.push_to_hub(**kwargs)
     else:
         trainer.create_model_card(**kwargs)
+
+
+def main() -> None:
+    """Run detector training with Nachet's default transform recipe."""
+    train_detector(build_train_transform, build_validation_transform)
 
 
 if __name__ == "__main__":
