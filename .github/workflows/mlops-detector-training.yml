@@ -1,0 +1,149 @@
+---
+name: Detector Training Runtime
+
+"on":
+  pull_request:
+    paths:
+      - .github/scripts/install-argo-cli.sh
+      - mlops/training/detector/**
+      - mlops/workflows/detector-training-workflow-template.yaml
+      - .github/workflows/mlops-detector-training.yml
+  push:
+    branches:
+      - main
+    paths:
+      - mlops/training/detector/**
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: ghcr.io/ai-cfia/nachet-detector-training
+  ARGO_CLI_VERSION: v4.1.1
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: on-prem-gh-runners
+    steps:
+      - name: Checkout
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+
+      - name: Test workflow wrapper
+        run: python3 -m unittest discover -s mlops/training/detector/tests -v
+
+      - name: Check Python syntax
+        run: >-
+          python3 -m py_compile
+          mlops/training/detector/src/run_training.py
+          mlops/training/detector/src/checkpoint_state.py
+          mlops/training/detector/src/checkpoint_selection.py
+          mlops/training/detector/src/coco_to_hf_dataset.py
+          mlops/training/detector/src/train_detector.py
+
+      - name: Install Argo CLI
+        run: >-
+          bash .github/scripts/install-argo-cli.sh
+          "$ARGO_CLI_VERSION" "$RUNNER_TEMP/argo"
+
+      - name: Validate Argo workflow template
+        run: >-
+          "$RUNNER_TEMP/argo" lint --offline
+          mlops/workflows/detector-training-workflow-template.yaml
+
+  build:
+    if: github.event_name == 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+
+      - name: Read image version
+        id: version
+        run: >-
+          echo "value=$(cat mlops/training/detector/VERSION)"
+          >> "$GITHUB_OUTPUT"
+
+      - name: Build detector runtime
+        uses: docker/build-push-action@83bfd93ab480705a7b99a2ed02765137f5ab55ba
+        with:
+          context: mlops/training/detector
+          file: mlops/training/detector/Dockerfile
+          platforms: linux/amd64
+          push: false
+          tags: ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.value }}
+
+  publish:
+    if: github.event_name == 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+
+      - name: Read image version
+        id: version
+        run: >-
+          echo "value=$(cat mlops/training/detector/VERSION)"
+          >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Refuse to overwrite an existing version
+        env:
+          IMAGE_VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          if docker buildx imagetools inspect \
+            "${IMAGE_NAME}:${IMAGE_VERSION}" > /dev/null 2>&1; then
+            echo "${IMAGE_NAME}:${IMAGE_VERSION} already exists" >&2
+            exit 1
+          fi
+
+      - name: Build and publish detector runtime
+        id: build
+        uses: docker/build-push-action@83bfd93ab480705a7b99a2ed02765137f5ab55ba
+        with:
+          context: mlops/training/detector
+          file: mlops/training/detector/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.value }}
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@115e4ce455e573aa6e9ba51e8d040ddd5c1378af
+        with:
+          cosign-release: v2.2.3
+
+      - name: Sign the published digest
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "${IMAGE_NAME}@${IMAGE_DIGEST}"
+
+      - name: Verify the published signature
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: >-
+          cosign verify
+          --certificate-identity-regexp='^https://github.com/ai-cfia/.*$'
+          --certificate-oidc-issuer=https://token.actions.githubusercontent.com
+          "${IMAGE_NAME}@${IMAGE_DIGEST}"
