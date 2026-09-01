@@ -1,5 +1,5 @@
 ---
-name: Detector training build and publish
+name: MLOps training build and publish
 
 on:
   pull_request:
@@ -8,8 +8,8 @@ on:
       - closed
       - synchronize
     paths:
-      - "mlops/training/detector/**"
-      - ".github/workflows/mlops-detector-training-build.yml"
+      - "mlops/training/**"
+      - ".github/workflows/mlops-training-build.yml"
       - ".github/workflows/reusable-sign-container-images.yml"
 
 permissions:
@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  get-version:
+  get-detector-version:
     if: github.event.action != 'closed' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     outputs:
@@ -30,7 +30,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Read image version
+      - name: Read detector image version
         id: version
         run: |
           version="$(tr -d '[:space:]' < mlops/training/detector/VERSION)"
@@ -40,8 +40,8 @@ jobs:
           fi
           echo "app-version=$version" >> "$GITHUB_OUTPUT"
 
-  build-and-push-image:
-    needs: get-version
+  build-and-push-detector:
+    needs: get-detector-version
     permissions:
       contents: read
       packages: write
@@ -50,14 +50,14 @@ jobs:
       working-directory: mlops/training/detector
       container-name: nachet-detector-training
       tag: ${{ github.sha }}
-      release-version: ${{ needs.get-version.outputs.app-version }}
+      release-version: ${{ needs.get-detector-version.outputs.app-version }}
       registry: ghcr.io/ai-cfia
     secrets: inherit
 
-  sign-images:
+  sign-detector:
     needs:
-      - get-version
-      - build-and-push-image
+      - get-detector-version
+      - build-and-push-detector
     permissions:
       contents: read
       packages: write
@@ -66,4 +66,4 @@ jobs:
     with:
       image-name: ghcr.io/ai-cfia/nachet-detector-training
       image-label: detector training
-      release-version: ${{ needs.get-version.outputs.app-version }}
+      release-version: ${{ needs.get-detector-version.outputs.app-version }}
