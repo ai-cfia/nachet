@@ -1,5 +1,5 @@
 ---
-name: Detector training lint
+name: Training Python lint
 
 permissions:
   contents: read
@@ -16,18 +16,18 @@ on:
       - opened
       - synchronize
     paths:
-      - "mlops/training/detector/**"
-      - ".github/workflows/mlops-detector-training-lint.yml"
+      - "mlops/training/**"
+      - ".github/workflows/mlops-training-lint.yml"
   push:
     branches:
       - main
     paths:
-      - "mlops/training/detector/**"
-      - ".github/workflows/mlops-detector-training-lint.yml"
+      - "mlops/training/**"
+      - ".github/workflows/mlops-training-lint.yml"
   workflow_dispatch:
 
 jobs:
   python-lint:
     uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-python-mono.yml@main
     with:
-      working-directory: mlops/training/detector
+      working-directory: mlops/training
