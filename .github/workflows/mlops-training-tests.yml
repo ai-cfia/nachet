@@ -1,0 +1,48 @@
+---
+name: MLOps training tests
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    paths:
+      - "mlops/training/**"
+      - ".github/workflows/mlops-training-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "mlops/training/**"
+      - ".github/workflows/mlops-training-tests.yml"
+  workflow_dispatch:
+
+jobs:
+  detector-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: mlops/training/detector
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Run focused tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Check Python syntax
+        run: python -m compileall -q src tests

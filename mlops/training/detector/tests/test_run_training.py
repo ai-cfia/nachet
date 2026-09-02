@@ -109,7 +109,7 @@ class cuda:
             encoding="utf-8",
         )
         (fake_modules / "mlflow.py").write_text(
-            f"""
+            """
 import os
 from pathlib import Path
 
