@@ -28,6 +28,6 @@ on:
 
 jobs:
   training-python-lint:
-    uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-python-mono.yml@main
+    uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-python-mono.yml@c504dacdff61c8a1f7c796934e9ad20749f6d136
     with:
       working-directory: mlops/training
