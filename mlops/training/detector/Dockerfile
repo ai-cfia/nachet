@@ -11,13 +11,7 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends libxcb1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml uv.lock VERSION ./
-
-# The published image tag comes from VERSION; it must match the Python project.
-RUN if [ "$(uv version --short)" != "$(cat VERSION)" ]; then \
-        echo "VERSION must match the version in pyproject.toml" >&2; \
-        exit 1; \
-    fi
+COPY pyproject.toml uv.lock ./
 
 # Keep NVIDIA's PyTorch visible while installing the locked project dependencies
 # into a separate environment. Syncing must not replace the base image's torch.

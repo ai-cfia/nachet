@@ -25,10 +25,9 @@ docker run --rm --platform linux/amd64 --network none \
   nachet-detector-trainer:local --help
 ```
 
-The build checks that `VERSION` matches the project version, that `uv.lock` is
-current, and that the training libraries import without replacing NVIDIA's
-CUDA-enabled PyTorch. Actual GPU training still requires a compatible NVIDIA
-host, prepared inputs and MLflow configuration.
+The build checks that `uv.lock` is current and that the training libraries
+import without replacing NVIDIA's CUDA-enabled PyTorch. Actual GPU training
+still requires a compatible NVIDIA host, prepared inputs and MLflow configuration.
 
 The focused runtime tests use Python's standard library and mocked training:
 
@@ -57,6 +56,6 @@ uv lock
 uv lock --check
 ```
 
-Image publication reads `VERSION`. When bumping it, update `[project].version`
-to match and run `uv lock` again. Review and commit the three files together,
+To bump the trainer version, update `[project].version` in `pyproject.toml`
+and run `uv lock` again. Review and commit both files together,
 then rebuild the image to check compatibility with the NVIDIA packages.

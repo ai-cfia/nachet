@@ -13,7 +13,7 @@ dependencies = [
     "pycocotools==2.0.10",
     "pyyaml==6.0.2",
     "torchmetrics==1.8.2",
-    "transformers @ git+https://github.com/huggingface/transformers.git@7d9754a05193eb79b1d86aa744b622b8068008cd",
+    "transformers==5.16.1",
 ]
 
 [tool.uv]
