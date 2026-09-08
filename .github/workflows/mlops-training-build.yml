@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  get-detector-version:
+  get-detector-trainer-version:
     if: github.event.action != 'closed' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     outputs:
@@ -30,7 +30,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Read detector image version
+      - name: Read detector trainer image version
         id: version
         run: |
           version="$(tr -d '[:space:]' < mlops/training/detector/VERSION)"
@@ -40,12 +40,12 @@ jobs:
           fi
           echo "app-version=$version" >> "$GITHUB_OUTPUT"
 
-  build-and-push-detector:
-    needs: get-detector-version
+  build-and-push-detector-trainer:
+    needs: get-detector-trainer-version
     runs-on: ubuntu-24.04
     env:
-      IMAGE: ghcr.io/ai-cfia/nachet-detector-training
-      VERSION: ${{ needs.get-detector-version.outputs.app-version }}
+      IMAGE: ghcr.io/ai-cfia/nachet-detector-trainer
+      VERSION: ${{ needs.get-detector-trainer-version.outputs.app-version }}
     permissions:
       contents: read
       packages: write
@@ -103,16 +103,17 @@ jobs:
           cache-from: type=gha,scope=detector-training-amd64
           cache-to: type=gha,mode=min,scope=detector-training-amd64
 
-  sign-detector:
+  sign-detector-trainer:
     needs:
-      - get-detector-version
-      - build-and-push-detector
+      - get-detector-trainer-version
+      - build-and-push-detector-trainer
     permissions:
       contents: read
       packages: write
       id-token: write
     uses: ./.github/workflows/reusable-sign-container-images.yml
     with:
-      image-name: ghcr.io/ai-cfia/nachet-detector-training
-      image-label: detector training
-      release-version: ${{ needs.get-detector-version.outputs.app-version }}
+      image-name: ghcr.io/ai-cfia/nachet-detector-trainer
+      image-label: detector trainer
+      release-version: >-
+        ${{ needs.get-detector-trainer-version.outputs.app-version }}
