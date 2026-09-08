@@ -93,8 +93,10 @@ jobs:
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:${{ steps.branch.outputs.name }}
             ${{ env.IMAGE }}:${{ env.VERSION }}
-          cache-from: type=gha,scope=detector-training-amd64
-          cache-to: type=gha,mode=min,scope=detector-training-amd64
+          cache-from: |
+            type=registry,ref=${{ env.IMAGE }}:cache-pr-amd64
+            type=registry,ref=${{ env.IMAGE }}:cache-merged-amd64
+          cache-to: type=registry,ref=${{ env.IMAGE }}:cache-pr-amd64,mode=min
 
       - name: Build and push merged image
         if: github.event.pull_request.merged == true
@@ -107,8 +109,10 @@ jobs:
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:${{ github.event.pull_request.base.ref }}
             ${{ env.IMAGE }}:${{ env.VERSION }}
-          cache-from: type=gha,scope=detector-training-amd64
-          cache-to: type=gha,mode=min,scope=detector-training-amd64
+          # Keep merged-build cache separate from PR builds.
+          cache-from: type=registry,ref=${{ env.IMAGE }}:cache-merged-amd64
+          cache-to: >-
+            type=registry,ref=${{ env.IMAGE }}:cache-merged-amd64,mode=min
 
   sign-detector-trainer:
     needs:
