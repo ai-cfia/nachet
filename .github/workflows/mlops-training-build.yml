@@ -30,12 +30,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
+        with:
+          version: "0.11.24"
+          enable-cache: false
+
       - name: Read detector trainer image version
         id: version
+        working-directory: mlops/training/detector
         run: |
-          version="$(tr -d '[:space:]' < mlops/training/detector/VERSION)"
+          version="$(uv version --short)"
           if [ -z "$version" ]; then
-            echo "VERSION must not be empty" >&2
+            echo "Project version must not be empty" >&2
             exit 1
           fi
           echo "app-version=$version" >> "$GITHUB_OUTPUT"
