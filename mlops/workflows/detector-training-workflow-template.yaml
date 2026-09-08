@@ -142,7 +142,8 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{inputs.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-detector-trainer:0.1.0
+        image: "ghcr.io/ai-cfia/nachet-detector-trainer@sha256:\
+          ba620908896a9094c033d46b005edf74fee8fc55389c2b99047400b3f0cddaf7"
         imagePullPolicy: IfNotPresent
         args:
           - --dataset-root
@@ -228,7 +229,8 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-detector-trainer:0.1.0
+        image: "ghcr.io/ai-cfia/nachet-detector-trainer@sha256:\
+          ba620908896a9094c033d46b005edf74fee8fc55389c2b99047400b3f0cddaf7"
         imagePullPolicy: IfNotPresent
         command:
           - python
@@ -297,7 +299,8 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-detector-trainer:0.1.0
+        image: "ghcr.io/ai-cfia/nachet-detector-trainer@sha256:\
+          ba620908896a9094c033d46b005edf74fee8fc55389c2b99047400b3f0cddaf7"
         imagePullPolicy: IfNotPresent
         command:
           - python
