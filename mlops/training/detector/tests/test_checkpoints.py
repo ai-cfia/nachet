@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 import tempfile
@@ -49,9 +50,13 @@ class CheckpointSelectionTest(unittest.TestCase):
         incomplete.mkdir()
         (incomplete / "model.safetensors").write_text("weights", encoding="utf-8")
         output = self.root / "checkpoint-options"
+        optional_output = self.root / "optional-checkpoint-options"
 
         result = subprocess.run(
-            self.command("list", "--output", str(output)),
+            self.command(
+                "list", "--output", str(output),
+                "--optional-output", str(optional_output),
+            ),
             check=False,
             capture_output=True,
             text=True,
@@ -61,6 +66,10 @@ class CheckpointSelectionTest(unittest.TestCase):
         self.assertEqual(
             output.read_text(encoding="utf-8"),
             '{"enum": ["checkpoint-3", "checkpoint-20"]}\n',
+        )
+        self.assertEqual(
+            json.loads(optional_output.read_text()),
+            {"enum": ["none", "checkpoint-3", "checkpoint-20"]},
         )
 
     def test_unknown_selection_is_rejected(self) -> None:
@@ -102,7 +111,50 @@ class CheckpointSelectionTest(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(output.read_text(encoding="utf-8"), "checkpoint-20\n")
+        self.assertEqual(json.loads(output.read_text()), ["checkpoint-20"])
+
+    def test_review_accepts_one_to_three_distinct_checkpoints(self) -> None:
+        self.write_complete_checkpoint(self.trainer_output / "checkpoint-30")
+        names = ["checkpoint-3", "checkpoint-20", "checkpoint-30"]
+        for count in (1, 2, 3):
+            with self.subTest(count=count):
+                output = self.root / f"selection-{count}"
+                result = subprocess.run(
+                    self.command(
+                        "validate-selection",
+                        "--checkpoint-options", json.dumps({"enum": names}),
+                        "--selected-checkpoint", *names[:count],
+                        *(["none"] * (3 - count)),
+                        "--output", str(output),
+                    ),
+                    capture_output=True, text=True, check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(output.read_text()), names[:count])
+
+    def test_invalid_review_does_not_produce_a_selection(self) -> None:
+        # Listed checkpoints must still exist when the user finishes reviewing.
+        (self.trainer_output / "checkpoint-20" / "model.safetensors").unlink()
+        for choices in (
+            ["none", "none", "none"],
+            ["checkpoint-3", "checkpoint-3", "none"],
+            ["checkpoint-3", "checkpoint-999", "none"],
+            ["checkpoint-3", "checkpoint-20", "none"],
+        ):
+            with self.subTest(choices=choices):
+                output = self.root / "invalid-selection"
+                result = subprocess.run(
+                    self.command(
+                        "validate-selection", "--checkpoint-options",
+                        '{"enum":["checkpoint-3","checkpoint-20"]}',
+                        "--selected-checkpoint", *choices,
+                        "--output", str(output),
+                    ),
+                    capture_output=True, text=True, check=False,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

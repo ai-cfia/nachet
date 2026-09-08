@@ -82,38 +82,24 @@ spec:
                     {{steps.list-checkpoints.outputs.parameters.checkpoint-options}}
                 - name: selected-checkpoint-2
                   value: >-
-                    {{steps.list-checkpoints.outputs.parameters.checkpoint-options}}
+                    {{steps.list-checkpoints.outputs.parameters.optional-checkpoint-options}}
                 - name: selected-checkpoint-3
                   value: >-
-                    {{steps.list-checkpoints.outputs.parameters.checkpoint-options}}
-        - - name: validate-checkpoint-1
-            template: validate-checkpoint-selection
+                    {{steps.list-checkpoints.outputs.parameters.optional-checkpoint-options}}
+        - - name: check-checkpoint-selections
+            template: check-checkpoint-selections
             arguments:
               parameters:
                 - name: checkpoint-options
                   value: >-
                     {{steps.list-checkpoints.outputs.parameters.checkpoint-options}}
-                - name: selected-checkpoint
+                - name: selected-checkpoint-1
                   value: >-
                     {{steps.review-checkpoints.outputs.parameters.selected-checkpoint-1}}
-          - name: validate-checkpoint-2
-            template: validate-checkpoint-selection
-            arguments:
-              parameters:
-                - name: checkpoint-options
-                  value: >-
-                    {{steps.list-checkpoints.outputs.parameters.checkpoint-options}}
-                - name: selected-checkpoint
+                - name: selected-checkpoint-2
                   value: >-
                     {{steps.review-checkpoints.outputs.parameters.selected-checkpoint-2}}
-          - name: validate-checkpoint-3
-            template: validate-checkpoint-selection
-            arguments:
-              parameters:
-                - name: checkpoint-options
-                  value: >-
-                    {{steps.list-checkpoints.outputs.parameters.checkpoint-options}}
-                - name: selected-checkpoint
+                - name: selected-checkpoint-3
                   value: >-
                     {{steps.review-checkpoints.outputs.parameters.selected-checkpoint-3}}
       outputs:
@@ -128,18 +114,10 @@ spec:
             valueFrom:
               parameter: >-
                 {{steps.list-checkpoints.outputs.parameters.checkpoint-options}}
-          - name: selected-checkpoint-1
+          - name: selected-checkpoints
             valueFrom:
               parameter: >-
-                {{steps.validate-checkpoint-1.outputs.parameters.selected-checkpoint}}
-          - name: selected-checkpoint-2
-            valueFrom:
-              parameter: >-
-                {{steps.validate-checkpoint-2.outputs.parameters.selected-checkpoint}}
-          - name: selected-checkpoint-3
-            valueFrom:
-              parameter: >-
-                {{steps.validate-checkpoint-3.outputs.parameters.selected-checkpoint}}
+                {{steps.check-checkpoint-selections.outputs.parameters.selected-checkpoints}}
 
     - name: train
       inputs:
@@ -244,6 +222,9 @@ spec:
             globalName: checkpoint-options
             valueFrom:
               path: /tmp/checkpoint-options
+          - name: optional-checkpoint-options
+            valueFrom:
+              path: /tmp/optional-checkpoint-options
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
@@ -251,13 +232,16 @@ spec:
         imagePullPolicy: IfNotPresent
         command:
           - python
-          - /opt/nachet-detector/src/checkpoints.py
+          - -m
+          - checkpoints
         args:
           - --run-id
           - "{{workflow.name}}"
           - list
           - --output
           - /tmp/checkpoint-options
+          - --optional-output
+          - /tmp/optional-checkpoint-options
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -280,10 +264,10 @@ spec:
               First checkpoint selected after reviewing the MLflow run.
           - name: selected-checkpoint-2
             description: >-
-              Second checkpoint selected after reviewing the MLflow run.
+              Optional second checkpoint. Choose a different checkpoint or none.
           - name: selected-checkpoint-3
             description: >-
-              Third checkpoint selected after reviewing the MLflow run.
+              Optional third checkpoint. Choose a different checkpoint or none.
       outputs:
         parameters:
           - name: selected-checkpoint-1
@@ -297,16 +281,19 @@ spec:
               supplied: {}
       suspend: {}
 
-    - name: validate-checkpoint-selection
+    - name: check-checkpoint-selections
       inputs:
         parameters:
           - name: checkpoint-options
-          - name: selected-checkpoint
+          - name: selected-checkpoint-1
+          - name: selected-checkpoint-2
+          - name: selected-checkpoint-3
       outputs:
         parameters:
-          - name: selected-checkpoint
+          - name: selected-checkpoints
+            globalName: selected-checkpoints
             valueFrom:
-              path: /tmp/selected-checkpoint
+              path: /tmp/selected-checkpoints
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
@@ -314,7 +301,8 @@ spec:
         imagePullPolicy: IfNotPresent
         command:
           - python
-          - /opt/nachet-detector/src/checkpoints.py
+          - -m
+          - checkpoints
         args:
           - --run-id
           - "{{workflow.name}}"
@@ -322,9 +310,11 @@ spec:
           - --checkpoint-options
           - "{{inputs.parameters.checkpoint-options}}"
           - --selected-checkpoint
-          - "{{inputs.parameters.selected-checkpoint}}"
+          - "{{inputs.parameters.selected-checkpoint-1}}"
+          - "{{inputs.parameters.selected-checkpoint-2}}"
+          - "{{inputs.parameters.selected-checkpoint-3}}"
           - --output
-          - /tmp/selected-checkpoint
+          - /tmp/selected-checkpoints
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
