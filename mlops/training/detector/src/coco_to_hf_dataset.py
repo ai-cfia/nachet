@@ -258,7 +258,7 @@ def main():
         include_classes=include_classes,
     )
 
-    print(f"Dataset created:")
+    print("Dataset created:")
     print(f"  Train: {len(dataset['train'])} images")
     print(f"  Validation: {len(dataset['validation'])} images")
     print(f"  Categories: {len(categories)}")
