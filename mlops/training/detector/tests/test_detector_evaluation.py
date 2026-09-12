@@ -1,4 +1,4 @@
-"""Offline evaluation checks using the trainer image's real dependencies."""
+"""Regression tests for detector evaluation on full and partial batches."""
 
 import tempfile
 import unittest
