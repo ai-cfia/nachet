@@ -29,19 +29,20 @@ The build checks that `uv.lock` is current and that the training libraries
 import without replacing NVIDIA's CUDA-enabled PyTorch. Actual GPU training
 still requires a compatible NVIDIA host, prepared inputs and MLflow configuration.
 
-The focused runtime tests use Python's standard library and mocked training:
+The build also runs all tests in `tests/`, with networking disabled. A failed
+test stops the build. Test files are mounted for that step, not copied into
+the image.
 
-```bash
-python3 -m unittest discover -s tests -p 'test_*.py' -v
-```
-
-To run them in the built image as its non-root user:
+All detector tests live in `tests/`. The evaluation regression tests need
+PyTorch and the project dependencies; they use a small model with random
+weights and run on CPU. Run the full suite in the built image as its non-root
+user:
 
 ```bash
 docker run --rm --platform linux/amd64 --network none \
   --mount "type=bind,src=$(pwd)/tests,dst=/opt/nachet-detector/tests,readonly" \
   --entrypoint python nachet-detector-trainer:local \
-  -m unittest discover -s /opt/nachet-detector/tests -v
+  -m unittest discover -s /opt/nachet-detector/tests -p 'test_*.py' -v
 ```
 
 These tests do not validate GPU execution, cluster storage or live MLflow.

@@ -40,4 +40,10 @@ ENV HOME=/tmp \
 
 USER 10001:10001
 
+# Test the runtime without keeping test files in the image.
+RUN --mount=type=bind,source=tests,target=/opt/nachet-detector/tests \
+    --network=none \
+    HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1 \
+    python -m unittest discover -s tests -p 'test_*.py' -v
+
 ENTRYPOINT ["python", "/opt/nachet-detector/src/run_training.py"]
