@@ -65,6 +65,7 @@ from typing import Any, Optional, Union
 import albumentations as A
 import numpy as np
 import torch
+from torch.nn.utils.rnn import pad_sequence
 from datasets import concatenate_datasets, load_dataset
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 
@@ -215,6 +216,45 @@ def collate_fn(
     return data
 
 
+class DetectionEvaluationTrainer(Trainer):
+    """Keep per-image annotations intact during evaluation gathering."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.args.eval_do_concat_batches or self.args.eval_use_gather_object:
+            raise ValueError(
+                "detector evaluation requires eval_do_concat_batches=False "
+                "and eval_use_gather_object=False"
+            )
+
+    def prediction_step(self, model, inputs, prediction_loss_only, ignore_keys=None):
+        loss, predictions, labels = super().prediction_step(
+            model, inputs, prediction_loss_only, ignore_keys=ignore_keys
+        )
+        if labels is None:
+            return loss, predictions, labels
+
+        # Give metric labels an image axis so gathering trims images, not boxes.
+        # The model's training inputs are unchanged.
+        boxes = pad_sequence([label["boxes"] for label in labels], batch_first=True)
+        classes = pad_sequence(
+            [label["class_labels"] for label in labels],
+            batch_first=True,
+            padding_value=-100,
+        )
+
+        # Counts let the metric remove padding, including for images with no boxes.
+        metric_labels = {
+            "orig_size": torch.stack([label["orig_size"] for label in labels]),
+            "boxes": boxes,
+            "class_labels": classes,
+            "box_count": torch.tensor(
+                [len(label["boxes"]) for label in labels], device=boxes.device
+            )[:, None],
+        }
+        return loss, predictions, metric_labels
+
+
 @torch.no_grad()
 def compute_metrics(
     evaluation_results: EvalPrediction,
@@ -247,15 +287,13 @@ def compute_metrics(
     # Collect targets in the required format for metric computation
     for batch in targets:
         # collect image sizes, we will need them for predictions post processing
-        batch_image_sizes = torch.tensor([x["orig_size"] for x in batch])
+        batch_image_sizes = torch.as_tensor(batch["orig_size"])
         image_sizes.append(batch_image_sizes)
-        # collect targets in the required format for metric computation
-        # boxes were converted to YOLO format needed for model training
-        # here we will convert them to Pascal VOC format (x_min, y_min, x_max, y_max)
-        for image_target in batch:
-            boxes = torch.tensor(image_target["boxes"])
-            boxes = convert_bbox_yolo_to_pascal(boxes, image_target["orig_size"])
-            labels = torch.tensor(image_target["class_labels"])
+        # Remove transport padding, then convert real boxes to pixel coordinates.
+        for index, count in enumerate(batch["box_count"][:, 0]):
+            boxes = torch.as_tensor(batch["boxes"][index, :count])
+            boxes = convert_bbox_yolo_to_pascal(boxes, batch["orig_size"][index])
+            labels = torch.as_tensor(batch["class_labels"][index, :count])
             post_processed_targets.append({"boxes": boxes, "labels": labels})
 
     # Collect predictions in the required format for metric computation,
@@ -903,7 +941,7 @@ def train_detector(
     mlflow.autolog()
     with mlflow.start_run():
 
-        trainer = Trainer(
+        trainer = DetectionEvaluationTrainer(
             model=model,
             args=training_args,
             train_dataset=dataset["train"] if training_args.do_train else None,
