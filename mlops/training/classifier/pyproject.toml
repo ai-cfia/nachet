@@ -1,0 +1,17 @@
+[project]
+name = "nachet-classifier-trainer"
+version = "0.1.0"
+description = "Nachet classifier training runtime"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "accelerate==1.12.0",
+    "boto3==1.40.55",
+    "datasets==4.4.1",
+    "mlflow-skinny==3.7.0",
+    "scikit-learn==1.7.2",
+    "transformers==5.16.1",
+]
+
+[tool.uv]
+# Use the CUDA PyTorch and matching torchvision supplied by the NVIDIA image.
+exclude-dependencies = ["torch", "torchvision"]
