@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 
 CHECKPOINT_PATTERN = re.compile(r"^checkpoint-([1-9][0-9]*)$")
+MAX_CHECKPOINT_SELECTIONS = 3
 REQUIRED_CHECKPOINT_FILES = (
     "optimizer.pt",
     "rng_state.pth",
@@ -90,11 +91,16 @@ def write_options(args: argparse.Namespace) -> int:
 def validate_selection(args: argparse.Namespace) -> int:
     available = parse_checkpoint_options(args.checkpoint_options)
     choices = [name.strip() for name in args.selected_checkpoint]
+    # Argo 4.1.1 may return the options JSON for untouched optional fields.
+    optional_options = json.dumps({"enum": ["none", *available]})
+    for index, choice in enumerate(choices[1:MAX_CHECKPOINT_SELECTIONS], start=1):
+        if choice == optional_options:
+            choices[index] = "none"
     if choices[0] == "none":
         raise ValueError("select at least one checkpoint")
     selected = [name for name in choices if name != "none"]
-    if len(selected) > 3 or len(selected) != len(set(selected)):
-        raise ValueError("select one to three distinct checkpoints")
+    if len(selected) > MAX_CHECKPOINT_SELECTIONS or len(selected) != len(set(selected)):
+        raise ValueError(f"select one to {MAX_CHECKPOINT_SELECTIONS} distinct checkpoints")
 
     # Recheck after the pause in case the checkpoint changed.
     trainer_output = resolve_trainer_output(args.runs_root, args.run_id)
