@@ -155,6 +155,59 @@ class CheckpointSelectionTest(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertFalse(output.exists())
 
+    def test_untouched_optional_fields_are_omitted(self) -> None:
+        names = ["checkpoint-3", "checkpoint-20"]
+        optional_options = json.dumps({"enum": ["none", *names]})
+        cases = (
+            (["checkpoint-3", optional_options, optional_options], ["checkpoint-3"]),
+            (["checkpoint-3", "checkpoint-20", optional_options], names),
+            (["checkpoint-3", optional_options, "checkpoint-20"], names),
+        )
+        for case_number, (choices, expected) in enumerate(cases):
+            with self.subTest(choices=choices):
+                output = self.root / f"selection-{case_number}"
+                result = subprocess.run(
+                    self.command(
+                        "validate-selection", "--checkpoint-options",
+                        json.dumps({"enum": names}),
+                        "--selected-checkpoint", *choices,
+                        "--output", str(output),
+                    ),
+                    capture_output=True, text=True, check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(output.read_text()), expected)
+
+    def test_invalid_dropdown_payloads_are_rejected(self) -> None:
+        names = ["checkpoint-3", "checkpoint-20"]
+        optional_options = json.dumps({"enum": ["none", *names]})
+        # Required fields and altered payloads must not acquire an implicit default.
+        cases = (
+            (0, json.dumps({"enum": names})),
+            (0, optional_options),
+            (1, '{"enum":'),
+            (1, json.dumps({"enum": ["none", "checkpoint-999"]})),
+            (1, json.dumps({"enum": ["none", *names], "default": "none"})),
+            (1, json.dumps({"enum": ["none", *reversed(names)]})),
+            (2, '{"enum":'),
+        )
+        for case_number, (field, value) in enumerate(cases):
+            with self.subTest(field=field, value=value):
+                choices = ["checkpoint-3", "none", "none"]
+                choices[field] = value
+                output = self.root / f"invalid-selection-{case_number}"
+                result = subprocess.run(
+                    self.command(
+                        "validate-selection", "--checkpoint-options",
+                        json.dumps({"enum": names}),
+                        "--selected-checkpoint", *choices,
+                        "--output", str(output),
+                    ),
+                    capture_output=True, text=True, check=False,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
