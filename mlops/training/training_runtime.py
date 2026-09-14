@@ -193,10 +193,11 @@ def build_mlflow_run_url(
     )
 
 
-# Each launcher supplies its command; this module owns retries and MLflow identity.
+# The runtime supplies the output directory and checkpoint to each launcher.
+# This keeps the training command and checkpoint management on the same paths.
 def execute_training(
     args: argparse.Namespace,
-    command_for_resume: Callable[[Path | None], list[str]],
+    command_for_resume: Callable[[Path, Path | None], list[str]],
     input_artifacts: tuple[Path, ...] = (),
 ) -> int:
     run_root = args.runs_root / args.run_id
@@ -239,7 +240,7 @@ def execute_training(
             requested_resume_run_id,
             args.resume_checkpoint,
         )
-    command = command_for_resume(resume_checkpoint)
+    command = command_for_resume(output_path, resume_checkpoint)
 
     if args.dry_run:
         print(shlex.join(command))

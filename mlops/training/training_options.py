@@ -79,8 +79,6 @@ def build_training_command(
         str(trainer_path),
         "--do_train",
         "--do_eval",
-        "--train_val_split",
-        "0.15",
         "--output_dir",
         str(output_path),
         "--num_train_epochs",

@@ -62,6 +62,8 @@ def build_command(
         [
             "--dataset_config",
             str(dataset_config),
+            "--train_val_split",
+            "0.15",
             "--image_square_size",
             str(640 if image_size is None else image_size),
             "--eval_do_concat_batches",
@@ -90,8 +92,6 @@ def main() -> int:
     run_profile = effective_run_profile(RUN_PROFILES[args.run_profile], args)
     dataset_config = input_path(args.dataset_root, args.dataset_config)
     model_path = input_path(args.dataset_root, args.model_path)
-    run_root = args.runs_root / args.run_id
-    output_path = run_root / "trainer-output"
 
     if not args.dataset_root.is_dir():
         raise FileNotFoundError(f"dataset root does not exist: {args.dataset_root}")
@@ -104,7 +104,7 @@ def main() -> int:
     if not args.trainer_path.is_file():
         raise FileNotFoundError(f"trainer does not exist: {args.trainer_path}")
 
-    def command_for_resume(checkpoint: Path | None) -> list[str]:
+    def command_for_resume(output_path: Path, checkpoint: Path | None) -> list[str]:
         return build_command(
             args.trainer_path,
             dataset_config,
