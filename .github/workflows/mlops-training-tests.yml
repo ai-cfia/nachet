@@ -43,4 +43,4 @@ jobs:
 
       # The image build runs the full test suite with the runtime dependencies.
       - name: Check Python syntax
-        run: python -m compileall -q src tests
+        run: python -m compileall -q src tests ../*.py

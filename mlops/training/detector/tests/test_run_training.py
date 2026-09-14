@@ -177,6 +177,8 @@ class MlflowClient:
 
     def test_profile_values_can_be_overridden(self) -> None:
         result = self.run_dry(
+            "--image-size",
+            "512",
             "--batch-size",
             "7",
             "--learning-rate",
@@ -187,6 +189,7 @@ class MlflowClient:
 
         self.assertEqual(result.returncode, 0, result.stderr)
         command = shlex.split(result.stdout)
+        self.assertEqual(self.command_value(command, "--image_square_size"), "512")
         self.assertEqual(
             self.command_value(command, "--per_device_train_batch_size"),
             "7",
@@ -218,6 +221,14 @@ class MlflowClient:
         self.assertEqual(
             self.command_value(command, "--resume_from_checkpoint"),
             str(complete),
+        )
+
+    def test_small_learning_rate_is_preserved(self):
+        result = self.run_dry("--learning-rate", "1e-16")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            float(self.command_value(shlex.split(result.stdout), "--learning_rate")),
+            1e-16,
         )
 
     def test_completed_run_returns_success_without_running_again(self) -> None:
@@ -360,6 +371,7 @@ class MlflowClient:
                     (run_root / "train_log.txt").read_text().strip(),
                     "trainer-output",
                 )
+
 
 if __name__ == "__main__":
     unittest.main()

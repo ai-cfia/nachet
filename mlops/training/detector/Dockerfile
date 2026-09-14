@@ -11,7 +11,7 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends libxcb1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml uv.lock ./
+COPY detector/pyproject.toml detector/uv.lock ./
 
 # Keep NVIDIA's PyTorch visible while installing the locked project dependencies
 # into a separate environment. Syncing must not replace the base image's torch.
@@ -21,7 +21,8 @@ RUN uv venv --system-site-packages .venv \
 
 ENV PATH="/opt/nachet-detector/.venv/bin:$PATH"
 
-COPY src ./src
+COPY detector/src ./src
+COPY checkpoints.py training_runtime.py training_options.py /opt/
 
 # Fail the build if project dependencies shadow NVIDIA's CUDA-enabled PyTorch.
 RUN python -c "\
@@ -34,14 +35,14 @@ assert torch.version.cuda, 'Expected CUDA-enabled PyTorch'"
 RUN chown -R 10001:10001 /opt/nachet-detector
 
 ENV HOME=/tmp \
-    PYTHONPATH=/opt/nachet-detector/src \
+    PYTHONPATH=/opt/nachet-detector/src:/opt \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 USER 10001:10001
 
 # Test the runtime without keeping test files in the image.
-RUN --mount=type=bind,source=tests,target=/opt/nachet-detector/tests \
+RUN --mount=type=bind,source=detector/tests,target=/opt/nachet-detector/tests \
     --network=none \
     HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1 \
     python -m unittest discover -s tests -p 'test_*.py' -v

@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).parents[1] / "src" / "checkpoints.py"
+SCRIPT = Path(__file__).parents[2] / "checkpoints.py"
 
 
 class CheckpointSelectionTest(unittest.TestCase):
