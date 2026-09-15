@@ -162,7 +162,7 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{inputs.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-classifier-trainer@sha256:9cf078711c45f17830b1a61106115b8d4ead9bb7dc247027d3a0fe78ecf2abcf  # yamllint disable-line rule:line-length
+        image: ghcr.io/ai-cfia/nachet-classifier-trainer@sha256:05ab613febd765b17fbb4630023be4853c19e1c60285d283a734f793a8156fb1  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         args:
           - --dataset-root
@@ -248,7 +248,7 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-classifier-trainer@sha256:9cf078711c45f17830b1a61106115b8d4ead9bb7dc247027d3a0fe78ecf2abcf  # yamllint disable-line rule:line-length
+        image: ghcr.io/ai-cfia/nachet-classifier-trainer@sha256:05ab613febd765b17fbb4630023be4853c19e1c60285d283a734f793a8156fb1  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         command:
           - python
@@ -317,7 +317,7 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-classifier-trainer@sha256:9cf078711c45f17830b1a61106115b8d4ead9bb7dc247027d3a0fe78ecf2abcf  # yamllint disable-line rule:line-length
+        image: ghcr.io/ai-cfia/nachet-classifier-trainer@sha256:05ab613febd765b17fbb4630023be4853c19e1c60285d283a734f793a8156fb1  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         command:
           - python

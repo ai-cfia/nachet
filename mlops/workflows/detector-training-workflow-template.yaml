@@ -162,7 +162,7 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{inputs.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:2b09251ce447259b94caf18e560c62d4f18cd3855c96f213ba29c89bce9d0f31  # yamllint disable-line rule:line-length
+        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:994a7281e99ea6c09047baec73c069ce8de19cce356d0332f52b5aeabde8eefb  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         args:
           - --dataset-root
@@ -248,7 +248,7 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:2b09251ce447259b94caf18e560c62d4f18cd3855c96f213ba29c89bce9d0f31  # yamllint disable-line rule:line-length
+        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:994a7281e99ea6c09047baec73c069ce8de19cce356d0332f52b5aeabde8eefb  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         command:
           - python
@@ -317,7 +317,7 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:2b09251ce447259b94caf18e560c62d4f18cd3855c96f213ba29c89bce9d0f31  # yamllint disable-line rule:line-length
+        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:994a7281e99ea6c09047baec73c069ce8de19cce356d0332f52b5aeabde8eefb  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         command:
           - python
