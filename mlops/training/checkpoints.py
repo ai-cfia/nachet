@@ -100,7 +100,9 @@ def validate_selection(args: argparse.Namespace) -> int:
         raise ValueError("select at least one checkpoint")
     selected = [name for name in choices if name != "none"]
     if len(selected) > MAX_CHECKPOINT_SELECTIONS or len(selected) != len(set(selected)):
-        raise ValueError(f"select one to {MAX_CHECKPOINT_SELECTIONS} distinct checkpoints")
+        raise ValueError(
+            f"select one to {MAX_CHECKPOINT_SELECTIONS} distinct checkpoints"
+        )
 
     # Recheck after the pause in case the checkpoint changed.
     trainer_output = resolve_trainer_output(args.runs_root, args.run_id)

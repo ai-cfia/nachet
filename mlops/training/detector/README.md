@@ -17,10 +17,13 @@ setup.
 
 ## Build and check
 
+The build context is the parent training directory so the image can include
+the shared launcher and checkpoint modules.
+
 Run these commands from this directory:
 
 ```bash
-docker build --platform linux/amd64 -t nachet-detector-trainer:local .
+docker build --platform linux/amd64 -f Dockerfile -t nachet-detector-trainer:local ..
 docker run --rm --platform linux/amd64 --network none \
   nachet-detector-trainer:local --help
 ```
