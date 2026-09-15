@@ -162,8 +162,8 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{inputs.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:994a7281e99ea6c09047baec73c069ce8de19cce356d0332f52b5aeabde8eefb  # yamllint disable-line rule:line-length
-        imagePullPolicy: IfNotPresent
+        image: ghcr.io/ai-cfia/nachet-detector-trainer:main
+        imagePullPolicy: Always
         args:
           - --dataset-root
           - /inputs
@@ -248,8 +248,8 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:994a7281e99ea6c09047baec73c069ce8de19cce356d0332f52b5aeabde8eefb  # yamllint disable-line rule:line-length
-        imagePullPolicy: IfNotPresent
+        image: ghcr.io/ai-cfia/nachet-detector-trainer:main
+        imagePullPolicy: Always
         command:
           - python
           - -m
@@ -317,8 +317,8 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:994a7281e99ea6c09047baec73c069ce8de19cce356d0332f52b5aeabde8eefb  # yamllint disable-line rule:line-length
-        imagePullPolicy: IfNotPresent
+        image: ghcr.io/ai-cfia/nachet-detector-trainer:main
+        imagePullPolicy: Always
         command:
           - python
           - -m
