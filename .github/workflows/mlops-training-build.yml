@@ -20,11 +20,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  get-detector-trainer-version:
+  get-trainer-versions:
     if: github.event.action != 'closed' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     outputs:
-      app-version: ${{ steps.version.outputs.app-version }}
+      detector: ${{ steps.version.outputs.detector }}
+      classifier: ${{ steps.version.outputs.classifier }}
 
     steps:
       - name: Checkout code
@@ -36,23 +37,26 @@ jobs:
           version: "0.11.24"
           enable-cache: false
 
-      - name: Read detector trainer image version
+      - name: Read trainer image versions
         id: version
-        working-directory: mlops/training/detector
+        working-directory: mlops/training
         run: |
-          version="$(uv version --short)"
-          if [ -z "$version" ]; then
-            echo "Project version must not be empty" >&2
-            exit 1
-          fi
-          echo "app-version=$version" >> "$GITHUB_OUTPUT"
+          for trainer in detector classifier; do
+            version="$(uv version --directory "$trainer" --short)"
+            test -n "$version"
+            echo "$trainer=$version" >> "$GITHUB_OUTPUT"
+          done
 
-  build-and-push-detector-trainer:
-    needs: get-detector-trainer-version
+  build-and-push-trainer:
+    needs: get-trainer-versions
+    strategy:
+      fail-fast: false
+      matrix:
+        trainer: [detector, classifier]
     runs-on: ubuntu-24.04
     env:
-      IMAGE: ghcr.io/ai-cfia/nachet-detector-trainer
-      VERSION: ${{ needs.get-detector-trainer-version.outputs.app-version }}
+      IMAGE: ghcr.io/ai-cfia/nachet-${{ matrix.trainer }}-trainer
+      VERSION: ${{ needs.get-trainer-versions.outputs[matrix.trainer] }}
     permissions:
       contents: read
       packages: write
@@ -86,7 +90,7 @@ jobs:
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
         with:
           context: mlops/training
-          file: mlops/training/detector/Dockerfile
+          file: mlops/training/${{ matrix.trainer }}/Dockerfile
           push: true
           platforms: linux/amd64
           tags: |
@@ -104,7 +108,7 @@ jobs:
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
         with:
           context: mlops/training
-          file: mlops/training/detector/Dockerfile
+          file: mlops/training/${{ matrix.trainer }}/Dockerfile
           push: true
           platforms: linux/amd64
           tags: |
@@ -116,17 +120,20 @@ jobs:
           cache-to: >-
             type=registry,ref=${{ env.IMAGE }}:cache-merged-amd64,mode=min
 
-  sign-detector-trainer:
+  sign-trainer:
+    strategy:
+      matrix:
+        trainer: [detector, classifier]
     needs:
-      - get-detector-trainer-version
-      - build-and-push-detector-trainer
+      - get-trainer-versions
+      - build-and-push-trainer
     permissions:
       contents: read
       packages: write
       id-token: write
     uses: ./.github/workflows/reusable-sign-container-images.yml
     with:
-      image-name: ghcr.io/ai-cfia/nachet-detector-trainer
-      image-label: detector trainer
+      image-name: ghcr.io/ai-cfia/nachet-${{ matrix.trainer }}-trainer
+      image-label: ${{ matrix.trainer }} trainer
       release-version: >-
-        ${{ needs.get-detector-trainer-version.outputs.app-version }}
+        ${{ needs.get-trainer-versions.outputs[matrix.trainer] }}

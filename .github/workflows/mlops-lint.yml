@@ -31,3 +31,26 @@ jobs:
     uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-python-mono.yml@c504dacdff61c8a1f7c796934e9ad20749f6d136
     with:
       working-directory: mlops/training
+
+  training-syntax:
+    name: Check Python syntax
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: mlops/training
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      # The image build runs the full test suite with the runtime dependencies.
+      - name: Check Python syntax
+        run: python -m compileall -q ./*/src ./*/tests ./*.py
