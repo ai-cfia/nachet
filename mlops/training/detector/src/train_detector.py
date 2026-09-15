@@ -943,7 +943,8 @@ def train_detector(
         threshold=0.0,
     )
     mlflow.autolog()
-    with mlflow.start_run():
+    # MLflow parameters cannot change within a run; give each attempt a child run.
+    with mlflow.start_run(), mlflow.start_run(nested=True):
 
         trainer = DetectionEvaluationTrainer(
             model=model,
@@ -984,16 +985,16 @@ def train_detector(
                 "base_model": model_args.model_name_or_path,
             })
 
-    # Write model card and (optionally) push to hub
-    kwargs = {
-        "finetuned_from": model_args.model_name_or_path,
-        "dataset": data_args.dataset_name,
-        "tags": ["object-detection", "vision"],
-    }
-    if training_args.push_to_hub:
-        trainer.push_to_hub(**kwargs)
-    else:
-        trainer.create_model_card(**kwargs)
+        # Write model card and (optionally) push to hub
+        kwargs = {
+            "finetuned_from": model_args.model_name_or_path,
+            "dataset": data_args.dataset_name,
+            "tags": ["object-detection", "vision"],
+        }
+        if training_args.push_to_hub:
+            trainer.push_to_hub(**kwargs)
+        else:
+            trainer.create_model_card(**kwargs)
 
 
 def main() -> None:

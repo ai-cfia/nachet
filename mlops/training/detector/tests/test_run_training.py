@@ -11,6 +11,28 @@ SCRIPT = Path(__file__).parents[1] / "src" / "run_training.py"
 
 
 class RunTrainingTest(unittest.TestCase):
+    def test_relative_paths_remain_absolute_in_trainer_command(self):
+        result = subprocess.run(
+            [
+                *self.command(), "--dry-run",
+                "--dataset-root", "dataset", "--runs-root", "runs",
+                "--trainer-path", "train_detector.py",
+            ],
+            cwd=self.root, capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        command = shlex.split(result.stdout)
+        for flag, expected in {
+            "--dataset_config": self.config,
+            "--model_name_or_path": self.model,
+            "--output_dir": self.runs / "test-run" / "trainer-output",
+        }.items():
+            actual = Path(command[command.index(flag) + 1])
+            self.assertTrue(actual.is_absolute())
+            self.assertEqual(actual.resolve(), expected.resolve())
+        self.assertTrue(Path(command[1]).is_absolute())
+        self.assertEqual(Path(command[1]).resolve(), self.trainer.resolve())
+
     def setUp(self) -> None:
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary_directory.name)

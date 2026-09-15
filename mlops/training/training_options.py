@@ -62,6 +62,11 @@ def effective_run_profile(
     return replace(profile, **overrides)
 
 
+# Resolve CLI roots before the trainer changes into the dataset directory.
+def absolute_path(value: str) -> Path:
+    return Path(value).absolute()
+
+
 def input_path(root: Path, path: Path) -> Path:
     return path if path.is_absolute() else root / path
 
@@ -129,7 +134,7 @@ def training_parser(
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         "--dataset-root",
-        type=Path,
+        type=absolute_path,
         default=Path("/inputs"),
         help="working directory containing the prepared dataset",
     )
@@ -167,13 +172,13 @@ def training_parser(
     )
     parser.add_argument(
         "--runs-root",
-        type=Path,
+        type=absolute_path,
         default=Path("/runs"),
         help="root of the training output directory",
     )
     parser.add_argument(
         "--resume-runs-root",
-        type=Path,
+        type=absolute_path,
         default=None,
         help=argparse.SUPPRESS,
     )
@@ -189,8 +194,8 @@ def training_parser(
     )
     parser.add_argument(
         "--trainer-path",
-        type=Path,
-        default=trainer_path,
+        type=absolute_path,
+        default=trainer_path.absolute(),
         help=argparse.SUPPRESS,
     )
     parser.add_argument(

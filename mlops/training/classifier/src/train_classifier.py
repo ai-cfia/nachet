@@ -539,9 +539,9 @@ def train_classifier(transform_factory):
             data_args.max_eval_samples,
         )
 
-    # MLflow consumes MLFLOW_RUN_ID here; Trainer then uses the active run.
     mlflow.autolog()
-    with mlflow.start_run():
+    # MLflow parameters cannot change within a run; give each attempt a child run.
+    with mlflow.start_run(), mlflow.start_run(nested=True):
         # Trainer records model settings; record the image-folder inputs alongside them.
         mlflow.log_params(
             {
@@ -586,17 +586,17 @@ def train_classifier(transform_factory):
             trainer.log_metrics("eval", metrics)
             trainer.save_metrics("eval", metrics)
 
-    # Write model card and (optionally) push to hub
-    kwargs = {
-        "finetuned_from": model_args.model_name_or_path,
-        "tasks": "image-classification",
-        "dataset": data_args.dataset_name,
-        "tags": ["image-classification", "vision"],
-    }
-    if training_args.push_to_hub:
-        trainer.push_to_hub(**kwargs)
-    else:
-        trainer.create_model_card(**kwargs)
+        # Write model card and (optionally) push to hub
+        kwargs = {
+            "finetuned_from": model_args.model_name_or_path,
+            "tasks": "image-classification",
+            "dataset": data_args.dataset_name,
+            "tags": ["image-classification", "vision"],
+        }
+        if training_args.push_to_hub:
+            trainer.push_to_hub(**kwargs)
+        else:
+            trainer.create_model_card(**kwargs)
 
 
 def main():
