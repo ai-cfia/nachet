@@ -77,7 +77,11 @@ def parse_args() -> argparse.Namespace:
         default="none",
         help="optional held-out directory, or none to split training data",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    # An empty Path means the dataset root, not an omitted validation directory.
+    if not args.validation_dir.strip():
+        parser.error("--validation-dir must be a directory or none")
+    return args
 
 
 def main() -> int:

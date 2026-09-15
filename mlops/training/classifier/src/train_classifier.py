@@ -144,6 +144,25 @@ class BalancedTrainer(Trainer):
         super().__init__(*args, **kwargs)
         self.sample_weights = sample_weights
 
+    # Transformers 5.16.1 saves legacy Swin keys but Trainer resume loads them
+    # without conversion. Use the model loader, keeping optimizer references intact.
+    def _load_from_checkpoint(self, resume_from_checkpoint, model=None):
+        model = self.model if model is None else model
+        restored, loading_info = type(model).from_pretrained(
+            resume_from_checkpoint,
+            local_files_only=True,
+            output_loading_info=True,
+            dtype="auto",
+        )
+        if any(loading_info.values()):
+            raise ValueError(
+                f"checkpoint weights could not be fully restored: {loading_info}"
+            )
+        model.load_state_dict(restored.state_dict(), strict=True)
+
+    def _load_best_model(self):
+        self._load_from_checkpoint(self.state.best_model_checkpoint)
+
     def _get_train_sampler(self, *args, **kwargs):
         """Return a sampler; accepts optional dataset param for newer Trainer signatures."""
         if self.sample_weights is not None:

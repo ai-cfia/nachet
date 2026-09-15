@@ -10,8 +10,56 @@ SCRIPT = Path(__file__).parents[1] / "src" / "run_training.py"
 
 
 class ClassifierCommandTest(unittest.TestCase):
+    def test_empty_validation_directory_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for name in ("Training", "model"):
+                (root / name).mkdir()
+            for value in ("", "   "):
+                with self.subTest(value=value):
+                    result = subprocess.run(
+                        [
+                            sys.executable, str(SCRIPT),
+                            "--dataset-root", str(root),
+                            "--train-dir", "Training", "--model-path", "model",
+                            "--run-profile", "smoke", "--run-id", "test",
+                            "--validation-dir", value, "--dry-run",
+                        ],
+                        capture_output=True, text=True,
+                    )
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn(
+                        "--validation-dir must be a directory or none", result.stderr
+                    )
+
+    def test_relative_paths_remain_absolute_in_trainer_command(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for name in ("Training", "Validation", "model"):
+                (root / "dataset" / name).mkdir(parents=True)
+            result = subprocess.run(
+                [
+                    sys.executable, str(SCRIPT.resolve()),
+                    "--dataset-root", "dataset", "--train-dir", "Training",
+                    "--validation-dir", "Validation", "--model-path", "model",
+                    "--runs-root", "runs", "--run-id", "new",
+                    "--run-profile", "smoke", "--dry-run",
+                ],
+                cwd=root, capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            command = shlex.split(result.stdout)
+            for flag, expected in {
+                "--train_dir": root / "dataset" / "Training",
+                "--validation_dir": root / "dataset" / "Validation",
+                "--model_name_or_path": root / "dataset" / "model",
+                "--output_dir": root / "runs" / "new" / "trainer-output",
+            }.items():
+                actual = Path(command[command.index(flag) + 1])
+                self.assertTrue(actual.is_absolute())
+                self.assertEqual(actual.resolve(), expected.resolve())
+
     def test_smoke_inputs_overrides_and_resume(self):
-        # A prepared image folder enters the launcher, not a detector COCO config.
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             for name in ("Training", "Validation", "model"):
