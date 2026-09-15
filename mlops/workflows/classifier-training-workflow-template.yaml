@@ -12,51 +12,69 @@ spec:
   serviceAccountName: argo-workflow
   arguments:
     parameters:
-      - name: trainer-image
-        description: Published classifier trainer image pinned by sha256 digest.
       - name: validation-dir
-        description: Validation image folder below inputs, or none for a 15% training split.
+        description: >-
+          Validation image folder below inputs, or none to reserve 15% of
+          training images for validation.
         value: none
       - name: train-dir
         description: >-
-          Species-labelled training image folder below the prepared input directory.
+          Training folder below inputs, with one subfolder per species.
         value: Training
       - name: model-path
         description: Base model directory below the prepared input directory.
         value: model
       - name: run-profile
-        description: Training defaults for a smoke or full run.
+        description: >-
+          Smoke uses 1 epoch and at most 32 training and 16 validation images.
+          Full uses 50 epochs and all images.
+          Parameters below override these defaults.
         value: smoke
         enum:
           - smoke
           - full
       - name: gpu-node
-        description: GPU node used for training.
+        description: >-
+          GPU node used for training.
+          Node selection does not change training defaults.
         value: ai-lab-1
         enum:
           - ai-lab-1
           - ai-lab-2
           - ai-lab-3
       - name: epochs
-        description: Positive integer, or profile-default.
+        description: >-
+          Epochs: smoke=1, full=50. Enter a positive integer to override.
         value: profile-default
       - name: checkpoint-retention
-        description: Number of recent checkpoints to keep, or profile-default.
+        description: >-
+          Checkpoints to keep: smoke=1, full=50.
+          Enter a positive integer to override.
         value: profile-default
       - name: batch-size
-        description: Per-device batch size, or profile-default.
+        description: >-
+          Images per device per step: smoke=2, full=80.
+          Enter a positive integer to override.
         value: profile-default
       - name: gradient-accumulation-steps
-        description: Gradient accumulation steps, or profile-default.
+        description: >-
+          Steps before a model update: 1 for both profiles.
+          Enter a positive integer to override.
         value: profile-default
       - name: warmup-steps
-        description: Non-negative warm-up steps, or profile-default.
+        description: >-
+          Warm-up steps: smoke=0, full=1000.
+          Enter a non-negative integer to override.
         value: profile-default
       - name: learning-rate
-        description: Positive learning rate, or profile-default.
+        description: >-
+          Learning rate: 0.000007 for both profiles.
+          Enter a positive number to override.
         value: profile-default
       - name: seed
-        description: Non-negative random seed, or profile-default.
+        description: >-
+          Random seed: 2438 for both profiles.
+          Enter a non-negative integer to override.
         value: profile-default
       - name: resume-run-id
         description: Earlier workflow run to resume, or none for a new run.
@@ -144,7 +162,7 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{inputs.parameters.gpu-node}}"
       container:
-        image: "{{workflow.parameters.trainer-image}}"
+        image: ghcr.io/ai-cfia/nachet-classifier-trainer@sha256:9cf078711c45f17830b1a61106115b8d4ead9bb7dc247027d3a0fe78ecf2abcf  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         args:
           - --dataset-root
@@ -230,7 +248,7 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
-        image: "{{workflow.parameters.trainer-image}}"
+        image: ghcr.io/ai-cfia/nachet-classifier-trainer@sha256:9cf078711c45f17830b1a61106115b8d4ead9bb7dc247027d3a0fe78ecf2abcf  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         command:
           - python
@@ -299,7 +317,7 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
-        image: "{{workflow.parameters.trainer-image}}"
+        image: ghcr.io/ai-cfia/nachet-classifier-trainer@sha256:9cf078711c45f17830b1a61106115b8d4ead9bb7dc247027d3a0fe78ecf2abcf  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         command:
           - python

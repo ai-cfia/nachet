@@ -20,41 +20,61 @@ spec:
         description: Base model directory below the prepared input directory.
         value: model
       - name: run-profile
-        description: Training defaults for a smoke or full run.
+        description: >-
+          Smoke uses 1 epoch and at most 32 training and 16 validation images.
+          Full uses 50 epochs and all images.
+          Parameters below override these defaults.
         value: smoke
         enum:
           - smoke
           - full
       - name: gpu-node
-        description: GPU node used for training.
+        description: >-
+          GPU node used for training.
+          Node selection does not change training defaults.
         value: ai-lab-1
         enum:
           - ai-lab-1
           - ai-lab-2
           - ai-lab-3
       - name: epochs
-        description: Positive integer, or profile-default.
+        description: >-
+          Epochs: smoke=1, full=50. Enter a positive integer to override.
         value: profile-default
       - name: checkpoint-retention
-        description: Number of recent checkpoints to keep, or profile-default.
+        description: >-
+          Checkpoints to keep: smoke=1, full=50.
+          Enter a positive integer to override.
         value: profile-default
       - name: image-size
-        description: Square detector input size, or profile-default.
+        description: >-
+          Square input size: 640 pixels for both profiles.
+          Enter a positive integer to override.
         value: profile-default
       - name: batch-size
-        description: Per-device batch size, or profile-default.
+        description: >-
+          Images per device per step: smoke=2, full=24.
+          Enter a positive integer to override.
         value: profile-default
       - name: gradient-accumulation-steps
-        description: Gradient accumulation steps, or profile-default.
+        description: >-
+          Steps before a model update: 1 for both profiles.
+          Enter a positive integer to override.
         value: profile-default
       - name: warmup-steps
-        description: Non-negative warm-up steps, or profile-default.
+        description: >-
+          Warm-up steps: smoke=0, full=760.
+          Enter a non-negative integer to override.
         value: profile-default
       - name: learning-rate
-        description: Positive learning rate, or profile-default.
+        description: >-
+          Learning rate: 0.00001 for both profiles.
+          Enter a positive number to override.
         value: profile-default
       - name: seed
-        description: Non-negative random seed, or profile-default.
+        description: >-
+          Random seed: 2438 for both profiles.
+          Enter a non-negative integer to override.
         value: profile-default
       - name: resume-run-id
         description: Earlier workflow run to resume, or none for a new run.
@@ -142,8 +162,7 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{inputs.parameters.gpu-node}}"
       container:
-        image: "ghcr.io/ai-cfia/nachet-detector-trainer@sha256:\
-          ba620908896a9094c033d46b005edf74fee8fc55389c2b99047400b3f0cddaf7"
+        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:2b09251ce447259b94caf18e560c62d4f18cd3855c96f213ba29c89bce9d0f31  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         args:
           - --dataset-root
@@ -229,8 +248,7 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
-        image: "ghcr.io/ai-cfia/nachet-detector-trainer@sha256:\
-          ba620908896a9094c033d46b005edf74fee8fc55389c2b99047400b3f0cddaf7"
+        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:2b09251ce447259b94caf18e560c62d4f18cd3855c96f213ba29c89bce9d0f31  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         command:
           - python
@@ -299,8 +317,7 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
-        image: "ghcr.io/ai-cfia/nachet-detector-trainer@sha256:\
-          ba620908896a9094c033d46b005edf74fee8fc55389c2b99047400b3f0cddaf7"
+        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:2b09251ce447259b94caf18e560c62d4f18cd3855c96f213ba29c89bce9d0f31  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         command:
           - python
