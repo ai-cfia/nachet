@@ -2,20 +2,25 @@
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
-  name: nachet-detector-training
+  name: nachet-classifier-training
   namespace: argo-workflows
   labels:
-    app.kubernetes.io/name: nachet-detector-training
+    app.kubernetes.io/name: nachet-classifier-training
     app.kubernetes.io/part-of: nachet
 spec:
-  entrypoint: detector-training
+  entrypoint: classifier-training
   serviceAccountName: argo-workflow
   arguments:
     parameters:
-      - name: dataset-config
+      - name: validation-dir
         description: >-
-          Dataset configuration path below the prepared input directory.
-        value: dataset.yaml
+          Validation image folder below inputs, or none to reserve 15% of
+          training images for validation.
+        value: none
+      - name: train-dir
+        description: >-
+          Training folder below inputs, with one subfolder per species.
+        value: Training
       - name: model-path
         description: Base model directory below the prepared input directory.
         value: model
@@ -46,14 +51,9 @@ spec:
           Checkpoints to keep: smoke=1, full=50.
           Enter a positive integer to override.
         value: profile-default
-      - name: image-size
-        description: >-
-          Square input size: 640 pixels for both profiles.
-          Enter a positive integer to override.
-        value: profile-default
       - name: batch-size
         description: >-
-          Images per device per step: smoke=2, full=24.
+          Images per device per step: smoke=2, full=80.
           Enter a positive integer to override.
         value: profile-default
       - name: gradient-accumulation-steps
@@ -63,12 +63,12 @@ spec:
         value: profile-default
       - name: warmup-steps
         description: >-
-          Warm-up steps: smoke=0, full=760.
+          Warm-up steps: smoke=0, full=1000.
           Enter a non-negative integer to override.
         value: profile-default
       - name: learning-rate
         description: >-
-          Learning rate: 0.00001 for both profiles.
+          Learning rate: 0.000007 for both profiles.
           Enter a positive number to override.
         value: profile-default
       - name: seed
@@ -83,7 +83,7 @@ spec:
         description: Checkpoint from the earlier run, or latest.
         value: latest
   templates:
-    - name: detector-training
+    - name: classifier-training
       steps:
         - - name: train
             template: train
@@ -162,13 +162,15 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{inputs.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:2b09251ce447259b94caf18e560c62d4f18cd3855c96f213ba29c89bce9d0f31  # yamllint disable-line rule:line-length
+        image: ghcr.io/ai-cfia/nachet-classifier-trainer@sha256:9cf078711c45f17830b1a61106115b8d4ead9bb7dc247027d3a0fe78ecf2abcf  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         args:
           - --dataset-root
           - /inputs
-          - --dataset-config
-          - "{{workflow.parameters.dataset-config}}"
+          - --train-dir
+          - "{{workflow.parameters.train-dir}}"
+          - --validation-dir
+          - "{{workflow.parameters.validation-dir}}"
           - --model-path
           - "{{workflow.parameters.model-path}}"
           - --run-profile
@@ -177,8 +179,6 @@ spec:
           - "{{workflow.parameters.epochs}}"
           - --checkpoint-retention
           - "{{workflow.parameters.checkpoint-retention}}"
-          - --image-size
-          - "{{workflow.parameters.image-size}}"
           - --batch-size
           - "{{workflow.parameters.batch-size}}"
           - --gradient-accumulation-steps
@@ -204,7 +204,7 @@ spec:
           - name: MLFLOW_TRACKING_URI
             value: http://mlflow.mlflow.svc.cluster.local:5000
           - name: MLFLOW_EXPERIMENT_NAME
-            value: RT-DETR-v2_101spp_object-detector
+            value: Swin-classifier-training
           - name: MLFLOW_PUBLIC_URL
             value: https://mlflow.inspection.alpha.canada.ca
           - name: HF_HOME
@@ -225,11 +225,11 @@ spec:
         volumeMounts:
           - name: training-storage
             mountPath: /inputs
-            subPath: nachet/detector-training/inputs
+            subPath: nachet/classifier-training/inputs
             readOnly: true
           - name: training-storage
             mountPath: /runs
-            subPath: nachet/detector-training/runs
+            subPath: nachet/classifier-training/runs
           - name: scratch
             mountPath: /scratch
           - name: tmp
@@ -248,7 +248,7 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:2b09251ce447259b94caf18e560c62d4f18cd3855c96f213ba29c89bce9d0f31  # yamllint disable-line rule:line-length
+        image: ghcr.io/ai-cfia/nachet-classifier-trainer@sha256:9cf078711c45f17830b1a61106115b8d4ead9bb7dc247027d3a0fe78ecf2abcf  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         command:
           - python
@@ -271,7 +271,7 @@ spec:
         volumeMounts:
           - name: training-storage
             mountPath: /runs
-            subPath: nachet/detector-training/runs
+            subPath: nachet/classifier-training/runs
             readOnly: true
           - name: tmp
             mountPath: /tmp
@@ -317,7 +317,7 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
       container:
-        image: ghcr.io/ai-cfia/nachet-detector-trainer@sha256:2b09251ce447259b94caf18e560c62d4f18cd3855c96f213ba29c89bce9d0f31  # yamllint disable-line rule:line-length
+        image: ghcr.io/ai-cfia/nachet-classifier-trainer@sha256:9cf078711c45f17830b1a61106115b8d4ead9bb7dc247027d3a0fe78ecf2abcf  # yamllint disable-line rule:line-length
         imagePullPolicy: IfNotPresent
         command:
           - python
@@ -344,7 +344,7 @@ spec:
         volumeMounts:
           - name: training-storage
             mountPath: /runs
-            subPath: nachet/detector-training/runs
+            subPath: nachet/classifier-training/runs
             readOnly: true
           - name: tmp
             mountPath: /tmp

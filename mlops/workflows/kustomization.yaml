@@ -5,6 +5,7 @@ kind: Kustomization
 namespace: argo-workflows
 
 resources:
+  - classifier-training-workflow-template.yaml
   - detector-training-workflow-template.yaml
   - example-workflow-template.yaml
 
