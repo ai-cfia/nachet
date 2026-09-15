@@ -41,8 +41,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Run focused tests
-        run: python -m unittest discover -s tests -p "test_*.py" -v
-
+      # The image build runs the full test suite with the runtime dependencies.
       - name: Check Python syntax
         run: python -m compileall -q src tests
