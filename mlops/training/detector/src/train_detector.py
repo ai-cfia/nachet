@@ -216,6 +216,10 @@ def collate_fn(
     return data
 
 
+# Transformers 5.16.1 with Accelerate 1.12.0 trims nested detection labels on a
+# final partial batch.
+# Remove this override once upstream preserves each image's annotations:
+# https://github.com/huggingface/transformers/issues/43388
 class DetectionEvaluationTrainer(Trainer):
     """Keep per-image annotations intact during evaluation gathering."""
 
