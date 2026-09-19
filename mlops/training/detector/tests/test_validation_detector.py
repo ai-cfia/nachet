@@ -10,8 +10,6 @@ from unittest.mock import patch
 
 import matplotlib
 
-matplotlib.use("Agg")
-
 from PIL import Image
 import pandas as pd
 import torch
@@ -26,6 +24,8 @@ from validation_detector import (
     ValidationResults,
     get_parser,
 )
+
+matplotlib.use("Agg")
 
 
 class ValidationDetectorTest(unittest.TestCase):

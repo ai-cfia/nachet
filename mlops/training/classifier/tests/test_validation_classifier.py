@@ -8,8 +8,6 @@ import unittest
 
 import matplotlib
 
-matplotlib.use("Agg")
-
 from PIL import Image
 import numpy as np
 import torch
@@ -32,6 +30,8 @@ from validation_classifier import (  # noqa: E402
     process_model,
 )
 sys.path.pop(0)
+
+matplotlib.use("Agg")
 
 
 class ValidationClassifierTest(unittest.TestCase):
