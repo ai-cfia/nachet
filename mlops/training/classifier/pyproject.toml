@@ -7,8 +7,11 @@ dependencies = [
     "accelerate==1.12.0",
     "boto3==1.40.55",
     "datasets==4.4.1",
+    "matplotlib==3.10.7",
     "mlflow-skinny==3.7.0",
+    "numpy==2.5.3",
     "scikit-learn==1.7.2",
+    "tqdm==4.70.1",
     "transformers==5.16.1",
 ]
 
