@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Migrated from nachet-model-ccds/nachetmodel/ValidationDetector.py at 228af71.
 """Object detection model validation module.
 
 This module provides tools for validating object detection models against
@@ -9,12 +10,12 @@ Can be used both programmatically and via CLI.
 
 Example:
     # CLI usage
-    python nachetmodel/ValidationDetector.py \
+    python -m validation_detector \
         --config_path validation_config.yaml \
         --model_path models/checkpoint-8060
 
     # Programmatic usage
-    from nachetmodel.ValidationDetector import ValidationConfig, DetectorValidator
+    from validation_detector import ValidationConfig, DetectorValidator
 
     config = ValidationConfig(
         config_path=Path("validation_config.yaml"),
@@ -49,7 +50,7 @@ from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from tqdm.auto import tqdm
 from transformers import AutoImageProcessor, AutoModelForObjectDetection
 
-from nachetmodel.coco_to_hf_dataset import load_coco_as_hf_dataset
+from coco_to_hf_dataset import load_coco_as_hf_dataset
 
 
 # =============================================================================
@@ -319,7 +320,8 @@ class ValidationResults:
             [
                 {"subclass": cat, "false_negatives": count}
                 for cat, count in fn_by_subclass.items()
-            ]
+            ],
+            columns=["subclass", "false_negatives"],
         ).sort_values("false_negatives", ascending=False)
         fn_df.to_csv(output_dir / "false_negatives_by_subclass.csv", index=False)
 
@@ -468,6 +470,7 @@ def convert_normalized_to_original(
 def build_label_mapping(
     categories: dict[int, str],
     model_label2id: dict[str, int],
+    single_category: bool = False,
 ) -> dict[int, int]:
     """
     Build mapping from dataset category IDs to model label IDs.
@@ -478,10 +481,19 @@ def build_label_mapping(
     Args:
         categories: Dataset category_id -> name mapping.
         model_label2id: Model's label -> id mapping.
+        single_category: Whether validation explicitly requests a one-class head.
 
     Returns:
         Mapping from dataset category_id to model label_id.
     """
+    # Keep species IDs for reports; a one-class head maps every species to its
+    # sole output. A multiclass head must recognize each species explicitly.
+    if single_category and len(model_label2id) != 1:
+        raise ValueError("single_category requires a model with exactly one label")
+    if len(model_label2id) == 1:
+        model_id = next(iter(model_label2id.values()))
+        return {cat_id: model_id for cat_id in categories}
+
     coco_to_model = {}
     for cat_id, cat_name in categories.items():
         # Try exact match first
@@ -497,9 +509,9 @@ def build_label_mapping(
             if clean_name in model_label2id:
                 coco_to_model[cat_id] = model_label2id[clean_name]
             else:
-                print(f"Warning: Category '{cat_name}' not found in model labels")
-                # Default to single-class detector assumption (label 0)
-                coco_to_model[cat_id] = 0
+                raise ValueError(
+                    f"Category {cat_name!r} not found in model labels"
+                )
 
     return coco_to_model
 
@@ -684,6 +696,7 @@ class DetectorValidator:
         self._images: Optional[dict] = None
         self._annotations_by_image: Optional[dict] = None
         self._coco_to_model: Optional[dict[int, int]] = None
+        self._single_category = False
         self._image_square_size: int = 640
 
         # Preprocessing
@@ -750,6 +763,7 @@ class DetectorValidator:
         sources, include_classes, single_category, single_category_name = (
             load_validation_config(self.config.config_path)
         )
+        self._single_category = single_category
 
         print(f"Loading validation data from {len(sources)} source(s)...")
         print(f"Single category mode: {single_category} ({single_category_name})")
@@ -758,6 +772,13 @@ class DetectorValidator:
 
         # First pass: collect all unique category names across all sources
         # to build a unified category mapping
+        # Match the shared loader's case-insensitive filter while keeping the
+        # original spelling as the species identity used by reports.
+        include_classes_lower = (
+            {name.lower() for name in include_classes}
+            if include_classes is not None
+            else None
+        )
         all_category_names = set()
         for source in sources:
             with open(source.json_path) as f:
@@ -768,7 +789,10 @@ class DetectorValidator:
             for cat in coco["categories"]:
                 cat_name = cat["name"]
                 # Apply include_classes filter if specified
-                if include_classes is None or cat_name in include_classes:
+                if (
+                    include_classes_lower is None
+                    or cat_name.lower() in include_classes_lower
+                ):
                     all_category_names.add(cat_name)
 
         # Build unified category mapping: name -> unified_id
@@ -786,23 +810,26 @@ class DetectorValidator:
                 coco_json_path=source.json_path,
                 train_val_split=1.0,  # All data to validation split
                 seed=42,
-                single_category=single_category,
+                # Preserve species identities for per-subclass reports. Only
+                # the model-label mapping may collapse them to one output.
+                single_category=False,
                 single_category_name=single_category_name,
                 reject_list_path=source.reject_list,
                 include_classes=include_classes,
+                fail_on_missing_images=True,
             )
             print(f"  Loaded {len(ds['validation'])} images")
 
             # Build remapping from source category IDs to unified IDs
             source_id_to_unified = {}
             for source_id, cat_name in source_cats.items():
-                if cat_name in unified_name_to_id:
-                    source_id_to_unified[source_id] = unified_name_to_id[cat_name]
+                source_id_to_unified[source_id] = unified_name_to_id[cat_name]
 
-            # Remap category IDs in the dataset
+            # Every source ID must have a known meaning in the combined data.
+            # Reusing an unmapped number could assign an annotation to another species.
             def remap_categories(example):
                 remapped_cats = [
-                    source_id_to_unified.get(cat_id, cat_id)
+                    source_id_to_unified[cat_id]
                     for cat_id in example["objects"]["category"]
                 ]
                 example["objects"]["category"] = remapped_cats
@@ -875,7 +902,7 @@ class DetectorValidator:
         # Build label mapping
         if self._model is not None:
             self._coco_to_model = build_label_mapping(
-                self._categories, self._model.config.label2id
+                self._categories, self._model.config.label2id, self._single_category
             )
 
     def run(self) -> ValidationResults:
@@ -894,7 +921,7 @@ class DetectorValidator:
         # Build label mapping after both are loaded
         if self._coco_to_model is None:
             self._coco_to_model = build_label_mapping(
-                self._categories, self._model.config.label2id
+                self._categories, self._model.config.label2id, self._single_category
             )
 
         # Run inference
@@ -999,8 +1026,9 @@ class DetectorValidator:
                 else:
                     img_path = img_info["source_dir"] / img_info["file_name"]
                     if not img_path.exists():
-                        print(f"Warning: Image not found: {img_path}")
-                        continue
+                        # Skipping this image would leave its ID paired with a
+                        # later image's prediction, corrupting downstream metrics.
+                        raise FileNotFoundError(f"Validation image not found: {img_path}")
                     image = Image.open(img_path).convert("RGB")
 
                 orig_w, orig_h = image.size
@@ -1073,7 +1101,8 @@ class DetectorValidator:
                 for ann in gt_anns:
                     x, y, w, h = ann["bbox"]
                     gt_boxes.append([x, y, x + w, y + h])
-                    gt_labels.append(self._coco_to_model.get(ann["category_id"], 0))
+                    # A missing mapping must not silently become a seed label.
+                    gt_labels.append(self._coco_to_model[ann["category_id"]])
 
                 target_dict = {
                     "boxes": (
@@ -1369,7 +1398,10 @@ class DetectorValidator:
                         cat_id = cid
                         break
 
-                model_label_id = self._coco_to_model.get(cat_id, 0) if cat_id else 0
+                # Category zero is a real species ID, not a missing category.
+                model_label_id = (
+                    self._coco_to_model.get(cat_id, 0) if cat_id is not None else 0
+                )
 
                 # Compute per-class mAP
                 if is_single_class:
@@ -2265,10 +2297,7 @@ def plot_false_negative_examples(
     rows = (num_examples + cols - 1) // cols
 
     fig, axes = plt.subplots(rows, cols, figsize=(7 * cols, 6 * rows))
-    if num_examples == 1:
-        axes = [axes]
-    else:
-        axes = axes.flatten()
+    axes = np.asarray(axes).reshape(-1)
 
     for i, (ax, (cls, fn_info)) in enumerate(
         zip(axes[:num_examples], examples_to_show)
@@ -2385,7 +2414,8 @@ def plot_false_negatives_by_subclass(
         [
             {"subclass": cat, "false_negatives": count}
             for cat, count in fn_subclass_counts.items()
-        ]
+        ],
+        columns=["subclass", "false_negatives"],
     ).sort_values("false_negatives", ascending=False)
 
     if len(fn_subclass_df) == 0:
@@ -2437,7 +2467,8 @@ def plot_false_positives_by_subclass(
         [
             {"subclass": cat, "false_positives": count}
             for cat, count in fp_subclass_counts.items()
-        ]
+        ],
+        columns=["subclass", "false_positives"],
     ).sort_values("false_positives", ascending=False)
 
     if len(fp_subclass_df) == 0:
@@ -2561,16 +2592,12 @@ def plot_class_examples(
     cols = 3
     rows = (len(sample_ids) + cols - 1) // cols
     fig, axes = plt.subplots(rows, cols, figsize=(6 * cols, 5 * rows))
-    if len(sample_ids) == 1:
-        axes = [axes]
-    else:
-        axes = axes.flatten()
+    axes = np.asarray(axes).reshape(-1)
 
     for ax, img_id in zip(axes[: len(sample_ids)], sample_ids):
         img_info = images[img_id]
         img_idx = image_ids.index(img_id)
         pred = predictions[img_idx]
-        target = targets[img_idx]
         anns = annotations_by_image.get(img_id, [])
 
         # Load image
@@ -2600,7 +2627,7 @@ def plot_class_examples(
                 ax.text(
                     x,
                     y - 3,
-                    f"GT",
+                    "GT",
                     fontsize=7,
                     color="green",
                     fontweight="bold",
@@ -2720,8 +2747,6 @@ def plot_worst_iou_examples(
             continue
 
         pred_boxes = pred["boxes"].numpy()
-        pred_scores = pred["scores"].numpy()
-
         if len(pred_boxes) == 0:
             # No predictions - this is bad localization (0 IoU effectively)
             image_iou_stats.append(
@@ -2790,10 +2815,7 @@ def plot_worst_iou_examples(
     cols = 3
     rows = (len(worst_examples) + cols - 1) // cols
     fig, axes = plt.subplots(rows, cols, figsize=(6 * cols, 5 * rows))
-    if len(worst_examples) == 1:
-        axes = [axes]
-    else:
-        axes = axes.flatten()
+    axes = np.asarray(axes).reshape(-1)
 
     for ax, stats in zip(axes[: len(worst_examples)], worst_examples):
         img_id = stats["img_id"]
@@ -2927,10 +2949,7 @@ def plot_false_positive_examples(
     rows = (num_examples + cols - 1) // cols
 
     fig, axes = plt.subplots(rows, cols, figsize=(7 * cols, 6 * rows))
-    if num_examples == 1:
-        axes = [axes]
-    else:
-        axes = axes.flatten()
+    axes = np.asarray(axes).reshape(-1)
 
     for i, (ax, (cls, fn_info)) in enumerate(
         zip(axes[:num_examples], examples_to_show)
@@ -3096,7 +3115,7 @@ def plot_sample_predictions(
     cols = 3
     rows = (len(sample_ids) + cols - 1) // cols
     fig, axes = plt.subplots(rows, cols, figsize=(18, 6 * rows))
-    axes = axes.flatten() if len(sample_ids) > 1 else [axes]
+    axes = np.asarray(axes).reshape(-1)
 
     for ax, img_id in zip(axes[: len(sample_ids)], sample_ids):
         img_info = images[img_id]
@@ -3187,10 +3206,10 @@ def plot_confidence_distribution(
     show: bool = False,
 ) -> plt.Figure:
     """Plot histogram of prediction confidence scores."""
-    all_scores = torch.cat([p["scores"] for p in predictions if len(p["scores"]) > 0])
-
-    if len(all_scores) == 0:
+    scores = [p["scores"] for p in predictions if len(p["scores"]) > 0]
+    if not scores:
         return None
+    all_scores = torch.cat(scores)
 
     fig, ax = plt.subplots(figsize=(10, 4))
     ax.hist(all_scores.numpy(), bins=50, edgecolor="black", alpha=0.7)
