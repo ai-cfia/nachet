@@ -147,8 +147,12 @@ train_classifier.main()
             )
             previous_step = max(int(p.name.split("-")[1]) for p in checkpoints)
             self.assertGreater(latest_step, previous_step)
-            self.assertEqual(len(client.search_runs([experiment])), 1)
-            run = client.get_run(run_id)
+            runs = client.search_runs([experiment])
+            self.assertEqual(len(runs), 3)
+            attempts = [run for run in runs if run.data.tags.get("mlflow.parentRunId") == run_id]
+            self.assertEqual(len(attempts), 2)
+            self.assertEqual({run.info.status for run in attempts}, {"FAILED", "FINISHED"})
+            run = next(run for run in attempts if run.info.status == "FINISHED")
             self.assertIn("eval_accuracy", run.data.metrics)
             self.assertEqual(
                 run.data.params["train_val_split"],
