@@ -1,31 +1,39 @@
-import torch
+#!/usr/bin/env python
+# Migrated from nachet-model-ccds/nachetmodel/ModelEvaluator.py at
+# 228af71adde722d7a484fe6738f5189c9ad48922.
+"""Evaluate image-classification checkpoints on ImageFolder data."""
+
+import argparse
+from datetime import datetime
+import json
 import os
+import re
+
+import matplotlib.pyplot as plt
 import numpy as np
-from transformers import Swinv2ForImageClassification, AutoImageProcessor
-from torchvision.transforms import (
-    Normalize,
-    Lambda,
-    Resize,
-    CenterCrop,
-    ToTensor,
-    Compose,
-)
-from torchvision import datasets
 from sklearn.metrics import (
-    confusion_matrix,
     ConfusionMatrixDisplay,
     classification_report,
+    confusion_matrix,
+)
+import torch
+from torch.utils.data import DataLoader
+from torchvision import datasets
+from torchvision.transforms import (
+    CenterCrop,
+    Compose,
+    Lambda,
+    Normalize,
+    Resize,
+    ToTensor,
 )
 from tqdm import tqdm
-import json
-import matplotlib.pyplot as plt
-import argparse
-import re
-from datetime import datetime
+from transformers import AutoImageProcessor, AutoModelForImageClassification
 
 
 def load_model(checkpoint_path):
-    model = Swinv2ForImageClassification.from_pretrained(checkpoint_path)
+    """Load whichever image-classification architecture the checkpoint declares."""
+    model = AutoModelForImageClassification.from_pretrained(checkpoint_path)
     model.eval()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
@@ -33,6 +41,7 @@ def load_model(checkpoint_path):
 
 
 def load_image_processor(checkpoint_path):
+    """Build the historical evaluator's checkpoint-driven preprocessing."""
     image_processor = AutoImageProcessor.from_pretrained(checkpoint_path)
     if "shortest_edge" in image_processor.size:
         size = image_processor.size["shortest_edge"]
@@ -42,30 +51,89 @@ def load_image_processor(checkpoint_path):
         Normalize(mean=image_processor.image_mean, std=image_processor.image_std)
         if hasattr(image_processor, "image_mean")
         and hasattr(image_processor, "image_std")
-        else Lambda(lambda x: x)
+        else Lambda(lambda tensor: tensor)
     )
-    transform = Compose(
-        [
-            Resize(size),
-            CenterCrop(size),
-            ToTensor(),
-            normalize,
-        ]
-    )
-    return transform
+    return Compose([Resize(size), CenterCrop(size), ToTensor(), normalize])
 
 
 def load_test_data(test_dir, transform, batch_size):
     test_dataset = datasets.ImageFolder(root=test_dir, transform=transform)
-    test_loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=batch_size, shuffle=False
-    )
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     class_to_idx = test_dataset.class_to_idx
     idx_to_class = {v: k for k, v in class_to_idx.items()}
     return test_loader, idx_to_class
 
 
-def evaluate_model(model, device, test_loader):
+def normalize_class_name(class_name):
+    """Normalize class names without discarding meaningful words."""
+    return " ".join(class_name.replace("_", " ").split()).casefold()
+
+
+def model_idx_to_class(model):
+    """Return every output label in logit order, rejecting incomplete configs."""
+    try:
+        labels = {int(index): name for index, name in model.config.id2label.items()}
+    except (AttributeError, TypeError, ValueError) as error:
+        raise ValueError("model id2label keys must be integer-like") from error
+
+    expected_ids = list(range(model.config.num_labels))
+    if sorted(labels) != expected_ids:
+        raise ValueError(
+            "model id2label IDs must cover every logit from 0 through "
+            f"{model.config.num_labels - 1}; found {sorted(labels)}"
+        )
+    if any(not isinstance(name, str) or not name.strip() for name in labels.values()):
+        raise ValueError("model id2label values must be non-empty strings")
+    return labels
+
+
+def map_dataset_class_ids(dataset_idx_to_class, model_labels):
+    """Map ImageFolder IDs into model-logit IDs using normalized class names.
+
+    The model label space remains complete. Only ground-truth IDs are translated;
+    prediction argmax still sees every output logit.
+    """
+    model_ids_by_name = {}
+    for model_id, class_name in model_labels.items():
+        normalized = normalize_class_name(class_name)
+        if normalized in model_ids_by_name:
+            other_id = model_ids_by_name[normalized]
+            raise ValueError(
+                "ambiguous model class names after normalization: "
+                f"{model_labels[other_id]!r} and {class_name!r}"
+            )
+        model_ids_by_name[normalized] = model_id
+
+    # Distinct folders that normalize to one name cannot be assigned safely.
+    dataset_ids_by_name = {}
+    for dataset_id, class_name in dataset_idx_to_class.items():
+        normalized = normalize_class_name(class_name)
+        if normalized in dataset_ids_by_name:
+            other_id = dataset_ids_by_name[normalized]
+            raise ValueError(
+                "ambiguous external-validation class names after normalization: "
+                f"{dataset_idx_to_class[other_id]!r} and {class_name!r}"
+            )
+        dataset_ids_by_name[normalized] = dataset_id
+
+    unknown = sorted(
+        class_name
+        for class_name in dataset_idx_to_class.values()
+        if normalize_class_name(class_name) not in model_ids_by_name
+    )
+    if unknown:
+        raise ValueError(
+            "external-validation classes are missing from model id2label: "
+            + ", ".join(repr(name) for name in unknown)
+        )
+
+    return {
+        dataset_id: model_ids_by_name[normalize_class_name(class_name)]
+        for dataset_id, class_name in dataset_idx_to_class.items()
+    }
+
+
+def evaluate_model(model, device, test_loader, dataset_id_to_model_id=None):
     total_samples = len(test_loader.dataset)
     progress_bar = tqdm(total=total_samples, desc="Test set inference", unit="samples")
     predictions = []
@@ -73,20 +141,31 @@ def evaluate_model(model, device, test_loader):
     with torch.no_grad():
         for images, labels in test_loader:
             images = images.to(device)
-            labels = labels.to(device)
             outputs = model(images)
             _, preds = torch.max(outputs.logits, 1)
             predictions.extend(preds.cpu().numpy())
-            y_test.extend(labels.cpu().numpy())
+
+            # ImageFolder assigns alphabetical local IDs. Translate only the
+            # references so predictions remain in the model's full label space.
+            if dataset_id_to_model_id is None:
+                y_test.extend(labels.numpy())
+            else:
+                y_test.extend(
+                    dataset_id_to_model_id[int(label)] for label in labels
+                )
             progress_bar.update(len(images))
+    progress_bar.close()
     return np.array(predictions), np.array(y_test)
 
 
 def save_confusion_matrix(y_test, predictions, idx_to_class, output_path, figsize):
-    cm_normalized = confusion_matrix(y_test, predictions, normalize="true")
+    label_ids = list(range(len(idx_to_class)))
+    cm_normalized = confusion_matrix(
+        y_test, predictions, labels=label_ids, normalize="true"
+    )
     disp_normalized = ConfusionMatrixDisplay(
         cm_normalized,
-        display_labels=[idx_to_class[i] for i in range(len(idx_to_class))],
+        display_labels=[idx_to_class[i] for i in label_ids],
     )
     fig, ax = plt.subplots(figsize=(figsize, figsize))
     disp_normalized.plot(ax=ax)
@@ -94,23 +173,32 @@ def save_confusion_matrix(y_test, predictions, idx_to_class, output_path, figsiz
     plt.xticks(rotation=80)
     plt.tight_layout()  # Ensure the whole plot is saved without cropping
     plt.savefig(output_path)
+    plt.close(fig)
 
 
 def save_classification_report(y_test, predictions, idx_to_class, output_path):
+    label_ids = list(range(len(idx_to_class)))
     report = classification_report(
         y_test,
         predictions,
-        target_names=[idx_to_class[i] for i in range(len(idx_to_class))],
+        labels=label_ids,
+        target_names=[idx_to_class[i] for i in label_ids],
         output_dict=True,
+        zero_division=0,
     )
-    # Calculate accuracy for each class without reusing confusion_matrix
+    # Preserve the historical per-class accuracy field. An absent model-only
+    # class has no correct references, so its accuracy is explicitly zero.
     correct_predictions = y_test == predictions
     for i, class_name in idx_to_class.items():
         class_indices = y_test == i
-        class_accuracy = correct_predictions[class_indices].sum() / class_indices.sum()
-        report[class_name]["accuracy"] = class_accuracy
-    with open(output_path, "w") as f:
-        json.dump(report, f, indent=4)
+        support = int(class_indices.sum())
+        report[class_name]["accuracy"] = (
+            float(correct_predictions[class_indices].sum() / support)
+            if support
+            else 0.0
+        )
+    with open(output_path, "w") as file:
+        json.dump(report, file, indent=4)
 
 
 def is_valid_checkpoint_dir(dirname, chkstart, chkend):
@@ -124,8 +212,20 @@ def is_valid_checkpoint_dir(dirname, chkstart, chkend):
 def process_model(model_path, test_data_path, output_path, batch_size, figsize, test_name):
     model, device = load_model(model_path)
     transform = load_image_processor(model_path)
-    test_loader, idx_to_class = load_test_data(test_data_path, transform, batch_size)
-    predictions, y_test = evaluate_model(model, device, test_loader)
+    test_loader, dataset_idx_to_class = load_test_data(
+        test_data_path, transform, batch_size
+    )
+
+    # The model owns output IDs; folder ordering only identifies the incoming
+    # ground truth and must never redefine or subset the classifier head.
+    idx_to_class = model_idx_to_class(model)
+    dataset_id_to_model_id = map_dataset_class_ids(
+        dataset_idx_to_class, idx_to_class
+    )
+    predictions, y_test = evaluate_model(
+        model, device, test_loader, dataset_id_to_model_id
+    )
+    os.makedirs(output_path, exist_ok=True)
     print("Saving evaluation results to {}...".format(output_path))
     save_confusion_matrix(
         y_test,
@@ -144,7 +244,7 @@ def process_model(model_path, test_data_path, output_path, batch_size, figsize, 
         torch.cuda.empty_cache()
 
 
-def main():
+def get_parser():
     parser = argparse.ArgumentParser(description="Evaluate model checkpoints.")
     parser.add_argument(
         "--model_path",
@@ -188,7 +288,11 @@ def main():
     parser.add_argument(
         "--test_name", type=str, default="", help="Name of the test dataset."
     )
-    args = parser.parse_args()
+    return parser
+
+
+def main():
+    args = get_parser().parse_args()
 
     print("{}: Starting evaluation...".format(datetime.now()))
 
