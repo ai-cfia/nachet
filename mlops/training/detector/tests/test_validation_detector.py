@@ -1,4 +1,4 @@
-"""Migration checks for the original detector evaluator and its reports."""
+"""Regression tests for detector evaluation and reports."""
 
 from dataclasses import fields
 import json
@@ -29,9 +29,123 @@ matplotlib.use("Agg")
 
 
 class ValidationDetectorTest(unittest.TestCase):
+    def test_mapping_checks_evaluated_boxes_not_unused_metadata(self):
+        validator = object.__new__(DetectorValidator)
+        validator._categories = {0: "A", 1: "Unused"}
+        validator._single_category = False
+        validator._model = SimpleNamespace(config=SimpleNamespace(
+            label2id={"A": 1, "B": 0}
+        ))
+        validator._annotations_by_image = {"image": [{"category_id": 0}]}
+        validator._map_evaluated_labels()
+        self.assertEqual(validator._coco_to_model, {0: 1})
+        self.assertEqual(validator._categories, {0: "A", 1: "Unused"})
+        validator._annotations_by_image["image"].append({"category_id": 1})
+        with self.assertRaisesRegex(ValueError, "Unused.*not found"):
+            validator._map_evaluated_labels()
+        validator._model.config.label2id = {"seed": 0}
+        validator._map_evaluated_labels()
+        self.assertEqual(validator._coco_to_model, {0: 0, 1: 0})
+
+    def test_mixed_species_map_preserves_false_positive_penalties(self):
+        validator = object.__new__(DetectorValidator)
+        validator._categories = {0: "A", 1: "B"}
+        validator._annotations_by_image = {"image": [
+            {"category_id": 0, "bbox": [0, 0, 10, 10]},
+            {"category_id": 1, "bbox": [20, 0, 10, 10]},
+        ]}
+        a, b, background = [0., 0., 10., 10.], [20., 0., 30., 10.], [40., 0., 50., 10.]
+        # Earlier false positives reduce AP; other species' correct boxes do not.
+        cases = [
+            ("A first", [a, b], [.9, .8], "B", 1., 1.),
+            ("B first", [a, b], [.8, .9], "A", 1., 1.),
+            ("background", [background, a, b], [.99, .9, .8], "B", .5, 1.),
+            ("duplicate other species", [a, a, b], [.99, .9, .8], "B", .5, 1.),
+            ("duplicate other species, reversed", [b, b, a], [.99, .9, .8], "A", .5, 1.),
+            ("missed target", [a], [.9], "B", 0., 0.),
+            ("no detections", [], [], "B", 0., 0.),
+            # At IoU .5 this matches A; at .55-.95 it remains a false positive.
+            ("partial other match", [[0., 0., 5., 10.], b], [.9, .8], "B", .55, 1.),
+        ]
+        for name, boxes, scores, species, expected_ap, expected_ar in cases:
+            with self.subTest(name=name):
+                predictions = [{
+                    "boxes": torch.tensor(boxes).reshape(-1, 4),
+                    "scores": torch.tensor(scores),
+                    "labels": torch.zeros(len(boxes), dtype=torch.int64),
+                }]
+                actual = validator._compute_per_subclass_map(predictions, ["image"], species)
+                self.assertAlmostEqual(actual[0], expected_ap, places=6)
+                self.assertAlmostEqual(actual[1], expected_ar, places=6)
+
+        # Species scoring must not alter the inputs to overall mAP.
+        predictions = [{"boxes": torch.tensor([a, b]),
+                        "scores": torch.tensor([.9, .8]), "labels": torch.tensor([0, 0])}]
+        targets = [{"boxes": torch.tensor([a, b]), "labels": torch.tensor([0, 0])}]
+        validator._compute_per_subclass_map(predictions, ["image"], "A")
+        validator._compute_per_subclass_map(predictions, ["image"], "B")
+        overall = validator._compute_overall_metrics(predictions, targets)
+        self.assertAlmostEqual(float(overall["map"]), 1.)
+
+        # When boxes overlap, COCO prefers the evaluated species over ignored GT.
+        validator._annotations_by_image["image"][1]["bbox"] = [0, 0, 10, 10]
+        predictions[0]["boxes"] = torch.tensor([a])
+        predictions[0]["scores"] = torch.tensor([.9])
+        predictions[0]["labels"] = torch.tensor([0])
+        for species in ("A", "B"):
+            self.assertAlmostEqual(
+                validator._compute_per_subclass_map(predictions, ["image"], species)[0], 1.
+            )
+
+    def test_duplicate_target_reduces_ap_before_full_recall(self):
+        validator = object.__new__(DetectorValidator)
+        validator._categories = {0: "A", 1: "B"}
+        validator._annotations_by_image = {"image": [
+            {"category_id": 0, "bbox": [0, 0, 10, 10]},
+            {"category_id": 0, "bbox": [20, 0, 10, 10]},
+            {"category_id": 1, "bbox": [40, 0, 10, 10]},
+        ]}
+        # A duplicate after full recall may leave interpolated AP unchanged.
+        # Put it before the second A detection so its penalty is measurable.
+        predictions = [{
+            "boxes": torch.tensor([
+                [0., 0., 10., 10.], [0., 0., 10., 10.],
+                [20., 0., 30., 10.], [40., 0., 50., 10.],
+            ]),
+            "scores": torch.tensor([.99, .9, .8, .7]),
+            "labels": torch.zeros(4, dtype=torch.int64),
+        }]
+        ap, ar = validator._compute_per_subclass_map(predictions, ["image"], "A")
+        self.assertAlmostEqual(ap, (51 + 50 * 2 / 3) / 101, places=6)
+        self.assertAlmostEqual(ar, 1.)
+        predictions = [{key: value[[0, 2, 3]] for key, value in predictions[0].items()}]
+        ap, ar = validator._compute_per_subclass_map(predictions, ["image"], "A")
+        self.assertAlmostEqual(ap, 1.)
+        self.assertAlmostEqual(ar, 1.)
+
+    def test_single_species_map_matches_overall_coco_metric(self):
+        validator = object.__new__(DetectorValidator)
+        validator._categories = {0: "A"}
+        validator._annotations_by_image = {
+            "one": [{"category_id": 0, "bbox": [0, 0, 10, 10]}],
+            "two": [{"category_id": 0, "bbox": [0, 0, 10, 10]}],
+        }
+        # Include a false positive and an image with no detections as controls.
+        predictions = [
+            {"boxes": torch.tensor([[20., 0., 30., 10.], [0., 0., 10., 10.]]),
+             "scores": torch.tensor([.9, .8]), "labels": torch.tensor([0, 0])},
+            {"boxes": torch.empty((0, 4)), "scores": torch.empty(0),
+             "labels": torch.empty(0, dtype=torch.int64)},
+        ]
+        targets = [{"boxes": torch.tensor([[0., 0., 10., 10.]]),
+                    "labels": torch.tensor([0])} for _ in range(2)]
+        overall = validator._compute_overall_metrics(predictions, targets)
+        actual = validator._compute_per_subclass_map(predictions, ["one", "two"], "A")
+        self.assertAlmostEqual(actual[0], float(overall["map"]), places=6)
+        self.assertAlmostEqual(actual[1], float(overall["mar_100"]), places=6)
+
     def test_required_images_fail_but_explicit_exclusions_and_training_still_work(self):
-        # Keep one valid image so the default loader can demonstrate its old
-        # skip behavior, then exercise the evaluator's stricter entry point.
+        # Training skips missing images; evaluation must reject them.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             Image.new("RGB", (20, 20)).save(root / "present.png")
@@ -96,8 +210,7 @@ class ValidationDetectorTest(unittest.TestCase):
             )
 
     def test_dataset_category_zero_uses_its_mapped_model_metrics(self):
-        # Dataset A is category zero but model output one. Its report must use
-        # output one's metrics even when the model's label ordering differs.
+        # Dataset class 0 maps to model class 1, so its report must use class 1.
         validator = object.__new__(DetectorValidator)
         validator.config = SimpleNamespace(iou_threshold=0.5)
         validator._model = SimpleNamespace(
@@ -129,8 +242,7 @@ class ValidationDetectorTest(unittest.TestCase):
         self.assertAlmostEqual(metrics[0].mar, 0.7)
 
     def test_single_category_loading_preserves_species_for_reports(self):
-        # The original loader collapsed B to zero, which the report then called
-        # A. Keep both source species IDs while mapping both to the seed output.
+        # A and B share the seed output but need separate species reports.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             Image.new("RGB", (20, 20)).save(root / "seed.png")
@@ -184,8 +296,7 @@ class ValidationDetectorTest(unittest.TestCase):
             )
             self.assertEqual(validator._coco_to_model, {0: 0, 1: 0})
 
-            # The loader accepts case-insensitive filters. Its first pass must
-            # retain the same species instead of silently reusing a local ID.
+            # Both loading passes must accept the same case-insensitive filter.
             filtered_config = json.loads(config_path.read_text())
             filtered_config["include_classes"] = ["a", "B"]
             config_path.write_text(json.dumps(filtered_config))
@@ -199,8 +310,7 @@ class ValidationDetectorTest(unittest.TestCase):
                 [1, 0],
             )
 
-            # A malformed source mapping must fail rather than reuse an ID that
-            # may name a different species in the combined dataset.
+            # Source IDs without a mapping must fail.
             source_data, _ = validation.load_coco_as_hf_dataset(
                 str(root), str(root / "annotations.json"), train_val_split=1.0
             )
@@ -296,8 +406,8 @@ class ValidationDetectorTest(unittest.TestCase):
                 pad_size={"height": 64, "width": 64},
             ).save_pretrained(checkpoint)
             weights_before = (checkpoint / "model.safetensors").read_bytes()
-            # Retain the tiny model's predictions so confidence and threshold
-            # charts run too. These random weights are not a quality benchmark.
+            # Keep low-confidence predictions to exercise all report plots.
+            # Random weights test report generation, not model quality.
             output = root / "reports"
             validator = DetectorValidator(
                 ValidationConfig(
@@ -333,8 +443,7 @@ class ValidationDetectorTest(unittest.TestCase):
             ):
                 with self.subTest(report=name):
                     self.assertGreater((output / name).stat().st_size, 0)
-            # These notebook-facing plots are not all called by run(), but must
-            # also keep working when their subplot grid has just one image.
+            # Exercise the plots that run() does not call with a single image.
             self.assertIsNotNone(
                 validation.plot_class_examples(
                     result.to_dataframe(),
@@ -366,7 +475,7 @@ class ValidationDetectorTest(unittest.TestCase):
                     examples_per_class=1,
                 )
             )
-            # A broken mapping must stop evaluation, not manufacture class zero.
+            # Missing mappings must not default to class 0.
             validator._coco_to_model = {}
             with self.assertRaises(KeyError):
                 validator._run_inference()

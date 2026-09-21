@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Migrated from ai-cfia/nachet-model-ccds at commit
+# Adapted from ai-cfia/nachet-model-ccds at commit
 # 601219b7. Original path: nachetmodel/coco_to_hf_dataset.py
 # Evaluation rejects missing images; training skips them by default.
 """Convert COCO format dataset to HuggingFace Datasets format."""

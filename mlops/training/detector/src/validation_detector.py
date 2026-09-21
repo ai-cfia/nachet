@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Migrated from nachet-model-ccds/nachetmodel/ValidationDetector.py at 228af71.
+# Adapted from nachet-model-ccds/nachetmodel/ValidationDetector.py at 228af71.
 """Object detection model validation module.
 
 This module provides tools for validating object detection models against
@@ -29,6 +29,8 @@ Example:
 from __future__ import annotations
 
 import argparse
+from contextlib import redirect_stdout
+import io
 import json
 from collections import defaultdict
 from dataclasses import dataclass, asdict
@@ -45,12 +47,26 @@ import seaborn as sns
 import torch
 import yaml
 from PIL import Image
+from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
 from datasets import Dataset, concatenate_datasets
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from tqdm.auto import tqdm
 from transformers import AutoImageProcessor, AutoModelForObjectDetection
 
 from coco_to_hf_dataset import load_coco_as_hf_dataset
+
+
+class _SubclassCOCOeval(COCOeval):
+    """Exclude other species' matches without treating their boxes as crowds."""
+
+    def _prepare(self):
+        super()._prepare()
+        # COCO resets ignore flags during preparation. Restore the species mask
+        # afterward, retaining ordinary one-to-one matching at each IoU threshold.
+        for ground_truths in self._gts.values():
+            for annotation in ground_truths:
+                annotation["ignore"] |= annotation["other_species"]
 
 
 # =============================================================================
@@ -486,8 +502,7 @@ def build_label_mapping(
     Returns:
         Mapping from dataset category_id to model label_id.
     """
-    # Keep species IDs for reports; a one-class head maps every species to its
-    # sole output. A multiclass head must recognize each species explicitly.
+    # A one-class detector uses the same model label for every species.
     if single_category and len(model_label2id) != 1:
         raise ValueError("single_category requires a model with exactly one label")
     if len(model_label2id) == 1:
@@ -770,10 +785,7 @@ class DetectorValidator:
         if include_classes:
             print(f"Filtering to {len(include_classes)} classes")
 
-        # First pass: collect all unique category names across all sources
-        # to build a unified category mapping
-        # Match the shared loader's case-insensitive filter while keeping the
-        # original spelling as the species identity used by reports.
+        # Use the loader's case-insensitive filter; keep original names for reports.
         include_classes_lower = (
             {name.lower() for name in include_classes}
             if include_classes is not None
@@ -810,8 +822,7 @@ class DetectorValidator:
                 coco_json_path=source.json_path,
                 train_val_split=1.0,  # All data to validation split
                 seed=42,
-                # Preserve species identities for per-subclass reports. Only
-                # the model-label mapping may collapse them to one output.
+                # Keep species labels for reports, even when the model only predicts seed.
                 single_category=False,
                 single_category_name=single_category_name,
                 reject_list_path=source.reject_list,
@@ -825,8 +836,7 @@ class DetectorValidator:
             for source_id, cat_name in source_cats.items():
                 source_id_to_unified[source_id] = unified_name_to_id[cat_name]
 
-            # Every source ID must have a known meaning in the combined data.
-            # Reusing an unmapped number could assign an annotation to another species.
+            # Source IDs can refer to different species in each dataset.
             def remap_categories(example):
                 remapped_cats = [
                     source_id_to_unified[cat_id]
@@ -901,9 +911,20 @@ class DetectorValidator:
 
         # Build label mapping
         if self._model is not None:
-            self._coco_to_model = build_label_mapping(
-                self._categories, self._model.config.label2id, self._single_category
-            )
+            self._map_evaluated_labels()
+
+    def _map_evaluated_labels(self) -> None:
+        # Unused COCO categories do not need a matching model label.
+        used_ids = {
+            ann["category_id"]
+            for annotations in self._annotations_by_image.values()
+            for ann in annotations
+        }
+        self._coco_to_model = build_label_mapping(
+            {cid: self._categories[cid] for cid in used_ids},
+            self._model.config.label2id,
+            self._single_category,
+        )
 
     def run(self) -> ValidationResults:
         """
@@ -920,9 +941,7 @@ class DetectorValidator:
 
         # Build label mapping after both are loaded
         if self._coco_to_model is None:
-            self._coco_to_model = build_label_mapping(
-                self._categories, self._model.config.label2id, self._single_category
-            )
+            self._map_evaluated_labels()
 
         # Run inference
         predictions, targets, image_ids = self._run_inference()
@@ -1026,8 +1045,7 @@ class DetectorValidator:
                 else:
                     img_path = img_info["source_dir"] / img_info["file_name"]
                     if not img_path.exists():
-                        # Skipping this image would leave its ID paired with a
-                        # later image's prediction, corrupting downstream metrics.
+                        # Skipping here would misalign image IDs and predictions.
                         raise FileNotFoundError(f"Validation image not found: {img_path}")
                     image = Image.open(img_path).convert("RGB")
 
@@ -1101,7 +1119,6 @@ class DetectorValidator:
                 for ann in gt_anns:
                     x, y, w, h = ann["bbox"]
                     gt_boxes.append([x, y, x + w, y + h])
-                    # A missing mapping must not silently become a seed label.
                     gt_labels.append(self._coco_to_model[ann["category_id"]])
 
                 target_dict = {
@@ -1152,8 +1169,10 @@ class DetectorValidator:
         """
         Compute mAP and mAR for a single subclass.
 
-        Filters ground truth to only boxes of this subclass, then evaluates
-        all predictions against this filtered GT using torchmetrics.
+        Evaluates each species independently, using only images containing it.
+        At each IoU threshold, matches to other species are ignored. Unmatched
+        detections remain false positives. These are localization scores, not
+        species classification scores, and do not combine into overall mAP.
 
         Args:
             predictions: List of prediction dicts per image.
@@ -1173,59 +1192,59 @@ class DetectorValidator:
         if cat_id is None:
             return 0.0, 0.0
 
-        # Build filtered predictions and targets for this subclass only
-        filtered_preds = []
-        filtered_targets = []
+        images = []
+        annotations = []
+        detections = []
 
         for img_idx, img_id in enumerate(image_ids):
             pred = predictions[img_idx]
             gt_anns = self._annotations_by_image.get(img_id, [])
 
-            # Filter GT to only this subclass
-            subclass_gt_boxes = []
+            if not any(ann["category_id"] == cat_id for ann in gt_anns):
+                continue
+
+            images.append({"id": img_idx})
+            # Keep other species' boxes so their matched detections can be ignored.
             for ann in gt_anns:
-                if ann["category_id"] == cat_id:
-                    x, y, w, h = ann["bbox"]
-                    subclass_gt_boxes.append([x, y, x + w, y + h])
+                x, y, w, h = ann["bbox"]
+                annotations.append({
+                    "id": len(annotations) + 1,
+                    "image_id": img_idx,
+                    "category_id": 0,
+                    "bbox": [x, y, w, h],
+                    "area": w * h,
+                    "iscrowd": 0,
+                    "other_species": ann["category_id"] != cat_id,
+                })
+            for box, score in zip(pred["boxes"].tolist(), pred["scores"].tolist()):
+                x1, y1, x2, y2 = box
+                detections.append({
+                    "image_id": img_idx,
+                    "category_id": 0,
+                    "bbox": [x1, y1, x2 - x1, y2 - y1],
+                    "score": score,
+                })
 
-            # Only include images that have GT for this subclass
-            if len(subclass_gt_boxes) > 0:
-                # Use all predictions (single-class detector outputs class 0 for all)
-                filtered_preds.append(
-                    {
-                        "boxes": pred["boxes"],
-                        "scores": pred["scores"],
-                        "labels": torch.zeros(len(pred["boxes"]), dtype=torch.int64),
-                    }
-                )
-                filtered_targets.append(
-                    {
-                        "boxes": torch.tensor(subclass_gt_boxes, dtype=torch.float32),
-                        "labels": torch.zeros(
-                            len(subclass_gt_boxes), dtype=torch.int64
-                        ),
-                    }
-                )
-
-        if len(filtered_preds) == 0:
+        if not images or not detections:
             return 0.0, 0.0
 
-        # Compute mAP using torchmetrics
-        metric = MeanAveragePrecision(box_format="xyxy", iou_type="bbox")
-        for pred, target in zip(filtered_preds, filtered_targets):
-            metric.update([pred], [target])
-
-        result = metric.compute()
-        class_map = float(result["map"])
-        class_mar = float(result["mar_100"])
-
-        # Handle NaN
-        if np.isnan(class_map):
-            class_map = 0.0
-        if np.isnan(class_mar):
-            class_mar = 0.0
-
-        return class_map, class_mar
+        # COCO's 100-detection limit includes matches to ignored species.
+        with redirect_stdout(io.StringIO()):
+            ground_truth = COCO()
+            ground_truth.dataset = {
+                "info": {},
+                "images": images,
+                "annotations": annotations,
+                "categories": [{"id": 0, "name": "seed"}],
+            }
+            ground_truth.createIndex()
+            metric = _SubclassCOCOeval(
+                ground_truth, ground_truth.loadRes(detections), "bbox"
+            )
+            metric.evaluate()
+            metric.accumulate()
+            metric.summarize()
+        return float(metric.stats[0]), float(metric.stats[8])
 
     def _compute_subclass_metrics(
         self,
@@ -1398,7 +1417,7 @@ class DetectorValidator:
                         cat_id = cid
                         break
 
-                # Category zero is a real species ID, not a missing category.
+                # Category ID 0 is valid.
                 model_label_id = (
                     self._coco_to_model.get(cat_id, 0) if cat_id is not None else 0
                 )
