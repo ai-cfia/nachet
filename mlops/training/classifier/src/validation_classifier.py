@@ -209,7 +209,9 @@ def evaluate_model(model, device, eval_loader, dataset_to_model_idx):
             logits = model(pixel_values=pixel_values).logits
             if logits.size(-1) != num_classes:
                 raise ValueError("Model logits do not match config.num_labels")
-            preds = logits.argmax(dim=-1)
+            # Use the same ranking for predictions and top-k; tied scores keep model-ID order.
+            ranked_ids = torch.argsort(logits, dim=-1, descending=True, stable=True)
+            preds = ranked_ids[:, 0]
             model_labels = torch.tensor(
                 [dataset_to_model_idx[label.item()] for label in dataset_labels],
                 device=device,
@@ -219,7 +221,7 @@ def evaluate_model(model, device, eval_loader, dataset_to_model_idx):
             all_labels.append(model_labels.cpu())
             for k in TOP_K_LIST:
                 if k <= num_classes:
-                    topk_indices = torch.topk(logits, k=k, dim=-1).indices
+                    topk_indices = ranked_ids[:, :k]
                     topk_correct[k] += (
                         (topk_indices == model_labels.unsqueeze(1)).any(dim=1).sum().item()
                     )
@@ -526,7 +528,6 @@ def save_precision_plot(cm, class_metrics, class_names, output_dir):
 
 def save_mispredictions_plot(all_preds, all_labels, class_metrics, class_names, valid_sample_indices, val_ds, processor, model, device, output_dir):
     """Show misclassified images with their three highest-scoring predictions."""
-    num_classes = len(class_names)
     misprediction_indices = np.where(all_preds != all_labels)[0]
     print(f"Total mispredictions: {len(misprediction_indices)} / {len(all_labels)} ({100 * len(misprediction_indices) / len(all_labels):.2f}%)")
     # Only classes present in the dataset have example images to display.
@@ -560,12 +561,12 @@ def save_mispredictions_plot(all_preds, all_labels, class_metrics, class_names, 
                 with torch.no_grad():
                     logits = model(**inputs).logits
                 probs = logits[0].softmax(-1).cpu()
-                topk = torch.topk(probs, k=min(3, num_classes))
+                # Keep caption ties in the same model-ID order as the reported predictions.
+                top_ids = torch.argsort(logits[0].cpu(), descending=True, stable=True)[:3]
                 true_class = class_names[all_labels[subset_idx]]
                 ax.imshow(image)
                 top3_str = "\n".join([
-                    f"{class_names[topk.indices[j]]}: {topk.values[j]:.2f}"
-                    for j in range(min(3, num_classes))
+                    f"{class_names[index]}: {probs[index]:.2f}" for index in top_ids
                 ])
                 caption = f"True: {true_class}\nPred: {top3_str}"
                 ax.set_title(caption, color="red", fontsize=8)

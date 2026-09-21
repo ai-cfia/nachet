@@ -94,6 +94,22 @@ class ClassifierEvaluationTest(unittest.TestCase):
         self.assertEqual(topk[3], 2)
         self.assertEqual(total, 2)
 
+    def test_tied_scores_use_one_ranking_for_predictions_and_top_k(self):
+        class TiedModel:
+            config = model_config(["Alpha", "Beta", "Gamma", "Delta", "Epsilon"]).config
+
+            def __call__(self, pixel_values):
+                return SimpleNamespace(logits=torch.zeros(5, 5))
+
+        batch = {"pixel_values": torch.zeros(5, 3, 4, 4), "labels": torch.arange(5)}
+        _, predictions, labels, topk, total = evaluator.evaluate_model(
+            TiedModel(), "cpu", [batch], dict(enumerate(range(5))),
+        )
+        np.testing.assert_array_equal(predictions, np.zeros(5, dtype=int))
+        self.assertEqual(topk, {1: 1, 3: 3, 5: 5})
+        self.assertEqual(topk[1], int((predictions == labels).sum()))
+        self.assertEqual(total, 5)
+
     def test_processor_override_and_parent_lookup(self):
         with tempfile.TemporaryDirectory() as temporary:
             parent = Path(temporary)
