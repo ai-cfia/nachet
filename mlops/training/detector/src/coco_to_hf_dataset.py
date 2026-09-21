@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-# Copied without behavioral changes from ai-cfia/nachet-model-ccds at commit
+# Adapted from ai-cfia/nachet-model-ccds at commit
 # 601219b7. Original path: nachetmodel/coco_to_hf_dataset.py
+# Evaluation rejects missing images; training skips them by default.
 """Convert COCO format dataset to HuggingFace Datasets format."""
 
 import json
@@ -19,6 +20,7 @@ def load_coco_as_hf_dataset(
     single_category_name: str = "seed",
     reject_list_path: str | None = None,
     include_classes: set[str] | None = None,
+    fail_on_missing_images: bool = False,
 ) -> tuple[DatasetDict, dict]:
     """
     Convert COCO annotations to HuggingFace Dataset format.
@@ -34,6 +36,8 @@ def load_coco_as_hf_dataset(
         include_classes: Optional set of class names to include (case-insensitive).
             If provided, only annotations for these classes are kept.
             Images with no remaining annotations are dropped.
+        fail_on_missing_images: Raise for missing images instead of skipping them.
+            Files explicitly excluded by the reject list are still skipped.
 
     Returns:
         Tuple of (DatasetDict with 'train' and 'validation' splits, categories dict)
@@ -117,6 +121,9 @@ def load_coco_as_hf_dataset(
             continue
 
         if not image_path.exists():
+            # Fail on missing evaluation images so checkpoint scores use the same dataset.
+            if fail_on_missing_images:
+                raise FileNotFoundError(f"Required image not found: {image_path}")
             missing_images.append(str(image_path))
             continue
 
