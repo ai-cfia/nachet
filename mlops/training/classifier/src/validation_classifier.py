@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-"""Run the June 2026 classifier-validation notebook as a batch CLI.
+"""Evaluate classifier checkpoints with the June 2026 notebook's reports.
 
-This is a behavior-preserving extraction, not a correction of its metric or
-class-matching edge cases. The eight saved notebook artifacts are retained.
+Adapted from 4.10_js_classifier_validation_v2_6seed_101spp_20260625.ipynb.
 """
 
 import argparse
@@ -37,16 +36,22 @@ def strip_class_prefix(name):
 
 
 def normalize_class_name(name):
-    """Match names exactly as the notebook did after this normalization."""
+    """Normalize case, separators and surrounding whitespace for label matching."""
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError(f"Class name must be a nonempty string: {name!r}")
     return name.strip().lower().replace("_", " ").replace("-", " ")
 
 
 def find_processor_path(model_path, processor_path=None):
-    """Look for preprocessing metadata in the notebook's candidate order."""
-    candidates = []
-    if processor_path:
-        candidates.append(Path(processor_path))
-    candidates.extend([Path(model_path), Path(model_path).parent, Path(model_path).parent.parent])
+    """Find the processor in the checkpoint or its two parent directories."""
+    # A bad override must not silently select another processor.
+    if processor_path is not None:
+        path = Path(processor_path)
+        if (path / "preprocessor_config.json").exists():
+            return path
+        raise FileNotFoundError(f"No preprocessor_config.json found in {path}")
+    model_path = Path(model_path)
+    candidates = [model_path, model_path.parent, model_path.parent.parent]
     for path in candidates:
         if (path / "preprocessor_config.json").exists():
             return path
@@ -67,7 +72,8 @@ def load_model(model_path, processor_path=None):
 
 def load_test_data(test_data_path):
     """Load an imagefolder's single train split and preserve folder label order."""
-    ds = load_dataset("imagefolder", data_dir=str(test_data_path))
+    # ImageFolder otherwise omits labels when the input has only one species.
+    ds = load_dataset("imagefolder", data_dir=str(test_data_path), drop_labels=False)
     val_ds = ds["train"]
     raw_class_names = val_ds.features["label"].names
     dataset_class_names = [strip_class_prefix(name) for name in raw_class_names]
@@ -79,23 +85,42 @@ def load_test_data(test_data_path):
 
 
 def match_classes(val_ds, dataset_class_names, model):
-    """Filter to common classes using the notebook's name and index mappings."""
-    model_id2label = model.config.id2label
-    model_class_names = [model_id2label[i] for i in range(len(model_id2label))]
+    """Map folder labels to model IDs and report skipped dataset classes."""
+    model_id2label = {int(index): name for index, name in model.config.id2label.items()}
+    num_model_classes = model.config.num_labels
+    if sorted(model_id2label) != list(range(num_model_classes)):
+        raise ValueError("Model id2label must cover every output ID from 0 to num_labels - 1")
+    model_class_names = [model_id2label[i] for i in range(num_model_classes)]
     num_dataset_classes = len(dataset_class_names)
     print(f"\nModel Classes ({len(model_class_names)}): {model_class_names}")
     print(f"Dataset Classes ({num_dataset_classes}): {dataset_class_names}")
 
-    # Normalized names act as lookup keys; duplicate keys keep the last index,
-    # matching the notebook's behavior for this baseline extraction.
-    dataset_normalized = {
-        normalize_class_name(name): i for i, name in enumerate(dataset_class_names)
-    }
-    model_normalized = {
-        normalize_class_name(name): i for i, name in enumerate(model_class_names)
-    }
+    # Report original folder names when normalization makes two labels identical.
+    raw_names = dataset_class_names
+    if hasattr(val_ds, "features"):
+        raw_names = val_ds.features["label"].names
+    dataset_normalized = {}
+    for index, name in enumerate(dataset_class_names):
+        key = normalize_class_name(name)
+        if key in dataset_normalized:
+            other = dataset_normalized[key]
+            raise ValueError(
+                "Dataset class names collide after prefix stripping and normalization: "
+                f"{raw_names[other]!r} ({dataset_class_names[other]!r}) and "
+                f"{raw_names[index]!r} ({name!r})"
+            )
+        dataset_normalized[key] = index
+    model_normalized = {}
+    for index, name in enumerate(model_class_names):
+        key = normalize_class_name(name)
+        if key in model_normalized:
+            other = model_normalized[key]
+            raise ValueError(
+                "Model class names collide after normalization: "
+                f"{model_class_names[other]!r} and {name!r}"
+            )
+        model_normalized[key] = index
     dataset_to_model_idx = {}
-    model_to_dataset_idx = {}
     matched_classes = []
     dataset_only_classes = []
     model_only_classes = []
@@ -103,7 +128,6 @@ def match_classes(val_ds, dataset_class_names, model):
         if ds_name in model_normalized:
             model_idx = model_normalized[ds_name]
             dataset_to_model_idx[ds_idx] = model_idx
-            model_to_dataset_idx[model_idx] = ds_idx
             matched_classes.append(dataset_class_names[ds_idx])
         else:
             dataset_only_classes.append(dataset_class_names[ds_idx])
@@ -118,8 +142,7 @@ def match_classes(val_ds, dataset_class_names, model):
     if len(matched_classes) == 0:
         raise ValueError("No matching classes between dataset and model!")
 
-    # The subset keeps original image order, so a prediction position can be
-    # traced back to the source image in the misprediction report.
+    # Keep source indices for the misprediction image grid.
     matched_dataset_indices = list(dataset_to_model_idx.keys())
     print(f"\nFiltering dataset to {len(matched_classes)} matched classes...")
     valid_sample_indices = []
@@ -127,16 +150,23 @@ def match_classes(val_ds, dataset_class_names, model):
         if val_ds[idx]["label"] in matched_dataset_indices:
             valid_sample_indices.append(idx)
     print(f"Samples after filtering: {len(valid_sample_indices):,} / {len(val_ds):,}")
+    if not valid_sample_indices:
+        raise ValueError("No validation samples remain after matching dataset classes")
     matching = {
         "matched_classes": matched_classes,
         "dataset_only_classes": dataset_only_classes,
         "model_only_classes": model_only_classes,
+        "evaluated_samples": len(valid_sample_indices),
+        "skipped_samples": len(val_ds) - len(valid_sample_indices),
     }
     return dataset_to_model_idx, valid_sample_indices, matching
 
 
 def make_eval_loader(val_ds, valid_sample_indices, processor, batch_size, num_workers):
     """Apply the saved processor to RGB images in a filtered DataLoader."""
+    if num_workers and torch.multiprocessing.get_start_method() != "fork":
+        raise ValueError("num_workers > 0 requires fork; use --num_workers 0 with spawn")
+
     def transform_batch(examples):
         images = examples["image"]
         if not isinstance(images, list):
@@ -164,14 +194,8 @@ def make_eval_loader(val_ds, valid_sample_indices, processor, batch_size, num_wo
 
 
 def evaluate_model(model, device, eval_loader, dataset_to_model_idx):
-    """Restrict logits to matched classes before prediction and top-k scoring."""
-    num_classes = len(dataset_to_model_idx)
-    dataset_idx_to_matched_idx = {
-        ds_idx: i for i, ds_idx in enumerate(sorted(dataset_to_model_idx.keys()))
-    }
-    model_idx_to_matched_idx = {}
-    for ds_idx, model_idx in dataset_to_model_idx.items():
-        model_idx_to_matched_idx[model_idx] = dataset_idx_to_matched_idx[ds_idx]
+    """Score full model logits against references mapped to model IDs."""
+    num_classes = model.config.num_labels
 
     all_logits = []
     all_preds = []
@@ -183,24 +207,23 @@ def evaluate_model(model, device, eval_loader, dataset_to_model_idx):
             pixel_values = batch["pixel_values"].to(device)
             dataset_labels = batch["labels"]
             logits = model(pixel_values=pixel_values).logits
-            matched_logits = torch.zeros(logits.size(0), num_classes, device=logits.device)
-            for model_idx, matched_idx in model_idx_to_matched_idx.items():
-                matched_logits[:, matched_idx] = logits[:, model_idx]
-            preds = matched_logits.argmax(dim=-1)
-            matched_labels = torch.tensor(
-                [dataset_idx_to_matched_idx[label.item()] for label in dataset_labels],
+            if logits.size(-1) != num_classes:
+                raise ValueError("Model logits do not match config.num_labels")
+            preds = logits.argmax(dim=-1)
+            model_labels = torch.tensor(
+                [dataset_to_model_idx[label.item()] for label in dataset_labels],
                 device=device,
             )
-            all_logits.append(matched_logits.cpu())
+            all_logits.append(logits.cpu())
             all_preds.append(preds.cpu())
-            all_labels.append(matched_labels.cpu())
+            all_labels.append(model_labels.cpu())
             for k in TOP_K_LIST:
                 if k <= num_classes:
-                    topk_indices = torch.topk(matched_logits, k=k, dim=-1).indices
+                    topk_indices = torch.topk(logits, k=k, dim=-1).indices
                     topk_correct[k] += (
-                        (topk_indices == matched_labels.unsqueeze(1)).any(dim=1).sum().item()
+                        (topk_indices == model_labels.unsqueeze(1)).any(dim=1).sum().item()
                     )
-            total += matched_labels.size(0)
+            total += model_labels.size(0)
     print(f"Inference complete. Total samples: {total}")
     return (
         torch.cat(all_logits),
@@ -208,7 +231,6 @@ def evaluate_model(model, device, eval_loader, dataset_to_model_idx):
         torch.cat(all_labels).numpy(),
         topk_correct,
         total,
-        model_idx_to_matched_idx,
     )
 
 
@@ -242,7 +264,7 @@ def save_sample_images(val_ds, dataset_class_names, output_dir):
 
 
 def save_metrics(all_logits, all_preds, all_labels, topk_correct, total, class_names, matching, output_dir):
-    """Print the notebook's scores and save its nested JSON report."""
+    """Score all model classes, with null AUC where OvR is undefined."""
     num_classes = len(class_names)
     all_probs = torch.softmax(all_logits, dim=-1).numpy()
     print("--- Top-K Accuracy ---")
@@ -250,24 +272,31 @@ def save_metrics(all_logits, all_preds, all_labels, topk_correct, total, class_n
         if k <= num_classes:
             print(f"Top-{k} accuracy: {topk_correct[k] / total:.4f}")
     print("\n--- ROC AUC (One-vs-Rest) ---")
-    try:
-        roc_auc_macro = roc_auc_score(all_labels, all_probs, multi_class="ovr", average="macro")
-        print(f"ROC AUC (macro):    {roc_auc_macro:.4f}")
-        roc_auc_weighted = roc_auc_score(all_labels, all_probs, multi_class="ovr", average="weighted")
-        print(f"ROC AUC (weighted): {roc_auc_weighted:.4f}")
-        roc_auc_per_class = roc_auc_score(all_labels, all_probs, multi_class="ovr", average=None)
-        roc_auc_dict = {
-            class_names[i]: float(roc_auc_per_class[i]) for i in range(num_classes)
-        }
-    except ValueError as error:
-        print(f"ROC AUC calculation failed: {error}")
+    # AUC needs both positive and negative examples for each class.
+    roc_auc_per_class = []
+    supports = np.bincount(all_labels, minlength=num_classes)
+    for index in range(num_classes):
+        binary_labels = all_labels == index
+        if not binary_labels.any() or binary_labels.all():
+            roc_auc_per_class.append(None)
+        else:
+            roc_auc_per_class.append(float(roc_auc_score(binary_labels, all_probs[:, index])))
+    defined_indices = [index for index, auc in enumerate(roc_auc_per_class) if auc is not None]
+    if defined_indices:
+        defined_aucs = [roc_auc_per_class[index] for index in defined_indices]
+        roc_auc_macro = float(np.mean(defined_aucs))
+        roc_auc_weighted = float(np.average(defined_aucs, weights=supports[defined_indices]))
+        print(f"ROC AUC (macro):    {roc_auc_macro:.4f} ({len(defined_indices)}/{num_classes} classes defined)")
+        print(f"ROC AUC (weighted): {roc_auc_weighted:.4f} ({len(defined_indices)}/{num_classes} classes defined)")
+    else:
         roc_auc_macro = None
         roc_auc_weighted = None
-        roc_auc_per_class = None
-        roc_auc_dict = {}
+        print("ROC AUC (macro/weighted): undefined (no class has both positives and negatives)")
+    roc_auc_dict = {name: roc_auc_per_class[index] for index, name in enumerate(class_names)}
 
     report = classification_report(
-        all_labels, all_preds, target_names=class_names, output_dict=True, zero_division=0
+        all_labels, all_preds, labels=list(range(num_classes)),
+        target_names=class_names, output_dict=True, zero_division=0,
     )
     report_df = pd.DataFrame(report).T
     print(report_df.round(4))
@@ -285,23 +314,26 @@ def save_metrics(all_logits, all_preds, all_labels, topk_correct, total, class_n
     }
     metrics_path = output_dir / "validation_metrics.json"
     with metrics_path.open("w") as stream:
-        json.dump(metrics, stream, indent=2)
+        json.dump(metrics, stream, indent=2, allow_nan=False)
     print(f"\nMetrics saved to {metrics_path}")
-    return report_df, roc_auc_per_class
+    return report_df, roc_auc_per_class if defined_indices else None
 
 
 def save_per_class_report(report_df, roc_auc_per_class, all_labels, all_preds, class_names, output_dir, figsize):
-    """Build the notebook's class heatmap, summary, CSV and confusion chart."""
+    """Save per-class metrics, their heatmap and the normalized confusion matrix."""
     num_classes = len(class_names)
-    class_metrics = report_df.drop(["accuracy", "macro avg", "weighted avg"], errors="ignore").copy()
+    class_metrics = report_df.loc[class_names].copy()
     cm = confusion_matrix(all_labels, all_preds, labels=list(range(num_classes)))
-    per_class_acc = cm.diagonal() / cm.sum(axis=1)
+    # Match classification_report's zero_division=0 for classes with no samples.
+    per_class_acc = np.divide(
+        cm.diagonal(), cm.sum(axis=1), out=np.zeros(num_classes, dtype=float),
+        where=cm.sum(axis=1) != 0,
+    )
     class_metrics["accuracy"] = per_class_acc
     if roc_auc_per_class is not None:
-        class_metrics["roc_auc"] = roc_auc_per_class
+        class_metrics["roc_auc"] = pd.to_numeric(pd.Series(roc_auc_per_class, index=class_names))
 
-    # Colors emphasize the 0.80-to-1.00 range, while the annotations retain
-    # the original metric values from the notebook.
+    # Scale colors above 0.80; annotations show the actual scores.
     fig, ax = plt.subplots(figsize=(12, max(10, len(class_metrics) * 0.4)))
     heatmap_cols = ["precision", "recall", "f1-score", "accuracy"]
     if roc_auc_per_class is not None:
@@ -327,11 +359,13 @@ def save_per_class_report(report_df, roc_auc_per_class, all_labels, all_preds, c
         summary_metrics.append("roc_auc")
     for metric in summary_metrics:
         metric_title = metric.replace("-", " ").replace("_", " ").title()
-        print(f"Mean {metric_title}:   {class_metrics[metric].mean():.4f}")
-        print(f"Median {metric_title}: {class_metrics[metric].median():.4f}")
-        print(f"Std {metric_title}:    {class_metrics[metric].std():.4f}")
-        print(f"Min {metric_title}:    {class_metrics[metric].min():.4f} ({class_metrics[metric].idxmin()})")
-        print(f"Max {metric_title}:    {class_metrics[metric].max():.4f} ({class_metrics[metric].idxmax()})")
+        defined = class_metrics[metric].dropna()
+        print(f"{metric_title}: {len(defined)}/{num_classes} classes with defined report values")
+        print(f"Mean {metric_title}:   {defined.mean():.4f}")
+        print(f"Median {metric_title}: {defined.median():.4f}")
+        print(f"Std {metric_title}:    {defined.std():.4f}")
+        print(f"Min {metric_title}:    {defined.min():.4f} ({defined.idxmin()})")
+        print(f"Max {metric_title}:    {defined.max():.4f} ({defined.idxmax()})")
         print()
     export_cols = ["precision", "recall", "f1-score", "support", "accuracy"]
     if roc_auc_per_class is not None:
@@ -339,9 +373,11 @@ def save_per_class_report(report_df, roc_auc_per_class, all_labels, all_preds, c
     class_metrics[export_cols].round(4).to_csv(output_dir / "per_class_metrics.csv")
     print(f"Saved per-class metrics to {output_dir / 'per_class_metrics.csv'}")
 
-    # A gray diagonal isolates correct classifications; red off-diagonal cells
-    # show the proportion of a true class predicted as another class.
-    cm_norm = cm.astype(float) / cm.sum(axis=1, keepdims=True)
+    # Keep correct predictions gray so classification errors stand out in red.
+    cm_norm = np.divide(
+        cm.astype(float), cm.sum(axis=1, keepdims=True),
+        out=np.zeros_like(cm, dtype=float), where=cm.sum(axis=1, keepdims=True) != 0,
+    )
     fig_size = max(figsize, num_classes * 0.5)
     fig, ax = plt.subplots(figsize=(fig_size, fig_size))
     colors_array = np.zeros((num_classes, num_classes, 3))
@@ -381,18 +417,24 @@ def save_tp_fn_plot(cm, class_names, output_dir):
     num_classes = len(class_names)
     per_class_tp = cm.diagonal()
     per_class_fn = cm.sum(axis=1) - cm.diagonal()
+    row_totals = per_class_tp + per_class_fn
+    recall = np.divide(per_class_tp, row_totals, out=np.zeros(num_classes, dtype=float), where=row_totals != 0)
+    fn_percent = np.divide(100 * per_class_fn, row_totals, out=np.zeros(num_classes, dtype=float), where=row_totals != 0)
     tp_fn_df = pd.DataFrame({
         "class": class_names,
         "TP": per_class_tp,
         "FN": per_class_fn,
-        "Total": per_class_tp + per_class_fn,
-        "recall": per_class_tp / (per_class_tp + per_class_fn),
-        "fn_percent": 100 * per_class_fn / (per_class_tp + per_class_fn),
+        "Total": row_totals,
+        "recall": recall,
+        "fn_percent": fn_percent,
     }).sort_values("class")
     fig, axes = plt.subplots(1, 2, figsize=(16, max(8, num_classes * 0.3)))
     ax1, ax2 = axes
     plot_df = tp_fn_df.sort_values("recall", ascending=False)
-    colors = ["tab:green" if r >= 0.8 else "tab:orange" if r >= 0.5 else "tab:red" for r in plot_df["recall"]]
+    colors = [
+        "tab:gray" if total == 0 else "tab:green" if r >= 0.8 else "tab:orange" if r >= 0.5 else "tab:red"
+        for r, total in zip(plot_df["recall"], plot_df["Total"])
+    ]
     bars = ax1.barh(plot_df["class"], plot_df["recall"], color=colors, alpha=0.8)
     ax1.set_xlabel("Recall (Per-Class Accuracy)", fontsize=12)
     ax1.set_ylabel("Class", fontsize=12)
@@ -403,11 +445,15 @@ def save_tp_fn_plot(cm, class_names, output_dir):
     ax1.axvline(x=overall_acc, color="blue", linestyle="--", linewidth=1, label=f"Overall Accuracy: {overall_acc:.3f}")
     ax1.legend(loc="lower right")
     ax1.tick_params(axis="y", labelsize=8)
-    for bar, val in zip(bars, plot_df["recall"]):
-        ax1.text(val + 0.01, bar.get_y() + bar.get_height() / 2, f"{val:.3f}", va="center", fontsize=7)
+    for bar, val, support in zip(bars, plot_df["recall"], plot_df["Total"]):
+        label = f"{val:.3f}" if support else "N/A"
+        ax1.text(val + 0.01, bar.get_y() + bar.get_height() / 2, label, va="center", fontsize=7)
 
     plot_df_fn = tp_fn_df.sort_values("fn_percent", ascending=True)
-    colors_fn = ["tab:red" if fn > 10 else "tab:orange" if fn > 5 else "tab:green" for fn in plot_df_fn["fn_percent"]]
+    colors_fn = [
+        "tab:gray" if total == 0 else "tab:red" if fn > 10 else "tab:orange" if fn > 5 else "tab:green"
+        for fn, total in zip(plot_df_fn["fn_percent"], plot_df_fn["Total"])
+    ]
     bars2 = ax2.barh(plot_df_fn["class"], plot_df_fn["fn_percent"], color=colors_fn, alpha=0.8)
     ax2.set_xlabel("False Negatives (%)", fontsize=12)
     ax2.set_ylabel("Class", fontsize=12)
@@ -415,8 +461,9 @@ def save_tp_fn_plot(cm, class_names, output_dir):
     ax2.set_xlim(0, max(plot_df_fn["fn_percent"]) + 5)
     ax2.tick_params(axis="y", labelsize=8)
     ax2.grid(False)
-    for bar, val in zip(bars2, plot_df_fn["fn_percent"]):
-        ax2.text(val + 0.3, bar.get_y() + bar.get_height() / 2, f"{val:.1f}%", va="center", fontsize=7)
+    for bar, val, support in zip(bars2, plot_df_fn["fn_percent"], plot_df_fn["Total"]):
+        label = f"{val:.1f}%" if support else "N/A"
+        ax2.text(val + 0.3, bar.get_y() + bar.get_height() / 2, label, va="center", fontsize=7)
     plt.tight_layout()
     fig.savefig(output_dir / "per_class_tp_fn_bar.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -428,11 +475,15 @@ def save_precision_plot(cm, class_metrics, class_names, output_dir):
     num_classes = len(class_names)
     per_class_fp = cm.sum(axis=0) - cm.diagonal()
     per_class_total_preds = cm.sum(axis=0)
-    fp_percent = 100 * per_class_fp / per_class_total_preds
+    fp_percent = np.divide(
+        100 * per_class_fp, per_class_total_preds,
+        out=np.zeros(num_classes, dtype=float), where=per_class_total_preds != 0,
+    )
     precision_df = pd.DataFrame({
         "class": class_names,
         "precision": class_metrics["precision"].values,
         "false_positives": per_class_fp,
+        "total_predictions": per_class_total_preds,
         "fp_percent": fp_percent,
     })
     fig, axes = plt.subplots(1, 2, figsize=(16, max(8, num_classes * 0.3)))
@@ -453,31 +504,37 @@ def save_precision_plot(cm, class_metrics, class_names, output_dir):
         ax1.text(val + 0.01, bar.get_y() + bar.get_height() / 2, f"{val:.2f}", va="center", fontsize=7)
 
     plot_df_fp = precision_df.sort_values("fp_percent", ascending=True)
-    colors_fp = ["tab:red" if fp > 10 else "tab:orange" if fp > 5 else "tab:green" for fp in plot_df_fp["fp_percent"]]
+    colors_fp = [
+        "tab:gray" if total == 0 else "tab:red" if fp > 10 else "tab:orange" if fp > 5 else "tab:green"
+        for fp, total in zip(plot_df_fp["fp_percent"], plot_df_fp["total_predictions"])
+    ]
     bars2 = ax2.barh(plot_df_fp["class"], plot_df_fp["fp_percent"], color=colors_fp, alpha=0.8)
     ax2.set_xlabel("False Positives (%)", fontsize=12)
     ax2.set_ylabel("Class", fontsize=12)
     ax2.set_xlim(0, max(plot_df_fp["fp_percent"]) + 5)
-    ax2.set_title("False Positive Rate per Class (Worst on Top)", fontsize=14)
+    ax2.set_title("False Positives Among Predictions (Worst on Top)", fontsize=14)
     ax2.tick_params(axis="y", labelsize=8)
     ax2.grid(False)
-    for bar, val in zip(bars2, plot_df_fp["fp_percent"]):
-        ax2.text(val + 0.3, bar.get_y() + bar.get_height() / 2, f"{val:.1f}%", va="center", fontsize=7)
+    for bar, val, total in zip(bars2, plot_df_fp["fp_percent"], plot_df_fp["total_predictions"]):
+        label = f"{val:.1f}%" if total else "N/A"
+        ax2.text(val + 0.3, bar.get_y() + bar.get_height() / 2, label, va="center", fontsize=7)
     plt.tight_layout()
     fig.savefig(output_dir / "per_class_precision_bar.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
     print(f"\nSaved to {output_dir / 'per_class_precision_bar.png'}")
 
 
-def save_mispredictions_plot(all_preds, all_labels, class_metrics, class_names, valid_sample_indices, val_ds, processor, model, device, model_idx_to_matched_idx, output_dir):
-    """Re-run selected wrong images for the notebook's qualitative top-three view."""
+def save_mispredictions_plot(all_preds, all_labels, class_metrics, class_names, valid_sample_indices, val_ds, processor, model, device, output_dir):
+    """Show misclassified images with their three highest-scoring predictions."""
     num_classes = len(class_names)
     misprediction_indices = np.where(all_preds != all_labels)[0]
     print(f"Total mispredictions: {len(misprediction_indices)} / {len(all_labels)} ({100 * len(misprediction_indices) / len(all_labels):.2f}%)")
+    # Only classes present in the dataset have example images to display.
+    supported_metrics = class_metrics.loc[class_metrics["support"] > 0]
     worst_classes_by_metric = {}
     for metric in ["precision", "recall", "f1-score", "accuracy"]:
-        worst_classes_by_metric[metric] = class_metrics[metric].idxmin()
-        print(f"Lowest {metric}: {worst_classes_by_metric[metric]} ({class_metrics[metric].min():.3f})")
+        worst_classes_by_metric[metric] = supported_metrics[metric].idxmin()
+        print(f"Lowest {metric}: {worst_classes_by_metric[metric]} ({supported_metrics[metric].min():.3f})")
     samples_per_metric = 4
     all_samples = {}
     for metric, cls_name in worst_classes_by_metric.items():
@@ -502,10 +559,7 @@ def save_mispredictions_plot(all_preds, all_labels, class_metrics, class_names, 
                 inputs = processor(images=image, return_tensors="pt").to(device)
                 with torch.no_grad():
                     logits = model(**inputs).logits
-                matched_logits = torch.zeros(num_classes, device=logits.device)
-                for model_idx, matched_idx in model_idx_to_matched_idx.items():
-                    matched_logits[matched_idx] = logits[0, model_idx]
-                probs = matched_logits.softmax(-1).cpu()
+                probs = logits[0].softmax(-1).cpu()
                 topk = torch.topk(probs, k=min(3, num_classes))
                 true_class = class_names[all_labels[subset_idx]]
                 ax.imshow(image)
@@ -527,7 +581,7 @@ def save_mispredictions_plot(all_preds, all_labels, class_metrics, class_names, 
 
 
 def process_model(model_path, test_data_path, output_path, batch_size, figsize, test_name, processor_path, num_workers):
-    """Process one checkpoint and write the eight notebook artifacts."""
+    """Evaluate one checkpoint and save its reports."""
     model_path = Path(model_path)
     output_dir = Path(output_path) / test_name if test_name else Path(output_path)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -539,10 +593,11 @@ def process_model(model_path, test_data_path, output_path, batch_size, figsize, 
     processor, model, device = load_model(model_path, processor_path)
     dataset_to_model_idx, valid_sample_indices, matching = match_classes(val_ds, dataset_class_names, model)
     eval_loader = make_eval_loader(val_ds, valid_sample_indices, processor, batch_size, num_workers)
-    all_logits, all_preds, all_labels, topk_correct, total, model_idx_to_matched_idx = evaluate_model(
+    all_logits, all_preds, all_labels, topk_correct, total = evaluate_model(
         model, device, eval_loader, dataset_to_model_idx
     )
-    class_names = matching["matched_classes"]
+    # Include predictions for species absent from the evaluation dataset.
+    class_names = [model.config.id2label[index] for index in range(model.config.num_labels)]
     report_df, roc_auc_per_class = save_metrics(
         all_logits, all_preds, all_labels, topk_correct, total, class_names, matching, output_dir
     )
@@ -553,15 +608,15 @@ def process_model(model_path, test_data_path, output_path, batch_size, figsize, 
     save_precision_plot(cm, class_metrics, class_names, output_dir)
     save_mispredictions_plot(
         all_preds, all_labels, class_metrics, class_names, valid_sample_indices,
-        val_ds, processor, model, device, model_idx_to_matched_idx, output_dir,
+        val_ds, processor, model, device, output_dir,
     )
     with torch.no_grad():
         torch.cuda.empty_cache()
 
 
 def is_valid_checkpoint_dir(dirname, chkstart, chkend):
-    """Select checkpoint directories with the existing classifier CLI rule."""
-    match = re.match(r"checkpoint-(\d+)", dirname)
+    """Match checkpoint-N directories within the requested range."""
+    match = re.fullmatch(r"checkpoint-(\d+)", dirname)
     return bool(match and chkstart <= int(match.group(1)) <= chkend)
 
 
@@ -577,7 +632,7 @@ def get_parser():
     parser.add_argument("--figsize", type=int, default=12, help="Base size of the confusion matrix (notebook: 12).")
     parser.add_argument("--test_name", type=str, default="", help="Optional report subdirectory name.")
     parser.add_argument("--processor_path", type=str, default=None, help="Optional processor directory.")
-    parser.add_argument("--num_workers", type=int, default=4, help="DataLoader workers (notebook: 4).")
+    parser.add_argument("--num_workers", type=int, default=0, help="DataLoader workers (notebook: 4; default 0 works with spawn).")
     return parser
 
 
@@ -585,14 +640,23 @@ def main():
     args = get_parser().parse_args()
     print(f"{datetime.now()}: Starting evaluation...")
     if args.chkstart < 0 or args.chkend < 0:
-        raise ValueError("chkstart and chkend must be positive integers.")
+        raise ValueError("chkstart and chkend must be non-negative.")
+    if args.chkstart > args.chkend:
+        raise ValueError("chkstart must be no greater than chkend.")
+    if args.batch_size <= 0 or args.figsize <= 0 or args.num_workers < 0:
+        raise ValueError("batch_size and figsize must be positive; num_workers must be non-negative.")
     if args.parent == "true":
-        for subdir in Path(args.model_path).iterdir():
-            if subdir.is_dir() and is_valid_checkpoint_dir(subdir.name, args.chkstart, args.chkend):
-                process_model(
-                    subdir, args.test_data_path, Path(args.output_path) / subdir.name,
-                    args.batch_size, args.figsize, args.test_name, args.processor_path, args.num_workers,
-                )
+        checkpoints = [
+            subdir for subdir in Path(args.model_path).iterdir()
+            if subdir.is_dir() and is_valid_checkpoint_dir(subdir.name, args.chkstart, args.chkend)
+        ]
+        if not checkpoints:
+            raise ValueError("No checkpoint directories matched the requested range.")
+        for subdir in checkpoints:
+            process_model(
+                subdir, args.test_data_path, Path(args.output_path) / subdir.name,
+                args.batch_size, args.figsize, args.test_name, args.processor_path, args.num_workers,
+            )
     else:
         process_model(
             args.model_path, args.test_data_path, args.output_path,
