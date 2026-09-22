@@ -12,6 +12,12 @@ spec:
   serviceAccountName: argo-workflow
   arguments:
     parameters:
+      - name: external-validation-config
+        description: >-
+          External validation COCO configuration below inputs, evaluated after
+          checkpoint selection. Separate from the training holdout.
+          Leave as none to run training and checkpoint review only.
+        value: none
       - name: dataset-config
         description: >-
           Dataset configuration path below the prepared input directory.
@@ -122,6 +128,17 @@ spec:
                 - name: selected-checkpoint-3
                   value: >-
                     {{steps.review-checkpoints.outputs.parameters.selected-checkpoint-3}}
+        - - name: evaluate-checkpoints
+            template: evaluate-checkpoint
+            when: "{{=workflow.parameters['external-validation-config'] != 'none'}}"
+            withParam: >-
+              {{steps.check-checkpoint-selections.outputs.parameters.selected-checkpoints}}
+            arguments:
+              parameters:
+                - name: checkpoint
+                  value: "{{item}}"
+                - name: mlflow-run-id
+                  value: "{{steps.train.outputs.parameters.mlflow-run-id}}"
       outputs:
         parameters:
           - name: mlflow-run-id
@@ -209,6 +226,85 @@ spec:
             value: https://mlflow.inspection.alpha.canada.ca
           - name: HF_HOME
             value: /scratch/huggingface
+          - name: XDG_CACHE_HOME
+            value: /scratch/cache
+        resources:
+          requests:
+            nvidia.com/gpu: "1"
+          limits:
+            nvidia.com/gpu: "1"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+          - name: training-storage
+            mountPath: /inputs
+            subPath: nachet/detector-training/inputs
+            readOnly: true
+          - name: training-storage
+            mountPath: /runs
+            subPath: nachet/detector-training/runs
+          - name: scratch
+            mountPath: /scratch
+          - name: tmp
+            mountPath: /tmp
+
+    - name: evaluate-checkpoint
+      inputs:
+        parameters:
+          - name: checkpoint
+          - name: mlflow-run-id
+      retryStrategy:
+        limit: "2"
+        retryPolicy: OnFailure
+      synchronization:
+        mutexes:
+          - name: nachet-training-{{workflow.parameters.gpu-node}}
+      nodeSelector:
+        kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
+      container:
+        image: ghcr.io/ai-cfia/nachet-detector-trainer:main
+        imagePullPolicy: Always
+        workingDir: /inputs
+        command: [python, -m, evaluation_runtime]
+        args:
+          - --parent-run-id
+          - "{{inputs.parameters.mlflow-run-id}}"
+          - --checkpoint
+          - "{{inputs.parameters.checkpoint}}"
+          - --output-dir
+          - "/runs/{{workflow.name}}/evaluation/{{inputs.parameters.checkpoint}}"
+          - --
+          - python
+          - -m
+          - validation_detector
+          - --model_path
+          - "/runs/{{workflow.name}}/trainer-output/{{inputs.parameters.checkpoint}}"
+          - --config_path
+          - "/inputs/{{workflow.parameters.external-validation-config}}"
+          - --output_dir
+          - "/runs/{{workflow.name}}/evaluation/{{inputs.parameters.checkpoint}}/reports"
+        envFrom:
+          - secretRef:
+              name: nachet-training-s3
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.mlflow.svc.cluster.local:5000
+          - name: MLFLOW_EXPERIMENT_NAME
+            value: RT-DETR-v2_101spp_object-detector
+          - name: MLFLOW_PUBLIC_URL
+            value: https://mlflow.inspection.alpha.canada.ca
+          - name: HF_HOME
+            value: /scratch/huggingface
+          - name: MPLCONFIGDIR
+            value: /scratch/matplotlib
+          - name: MPLBACKEND
+            value: Agg
+          - name: HF_HUB_OFFLINE
+            value: "1"
           - name: XDG_CACHE_HOME
             value: /scratch/cache
         resources:

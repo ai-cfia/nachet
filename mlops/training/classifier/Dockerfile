@@ -17,7 +17,7 @@ RUN uv venv --system-site-packages .venv \
 ENV PATH="/opt/nachet-classifier/.venv/bin:$PATH"
 
 COPY classifier/src ./src
-COPY checkpoints.py training_runtime.py training_options.py /opt/
+COPY checkpoints.py training_runtime.py training_options.py evaluation_runtime.py /opt/
 
 # Fail the build if project dependencies shadow NVIDIA's CUDA-enabled PyTorch.
 RUN python -c "\
