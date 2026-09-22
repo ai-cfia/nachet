@@ -96,6 +96,32 @@ class ExportBoundaryTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             export_model.checkpoint_files(self.checkpoint)
 
+    def test_sharded_checkpoint_includes_each_weight_file_once(self):
+        (self.checkpoint / "model.safetensors").unlink()
+        index_file = self.checkpoint / "model.safetensors.index.json"
+        index_file.write_text(json.dumps({"weight_map": {
+            "layer.weight": "model-00002.safetensors",
+            "layer.bias": "model-00002.safetensors",
+            "embedding.weight": "model-00001.safetensors",
+        }}))
+        first_shard = self.checkpoint / "model-00001.safetensors"
+        second_shard = self.checkpoint / "model-00002.safetensors"
+        first_shard.write_bytes(b"first shard")
+        second_shard.write_bytes(b"second shard")
+
+        self.assertEqual(
+            export_model.checkpoint_files(self.checkpoint),
+            [self.checkpoint / "config.json", index_file, first_shard, second_shard],
+        )
+
+    def test_missing_weight_shard_is_rejected(self):
+        (self.checkpoint / "model.safetensors").unlink()
+        (self.checkpoint / "model.safetensors.index.json").write_text(
+            json.dumps({"weight_map": {"layer.weight": "missing.safetensors"}})
+        )
+        with self.assertRaises(FileNotFoundError):
+            export_model.checkpoint_files(self.checkpoint)
+
 
 class SwinExportTest(unittest.TestCase):
     def test_export_matches_pytorch_on_same_pixels(self):
