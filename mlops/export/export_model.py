@@ -1,191 +1,98 @@
-# https://huggingface.co/docs/huggingface_hub/en/guides/model-cards
-# https://huggingface.co/docs/huggingface_hub/en/guides/upload
+#!/usr/bin/env python
+"""Export a local checkpoint to ONNX without publishing or modifying it."""
+
+import argparse
+import json
 import os
-import subprocess
-from shutil import copytree
 from pathlib import Path
-from huggingface_hub import ModelCard, ModelCardData, HfApi, create_repo
-from dotenv import load_dotenv
-
-load_dotenv("./.env")
-
-HF_TOKEN = os.getenv("HF_TOKEN")
-HF_REPO = os.getenv("HF_REPO", "cfia-ai-lab/swin-large-patch4-window12-384-in22k-64spp-ft")
-MODEL_PATH = os.getenv("MODEL_PATH", "./my_model")
-EXPORTER_PATH="exporter"
-
-if not HF_TOKEN or not HF_REPO:
-    raise ValueError("HF_TOKEN and HF_REPO must be set in the .env file")
-
-card_data = ModelCardData(language="en", license="mit", library_name="keras")
-card = ModelCard.from_template(
-    card_data,
-    model_id=HF_REPO.split("/")[-1],
-    model_description="""
-    This is a SWIN model fine tuned to classify 64 weed seed species related to the regulated REGAL species.
-    
-  - Agrostemma githago
-  - Agrostis canina
-  - Ambrosia artemisiifolia
-  - Ambrosia psilostachya
-  - Ambrosia trifida
-  - Anthoxanthum aristatum
-  - Anthoxanthum odoratum
-  - Apera spica-venti
-  - Asclepias syriaca
-  - Asclepias tuberosa
-  - Avena fatua
-  - Avena sativa
-  - Bassia scoparia
-  - Berteroa incana
-  - Brassica juncea
-  - Brassica napus
-  - Bromus hordeaceus
-  - Bromus inermis
-  - Bromus japonicus
-  - Bromus secalinus
-  - Buglossoides arvensis
-  - Calystegia sepium
-  - Carduus nutans
-  - Centaurea calcitrapa
-  - Centaurea diffusa
-  - Centaurea melitensis
-  - Centaurea solstitialis
-  - Centaurea stoebe
-  - Cirsium arvense
-  - Cirsium vulgare
-  - Conringia orientalis
-  - Convolvulus arvensis
-  - Cuscuta gronovii
-  - Cyclachaena xanthiifolia
-  - Fallopia convolvulus
-  - Galeopsis tetrahit
-  - Galium aparine
-  - Gypsophila vaccaria
-  - Iva axillaris
-  - Lithospermum officinale
-  - Lolium persicum
-  - Lolium temulentum
-  - Neslia paniculata
-  - Polygonum aviculare
-  - Saponaria officinalis
-  - Silene latifolia
-  - Silene noctiflora
-  - Silene vulgaris
-  - Sinapis alba
-  - Sinapis arvensis
-  - Solanum americanum
-  - Solanum carolinense
-  - Solanum elaeagnifolium
-  - Solanum emulans
-  - Solanum nigrum
-  - Solanum rostratum
-  - Sonchus arvensis
-  - Thlaspi arvense
-  - Tripleurospermum inodorum
-  - Tripleurospermum maritimum
-  - Vicia americana
-  - Vicia cracca
-  - Vicia villosa
-  - Viola arvensis
-    """,
-    developers="CFIA AI Lab and Seed Lab",
-    model_type="SWIN Transformer",
-    license="MIT",
-    base_model="microsoft/swin-large-patch4-window12-384-in22k",
-    repo=HF_REPO,
-)
-print(card)
-card.save(MODEL_PATH + "/" + "README.md")
-# card.push_to_hub(repo_id=HF_REPO, create_pr=True, token=HF_TOKEN)
+from shutil import copy2, which
+import subprocess
+from tempfile import TemporaryDirectory
 
 
-try:
-    subprocess.run(
-        [
-            "uv",
-            "run",
-            "optimum-cli",
-            "export",
-            "onnx",
-            "--model",
-            Path("../" + MODEL_PATH),
-            "--task",
-            "object-detection",
-            "--library-name",
-            "transformers",
-            Path("../" + MODEL_PATH).parent / "onnx-fp32",
-        ],
-        cwd=Path(EXPORTER_PATH),
-    )
-
-    print("ONNX model exported successfully.")
-except Exception as e:
-    print(e)
-    print("Error occurred while exporting ONNX model.")
-    raise e
-
-# create quant
-try:
-    subprocess.run(
-        [
-            "uv",
-            "run",
-            "optimum-cli",
-            "onnxruntime",
-            "quantize",
-            "--onnx_model",
-            Path("../" + MODEL_PATH).parent / "onnx-fp32",
-            "--avx512",
-            "-o",
-            Path("../" + MODEL_PATH).parent / "onnx-quant/",
-        ],
-        cwd=Path(EXPORTER_PATH),
-    )
-
-    print("ONNX model quantized successfully.")
-except Exception as e:
-    print(e)
-    print("Error occurred while exporting ONNX model.")
-    raise e
-
-# move files to onnx-release
-copytree(
-    os.path.join(Path(MODEL_PATH).parent, "onnx-fp32/"),
-    os.path.join(Path(MODEL_PATH), "onnx/"),
-    dirs_exist_ok=True,
-)
+TASKS = {"swin": "image-classification", "rt_detr_v2": "object-detection"}
 
 
-copytree(
-    os.path.join(Path(MODEL_PATH).parent, "onnx-quant/"),
-    os.path.join(Path(MODEL_PATH), "onnx/"),
-    dirs_exist_ok=True,
-)
+def checkpoint_files(checkpoint):
+    """Collect saved weights without including optimizer or training state."""
+    weights = checkpoint / "model.safetensors"
+    if weights.is_file():
+        return [checkpoint / "config.json", weights]
+    index = checkpoint / "model.safetensors.index.json"
+    if not index.is_file():
+        raise FileNotFoundError(f"No safetensors weights found in {checkpoint}")
+    names = set(json.loads(index.read_text())["weight_map"].values())
+    if not names:
+        raise ValueError("The checkpoint weight index is empty")
+    files = [checkpoint / "config.json", index]
+    for name in sorted(names):
+        if Path(name).name != name or not name.endswith(".safetensors"):
+            raise ValueError(f"Invalid weight shard name: {name!r}")
+        path = checkpoint / name
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        files.append(path)
+    return files
 
-print("ONNX model files moved successfully.")
+
+def export_model(checkpoint, output, processor=None, quantize=False):
+    checkpoint = Path(checkpoint).resolve(strict=True)
+    output = Path(output).absolute()
+    config = json.loads((checkpoint / "config.json").read_text())
+    model_type = config.get("model_type")
+    if model_type not in TASKS:
+        raise ValueError(f"Unsupported model type: {model_type!r}; expected {list(TASKS)}")
+    files = checkpoint_files(checkpoint)
+    processor = Path(processor).resolve(strict=True) if processor else checkpoint
+    processor_file = processor / "preprocessor_config.json"
+    if not processor_file.is_file():
+        raise FileNotFoundError(f"Missing {processor_file}; pass --processor if saved elsewhere")
+    json.loads(processor_file.read_text())
+    if output.resolve().is_relative_to(checkpoint):
+        raise ValueError("Export output must be outside the source checkpoint")
+    if output.exists() or output.is_symlink():
+        raise FileExistsError(f"Export output already exists: {output}")
+    executable = which("optimum-cli")
+    if executable is None:
+        raise RuntimeError("optimum-cli is required; install the export dependencies")
+
+    # The temporary view supplies the saved processor without changing the checkpoint.
+    env = dict(os.environ, HF_HUB_OFFLINE="1", HF_HUB_DISABLE_TELEMETRY="1")
+    output.mkdir(parents=True)
+    with TemporaryDirectory(prefix="nachet-export-") as staging:
+        staging = Path(staging)
+        for source in files:
+            (staging / source.name).symlink_to(source)
+        copy2(processor_file, staging / processor_file.name)
+        subprocess.run(
+            [executable, "export", "onnx", "--model", str(staging),
+             "--task", TASKS[model_type], "--library-name", "transformers",
+             str(output / "onnx-fp32")],
+            check=True, env=env,
+        )
+    if not (output / "onnx-fp32" / "model.onnx").is_file():
+        raise FileNotFoundError("Export command did not produce onnx-fp32/model.onnx")
+    if quantize:
+        subprocess.run(
+            [executable, "onnxruntime", "quantize", "--onnx_model",
+             str(output / "onnx-fp32"), "--avx512", "-o", str(output / "onnx-quant")],
+            check=True, env=env,
+        )
+        if not (output / "onnx-quant" / "model_quantized.onnx").is_file():
+            raise FileNotFoundError("Quantization did not produce model_quantized.onnx")
+    return output
 
 
-create_repo(repo_id=HF_REPO, token=HF_TOKEN, repo_type="model", exist_ok=True)
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--checkpoint", required=True, type=Path)
+    parser.add_argument("--output", required=True, type=Path, help="New directory outside the checkpoint")
+    parser.add_argument("--processor", type=Path, help="Directory containing the saved image processor")
+    parser.add_argument("--quantize", action="store_true", help="Also create the original AVX512 INT8 variant")
+    args = parser.parse_args()
+    output = export_model(args.checkpoint, args.output, args.processor, args.quantize)
+    print(f"ONNX files written to {output}; publication and browser checks are separate.")
 
-hf_api = HfApi()
-hf_api.upload_folder(
-    folder_path=str(Path(MODEL_PATH)),
-    # path_in_repo="my_model",
-    repo_id=HF_REPO,
-    token=HF_TOKEN,
-    create_pr=True,
-    repo_type="model",
-)
 
-print("Model files uploaded successfully.")
-
-# create_repo(repo_id=(HF_REPO + "/onnx"), token=HF_TOKEN, repo_type="model", exist_ok=True)
-# hf_api.upload_folder(
-#     folder_path=str(Path(MODEL_PATH).parent / "onnx-release"),
-#     path_in_repo="onnx",
-#     repo_id=HF_REPO,
-#     token=HF_TOKEN,
-#     repo_type="model",
-#     create_pr=True,
-# )
+if __name__ == "__main__":
+    main()
