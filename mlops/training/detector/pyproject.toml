@@ -2,24 +2,24 @@
 name = "nachet-detector-trainer"
 version = "0.1.0"
 description = "Nachet detector training runtime"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.14,<3.15"
 dependencies = [
-    "accelerate==1.12.0",
-    "albumentationsx==2.0.13",
-    "boto3==1.40.55",
-    "datasets==4.4.1",
-    "matplotlib==3.10.7",
-    "mlflow-skinny==3.7.0",
+    "accelerate==1.15.0",
+    "albumentationsx==2.4.10",
+    "boto3==1.43.98",
+    "datasets==4.8.5",
+    "matplotlib==3.11.2",
+    "mlflow-skinny==3.16.1",
     "numpy==2.5.3",
-    "opencv-python-headless==4.13.0.90",
-    "pandas==3.0.5",
+    "opencv-python-headless==4.14.0.94",
+    "pandas==3.0.6",
     "pillow==12.0.0",
-    "pycocotools==2.0.10",
-    "pyyaml==6.0.2",
+    "pycocotools==2.0.11",
+    "pyyaml==6.0.3",
     "seaborn==0.13.2",
-    "torchmetrics==1.8.2",
-    "tqdm==4.70.0",
-    "transformers==5.16.1",
+    "torchmetrics==1.9.0",
+    "tqdm==4.70.1",
+    "transformers==5.17.0",
 ]
 
 [tool.uv]
