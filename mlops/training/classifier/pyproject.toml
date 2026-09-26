@@ -2,18 +2,18 @@
 name = "nachet-classifier-trainer"
 version = "0.1.0"
 description = "Nachet classifier training runtime"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.14,<3.15"
 dependencies = [
-    "accelerate==1.12.0",
-    "boto3==1.40.55",
-    "datasets==4.4.1",
-    "matplotlib==3.10.7",
-    "mlflow-skinny==3.7.0",
+    "accelerate==1.15.0",
+    "boto3==1.43.98",
+    "datasets==4.8.5",
+    "matplotlib==3.11.2",
+    "mlflow-skinny==3.16.1",
     "numpy==2.5.3",
-    "pandas==3.0.5",
-    "scikit-learn==1.7.2",
+    "pandas==3.0.6",
+    "scikit-learn==1.9.1",
     "seaborn==0.13.2",
-    "transformers==5.16.1",
+    "transformers==5.17.0",
 ]
 
 [tool.uv]
