@@ -1,5 +1,6 @@
 """Local checkpoint export boundaries and a tiny offline Swin export."""
 
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -9,7 +10,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
-import export_model
+import export_model  # noqa: E402
 
 
 class ExportBoundaryTest(unittest.TestCase):
@@ -124,6 +125,71 @@ class ExportBoundaryTest(unittest.TestCase):
 
 
 class SwinExportTest(unittest.TestCase):
+    def test_sharded_checkpoint_and_separate_processor_round_trip(self):
+        import numpy as np
+        import onnx
+        import onnxruntime as ort
+        import torch
+        from transformers import SwinConfig, SwinForImageClassification, ViTImageProcessor
+
+        torch.manual_seed(7)
+        torch.set_num_threads(1)
+        model = SwinForImageClassification(SwinConfig(
+            image_size=32, patch_size=4, embed_dim=8, depths=[1, 1],
+            num_heads=[1, 2], window_size=2, num_labels=3,
+            id2label={0: "Beta", 1: "Alpha", 2: "Gamma"},
+        )).eval()
+        processor = ViTImageProcessor(size={"height": 32, "width": 32})
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            checkpoint, processor_dir = root / "checkpoint", root / "processor"
+            model.save_pretrained(checkpoint, max_shard_size="1KB")
+            processor.save_pretrained(processor_dir)
+            self.assertTrue((checkpoint / "model.safetensors.index.json").is_file())
+            self.assertGreater(len(list(checkpoint.glob("*.safetensors"))), 1)
+            self.assertFalse((checkpoint / "preprocessor_config.json").exists())
+            (checkpoint / "optimizer.pt").write_bytes(b"training state")
+            before = {path.relative_to(root): hashlib.sha256(path.read_bytes()).hexdigest()
+                      for path in root.rglob("*") if path.is_file()}
+
+            command = [sys.executable, str(Path(export_model.__file__)),
+                       "--checkpoint", str(checkpoint), "--processor", str(processor_dir),
+                       "--output", str(root / "export"), "--quantize"]
+            completed = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            fp32_dir = root / "export/onnx-fp32"
+            runtime = ort.InferenceSession(str(fp32_dir / "model.onnx"),
+                                           providers=["CPUExecutionProvider"])
+            exported_processor = ViTImageProcessor.from_pretrained(fp32_dir, local_files_only=True)
+            rng = np.random.default_rng(7)
+            image = rng.integers(0, 256, size=(41, 27, 3), dtype=np.uint8)
+            pixels = processor(images=image, return_tensors="np")["pixel_values"]
+            np.testing.assert_array_equal(
+                pixels, exported_processor(images=image, return_tensors="np")["pixel_values"],
+            )
+            for batch in (pixels, np.ones_like(pixels), np.concatenate([pixels, -pixels])):
+                with torch.no_grad():
+                    expected = model(pixel_values=torch.from_numpy(batch)).logits.numpy()
+                actual = runtime.run(["logits"], {"pixel_values": batch})[0]
+                np.testing.assert_allclose(actual, expected, atol=1e-5, rtol=1e-4)
+            config = json.loads((fp32_dir / "config.json").read_text())
+            self.assertEqual(config["id2label"], {"0": "Beta", "1": "Alpha", "2": "Gamma"})
+
+            # INT8 is checked for executable output, not assumed to retain FP32 accuracy.
+            quantized = root / "export/onnx-quant/model_quantized.onnx"
+            graph = onnx.load(quantized)
+            self.assertTrue(any(tensor.data_type == onnx.TensorProto.INT8
+                                for tensor in graph.graph.initializer))
+            quant_runtime = ort.InferenceSession(str(quantized), providers=["CPUExecutionProvider"])
+            scores = quant_runtime.run(["logits"], {"pixel_values": pixels})[0]
+            self.assertEqual(scores.shape, (1, 3))
+            self.assertTrue(np.isfinite(scores).all())
+            self.assertFalse(list((root / "export").rglob("optimizer.pt")))
+            after = {path.relative_to(root): hashlib.sha256(path.read_bytes()).hexdigest()
+                     for directory in (checkpoint, processor_dir)
+                     for path in directory.rglob("*") if path.is_file()}
+            self.assertEqual(before, after)
+
     def test_export_matches_pytorch_on_same_pixels(self):
         import numpy as np
         import onnxruntime as ort
@@ -200,11 +266,19 @@ class DetectorExportTest(unittest.TestCase):
             session = ort.InferenceSession(str(output / "onnx-fp32" / "model.onnx"),
                                            providers=["CPUExecutionProvider"])
             pixels = torch.rand(1, 3, 64, 64)
-            with torch.no_grad():
-                expected = model(pixel_values=pixels)
-            logits, boxes = session.run(["logits", "pred_boxes"], {"pixel_values": pixels.numpy()})
-            np.testing.assert_allclose(logits, expected.logits.numpy(), rtol=1e-4, atol=1e-5)
-            np.testing.assert_allclose(boxes, expected.pred_boxes.numpy(), rtol=1e-4, atol=1e-5)
+            for name, batch in {
+                "random": pixels,
+                "constant": torch.ones_like(pixels),
+                "two_images": torch.cat([pixels, 1 - pixels]),
+            }.items():
+                with self.subTest(input=name):
+                    with torch.no_grad():
+                        expected = model(pixel_values=batch)
+                    logits, boxes = session.run(
+                        ["logits", "pred_boxes"], {"pixel_values": batch.numpy()},
+                    )
+                    np.testing.assert_allclose(logits, expected.logits.numpy(), rtol=1e-4, atol=1e-5)
+                    np.testing.assert_allclose(boxes, expected.pred_boxes.numpy(), rtol=1e-4, atol=1e-5)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,8 @@ import onnxruntime as ort
 from onnxconverter_common import float16
 from safetensors import safe_open
 
+from export_model import checkpoint_files
+
 
 FEATURE_TENSOR = "/swin/layernorm/Add_1_output_0"
 FUSED_FEATURE_TENSOR = "/swin/layernorm/LayerNormalization_output_0"
@@ -56,13 +58,13 @@ def load_classifier_head(checkpoint):
     if config.get("model_type") != "swin":
         raise ValueError("Browser CAM export requires a Swin classifier")
 
-    # Weights may share one file or be split across shards listed in an index.
+    model_files = checkpoint_files(checkpoint)
     parameter_to_file = {
         "classifier.weight": "model.safetensors",
         "classifier.bias": "model.safetensors",
     }
     index_file = checkpoint / "model.safetensors.index.json"
-    if index_file.exists():
+    if index_file in model_files:
         weight_index = json.loads(index_file.read_text())
         parameter_to_file = weight_index["weight_map"]
 

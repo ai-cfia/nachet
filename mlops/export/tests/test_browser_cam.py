@@ -13,7 +13,7 @@ from onnx import TensorProto, helper, numpy_helper
 from safetensors.numpy import save_file
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
-import browser_cam
+import browser_cam  # noqa: E402
 
 
 class BrowserCamTest(unittest.TestCase):
@@ -152,6 +152,27 @@ class BrowserCamTest(unittest.TestCase):
         (self.checkpoint / "config.json").write_text('{"model_type":"swin","id2label":{"0":"Beta"}}')
         with self.assertRaisesRegex(ValueError, "every classifier-head row"):
             browser_cam.load_classifier_head(self.checkpoint)
+
+    def test_single_weight_file_takes_precedence_over_stale_index(self):
+        (self.checkpoint / "model.safetensors.index.json").write_text(json.dumps({
+            "weight_map": {"classifier.weight": "missing.safetensors",
+                           "classifier.bias": "missing.safetensors"},
+        }))
+        weights, bias = browser_cam.load_classifier_head(self.checkpoint)
+        np.testing.assert_array_equal(weights, self.weight)
+        np.testing.assert_array_equal(bias, self.bias)
+
+    def test_head_can_span_two_real_weight_shards(self):
+        (self.checkpoint / "model.safetensors").unlink()
+        save_file({"classifier.weight": self.weight}, self.checkpoint / "weight.safetensors")
+        save_file({"classifier.bias": self.bias}, self.checkpoint / "bias.safetensors")
+        (self.checkpoint / "model.safetensors.index.json").write_text(json.dumps({
+            "weight_map": {"classifier.weight": "weight.safetensors",
+                           "classifier.bias": "bias.safetensors"},
+        }))
+        weights, bias = browser_cam.load_classifier_head(self.checkpoint)
+        np.testing.assert_array_equal(weights, self.weight)
+        np.testing.assert_array_equal(bias, self.bias)
 
     def test_existing_output_is_not_overwritten(self):
         output = self.root / "browser"
