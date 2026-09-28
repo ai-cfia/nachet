@@ -87,18 +87,20 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
         flexDirection: "column",
         border: "0.01vh solid LightGrey",
         borderRadius: "0.4vh",
+        boxShadow: 0,
       }}
-      boxShadow={0}
       data-testid="results-table-component"
     >
       <CardHeader
         title={t("resultsTable.title")}
-        titleTypographyProps={{
-          variant: "h6",
-          align: "left",
-          fontWeight: 600,
-          fontSize: "1.3vh",
-          color: "text.primary",
+        slotProps={{
+          title: {
+            variant: "h6",
+            align: "left",
+            fontWeight: 600,
+            fontSize: "1.3vh",
+            color: "text.primary",
+          },
         }}
         sx={{ padding: "0.8vh 1vh 0.8vh 0.8vh", flexShrink: 0 }}
         action={
@@ -354,7 +356,7 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
                     {isExpanded && isExpandable && (
                       <TableRow>
                         <TableCell colSpan={3}>
-                          <Box p={2}>
+                          <Box sx={{ p: 2 }}>
                             {boxTopN.length > 0 && renderTopResults(boxTopN)}
                           </Box>
                         </TableCell>

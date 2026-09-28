@@ -118,8 +118,8 @@ const ImageGallery = ({
         flexDirection: "column",
         border: "0.01vh solid LightGrey",
         borderRadius: "0.4vh",
+        boxShadow: 0,
       }}
-      boxShadow={0}
       data-testid="image-gallery-component"
     >
       <CardHeader

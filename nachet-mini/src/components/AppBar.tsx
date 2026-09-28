@@ -56,8 +56,7 @@ const AppBar: React.FC = () => {
         <Stack
           direction="row"
           spacing={1}
-          alignItems="center"
-          sx={{ height: "100%" }}
+          sx={{ height: "100%", alignItems: "center" }}
         >
           <Typography
             sx={{
