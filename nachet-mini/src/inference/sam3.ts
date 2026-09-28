@@ -20,6 +20,9 @@ import type { ModelConfig } from "./models";
 // bare wasm pointers (e.g. "25954464") instead of readable error messages.
 ort.env.logLevel = "warning";
 
+// SAM3 uses ORT directly, so it needs its own version-matched WASM location.
+ort.env.wasm.wasmPaths ??= `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ort.env.versions.web}/dist/`;
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------

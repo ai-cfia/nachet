@@ -1,6 +1,6 @@
 import path from "path";
 import fs from 'fs';
-import { defineConfig } from "vite";
+import { defaultClientConditions, defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 // https://vite.dev/config/
@@ -39,6 +39,8 @@ export default defineConfig({
     ],
   },
   resolve: {
+    // Transformers.js loads version-matched WASM from its CDN; bundled copies exceed Pages' 25 MiB limit.
+    conditions: ["onnxruntime-web-use-extern-wasm", ...defaultClientConditions],
     alias: {
       "@common": path.resolve(__dirname, "src/common"),
       "@components": path.resolve(__dirname, "src/components"),
