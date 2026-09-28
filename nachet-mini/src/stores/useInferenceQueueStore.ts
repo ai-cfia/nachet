@@ -80,15 +80,14 @@ export const useInferenceQueueStore = create<InferenceQueueState>()((set) => ({
 
   markDetectionDone: (id, durationMs, boxCount) =>
     set((state) => ({
-      queue: state.queue.map(
-        (item): QueuedInferenceItem =>
-          item.id === id
-            ? {
-                ...item,
-                detectionDoneAt: Date.now(),
-                detectedBoxCount: boxCount,
-              }
-            : item,
+      queue: state.queue.map((item): QueuedInferenceItem =>
+        item.id === id
+          ? {
+              ...item,
+              detectionDoneAt: Date.now(),
+              detectedBoxCount: boxCount,
+            }
+          : item,
       ),
       lastDetectionDurationMs: durationMs,
     })),
@@ -102,9 +101,8 @@ export const useInferenceQueueStore = create<InferenceQueueState>()((set) => ({
 
       return {
         queue: state.queue
-          .map(
-            (i): QueuedInferenceItem =>
-              i.id === id ? { ...i, status: "done" } : i,
+          .map((i): QueuedInferenceItem =>
+            i.id === id ? { ...i, status: "done" } : i,
           )
           .filter((i) => i.status !== "done" && i.status !== "cancelled"),
         lastClassificationPerBoxMs:

@@ -255,6 +255,14 @@ describe("ImageViewer", () => {
   });
 
   describe("no image", () => {
+    it("keeps the placeholder in the secondary text color", () => {
+      const { getByText } = renderViewer();
+
+      expect(getComputedStyle(getByText("No image loaded")).color).toBe(
+        "rgba(0, 0, 0, 0.6)",
+      );
+    });
+
     it("shows 'No image loaded' when src is undefined", async () => {
       renderViewer({ src: undefined });
       await expect.element(page.getByText("No image loaded")).toBeVisible();

@@ -628,8 +628,7 @@ const classifyBoxes = async (
       // each seed is classified.
       const headFile = config.classifierHeadFile;
       const featTensor = rawOut.swin_layernorm as
-        | { data?: Float32Array; dims?: number[] }
-        | undefined;
+        { data?: Float32Array; dims?: number[] } | undefined;
       if (headFile && featTensor?.data && featTensor.dims?.length === 3) {
         try {
           const [, tokens, channels] = featTensor.dims;

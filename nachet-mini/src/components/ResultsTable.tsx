@@ -97,9 +97,11 @@ const ResultsTable = ({ result, switchTable, onSwitchTableChange }: Props) => {
           title: {
             variant: "h6",
             align: "left",
-            fontWeight: 600,
-            fontSize: "1.3vh",
-            color: "text.primary",
+            sx: {
+              fontWeight: 600,
+              fontSize: "1.3vh",
+              color: "text.primary",
+            },
           },
         }}
         sx={{ padding: "0.8vh 1vh 0.8vh 0.8vh", flexShrink: 0 }}

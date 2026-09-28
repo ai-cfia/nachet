@@ -2,12 +2,7 @@ import { create } from "zustand";
 import type { InferenceResult } from "@common/types";
 
 export type InferenceStatus =
-  | "idle"
-  | "loading-model"
-  | "detecting"
-  | "classifying"
-  | "complete"
-  | "error";
+  "idle" | "loading-model" | "detecting" | "classifying" | "complete" | "error";
 
 export interface ModelLoadProgress {
   name: string;
