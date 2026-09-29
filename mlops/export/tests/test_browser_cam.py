@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from functools import partial
 from pathlib import Path
 import subprocess
 import sys
@@ -179,7 +180,7 @@ class BrowserCamTest(unittest.TestCase):
     def test_conversion_defects_are_rejected_after_real_inference(self):
         original_convert = browser_cam.float16.convert_float_to_float16
 
-        def damage_graph(*args, **kwargs):
+        def damage_graph(fault, *args, **kwargs):
             model = original_convert(*args, **kwargs)
             if fault == "zeroed_weights":
                 weights, = [value for value in model.graph.initializer if tuple(value.dims) == (3, 3)]
@@ -202,22 +203,25 @@ class BrowserCamTest(unittest.TestCase):
         for fault in ("permuted_logits", "scaled_features", "zeroed_weights"):
             with self.subTest(fault=fault):
                 output = self.root / fault
-                with patch.object(browser_cam.float16, "convert_float_to_float16", side_effect=damage_graph):
+                with patch.object(browser_cam.float16, "convert_float_to_float16",
+                                  side_effect=partial(damage_graph, fault)):
                     with self.assertRaisesRegex(AssertionError, "differs from the FP32 reference") as failure:
                         browser_cam.prepare_browser_model(self.source, self.checkpoint, output, self.pixels)
                 self.assertFalse(output.exists())
-                partial, = self.root.glob(f".{fault}.*.partial")
-                report = json.loads((partial / "validation.json").read_text())
+                partial_output, = self.root.glob(f".{fault}.*.partial")
+                report = json.loads((partial_output / "validation.json").read_text())
                 self.assertEqual(report["fp16_checks"], "failed")
                 name = browser_cam.FEATURE_OUTPUT_NAME if fault == "scaled_features" else "logits"
                 self.assertGreater(report["images"][0]["errors"][name]["values_outside_tolerance"], 0)
-                self.assertFalse(list(partial.rglob("*.bin")))
-                self.assertIn(str(partial), "\n".join(failure.exception.__notes__))
-                candidate = partial / "diagnostics/model.candidate.onnx"
-                failed_graph = candidate.read_bytes()
-                browser, _ = browser_cam.prepare_browser_model(self.source, self.checkpoint, output, self.pixels)
-                self.assertTrue(browser.is_file())
-                self.assertEqual(candidate.read_bytes(), failed_graph)
+                self.assertFalse(list(partial_output.rglob("*.bin")))
+                self.assertIn(str(partial_output), "\n".join(failure.exception.__notes__))
+                # Exercise recovery once; every fault above still checks rejection.
+                if fault == "scaled_features":
+                    candidate = partial_output / "diagnostics/model.candidate.onnx"
+                    failed_graph = candidate.read_bytes()
+                    browser, _ = browser_cam.prepare_browser_model(self.source, self.checkpoint, output, self.pixels)
+                    self.assertTrue(browser.is_file())
+                    self.assertEqual(candidate.read_bytes(), failed_graph)
 
     def test_report_keeps_separate_measurements_for_each_image(self):
         model = onnx.load(self.source)

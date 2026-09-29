@@ -129,6 +129,32 @@ def output_errors(reference, actual):
     }
 
 
+def measure_fp16(reference, actual):
+    """Measure each image's output errors and class rankings."""
+    images = []
+    for index in range(len(reference["logits"])):
+        fp32_logits = reference["logits"][index]
+        fp16_logits = actual["logits"][index]
+        # Lower class IDs win ties, matching argmax's first-maximum rule.
+        fp32_top5 = np.argsort(-fp32_logits, kind="stable")[:5]
+        fp16_top5 = np.argsort(-fp16_logits, kind="stable")[:5]
+        margin = (float(fp32_logits[fp32_top5[0]]) - float(fp32_logits[fp32_top5[1]])
+                  if len(fp32_top5) > 1 else None)
+        images.append({
+            "index": index,
+            "errors": {
+                name: output_errors(reference[name][index], actual[name][index])
+                for name in ("logits", FEATURE_OUTPUT_NAME)
+            },
+            "fp32_top5": fp32_top5.tolist(),
+            "fp16_top5": fp16_top5.tolist(),
+            "fp32_top1_margin": margin,
+            "top1_changed": bool(fp32_top5[0] != fp16_top5[0]),
+            "ordered_top5_changed": not np.array_equal(fp32_top5, fp16_top5),
+        })
+    return images
+
+
 def verify_fp16(candidate, pixels, reference, report_path):
     """Check the CPU outputs and retain measurements even when verification fails."""
     report = {
@@ -158,27 +184,7 @@ def verify_fp16(candidate, pixels, reference, report_path):
             if value.dtype != np.float32:
                 raise ValueError(f"FP16 {name} output must remain float32, got {value.dtype}")
 
-        report["images"] = []
-        for index in range(len(pixels)):
-            fp32_logits = reference["logits"][index]
-            fp16_logits = actual["logits"][index]
-            # Lower class IDs win ties, matching argmax's first-maximum rule.
-            fp32_top5 = np.argsort(-fp32_logits, kind="stable")[:5]
-            fp16_top5 = np.argsort(-fp16_logits, kind="stable")[:5]
-            margin = (float(fp32_logits[fp32_top5[0]]) - float(fp32_logits[fp32_top5[1]])
-                      if len(fp32_top5) > 1 else None)
-            report["images"].append({
-                "index": index,
-                "errors": {
-                    name: output_errors(reference[name][index], actual[name][index])
-                    for name in ("logits", FEATURE_OUTPUT_NAME)
-                },
-                "fp32_top5": fp32_top5.tolist(),
-                "fp16_top5": fp16_top5.tolist(),
-                "fp32_top1_margin": margin,
-                "top1_changed": bool(fp32_top5[0] != fp16_top5[0]),
-                "ordered_top5_changed": not np.array_equal(fp32_top5, fp16_top5),
-            })
+        report["images"] = measure_fp16(reference, actual)
 
         for name in ("logits", FEATURE_OUTPUT_NAME):
             np.testing.assert_allclose(

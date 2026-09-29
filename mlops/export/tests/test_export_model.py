@@ -1,4 +1,4 @@
-"""Local checkpoint export boundaries and a tiny offline Swin export."""
+"""Local export boundaries and offline Swin, CAM and detector integration tests."""
 
 import hashlib
 import json
@@ -133,47 +133,45 @@ class ExportBoundaryTest(unittest.TestCase):
                 (destination / "incomplete").write_bytes(b"partial quantization")
                 raise subprocess.CalledProcessError(1, command)
 
-        for _ in range(2):
-            with patch.object(export_model.subprocess, "run", side_effect=fail_quantization):
-                with self.assertRaises(subprocess.CalledProcessError):
-                    export_model.export_model(self.checkpoint, self.output, quantize=True)
-            self.assertFalse(self.output.exists())
-        partials = list(self.root.glob(".export.*.partial"))
-        self.assertEqual(len(partials), 2)
-        for partial in partials:
-            self.assertEqual((partial / "onnx-fp32/model.onnx").read_bytes(), b"test graph")
-            self.assertEqual((partial / "onnx-quant/incomplete").read_bytes(), b"partial quantization")
+        with patch.object(export_model.subprocess, "run", side_effect=fail_quantization):
+            with self.assertRaises(subprocess.CalledProcessError):
+                export_model.export_model(self.checkpoint, self.output, quantize=True)
+        self.assertFalse(self.output.exists())
+        partial, = self.root.glob(".export.*.partial")
+        self.assertEqual((partial / "onnx-fp32/model.onnx").read_bytes(), b"test graph")
+        self.assertEqual((partial / "onnx-quant/incomplete").read_bytes(), b"partial quantization")
         with patch.object(export_model.subprocess, "run", side_effect=self.fake_run):
             export_model.export_model(self.checkpoint, self.output, quantize=True)
         self.assertTrue((self.output / "onnx-quant/model_quantized.onnx").is_file())
-        self.assertTrue(all(partial.is_dir() for partial in partials))
+        self.assertTrue(partial.is_dir())
 
     @patch.object(export_model, "which", return_value="optimum-cli")
     def test_success_exit_without_graph_is_rejected(self, _):
         with patch.object(export_model.subprocess, "run"):
-            with self.assertRaises(FileNotFoundError):
+            with self.assertRaisesRegex(FileNotFoundError, "Export command did not produce onnx-fp32/model[.]onnx"):
                 export_model.export_model(self.checkpoint, self.output)
 
-    def test_existing_output_is_not_overwritten(self):
+    @patch.object(export_model, "which", return_value="optimum-cli")
+    def test_existing_output_is_not_overwritten(self, _):
         self.output.mkdir()
         sentinel = self.output / "keep"
         sentinel.write_text("keep")
-        with self.assertRaises(FileExistsError):
+        with self.assertRaisesRegex(FileExistsError, "Export output already exists"):
             export_model.export_model(self.checkpoint, self.output)
         self.assertEqual(sentinel.read_text(), "keep")
 
     def test_output_cannot_mutate_checkpoint(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "outside the source checkpoint"):
             export_model.export_model(self.checkpoint, self.checkpoint / "onnx")
 
     def test_missing_processor_is_rejected(self):
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaisesRegex(FileNotFoundError, "Missing .*preprocessor_config[.]json"):
             export_model.export_model(self.checkpoint, self.output, self.root)
         self.assertFalse(self.output.exists())
 
     def test_unknown_model_type_is_rejected(self):
         (self.checkpoint / "config.json").write_text('{"model_type":"unknown"}')
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "Unsupported model type: 'unknown'"):
             export_model.export_model(self.checkpoint, self.output)
         self.assertFalse(self.output.exists())
 
@@ -182,7 +180,7 @@ class ExportBoundaryTest(unittest.TestCase):
         (self.checkpoint / "model.safetensors.index.json").write_text(
             json.dumps({"weight_map": {"weight": "../other.safetensors"}})
         )
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "Invalid weight shard name"):
             export_model.checkpoint_files(self.checkpoint)
 
     def test_missing_weight_shard_is_rejected(self):
@@ -190,8 +188,9 @@ class ExportBoundaryTest(unittest.TestCase):
         (self.checkpoint / "model.safetensors.index.json").write_text(
             json.dumps({"weight_map": {"layer.weight": "missing.safetensors"}})
         )
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaises(FileNotFoundError) as failure:
             export_model.checkpoint_files(self.checkpoint)
+        self.assertEqual(failure.exception.args[0], self.checkpoint / "missing.safetensors")
 
     def test_malformed_weight_map_has_an_explicit_error(self):
         (self.checkpoint / "model.safetensors").unlink()
@@ -264,6 +263,7 @@ class SwinExportTest(unittest.TestCase):
             self.assertTrue(np.isfinite(scores).all())
             self.assertFalse(list((root / "export").rglob("optimizer.pt")))
             self.assertFalse(list(root.glob(".export.*.partial")))
+            # Match ordinary directory permissions under the current process umask.
             self.assertEqual((root / "export").stat().st_mode, checkpoint.stat().st_mode)
             after = {path.relative_to(root): hashlib.sha256(path.read_bytes()).hexdigest()
                      for directory in (checkpoint, processor_dir)

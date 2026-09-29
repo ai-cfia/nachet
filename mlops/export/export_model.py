@@ -96,8 +96,6 @@ def export_model(checkpoint, output, processor=None, quantize=False):
 
     if output.resolve().is_relative_to(checkpoint):
         raise ValueError("Export output must be outside the source checkpoint")
-    if output.exists() or output.is_symlink():
-        raise FileExistsError(f"Export output already exists: {output}")
     optimum_cli = which("optimum-cli")
     if optimum_cli is None:
         raise RuntimeError("optimum-cli is required; install the export dependencies")
