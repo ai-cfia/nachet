@@ -14,6 +14,7 @@ import onnxruntime as ort
 from onnxconverter_common import float16
 from safetensors import safe_open
 
+# Support both direct script execution and python -m mlops.export.browser_cam.
 if __package__:
     from .export_model import checkpoint_files, staged_output
 else:
@@ -41,6 +42,7 @@ def run_onnx(path, pixels):
 
 
 def add_feature_output(source, destination, channels):
+    """Expose the final Swin features as an additional FP32 graph output."""
     model = onnx.load(source)
     # Exporters emit the final normalization as arithmetic or one fused operator.
     # Accept only the known final-layer outputs; reconstruction below checks the head.
@@ -107,11 +109,40 @@ def load_classifier_head(checkpoint):
     expected_class_ids = {str(class_id) for class_id in range(class_count)}
     if set(labels) != expected_class_ids:
         raise ValueError("Class IDs must cover every classifier-head row")
-    if not np.isfinite(classifier_weights).all():
-        raise ValueError("Classifier head contains non-finite values")
-    if not np.isfinite(classifier_bias).all():
+    if not np.isfinite(classifier_weights).all() or not np.isfinite(classifier_bias).all():
         raise ValueError("Classifier head contains non-finite values")
     return classifier_weights, classifier_bias
+
+
+def check_features_match_head(source, feature_model, pixels, classifier_weights, classifier_bias):
+    """Check FP32 logits and CAM reconstruction before converting the graph."""
+    original_outputs = run_onnx(source, pixels)
+    fp32_outputs = run_onnx(feature_model, pixels)
+    class_count, feature_channels = classifier_weights.shape
+    if fp32_outputs["logits"].shape != (len(pixels), class_count):
+        raise ValueError("FP32 logits must have one row per image and one column per class")
+    for name in ("logits", FEATURE_OUTPUT_NAME):
+        if fp32_outputs[name].dtype != np.float32:
+            raise ValueError(f"FP32 {name} output must be float32")
+    np.testing.assert_allclose(
+        fp32_outputs["logits"], original_outputs["logits"],
+        atol=1e-5, rtol=1e-4,
+        err_msg="Adding the CAM feature output changed the logits",
+    )
+    features = fp32_outputs[FEATURE_OUTPUT_NAME]
+    if (features.ndim != 3 or features.shape[0] != len(pixels)
+            or not features.shape[1] or features.shape[2] != feature_channels):
+        raise ValueError(f"Unexpected feature shape: {features.shape}")
+
+    # Swin averages spatial features before applying its classification layer.
+    # Reconstructing logits checks that the features and checkpoint head agree.
+    pooled_features = features.mean(axis=1)
+    reconstructed_logits = pooled_features @ classifier_weights.T + classifier_bias
+    np.testing.assert_allclose(
+        reconstructed_logits, fp32_outputs["logits"], atol=1e-5, rtol=1e-4,
+        err_msg="CAM features and checkpoint head do not reproduce the logits",
+    )
+    return fp32_outputs
 
 
 def output_errors(reference, actual):
@@ -233,30 +264,8 @@ def prepare_browser_model(source, checkpoint, output, pixels, *, strict=False):
 
         # Expose the CAM features without changing the model's classification scores.
         add_feature_output(source, feature_model_path, feature_channels)
-        original_outputs = run_onnx(source, pixels)
-        fp32_outputs = run_onnx(feature_model_path, pixels)
-        if fp32_outputs["logits"].shape != (len(pixels), class_count):
-            raise ValueError("FP32 logits must have one row per image and one column per class")
-        for name in ("logits", FEATURE_OUTPUT_NAME):
-            if fp32_outputs[name].dtype != np.float32:
-                raise ValueError(f"FP32 {name} output must be float32")
-        np.testing.assert_allclose(
-            fp32_outputs["logits"], original_outputs["logits"],
-            atol=1e-5, rtol=1e-4,
-            err_msg="Adding the CAM feature output changed the logits",
-        )
-        features = fp32_outputs[FEATURE_OUTPUT_NAME]
-        if (features.ndim != 3 or features.shape[0] != len(pixels)
-                or not features.shape[1] or features.shape[2] != feature_channels):
-            raise ValueError(f"Unexpected feature shape: {features.shape}")
-
-        # Swin averages the spatial features before applying its classification layer.
-        # Repeating that calculation checks the selected features and head on these inputs.
-        pooled_features = features.mean(axis=1)
-        reconstructed_logits = pooled_features @ classifier_weights.T + classifier_bias
-        np.testing.assert_allclose(
-            reconstructed_logits, fp32_outputs["logits"], atol=1e-5, rtol=1e-4,
-            err_msg="CAM features and checkpoint head do not reproduce the logits",
+        fp32_outputs = check_features_match_head(
+            source, feature_model_path, pixels, classifier_weights, classifier_bias,
         )
 
         # Fuse LayerNorm first: converting its unfused casts can crash ORT's

@@ -9,17 +9,28 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import numpy as np
+import onnx
+import onnxruntime as ort
+import torch
+from PIL import Image
+from transformers import (
+    RTDetrImageProcessor,
+    RTDetrResNetConfig,
+    RTDetrV2Config,
+    RTDetrV2ForObjectDetection,
+    SwinConfig,
+    SwinForImageClassification,
+    ViTImageProcessor,
+)
+
 sys.path.insert(0, str(Path(__file__).parents[1]))
+import browser_cam  # noqa: E402
 import export_model  # noqa: E402
 
 
 def create_swin_fixture(root):
     """Use the same tiny model and processed image for FP32 and CAM checks."""
-    import numpy as np
-    import torch
-    from PIL import Image
-    from transformers import SwinConfig, SwinForImageClassification, ViTImageProcessor
-
     torch.manual_seed(42)
     torch.set_num_threads(1)
     model = SwinForImageClassification(SwinConfig(
@@ -203,12 +214,6 @@ class ExportBoundaryTest(unittest.TestCase):
 
 class SwinExportTest(unittest.TestCase):
     def test_sharded_checkpoint_and_separate_processor_round_trip(self):
-        import numpy as np
-        import onnx
-        import onnxruntime as ort
-        import torch
-        from transformers import SwinConfig, SwinForImageClassification, ViTImageProcessor
-
         torch.manual_seed(7)
         torch.set_num_threads(1)
         model = SwinForImageClassification(SwinConfig(
@@ -229,6 +234,7 @@ class SwinExportTest(unittest.TestCase):
             before = {path.relative_to(root): hashlib.sha256(path.read_bytes()).hexdigest()
                       for path in root.rglob("*") if path.is_file()}
 
+            # Export the sharded checkpoint with its separately saved processor.
             command = [sys.executable, str(Path(export_model.__file__)),
                        "--checkpoint", str(checkpoint), "--processor", str(processor_dir),
                        "--output", str(root / "export"), "--quantize"]
@@ -244,6 +250,7 @@ class SwinExportTest(unittest.TestCase):
             np.testing.assert_array_equal(
                 pixels, exported_processor(images=image, return_tensors="np")["pixel_values"],
             )
+            # Compare FP32 inference with PyTorch on identical processed pixels.
             for batch in (pixels, np.ones_like(pixels), np.concatenate([pixels, -pixels])):
                 with torch.no_grad():
                     expected = model(pixel_values=torch.from_numpy(batch)).logits.numpy()
@@ -261,6 +268,7 @@ class SwinExportTest(unittest.TestCase):
             scores = quant_runtime.run(["logits"], {"pixel_values": pixels})[0]
             self.assertEqual(scores.shape, (1, 3))
             self.assertTrue(np.isfinite(scores).all())
+            # Export must leave checkpoint and processor files unchanged.
             self.assertFalse(list((root / "export").rglob("optimizer.pt")))
             self.assertFalse(list(root.glob(".export.*.partial")))
             # Match ordinary directory permissions under the current process umask.
@@ -271,10 +279,6 @@ class SwinExportTest(unittest.TestCase):
             self.assertEqual(before, after)
 
     def test_fp32_export_matches_pytorch_on_same_pixels(self):
-        import numpy as np
-        import onnxruntime as ort
-        import torch
-
         with tempfile.TemporaryDirectory() as tmp:
             model, checkpoint, pixels = create_swin_fixture(Path(tmp))
             output = export_model.export_model(checkpoint, Path(tmp) / "export")
@@ -288,10 +292,6 @@ class SwinExportTest(unittest.TestCase):
                              {"0": "Beta", "1": "Alpha", "2": "Gamma"})
 
     def test_fp16_cam_candidate_preserves_assets_and_reports_measured_differences(self):
-        import numpy as np
-        import torch
-        import browser_cam
-
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             model, checkpoint, pixels = create_swin_fixture(root)
@@ -309,7 +309,10 @@ class SwinExportTest(unittest.TestCase):
             )
             result = browser_cam.run_onnx(browser, pixels.numpy())
             self.assertEqual(result["swin_layernorm"].shape, (1, 16, 16))
-            np.testing.assert_allclose(result["logits"], expected, rtol=1e-2, atol=1e-3)
+            np.testing.assert_allclose(
+                result["logits"], expected,
+                rtol=browser_cam.FP16_RTOL, atol=browser_cam.FP16_ATOL,
+            )
 
             report = json.loads((browser.parent / "validation.json").read_text())
             self.assertEqual(report["output_checks"], "passed")
@@ -347,12 +350,6 @@ class SwinExportTest(unittest.TestCase):
 
 class DetectorExportTest(unittest.TestCase):
     def test_logits_and_boxes_match_pytorch(self):
-        import numpy as np
-        import onnxruntime as ort
-        import torch
-        from transformers import (RTDetrResNetConfig, RTDetrV2Config,
-                                  RTDetrV2ForObjectDetection, RTDetrImageProcessor)
-
         torch.manual_seed(42)
         torch.set_num_threads(1)
         backbone = RTDetrResNetConfig(
