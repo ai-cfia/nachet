@@ -158,12 +158,14 @@ const ModelLoader = ({
           onChange={(e) => onDetectorPromptChange(e.target.value)}
           // Accessible name beats the visual label for screen readers since
           // the label text is shrunk to ~1.2vh for visual density.
-          inputProps={{
-            "aria-label": t("modelLoader.prompt"),
-            style: { fontSize: "1.2vh" },
+          slotProps={{
+            htmlInput: {
+              "aria-label": t("modelLoader.prompt"),
+              style: { fontSize: "1.2vh" },
+            },
+            inputLabel: { sx: { fontSize: "1.2vh" } },
+            formHelperText: { sx: { fontSize: "1vh", m: 0 } },
           }}
-          InputLabelProps={{ sx: { fontSize: "1.2vh" } }}
-          FormHelperTextProps={{ sx: { fontSize: "1vh", m: 0 } }}
           sx={{
             minWidth: { xs: "fit-content", md: "10vw" },
             maxWidth: { xs: "fit-content", md: "12vw" },

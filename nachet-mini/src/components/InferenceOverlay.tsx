@@ -22,7 +22,7 @@ import {
   LayersOutlined,
   ArrowCircleDownRounded,
   ArrowCircleUpRounded,
-  DeleteOutline,
+  DeleteOutlined,
 } from "@mui/icons-material";
 
 type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | null;
@@ -568,7 +568,7 @@ const InferenceOverlay = ({
             }}
             aria-label="delete box"
           >
-            <DeleteOutline fontSize="small" />
+            <DeleteOutlined fontSize="small" />
           </IconButton>
         </Tooltip>
       )}

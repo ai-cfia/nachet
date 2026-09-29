@@ -58,7 +58,7 @@ const WebcamCapture = ({ webcamRef, onUserMediaError }: Props) => {
           onUserMediaError={onUserMediaError}
         />
       ) : (
-        <Typography color="grey.500" sx={{ fontSize: "1.3vh" }}>
+        <Typography sx={{ fontSize: "1.3vh", color: "grey.500" }}>
           No camera detected
         </Typography>
       )}

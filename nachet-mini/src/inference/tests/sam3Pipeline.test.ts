@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { env as ortEnv } from "onnxruntime-web";
 import type { ModelConfig } from "../models";
 
 // Shared handle to the ORT sessions the mock creates, in creation order
@@ -24,7 +25,7 @@ vi.mock("onnxruntime-web", () => {
   }
   return {
     Tensor,
-    env: { logLevel: "warning" },
+    env: { logLevel: "warning", wasm: {}, versions: { web: "1.2.3" } },
     InferenceSession: {
       create: vi.fn(async () => {
         const session = {
@@ -68,6 +69,12 @@ vi.mock("@huggingface/transformers", () => ({
 }));
 
 import { loadSam3, runSam3, unloadSam3 } from "../sam3";
+
+it("loads WASM assets from the matching runtime version", () => {
+  expect(ortEnv.wasm.wasmPaths).toBe(
+    "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.2.3/dist/",
+  );
+});
 
 const config = {
   detectorKind: "text-promptable-segmentation",

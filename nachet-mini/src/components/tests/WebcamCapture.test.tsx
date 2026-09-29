@@ -82,6 +82,19 @@ describe("WebcamCapture", () => {
   afterEach(cleanup);
 
   describe("no camera", () => {
+    it("keeps the placeholder grey against the black camera background", () => {
+      const { getByText } = render(
+        <WebcamCapture
+          webcamRef={webcamRef}
+          onUserMediaError={onUserMediaError}
+        />,
+      );
+
+      expect(getComputedStyle(getByText("No camera detected")).color).toBe(
+        "rgb(158, 158, 158)",
+      );
+    });
+
     it('shows "No camera detected" when devices list is empty', async () => {
       render(
         <WebcamCapture

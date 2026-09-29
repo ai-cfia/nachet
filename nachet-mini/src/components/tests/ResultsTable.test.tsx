@@ -77,6 +77,18 @@ describe("ResultsTable", () => {
         .toBeVisible();
     });
 
+    it("keeps the title's compact size, weight and theme color", () => {
+      const { getByText } = renderTable(null, false);
+      const style = getComputedStyle(getByText(enMain.resultsTable.title));
+
+      expect(parseFloat(style.fontSize)).toBeCloseTo(
+        window.innerHeight * 0.013,
+        1,
+      );
+      expect(style.fontWeight).toBe("600");
+      expect(style.color).toBe("rgba(0, 0, 0, 0.87)");
+    });
+
     it("renders the switch table button with correct aria-label", async () => {
       renderTable(null, false);
       await expect

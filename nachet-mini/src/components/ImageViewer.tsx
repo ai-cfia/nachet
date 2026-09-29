@@ -277,8 +277,7 @@ const ImageViewer = ({ src, imageDims, result }: Props) => {
       ) : (
         <Typography
           variant="body2"
-          color="text.secondary"
-          sx={{ fontSize: "1.3vh" }}
+          sx={{ fontSize: "1.3vh", color: "text.secondary" }}
         >
           No image loaded
         </Typography>
