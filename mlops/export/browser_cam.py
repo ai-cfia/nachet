@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 from shutil import rmtree
+import sys
 
 import numpy as np
 import onnx
@@ -22,6 +23,7 @@ else:
 FEATURE_TENSOR = "/swin/layernorm/Add_1_output_0"
 FUSED_FEATURE_TENSOR = "/swin/layernorm/LayerNormalization_output_0"
 FEATURE_OUTPUT_NAME = "swin_layernorm"
+# Diagnostic limits; these have not been calibrated for release approval.
 FP16_ATOL = 1e-3
 FP16_RTOL = 1e-2
 
@@ -155,11 +157,13 @@ def measure_fp16(reference, actual):
     return images
 
 
-def verify_fp16(candidate, pixels, reference, report_path):
-    """Check the CPU outputs and retain measurements even when verification fails."""
+def verify_fp16(candidate, pixels, reference, report_path, *, strict=False):
+    """Require valid CPU outputs; record numerical failures and reject them in strict mode."""
     report = {
-        "schema_version": 1,
-        "fp16_checks": "failed",
+        "schema_version": 2,
+        "output_checks": "failed",
+        "fp16_checks": "not_performed",
+        "strict": strict,
         "release_evaluation": "not_performed",
         "runtime": {"onnxruntime": ort.__version__, "provider": "CPUExecutionProvider"},
         "pixels": {
@@ -184,18 +188,27 @@ def verify_fp16(candidate, pixels, reference, report_path):
             if value.dtype != np.float32:
                 raise ValueError(f"FP16 {name} output must remain float32, got {value.dtype}")
 
+        report["output_checks"] = "passed"
         report["images"] = measure_fp16(reference, actual)
 
-        for name in ("logits", FEATURE_OUTPUT_NAME):
-            np.testing.assert_allclose(
-                actual[name], reference[name], atol=FP16_ATOL, rtol=FP16_RTOL,
-                err_msg=f"FP16 {name} differs from the FP32 reference",
+        # Only numerical mismatches are optional. Inference and interface errors still fail.
+        try:
+            for name in ("logits", FEATURE_OUTPUT_NAME):
+                np.testing.assert_allclose(
+                    actual[name], reference[name], atol=FP16_ATOL, rtol=FP16_RTOL,
+                    err_msg=f"FP16 {name} differs from the FP32 reference",
+                )
+            np.testing.assert_array_equal(
+                actual["logits"].argmax(axis=-1), reference["logits"].argmax(axis=-1),
+                err_msg="FP16 top-1 predictions differ from the FP32 reference",
             )
-        np.testing.assert_array_equal(
-            actual["logits"].argmax(axis=-1), reference["logits"].argmax(axis=-1),
-            err_msg="FP16 top-1 predictions differ from the FP32 reference",
-        )
-        report["fp16_checks"] = "passed"
+        except AssertionError as error:
+            report["fp16_checks"] = "failed"
+            report["error"] = f"{type(error).__name__}: {error}"
+            if strict:
+                raise
+        else:
+            report["fp16_checks"] = "passed"
     except Exception as error:
         report["error"] = f"{type(error).__name__}: {error}"
         raise
@@ -203,8 +216,8 @@ def verify_fp16(candidate, pixels, reference, report_path):
         report_path.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
 
 
-def prepare_browser_model(source, checkpoint, output, pixels):
-    """Add CAM features, convert to FP16, and save files after verification."""
+def prepare_browser_model(source, checkpoint, output, pixels, *, strict=False):
+    """Save an FP16 candidate and report; strict mode also requires numerical agreement."""
     # Verification uses preprocessed images: batch, RGB channels, height, width.
     if pixels.dtype != np.float32 or pixels.ndim != 4 or pixels.shape[1] != 3:
         raise ValueError("Pixels must be a float32 NCHW RGB batch")
@@ -271,10 +284,11 @@ def prepare_browser_model(source, checkpoint, output, pixels):
         )
         onnx.save(fp16_model, candidate_model_path)
 
-        verify_fp16(candidate_model_path, pixels, fp32_outputs, staging / "validation.json")
+        verify_fp16(candidate_model_path, pixels, fp32_outputs,
+                    staging / "validation.json", strict=strict)
 
         # The browser reads one little-endian FP32 row per species ("spp").
-        # Keep the candidate filename until all checks and the head write succeed.
+        # Keep the candidate filename until required checks and the head write succeed.
         head_path = staging / f"classifier_head_{class_count}spp.f32.bin"
         # Spatial CAM uses weights only; the ONNX logits already include the bias.
         classifier_weights.astype("<f4").tofile(head_path)
@@ -284,17 +298,29 @@ def prepare_browser_model(source, checkpoint, output, pixels):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        epilog="Exports are candidates for evaluation. Neither mode approves a model for deployment.",
+    )
     parser.add_argument("--onnx", required=True, type=Path)
     parser.add_argument("--checkpoint", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--pixels", required=True, type=Path,
                         help="NPY array of preprocessed FP32 images, shaped (batch, 3, height, width). "
                              "Use representative images for validation; synthetic inputs are smoke tests only.")
+    parser.add_argument("--strict", action="store_true",
+                        help="Reject FP16 numerical mismatches or changed top-1 predictions. "
+                             "By default these are reported without stopping export.")
     args = parser.parse_args()
     pixels = np.load(args.pixels, allow_pickle=False)
-    browser, head = prepare_browser_model(args.onnx, args.checkpoint, args.output, pixels)
-    print(f"Wrote {browser} and {head}; real browser validation is still required.")
+    browser, head = prepare_browser_model(args.onnx, args.checkpoint, args.output, pixels, strict=args.strict)
+    report_path = browser.parent / "validation.json"
+    report = json.loads(report_path.read_text())
+    print(f"Wrote FP16 candidate {browser} and CAM head {head}.")
+    print(f"FP16 numerical checks: {report['fp16_checks']}. Report: {report_path}")
+    if report["fp16_checks"] == "failed":
+        print("WARNING: FP16 numerical checks failed; review the report before using this candidate.", file=sys.stderr)
+    print("Release evaluation has not been performed; this candidate is not approved for deployment.")
 
 
 if __name__ == "__main__":
