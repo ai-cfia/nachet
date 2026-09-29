@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -51,19 +52,25 @@ class BrowserCamTest(unittest.TestCase):
             self.source, self.checkpoint, self.root / "browser", self.pixels,
         )
         np.testing.assert_array_equal(np.fromfile(head, dtype="<f4").reshape(3, 3), self.weight)
-        result = browser_cam.run(browser, self.pixels)
-        expected = browser_cam.run(self.source, self.pixels)
+        result = browser_cam.run_onnx(browser, self.pixels)
+        expected = browser_cam.run_onnx(self.source, self.pixels)
         self.assertEqual(result["swin_layernorm"].shape, (1, 4, 3))
         self.assertEqual(result["swin_layernorm"].dtype, np.float32)
         np.testing.assert_allclose(result["logits"], expected["logits"], rtol=1e-2, atol=1e-3)
+        self.assertEqual({path.name for path in browser.parent.iterdir()},
+                         {"model.onnx", "classifier_head_3spp.f32.bin"})
+        self.assertFalse(list(self.root.glob(".browser.*.partial")))
 
     def test_mismatched_head_does_not_produce_head_asset(self):
         save_file({"classifier.weight": self.weight + 2, "classifier.bias": self.bias},
                   self.checkpoint / "model.safetensors")
         output = self.root / "browser"
-        with self.assertRaises(AssertionError):
+        with self.assertRaisesRegex(AssertionError, "features and checkpoint head"):
             browser_cam.prepare_browser_model(self.source, self.checkpoint, output, self.pixels)
-        self.assertFalse(list(output.glob("*.bin")))
+        self.assertFalse(output.exists())
+        partial, = self.root.glob(".browser.*.partial")
+        self.assertTrue((partial / "diagnostics/model_with_features.onnx").exists())
+        self.assertFalse(list(partial.rglob("*.bin")))
 
     def test_nonfinite_graph_outputs_are_rejected(self):
         model = onnx.load(self.source)
@@ -80,12 +87,13 @@ class BrowserCamTest(unittest.TestCase):
             browser_cam.prepare_browser_model(
                 self.source, self.checkpoint, output, self.pixels,
             )
-        self.assertFalse((output / "model.onnx").exists())
-        self.assertFalse(list(output.glob("*.bin")))
+        self.assertFalse(output.exists())
+        partial, = self.root.glob(".browser.*.partial")
+        self.assertFalse(list(partial.rglob("*.bin")))
 
-    def test_failed_precision_check_keeps_only_candidate(self):
+    def test_failed_precision_check_retains_diagnostics_and_allows_retry(self):
         output = self.root / "browser"
-        original_run = browser_cam.run
+        original_run = browser_cam.run_onnx
 
         def inaccurate_candidate(path, pixels):
             result = original_run(path, pixels)
@@ -93,22 +101,88 @@ class BrowserCamTest(unittest.TestCase):
                 result["logits"] = result["logits"] + 1
             return result
 
-        with patch.object(browser_cam, "run", side_effect=inaccurate_candidate):
-            with self.assertRaises(AssertionError):
+        with patch.object(browser_cam, "run_onnx", side_effect=inaccurate_candidate):
+            with self.assertRaisesRegex(AssertionError, "FP16 logits") as failure:
                 browser_cam.prepare_browser_model(
                     self.source, self.checkpoint, output, self.pixels,
                 )
-        self.assertTrue((output / "model.candidate.onnx").exists())
-        self.assertFalse((output / "model.onnx").exists())
-        self.assertFalse(list(output.glob("*.bin")))
-        with self.assertRaises(FileExistsError):
+        self.assertFalse(output.exists())
+        partial, = self.root.glob(".browser.*.partial")
+        candidate = partial / "diagnostics/model.candidate.onnx"
+        original_candidate = candidate.read_bytes()
+        self.assertFalse(list(partial.rglob("*.bin")))
+        self.assertIn(str(partial), "\n".join(failure.exception.__notes__))
+        browser, _ = browser_cam.prepare_browser_model(
+            self.source, self.checkpoint, output, self.pixels,
+        )
+        self.assertTrue(browser.is_file())
+        self.assertEqual(candidate.read_bytes(), original_candidate)
+
+    def test_feature_only_precision_failure_rejects_candidate(self):
+        output = self.root / "browser"
+        original_run = browser_cam.run_onnx
+
+        def inaccurate_features(path, pixels):
+            result = original_run(path, pixels)
+            if Path(path).name == "model.candidate.onnx":
+                result[browser_cam.FEATURE_OUTPUT_NAME] += 1
+            return result
+
+        with patch.object(browser_cam, "run_onnx", side_effect=inaccurate_features):
+            with self.assertRaisesRegex(AssertionError, "FP16 swin_layernorm"):
+                browser_cam.prepare_browser_model(
+                    self.source, self.checkpoint, output, self.pixels,
+                )
+        self.assertFalse(output.exists())
+        partial, = self.root.glob(".browser.*.partial")
+        self.assertTrue((partial / "diagnostics/model.candidate.onnx").exists())
+        self.assertFalse(list(partial.rglob("*.bin")))
+
+    def test_failed_intermediate_cleanup_does_not_publish_and_allows_retry(self):
+        output = self.root / "browser"
+        with patch.object(browser_cam, "rmtree", side_effect=OSError("cleanup failed")):
+            with self.assertRaisesRegex(OSError, "cleanup failed"):
+                browser_cam.prepare_browser_model(
+                    self.source, self.checkpoint, output, self.pixels,
+                )
+        self.assertFalse(output.exists())
+        partial, = self.root.glob(".browser.*.partial")
+        self.assertTrue((partial / "diagnostics").is_dir())
+        self.assertTrue((partial / "model.onnx").is_file())
+        browser, _ = browser_cam.prepare_browser_model(
+            self.source, self.checkpoint, output, self.pixels,
+        )
+        self.assertTrue(browser.is_file())
+        self.assertTrue(partial.is_dir())
+
+    def test_near_tie_prediction_change_rejects_numerically_close_candidate(self):
+        # These distinct FP32 scores round to a tie during real FP16 conversion.
+        weight = np.zeros_like(self.weight)
+        bias = np.array([1.0, 1.0001, 0.2], dtype=np.float32)
+        save_file({"classifier.weight": weight, "classifier.bias": bias},
+                  self.checkpoint / "model.safetensors")
+        model = onnx.load(self.source)
+        for initializer in model.graph.initializer:
+            if initializer.name == "weight":
+                initializer.CopyFrom(numpy_helper.from_array(weight, "weight"))
+            elif initializer.name == "bias":
+                initializer.CopyFrom(numpy_helper.from_array(bias, "bias"))
+        onnx.save(model, self.source)
+
+        output = self.root / "browser"
+        with self.assertRaisesRegex(AssertionError, "FP16 top-1 predictions"):
             browser_cam.prepare_browser_model(
                 self.source, self.checkpoint, output, self.pixels,
             )
-        browser, _ = browser_cam.prepare_browser_model(
-            self.source, self.checkpoint, self.root / "retry", self.pixels,
-        )
-        self.assertTrue(browser.is_file())
+        self.assertFalse(output.exists())
+        partial, = self.root.glob(".browser.*.partial")
+        reference = browser_cam.run_onnx(partial / "diagnostics/model_with_features.onnx", self.pixels)
+        candidate = browser_cam.run_onnx(partial / "diagnostics/model.candidate.onnx", self.pixels)
+        for name in ("logits", browser_cam.FEATURE_OUTPUT_NAME):
+            np.testing.assert_allclose(candidate[name], reference[name], atol=1e-3, rtol=1e-2)
+        np.testing.assert_array_equal(reference["logits"].argmax(axis=-1), [1])
+        np.testing.assert_array_equal(candidate["logits"].argmax(axis=-1), [0])
+        self.assertFalse(list(partial.rglob("*.bin")))
 
     def test_nonfinite_input_is_rejected_before_writing(self):
         output = self.root / "browser"
@@ -119,7 +193,7 @@ class BrowserCamTest(unittest.TestCase):
             )
         self.assertFalse(output.exists())
 
-    def test_fused_normalization_output_is_supported(self):
+    def test_fused_feature_tensor_name_is_recognized(self):
         model = onnx.load(self.source)
         for node in model.graph.node:
             for names in (node.input, node.output):
@@ -130,7 +204,7 @@ class BrowserCamTest(unittest.TestCase):
         browser, _ = browser_cam.prepare_browser_model(
             self.source, self.checkpoint, self.root / "browser", self.pixels,
         )
-        self.assertEqual(browser_cam.run(browser, self.pixels)["swin_layernorm"].shape, (1, 4, 3))
+        self.assertEqual(browser_cam.run_onnx(browser, self.pixels)["swin_layernorm"].shape, (1, 4, 3))
 
     def test_ambiguous_feature_outputs_are_rejected(self):
         model = onnx.load(self.source)
@@ -153,6 +227,20 @@ class BrowserCamTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "every classifier-head row"):
             browser_cam.load_classifier_head(self.checkpoint)
 
+    def test_nonmatrix_classifier_weights_are_rejected(self):
+        save_file({"classifier.weight": self.weight[0], "classifier.bias": self.bias},
+                  self.checkpoint / "model.safetensors")
+        with self.assertRaisesRegex(ValueError, "weights must be a two-dimensional matrix"):
+            browser_cam.load_classifier_head(self.checkpoint)
+
+    def test_classifier_bias_requires_one_value_per_class(self):
+        for bias in (self.bias[:2], self.bias.reshape(3, 1)):
+            with self.subTest(shape=bias.shape):
+                save_file({"classifier.weight": self.weight, "classifier.bias": bias},
+                          self.checkpoint / "model.safetensors")
+                with self.assertRaisesRegex(ValueError, "Classifier bias must have shape"):
+                    browser_cam.load_classifier_head(self.checkpoint)
+
     def test_single_weight_file_takes_precedence_over_stale_index(self):
         (self.checkpoint / "model.safetensors.index.json").write_text(json.dumps({
             "weight_map": {"classifier.weight": "missing.safetensors",
@@ -174,11 +262,90 @@ class BrowserCamTest(unittest.TestCase):
         np.testing.assert_array_equal(weights, self.weight)
         np.testing.assert_array_equal(bias, self.bias)
 
+    def test_bfloat16_head_loads_as_float32_from_single_file_or_shards(self):
+        import torch
+        from safetensors.torch import save_file as save_torch_file
+
+        weight = torch.from_numpy(self.weight).bfloat16()
+        bias = torch.from_numpy(self.bias).bfloat16()
+        for sharded in (False, True):
+            with self.subTest(sharded=sharded):
+                if sharded:
+                    (self.checkpoint / "model.safetensors").unlink()
+                    save_torch_file({"classifier.weight": weight}, self.checkpoint / "weight.safetensors")
+                    save_torch_file({"classifier.bias": bias}, self.checkpoint / "bias.safetensors")
+                    (self.checkpoint / "model.safetensors.index.json").write_text(json.dumps({
+                        "weight_map": {"classifier.weight": "weight.safetensors",
+                                       "classifier.bias": "bias.safetensors"},
+                    }))
+                else:
+                    save_torch_file({"classifier.weight": weight, "classifier.bias": bias},
+                                    self.checkpoint / "model.safetensors")
+                actual_weight, actual_bias = browser_cam.load_classifier_head(self.checkpoint)
+                self.assertEqual(actual_weight.dtype, np.float32)
+                self.assertEqual(actual_bias.dtype, np.float32)
+                np.testing.assert_array_equal(actual_weight, weight.float().numpy())
+                np.testing.assert_array_equal(actual_bias, bias.float().numpy())
+
+    def test_missing_head_tensor_has_an_explicit_error(self):
+        save_file({"classifier.weight": self.weight}, self.checkpoint / "model.safetensors")
+        with self.assertRaisesRegex(ValueError, "Missing 'classifier.bias'"):
+            browser_cam.load_classifier_head(self.checkpoint)
+
+    def test_missing_head_index_entry_has_an_explicit_error(self):
+        (self.checkpoint / "model.safetensors").rename(self.checkpoint / "shard.safetensors")
+        (self.checkpoint / "model.safetensors.index.json").write_text(json.dumps({
+            "weight_map": {"classifier.weight": "shard.safetensors"},
+        }))
+        with self.assertRaisesRegex(ValueError, "Weight index has no entry for 'classifier.bias'"):
+            browser_cam.load_classifier_head(self.checkpoint)
+
+    def test_cli_help_works_for_direct_and_module_invocation(self):
+        script = Path(browser_cam.__file__).resolve()
+        for arguments in ([str(script)], ["-m", "mlops.export.browser_cam"]):
+            with self.subTest(arguments=arguments):
+                result = subprocess.run(
+                    [sys.executable, *arguments, "--help"], cwd=script.parents[2],
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("--pixels", result.stdout)
+
     def test_existing_output_is_not_overwritten(self):
         output = self.root / "browser"
         output.mkdir()
+        sentinel = output / "keep"
+        sentinel.write_bytes(b"existing export")
         with self.assertRaises(FileExistsError):
             browser_cam.prepare_browser_model(self.source, self.checkpoint, output, self.pixels)
+        self.assertEqual(sentinel.read_bytes(), b"existing export")
+        self.assertFalse(list(self.root.glob(".browser.*.partial")))
+
+
+class SwinBrowserCamTest(unittest.TestCase):
+    def test_fp16_cam_export_matches_pytorch_on_same_pixels(self):
+        import torch
+        from export_model import export_model
+        from swin_fixture import create_swin_fixture
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            model, checkpoint, pixels = create_swin_fixture(root)
+            output = export_model(checkpoint, root / "export")
+            graph = output / "onnx-fp32/model.onnx"
+            with torch.no_grad():
+                expected = model(pixel_values=pixels).logits.numpy()
+
+            browser, head = browser_cam.prepare_browser_model(
+                graph, checkpoint, root / "browser", pixels.numpy(),
+            )
+            np.testing.assert_array_equal(
+                np.fromfile(head, dtype="<f4").reshape(model.classifier.weight.shape),
+                model.classifier.weight.detach().numpy(),
+            )
+            result = browser_cam.run_onnx(browser, pixels.numpy())
+            self.assertEqual(result["swin_layernorm"].shape, (1, 16, 16))
+            np.testing.assert_allclose(result["logits"], expected, rtol=1e-2, atol=1e-3)
 
 
 if __name__ == "__main__":

@@ -13,6 +13,74 @@ sys.path.insert(0, str(Path(__file__).parents[1]))
 import export_model  # noqa: E402
 
 
+class StagedOutputTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.output = self.root / "export"
+
+    def test_success_exposes_the_complete_directory(self):
+        ordinary_directory = self.root / "ordinary"
+        ordinary_directory.mkdir()
+        with export_model.staged_output(self.output) as staging:
+            self.assertFalse(self.output.exists())
+            self.assertEqual(staging.parent, self.output.parent)
+            (staging / "model.onnx").write_bytes(b"model")
+            (staging / "head.bin").write_bytes(b"head")
+        self.assertEqual({p.name for p in self.output.iterdir()}, {"model.onnx", "head.bin"})
+        self.assertFalse(staging.exists())
+        self.assertEqual(self.output.stat().st_mode, ordinary_directory.stat().st_mode)
+
+    def test_interrupted_run_retains_diagnostics_and_can_retry(self):
+        with self.assertRaises(KeyboardInterrupt) as failure:
+            with export_model.staged_output(self.output) as staging:
+                (staging / "diagnostic").write_bytes(b"keep")
+                raise KeyboardInterrupt()
+        self.assertFalse(self.output.exists())
+        self.assertIn(str(staging), "\n".join(failure.exception.__notes__))
+        with export_model.staged_output(self.output) as retry:
+            self.assertNotEqual(retry, staging)
+            (retry / "model.onnx").write_bytes(b"model")
+        self.assertEqual((staging / "diagnostic").read_bytes(), b"keep")
+
+    def test_existing_paths_are_rejected(self):
+        for kind in ("empty_directory", "file", "dangling_symlink"):
+            with self.subTest(kind=kind):
+                output = self.root / kind
+                if kind == "empty_directory":
+                    output.mkdir()
+                elif kind == "file":
+                    output.write_bytes(b"keep")
+                else:
+                    output.symlink_to(self.root / "missing", target_is_directory=True)
+                before = output.lstat()
+                with self.assertRaises(FileExistsError):
+                    with export_model.staged_output(output):
+                        self.fail("An existing destination was accepted")
+                self.assertEqual(output.lstat().st_ino, before.st_ino)
+                self.assertFalse(list(self.root.glob(f".{kind}.*.partial")))
+
+    def test_destination_created_during_export_is_not_replaced(self):
+        with self.assertRaises(FileExistsError):
+            with export_model.staged_output(self.output) as staging:
+                (staging / "model.onnx").write_bytes(b"model")
+                self.output.mkdir()
+                destination_inode = self.output.stat().st_ino
+        self.assertEqual(self.output.stat().st_ino, destination_inode)
+        self.assertEqual(list(self.output.iterdir()), [])
+        self.assertEqual((staging / "model.onnx").read_bytes(), b"model")
+
+    def test_failed_final_rename_retains_staging(self):
+        with patch.object(Path, "rename", side_effect=OSError("rename failed")):
+            with self.assertRaisesRegex(OSError, "rename failed") as failure:
+                with export_model.staged_output(self.output) as staging:
+                    (staging / "model.onnx").write_bytes(b"model")
+        self.assertFalse(self.output.exists())
+        self.assertEqual((staging / "model.onnx").read_bytes(), b"model")
+        self.assertIn(str(staging), "\n".join(failure.exception.__notes__))
+
+
 class ExportBoundaryTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -59,6 +127,33 @@ class ExportBoundaryTest(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 export_model.export_model(self.checkpoint, self.output, quantize=True)
         self.assertEqual(run.call_count, 1)
+        self.assertFalse(self.output.exists())
+
+    @patch.object(export_model, "which", return_value="optimum-cli")
+    def test_quantization_failure_retains_partial_runs_and_allows_retry(self, _):
+        def fail_quantization(command, **kwargs):
+            if command[1] == "export":
+                self.fake_run(command, **kwargs)
+            else:
+                destination = Path(command[-1])
+                destination.mkdir()
+                (destination / "incomplete").write_bytes(b"partial quantization")
+                raise subprocess.CalledProcessError(1, command)
+
+        for _ in range(2):
+            with patch.object(export_model.subprocess, "run", side_effect=fail_quantization):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    export_model.export_model(self.checkpoint, self.output, quantize=True)
+            self.assertFalse(self.output.exists())
+        partials = list(self.root.glob(".export.*.partial"))
+        self.assertEqual(len(partials), 2)
+        for partial in partials:
+            self.assertEqual((partial / "onnx-fp32/model.onnx").read_bytes(), b"test graph")
+            self.assertEqual((partial / "onnx-quant/incomplete").read_bytes(), b"partial quantization")
+        with patch.object(export_model.subprocess, "run", side_effect=self.fake_run):
+            export_model.export_model(self.checkpoint, self.output, quantize=True)
+        self.assertTrue((self.output / "onnx-quant/model_quantized.onnx").is_file())
+        self.assertTrue(all(partial.is_dir() for partial in partials))
 
     @patch.object(export_model, "which", return_value="optimum-cli")
     def test_success_exit_without_graph_is_rejected(self, _):
@@ -122,6 +217,14 @@ class ExportBoundaryTest(unittest.TestCase):
         )
         with self.assertRaises(FileNotFoundError):
             export_model.checkpoint_files(self.checkpoint)
+
+    def test_malformed_weight_map_has_an_explicit_error(self):
+        (self.checkpoint / "model.safetensors").unlink()
+        for index in ({}, [], {"weight_map": []}, {"weight_map": {"weight": None}}):
+            with self.subTest(index=index):
+                (self.checkpoint / "model.safetensors.index.json").write_text(json.dumps(index))
+                with self.assertRaisesRegex(ValueError, "Weight index must"):
+                    export_model.checkpoint_files(self.checkpoint)
 
 
 class SwinExportTest(unittest.TestCase):
@@ -190,50 +293,23 @@ class SwinExportTest(unittest.TestCase):
                      for path in directory.rglob("*") if path.is_file()}
             self.assertEqual(before, after)
 
-    def test_export_matches_pytorch_on_same_pixels(self):
+    def test_fp32_export_matches_pytorch_on_same_pixels(self):
         import numpy as np
         import onnxruntime as ort
         import torch
-        from PIL import Image
-        from transformers import SwinConfig, SwinForImageClassification, ViTImageProcessor
+        from swin_fixture import create_swin_fixture
 
-        torch.manual_seed(42)
-        torch.set_num_threads(1)
-        model = SwinForImageClassification(SwinConfig(
-            image_size=32, patch_size=4, embed_dim=8, depths=[1, 1],
-            num_heads=[1, 2], window_size=2, num_labels=3,
-            id2label={0: "Beta", 1: "Alpha", 2: "Gamma"},
-            label2id={"Beta": 0, "Alpha": 1, "Gamma": 2},
-        )).eval()
-        processor = ViTImageProcessor(size={"height": 32, "width": 32})
         with tempfile.TemporaryDirectory() as tmp:
-            checkpoint = Path(tmp) / "checkpoint"
-            model.save_pretrained(checkpoint)
-            processor.save_pretrained(checkpoint)
+            model, checkpoint, pixels = create_swin_fixture(Path(tmp))
             output = export_model.export_model(checkpoint, Path(tmp) / "export")
             graph = output / "onnx-fp32" / "model.onnx"
             session = ort.InferenceSession(str(graph), providers=["CPUExecutionProvider"])
-            pixels = processor(images=Image.fromarray(np.random.default_rng(42).integers(
-                0, 256, size=(48, 40, 3), dtype=np.uint8,
-            )), return_tensors="pt")["pixel_values"]
             with torch.no_grad():
                 expected = model(pixel_values=pixels).logits.numpy()
             actual = session.run(["logits"], {"pixel_values": pixels.numpy()})[0]
             np.testing.assert_allclose(actual, expected, rtol=1e-4, atol=1e-5)
             self.assertEqual(json.loads((graph.parent / "config.json").read_text())["id2label"],
                              {"0": "Beta", "1": "Alpha", "2": "Gamma"})
-
-            import browser_cam
-            browser, head = browser_cam.prepare_browser_model(
-                graph, checkpoint, Path(tmp) / "browser", pixels.numpy(),
-            )
-            np.testing.assert_array_equal(
-                np.fromfile(head, dtype="<f4").reshape(model.classifier.weight.shape),
-                model.classifier.weight.detach().numpy(),
-            )
-            result = browser_cam.run(browser, pixels.numpy())
-            self.assertEqual(result["swin_layernorm"].shape, (1, 16, 16))
-            np.testing.assert_allclose(result["logits"], expected, rtol=1e-2, atol=1e-3)
 
 
 class DetectorExportTest(unittest.TestCase):

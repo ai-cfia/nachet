@@ -4,6 +4,7 @@
 import argparse
 import json
 from pathlib import Path
+from shutil import rmtree
 
 import numpy as np
 import onnx
@@ -11,7 +12,10 @@ import onnxruntime as ort
 from onnxconverter_common import float16
 from safetensors import safe_open
 
-from export_model import checkpoint_files
+if __package__:
+    from .export_model import checkpoint_files, staged_output
+else:
+    from export_model import checkpoint_files, staged_output
 
 
 FEATURE_TENSOR = "/swin/layernorm/Add_1_output_0"
@@ -19,9 +23,10 @@ FUSED_FEATURE_TENSOR = "/swin/layernorm/LayerNormalization_output_0"
 FEATURE_OUTPUT_NAME = "swin_layernorm"
 
 
-def run(path, pixels, optimization=ort.GraphOptimizationLevel.ORT_ENABLE_ALL):
+def run_onnx(path, pixels):
+    """Run all ONNX outputs on CPU and reject non-finite results."""
     options = ort.SessionOptions()
-    options.graph_optimization_level = optimization
+    options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
     session = ort.InferenceSession(str(path), options, providers=["CPUExecutionProvider"])
     values = session.run(None, {session.get_inputs()[0].name: pixels})
     # Matching NaNs or infinities must not count as agreement between models.
@@ -70,24 +75,29 @@ def load_classifier_head(checkpoint):
 
     head_tensors = {}
     for parameter_name in ("classifier.weight", "classifier.bias"):
+        if parameter_name not in parameter_to_file:
+            raise ValueError(f"Weight index has no entry for {parameter_name!r}")
         filename = parameter_to_file[parameter_name]
         # Accept filenames only, so the index cannot select another directory.
         if Path(filename).name != filename:
             raise ValueError(f"Invalid weight shard name: {filename!r}")
         weights_file = checkpoint / filename
-        with safe_open(weights_file, framework="np") as saved_weights:
+        with safe_open(weights_file, framework="pt", device="cpu") as saved_weights:
+            if parameter_name not in saved_weights.keys():
+                raise ValueError(f"Missing {parameter_name!r} in {weights_file}")
             tensor = saved_weights.get_tensor(parameter_name)
-            head_tensors[parameter_name] = tensor.astype(np.float32)
+            # NumPy cannot read BF16 directly; widen the saved tensor first.
+            head_tensors[parameter_name] = tensor.float().numpy()
 
     classifier_weights = head_tensors["classifier.weight"]
     classifier_bias = head_tensors["classifier.bias"]
 
     # Each class has one row of feature weights and one bias value.
     if classifier_weights.ndim != 2:
-        raise ValueError("Classifier head must contain a weight matrix and one bias per class")
+        raise ValueError("Classifier weights must be a two-dimensional matrix")
     class_count = classifier_weights.shape[0]
     if classifier_bias.shape != (class_count,):
-        raise ValueError("Classifier head must contain a weight matrix and one bias per class")
+        raise ValueError(f"Classifier bias must have shape ({class_count},), got {classifier_bias.shape}")
     labels = config.get("id2label", {})
     expected_class_ids = {str(class_id) for class_id in range(class_count)}
     if set(labels) != expected_class_ids:
@@ -113,66 +123,77 @@ def prepare_browser_model(source, checkpoint, output, pixels):
         raise ValueError("Browser output must be outside the checkpoint")
     classifier_weights, classifier_bias = load_classifier_head(checkpoint)
     class_count, feature_channels = classifier_weights.shape
-    output.mkdir(parents=True, exist_ok=False)
-    feature_model_path = output / "model_with_features.onnx"
-    optimized_model_path = output / "model_with_features.opt.onnx"
-    candidate_model_path = output / "model.candidate.onnx"
-    browser_model_path = output / "model.onnx"
+    with staged_output(output) as staging:
+        diagnostics = staging / "diagnostics"
+        diagnostics.mkdir()
+        feature_model_path = diagnostics / "model_with_features.onnx"
+        optimized_model_path = diagnostics / "model_with_features.opt.onnx"
+        candidate_model_path = diagnostics / "model.candidate.onnx"
+        browser_model_path = staging / "model.onnx"
 
-    # Expose the CAM features without changing the model's classification scores.
-    add_feature_output(source, feature_model_path, feature_channels)
-    original_outputs = run(source, pixels)
-    fp32_outputs = run(feature_model_path, pixels)
-    np.testing.assert_allclose(
-        fp32_outputs["logits"], original_outputs["logits"],
-        atol=1e-5, rtol=1e-4,
-    )
-    features = fp32_outputs[FEATURE_OUTPUT_NAME]
-    if features.ndim != 3 or features.shape[2] != feature_channels:
-        raise ValueError(f"Unexpected feature shape: {features.shape}")
-
-    # Swin averages the spatial features before applying its classification layer.
-    # Repeating that calculation checks the selected features and head on these inputs.
-    pooled_features = features.mean(axis=1)
-    reconstructed_logits = pooled_features @ classifier_weights.T + classifier_bias
-    np.testing.assert_allclose(
-        reconstructed_logits, fp32_outputs["logits"], atol=1e-5, rtol=1e-4,
-    )
-
-    # Fuse LayerNorm before FP16 conversion to avoid the historical cast/fusion failure.
-    options = ort.SessionOptions()
-    options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_EXTENDED
-    options.optimized_model_filepath = str(optimized_model_path)
-    ort.InferenceSession(
-        str(feature_model_path), options, providers=["CPUExecutionProvider"],
-    )
-
-    # Convert internal operations to FP16 while keeping browser inputs and outputs FP32.
-    optimized_model = onnx.load(optimized_model_path)
-    fp16_model = float16.convert_float_to_float16(
-        optimized_model,
-        keep_io_types=True,
-        disable_shape_infer=True,
-    )
-    onnx.save(fp16_model, candidate_model_path)
-
-    # Compare both outputs on the same images and check that the winning classes agree.
-    fp16_outputs = run(candidate_model_path, pixels)
-    for output_name in ("logits", FEATURE_OUTPUT_NAME):
+        # Expose the CAM features without changing the model's classification scores.
+        add_feature_output(source, feature_model_path, feature_channels)
+        original_outputs = run_onnx(source, pixels)
+        fp32_outputs = run_onnx(feature_model_path, pixels)
         np.testing.assert_allclose(
-            fp16_outputs[output_name], fp32_outputs[output_name],
-            atol=1e-3, rtol=1e-2,
+            fp32_outputs["logits"], original_outputs["logits"],
+            atol=1e-5, rtol=1e-4,
+            err_msg="Adding the CAM feature output changed the logits",
         )
-    fp16_predictions = fp16_outputs["logits"].argmax(axis=-1)
-    fp32_predictions = fp32_outputs["logits"].argmax(axis=-1)
-    np.testing.assert_array_equal(fp16_predictions, fp32_predictions)
+        features = fp32_outputs[FEATURE_OUTPUT_NAME]
+        if features.ndim != 3 or features.shape[2] != feature_channels:
+            raise ValueError(f"Unexpected feature shape: {features.shape}")
 
-    # The browser reads one row per class as little-endian float32 values.
-    # Keep the candidate filename until all checks and the head write succeed.
-    head_path = output / f"classifier_head_{class_count}spp.f32.bin"
-    classifier_weights.astype("<f4").tofile(head_path)
-    candidate_model_path.rename(browser_model_path)
-    return browser_model_path, head_path
+        # Swin averages the spatial features before applying its classification layer.
+        # Repeating that calculation checks the selected features and head on these inputs.
+        pooled_features = features.mean(axis=1)
+        reconstructed_logits = pooled_features @ classifier_weights.T + classifier_bias
+        np.testing.assert_allclose(
+            reconstructed_logits, fp32_outputs["logits"], atol=1e-5, rtol=1e-4,
+            err_msg="CAM features and checkpoint head do not reproduce the logits",
+        )
+
+        # Fuse LayerNorm first: converting its unfused casts can crash ORT's
+        # SimplifiedLayerNormFusion pass.
+        options = ort.SessionOptions()
+        options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_EXTENDED
+        options.optimized_model_filepath = str(optimized_model_path)
+        ort.InferenceSession(
+            str(feature_model_path), options, providers=["CPUExecutionProvider"],
+        )
+
+        # Convert internal operations to FP16 while keeping browser inputs and outputs FP32.
+        optimized_model = onnx.load(optimized_model_path)
+        fp16_model = float16.convert_float_to_float16(
+            optimized_model,
+            keep_io_types=True,
+            disable_shape_infer=True,
+        )
+        onnx.save(fp16_model, candidate_model_path)
+
+        # Compare both outputs on the same images and check that the winning classes agree.
+        fp16_outputs = run_onnx(candidate_model_path, pixels)
+        for output_name in ("logits", FEATURE_OUTPUT_NAME):
+            np.testing.assert_allclose(
+                fp16_outputs[output_name], fp32_outputs[output_name],
+                atol=1e-3, rtol=1e-2,
+                err_msg=f"FP16 {output_name} differs from the FP32 reference",
+            )
+        fp16_predictions = fp16_outputs["logits"].argmax(axis=-1)
+        fp32_predictions = fp32_outputs["logits"].argmax(axis=-1)
+        np.testing.assert_array_equal(
+            fp16_predictions, fp32_predictions,
+            err_msg="FP16 top-1 predictions differ from the FP32 reference",
+        )
+
+        # The browser reads one little-endian FP32 row per species ("spp").
+        # Keep the candidate filename until all checks and the head write succeed.
+        head_path = staging / f"classifier_head_{class_count}spp.f32.bin"
+        # Spatial CAM uses weights only; the ONNX logits already include the bias.
+        classifier_weights.astype("<f4").tofile(head_path)
+        candidate_model_path.rename(browser_model_path)
+        rmtree(diagnostics)
+    return output / "model.onnx", output / head_path.name
 
 
 def main():
@@ -181,7 +202,8 @@ def main():
     parser.add_argument("--checkpoint", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--pixels", required=True, type=Path,
-                        help="NPY array of preprocessed FP32 images, shaped (batch, 3, height, width)")
+                        help="NPY array of preprocessed FP32 images, shaped (batch, 3, height, width). "
+                             "Use representative images for validation; synthetic inputs are smoke tests only.")
     args = parser.parse_args()
     pixels = np.load(args.pixels, allow_pickle=False)
     browser, head = prepare_browser_model(args.onnx, args.checkpoint, args.output, pixels)
