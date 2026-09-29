@@ -1,0 +1,73 @@
+---
+name: MLOps export
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "mlops/export/**"
+      - ".github/workflows/mlops-export.yml"
+  push:
+    branches: [main]
+    paths:
+      - "mlops/export/**"
+      - ".github/workflows/mlops-export.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  export-python-lint:
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-python-mono.yml@c504dacdff61c8a1f7c796934e9ad20749f6d136
+    with:
+      working-directory: mlops/export
+
+  export-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e  # v4
+
+      - name: Build test image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        with:
+          context: mlops/export
+          target: test
+          platforms: linux/amd64
+          load: true
+          tags: nachet-export:test
+          cache-from: type=gha,scope=nachet-export
+          cache-to: type=gha,scope=nachet-export,mode=max
+
+      - name: Run offline export tests
+        run: >-
+          docker run --rm --network none --read-only
+          --cap-drop ALL --security-opt no-new-privileges
+          --tmpfs /tmp:rw,exec,size=2g
+          nachet-export:test
+
+      - name: Build runtime image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        with:
+          context: mlops/export
+          target: final
+          platforms: linux/amd64
+          load: true
+          tags: nachet-export:local
+          cache-from: type=gha,scope=nachet-export
+
+      - name: Check runtime entry point
+        run: docker run --rm --network none --read-only nachet-export:local --help

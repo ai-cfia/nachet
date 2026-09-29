@@ -1,0 +1,8 @@
+*
+!Dockerfile
+!pyproject.toml
+!uv.lock
+!export_model.py
+!browser_cam.py
+!tests/
+!tests/test_*.py
