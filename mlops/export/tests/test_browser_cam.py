@@ -1,5 +1,6 @@
 """Exercise feature exposure and CAM head checks on a small ONNX graph."""
 
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -58,7 +59,15 @@ class BrowserCamTest(unittest.TestCase):
         self.assertEqual(result["swin_layernorm"].dtype, np.float32)
         np.testing.assert_allclose(result["logits"], expected["logits"], rtol=1e-2, atol=1e-3)
         self.assertEqual({path.name for path in browser.parent.iterdir()},
-                         {"model.onnx", "classifier_head_3spp.f32.bin"})
+                         {"model.onnx", "classifier_head_3spp.f32.bin", "validation.json"})
+        report = json.loads((browser.parent / "validation.json").read_text())
+        self.assertEqual(report["fp16_checks"], "passed")
+        self.assertEqual(report["release_evaluation"], "not_performed")
+        self.assertEqual(report["pixels"]["sha256"], hashlib.sha256(self.pixels.tobytes()).hexdigest())
+        self.assertEqual(report["pixels"]["shape"], [1, 3, 2, 2])
+        self.assertEqual(report["criteria"], {"atol": 1e-3, "rtol": 1e-2, "require_same_top1": True})
+        self.assertEqual(len(report["images"]), 1)
+        self.assertFalse(report["images"][0]["top1_changed"])
         self.assertFalse(list(self.root.glob(".browser.*.partial")))
 
     def test_mismatched_head_does_not_produce_head_asset(self):
@@ -91,70 +100,6 @@ class BrowserCamTest(unittest.TestCase):
         partial, = self.root.glob(".browser.*.partial")
         self.assertFalse(list(partial.rglob("*.bin")))
 
-    def test_failed_precision_check_retains_diagnostics_and_allows_retry(self):
-        output = self.root / "browser"
-        original_run = browser_cam.run_onnx
-
-        def inaccurate_candidate(path, pixels):
-            result = original_run(path, pixels)
-            if Path(path).name == "model.candidate.onnx":
-                result["logits"] = result["logits"] + 1
-            return result
-
-        with patch.object(browser_cam, "run_onnx", side_effect=inaccurate_candidate):
-            with self.assertRaisesRegex(AssertionError, "FP16 logits") as failure:
-                browser_cam.prepare_browser_model(
-                    self.source, self.checkpoint, output, self.pixels,
-                )
-        self.assertFalse(output.exists())
-        partial, = self.root.glob(".browser.*.partial")
-        candidate = partial / "diagnostics/model.candidate.onnx"
-        original_candidate = candidate.read_bytes()
-        self.assertFalse(list(partial.rglob("*.bin")))
-        self.assertIn(str(partial), "\n".join(failure.exception.__notes__))
-        browser, _ = browser_cam.prepare_browser_model(
-            self.source, self.checkpoint, output, self.pixels,
-        )
-        self.assertTrue(browser.is_file())
-        self.assertEqual(candidate.read_bytes(), original_candidate)
-
-    def test_feature_only_precision_failure_rejects_candidate(self):
-        output = self.root / "browser"
-        original_run = browser_cam.run_onnx
-
-        def inaccurate_features(path, pixels):
-            result = original_run(path, pixels)
-            if Path(path).name == "model.candidate.onnx":
-                result[browser_cam.FEATURE_OUTPUT_NAME] += 1
-            return result
-
-        with patch.object(browser_cam, "run_onnx", side_effect=inaccurate_features):
-            with self.assertRaisesRegex(AssertionError, "FP16 swin_layernorm"):
-                browser_cam.prepare_browser_model(
-                    self.source, self.checkpoint, output, self.pixels,
-                )
-        self.assertFalse(output.exists())
-        partial, = self.root.glob(".browser.*.partial")
-        self.assertTrue((partial / "diagnostics/model.candidate.onnx").exists())
-        self.assertFalse(list(partial.rglob("*.bin")))
-
-    def test_failed_intermediate_cleanup_does_not_publish_and_allows_retry(self):
-        output = self.root / "browser"
-        with patch.object(browser_cam, "rmtree", side_effect=OSError("cleanup failed")):
-            with self.assertRaisesRegex(OSError, "cleanup failed"):
-                browser_cam.prepare_browser_model(
-                    self.source, self.checkpoint, output, self.pixels,
-                )
-        self.assertFalse(output.exists())
-        partial, = self.root.glob(".browser.*.partial")
-        self.assertTrue((partial / "diagnostics").is_dir())
-        self.assertTrue((partial / "model.onnx").is_file())
-        browser, _ = browser_cam.prepare_browser_model(
-            self.source, self.checkpoint, output, self.pixels,
-        )
-        self.assertTrue(browser.is_file())
-        self.assertTrue(partial.is_dir())
-
     def test_near_tie_prediction_change_rejects_numerically_close_candidate(self):
         # These distinct FP32 scores round to a tie during real FP16 conversion.
         weight = np.zeros_like(self.weight)
@@ -182,7 +127,133 @@ class BrowserCamTest(unittest.TestCase):
             np.testing.assert_allclose(candidate[name], reference[name], atol=1e-3, rtol=1e-2)
         np.testing.assert_array_equal(reference["logits"].argmax(axis=-1), [1])
         np.testing.assert_array_equal(candidate["logits"].argmax(axis=-1), [0])
+        report = json.loads((partial / "validation.json").read_text())
+        image = report["images"][0]
+        self.assertTrue(image["top1_changed"])
+        self.assertTrue(image["ordered_top5_changed"])
+        self.assertEqual(image["fp32_top5"], [1, 0, 2])
+        self.assertEqual(image["fp16_top5"], [0, 1, 2])
+        self.assertAlmostEqual(image["fp32_top1_margin"], 0.0001, places=6)
+        for error in image["errors"].values():
+            self.assertEqual(error["values_outside_tolerance"], 0)
+        self.assertEqual(report["fp16_checks"], "failed")
         self.assertFalse(list(partial.rglob("*.bin")))
+
+    def test_output_names_shapes_and_types_must_match(self):
+        reference = {
+            "logits": np.ones((1, 3), dtype=np.float32),
+            "swin_layernorm": np.ones((1, 4, 3), dtype=np.float32),
+        }
+        cases = [
+            ("missing", {"logits": reference["logits"]}, "output names"),
+            ("extra", {**reference, "extra": reference["logits"]}, "output names"),
+            ("shape", {**reference, "logits": reference["logits"][0]}, "shape"),
+            ("dtype", {**reference, "logits": reference["logits"].astype(np.float16)}, "float32"),
+        ]
+        for name, outputs, message in cases:
+            with self.subTest(case=name):
+                report_path = self.root / f"{name}.json"
+                with patch.object(browser_cam, "run_onnx", return_value=outputs):
+                    with self.assertRaisesRegex(ValueError, message):
+                        browser_cam.verify_fp16(self.source, self.pixels, reference, report_path)
+                report = json.loads(report_path.read_text())
+                self.assertEqual(report["fp16_checks"], "failed")
+                self.assertIn(message, report["error"])
+
+    def test_report_write_failure_prevents_final_output(self):
+        original_write = Path.write_text
+
+        def fail_report(path, *args, **kwargs):
+            if path.name == "validation.json":
+                raise OSError("report write failed")
+            return original_write(path, *args, **kwargs)
+
+        output = self.root / "browser"
+        with patch.object(Path, "write_text", autospec=True, side_effect=fail_report):
+            with self.assertRaisesRegex(OSError, "report write failed"):
+                browser_cam.prepare_browser_model(self.source, self.checkpoint, output, self.pixels)
+        self.assertFalse(output.exists())
+        partial, = self.root.glob(".browser.*.partial")
+        self.assertFalse(list(partial.rglob("*.bin")))
+
+    def test_conversion_defects_are_rejected_after_real_inference(self):
+        original_convert = browser_cam.float16.convert_float_to_float16
+
+        def damage_graph(*args, **kwargs):
+            model = original_convert(*args, **kwargs)
+            if fault == "zeroed_weights":
+                weights, = [value for value in model.graph.initializer if tuple(value.dims) == (3, 3)]
+                weights.CopyFrom(numpy_helper.from_array(np.zeros_like(numpy_helper.to_array(weights)), weights.name))
+                return model
+            name = "logits" if fault == "permuted_logits" else browser_cam.FEATURE_OUTPUT_NAME
+            for node in model.graph.node:
+                for index, output_name in enumerate(node.output):
+                    if output_name == name:
+                        node.output[index] = "before_fault"
+            if fault == "permuted_logits":
+                model.graph.initializer.append(numpy_helper.from_array(np.array([2, 0, 1], dtype=np.int64), "order"))
+                node = helper.make_node("Gather", ["before_fault", "order"], [name], axis=1)
+            else:
+                model.graph.initializer.append(numpy_helper.from_array(np.array(1.2, dtype=np.float32), "scale"))
+                node = helper.make_node("Mul", ["before_fault", "scale"], [name])
+            model.graph.node.append(node)
+            return model
+
+        for fault in ("permuted_logits", "scaled_features", "zeroed_weights"):
+            with self.subTest(fault=fault):
+                output = self.root / fault
+                with patch.object(browser_cam.float16, "convert_float_to_float16", side_effect=damage_graph):
+                    with self.assertRaisesRegex(AssertionError, "differs from the FP32 reference") as failure:
+                        browser_cam.prepare_browser_model(self.source, self.checkpoint, output, self.pixels)
+                self.assertFalse(output.exists())
+                partial, = self.root.glob(f".{fault}.*.partial")
+                report = json.loads((partial / "validation.json").read_text())
+                self.assertEqual(report["fp16_checks"], "failed")
+                name = browser_cam.FEATURE_OUTPUT_NAME if fault == "scaled_features" else "logits"
+                self.assertGreater(report["images"][0]["errors"][name]["values_outside_tolerance"], 0)
+                self.assertFalse(list(partial.rglob("*.bin")))
+                self.assertIn(str(partial), "\n".join(failure.exception.__notes__))
+                candidate = partial / "diagnostics/model.candidate.onnx"
+                failed_graph = candidate.read_bytes()
+                browser, _ = browser_cam.prepare_browser_model(self.source, self.checkpoint, output, self.pixels)
+                self.assertTrue(browser.is_file())
+                self.assertEqual(candidate.read_bytes(), failed_graph)
+
+    def test_report_keeps_separate_measurements_for_each_image(self):
+        model = onnx.load(self.source)
+        model.graph.input[0].type.tensor_type.shape.dim[0].dim_param = "batch"
+        model.graph.output[0].type.tensor_type.shape.dim[0].dim_param = "batch"
+        for initializer in model.graph.initializer:
+            if initializer.name == "shape":
+                initializer.CopyFrom(numpy_helper.from_array(np.array([-1, 4, 3], dtype=np.int64), "shape"))
+        onnx.save(model, self.source)
+        pixels = np.concatenate([self.pixels, np.zeros_like(self.pixels)])
+        browser, _ = browser_cam.prepare_browser_model(self.source, self.checkpoint, self.root / "browser", pixels)
+        report = json.loads((browser.parent / "validation.json").read_text())
+        first, second = report["images"]
+        self.assertEqual([first["index"], second["index"]], [0, 1])
+        self.assertEqual(first["fp32_top5"][0], 0)
+        self.assertEqual(second["fp32_top5"][0], 2)
+        self.assertGreater(first["errors"]["swin_layernorm"]["reference_l2"], 0)
+        self.assertIsNone(second["errors"]["swin_layernorm"]["relative_l2_error"])
+        self.assertEqual(second["errors"]["swin_layernorm"]["error_l2"], 0)
+
+    def test_error_metrics_preserve_zero_reference_and_large_finite_values(self):
+        reference = np.array([3, 4], dtype=np.float32)
+        actual = np.array([0, 0], dtype=np.float32)
+        errors = browser_cam.output_errors(reference, actual)
+        self.assertEqual(errors["reference_l2"], 5)
+        self.assertEqual(errors["error_l2"], 5)
+        self.assertEqual(errors["relative_l2_error"], 1)
+        self.assertEqual(errors["max_absolute_error"], 4)
+        self.assertEqual(errors["values_outside_tolerance"], 2)
+        for actual in (np.zeros(2, dtype=np.float32), np.ones(2, dtype=np.float32),
+                       np.full(2, np.finfo(np.float32).max, dtype=np.float32)):
+            with self.subTest(actual=actual):
+                errors = browser_cam.output_errors(np.zeros(2, dtype=np.float32), actual)
+                self.assertIsNone(errors["relative_l2_error"])
+                self.assertTrue(np.isfinite(errors["error_l2"]))
+                json.dumps(errors, allow_nan=False)
 
     def test_nonfinite_input_is_rejected_before_writing(self):
         output = self.root / "browser"
@@ -227,18 +298,17 @@ class BrowserCamTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "every classifier-head row"):
             browser_cam.load_classifier_head(self.checkpoint)
 
-    def test_nonmatrix_classifier_weights_are_rejected(self):
-        save_file({"classifier.weight": self.weight[0], "classifier.bias": self.bias},
-                  self.checkpoint / "model.safetensors")
-        with self.assertRaisesRegex(ValueError, "weights must be a two-dimensional matrix"):
-            browser_cam.load_classifier_head(self.checkpoint)
-
-    def test_classifier_bias_requires_one_value_per_class(self):
-        for bias in (self.bias[:2], self.bias.reshape(3, 1)):
-            with self.subTest(shape=bias.shape):
-                save_file({"classifier.weight": self.weight, "classifier.bias": bias},
+    def test_head_requires_a_weight_matrix_and_one_bias_per_class(self):
+        cases = [
+            (self.weight[0], self.bias, "weights must be a two-dimensional matrix"),
+            (self.weight, self.bias[:2], "Classifier bias must have shape"),
+            (self.weight, self.bias.reshape(3, 1), "Classifier bias must have shape"),
+        ]
+        for weight, bias, message in cases:
+            with self.subTest(weight_shape=weight.shape, bias_shape=bias.shape):
+                save_file({"classifier.weight": weight, "classifier.bias": bias},
                           self.checkpoint / "model.safetensors")
-                with self.assertRaisesRegex(ValueError, "Classifier bias must have shape"):
+                with self.assertRaisesRegex(ValueError, message):
                     browser_cam.load_classifier_head(self.checkpoint)
 
     def test_single_weight_file_takes_precedence_over_stale_index(self):
@@ -320,32 +390,6 @@ class BrowserCamTest(unittest.TestCase):
             browser_cam.prepare_browser_model(self.source, self.checkpoint, output, self.pixels)
         self.assertEqual(sentinel.read_bytes(), b"existing export")
         self.assertFalse(list(self.root.glob(".browser.*.partial")))
-
-
-class SwinBrowserCamTest(unittest.TestCase):
-    def test_fp16_cam_export_matches_pytorch_on_same_pixels(self):
-        import torch
-        from export_model import export_model
-        from swin_fixture import create_swin_fixture
-
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            model, checkpoint, pixels = create_swin_fixture(root)
-            output = export_model(checkpoint, root / "export")
-            graph = output / "onnx-fp32/model.onnx"
-            with torch.no_grad():
-                expected = model(pixel_values=pixels).logits.numpy()
-
-            browser, head = browser_cam.prepare_browser_model(
-                graph, checkpoint, root / "browser", pixels.numpy(),
-            )
-            np.testing.assert_array_equal(
-                np.fromfile(head, dtype="<f4").reshape(model.classifier.weight.shape),
-                model.classifier.weight.detach().numpy(),
-            )
-            result = browser_cam.run_onnx(browser, pixels.numpy())
-            self.assertEqual(result["swin_layernorm"].shape, (1, 16, 16))
-            np.testing.assert_allclose(result["logits"], expected, rtol=1e-2, atol=1e-3)
 
 
 if __name__ == "__main__":

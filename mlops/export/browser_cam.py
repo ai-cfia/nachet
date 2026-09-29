@@ -2,6 +2,7 @@
 """Prepare Swin ONNX features and head weights for browser CAM."""
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from shutil import rmtree
@@ -21,6 +22,8 @@ else:
 FEATURE_TENSOR = "/swin/layernorm/Add_1_output_0"
 FUSED_FEATURE_TENSOR = "/swin/layernorm/LayerNormalization_output_0"
 FEATURE_OUTPUT_NAME = "swin_layernorm"
+FP16_ATOL = 1e-3
+FP16_RTOL = 1e-2
 
 
 def run_onnx(path, pixels):
@@ -109,6 +112,91 @@ def load_classifier_head(checkpoint):
     return classifier_weights, classifier_bias
 
 
+def output_errors(reference, actual):
+    """Describe one image's output; relative error is undefined for a zero reference."""
+    outside_tolerance = ~np.isclose(actual, reference, atol=FP16_ATOL, rtol=FP16_RTOL)
+    reference = reference.astype(np.float64)
+    actual = actual.astype(np.float64)
+    difference = actual - reference
+    reference_norm = float(np.linalg.norm(reference.ravel()))
+    error_norm = float(np.linalg.norm(difference.ravel()))
+    return {
+        "max_absolute_error": float(np.abs(difference).max()),
+        "reference_l2": reference_norm,
+        "error_l2": error_norm,
+        "relative_l2_error": error_norm / reference_norm if reference_norm else None,
+        "values_outside_tolerance": int(np.count_nonzero(outside_tolerance)),
+    }
+
+
+def verify_fp16(candidate, pixels, reference, report_path):
+    """Check the CPU outputs and retain measurements even when verification fails."""
+    report = {
+        "schema_version": 1,
+        "fp16_checks": "failed",
+        "release_evaluation": "not_performed",
+        "runtime": {"onnxruntime": ort.__version__, "provider": "CPUExecutionProvider"},
+        "pixels": {
+            "shape": list(pixels.shape), "dtype": str(pixels.dtype),
+            "sha256": hashlib.sha256(pixels.tobytes(order="C")).hexdigest(),
+        },
+        "criteria": {"atol": FP16_ATOL, "rtol": FP16_RTOL, "require_same_top1": True},
+    }
+    try:
+        actual = run_onnx(candidate, pixels)
+        report["outputs"] = {
+            name: {"shape": list(value.shape), "dtype": str(value.dtype)}
+            for name, value in actual.items()
+        }
+        if actual.keys() != reference.keys():
+            raise ValueError("FP16 output names differ from the FP32 reference")
+        for name, expected in reference.items():
+            value = actual[name]
+            # allclose allows broadcasting; the browser requires the exact shape.
+            if value.shape != expected.shape:
+                raise ValueError(f"FP16 {name} shape {value.shape} differs from {expected.shape}")
+            if value.dtype != np.float32:
+                raise ValueError(f"FP16 {name} output must remain float32, got {value.dtype}")
+
+        report["images"] = []
+        for index in range(len(pixels)):
+            fp32_logits = reference["logits"][index]
+            fp16_logits = actual["logits"][index]
+            # Lower class IDs win ties, matching argmax's first-maximum rule.
+            fp32_top5 = np.argsort(-fp32_logits, kind="stable")[:5]
+            fp16_top5 = np.argsort(-fp16_logits, kind="stable")[:5]
+            margin = (float(fp32_logits[fp32_top5[0]]) - float(fp32_logits[fp32_top5[1]])
+                      if len(fp32_top5) > 1 else None)
+            report["images"].append({
+                "index": index,
+                "errors": {
+                    name: output_errors(reference[name][index], actual[name][index])
+                    for name in ("logits", FEATURE_OUTPUT_NAME)
+                },
+                "fp32_top5": fp32_top5.tolist(),
+                "fp16_top5": fp16_top5.tolist(),
+                "fp32_top1_margin": margin,
+                "top1_changed": bool(fp32_top5[0] != fp16_top5[0]),
+                "ordered_top5_changed": not np.array_equal(fp32_top5, fp16_top5),
+            })
+
+        for name in ("logits", FEATURE_OUTPUT_NAME):
+            np.testing.assert_allclose(
+                actual[name], reference[name], atol=FP16_ATOL, rtol=FP16_RTOL,
+                err_msg=f"FP16 {name} differs from the FP32 reference",
+            )
+        np.testing.assert_array_equal(
+            actual["logits"].argmax(axis=-1), reference["logits"].argmax(axis=-1),
+            err_msg="FP16 top-1 predictions differ from the FP32 reference",
+        )
+        report["fp16_checks"] = "passed"
+    except Exception as error:
+        report["error"] = f"{type(error).__name__}: {error}"
+        raise
+    finally:
+        report_path.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
+
+
 def prepare_browser_model(source, checkpoint, output, pixels):
     """Add CAM features, convert to FP16, and save files after verification."""
     # Verification uses preprocessed images: batch, RGB channels, height, width.
@@ -135,13 +223,19 @@ def prepare_browser_model(source, checkpoint, output, pixels):
         add_feature_output(source, feature_model_path, feature_channels)
         original_outputs = run_onnx(source, pixels)
         fp32_outputs = run_onnx(feature_model_path, pixels)
+        if fp32_outputs["logits"].shape != (len(pixels), class_count):
+            raise ValueError("FP32 logits must have one row per image and one column per class")
+        for name in ("logits", FEATURE_OUTPUT_NAME):
+            if fp32_outputs[name].dtype != np.float32:
+                raise ValueError(f"FP32 {name} output must be float32")
         np.testing.assert_allclose(
             fp32_outputs["logits"], original_outputs["logits"],
             atol=1e-5, rtol=1e-4,
             err_msg="Adding the CAM feature output changed the logits",
         )
         features = fp32_outputs[FEATURE_OUTPUT_NAME]
-        if features.ndim != 3 or features.shape[2] != feature_channels:
+        if (features.ndim != 3 or features.shape[0] != len(pixels)
+                or not features.shape[1] or features.shape[2] != feature_channels):
             raise ValueError(f"Unexpected feature shape: {features.shape}")
 
         # Swin averages the spatial features before applying its classification layer.
@@ -171,20 +265,7 @@ def prepare_browser_model(source, checkpoint, output, pixels):
         )
         onnx.save(fp16_model, candidate_model_path)
 
-        # Compare both outputs on the same images and check that the winning classes agree.
-        fp16_outputs = run_onnx(candidate_model_path, pixels)
-        for output_name in ("logits", FEATURE_OUTPUT_NAME):
-            np.testing.assert_allclose(
-                fp16_outputs[output_name], fp32_outputs[output_name],
-                atol=1e-3, rtol=1e-2,
-                err_msg=f"FP16 {output_name} differs from the FP32 reference",
-            )
-        fp16_predictions = fp16_outputs["logits"].argmax(axis=-1)
-        fp32_predictions = fp32_outputs["logits"].argmax(axis=-1)
-        np.testing.assert_array_equal(
-            fp16_predictions, fp32_predictions,
-            err_msg="FP16 top-1 predictions differ from the FP32 reference",
-        )
+        verify_fp16(candidate_model_path, pixels, fp32_outputs, staging / "validation.json")
 
         # The browser reads one little-endian FP32 row per species ("spp").
         # Keep the candidate filename until all checks and the head write succeed.
