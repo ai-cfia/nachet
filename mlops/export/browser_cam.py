@@ -160,7 +160,7 @@ def measure_fp16(reference, actual):
 def verify_fp16(candidate, pixels, reference, report_path, *, strict=False):
     """Require valid CPU outputs; record numerical failures and reject them in strict mode."""
     report = {
-        "schema_version": 2,
+        "schema_version": 3,
         "output_checks": "failed",
         "fp16_checks": "not_performed",
         "strict": strict,
@@ -191,24 +191,17 @@ def verify_fp16(candidate, pixels, reference, report_path, *, strict=False):
         report["output_checks"] = "passed"
         report["images"] = measure_fp16(reference, actual)
 
-        # Only numerical mismatches are optional. Inference and interface errors still fail.
-        try:
-            for name in ("logits", FEATURE_OUTPUT_NAME):
-                np.testing.assert_allclose(
-                    actual[name], reference[name], atol=FP16_ATOL, rtol=FP16_RTOL,
-                    err_msg=f"FP16 {name} differs from the FP32 reference",
-                )
-            np.testing.assert_array_equal(
-                actual["logits"].argmax(axis=-1), reference["logits"].argmax(axis=-1),
-                err_msg="FP16 top-1 predictions differ from the FP32 reference",
-            )
-        except AssertionError as error:
-            report["fp16_checks"] = "failed"
-            report["error"] = f"{type(error).__name__}: {error}"
+        mismatches = []
+        for name in ("logits", FEATURE_OUTPUT_NAME):
+            if any(image["errors"][name]["values_outside_tolerance"] for image in report["images"]):
+                mismatches.append(f"FP16 {name} differs from the FP32 reference")
+        if any(image["top1_changed"] for image in report["images"]):
+            mismatches.append("FP16 top-1 predictions differ from the FP32 reference")
+        report["fp16_checks"] = "failed" if mismatches else "passed"
+        if mismatches:
+            report["fp16_mismatch"] = "; ".join(mismatches)
             if strict:
-                raise
-        else:
-            report["fp16_checks"] = "passed"
+                raise AssertionError(report["fp16_mismatch"])
     except Exception as error:
         report["error"] = f"{type(error).__name__}: {error}"
         raise
@@ -236,7 +229,7 @@ def prepare_browser_model(source, checkpoint, output, pixels, *, strict=False):
         feature_model_path = diagnostics / "model_with_features.onnx"
         optimized_model_path = diagnostics / "model_with_features.opt.onnx"
         candidate_model_path = diagnostics / "model.candidate.onnx"
-        browser_model_path = staging / "model.onnx"
+        browser_model_path = staging / "model.candidate.onnx"
 
         # Expose the CAM features without changing the model's classification scores.
         add_feature_output(source, feature_model_path, feature_channels)
@@ -288,13 +281,13 @@ def prepare_browser_model(source, checkpoint, output, pixels, *, strict=False):
                     staging / "validation.json", strict=strict)
 
         # The browser reads one little-endian FP32 row per species ("spp").
-        # Keep the candidate filename until required checks and the head write succeed.
+        # Release packaging must evaluate and approve this candidate before deployment.
         head_path = staging / f"classifier_head_{class_count}spp.f32.bin"
         # Spatial CAM uses weights only; the ONNX logits already include the bias.
         classifier_weights.astype("<f4").tofile(head_path)
         candidate_model_path.rename(browser_model_path)
         rmtree(diagnostics)
-    return output / "model.onnx", output / head_path.name
+    return output / "model.candidate.onnx", output / head_path.name
 
 
 def main():

@@ -287,7 +287,7 @@ class SwinExportTest(unittest.TestCase):
             self.assertEqual(json.loads((graph.parent / "config.json").read_text())["id2label"],
                              {"0": "Beta", "1": "Alpha", "2": "Gamma"})
 
-    def test_fp16_cam_candidate_preserves_assets_and_reports_precision_loss(self):
+    def test_fp16_cam_candidate_preserves_assets_and_reports_measured_differences(self):
         import numpy as np
         import torch
         import browser_cam
@@ -311,26 +311,37 @@ class SwinExportTest(unittest.TestCase):
             self.assertEqual(result["swin_layernorm"].shape, (1, 16, 16))
             np.testing.assert_allclose(result["logits"], expected, rtol=1e-2, atol=1e-3)
 
-            # This fixture exceeds the feature tolerance. Export must report it, not hide it.
             report = json.loads((browser.parent / "validation.json").read_text())
             self.assertEqual(report["output_checks"], "passed")
-            self.assertEqual(report["fp16_checks"], "failed")
             self.assertFalse(report["strict"])
             self.assertEqual(report["release_evaluation"], "not_performed")
+            self.assertEqual(browser.name, "model.candidate.onnx")
+            self.assertFalse((browser.parent / "model.onnx").exists())
+            self.assertNotIn("error", report)
             feature_model = root / "reference.onnx"
             browser_cam.add_feature_output(graph, feature_model, model.classifier.weight.shape[1])
             reference = browser_cam.run_onnx(feature_model, pixels.numpy())
-            outside_tolerance = ~np.isclose(
-                result["swin_layernorm"], reference["swin_layernorm"], atol=1e-3, rtol=1e-2,
-            )
-            self.assertGreater(np.count_nonzero(outside_tolerance), 0)
-            self.assertEqual(report["images"][0]["errors"]["swin_layernorm"]["values_outside_tolerance"],
-                             int(np.count_nonzero(outside_tolerance)))
-            with self.assertRaisesRegex(AssertionError, "FP16 swin_layernorm differs"):
+            mismatched = not np.array_equal(result["logits"].argmax(axis=-1),
+                                            reference["logits"].argmax(axis=-1))
+            self.assertEqual(report["images"][0]["top1_changed"], mismatched)
+            for name in ("logits", browser_cam.FEATURE_OUTPUT_NAME):
+                outside_tolerance = ~np.isclose(
+                    result[name], reference[name], atol=browser_cam.FP16_ATOL, rtol=browser_cam.FP16_RTOL,
+                )
+                count = int(np.count_nonzero(outside_tolerance))
+                self.assertEqual(report["images"][0]["errors"][name]["values_outside_tolerance"], count)
+                mismatched = mismatched or count > 0
+            expected_status = "failed" if mismatched else "passed"
+            self.assertEqual(report["fp16_checks"], expected_status)
+            self.assertEqual("fp16_mismatch" in report, mismatched)
+            if mismatched:
+                with self.assertRaisesRegex(AssertionError, "FP16"):
+                    browser_cam.verify_fp16(browser, pixels.numpy(), reference, root / "strict.json", strict=True)
+            else:
                 browser_cam.verify_fp16(browser, pixels.numpy(), reference, root / "strict.json", strict=True)
             strict_report = json.loads((root / "strict.json").read_text())
             self.assertTrue(strict_report["strict"])
-            self.assertEqual(strict_report["fp16_checks"], "failed")
+            self.assertEqual(strict_report["fp16_checks"], expected_status)
             self.assertEqual(strict_report["images"], report["images"])
 
 

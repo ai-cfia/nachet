@@ -60,12 +60,14 @@ class BrowserCamTest(unittest.TestCase):
         self.assertEqual(result["swin_layernorm"].dtype, np.float32)
         np.testing.assert_allclose(result["logits"], expected["logits"], rtol=1e-2, atol=1e-3)
         self.assertEqual({path.name for path in browser.parent.iterdir()},
-                         {"model.onnx", "classifier_head_3spp.f32.bin", "validation.json"})
+                         {"model.candidate.onnx", "classifier_head_3spp.f32.bin", "validation.json"})
         report = json.loads((browser.parent / "validation.json").read_text())
-        self.assertEqual(report["schema_version"], 2)
+        self.assertEqual(report["schema_version"], 3)
         self.assertEqual(report["output_checks"], "passed")
         self.assertTrue(report["strict"])
         self.assertEqual(report["fp16_checks"], "passed")
+        self.assertNotIn("fp16_mismatch", report)
+        self.assertNotIn("error", report)
         self.assertEqual(report["release_evaluation"], "not_performed")
         self.assertEqual(report["pixels"]["sha256"], hashlib.sha256(self.pixels.tobytes()).hexdigest())
         self.assertEqual(report["pixels"]["shape"], [1, 3, 2, 2])
@@ -176,7 +178,7 @@ class BrowserCamTest(unittest.TestCase):
                     self.assertIn("not approved for deployment", result.stdout)
                     self.assertIn("WARNING: FP16 numerical checks failed", result.stderr)
                     report_dir = output
-                    candidate_path = output / "model.onnx"
+                    candidate_path = output / "model.candidate.onnx"
                     self.assertTrue((output / "classifier_head_3spp.f32.bin").is_file())
                 candidate = browser_cam.run_onnx(candidate_path, self.pixels)
                 for name in ("logits", browser_cam.FEATURE_OUTPUT_NAME):
@@ -196,6 +198,9 @@ class BrowserCamTest(unittest.TestCase):
                 self.assertEqual(report["fp16_checks"], "failed")
                 self.assertEqual(report["strict"], strict)
                 self.assertEqual(report["release_evaluation"], "not_performed")
+                self.assertIn("top-1 predictions", report["fp16_mismatch"])
+                self.assertEqual("error" in report, strict)
+                self.assertFalse((output / "model.onnx").exists())
 
     def test_output_names_shapes_and_types_must_match(self):
         reference = {
@@ -236,7 +241,7 @@ class BrowserCamTest(unittest.TestCase):
         partial, = self.root.glob(".browser.*.partial")
         self.assertFalse(list(partial.rglob("*.bin")))
 
-    def test_strict_mode_rejects_conversion_defects_after_real_inference(self):
+    def test_conversion_defects_are_reported_and_strict_mode_rejects_them(self):
         original_convert = browser_cam.float16.convert_float_to_float16
 
         def damage_graph(fault, *args, **kwargs):
@@ -276,6 +281,23 @@ class BrowserCamTest(unittest.TestCase):
                 self.assertGreater(report["images"][0]["errors"][name]["values_outside_tolerance"], 0)
                 self.assertFalse(list(partial_output.rglob("*.bin")))
                 self.assertIn(str(partial_output), "\n".join(failure.exception.__notes__))
+
+                candidate_output = self.root / f"{fault}-candidate"
+                with patch.object(browser_cam.float16, "convert_float_to_float16",
+                                  side_effect=partial(damage_graph, fault)):
+                    candidate, _ = browser_cam.prepare_browser_model(
+                        self.source, self.checkpoint, candidate_output, self.pixels,
+                    )
+                self.assertEqual(candidate.name, "model.candidate.onnx")
+                self.assertTrue(candidate.is_file())
+                self.assertFalse((candidate_output / "model.onnx").exists())
+                candidate_report = json.loads((candidate_output / "validation.json").read_text())
+                self.assertEqual(candidate_report["fp16_checks"], "failed")
+                self.assertEqual(candidate_report["release_evaluation"], "not_performed")
+                self.assertEqual(candidate_report["images"], report["images"])
+                self.assertIn("differs from the FP32 reference", candidate_report["fp16_mismatch"])
+                self.assertNotIn("error", candidate_report)
+
                 # Exercise recovery once; every fault above still checks rejection.
                 if fault == "scaled_features":
                     candidate = partial_output / "diagnostics/model.candidate.onnx"
