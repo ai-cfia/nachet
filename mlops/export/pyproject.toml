@@ -12,7 +12,9 @@ dependencies = [
     "pillow==12.1.1",
     "safetensors==0.8.0",
     "torch==2.8.0",
+    # Saved fast image processors use torchvision's preprocessing backend.
     "torchvision==0.23.0",
+    # optimum-onnx 0.1.0 requires transformers<4.58; training uses 5.16.1.
     "transformers==4.57.6",
 ]
 

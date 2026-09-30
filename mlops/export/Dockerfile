@@ -17,6 +17,7 @@ RUN --mount=type=cache,id=nachet-export-uv,target=/root/.cache/uv \
 FROM python:3.12-slim-bookworm@sha256:782412e85d0f0984994c290652577d4018aff08145c85b262bb63dc0c7522254 AS scripts
 WORKDIR /opt/nachet-export
 COPY export_model.py browser_cam.py ./mlops/export/
+# Keep short CLI paths alongside the package layout used by module imports.
 RUN ln -s mlops/export/export_model.py export_model.py \
     && ln -s mlops/export/browser_cam.py browser_cam.py
 ENV PATH="/opt/nachet-export/.venv/bin:$PATH" \
@@ -36,4 +37,5 @@ COPY tests ./mlops/export/tests
 ENTRYPOINT ["python", "-m", "pytest", "/opt/nachet-export/mlops/export/tests", "-p", "no:cacheprovider"]
 CMD ["-q"]
 
+# A plain docker build produces the runtime image.
 FROM runtime AS final

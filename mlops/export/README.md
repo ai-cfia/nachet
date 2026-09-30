@@ -22,7 +22,21 @@ The image uses Python 3.12, CPU PyTorch wheels for Linux x86-64, and dependencie
 locked by uv. Test and runtime targets run as a non-root user. The runtime target
 excludes tests, test dependencies, model weights, and the package cache.
 Building it directly does not run tests. CI builds both targets and runs the
-test suite without networking.
+test suite without networking, then checks both runtime CLIs. The matching CPU
+torchvision wheel supports saved fast image processors.
+
+After a PR merges into `main`, CI reruns lint and tests, publishes the runtime
+to `ghcr.io/ai-cfia/nachet-export`, and signs and verifies it with the shared
+Cosign workflow. Tags are `main`, the merge commit SHA, and the version in
+`pyproject.toml`. PR checks and manual runs do not publish images. Merged runs
+are serialized so publishing and signing are not interrupted by another merge.
+This publishes the export tools, not trained models or candidate artifacts.
+Argo still needs a separate workflow step that uses the published image.
+
+Use `ghcr.io/ai-cfia/nachet-export:main` in place of `nachet-export:local` in
+the examples below, or use the commit-SHA tag for a specific build. Before the
+first cluster run, confirm package visibility and pull access. New GHCR
+packages are [private by default](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#pushing-container-images).
 
 The tests use small random-weight models and saved preprocessing. They exercise
 export, inference, quantization, CAM reconstruction, and failure handling;
@@ -136,10 +150,19 @@ delete diagnostic runs.
 
 ## Limits and downstream work
 
-Compare a checkpoint created by another Transformers version against its
-training-runtime predictions on identical preprocessed inputs. Numerical
-tolerances still need calibration on representative labeled seed images and
-the intended browser backend, including CAM quality.
+Training uses Transformers 5.16.1. This export runtime uses 4.57.6 because
+`optimum-onnx==0.1.0` requires Transformers `<4.58`. The separate image keeps
+this constraint out of the trainers.
+
+Recorded checks with tiny random-weight checkpoints saved by Transformers
+5.16.1 matched the trainer's FP32 outputs on all nine Swin input cases and
+eight of nine detector cases. On the detector's zero input, logits matched but
+boxes differed when proposal scores tied. These smoke checks do not establish
+production compatibility. Compare each selected checkpoint with its
+training-runtime predictions on identical preprocessed inputs.
+
+Numerical tolerances still need calibration on representative labeled seed
+images and the intended browser backend, including CAM quality.
 
 The detector graph keeps its exported pooling behavior. Browser release
 packaging must preserve any ONNX external-data files and supply the filenames
