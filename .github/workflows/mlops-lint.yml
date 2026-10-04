@@ -17,12 +17,14 @@ on:
       - synchronize
     paths:
       - "mlops/training/**"
+      - "mlops/export/**"
       - ".github/workflows/mlops-lint.yml"
   push:
     branches:
       - main
     paths:
       - "mlops/training/**"
+      - "mlops/export/**"
       - ".github/workflows/mlops-lint.yml"
   workflow_dispatch:
 
@@ -31,6 +33,11 @@ jobs:
     uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-python-mono.yml@c504dacdff61c8a1f7c796934e9ad20749f6d136
     with:
       working-directory: mlops/training
+
+  export-python-lint:
+    uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-python-mono.yml@c504dacdff61c8a1f7c796934e9ad20749f6d136
+    with:
+      working-directory: mlops/export
 
   training-syntax:
     name: Check Python syntax

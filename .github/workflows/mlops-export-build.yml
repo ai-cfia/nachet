@@ -1,0 +1,114 @@
+---
+name: MLOps export build and publish
+
+on:
+  pull_request:
+    types:
+      - opened
+      - closed
+      - synchronize
+    paths:
+      - "mlops/export/**"
+      - ".github/workflows/mlops-export-build.yml"
+      - ".github/workflows/reusable-sign-container-images.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-push-export:
+    if: github.event.action != 'closed' || github.event.pull_request.merged == true
+    runs-on: ubuntu-24.04
+    env:
+      IMAGE: ghcr.io/ai-cfia/nachet-export
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
+        with:
+          version: "0.11.24"
+          enable-cache: false
+
+      - name: Read export image version
+        id: version
+        working-directory: mlops/export
+        run: |
+          version="$(uv version --short)"
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e  # v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve branch tag
+        id: branch
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          clean_name="$(printf '%s' "$HEAD_REF" | sed 's#[/\\]#-#g')"
+          echo "name=$clean_name" >> "$GITHUB_OUTPUT"
+
+      # The image build runs the export tests.
+      - name: Build and push pull request image
+        if: github.event.pull_request.merged == false
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        with:
+          context: mlops/export
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ${{ env.IMAGE }}:${{ github.event.number }}
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:${{ steps.branch.outputs.name }}
+            ${{ env.IMAGE }}:${{ steps.version.outputs.version }}
+          cache-from: |
+            type=registry,ref=${{ env.IMAGE }}:cache-pr-amd64
+            type=registry,ref=${{ env.IMAGE }}:cache-merged-amd64
+          cache-to: type=registry,ref=${{ env.IMAGE }}:cache-pr-amd64,mode=min
+
+      - name: Build and push merged image
+        if: github.event.pull_request.merged == true
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        with:
+          context: mlops/export
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:${{ github.event.pull_request.base.ref }}
+            ${{ env.IMAGE }}:${{ steps.version.outputs.version }}
+          # Keep merged-build cache separate from PR builds.
+          cache-from: type=registry,ref=${{ env.IMAGE }}:cache-merged-amd64
+          cache-to: >-
+            type=registry,ref=${{ env.IMAGE }}:cache-merged-amd64,mode=min
+
+  sign-export:
+    needs: build-and-push-export
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    uses: ./.github/workflows/reusable-sign-container-images.yml
+    with:
+      image-name: ghcr.io/ai-cfia/nachet-export
+      image-label: export runtime
+      release-version: ${{ needs.build-and-push-export.outputs.version }}
