@@ -51,7 +51,7 @@ def convert_to_fp16(source, destination):
 
 
 def run(path, pixels):
-    """Run a model with full graph optimization, as ONNX Runtime Web does."""
+    """Run the model on CPU with full graph optimization."""
     options = ort.SessionOptions()
     options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
     session = ort.InferenceSession(str(path), options, providers=["CPUExecutionProvider"])
@@ -60,7 +60,7 @@ def run(path, pixels):
 
 
 def prepare_browser_model(source, checkpoint, output):
-    """Write the FP16 browser model and classifier head weights to a new directory."""
+    """Write the browser model and head from the checkpoint used to export source."""
     checkpoint = Path(checkpoint)
     output = Path(output)
     output.mkdir(parents=True)
@@ -76,7 +76,7 @@ def prepare_browser_model(source, checkpoint, output):
         features_path = Path(temporary_dir) / "model_with_features.onnx"
         add_feature_output(source, features_path)
         convert_to_fp16(features_path, browser_path)
-        # Random input checks that the FP16 model loads and keeps its outputs.
+        # Random input checks on CPU that the FP16 model loads and keeps its outputs.
         # It does not measure accuracy; release evaluation is a separate step.
         size = json.loads((checkpoint / "config.json").read_text())["image_size"]
         pixels = np.random.default_rng(0).random((1, 3, size, size), dtype=np.float32)
@@ -94,7 +94,7 @@ def prepare_browser_model(source, checkpoint, output):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--onnx", required=True, type=Path, help="onnx-fp32/model.onnx from export_model.py")
-    parser.add_argument("--checkpoint", required=True, type=Path)
+    parser.add_argument("--checkpoint", required=True, type=Path, help="Checkpoint used to create --onnx")
     parser.add_argument("--output", required=True, type=Path, help="New directory for the browser files")
     args = parser.parse_args()
     browser_path, head_path = prepare_browser_model(args.onnx, args.checkpoint, args.output)

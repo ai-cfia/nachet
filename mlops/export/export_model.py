@@ -8,8 +8,9 @@ import subprocess
 
 
 TASKS = {"swin": "image-classification", "rt_detr_v2": "object-detection"}
-# The published Nachet models use opset 16. Opset 17 and later fuse LayerNorm,
-# which renames the Swin features that browser_cam.py exposes.
+# The published Nachet models use opset 16. From opset 17, PyTorch exports
+# LayerNorm as one LayerNormalization node, which renames the Swin feature
+# tensor that browser_cam.py exposes.
 OPSET = "16"
 
 
