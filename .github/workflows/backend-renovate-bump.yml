@@ -3,7 +3,7 @@ name: Backend Renovate
 
 permissions:
   actions: read
-  contents: read
+  contents: write
   pull-requests: read
 
 concurrency:
@@ -96,8 +96,6 @@ jobs:
 
       - name: Commit & push changes
         if: steps.check.outputs.changed == 'true'
-        permissions:
-          contents: write
         uses: EndBug/add-and-commit@ebe9b51bb11d033d228e1a1c3f23ad5bd4110c81
         with:
           message: "chore: bump backend version for Renovate PRs"
