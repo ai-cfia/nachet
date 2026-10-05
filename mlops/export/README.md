@@ -71,6 +71,24 @@ it is accurate.
 
 A failed run may leave partial files. Retry with a new output directory.
 
+## Publication migration baseline
+
+`ModelRelease.py` is a byte-for-byte copy of `exporter/ModelRelease.py` from
+[nachet-model-ccds at 229a3d4](https://github.com/ai-cfia/nachet-model-ccds/blob/229a3d40d384a9db05eb83a6201005818104e202/exporter/ModelRelease.py).
+Its SHA-256 is
+`848499b7a089c2b19659eed127945a32ab33366f71de654b615480351afea12e`.
+
+This is a source migration baseline, not a runnable addition to the export
+image. It retains the original `.env` loading, model-card generation, export
+and quantization commands, checkpoint-directory copies and Hub PR upload.
+
+Do not use it for a release yet. It hardcodes a 64-species Swin card, MIT
+license and Keras metadata; expects the old `exporter/` project layout; runs
+conversion again; and uploads the checkpoint folder, including training
+state. Its subprocess calls do not check nonzero exit codes. It also needs
+`python-dotenv`, which is not in this runtime's lockfile.
+The necessary adaptations must be reviewed before connecting it to Argo.
+
 ## Update dependencies or the version
 
 Use Python 3.12 and the uv version pinned in the Dockerfile:
