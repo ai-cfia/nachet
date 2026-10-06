@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -20,6 +21,7 @@ from transformers import SwinConfig, SwinForImageClassification, ViTImageProcess
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 import validation_classifier as evaluator  # noqa: E402
+from onnx_model import OnnxModel  # noqa: E402
 
 
 REPORTS = {
@@ -168,7 +170,9 @@ class ClassifierEvaluationTest(unittest.TestCase):
                 folder.mkdir(parents=True, exist_ok=True)
                 Image.new("RGB", (43, 37), (index * 70, 30, 90)).save(folder / f"{index}.png")
             dataset, names = evaluator.load_test_data(root / "images")
-            processor, converted, device = evaluator.load_model(checkpoint, onnx_path=onnx_path)
+            processor, converted, device = evaluator.load_model(
+                checkpoint, onnx_path=onnx_path, device="cpu"
+            )
             mapping, indices, _ = evaluator.match_classes(dataset, names, converted)
             loader = evaluator.make_eval_loader(dataset, indices, processor, 2, 0)
             expected = evaluator.evaluate_model(model, "cpu", loader, mapping)
@@ -177,6 +181,35 @@ class ClassifierEvaluationTest(unittest.TestCase):
             np.testing.assert_array_equal(actual[1], expected[1])
             np.testing.assert_array_equal(actual[2], expected[2])
             self.assertEqual(actual[3:], expected[3:])
+
+    def test_onnx_cuda_evaluates_host_tensors_and_records_provider(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            SwinConfig(num_labels=2).save_pretrained(root)
+            ViTImageProcessor(size={"height": 32, "width": 32}).save_pretrained(root)
+            path = root / "model.onnx"
+            path.write_bytes(b"mocked model")
+            with patch("onnx_model.ort.InferenceSession") as create_session:
+                session = create_session.return_value
+                session.get_providers.return_value = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+                session.get_inputs.return_value = [SimpleNamespace(name="pixel_values")]
+                session.run.return_value = [np.array([[0.1, 0.9]], dtype=np.float32)]
+                _, converted, input_device = evaluator.load_model(
+                    root, onnx_path=path, device="cuda"
+                )
+                result = evaluator.evaluate_model(converted, input_device, [{
+                    "pixel_values": torch.zeros(1, 3, 32, 32), "labels": torch.tensor([1]),
+                }], {1: 1})
+                self.assertEqual(converted.artifact["provider"], "CUDAExecutionProvider")
+                self.assertEqual(result[1].tolist(), [1])
+                self.assertEqual(input_device, "cpu")
+
+    def test_requested_cuda_rejects_a_cpu_only_session(self):
+        with patch("onnx_model.AutoConfig.from_pretrained"), \
+                patch("onnx_model.ort.InferenceSession") as create_session:
+            create_session.return_value.get_providers.return_value = ["CPUExecutionProvider"]
+            with self.assertRaisesRegex(RuntimeError, "CUDAExecutionProvider"):
+                OnnxModel("checkpoint", "model.onnx", device="cuda")
 
     def test_onnx_nonfinite_logits_do_not_reach_metrics(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -195,7 +228,7 @@ class ClassifierEvaluationTest(unittest.TestCase):
                     path = root / "model.onnx"
                     onnx.save(onnx.helper.make_model(
                         graph, opset_imports=[onnx.helper.make_opsetid("", 16)], ir_version=9), path)
-                    _, converted, _ = evaluator.load_model(root, onnx_path=path)
+                    _, converted, _ = evaluator.load_model(root, onnx_path=path, device="cpu")
                     with self.assertRaisesRegex(ValueError, "NaN or infinity"):
                         converted(pixel_values=torch.zeros(1, 3, 32, 32))
 
@@ -269,7 +302,7 @@ class ClassifierEvaluationTest(unittest.TestCase):
             output = root / "reports"
             command = [sys.executable, str(Path(evaluator.__file__)),
                        "--model_path", str(checkpoint), "--test_data_path", str(root / "images"),
-                       "--output_path", str(output), "--num_workers", "0"]
+                       "--output_path", str(output), "--num_workers", "0", "--device", "cpu"]
             result = subprocess.run(command, capture_output=True, text=True, timeout=180)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertEqual({path.name for path in output.iterdir()}, REPORTS)

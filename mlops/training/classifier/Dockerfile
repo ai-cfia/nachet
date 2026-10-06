@@ -14,18 +14,20 @@ RUN uv venv --system-site-packages .venv \
     && uv lock --check \
     && uv sync --frozen --no-dev --group test --no-cache
 
-ENV PATH="/opt/nachet-classifier/.venv/bin:$PATH"
+ENV PATH="/opt/nachet-classifier/.venv/bin:$PATH" \
+    ORT_DISABLE_TELEMETRY=1
 
 COPY classifier/src ./src
 COPY checkpoints.py training_runtime.py training_options.py evaluation_runtime.py onnx_model.py /opt/
 
-# Fail the build if project dependencies shadow NVIDIA's CUDA-enabled PyTorch.
+# Keep NVIDIA's PyTorch and require the GPU-enabled ONNX Runtime build.
 RUN python -c "\
 import accelerate, boto3, datasets, mlflow, sklearn; \
-import torch, torchvision, transformers; \
+import torch, torchvision, transformers; import onnxruntime as ort; \
 from pathlib import Path; import sys; \
 assert not Path(torch.__file__).is_relative_to(sys.prefix), 'Expected NVIDIA base-image PyTorch'; \
-assert torch.version.cuda, 'Expected CUDA-enabled PyTorch'"
+assert torch.version.cuda, 'Expected CUDA-enabled PyTorch'; \
+assert 'CUDAExecutionProvider' in ort.get_available_providers(), 'Expected CUDA-enabled ONNX Runtime'"
 
 ENV HOME=/tmp \
     PYTHONPATH=/opt/nachet-classifier/src:/opt \

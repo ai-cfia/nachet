@@ -58,9 +58,9 @@ def find_processor_path(model_path, processor_path=None):
     raise FileNotFoundError(f"No preprocessor_config.json found in {candidates}")
 
 
-def load_model(model_path, processor_path=None, onnx_path=None):
+def load_model(model_path, processor_path=None, onnx_path=None, device=None):
     """Load the saved processor and checkpoint or converted model."""
-    device = "cuda" if torch.cuda.is_available() and not onnx_path else "cpu"
+    device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     processor_dir = find_processor_path(model_path, processor_path)
     print(f"Loading processor from: {processor_dir}")
@@ -68,11 +68,12 @@ def load_model(model_path, processor_path=None, onnx_path=None):
     if onnx_path:
         from onnx_model import OnnxModel
 
-        print(f"Evaluating ONNX on CPU: {onnx_path}")
-        model = OnnxModel(model_path, onnx_path)
-    else:
-        model = AutoModelForImageClassification.from_pretrained(model_path).to(device)
-        model.eval()
+        print(f"Evaluating ONNX on {device}: {onnx_path}")
+        model = OnnxModel(model_path, onnx_path, device=device)
+        # ONNX Runtime transfers the NumPy batch; preprocessing and metrics stay on CPU.
+        return processor, model, "cpu"
+    model = AutoModelForImageClassification.from_pretrained(model_path).to(device)
+    model.eval()
     return processor, model, device
 
 
@@ -589,7 +590,7 @@ def save_mispredictions_plot(all_preds, all_labels, class_metrics, class_names, 
     plt.close(fig)
 
 
-def process_model(model_path, test_data_path, output_path, batch_size, figsize, test_name, processor_path, num_workers, onnx_path=None):
+def process_model(model_path, test_data_path, output_path, batch_size, figsize, test_name, processor_path, num_workers, onnx_path=None, device=None):
     """Evaluate one checkpoint and save its reports."""
     model_path = Path(model_path)
     output_dir = Path(output_path) / test_name if test_name else Path(output_path)
@@ -599,7 +600,7 @@ def process_model(model_path, test_data_path, output_path, batch_size, figsize, 
     print(f"Outputs to:     {output_dir}")
     val_ds, dataset_class_names = load_test_data(test_data_path)
     save_sample_images(val_ds, dataset_class_names, output_dir)
-    processor, model, device = load_model(model_path, processor_path, onnx_path)
+    processor, model, device = load_model(model_path, processor_path, onnx_path, device)
     dataset_to_model_idx, valid_sample_indices, matching = match_classes(val_ds, dataset_class_names, model)
     eval_loader = make_eval_loader(val_ds, valid_sample_indices, processor, batch_size, num_workers)
     all_logits, all_preds, all_labels, topk_correct, total = evaluate_model(
@@ -642,7 +643,8 @@ def get_parser():
     parser.add_argument("--figsize", type=int, default=12, help="Base size of the confusion matrix (notebook: 12).")
     parser.add_argument("--test_name", type=str, default="", help="Optional report subdirectory name.")
     parser.add_argument("--processor_path", type=str, default=None, help="Optional processor directory.")
-    parser.add_argument("--onnx_path", type=Path, help="ONNX file exported from --model_path; evaluate on CPU.")
+    parser.add_argument("--onnx_path", type=Path, help="ONNX file exported from --model_path.")
+    parser.add_argument("--device", choices=["cuda", "cpu"], help="Inference device; auto-detected if omitted.")
     parser.add_argument("--num_workers", type=int, default=0, help="DataLoader workers (notebook: 4; default 0 works with spawn).")
     return parser
 
@@ -669,12 +671,13 @@ def main():
             process_model(
                 subdir, args.test_data_path, Path(args.output_path) / subdir.name,
                 args.batch_size, args.figsize, args.test_name, args.processor_path, args.num_workers,
+                device=args.device,
             )
     else:
         process_model(
             args.model_path, args.test_data_path, args.output_path,
             args.batch_size, args.figsize, args.test_name, args.processor_path, args.num_workers,
-            args.onnx_path,
+            args.onnx_path, args.device,
         )
     print(f"{datetime.now()}: Evaluation complete.")
 
