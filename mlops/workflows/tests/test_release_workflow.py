@@ -142,8 +142,9 @@ class ReleaseWorkflowTest(unittest.TestCase):
             self.run_container(self.export_templates["prepare-browser"], parameters,
                                MLOPS / "export", export_env)
 
+        evaluation_python = Path(os.environ.get(f"NACHET_{kind.upper()}_PYTHON", sys.executable))
         evaluation_env = {
-            "PATH": str(Path(sys.executable).parent) + os.pathsep + os.environ["PATH"],
+            "PATH": str(evaluation_python.parent) + os.pathsep + os.environ["PATH"],
             "PYTHONPATH": os.pathsep.join([
                 str(MLOPS / "training" / kind / "src"), str(MLOPS / "training"),
             ]),

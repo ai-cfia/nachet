@@ -94,12 +94,14 @@ class EvaluationWorkflowTests(unittest.TestCase):
             "/inputs/": str(inputs) + "/",
         }
         command = [*container["command"], *container["args"]]
-        command[0] = sys.executable
+        evaluation_python = Path(os.environ.get(f"NACHET_{kind.upper()}_PYTHON", sys.executable))
+        command[0] = str(evaluation_python)
         for old, new in replacements.items():
             command = [arg.replace(old, new) for arg in command]
         self.assertNotIn("{{", " ".join(command))
         env = dict(os.environ, MLFLOW_TRACKING_URI=(root / "mlruns").as_uri(),
                    HF_HOME=str(root / "huggingface"))
+        env["PATH"] = str(evaluation_python.parent) + os.pathsep + os.environ["PATH"]
         env["PYTHONPATH"] = os.pathsep.join([
             str(MLOPS / "training" / kind / "src"), str(MLOPS / "training"),
             os.environ.get("PYTHONPATH", ""),
