@@ -11,7 +11,7 @@ RUN uv lock --check \
 
 ENV PATH="/opt/nachet-export/.venv/bin:$PATH"
 
-COPY export_model.py browser_cam.py ./
+COPY export_model.py browser_cam.py ModelRelease.py ./
 
 ENV HOME=/tmp \
     PYTHONDONTWRITEBYTECODE=1 \

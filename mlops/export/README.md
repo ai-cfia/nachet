@@ -1,8 +1,9 @@
 # Checkpoint export runtime
 
-This directory builds the image that exports trained checkpoints to ONNX and
-prepares the Swin classifier for Class Activation Maps (CAM) in Nachet Mini. It
-is a standalone uv project. It is separate from the trainer images because
+This directory builds the image that exports trained checkpoints to ONNX,
+prepares the Swin classifier for Class Activation Maps (CAM) in Nachet Mini,
+and packages approved model releases. It is a standalone uv project. It is
+separate from the trainer images because
 `optimum-onnx==0.1.0` requires Transformers below 4.58, while training uses
 5.16.1.
 
@@ -26,7 +27,8 @@ docker run --rm --platform linux/amd64 --network none \
 The build checks that `uv.lock` is current and runs all tests in `tests/` with
 networking disabled. A failed test stops the build. Test files are mounted for
 that step, not copied into the image. The tests use small random-weight models;
-they do not check production accuracy or browser behavior.
+they do not check production accuracy or browser behavior. Publication tests
+check local packaging and mock Hub calls; they do not upload anything.
 
 CI builds, pushes and signs `ghcr.io/ai-cfia/nachet-export` for pull requests
 and merges, like the trainer images. New GHCR packages are private by default,
@@ -70,6 +72,48 @@ comparison uses random input on CPU; it checks that the model loads, not that
 it is accurate.
 
 A failed run may leave partial files. Retry with a new output directory.
+
+## Publish an approved release
+
+`ModelRelease.py` adapts the
+[original release script](https://github.com/ai-cfia/nachet-model-ccds/blob/229a3d40d384a9db05eb83a6201005818104e202/exporter/ModelRelease.py)
+from nachet-model-ccds. It keeps the original upload: create the repository if
+needed, then upload the release as a Hugging Face PR. It no longer converts the
+model or uploads training state.
+
+Run it only after the checkpoint and its exports have been evaluated and a
+person has approved the release. Supply `HF_TOKEN` from the Vault secret
+manager. The output directory must not exist yet:
+
+```bash
+docker run --rm --platform linux/amd64 \
+  --user "$(id -u):$(id -g)" --env HF_TOKEN \
+  --mount type=bind,src=/absolute/checkpoint,dst=/checkpoint,readonly \
+  --mount type=bind,src=/absolute/exports,dst=/exports,readonly \
+  --mount type=bind,src=/absolute/review,dst=/review,readonly \
+  --mount type=bind,src=/absolute/releases,dst=/releases \
+  nachet-export:local ModelRelease.py \
+  --checkpoint /checkpoint --exports /exports/run-1 \
+  --model-card /review/README.md --output /releases/seed-model \
+  --repo-id cfia-ai-lab/approved-model-repository --browser
+```
+
+The release contains the checkpoint's `config.json`,
+`preprocessor_config.json` and `model.safetensors`, the reviewed model card as
+`README.md`, and the FP32 model at `onnx/model.onnx`.
+
+- `--browser` puts the FP16 CAM model at `onnx/model.onnx` instead and adds the
+  classifier head at the repository root, as Mini expects.
+- `--include-int8` adds `onnx/model_quantized.onnx`. It has no CAM output.
+- `--evaluation` copies reports into `evaluation/`. Give them distinct
+  filenames.
+
+New repositories are public. The Hub PR keeps the release off `main` until
+someone merges it, but anyone can see the PR's files. A failed run may leave
+partial files; retry with a new output directory.
+
+Mini's RT-DETR entries currently request `onnx/model_patched.onnx`; this
+script packages detector ONNX at `onnx/model.onnx`.
 
 ## Update dependencies or the version
 

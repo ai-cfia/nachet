@@ -139,9 +139,10 @@ wheels = [
 
 [[package]]
 name = "nachet-export"
-version = "0.1.0"
+version = "0.2.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "huggingface-hub", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "numpy", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "onnx", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "onnxconverter-common", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
@@ -156,6 +157,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "huggingface-hub", specifier = "==0.36.2" },
     { name = "numpy", specifier = "==2.4.3" },
     { name = "onnx", specifier = "==1.21.0" },
     { name = "onnxconverter-common", specifier = "==1.16.0" },
