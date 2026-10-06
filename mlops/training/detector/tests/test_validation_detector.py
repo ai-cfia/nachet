@@ -7,7 +7,7 @@ from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import matplotlib
 
@@ -335,6 +335,25 @@ class ValidationDetectorTest(unittest.TestCase):
             with self.assertRaisesRegex(FileNotFoundError, "gone.png"):
                 validator._run_inference()
 
+    def test_onnx_cuda_keeps_processor_inputs_on_cpu(self):
+        validator = DetectorValidator(ValidationConfig(
+            config_path=Path("dataset.yaml"), model_path=Path("checkpoint"),
+            onnx_path=Path("model.onnx"), device="cuda",
+            save_results=False, generate_visualizations=False,
+        ))
+        validator._processor = RTDetrImageProcessor(size={"height": 32, "width": 32})
+        validator._image_square_size = 32
+        validator._images = {"image": {"_pil_image": Image.new("RGB", (32, 32))}}
+        validator._annotations_by_image = {"image": []}
+        # Stub inference; the real processor must not send its inputs through PyTorch CUDA.
+        validator._model = Mock(return_value=SimpleNamespace(
+            logits=torch.ones(1, 1, 1),
+            pred_boxes=torch.tensor([[[0.5, 0.5, 0.25, 0.25]]]),
+        ))
+        validator._run_inference()
+        self.assertEqual(validator.device, "cuda")
+        self.assertEqual(validator._model.call_args.kwargs["pixel_values"].device.type, "cpu")
+
     def test_empty_plot_inputs_are_valid(self):
         self.assertIsNone(validation.plot_false_negatives_by_subclass({}, 0.5))
         self.assertIsNone(validation.plot_false_positives_by_subclass({}, 0.5))
@@ -496,7 +515,7 @@ class ValidationDetectorTest(unittest.TestCase):
             converted_validator = DetectorValidator(ValidationConfig(
                 config_path=config_path, model_path=checkpoint, onnx_path=onnx_path,
                 output_dir=converted_output, confidence_threshold=0.0,
-                generate_visualizations=False, device="cuda",
+                generate_visualizations=False, device="cpu",
             ))
             converted_result = converted_validator.run()
             self.assertEqual(converted_validator.device, "cpu")
