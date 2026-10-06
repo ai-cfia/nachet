@@ -34,6 +34,24 @@ def save_tiny_swin(checkpoint):
     return model
 
 
+def save_tiny_detector(checkpoint):
+    """Save a small random RT-DETRv2 detector with one class."""
+    torch.manual_seed(42)
+    backbone = RTDetrResNetConfig(
+        embedding_size=16, hidden_sizes=[16, 32, 64, 128],
+        depths=[1, 1, 1, 1], layer_type="basic", out_indices=[2, 3, 4],
+    )
+    model = RTDetrV2ForObjectDetection(RTDetrV2Config(
+        backbone_config=backbone, encoder_in_channels=[32, 64, 128],
+        encoder_hidden_dim=32, encoder_ffn_dim=64, encoder_attention_heads=4,
+        d_model=32, decoder_in_channels=[32, 32, 32], decoder_ffn_dim=64,
+        decoder_attention_heads=4, decoder_layers=2, num_queries=10,
+        num_denoising=0, num_labels=1, disable_custom_kernels=True,
+    )).eval()
+    model.save_pretrained(checkpoint)
+    return model
+
+
 class ExportCommandTest(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
@@ -99,21 +117,9 @@ class SwinExportTest(unittest.TestCase):
 
 class DetectorExportTest(unittest.TestCase):
     def test_logits_and_boxes_match_pytorch(self):
-        torch.manual_seed(42)
-        backbone = RTDetrResNetConfig(
-            embedding_size=16, hidden_sizes=[16, 32, 64, 128],
-            depths=[1, 1, 1, 1], layer_type="basic", out_indices=[2, 3, 4],
-        )
-        model = RTDetrV2ForObjectDetection(RTDetrV2Config(
-            backbone_config=backbone, encoder_in_channels=[32, 64, 128],
-            encoder_hidden_dim=32, encoder_ffn_dim=64, encoder_attention_heads=4,
-            d_model=32, decoder_in_channels=[32, 32, 32], decoder_ffn_dim=64,
-            decoder_attention_heads=4, decoder_layers=2, num_queries=10,
-            num_denoising=0, num_labels=1, disable_custom_kernels=True,
-        )).eval()
         with tempfile.TemporaryDirectory() as tmp:
             checkpoint = Path(tmp) / "checkpoint"
-            model.save_pretrained(checkpoint)
+            model = save_tiny_detector(checkpoint)
             export_model.export_model(checkpoint, Path(tmp) / "export")
             session = ort.InferenceSession(str(Path(tmp) / "export/onnx-fp32/model.onnx"),
                                            providers=["CPUExecutionProvider"])

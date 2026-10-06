@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -13,14 +14,11 @@ from unittest.mock import patch
 from mlflow import MlflowClient
 from PIL import Image
 import torch
-from transformers import (
-    RTDetrImageProcessor, RTDetrResNetConfig, RTDetrV2Config,
-    RTDetrV2ForObjectDetection, SwinConfig, SwinForImageClassification,
-    ViTImageProcessor,
-)
+from transformers import RTDetrImageProcessor, ViTImageProcessor
 import yaml
 
 from mlops.export import ModelRelease
+from mlops.export.tests.test_export_model import save_tiny_detector, save_tiny_swin
 from mlops.training.checkpoints import REQUIRED_CHECKPOINT_FILES
 
 
@@ -68,6 +66,7 @@ class ReleaseWorkflowTest(unittest.TestCase):
         command = [render(arg) for arg in [*container["command"], *container["args"]]]
         if capture_command:
             # Run the shell's argument construction, then invoke Python with the Hub mocked.
+            self.assertIn('exec "$@"', command[2])
             command[2] = command[2].replace('exec "$@"', "printf '%s\\0' \"$@\"")
         env = dict(os.environ, HF_HUB_OFFLINE="1", ORT_DISABLE_TELEMETRY="1")
         for setting in container.get("env", []):
@@ -91,31 +90,16 @@ class ReleaseWorkflowTest(unittest.TestCase):
         (self.root / "tmp").mkdir()
         checkpoint = self.root / "runs/training/trainer-output/checkpoint-1"
         if kind == "classifier":
-            model = SwinForImageClassification(SwinConfig(
-                image_size=32, patch_size=4, embed_dim=8, depths=[1, 1],
-                num_heads=[1, 2], window_size=2, num_labels=2,
-                id2label={0: "Alpha", 1: "Beta"}, label2id={"Alpha": 0, "Beta": 1},
-            ))
+            model = save_tiny_swin(checkpoint)
             processor = ViTImageProcessor(size={"height": 32, "width": 32})
-            for label in ("Alpha", "Beta"):
+            for label in model.config.id2label.values():
                 folder = inputs / "external" / label
                 folder.mkdir(parents=True)
                 Image.new("RGB", (40, 40), "red").save(folder / "seed.png")
             external = "external"
             metrics_name = "validation_metrics.json"
         else:
-            backbone = RTDetrResNetConfig(
-                embedding_size=16, hidden_sizes=[16, 32, 64, 128],
-                depths=[1, 1, 1, 1], layer_type="basic", out_indices=[2, 3, 4],
-            )
-            model = RTDetrV2ForObjectDetection(RTDetrV2Config(
-                backbone_config=backbone, encoder_in_channels=[32, 64, 128],
-                encoder_hidden_dim=32, encoder_ffn_dim=64, encoder_attention_heads=4,
-                d_model=32, decoder_in_channels=[32, 32, 32], decoder_ffn_dim=64,
-                decoder_attention_heads=4, decoder_layers=2, num_queries=10,
-                num_denoising=0, num_labels=1, disable_custom_kernels=True,
-                id2label={0: "seed"}, label2id={"seed": 0},
-            ))
+            save_tiny_detector(checkpoint)
             processor = RTDetrImageProcessor(
                 size={"max_height": 64, "max_width": 64},
                 do_pad=True, pad_size={"height": 64, "width": 64},
@@ -132,7 +116,6 @@ class ReleaseWorkflowTest(unittest.TestCase):
                 {"json_path": "annotations.json", "images_dir": "."},
             ]}))
             metrics_name = "detection_metrics.json"
-        model.save_pretrained(checkpoint)
         processor.save_pretrained(checkpoint)
         for name in REQUIRED_CHECKPOINT_FILES:
             (checkpoint / name).touch()
@@ -205,7 +188,7 @@ class ReleaseWorkflowTest(unittest.TestCase):
             self.assertEqual(downloaded.read_bytes(), report.read_bytes())
 
         for browser in (False, True) if kind == "classifier" else (False,):
-            (self.root / "tmp").rename(self.root / f"tmp-{browser}")
+            shutil.rmtree(self.root / "tmp")
             (self.root / "tmp").mkdir()
             step_name = "publish-browser" if browser else "publish-fp32"
             step = next(group[0] for group in flow if group[0]["name"] == step_name)

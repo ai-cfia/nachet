@@ -11,10 +11,9 @@ import unittest
 import numpy as np
 import onnxruntime as ort
 import torch
-from transformers import RTDetrResNetConfig, RTDetrV2Config, RTDetrV2ForObjectDetection
 import yaml
 
-from mlops.export.tests.test_export_model import save_tiny_swin
+from mlops.export.tests.test_export_model import save_tiny_detector, save_tiny_swin
 
 
 MLOPS = Path(__file__).resolve().parents[2]
@@ -103,18 +102,7 @@ class ExportWorkflowTest(unittest.TestCase):
                                  model.classifier.weight.detach().numpy().astype("<f4").tobytes())
 
     def test_detector_export_uses_the_selected_checkpoint(self):
-        backbone = RTDetrResNetConfig(
-            embedding_size=16, hidden_sizes=[16, 32, 64, 128],
-            depths=[1, 1, 1, 1], layer_type="basic", out_indices=[2, 3, 4],
-        )
-        model = RTDetrV2ForObjectDetection(RTDetrV2Config(
-            backbone_config=backbone, encoder_in_channels=[32, 64, 128],
-            encoder_hidden_dim=32, encoder_ffn_dim=64, encoder_attention_heads=4,
-            d_model=32, decoder_in_channels=[32, 32, 32], decoder_ffn_dim=64,
-            decoder_attention_heads=4, decoder_layers=2, num_queries=10,
-            num_denoising=0, num_labels=1, disable_custom_kernels=True,
-        )).eval()
-        model.save_pretrained(self.checkpoint)
+        model = save_tiny_detector(self.checkpoint)
         pixels = torch.rand(1, 3, 64, 64)
         for quantize in (False, True):
             with self.subTest(quantize=quantize):
