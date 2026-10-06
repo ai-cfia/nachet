@@ -31,7 +31,8 @@ class EvaluationWorkflowTests(unittest.TestCase):
     def check_workflow(self, kind, root):
         spec = yaml.safe_load((MLOPS / "workflows" / f"{kind}-training-workflow-template.yaml").read_text())["spec"]
         templates = {item["name"]: item for item in spec["templates"]}
-        step = templates[f"{kind}-training"]["steps"][-1][0]
+        step = next(step for group in templates[f"{kind}-training"]["steps"]
+                    for step in group if step["name"] == "evaluate-checkpoints")
         parameter = "external-validation-dir" if kind == "classifier" else "external-validation-config"
         defaults = {item["name"]: item["value"] for item in spec["arguments"]["parameters"]}
         self.assertEqual(defaults[parameter], "none")
