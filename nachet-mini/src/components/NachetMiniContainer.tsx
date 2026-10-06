@@ -105,7 +105,7 @@ const NachetMiniContainer = () => {
   const exitEditMode = useBoxEditStore((s) => s.exitEditMode);
   const setIsDrawing = useBoxEditStore((s) => s.setIsDrawing);
 
-  // Checked state (lifted from ImageGallery for export)
+  // Checked state (lifted from ImageGallery for inference and export)
   const [checkedImages, setCheckedImages] = useState<Set<number>>(new Set());
   const [checkedResults, setCheckedResults] = useState<Set<string>>(new Set());
 
@@ -144,6 +144,12 @@ const NachetMiniContainer = () => {
   >(undefined);
 
   const currentImage = getCurrentImage();
+  const inferenceImages =
+    checkedImages.size > 0
+      ? images.filter((image) => checkedImages.has(image.index))
+      : currentImage
+        ? [currentImage]
+        : [];
   const currentResult = activeResultKey
     ? (results.get(activeResultKey) ?? null)
     : null;
@@ -214,7 +220,7 @@ const NachetMiniContainer = () => {
 
   const isInferring = status === "detecting" || status === "classifying";
   const handleRunInference = () => {
-    if (!currentImage) return;
+    if (inferenceImages.length === 0) return;
 
     // Text-promptable detectors require a non-empty prompt — block submission
     // and surface an inline message instead of silently substituting a default.
@@ -223,24 +229,29 @@ const NachetMiniContainer = () => {
       return;
     }
 
-    const alreadyQueued = useInferenceQueueStore
-      .getState()
-      .queue.some(
-        (i) =>
-          i.imageIndex === currentImage.index &&
-          (i.status === "pending" || i.status === "processing"),
-      );
-
-    if (alreadyQueued) return;
+    const queuedImageIndices = new Set(
+      useInferenceQueueStore
+        .getState()
+        .queue.filter(
+          (item) => item.status === "pending" || item.status === "processing",
+        )
+        .map((item) => item.imageIndex),
+    );
+    const imagesToQueue = inferenceImages.filter(
+      (image) => !queuedImageIndices.has(image.index),
+    );
+    if (imagesToQueue.length === 0) return;
 
     // Capture the prompt now (at enqueue time) so a later prompt edit can't
-    // change what this already-queued image runs with. Closed-vocabulary
+    // change what these already-queued images run with. Closed-vocabulary
     // detectors ignore it, so store null for them.
-    enqueue({
-      imageSrc: currentImage.src,
-      imageIndex: currentImage.index,
-      prompt: detectorRequiresPrompt ? detectorPrompt : null,
-    });
+    for (const image of imagesToQueue) {
+      enqueue({
+        imageSrc: image.src,
+        imageIndex: image.index,
+        prompt: detectorRequiresPrompt ? detectorPrompt : null,
+      });
+    }
 
     if (!hasAcknowledgedModelLoadWarning) {
       setModelLoadDialogOpen(true);
@@ -354,7 +365,9 @@ const NachetMiniContainer = () => {
 
   const handleModelLoadDialogCancel = () => {
     setModelLoadDialogOpen(false);
-    if (nextPendingId) cancel(nextPendingId);
+    for (const item of useInferenceQueueStore.getState().queue) {
+      if (item.status === "pending") cancel(item.id);
+    }
   };
 
   const handleModelLoadDialogContinue = () => {
@@ -480,7 +493,10 @@ const NachetMiniContainer = () => {
   }, []);
 
   const isLoading = status === "loading-model";
-  const canRunInference = !isWebcamActive && !!currentImage && !isEditing;
+  const canRunInference =
+    inferenceImages.length > 0 &&
+    (!isWebcamActive || checkedImages.size > 0) &&
+    !isEditing;
   const canEditBoxes =
     !isWebcamActive && !!currentResult && !isInferring && !isEditing;
   const canClassifyEdited =

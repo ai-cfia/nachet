@@ -1198,6 +1198,15 @@ describe("NachetMiniContainer", () => {
   });
 
   describe("inference queue", () => {
+    const setupBatch = () => {
+      useImageStore.setState({
+        images: [2, 7, 11].map((index) =>
+          makeImage({ index, src: `img-${index}.jpg` }),
+        ),
+        currentIndex: 11,
+      });
+    };
+
     const setupImage = (index = 0) => {
       useImageStore.setState({
         images: [makeImage({ index, src: `img-${index}.jpg` })],
@@ -1248,6 +1257,167 @@ describe("NachetMiniContainer", () => {
         getProps().onRunInference();
       });
       expect(useInferenceQueueStore.getState().queue).toHaveLength(1);
+    });
+
+    it("queues checked images in gallery order instead of the current image and loads models once", async () => {
+      setupBatch();
+      useModelLoadConsentStore.setState({
+        hasAcknowledgedModelLoadWarning: true,
+      });
+      renderContainer();
+      await act(async () => {
+        getProps().setCheckedImages(new Set([7, 2]));
+      });
+      expect(getProps().canRunInference).toBe(true);
+      await act(async () => {
+        getProps().onRunInference();
+      });
+
+      expect(useInferenceQueueStore.getState().queue).toMatchObject([
+        { imageIndex: 2, imageSrc: "img-2.jpg", status: "pending" },
+        { imageIndex: 7, imageSrc: "img-7.jpg", status: "pending" },
+      ]);
+      expect(mockLoadModels).toHaveBeenCalledTimes(1);
+      expect(getProps().currentIndex).toBe(11);
+      expect([...getProps().checkedImages]).toEqual([7, 2]);
+    });
+
+    it("processes a checked batch serially and skips processing and pending images on repeated clicks", async () => {
+      setupBatch();
+      setupModelLoaded();
+      mockRunInference.mockImplementation(() => {
+        useInferenceStore.getState().setStatus("detecting");
+      });
+      renderContainer();
+      await act(async () => {
+        getProps().setCheckedImages(new Set([2, 7]));
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      expect(mockRunInference).toHaveBeenCalledTimes(1);
+      expect(mockRunInference).toHaveBeenNthCalledWith(1, "img-2.jpg", 2, null);
+      expect(useInferenceQueueStore.getState().queue).toMatchObject([
+        { imageIndex: 2, status: "processing" },
+        { imageIndex: 7, status: "pending" },
+      ]);
+
+      await act(async () => {
+        getProps().setCheckedImages(new Set([2, 7, 11]));
+      });
+      await act(async () => {
+        getProps().onRunInference();
+        getProps().onRunInference();
+      });
+      expect(useInferenceQueueStore.getState().queue).toHaveLength(3);
+      expect(mockRunInference).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        useInferenceStore.getState().setStatus("complete");
+      });
+      await vi.waitFor(() => {
+        expect(mockRunInference).toHaveBeenNthCalledWith(
+          2,
+          "img-7.jpg",
+          7,
+          null,
+        );
+      });
+      await act(async () => {
+        useInferenceStore.getState().setStatus("complete");
+      });
+      await vi.waitFor(() => {
+        expect(mockRunInference).toHaveBeenNthCalledWith(
+          3,
+          "img-11.jpg",
+          11,
+          null,
+        );
+      });
+      await act(async () => {
+        useInferenceStore.getState().setStatus("complete");
+      });
+      expect(useInferenceQueueStore.getState().queue).toHaveLength(0);
+    });
+
+    it("uses the current image when only results are checked", async () => {
+      setupBatch();
+      setupModelLoaded();
+      renderContainer();
+      await act(async () => {
+        getProps().setIsWebcamActive(false);
+        getProps().setCheckedResults(new Set(["2:model-a"]));
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      expect(mockRunInference).toHaveBeenCalledWith("img-11.jpg", 11, null);
+      expect(useInferenceQueueStore.getState().queue).toHaveLength(1);
+    });
+
+    it("does not enable Identify or queue stale checked images", async () => {
+      setupBatch();
+      setupModelLoaded();
+      renderContainer();
+      await act(async () => {
+        getProps().setCheckedImages(new Set([99]));
+        getProps().setIsWebcamActive(false);
+      });
+      expect(getProps().canRunInference).toBe(false);
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      expect(useInferenceQueueStore.getState().queue).toHaveLength(0);
+      expect(mockRunInference).not.toHaveBeenCalled();
+    });
+
+    it("cancels every pending image when model loading is declined for a batch", async () => {
+      setupBatch();
+      renderContainer();
+      await act(async () => {
+        getProps().setCheckedImages(new Set([2, 7, 11]));
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      expect(useInferenceQueueStore.getState().queue).toHaveLength(3);
+      await act(async () => {
+        fireEvent.click(screen.getByText(enMain.modelLoadDialog.cancel));
+      });
+      expect(
+        useInferenceQueueStore
+          .getState()
+          .queue.filter((item) => item.status === "pending"),
+      ).toHaveLength(0);
+      expect(mockLoadModels).not.toHaveBeenCalled();
+      await act(async () => {
+        useInferenceStore.getState().setModelLoaded(true);
+      });
+      expect(mockRunInference).not.toHaveBeenCalled();
+    });
+
+    it("starts a checked batch after accepting the model load dialog", async () => {
+      setupBatch();
+      renderContainer();
+      await act(async () => {
+        getProps().setCheckedImages(new Set([2, 7]));
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      expect(mockLoadModels).not.toHaveBeenCalled();
+      await act(async () => {
+        fireEvent.click(screen.getByText(enMain.modelLoadDialog.continue));
+      });
+      expect(mockLoadModels).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        useInferenceStore.getState().setModelLoaded(true);
+      });
+      expect(mockRunInference).toHaveBeenCalledWith("img-2.jpg", 2, null);
+      expect(useInferenceQueueStore.getState().queue).toMatchObject([
+        { imageIndex: 2, status: "processing" },
+        { imageIndex: 7, status: "pending" },
+      ]);
     });
 
     it("opens model load dialog when model not acknowledged", async () => {
@@ -1305,7 +1475,7 @@ describe("NachetMiniContainer", () => {
       if (!sam3)
         throw new Error("no text-promptable detector in test fixtures");
 
-      setupImage();
+      setupBatch();
       // Acknowledge the load warning but leave the model UNloaded, so the
       // enqueued item stays pending while we edit the prompt.
       useModelLoadConsentStore.setState({
@@ -1316,6 +1486,7 @@ describe("NachetMiniContainer", () => {
         getProps().setIsWebcamActive(false);
         getProps().setSelectedDetectorId(sam3.id);
         getProps().setDetectorPrompt("yellow seed");
+        getProps().setCheckedImages(new Set([2, 7]));
       });
       await act(async () => {
         getProps().onRunInference(); // enqueues with "yellow seed"
@@ -1324,19 +1495,23 @@ describe("NachetMiniContainer", () => {
       await act(async () => {
         getProps().setDetectorPrompt("black seed");
       });
+      expect(useInferenceQueueStore.getState().queue).toMatchObject([
+        { imageIndex: 2, prompt: "yellow seed" },
+        { imageIndex: 7, prompt: "yellow seed" },
+      ]);
       // Model finishes loading -> the queued item drains.
       await act(async () => {
         useInferenceStore.getState().setModelLoaded(true);
       });
 
       expect(mockRunInference).toHaveBeenCalledWith(
-        "img-0.jpg",
-        0,
+        "img-2.jpg",
+        2,
         "yellow seed",
       );
       expect(mockRunInference).not.toHaveBeenCalledWith(
-        "img-0.jpg",
-        0,
+        "img-2.jpg",
+        2,
         "black seed",
       );
     });
@@ -1348,13 +1523,14 @@ describe("NachetMiniContainer", () => {
       if (!sam3)
         throw new Error("no text-promptable detector in test fixtures");
 
-      setupImage();
+      setupBatch();
       setupModelLoaded();
       renderContainer();
       await act(async () => {
         getProps().setIsWebcamActive(false);
         getProps().setSelectedDetectorId(sam3.id);
         getProps().setDetectorPrompt("   "); // whitespace only -> empty
+        getProps().setCheckedImages(new Set([2, 7]));
       });
       await act(async () => {
         getProps().onRunInference();
