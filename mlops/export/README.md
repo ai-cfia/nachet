@@ -73,6 +73,29 @@ it is accurate.
 
 A failed run may leave partial files. Retry with a new output directory.
 
+## Evaluate converted classifier models
+
+Run from the repository root in the classifier trainer's Python environment.
+Use the checkpoint and saved processor that produced the ONNX file, with the
+same dataset and evaluation settings used for checkpoint evaluation:
+
+```bash
+PYTHONPATH=mlops/training \
+  python mlops/training/classifier/src/validation_classifier.py \
+  --model_path /absolute/checkpoint --test_data_path /absolute/images \
+  --onnx_path /absolute/exports/run-1/browser/model_browser.fp16.onnx \
+  --output_path /absolute/reports/browser-fp16
+```
+
+`--onnx_path` switches inference to ONNX Runtime on CPU; preprocessing, label
+mapping and metrics stay unchanged. It also works with the INT8 export. Without
+the option, the evaluator loads the PyTorch checkpoint as before. The classifier
+trainer image already sets `PYTHONPATH` for the shared ONNX adapter.
+
+The metrics JSON includes `onnx_model` with the filename, SHA-256, runtime
+version and provider. Use separate report directories for each artifact. These
+CPU results do not establish browser compatibility or approve publication.
+
 ## Publish an approved release
 
 `ModelRelease.py` adapts the

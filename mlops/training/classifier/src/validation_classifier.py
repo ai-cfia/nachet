@@ -58,15 +58,21 @@ def find_processor_path(model_path, processor_path=None):
     raise FileNotFoundError(f"No preprocessor_config.json found in {candidates}")
 
 
-def load_model(model_path, processor_path=None):
-    """Load the saved processor and model, then put the model in evaluation mode."""
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+def load_model(model_path, processor_path=None, onnx_path=None):
+    """Load the saved processor and checkpoint or converted model."""
+    device = "cuda" if torch.cuda.is_available() and not onnx_path else "cpu"
     print(f"Using device: {device}")
     processor_dir = find_processor_path(model_path, processor_path)
     print(f"Loading processor from: {processor_dir}")
     processor = AutoImageProcessor.from_pretrained(processor_dir)
-    model = AutoModelForImageClassification.from_pretrained(model_path).to(device)
-    model.eval()
+    if onnx_path:
+        from onnx_model import OnnxModel
+
+        print(f"Evaluating ONNX on CPU: {onnx_path}")
+        model = OnnxModel(model_path, onnx_path)
+    else:
+        model = AutoModelForImageClassification.from_pretrained(model_path).to(device)
+        model.eval()
     return processor, model, device
 
 
@@ -265,7 +271,7 @@ def save_sample_images(val_ds, dataset_class_names, output_dir):
     plt.close(fig)
 
 
-def save_metrics(all_logits, all_preds, all_labels, topk_correct, total, class_names, matching, output_dir):
+def save_metrics(all_logits, all_preds, all_labels, topk_correct, total, class_names, matching, output_dir, onnx_model=None):
     """Score all model classes, with null AUC where OvR is undefined."""
     num_classes = len(class_names)
     all_probs = torch.softmax(all_logits, dim=-1).numpy()
@@ -314,6 +320,8 @@ def save_metrics(all_logits, all_preds, all_labels, topk_correct, total, class_n
         "classification_report": report,
         "class_matching": matching,
     }
+    if onnx_model is not None:
+        metrics["onnx_model"] = onnx_model
     metrics_path = output_dir / "validation_metrics.json"
     with metrics_path.open("w") as stream:
         json.dump(metrics, stream, indent=2, allow_nan=False)
@@ -581,7 +589,7 @@ def save_mispredictions_plot(all_preds, all_labels, class_metrics, class_names, 
     plt.close(fig)
 
 
-def process_model(model_path, test_data_path, output_path, batch_size, figsize, test_name, processor_path, num_workers):
+def process_model(model_path, test_data_path, output_path, batch_size, figsize, test_name, processor_path, num_workers, onnx_path=None):
     """Evaluate one checkpoint and save its reports."""
     model_path = Path(model_path)
     output_dir = Path(output_path) / test_name if test_name else Path(output_path)
@@ -591,7 +599,7 @@ def process_model(model_path, test_data_path, output_path, batch_size, figsize, 
     print(f"Outputs to:     {output_dir}")
     val_ds, dataset_class_names = load_test_data(test_data_path)
     save_sample_images(val_ds, dataset_class_names, output_dir)
-    processor, model, device = load_model(model_path, processor_path)
+    processor, model, device = load_model(model_path, processor_path, onnx_path)
     dataset_to_model_idx, valid_sample_indices, matching = match_classes(val_ds, dataset_class_names, model)
     eval_loader = make_eval_loader(val_ds, valid_sample_indices, processor, batch_size, num_workers)
     all_logits, all_preds, all_labels, topk_correct, total = evaluate_model(
@@ -600,7 +608,8 @@ def process_model(model_path, test_data_path, output_path, batch_size, figsize, 
     # Include predictions for species absent from the evaluation dataset.
     class_names = [model.config.id2label[index] for index in range(model.config.num_labels)]
     report_df, roc_auc_per_class = save_metrics(
-        all_logits, all_preds, all_labels, topk_correct, total, class_names, matching, output_dir
+        all_logits, all_preds, all_labels, topk_correct, total, class_names, matching, output_dir,
+        model.artifact if onnx_path else None,
     )
     class_metrics, cm = save_per_class_report(
         report_df, roc_auc_per_class, all_labels, all_preds, class_names, output_dir, figsize
@@ -633,12 +642,15 @@ def get_parser():
     parser.add_argument("--figsize", type=int, default=12, help="Base size of the confusion matrix (notebook: 12).")
     parser.add_argument("--test_name", type=str, default="", help="Optional report subdirectory name.")
     parser.add_argument("--processor_path", type=str, default=None, help="Optional processor directory.")
+    parser.add_argument("--onnx_path", type=Path, help="ONNX file exported from --model_path; evaluate on CPU.")
     parser.add_argument("--num_workers", type=int, default=0, help="DataLoader workers (notebook: 4; default 0 works with spawn).")
     return parser
 
 
 def main():
     args = get_parser().parse_args()
+    if args.onnx_path and args.parent == "true":
+        raise ValueError("--onnx_path evaluates one checkpoint; use --parent false")
     print(f"{datetime.now()}: Starting evaluation...")
     if args.chkstart < 0 or args.chkend < 0:
         raise ValueError("chkstart and chkend must be non-negative.")
@@ -662,6 +674,7 @@ def main():
         process_model(
             args.model_path, args.test_data_path, args.output_path,
             args.batch_size, args.figsize, args.test_name, args.processor_path, args.num_workers,
+            args.onnx_path,
         )
     print(f"{datetime.now()}: Evaluation complete.")
 
