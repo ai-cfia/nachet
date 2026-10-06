@@ -73,9 +73,9 @@ it is accurate.
 
 A failed run may leave partial files. Retry with a new output directory.
 
-## Evaluate converted classifier models
+## Evaluate converted models
 
-Run from the repository root in the classifier trainer's Python environment.
+Run from the repository root in the corresponding trainer's Python environment.
 Use the checkpoint and saved processor that produced the ONNX file, with the
 same dataset and evaluation settings used for checkpoint evaluation:
 
@@ -85,12 +85,19 @@ PYTHONPATH=mlops/training \
   --model_path /absolute/checkpoint --test_data_path /absolute/images \
   --onnx_path /absolute/exports/run-1/browser/model_browser.fp16.onnx \
   --output_path /absolute/reports/browser-fp16
+
+PYTHONPATH=mlops/training \
+  python mlops/training/detector/src/validation_detector.py \
+  --model_path /absolute/checkpoint --config_path /absolute/dataset.yaml \
+  --onnx_path /absolute/exports/run-1/onnx-fp32/model.onnx \
+  --output_dir /absolute/reports/fp32
 ```
 
 `--onnx_path` switches inference to ONNX Runtime on CPU; preprocessing, label
 mapping and metrics stay unchanged. It also works with the INT8 export. Without
-the option, the evaluator loads the PyTorch checkpoint as before. The classifier
-trainer image already sets `PYTHONPATH` for the shared ONNX adapter.
+the option, the evaluators load the PyTorch checkpoint as before. The detector's
+`--device` option applies only to PyTorch. The trainer images already set
+`PYTHONPATH` for the shared ONNX adapter.
 
 The metrics JSON includes `onnx_model` with the filename, SHA-256, runtime
 version and provider. Use separate report directories for each artifact. These

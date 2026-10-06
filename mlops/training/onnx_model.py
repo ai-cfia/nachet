@@ -11,7 +11,7 @@ from transformers import AutoConfig
 
 
 class OnnxModel:
-    """Expose the config and tensor outputs that the evaluator consumes."""
+    """Expose the config and tensor outputs that both evaluators consume."""
 
     def __init__(self, checkpoint, onnx_path):
         self.config = AutoConfig.from_pretrained(checkpoint, local_files_only=True)
@@ -30,6 +30,8 @@ class OnnxModel:
             for item in self.session.get_inputs()
         }
         names = ["logits"]
+        if self.config.model_type == "rt_detr_v2":
+            names.append("pred_boxes")
         values = self.session.run(names, feeds)
         if any(not np.isfinite(value).all() for value in values):
             raise ValueError("ONNX evaluation returned NaN or infinity")
