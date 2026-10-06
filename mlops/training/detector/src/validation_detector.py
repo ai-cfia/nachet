@@ -124,13 +124,13 @@ class ValidationConfig:
     """Whether to save JSON/CSV results to output_dir."""
 
     device: Optional[str] = None
-    """PyTorch device ('cuda', 'cpu'). Auto-detected if None; ONNX uses CPU."""
+    """Inference device ('cuda', 'cpu'). Auto-detected if None."""
 
     preprocessing: Optional[Union[str, A.Compose]] = None
     """Optional preprocessing: 'imagenet', 'clahe', 'clahe+imagenet', or albumentations Compose."""
 
     onnx_path: Optional[Path] = None
-    """Converted artifact from model_path, evaluated on CPU instead of the checkpoint."""
+    """Converted artifact from model_path, evaluated instead of the checkpoint."""
 
 
 # =============================================================================
@@ -735,9 +735,7 @@ class DetectorValidator:
 
     def _setup_device(self) -> None:
         """Setup compute device."""
-        if self.config.onnx_path:
-            self.device = "cpu"
-        elif self.config.device:
+        if self.config.device:
             self.device = self.config.device
         else:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -772,8 +770,10 @@ class DetectorValidator:
         if self.config.onnx_path:
             from onnx_model import OnnxModel
 
-            print(f"Evaluating ONNX on CPU: {self.config.onnx_path}")
-            self._model = OnnxModel(self.config.model_path, self.config.onnx_path)
+            print(f"Evaluating ONNX on {self.device}: {self.config.onnx_path}")
+            self._model = OnnxModel(
+                self.config.model_path, self.config.onnx_path, device=self.device
+            )
         else:
             self._model = AutoModelForObjectDetection.from_pretrained(
                 self.config.model_path
@@ -1068,6 +1068,8 @@ class DetectorValidator:
                     image = Image.open(img_path).convert("RGB")
 
                 orig_w, orig_h = image.size
+                # ONNX Runtime transfers the NumPy inputs to its selected execution provider.
+                input_device = "cpu" if self.config.onnx_path else self.device
 
                 # Apply custom preprocessing if configured
                 if self._preprocessing_transform is not None:
@@ -1078,17 +1080,17 @@ class DetectorValidator:
                     if self._preprocessing_includes_normalize:
                         # Pass pre-normalized array directly (processor has do_normalize=False)
                         inputs = self._processor(images=result, return_tensors="pt").to(
-                            self.device
+                            input_device
                         )
                     else:
                         # CLAHE or other non-normalizing transforms - convert back to PIL
                         image = Image.fromarray(result)
                         inputs = self._processor(images=image, return_tensors="pt").to(
-                            self.device
+                            input_device
                         )
                 else:
                     inputs = self._processor(images=image, return_tensors="pt").to(
-                        self.device
+                        input_device
                     )
 
                 # Forward pass
@@ -3560,7 +3562,7 @@ def get_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         choices=["cuda", "cpu"],
-        help="PyTorch device; auto-detected if omitted. ONNX evaluation always uses CPU.",
+        help="Inference device; auto-detected if omitted.",
     )
     parser.add_argument(
         "--preprocessing",
