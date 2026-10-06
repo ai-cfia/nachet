@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -58,8 +59,11 @@ class ReleaseWorkflowTest(unittest.TestCase):
         def render(value):
             if value in {"/runs", "/inputs", "/exports", "/tmp", "/scratch"}:
                 return str(self.root / value.lstrip("/"))
-            for old, new in replacements.items():
-                value = value.replace(old, new)
+            # Do not expand /tmp again inside an already rendered path.
+            value = re.sub(
+                "|".join(map(re.escape, replacements)),
+                lambda match: replacements[match.group()], value,
+            )
             self.assertNotIn("{{", value)
             return value
 
@@ -80,7 +84,7 @@ class ReleaseWorkflowTest(unittest.TestCase):
 
     def test_selected_artifacts_are_evaluated_in_mlflow_then_packaged(self):
         for kind in ("classifier", "detector"):
-            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as temporary:
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory(dir="/tmp") as temporary:
                 self.root = Path(temporary)
                 self.check_release(kind)
 
