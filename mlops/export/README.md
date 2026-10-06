@@ -80,10 +80,11 @@ Use the checkpoint and saved processor that produced the ONNX file, with the
 same dataset and evaluation settings used for checkpoint evaluation:
 
 ```bash
-PYTHONPATH=mlops/training \
+ORT_DISABLE_TELEMETRY=1 PYTHONPATH=mlops/training \
   python mlops/training/classifier/src/validation_classifier.py \
   --model_path /absolute/checkpoint --test_data_path /absolute/images \
   --onnx_path /absolute/exports/run-1/browser/model_browser.fp16.onnx \
+  --device cuda \
   --output_path /absolute/reports/browser-fp16
 
 PYTHONPATH=mlops/training \
@@ -93,15 +94,32 @@ PYTHONPATH=mlops/training \
   --output_dir /absolute/reports/fp32
 ```
 
-`--onnx_path` switches inference to ONNX Runtime on CPU; preprocessing, label
-mapping and metrics stay unchanged. It also works with the INT8 export. Without
-the option, the evaluators load the PyTorch checkpoint as before. The detector's
-`--device` option applies only to PyTorch. The trainer images already set
-`PYTHONPATH` for the shared ONNX adapter.
+`--onnx_path` switches inference to ONNX Runtime; preprocessing, label mapping
+and metrics stay unchanged. The classifier accepts `--device cuda` or
+`--device cpu`; without it, it chooses CUDA when PyTorch detects a GPU.
+CUDA initialization failure stops evaluation instead of silently switching to
+CPU. CUDA sessions can still assign unsupported operations to CPU.
+Detector ONNX evaluation still uses CPU.
+
+Use `--device cpu` for local checks and the current AVX512 INT8 export. Linux
+classifier trainer images use ONNX Runtime GPU 1.30.0 for their CUDA 13 base
+image; local macOS environments use the same version of the CPU package. GPU
+results can differ from CPU results: the CUDA provider enables TF32 for some
+FP32 matrix multiplications and convolutions on supported GPUs by default.
+See the [TF32 option](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#use_tf32).
+
+The classifier trainer image disables ONNX Runtime telemetry, which the official
+1.30 builds enable by default on Linux and macOS. Set
+`ORT_DISABLE_TELEMETRY=1` before starting Python when running locally too.
+See the [1.30 privacy documentation](https://github.com/microsoft/onnxruntime/blob/v1.30.0/docs/Privacy.md#disabling-telemetry).
+
+Without `--onnx_path`, the evaluators load the PyTorch checkpoint as before.
+The trainer images already set `PYTHONPATH` for the shared ONNX adapter.
 
 The metrics JSON includes `onnx_model` with the filename, SHA-256, runtime
-version and provider. Use separate report directories for each artifact. These
-CPU results do not establish browser compatibility or approve publication.
+version and primary session provider. Use separate report directories for each
+artifact. These results do not establish browser compatibility or approve
+publication.
 
 ## Publish an approved release
 

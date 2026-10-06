@@ -1,4 +1,4 @@
-"""Run converted models through the existing checkpoint evaluators on CPU."""
+"""Run converted models through the existing checkpoint evaluators."""
 
 import hashlib
 from pathlib import Path
@@ -13,15 +13,24 @@ from transformers import AutoConfig
 class OnnxModel:
     """Expose the config and tensor outputs that both evaluators consume."""
 
-    def __init__(self, checkpoint, onnx_path):
+    def __init__(self, checkpoint, onnx_path, device="cpu"):
         self.config = AutoConfig.from_pretrained(checkpoint, local_files_only=True)
-        self.session = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
+        provider = "CUDAExecutionProvider" if device == "cuda" else "CPUExecutionProvider"
+        providers = [provider]
+        if device == "cuda":
+            providers.append("CPUExecutionProvider")
+        self.session = ort.InferenceSession(str(onnx_path), providers=providers)
+        active_provider = self.session.get_providers()[0]
+        if active_provider != provider:
+            raise RuntimeError(f"Requested {provider} could not be initialized")
+        # Fail on provider errors instead of restarting inference on another backend.
+        self.session.disable_fallback()
         with Path(onnx_path).open("rb") as stream:
             self.artifact = {
                 "filename": Path(onnx_path).name,
                 "sha256": hashlib.file_digest(stream, "sha256").hexdigest(),
                 "onnxruntime_version": ort.__version__,
-                "provider": "CPUExecutionProvider",
+                "provider": active_provider,
             }
 
     def __call__(self, **inputs):
