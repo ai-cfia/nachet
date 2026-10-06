@@ -1,6 +1,7 @@
 """Regression tests for detector evaluation and reports."""
 
 from dataclasses import fields
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -359,7 +360,7 @@ class ValidationDetectorTest(unittest.TestCase):
             self.assertEqual(list(frame.columns), ["subclass", "false_negatives"])
             self.assertTrue(frame.empty)
 
-    def test_real_checkpoint_produces_original_reports_for_one_image(self):
+    def test_checkpoint_and_onnx_produce_matching_detection_reports(self):
         torch.set_num_threads(1)
         torch.manual_seed(2438)
         with tempfile.TemporaryDirectory() as directory:
@@ -475,6 +476,42 @@ class ValidationDetectorTest(unittest.TestCase):
                     examples_per_class=1,
                 )
             )
+
+            class ExportDetector(torch.nn.Module):
+                def __init__(self, model):
+                    super().__init__()
+                    self.model = model
+
+                def forward(self, pixel_values):
+                    outputs = self.model(pixel_values=pixel_values)
+                    return outputs.logits, outputs.pred_boxes
+
+            onnx_path = root / "model.onnx"
+            torch.onnx.export(
+                ExportDetector(validator._model).eval(), (torch.rand(1, 3, 64, 64),),
+                onnx_path, dynamo=False, opset_version=16,
+                input_names=["pixel_values"], output_names=["logits", "pred_boxes"],
+            )
+            converted_output = root / "onnx-reports"
+            converted_validator = DetectorValidator(ValidationConfig(
+                config_path=config_path, model_path=checkpoint, onnx_path=onnx_path,
+                output_dir=converted_output, confidence_threshold=0.0,
+                generate_visualizations=False, device="cuda",
+            ))
+            converted_result = converted_validator.run()
+            self.assertEqual(converted_validator.device, "cpu")
+            for key in ("boxes", "scores", "labels"):
+                torch.testing.assert_close(
+                    converted_result.predictions[0][key], result.predictions[0][key],
+                    rtol=1e-4, atol=1e-5,
+                )
+            self.assertEqual(converted_result.overall.to_dict(), result.overall.to_dict())
+            converted_metrics = json.loads((converted_output / "detection_metrics.json").read_text())
+            artifact = converted_metrics.pop("onnx_model")
+            self.assertEqual(artifact["sha256"], hashlib.sha256(onnx_path.read_bytes()).hexdigest())
+            self.assertEqual(artifact["provider"], "CPUExecutionProvider")
+            self.assertEqual(converted_metrics, json.loads((output / "detection_metrics.json").read_text()))
+
             # Missing mappings must not default to class 0.
             validator._coco_to_model = {}
             with self.assertRaises(KeyError):

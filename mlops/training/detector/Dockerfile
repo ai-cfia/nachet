@@ -17,12 +17,12 @@ COPY detector/pyproject.toml detector/uv.lock ./
 # into a separate environment. Syncing must not replace the base image's torch.
 RUN uv venv --system-site-packages .venv \
     && uv lock --check \
-    && uv sync --frozen --no-dev --no-cache
+    && uv sync --frozen --no-dev --group test --no-cache
 
 ENV PATH="/opt/nachet-detector/.venv/bin:$PATH"
 
 COPY detector/src ./src
-COPY checkpoints.py training_runtime.py training_options.py evaluation_runtime.py /opt/
+COPY checkpoints.py training_runtime.py training_options.py evaluation_runtime.py onnx_model.py /opt/
 
 # Fail the build if project dependencies shadow NVIDIA's CUDA-enabled PyTorch.
 RUN python -c "\
