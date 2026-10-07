@@ -77,6 +77,16 @@ const getProps = (): NachetMiniViewProps => {
   return viewPropsRef.current.props;
 };
 
+const defaultModelConfig = buildModelConfig(
+  DEFAULT_DETECTOR,
+  DEFAULT_CLASSIFIER,
+);
+const finishModelLoad = () => {
+  const config = mockLoadModels.mock.lastCall?.[0] ?? defaultModelConfig;
+  useInferenceStore.getState().setStatus("idle");
+  useInferenceStore.getState().setModelLoaded(true, config.id);
+};
+
 const renderContainer = () =>
   render(
     <I18nextProvider i18n={i18n}>
@@ -178,6 +188,7 @@ describe("NachetMiniContainer", () => {
       activeResultKey: null,
       status: "idle",
       modelLoaded: false,
+      loadedModelConfigId: defaultModelConfig.id,
       modelLoadProgress: null,
       error: null,
     });
@@ -194,6 +205,10 @@ describe("NachetMiniContainer", () => {
 
     // Reset mocks
     mockLoadModels.mockReset();
+    mockLoadModels.mockImplementation(() => {
+      useInferenceStore.getState().setStatus("loading-model");
+      useInferenceStore.getState().setModelLoaded(false);
+    });
     mockRunInference.mockReset();
     mockRunClassifyOnly.mockReset();
     mockUseVersionCheck.mockReset();
@@ -297,29 +312,28 @@ describe("NachetMiniContainer", () => {
   });
 
   describe("model selection", () => {
-    // REWRITTEN: changing the dropdown no longer calls loadModels immediately.
-    // It marks the current models as stale (modelLoaded → false), and the next
-    // Identify click will load the new config.
+    // Dropdown changes affect new jobs. The worker retains the loaded models
+    // until a queued job requests a different configuration.
 
-    it("marks models as stale when the detector selection changes after loading", async () => {
+    it("keeps loaded models ready when the detector selection changes", async () => {
       useInferenceStore.setState({ modelLoaded: true });
       renderContainer();
       const otherDetector = getAlternateDetector();
       await act(async () => {
         getProps().setSelectedDetectorId(otherDetector.id);
       });
-      expect(useInferenceStore.getState().modelLoaded).toBe(false);
+      expect(useInferenceStore.getState().modelLoaded).toBe(true);
       expect(mockLoadModels).not.toHaveBeenCalled();
     });
 
-    it("marks models as stale when the classifier selection changes after loading", async () => {
+    it("keeps loaded models ready when the classifier selection changes", async () => {
       useInferenceStore.setState({ modelLoaded: true });
       renderContainer();
       const otherClassifier = getAlternateClassifier();
       await act(async () => {
         getProps().setSelectedClassifierId(otherClassifier.id);
       });
-      expect(useInferenceStore.getState().modelLoaded).toBe(false);
+      expect(useInferenceStore.getState().modelLoaded).toBe(true);
       expect(mockLoadModels).not.toHaveBeenCalled();
     });
 
@@ -347,15 +361,15 @@ describe("NachetMiniContainer", () => {
 
       renderContainer();
 
-      // Switch detector → models go stale
+      // Switching the selection leaves the worker's models intact.
       const otherDetector = getAlternateDetector();
       await act(async () => {
         getProps().setSelectedDetectorId(otherDetector.id);
         getProps().setIsWebcamActive(false);
       });
-      expect(useInferenceStore.getState().modelLoaded).toBe(false);
+      expect(useInferenceStore.getState().modelLoaded).toBe(true);
 
-      // Next Identify click loads the new config without showing the dialog
+      // The queued job then requests the new models without showing the dialog.
       await act(async () => {
         getProps().onRunInference();
       });
@@ -696,7 +710,7 @@ describe("NachetMiniContainer", () => {
 
       // Simulate the worker finishing model load
       await act(async () => {
-        useInferenceStore.getState().setModelLoaded(true);
+        finishModelLoad();
       });
 
       expect(mockRunInference).toHaveBeenCalledTimes(1);
@@ -725,7 +739,7 @@ describe("NachetMiniContainer", () => {
 
       // Model finishes loading
       await act(async () => {
-        useInferenceStore.getState().setModelLoaded(true);
+        finishModelLoad();
       });
 
       expect(mockRunInference).not.toHaveBeenCalled();
@@ -742,7 +756,7 @@ describe("NachetMiniContainer", () => {
         fireEvent.click(screen.getByText(enMain.modelLoadDialog.continue));
       });
       await act(async () => {
-        useInferenceStore.getState().setModelLoaded(true);
+        finishModelLoad();
       });
       // runInference was called — item is now processing
       expect(mockRunInference).toHaveBeenCalledTimes(1);
@@ -1074,14 +1088,14 @@ describe("NachetMiniContainer", () => {
     });
 
     it("canClassifyEdited requires editing + boxes + model loaded + not inferring", () => {
-      useInferenceStore.getState().setModelLoaded(true);
+      finishModelLoad();
       useBoxEditStore.getState().enterEditMode("k", [makeBox()]);
       renderContainer();
       expect(getProps().canClassifyEdited).toBe(true);
     });
 
     it("canClassifyEdited is false when no boxes are edited", () => {
-      useInferenceStore.getState().setModelLoaded(true);
+      finishModelLoad();
       useBoxEditStore.getState().enterEditMode("k", []);
       renderContainer();
       expect(getProps().canClassifyEdited).toBe(false);
@@ -1101,7 +1115,7 @@ describe("NachetMiniContainer", () => {
     });
 
     it("shows 'model ready' once the model is loaded", () => {
-      useInferenceStore.getState().setModelLoaded(true);
+      finishModelLoad();
       renderContainer();
       expect(getProps().statusText).toBe(enMain.status.modelReady);
     });
@@ -1123,6 +1137,7 @@ describe("NachetMiniContainer", () => {
             id: "id-1",
             imageSrc: "x",
             imageIndex: 0,
+            modelConfig: defaultModelConfig,
             status: "processing",
             addedAt: Date.now(),
           },
@@ -1145,6 +1160,7 @@ describe("NachetMiniContainer", () => {
             id: "id-1",
             imageSrc: "x",
             imageIndex: 0,
+            modelConfig: defaultModelConfig,
             status: "processing",
             addedAt: Date.now(),
           },
@@ -1198,6 +1214,145 @@ describe("NachetMiniContainer", () => {
   });
 
   describe("inference queue", () => {
+    it("runs three model combinations for the same image using their captured models", async () => {
+      const detector = getAlternateDetector();
+      const classifier = getAlternateClassifier();
+      const secondConfig = buildModelConfig(detector, DEFAULT_CLASSIFIER);
+      const thirdConfig = buildModelConfig(detector, classifier);
+      const fourthDetector = DETECTOR_MODELS.find(
+        (entry) => entry.id !== DEFAULT_DETECTOR.id && entry.id !== detector.id,
+      )!;
+      setupImage();
+      setupModelLoaded();
+      const configsRun: Array<string | null> = [];
+      mockRunInference.mockImplementation(() => {
+        configsRun.push(useInferenceStore.getState().loadedModelConfigId);
+        useInferenceStore.getState().setStatus("detecting");
+      });
+      renderContainer();
+      await act(async () => {
+        getProps().setCheckedImages(new Set([0]));
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      await act(async () => {
+        getProps().setSelectedDetectorId(detector.id);
+      });
+      await act(async () => {
+        getProps().onRunInference();
+        getProps().onRunInference();
+      });
+      await act(async () => {
+        getProps().setSelectedClassifierId(classifier.id);
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      await act(async () => {
+        getProps().setSelectedDetectorId(fourthDetector.id);
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      expect(
+        useInferenceQueueStore
+          .getState()
+          .queue.map((item) => item.modelConfig.id),
+      ).toEqual([defaultModelConfig.id, secondConfig.id, thirdConfig.id]);
+      expect(mockLoadModels).not.toHaveBeenCalled();
+      expect(mockRunInference).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        useInferenceStore.getState().setStatus("complete");
+      });
+      await vi.waitFor(() => {
+        expect(mockLoadModels).toHaveBeenLastCalledWith(secondConfig);
+      });
+      expect(mockRunInference).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        finishModelLoad();
+      });
+      expect(mockRunInference).toHaveBeenCalledTimes(2);
+      await act(async () => {
+        useInferenceStore
+          .getState()
+          .setResult(0, defaultModelConfig.id, makeResult({ totalBoxes: 4 }));
+        useInferenceStore
+          .getState()
+          .setResult(0, secondConfig.id, makeResult({ totalBoxes: 9 }));
+        useInferenceStore.getState().setStatus("classifying");
+      });
+      expect(useInferenceQueueStore.getState().queue[0].detectedBoxCount).toBe(
+        9,
+      );
+      await act(async () => {
+        useInferenceStore.getState().setStatus("complete");
+      });
+      await vi.waitFor(() => {
+        expect(mockLoadModels).toHaveBeenLastCalledWith(thirdConfig);
+      });
+      await act(async () => {
+        finishModelLoad();
+      });
+      expect(configsRun).toEqual([
+        defaultModelConfig.id,
+        secondConfig.id,
+        thirdConfig.id,
+      ]);
+      expect(
+        mockRunInference.mock.calls.every(
+          ([src, index]) => src === "img-0.jpg" && index === 0,
+        ),
+      ).toBe(true);
+      expect(mockLoadModels).toHaveBeenCalledTimes(2);
+      await act(async () => {
+        useInferenceStore.getState().setStatus("complete");
+      });
+      expect(useInferenceQueueStore.getState().queue).toHaveLength(0);
+    });
+
+    it("uses the next job's models when dropdowns change before initial loading completes", async () => {
+      setupImage();
+      useModelLoadConsentStore.setState({
+        hasAcknowledgedModelLoadWarning: true,
+      });
+      renderContainer();
+      await act(async () => {
+        getProps().setCheckedImages(new Set([0]));
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      const detector = getAlternateDetector();
+      const classifier = getAlternateClassifier();
+      await act(async () => {
+        getProps().setSelectedDetectorId(detector.id);
+        getProps().setSelectedClassifierId(classifier.id);
+      });
+      await act(async () => {
+        getProps().onRunInference();
+      });
+      expect(mockLoadModels).toHaveBeenCalledTimes(1);
+      expect(mockLoadModels).toHaveBeenLastCalledWith(defaultModelConfig);
+      await act(async () => {
+        finishModelLoad();
+      });
+      expect(mockRunInference).toHaveBeenCalledTimes(1);
+      expect(useInferenceStore.getState().loadedModelConfigId).toBe(
+        defaultModelConfig.id,
+      );
+      expect(useInferenceQueueStore.getState().queue).toMatchObject([
+        { modelConfig: { id: defaultModelConfig.id }, status: "processing" },
+        {
+          modelConfig: {
+            id: buildModelConfig(detector, classifier).id,
+          },
+          status: "pending",
+        },
+      ]);
+    });
+
     const setupBatch = () => {
       useImageStore.setState({
         images: [2, 7, 11].map((index) =>
@@ -1391,7 +1546,7 @@ describe("NachetMiniContainer", () => {
       ).toHaveLength(0);
       expect(mockLoadModels).not.toHaveBeenCalled();
       await act(async () => {
-        useInferenceStore.getState().setModelLoaded(true);
+        finishModelLoad();
       });
       expect(mockRunInference).not.toHaveBeenCalled();
     });
@@ -1411,7 +1566,7 @@ describe("NachetMiniContainer", () => {
       });
       expect(mockLoadModels).toHaveBeenCalledTimes(1);
       await act(async () => {
-        useInferenceStore.getState().setModelLoaded(true);
+        finishModelLoad();
       });
       expect(mockRunInference).toHaveBeenCalledWith("img-2.jpg", 2, null);
       expect(useInferenceQueueStore.getState().queue).toMatchObject([
@@ -1501,7 +1656,7 @@ describe("NachetMiniContainer", () => {
       ]);
       // Model finishes loading -> the queued item drains.
       await act(async () => {
-        useInferenceStore.getState().setModelLoaded(true);
+        finishModelLoad();
       });
 
       expect(mockRunInference).toHaveBeenCalledWith(
@@ -1562,12 +1717,16 @@ describe("NachetMiniContainer", () => {
       setupImage(0);
       setupModelLoaded();
       // Manually enqueue a second item so we have a pending one to cancel
-      useInferenceQueueStore
-        .getState()
-        .enqueue({ imageSrc: "img-1.jpg", imageIndex: 1 });
-      useInferenceQueueStore
-        .getState()
-        .enqueue({ imageSrc: "img-2.jpg", imageIndex: 2 });
+      useInferenceQueueStore.getState().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "img-1.jpg",
+        imageIndex: 1,
+      });
+      useInferenceQueueStore.getState().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "img-2.jpg",
+        imageIndex: 2,
+      });
       const secondId = useInferenceQueueStore.getState().queue[1].id;
       renderContainer();
       await act(async () => {
@@ -1587,9 +1746,11 @@ describe("NachetMiniContainer", () => {
         getProps().setIsWebcamActive(false);
       });
       // Enqueue an image that doesn't exist in the image store
-      useInferenceQueueStore
-        .getState()
-        .enqueue({ imageSrc: "ghost.jpg", imageIndex: 99 });
+      useInferenceQueueStore.getState().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "ghost.jpg",
+        imageIndex: 99,
+      });
       await act(async () => {
         // Force drain tick by simulating status change
         useInferenceStore.setState({ status: "complete" });
@@ -1614,13 +1775,17 @@ describe("NachetMiniContainer", () => {
         getProps().setIsWebcamActive(false);
       });
       // Enqueue image 0 first — drain will immediately pick it up as processing
-      useInferenceQueueStore
-        .getState()
-        .enqueue({ imageSrc: "img-0.jpg", imageIndex: 0 });
+      useInferenceQueueStore.getState().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "img-0.jpg",
+        imageIndex: 0,
+      });
       // Enqueue image 1 — this one stays pending
-      useInferenceQueueStore
-        .getState()
-        .enqueue({ imageSrc: "img-1.jpg", imageIndex: 1 });
+      useInferenceQueueStore.getState().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "img-1.jpg",
+        imageIndex: 1,
+      });
       await act(async () => {});
       const secondItem = useInferenceQueueStore
         .getState()

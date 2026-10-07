@@ -8,6 +8,16 @@ import frMain from "../../locales/fr/main";
 import type { Images, InferenceResult } from "@common/types";
 import ImageGallery from "../ImageGallery";
 import { useInferenceQueueStore } from "@stores/useInferenceQueueStore";
+import {
+  buildModelConfig,
+  DEFAULT_DETECTOR,
+  DEFAULT_CLASSIFIER,
+} from "@inference/models";
+
+const defaultModelConfig = buildModelConfig(
+  DEFAULT_DETECTOR,
+  DEFAULT_CLASSIFIER,
+);
 
 const makeImage = (
   index: number,
@@ -851,6 +861,33 @@ describe("ImageGallery", () => {
   });
 
   describe("inference queue indicators", () => {
+    it("cancels all pending model comparisons for an image without cancelling another image", async () => {
+      for (const id of ["model-a", "model-b", "model-c"]) {
+        useInferenceQueueStore.getState().enqueue({
+          imageSrc: "image.jpg",
+          imageIndex: 0,
+          modelConfig: { ...defaultModelConfig, id },
+        });
+      }
+      useInferenceQueueStore.getState().enqueue({
+        imageSrc: "other.jpg",
+        imageIndex: 1,
+        modelConfig: defaultModelConfig,
+      });
+      renderGallery({ images: [makeImage(0), makeImage(1)] });
+      await page
+        .getByRole("button", {
+          name: renderTemplate(enMain.imageGallery.cancelInference, {
+            number: "1",
+          }),
+          exact: true,
+        })
+        .click();
+      expect(
+        useInferenceQueueStore.getState().queue.map((item) => item.status),
+      ).toEqual(["cancelled", "cancelled", "cancelled", "pending"]);
+    });
+
     beforeEach(() => {
       useInferenceQueueStore.setState({
         queue: [],
@@ -865,6 +902,7 @@ describe("ImageGallery", () => {
             id: "id-1",
             imageSrc: "data:image/png;base64,abc",
             imageIndex: 0,
+            modelConfig: defaultModelConfig,
             status: "pending",
             addedAt: Date.now(),
           },
@@ -882,6 +920,7 @@ describe("ImageGallery", () => {
             id: "id-1",
             imageSrc: "data:image/png;base64,abc",
             imageIndex: 0,
+            modelConfig: defaultModelConfig,
             status: "processing",
             addedAt: Date.now(),
           },
@@ -899,6 +938,7 @@ describe("ImageGallery", () => {
             id: "id-1",
             imageSrc: "data:image/png;base64,abc",
             imageIndex: 0,
+            modelConfig: defaultModelConfig,
             status: "pending",
             addedAt: Date.now(),
           },
@@ -924,6 +964,7 @@ describe("ImageGallery", () => {
             id: "id-1",
             imageSrc: "data:image/png;base64,abc",
             imageIndex: 0,
+            modelConfig: defaultModelConfig,
             status: "processing",
             addedAt: Date.now(),
           },
@@ -949,6 +990,7 @@ describe("ImageGallery", () => {
             id: "id-1",
             imageSrc: "data:image/png;base64,abc",
             imageIndex: 0,
+            modelConfig: defaultModelConfig,
             status: "pending",
             addedAt: Date.now(),
           },
@@ -956,6 +998,7 @@ describe("ImageGallery", () => {
             id: "id-2",
             imageSrc: "data:image/png;base64,abc",
             imageIndex: 1,
+            modelConfig: defaultModelConfig,
             status: "pending",
             addedAt: Date.now(),
           },

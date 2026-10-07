@@ -53,6 +53,7 @@ interface InferenceState {
   activeResultKey: string | null;
   status: InferenceStatus;
   modelLoaded: boolean;
+  loadedModelConfigId: string | null;
   modelLoadProgress: ModelLoadProgress | null;
   error: string | null;
 
@@ -80,7 +81,7 @@ interface InferenceState {
   removeResultsForImage: (imageIndex: number) => void;
   removeResult: (key: string) => void;
   setStatus: (status: InferenceStatus) => void;
-  setModelLoaded: (value: boolean) => void;
+  setModelLoaded: (value: boolean, modelConfigId?: string) => void;
   setModelLoadProgress: (progress: ModelLoadProgress | null) => void;
   setError: (error: string | null) => void;
   clearResults: () => void;
@@ -93,6 +94,7 @@ export const useInferenceStore = create<InferenceState>()((set, get) => ({
   activeResultKey: null,
   status: "idle",
   modelLoaded: false,
+  loadedModelConfigId: null,
   modelLoadProgress: null,
   error: null,
 
@@ -216,8 +218,13 @@ export const useInferenceStore = create<InferenceState>()((set, get) => ({
     set({ status });
   },
 
-  setModelLoaded: (value: boolean) => {
-    set({ modelLoaded: value });
+  setModelLoaded: (value: boolean, modelConfigId?: string) => {
+    set((state) => ({
+      modelLoaded: value,
+      loadedModelConfigId: value
+        ? (modelConfigId ?? state.loadedModelConfigId)
+        : null,
+    }));
   },
 
   setModelLoadProgress: (progress: ModelLoadProgress | null) => {

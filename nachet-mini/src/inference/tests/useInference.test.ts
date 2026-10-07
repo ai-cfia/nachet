@@ -23,6 +23,7 @@ const initialStoreState = {
   activeResultKey: null,
   status: "idle" as const,
   modelLoaded: false,
+  loadedModelConfigId: null,
   modelLoadProgress: null,
   error: null,
 };
@@ -150,6 +151,23 @@ describe("useInference", () => {
   });
 
   describe("model-loaded message", () => {
+    it("records which configuration was loaded and clears it on a new load", () => {
+      const { result } = renderHook(() => useInference(0));
+      act(() => result.current.loadModels(mockConfig));
+      simulateModelLoaded();
+      expect(useInferenceStore.getState().loadedModelConfigId).toBe(
+        mockConfig.id,
+      );
+      act(() =>
+        result.current.loadModels({ ...mockConfig, id: "next-config" }),
+      );
+      expect(useInferenceStore.getState().loadedModelConfigId).toBeNull();
+      simulateModelLoaded();
+      expect(useInferenceStore.getState().loadedModelConfigId).toBe(
+        "next-config",
+      );
+    });
+
     it("isModelLoaded becomes true", () => {
       const { result } = renderHook(() => useInference(0));
       simulateModelLoaded();

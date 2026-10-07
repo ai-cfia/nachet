@@ -6,6 +6,16 @@ import i18n from "../../i18n";
 import enMain from "../../locales/en/main";
 import { useInferenceQueueStore } from "@stores/useInferenceQueueStore";
 import QueueSummary from "../QueueSummary";
+import {
+  buildModelConfig,
+  DEFAULT_DETECTOR,
+  DEFAULT_CLASSIFIER,
+} from "@inference/models";
+
+const defaultModelConfig = buildModelConfig(
+  DEFAULT_DETECTOR,
+  DEFAULT_CLASSIFIER,
+);
 
 const renderSummary = () =>
   render(
@@ -18,6 +28,7 @@ const makePendingItem = (id: string, imageIndex: number) => ({
   id,
   imageSrc: `img-${imageIndex}.jpg`,
   imageIndex,
+  modelConfig: defaultModelConfig,
   status: "pending" as const,
   addedAt: Date.now(),
   inferenceStartedAt: null,
@@ -29,6 +40,7 @@ const makeProcessingItem = (id: string, imageIndex: number) => ({
   id,
   imageSrc: `img-${imageIndex}.jpg`,
   imageIndex,
+  modelConfig: defaultModelConfig,
   status: "processing" as const,
   addedAt: Date.now(),
   inferenceStartedAt: Date.now(),
@@ -90,6 +102,7 @@ describe("QueueSummary", () => {
           id: "id-1",
           imageSrc: "img-0.jpg",
           imageIndex: 0,
+          modelConfig: defaultModelConfig,
           status: "processing",
           addedAt: now - 2000,
           inferenceStartedAt: now - 2000,

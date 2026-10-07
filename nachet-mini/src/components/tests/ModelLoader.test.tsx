@@ -29,7 +29,6 @@ interface RenderOptions {
   selectedClassifierId?: string;
   onSelectDetector?: (id: string) => void;
   onSelectClassifier?: (id: string) => void;
-  isLoading?: boolean;
   detectorPrompt?: string;
   onDetectorPromptChange?: (v: string) => void;
   detectorRequiresPrompt?: boolean;
@@ -43,7 +42,6 @@ const renderModelLoaderElement = ({
   selectedClassifierId = TEST_CLASSIFIERS[0].id,
   onSelectDetector = vi.fn(),
   onSelectClassifier = vi.fn(),
-  isLoading = false,
   detectorPrompt = "",
   onDetectorPromptChange = vi.fn(),
   detectorRequiresPrompt = false,
@@ -57,7 +55,6 @@ const renderModelLoaderElement = ({
       selectedClassifierId={selectedClassifierId}
       onSelectDetector={onSelectDetector}
       onSelectClassifier={onSelectClassifier}
-      isLoading={isLoading}
       detectorPrompt={detectorPrompt}
       onDetectorPromptChange={onDetectorPromptChange}
       detectorRequiresPrompt={detectorRequiresPrompt}
@@ -88,16 +85,6 @@ describe("ModelLoader", () => {
   });
 
   afterEach(cleanup);
-
-  describe("loading state", () => {
-    it("renders disabled selects when loading", async () => {
-      renderModelLoader({ isLoading: true });
-      const selects = await page.getByRole("combobox").all();
-      for (const select of selects) {
-        await expect.element(select).toBeDisabled();
-      }
-    });
-  });
 
   describe("rendering", () => {
     it("renders two dropdowns", async () => {

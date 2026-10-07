@@ -4,6 +4,16 @@ import {
   selectNextPending,
   selectEtaMs,
 } from "../useInferenceQueueStore";
+import {
+  buildModelConfig,
+  DEFAULT_DETECTOR,
+  DEFAULT_CLASSIFIER,
+} from "@inference/models";
+
+const defaultModelConfig = buildModelConfig(
+  DEFAULT_DETECTOR,
+  DEFAULT_CLASSIFIER,
+);
 
 const getStore = () => useInferenceQueueStore.getState();
 
@@ -20,8 +30,80 @@ describe("useInferenceQueueStore", () => {
   // ─── enqueue ────────────────────────────────────────────────────────────────
 
   describe("enqueue", () => {
+    it("allows different model combinations for the same image but rejects active duplicates", () => {
+      const first = {
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+        modelConfig: defaultModelConfig,
+      };
+      expect(getStore().enqueue(first)).toBe(true);
+      getStore().markProcessing(getStore().queue[0].id);
+      expect(getStore().enqueue(first)).toBe(false);
+      const second = {
+        ...first,
+        modelConfig: { ...defaultModelConfig, id: "model-b" },
+      };
+      expect(getStore().enqueue(second)).toBe(true);
+      expect(getStore().enqueue(second)).toBe(false);
+      expect(getStore().queue).toHaveLength(2);
+    });
+
+    it("limits active jobs to three per image, including the processing job", () => {
+      for (const id of ["model-a", "model-b", "model-c"]) {
+        expect(
+          getStore().enqueue({
+            imageSrc: "a.jpg",
+            imageIndex: 0,
+            modelConfig: { ...defaultModelConfig, id },
+          }),
+        ).toBe(true);
+      }
+      getStore().markProcessing(getStore().queue[0].id);
+      expect(
+        getStore().enqueue({
+          imageSrc: "a.jpg",
+          imageIndex: 0,
+          modelConfig: { ...defaultModelConfig, id: "model-d" },
+        }),
+      ).toBe(false);
+      expect(
+        getStore().enqueue({
+          imageSrc: "b.jpg",
+          imageIndex: 1,
+          modelConfig: defaultModelConfig,
+        }),
+      ).toBe(true);
+      expect(getStore().queue).toHaveLength(4);
+    });
+
+    it("frees slots and allows a combination to be requeued after cancellation or completion", () => {
+      const item = {
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+        modelConfig: defaultModelConfig,
+      };
+      getStore().enqueue(item);
+      getStore().cancel(getStore().queue[0].id);
+      expect(getStore().enqueue(item)).toBe(true);
+      getStore().markDone(getStore().queue[1].id, 100);
+      expect(getStore().enqueue(item)).toBe(true);
+      expect(getStore().queue).toHaveLength(1);
+    });
+
+    it("stores an independent snapshot of the chosen models", () => {
+      const modelConfig = { ...defaultModelConfig };
+      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0, modelConfig });
+      modelConfig.id = "changed";
+      modelConfig.detectorThreshold = 0.99;
+      expect(getStore().queue[0].modelConfig).toEqual(defaultModelConfig);
+    });
+
     it("adds an item with status pending", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       const { queue } = getStore();
       expect(queue).toHaveLength(1);
       expect(queue[0].status).toBe("pending");
@@ -30,30 +112,58 @@ describe("useInferenceQueueStore", () => {
     });
 
     it("assigns a unique id to each item", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
-      getStore().enqueue({ imageSrc: "b.jpg", imageIndex: 1 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "b.jpg",
+        imageIndex: 1,
+      });
       const { queue } = getStore();
       expect(queue[0].id).not.toBe(queue[1].id);
     });
 
     it("preserves insertion order", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
-      getStore().enqueue({ imageSrc: "b.jpg", imageIndex: 1 });
-      getStore().enqueue({ imageSrc: "c.jpg", imageIndex: 2 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "b.jpg",
+        imageIndex: 1,
+      });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "c.jpg",
+        imageIndex: 2,
+      });
       const { queue } = getStore();
       expect(queue.map((i) => i.imageIndex)).toEqual([0, 1, 2]);
     });
 
     it("sets addedAt to a recent timestamp", () => {
       const before = Date.now();
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       const after = Date.now();
       expect(getStore().queue[0].addedAt).toBeGreaterThanOrEqual(before);
       expect(getStore().queue[0].addedAt).toBeLessThanOrEqual(after);
     });
 
     it("initializes timing fields to null", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       const item = getStore().queue[0];
       expect(item.inferenceStartedAt).toBeNull();
       expect(item.detectionDoneAt).toBeNull();
@@ -65,22 +175,38 @@ describe("useInferenceQueueStore", () => {
 
   describe("cancel", () => {
     it("marks the item as cancelled", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       const id = getStore().queue[0].id;
       getStore().cancel(id);
       expect(getStore().queue[0].status).toBe("cancelled");
     });
 
     it("does not affect other items", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
-      getStore().enqueue({ imageSrc: "b.jpg", imageIndex: 1 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "b.jpg",
+        imageIndex: 1,
+      });
       const firstId = getStore().queue[0].id;
       getStore().cancel(firstId);
       expect(getStore().queue[1].status).toBe("pending");
     });
 
     it("is a no-op for unknown ids", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       getStore().cancel("non-existent-id");
       expect(getStore().queue[0].status).toBe("pending");
     });
@@ -90,7 +216,11 @@ describe("useInferenceQueueStore", () => {
 
   describe("markProcessing", () => {
     it("sets the item status to processing", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       const id = getStore().queue[0].id;
       getStore().markProcessing(id);
       expect(getStore().queue[0].status).toBe("processing");
@@ -98,7 +228,11 @@ describe("useInferenceQueueStore", () => {
 
     it("sets inferenceStartedAt to a recent timestamp", () => {
       const before = Date.now();
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       const id = getStore().queue[0].id;
       getStore().markProcessing(id);
       const after = Date.now();
@@ -109,8 +243,16 @@ describe("useInferenceQueueStore", () => {
     });
 
     it("does not affect other items", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
-      getStore().enqueue({ imageSrc: "b.jpg", imageIndex: 1 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "b.jpg",
+        imageIndex: 1,
+      });
       const firstId = getStore().queue[0].id;
       getStore().markProcessing(firstId);
       expect(getStore().queue[1].status).toBe("pending");
@@ -121,7 +263,11 @@ describe("useInferenceQueueStore", () => {
 
   describe("markDetectionDone", () => {
     it("sets detectionDoneAt and detectedBoxCount", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       const id = getStore().queue[0].id;
       getStore().markProcessing(id);
       const before = Date.now();
@@ -135,7 +281,11 @@ describe("useInferenceQueueStore", () => {
     });
 
     it("updates lastDetectionDurationMs", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       const id = getStore().queue[0].id;
       getStore().markDetectionDone(id, 800, 5);
       expect(getStore().lastDetectionDurationMs).toBe(800);
@@ -146,7 +296,11 @@ describe("useInferenceQueueStore", () => {
 
   describe("markDone", () => {
     it("removes the done item from the queue", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       const id = getStore().queue[0].id;
       getStore().markProcessing(id);
       getStore().markDone(id, 1000);
@@ -154,7 +308,11 @@ describe("useInferenceQueueStore", () => {
     });
 
     it("updates lastClassificationPerBoxMs when box count is known", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       const id = getStore().queue[0].id;
       getStore().markProcessing(id);
       getStore().markDetectionDone(id, 500, 2);
@@ -164,7 +322,11 @@ describe("useInferenceQueueStore", () => {
     });
 
     it("does not update lastClassificationPerBoxMs when box count is null", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       const id = getStore().queue[0].id;
       getStore().markProcessing(id);
       // no markDetectionDone called — detectedBoxCount stays null
@@ -173,9 +335,21 @@ describe("useInferenceQueueStore", () => {
     });
 
     it("also removes cancelled items in the same update", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
-      getStore().enqueue({ imageSrc: "b.jpg", imageIndex: 1 });
-      getStore().enqueue({ imageSrc: "c.jpg", imageIndex: 2 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "b.jpg",
+        imageIndex: 1,
+      });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "c.jpg",
+        imageIndex: 2,
+      });
       const [firstId, secondId] = getStore().queue.map((i) => i.id);
       getStore().cancel(secondId);
       getStore().markDone(firstId, 500);
@@ -184,8 +358,16 @@ describe("useInferenceQueueStore", () => {
     });
 
     it("preserves remaining pending items", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
-      getStore().enqueue({ imageSrc: "b.jpg", imageIndex: 1 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "b.jpg",
+        imageIndex: 1,
+      });
       const firstId = getStore().queue[0].id;
       getStore().markDone(firstId, 500);
       expect(getStore().queue).toHaveLength(1);
@@ -206,9 +388,21 @@ describe("useInferenceQueueStore", () => {
 
   describe("clearCompleted", () => {
     it("removes done and cancelled items", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
-      getStore().enqueue({ imageSrc: "b.jpg", imageIndex: 1 });
-      getStore().enqueue({ imageSrc: "c.jpg", imageIndex: 2 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "b.jpg",
+        imageIndex: 1,
+      });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "c.jpg",
+        imageIndex: 2,
+      });
       const [firstId, secondId] = getStore().queue.map((i) => i.id);
       getStore().cancel(firstId);
       getStore().markProcessing(secondId);
@@ -227,8 +421,16 @@ describe("useInferenceQueueStore", () => {
 
   describe("selectNextPending", () => {
     it("returns the first pending item", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
-      getStore().enqueue({ imageSrc: "b.jpg", imageIndex: 1 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "b.jpg",
+        imageIndex: 1,
+      });
       const firstId = getStore().queue[0].id;
       getStore().markProcessing(firstId);
       const next = selectNextPending(getStore());
@@ -240,9 +442,21 @@ describe("useInferenceQueueStore", () => {
     });
 
     it("skips processing and cancelled items", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
-      getStore().enqueue({ imageSrc: "b.jpg", imageIndex: 1 });
-      getStore().enqueue({ imageSrc: "c.jpg", imageIndex: 2 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "b.jpg",
+        imageIndex: 1,
+      });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "c.jpg",
+        imageIndex: 2,
+      });
       const [firstId, secondId] = getStore().queue.map((i) => i.id);
       getStore().markProcessing(firstId);
       getStore().cancel(secondId);
@@ -254,7 +468,11 @@ describe("useInferenceQueueStore", () => {
 
   describe("selectEtaMs", () => {
     it("returns null when no timing data available", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       expect(selectEtaMs(getStore())).toBeNull();
     });
 
@@ -271,13 +489,25 @@ describe("useInferenceQueueStore", () => {
         lastDetectionDurationMs: 1000,
         lastClassificationPerBoxMs: 500,
       });
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
-      getStore().enqueue({ imageSrc: "b.jpg", imageIndex: 1 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "b.jpg",
+        imageIndex: 1,
+      });
       expect(selectEtaMs(getStore())).toBeNull();
     });
 
     it("returns null on first inference before any timing is learned", () => {
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       const id = getStore().queue[0].id;
       getStore().markProcessing(id);
       expect(selectEtaMs(getStore())).toBeNull();
@@ -288,7 +518,11 @@ describe("useInferenceQueueStore", () => {
         lastDetectionDurationMs: 5000,
         lastClassificationPerBoxMs: 100,
       });
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       const id = getStore().queue[0].id;
       getStore().markProcessing(id);
       const eta = selectEtaMs(getStore());
@@ -302,7 +536,11 @@ describe("useInferenceQueueStore", () => {
         lastDetectionDurationMs: 5000,
         lastClassificationPerBoxMs: 500,
       });
-      getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
+      getStore().enqueue({
+        modelConfig: defaultModelConfig,
+        imageSrc: "a.jpg",
+        imageIndex: 0,
+      });
       const id = getStore().queue[0].id;
       getStore().markProcessing(id);
       getStore().markDetectionDone(id, 5000, 4);

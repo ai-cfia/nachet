@@ -1,10 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, cleanup } from "@testing-library/react";
-import { page } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 import { I18nextProvider } from "react-i18next";
 import i18n from "../../i18n";
 import enMain from "../../locales/en/main";
-import { DEFAULT_CLASSIFIER, DEFAULT_DETECTOR } from "@inference/models";
+import {
+  DEFAULT_CLASSIFIER,
+  DEFAULT_DETECTOR,
+  DETECTOR_MODELS,
+  CLASSIFIER_MODELS,
+} from "@inference/models";
 import type { Images, InferenceResult } from "@common/types";
 import NachetMiniView, { type NachetMiniViewProps } from "../NachetMiniView";
 
@@ -81,28 +86,6 @@ vi.mock("@components/ResultsTable", () => ({
     >
       {switchTable ? "labels" : "classifications"}
     </button>
-  ),
-}));
-
-vi.mock("@components/ModelLoader", () => ({
-  default: ({
-    onSelectDetector,
-    onSelectClassifier,
-    isLoading,
-  }: {
-    onSelectDetector: (id: string) => void;
-    onSelectClassifier: (id: string) => void;
-    isLoading: boolean;
-  }) => (
-    <div data-testid="model-loader">
-      <span>{isLoading ? "loading" : "ready"}</span>
-      <button onClick={() => onSelectDetector("detector-next")}>
-        detector
-      </button>
-      <button onClick={() => onSelectClassifier("classifier-next")}>
-        classifier
-      </button>
-    </div>
   ),
 }));
 
@@ -436,40 +419,67 @@ describe("NachetMiniView", () => {
     expect(props.onRunInference).not.toHaveBeenCalled();
   });
 
-  it("forwards model, gallery, and results table callbacks", async () => {
-    const props = makeProps({ images: [makeImage()], switchTable: false });
+  it.each([
+    { isLoading: false, isWebcamActive: true },
+    { isLoading: true, isWebcamActive: true },
+    { isLoading: true, isWebcamActive: false },
+  ])(
+    "keeps model selections available and forwards callbacks (loading=$isLoading, webcam=$isWebcamActive)",
+    async (state) => {
+      const props = makeProps({
+        images: [makeImage()],
+        switchTable: false,
+        ...state,
+      });
 
-    renderView(props);
+      renderView(props);
 
-    await page.getByRole("button", { name: "detector" }).click();
-    expect(props.setSelectedDetectorId).toHaveBeenCalledWith("detector-next");
+      const nextDetector = DETECTOR_MODELS.find(
+        (model) => model.id !== DEFAULT_DETECTOR.id,
+      )!;
+      await page
+        .getByRole("combobox", { name: enMain.modelLoader.detector })
+        .click();
+      await page
+        .getByRole("option", { name: nextDetector.id, exact: true })
+        .click();
+      expect(props.setSelectedDetectorId).toHaveBeenCalledWith(nextDetector.id);
 
-    await page.getByRole("button", { name: "classifier" }).click();
-    expect(props.setSelectedClassifierId).toHaveBeenCalledWith(
-      "classifier-next",
-    );
+      const nextClassifier = CLASSIFIER_MODELS.find(
+        (model) => model.id !== DEFAULT_CLASSIFIER.id,
+      )!;
+      await page
+        .getByRole("combobox", { name: enMain.modelLoader.classifier })
+        .click();
+      await page
+        .getByRole("option", { name: nextClassifier.id, exact: true })
+        .click();
+      expect(props.setSelectedClassifierId).toHaveBeenCalledWith(
+        nextClassifier.id,
+      );
 
-    await page.getByRole("button", { name: "select image" }).click();
-    expect(props.onSelectImage).toHaveBeenCalledWith(1);
+      await page.getByRole("button", { name: "select image" }).click();
+      expect(props.onSelectImage).toHaveBeenCalledWith(1);
 
-    await page.getByRole("button", { name: "select result" }).click();
-    expect(props.onSelectResult).toHaveBeenCalledWith("1:model");
+      await page.getByRole("button", { name: "select result" }).click();
+      expect(props.onSelectResult).toHaveBeenCalledWith("1:model");
 
-    await page.getByRole("button", { name: "remove image" }).click();
-    expect(props.onRemoveImage).toHaveBeenCalledWith(1);
+      await page.getByRole("button", { name: "remove image" }).click();
+      expect(props.onRemoveImage).toHaveBeenCalledWith(1);
 
-    await page.getByRole("button", { name: "remove result" }).click();
-    expect(props.onRemoveResult).toHaveBeenCalledWith("1:model");
+      await page.getByRole("button", { name: "remove result" }).click();
+      expect(props.onRemoveResult).toHaveBeenCalledWith("1:model");
 
-    await page.getByRole("button", { name: "edit metadata" }).click();
-    expect(props.onEditMetadata).toHaveBeenCalledWith(1);
+      await page.getByRole("button", { name: "edit metadata" }).click();
+      expect(props.onEditMetadata).toHaveBeenCalledWith(1);
 
-    await page.getByRole("button", { name: "clear images" }).click();
-    expect(props.onClearImages).toHaveBeenCalledTimes(1);
+      await page.getByRole("button", { name: "clear images" }).click();
+      expect(props.onClearImages).toHaveBeenCalledTimes(1);
 
-    await page.getByTestId("results-table").click();
-    expect(props.setSwitchTable).toHaveBeenCalledWith(true);
-  });
+      await page.getByTestId("results-table").click();
+      expect(props.setSwitchTable).toHaveBeenCalledWith(true);
+    },
+  );
 
   it("renders open dialogs and forwards their close/complete callbacks", async () => {
     const props = makeProps({
@@ -531,8 +541,7 @@ describe("NachetMiniView", () => {
         name: enMain.controls.camera,
       });
       await combobox.click();
-      // click outside to close
-      await page.getByRole("presentation").click({ position: { x: 0, y: 0 } });
+      await userEvent.keyboard("{Escape}");
       await combobox.click();
 
       expect(requestDevices).toHaveBeenCalledTimes(1);

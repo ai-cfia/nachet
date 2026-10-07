@@ -23,8 +23,6 @@ interface Props {
   selectedClassifierId: string;
   onSelectDetector: (id: string) => void;
   onSelectClassifier: (id: string) => void;
-  isLoading: boolean;
-  disabled: boolean;
   /**
    * Text-promptable detector inputs. When the selected detector's kind is
    * `text-promptable-segmentation` (e.g. SAM3), a TextField is rendered next to
@@ -44,8 +42,6 @@ const ModelLoader = ({
   selectedClassifierId,
   onSelectDetector,
   onSelectClassifier,
-  isLoading,
-  disabled,
   detectorPrompt,
   onDetectorPromptChange,
   detectorRequiresPrompt,
@@ -67,11 +63,7 @@ const ModelLoader = ({
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: "0.4vh" }}>
-      <FormControl
-        size="small"
-        sx={dropdownSx}
-        disabled={isLoading || disabled}
-      >
+      <FormControl size="small" sx={dropdownSx}>
         <InputLabel id="detector-model-label" sx={{ fontSize: "1.2vh" }}>
           {detectorLabel}
         </InputLabel>
@@ -106,11 +98,7 @@ const ModelLoader = ({
         </IconButton>
       )}
 
-      <FormControl
-        size="small"
-        sx={dropdownSx}
-        disabled={isLoading || disabled}
-      >
+      <FormControl size="small" sx={dropdownSx}>
         <InputLabel id="classifier-model-label" sx={{ fontSize: "1.2vh" }}>
           {classifierLabel}
         </InputLabel>

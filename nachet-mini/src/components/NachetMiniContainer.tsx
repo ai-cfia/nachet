@@ -59,6 +59,7 @@ const NachetMiniContainer = () => {
   // Inference store
   const status = useInferenceStore((s) => s.status);
   const modelLoaded = useInferenceStore((s) => s.modelLoaded);
+  const loadedModelConfigId = useInferenceStore((s) => s.loadedModelConfigId);
   const modelLoadProgress = useInferenceStore((s) => s.modelLoadProgress);
   const error = useInferenceStore((s) => s.error);
   const results = useInferenceStore((s) => s.results);
@@ -193,32 +194,8 @@ const NachetMiniContainer = () => {
     setWebcamError(t("status.cameraError", { message }));
   };
 
-  const handleLoadModel = () => {
-    const detector = DETECTOR_MODELS.find((d) => d.id === selectedDetectorId);
-    const classifier = CLASSIFIER_MODELS.find(
-      (c) => c.id === selectedClassifierId,
-    );
-    if (!detector || !classifier) return;
-    setError(null);
-    loadModels(buildModelConfig(detector, classifier));
-  };
-
-  // When the user changes detector/classifier after models were already loaded,
-  // mark them as unloaded so the next Identify click reloads the correct config.
-  const prevDetectorId = useRef(selectedDetectorId);
-  const prevClassifierId = useRef(selectedClassifierId);
-  useEffect(() => {
-    const detectorChanged = prevDetectorId.current !== selectedDetectorId;
-    const classifierChanged = prevClassifierId.current !== selectedClassifierId;
-    prevDetectorId.current = selectedDetectorId;
-    prevClassifierId.current = selectedClassifierId;
-
-    if ((detectorChanged || classifierChanged) && modelLoaded) {
-      useInferenceStore.getState().setModelLoaded(false);
-    }
-  }, [selectedDetectorId, selectedClassifierId, modelLoaded]);
-
   const isInferring = status === "detecting" || status === "classifying";
+  const isLoading = status === "loading-model";
   const handleRunInference = () => {
     if (inferenceImages.length === 0) return;
 
@@ -229,37 +206,32 @@ const NachetMiniContainer = () => {
       return;
     }
 
-    const queuedImageIndices = new Set(
-      useInferenceQueueStore
-        .getState()
-        .queue.filter(
-          (item) => item.status === "pending" || item.status === "processing",
-        )
-        .map((item) => item.imageIndex),
+    const classifier = CLASSIFIER_MODELS.find(
+      (c) => c.id === selectedClassifierId,
     );
-    const imagesToQueue = inferenceImages.filter(
-      (image) => !queuedImageIndices.has(image.index),
-    );
-    if (imagesToQueue.length === 0) return;
+    if (!selectedDetector || !classifier) return;
+    const modelConfig = buildModelConfig(selectedDetector, classifier);
 
-    // Capture the prompt now (at enqueue time) so a later prompt edit can't
-    // change what these already-queued images run with. Closed-vocabulary
-    // detectors ignore it, so store null for them.
-    for (const image of imagesToQueue) {
-      enqueue({
-        imageSrc: image.src,
-        imageIndex: image.index,
-        prompt: detectorRequiresPrompt ? detectorPrompt : null,
-      });
+    // Freeze the models and prompt for each job. The store checks the
+    // image/model combination and limits active jobs to three per image.
+    let queuedAny = false;
+    for (const image of inferenceImages) {
+      if (
+        enqueue({
+          imageSrc: image.src,
+          imageIndex: image.index,
+          modelConfig,
+          prompt: detectorRequiresPrompt ? detectorPrompt : null,
+        })
+      ) {
+        queuedAny = true;
+      }
     }
+    if (!queuedAny) return;
 
     if (!hasAcknowledgedModelLoadWarning) {
       setModelLoadDialogOpen(true);
       return;
-    }
-
-    if (!modelLoaded && !isLoading) {
-      handleLoadModel();
     }
   };
 
@@ -269,7 +241,8 @@ const NachetMiniContainer = () => {
 
   // Fire the next pending item when conditions are met
   useEffect(() => {
-    if (!modelLoaded || isInferring || !nextPendingId) return;
+    if (isInferring || isLoading || status === "error" || !nextPendingId)
+      return;
     if (isFiringRef.current) return;
 
     const state = useInferenceQueueStore.getState();
@@ -282,6 +255,15 @@ const NachetMiniContainer = () => {
       return;
     }
 
+    // Only switch models when the worker is free, using the next job's
+    // captured configuration rather than the current dropdown selection.
+    if (!modelLoaded || loadedModelConfigId !== item.modelConfig.id) {
+      if (!hasAcknowledgedModelLoadWarning) return;
+      setError(null);
+      loadModels(item.modelConfig);
+      return;
+    }
+
     isFiringRef.current = true;
     markProcessing(item.id);
     startTimeRef.current = Date.now();
@@ -289,7 +271,22 @@ const NachetMiniContainer = () => {
     // Use the prompt captured on the item at enqueue time — NOT the current
     // detectorPrompt, which may have changed while this item was queued.
     runInference(item.imageSrc, item.imageIndex, item.prompt);
-  }, [modelLoaded, isInferring, nextPendingId, drainTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [
+    modelLoaded,
+    loadedModelConfigId,
+    isInferring,
+    isLoading,
+    status,
+    hasAcknowledgedModelLoadWarning,
+    nextPendingId,
+    drainTick,
+    cancel,
+    images,
+    loadModels,
+    markProcessing,
+    runInference,
+    setError,
+  ]);
 
   const prevStatusRef = useRef<string>(status);
 
@@ -308,14 +305,11 @@ const NachetMiniContainer = () => {
         : 0;
 
       // Read box count from the partial result stored in useInferenceStore
-      const { results } = useInferenceStore.getState();
-      let boxCount = 0;
-      for (const [key, result] of results) {
-        if (key.startsWith(`${processingItem.imageIndex}:`)) {
-          boxCount = result.totalBoxes;
-          break;
-        }
-      }
+      const boxCount =
+        useInferenceStore
+          .getState()
+          .getResult(processingItem.imageIndex, processingItem.modelConfig.id)
+          ?.totalBoxes ?? 0;
 
       markDetectionDone(processingItem.id, detectionDuration, boxCount);
     }
@@ -373,7 +367,6 @@ const NachetMiniContainer = () => {
   const handleModelLoadDialogContinue = () => {
     acknowledgeModelLoadWarning();
     setModelLoadDialogOpen(false);
-    handleLoadModel();
   };
 
   const handleEnterEditMode = () => {
@@ -492,7 +485,6 @@ const NachetMiniContainer = () => {
     setCheckedResults(new Set());
   }, []);
 
-  const isLoading = status === "loading-model";
   const canRunInference =
     inferenceImages.length > 0 &&
     (!isWebcamActive || checkedImages.size > 0) &&
@@ -500,7 +492,11 @@ const NachetMiniContainer = () => {
   const canEditBoxes =
     !isWebcamActive && !!currentResult && !isInferring && !isEditing;
   const canClassifyEdited =
-    isEditing && editedBoxes.length > 0 && modelLoaded && !isInferring;
+    isEditing &&
+    editedBoxes.length > 0 &&
+    modelLoaded &&
+    loadedModelConfigId === `${selectedDetectorId}+${selectedClassifierId}` &&
+    !isInferring;
 
   const statusText = (() => {
     if (webcamError && isWebcamActive) return webcamError;
@@ -511,7 +507,11 @@ const NachetMiniContainer = () => {
     if (currentImage) {
       const queueEntry = useInferenceQueueStore
         .getState()
-        .queue.find((i) => i.imageIndex === currentImage.index);
+        .queue.find(
+          (i) =>
+            i.imageIndex === currentImage.index &&
+            (i.status === "pending" || i.status === "processing"),
+        );
 
       if (queueEntry?.status === "processing") {
         if (status === "detecting") return t("status.detecting");

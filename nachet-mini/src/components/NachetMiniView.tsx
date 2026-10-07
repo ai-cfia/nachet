@@ -424,8 +424,6 @@ const NachetMiniView = (props: NachetMiniViewProps) => {
                 selectedClassifierId={selectedClassifierId}
                 onSelectDetector={setSelectedDetectorId}
                 onSelectClassifier={setSelectedClassifierId}
-                isLoading={isLoading}
-                disabled={isWebcamActive}
                 detectorPrompt={detectorPrompt}
                 onDetectorPromptChange={setDetectorPrompt}
                 detectorRequiresPrompt={detectorRequiresPrompt}

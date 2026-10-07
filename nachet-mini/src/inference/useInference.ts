@@ -17,6 +17,7 @@ import { resultKey } from "@stores/useInferenceStore";
 export const useInference = (currentIndex: number) => {
   const workerRef = useRef<Worker | null>(null);
   const isModelLoadedRef = useRef(false);
+  const requestedModelConfigIdRef = useRef<string | undefined>(undefined);
 
   const setStatus = useInferenceStore((s) => s.setStatus);
   const setResult = useInferenceStore((s) => s.setResult);
@@ -63,7 +64,7 @@ export const useInference = (currentIndex: number) => {
           isModelLoadedRef.current = true;
           setStatus("idle");
           setModelLoadProgress(null);
-          setModelLoaded(true);
+          setModelLoaded(true, requestedModelConfigIdRef.current);
           break;
         case "status":
           setStatus(msg.status);
@@ -104,6 +105,7 @@ export const useInference = (currentIndex: number) => {
       worker.terminate();
       workerRef.current = null;
       isModelLoadedRef.current = false;
+      requestedModelConfigIdRef.current = undefined;
     };
   }, [
     setStatus,
@@ -120,6 +122,7 @@ export const useInference = (currentIndex: number) => {
     (config: ModelConfig) => {
       if (!workerRef.current) return;
       isModelLoadedRef.current = false;
+      requestedModelConfigIdRef.current = config.id;
       setStatus("loading-model");
       setModelLoaded(false);
       const msg: WorkerInMessage = { type: "load-models", config };

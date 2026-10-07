@@ -1,9 +1,14 @@
 import { create } from "zustand";
+import type { ModelConfig } from "@inference/models";
+
+export const MAX_QUEUED_MODELS_PER_IMAGE = 3;
 
 export interface QueuedInferenceItem {
   id: string;
   imageSrc: string;
   imageIndex: number;
+  // Snapshot of the detector/classifier combination chosen at enqueue time.
+  modelConfig: ModelConfig;
   // Text prompt captured at enqueue time for text-promptable detectors (null
   // for closed-vocabulary detectors). Frozen here so a later prompt edit can't
   // change what an already-queued image runs with.
@@ -31,7 +36,7 @@ interface InferenceQueueState {
       | "detectionDoneAt"
       | "detectedBoxCount"
     > & { prompt?: string | null },
-  ) => void;
+  ) => boolean;
   cancel: (id: string) => void;
   markProcessing: (id: string) => void;
   markDetectionDone: (id: string, durationMs: number, boxCount: number) => void;
@@ -40,89 +45,108 @@ interface InferenceQueueState {
   clearCompleted: () => void;
 }
 
-export const useInferenceQueueStore = create<InferenceQueueState>()((set) => ({
-  queue: [],
-  lastDetectionDurationMs: null,
-  lastClassificationPerBoxMs: null,
+export const useInferenceQueueStore = create<InferenceQueueState>()(
+  (set, get) => ({
+    queue: [],
+    lastDetectionDurationMs: null,
+    lastClassificationPerBoxMs: null,
 
-  enqueue: (item) =>
-    set((state) => ({
-      queue: [
-        ...state.queue,
-        {
-          ...item,
-          id: crypto.randomUUID(),
-          prompt: item.prompt ?? null,
-          status: "pending",
-          addedAt: Date.now(),
-          inferenceStartedAt: null,
-          detectionDoneAt: null,
-          detectedBoxCount: null,
-        },
-      ],
-    })),
+    enqueue: (item) => {
+      const { queue } = get();
+      const activeForImage = queue.filter(
+        (entry) =>
+          entry.imageIndex === item.imageIndex &&
+          (entry.status === "pending" || entry.status === "processing"),
+      );
+      if (
+        activeForImage.length >= MAX_QUEUED_MODELS_PER_IMAGE ||
+        activeForImage.some(
+          (entry) => entry.modelConfig.id === item.modelConfig.id,
+        )
+      ) {
+        return false;
+      }
+      set({
+        queue: [
+          ...queue,
+          {
+            ...item,
+            modelConfig: structuredClone(item.modelConfig),
+            id: crypto.randomUUID(),
+            prompt: item.prompt ?? null,
+            status: "pending",
+            addedAt: Date.now(),
+            inferenceStartedAt: null,
+            detectionDoneAt: null,
+            detectedBoxCount: null,
+          },
+        ],
+      });
+      return true;
+    },
 
-  cancel: (id) =>
-    set((state) => ({
-      queue: state.queue.map((item) =>
-        item.id === id ? { ...item, status: "cancelled" } : item,
-      ),
-    })),
+    cancel: (id) =>
+      set((state) => ({
+        queue: state.queue.map((item) =>
+          item.id === id ? { ...item, status: "cancelled" } : item,
+        ),
+      })),
 
-  markProcessing: (id) =>
-    set((state) => ({
-      queue: state.queue.map((item) =>
-        item.id === id
-          ? { ...item, status: "processing", inferenceStartedAt: Date.now() }
-          : item,
-      ),
-    })),
+    markProcessing: (id) =>
+      set((state) => ({
+        queue: state.queue.map((item) =>
+          item.id === id
+            ? { ...item, status: "processing", inferenceStartedAt: Date.now() }
+            : item,
+        ),
+      })),
 
-  markDetectionDone: (id, durationMs, boxCount) =>
-    set((state) => ({
-      queue: state.queue.map((item): QueuedInferenceItem =>
-        item.id === id
-          ? {
-              ...item,
-              detectionDoneAt: Date.now(),
-              detectedBoxCount: boxCount,
-            }
-          : item,
-      ),
-      lastDetectionDurationMs: durationMs,
-    })),
+    markDetectionDone: (id, durationMs, boxCount) =>
+      set((state) => ({
+        queue: state.queue.map((item): QueuedInferenceItem =>
+          item.id === id
+            ? {
+                ...item,
+                detectionDoneAt: Date.now(),
+                detectedBoxCount: boxCount,
+              }
+            : item,
+        ),
+        lastDetectionDurationMs: durationMs,
+      })),
 
-  markDone: (id, classificationDurationMs) =>
-    set((state) => {
-      const item = state.queue.find((i) => i.id === id);
-      const boxCount = item?.detectedBoxCount ?? null;
-      const perBoxMs =
-        boxCount && boxCount > 0 ? classificationDurationMs / boxCount : null;
+    markDone: (id, classificationDurationMs) =>
+      set((state) => {
+        const item = state.queue.find((i) => i.id === id);
+        const boxCount = item?.detectedBoxCount ?? null;
+        const perBoxMs =
+          boxCount && boxCount > 0 ? classificationDurationMs / boxCount : null;
 
-      return {
-        queue: state.queue
-          .map((i): QueuedInferenceItem =>
-            i.id === id ? { ...i, status: "done" } : i,
-          )
-          .filter((i) => i.status !== "done" && i.status !== "cancelled"),
-        lastClassificationPerBoxMs:
-          perBoxMs ?? state.lastClassificationPerBoxMs,
-      };
-    }),
+        return {
+          queue: state.queue
+            .map((i): QueuedInferenceItem =>
+              i.id === id ? { ...i, status: "done" } : i,
+            )
+            .filter((i) => i.status !== "done" && i.status !== "cancelled"),
+          lastClassificationPerBoxMs:
+            perBoxMs ?? state.lastClassificationPerBoxMs,
+        };
+      }),
 
-  setLastInferenceDuration: (durationMs: number) =>
-    set((state) => ({
-      lastDetectionDurationMs: durationMs,
-      lastClassificationPerBoxMs: state.lastClassificationPerBoxMs,
-    })),
+    setLastInferenceDuration: (durationMs: number) =>
+      set((state) => ({
+        lastDetectionDurationMs: durationMs,
+        lastClassificationPerBoxMs: state.lastClassificationPerBoxMs,
+      })),
 
-  clearCompleted: () =>
-    set((state) => ({
-      queue: state.queue.filter(
-        (item) => item.status !== "done" && item.status !== "cancelled",
-      ),
-    })),
-}));
+    clearCompleted: () =>
+      set((state) => ({
+        queue: state.queue.filter(
+          (item) => item.status !== "done" && item.status !== "cancelled",
+        ),
+      })),
+  }),
+);
 
 // Selectors
 export const selectActiveQueue = (state: InferenceQueueState) =>

@@ -350,7 +350,14 @@ const ImageGallery = ({
                         <IconButton
                           onClick={(e) => {
                             e.stopPropagation();
-                            cancel(queueEntry.id);
+                            for (const entry of queue) {
+                              if (
+                                entry.imageIndex === item.index &&
+                                entry.status === "pending"
+                              ) {
+                                cancel(entry.id);
+                              }
+                            }
                           }}
                           sx={{ padding: 0, pr: "5px" }}
                           aria-label={t("imageGallery.cancelInference", {
