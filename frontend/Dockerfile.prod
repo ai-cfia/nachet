@@ -10,7 +10,7 @@ COPY package*.json ./
 COPY tsconfig.json ./
 
 # Install ALL dependencies (including dev) for build
-RUN npm ci
+RUN npm install -g npm@11.21.0 && npm ci
 
 # Copy source code
 COPY . .
