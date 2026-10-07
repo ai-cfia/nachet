@@ -30,6 +30,10 @@ jobs:
     name: Bump version
     if: ${{ github.actor == 'renovate[bot]' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: read
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v6
