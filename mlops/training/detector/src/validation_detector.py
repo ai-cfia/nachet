@@ -124,10 +124,13 @@ class ValidationConfig:
     """Whether to save JSON/CSV results to output_dir."""
 
     device: Optional[str] = None
-    """Device to use ('cuda', 'cpu'). Auto-detected if None."""
+    """Inference device ('cuda', 'cpu'). Auto-detected if None."""
 
     preprocessing: Optional[Union[str, A.Compose]] = None
     """Optional preprocessing: 'imagenet', 'clahe', 'clahe+imagenet', or albumentations Compose."""
+
+    onnx_path: Optional[Path] = None
+    """Converted artifact from model_path, evaluated instead of the checkpoint."""
 
 
 # =============================================================================
@@ -262,6 +265,9 @@ class ValidationResults:
     false_negatives_by_image: list[dict]
     """Detailed FN info per image for visualization."""
 
+    onnx_model: Optional[dict] = None
+    """ONNX file identity and execution provider, when evaluating a converted model."""
+
     def to_dataframe(self) -> pd.DataFrame:
         """Convert per_subclass metrics to pandas DataFrame."""
         return pd.DataFrame([asdict(m) for m in self.per_subclass])
@@ -300,8 +306,11 @@ class ValidationResults:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Save overall metrics
+        metrics = self.overall.to_dict()
+        if self.onnx_model is not None:
+            metrics["onnx_model"] = self.onnx_model
         with open(output_dir / "detection_metrics.json", "w") as f:
-            json.dump(self.overall.to_dict(), f, indent=2)
+            json.dump(metrics, f, indent=2)
 
         # Save per-subclass metrics
         df = self.to_dataframe()
@@ -758,10 +767,18 @@ class DetectorValidator:
         self._processor = AutoImageProcessor.from_pretrained(
             processor_dir, do_normalize=do_normalize
         )
-        self._model = AutoModelForObjectDetection.from_pretrained(
-            self.config.model_path
-        ).to(self.device)
-        self._model.eval()
+        if self.config.onnx_path:
+            from onnx_model import OnnxModel
+
+            print(f"Evaluating ONNX on {self.device}: {self.config.onnx_path}")
+            self._model = OnnxModel(
+                self.config.model_path, self.config.onnx_path, device=self.device
+            )
+        else:
+            self._model = AutoModelForObjectDetection.from_pretrained(
+                self.config.model_path
+            ).to(self.device)
+            self._model.eval()
 
         # Get image square size from processor config
         self._image_square_size = self._processor.size.get("max_height", 640)
@@ -1003,6 +1020,7 @@ class DetectorValidator:
             categories=self._categories,
             model_id2label=self._model.config.id2label,
             false_negatives_by_image=fn_by_image,
+            onnx_model=self._model.artifact if self.config.onnx_path else None,
         )
 
         # Print summary
@@ -1050,6 +1068,8 @@ class DetectorValidator:
                     image = Image.open(img_path).convert("RGB")
 
                 orig_w, orig_h = image.size
+                # ONNX Runtime transfers the NumPy inputs to its selected execution provider.
+                input_device = "cpu" if self.config.onnx_path else self.device
 
                 # Apply custom preprocessing if configured
                 if self._preprocessing_transform is not None:
@@ -1060,17 +1080,17 @@ class DetectorValidator:
                     if self._preprocessing_includes_normalize:
                         # Pass pre-normalized array directly (processor has do_normalize=False)
                         inputs = self._processor(images=result, return_tensors="pt").to(
-                            self.device
+                            input_device
                         )
                     else:
                         # CLAHE or other non-normalizing transforms - convert back to PIL
                         image = Image.fromarray(result)
                         inputs = self._processor(images=image, return_tensors="pt").to(
-                            self.device
+                            input_device
                         )
                 else:
                     inputs = self._processor(images=image, return_tensors="pt").to(
-                        self.device
+                        input_device
                     )
 
                 # Forward pass
@@ -3493,6 +3513,11 @@ def get_parser() -> argparse.ArgumentParser:
         help="Path to model checkpoint directory.",
     )
     parser.add_argument(
+        "--onnx_path",
+        type=Path,
+        help="ONNX file exported from --model_path; evaluate on CPU.",
+    )
+    parser.add_argument(
         "--processor_path",
         type=str,
         default=None,
@@ -3537,7 +3562,7 @@ def get_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         choices=["cuda", "cpu"],
-        help="Device to use. Auto-detected if not provided.",
+        help="Inference device; auto-detected if omitted.",
     )
     parser.add_argument(
         "--preprocessing",
@@ -3558,6 +3583,7 @@ def main():
     config = ValidationConfig(
         config_path=Path(args.config_path),
         model_path=Path(args.model_path),
+        onnx_path=args.onnx_path,
         processor_path=Path(args.processor_path) if args.processor_path else None,
         output_dir=Path(args.output_dir) if args.output_dir else None,
         confidence_threshold=args.confidence_threshold,

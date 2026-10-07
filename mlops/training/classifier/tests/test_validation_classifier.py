@@ -1,14 +1,18 @@
 """Offline checks for the classifier notebook's reports and label mapping."""
 
+import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import onnx
 import pandas as pd
 import torch
 from PIL import Image
@@ -17,6 +21,7 @@ from transformers import SwinConfig, SwinForImageClassification, ViTImageProcess
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 import validation_classifier as evaluator  # noqa: E402
+from onnx_model import OnnxModel  # noqa: E402
 
 
 REPORTS = {
@@ -141,6 +146,92 @@ class ClassifierEvaluationTest(unittest.TestCase):
         self.assertFalse(evaluator.is_valid_checkpoint_dir("checkpoint-1-old", 0, 10))
         self.assertTrue(evaluator.is_valid_checkpoint_dir("checkpoint-1", 0, 10))
 
+    def test_onnx_matches_checkpoint_on_full_and_partial_batches(self):
+        torch.set_num_threads(1)
+        torch.manual_seed(42)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            checkpoint = root / "checkpoint"
+            model = SwinForImageClassification(SwinConfig(
+                image_size=32, patch_size=4, embed_dim=8, depths=[1, 1],
+                num_heads=[1, 2], window_size=2, num_labels=3,
+                id2label={0: "Beta", 1: "Alpha", 2: "Gamma"},
+            )).eval()
+            model.save_pretrained(checkpoint)
+            ViTImageProcessor(size={"height": 32, "width": 32}).save_pretrained(checkpoint)
+            onnx_path = root / "model.onnx"
+            torch.onnx.export(
+                model, (torch.rand(1, 3, 32, 32),), onnx_path, dynamo=False,
+                opset_version=16, input_names=["pixel_values"], output_names=["logits"],
+                dynamic_axes={"pixel_values": {0: "batch"}, "logits": {0: "batch"}},
+            )
+            for index, label in enumerate(["01 Alpha", "02 Beta", "01 Alpha"]):
+                folder = root / "images" / label
+                folder.mkdir(parents=True, exist_ok=True)
+                Image.new("RGB", (43, 37), (index * 70, 30, 90)).save(folder / f"{index}.png")
+            dataset, names = evaluator.load_test_data(root / "images")
+            processor, converted, device = evaluator.load_model(
+                checkpoint, onnx_path=onnx_path, device="cpu"
+            )
+            mapping, indices, _ = evaluator.match_classes(dataset, names, converted)
+            loader = evaluator.make_eval_loader(dataset, indices, processor, 2, 0)
+            expected = evaluator.evaluate_model(model, "cpu", loader, mapping)
+            actual = evaluator.evaluate_model(converted, device, loader, mapping)
+            torch.testing.assert_close(actual[0], expected[0], rtol=1e-4, atol=1e-5)
+            np.testing.assert_array_equal(actual[1], expected[1])
+            np.testing.assert_array_equal(actual[2], expected[2])
+            self.assertEqual(actual[3:], expected[3:])
+
+    def test_onnx_cuda_evaluates_host_tensors_and_records_provider(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            SwinConfig(num_labels=2).save_pretrained(root)
+            ViTImageProcessor(size={"height": 32, "width": 32}).save_pretrained(root)
+            path = root / "model.onnx"
+            path.write_bytes(b"mocked model")
+            with patch("onnx_model.ort.InferenceSession") as create_session:
+                session = create_session.return_value
+                session.get_providers.return_value = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+                session.get_inputs.return_value = [SimpleNamespace(name="pixel_values")]
+                session.run.return_value = [np.array([[0.1, 0.9]], dtype=np.float32)]
+                _, converted, input_device = evaluator.load_model(
+                    root, onnx_path=path, device="cuda"
+                )
+                result = evaluator.evaluate_model(converted, input_device, [{
+                    "pixel_values": torch.zeros(1, 3, 32, 32), "labels": torch.tensor([1]),
+                }], {1: 1})
+                self.assertEqual(converted.artifact["provider"], "CUDAExecutionProvider")
+                self.assertEqual(result[1].tolist(), [1])
+                self.assertEqual(input_device, "cpu")
+
+    def test_requested_cuda_rejects_a_cpu_only_session(self):
+        with patch("onnx_model.AutoConfig.from_pretrained"), \
+                patch("onnx_model.ort.InferenceSession") as create_session:
+            create_session.return_value.get_providers.return_value = ["CPUExecutionProvider"]
+            with self.assertRaisesRegex(RuntimeError, "CUDAExecutionProvider"):
+                OnnxModel("checkpoint", "model.onnx", device="cuda")
+
+    def test_onnx_nonfinite_logits_do_not_reach_metrics(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            SwinConfig(num_labels=1).save_pretrained(root)
+            ViTImageProcessor(size={"height": 32, "width": 32}).save_pretrained(root)
+            for value in (float("nan"), float("inf")):
+                with self.subTest(value=value):
+                    scores = onnx.helper.make_tensor("scores", onnx.TensorProto.FLOAT, [1, 1], [value])
+                    graph = onnx.helper.make_graph(
+                        [onnx.helper.make_node("Constant", [], ["logits"], value=scores)],
+                        "nonfinite", [onnx.helper.make_tensor_value_info(
+                            "pixel_values", onnx.TensorProto.FLOAT, [1, 3, 32, 32])],
+                        [onnx.helper.make_tensor_value_info("logits", onnx.TensorProto.FLOAT, [1, 1])],
+                    )
+                    path = root / "model.onnx"
+                    onnx.save(onnx.helper.make_model(
+                        graph, opset_imports=[onnx.helper.make_opsetid("", 16)], ir_version=9), path)
+                    _, converted, _ = evaluator.load_model(root, onnx_path=path, device="cpu")
+                    with self.assertRaisesRegex(ValueError, "NaN or infinity"):
+                        converted(pixel_values=torch.zeros(1, 3, 32, 32))
+
     def test_binary_and_absent_classes_produce_strict_json(self):
         for names, labels, logits in [
             (["Alpha", "Beta"], [0, 1], [[8., 0.], [0., 8.]]),
@@ -188,7 +279,7 @@ class ClassifierEvaluationTest(unittest.TestCase):
         expected = roc_auc_score(labels, probabilities, multi_class="ovr", average=None)
         np.testing.assert_allclose([metrics["roc_auc"]["per_class"][name] for name in names], expected)
 
-    def test_real_checkpoint_cli_writes_all_eight_reports(self):
+    def test_checkpoint_and_onnx_cli_write_same_eight_reports(self):
         # A tiny saved Swin exercises processor loading, inference and every plot.
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -211,7 +302,7 @@ class ClassifierEvaluationTest(unittest.TestCase):
             output = root / "reports"
             command = [sys.executable, str(Path(evaluator.__file__)),
                        "--model_path", str(checkpoint), "--test_data_path", str(root / "images"),
-                       "--output_path", str(output), "--num_workers", "0"]
+                       "--output_path", str(output), "--num_workers", "0", "--device", "cpu"]
             result = subprocess.run(command, capture_output=True, text=True, timeout=180)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertEqual({path.name for path in output.iterdir()}, REPORTS)
@@ -227,6 +318,26 @@ class ClassifierEvaluationTest(unittest.TestCase):
             self.assertEqual(list(table.index), ["Beta", "Alpha", "Gamma"])
             self.assertEqual(table.loc["Gamma", "support"], 0)
             self.assertTrue(np.isfinite(table[["precision", "recall", "f1-score", "accuracy"]]).all().all())
+
+            onnx_path = root / "model.onnx"
+            torch.onnx.export(
+                model.eval(), (torch.rand(1, 3, 32, 32),), onnx_path, dynamo=False,
+                opset_version=16, input_names=["pixel_values"], output_names=["logits"],
+                dynamic_axes={"pixel_values": {0: "batch"}, "logits": {0: "batch"}},
+            )
+            converted_output = root / "onnx-reports"
+            command[command.index("--output_path") + 1] = str(converted_output)
+            training_path = Path(evaluator.__file__).resolve().parents[2]
+            result = subprocess.run(command + ["--onnx_path", str(onnx_path)],
+                                    env={**os.environ, "PYTHONPATH": str(training_path)},
+                                    capture_output=True, text=True, timeout=180)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual({path.name for path in converted_output.iterdir()}, REPORTS)
+            converted_metrics = json.loads((converted_output / "validation_metrics.json").read_text())
+            artifact = converted_metrics.pop("onnx_model")
+            self.assertEqual(artifact["sha256"], hashlib.sha256(onnx_path.read_bytes()).hexdigest())
+            self.assertEqual(artifact["provider"], "CPUExecutionProvider")
+            self.assertEqual(converted_metrics, metrics)
 
 
 if __name__ == "__main__":
