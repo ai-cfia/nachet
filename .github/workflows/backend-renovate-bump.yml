@@ -3,7 +3,7 @@ name: Backend Renovate
 
 permissions:
   actions: read
-  contents: read
+  contents: write
   pull-requests: read
 
 concurrency:
