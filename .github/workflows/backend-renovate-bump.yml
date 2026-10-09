@@ -31,7 +31,7 @@ jobs:
     if: ${{ github.actor == 'renovate[bot]' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     permissions:
-      actions: write
+      actions: read
       contents: write
       pull-requests: read
     steps:
@@ -106,7 +106,6 @@ jobs:
 
       - name: Run backend checks
         run: |
-          gh workflow run backend-lint.yml --ref "$PR_BRANCH"
+          gh workflow run backend-lint.yml --ref "${{ github.head_ref }}"
         env:
           GH_TOKEN: ${{ github.token }}
-          PR_BRANCH: ${{ github.head_ref }}
