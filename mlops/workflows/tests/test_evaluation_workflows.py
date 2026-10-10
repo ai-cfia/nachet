@@ -15,11 +15,9 @@ import torch
 from transformers import SwinConfig, SwinForImageClassification, ViTImageProcessor
 import yaml
 
+from mlops.export.tests.test_export_model import save_tiny_detector
 
 MLOPS = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(MLOPS / "training/detector/tests"))
-import test_detector_evaluation  # noqa: E402
-sys.path.pop(0)
 
 
 class EvaluationWorkflowTests(unittest.TestCase):
@@ -58,7 +56,7 @@ class EvaluationWorkflowTests(unittest.TestCase):
                 Image.new("RGB", (40, 40), "red").save(folder / "seed.png")
             external = "external"
         else:
-            model = test_detector_evaluation.DetectorEvaluationTest().model()
+            model = save_tiny_detector(checkpoint)
             model.config.id2label = {0: "seed"}
             model.config.label2id = {"seed": 0}
             from transformers import RTDetrImageProcessor
@@ -99,7 +97,8 @@ class EvaluationWorkflowTests(unittest.TestCase):
         for old, new in replacements.items():
             command = [arg.replace(old, new) for arg in command]
         self.assertNotIn("{{", " ".join(command))
-        env = dict(os.environ, MLFLOW_TRACKING_URI=(root / "mlruns").as_uri())
+        env = dict(os.environ, MLFLOW_TRACKING_URI=(root / "mlruns").as_uri(),
+                   HF_HOME=str(root / "huggingface"))
         env["PYTHONPATH"] = os.pathsep.join([
             str(MLOPS / "training" / kind / "src"), str(MLOPS / "training"),
             os.environ.get("PYTHONPATH", ""),
