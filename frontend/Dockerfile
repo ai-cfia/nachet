@@ -6,7 +6,7 @@ WORKDIR /nachet-frontend
 COPY package*.json ./
 COPY tsconfig.json ./
 
-RUN npm install -g npm@9.8.1
+RUN npm install -g npm@11.21.0
 # RUN npm install --include=dev
 
 # Copy the rest of the application

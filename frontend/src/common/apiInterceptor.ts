@@ -83,8 +83,7 @@ export const setupAxiosInterceptor = (getAccessToken: GetAccessToken): void => {
     (response) => response, // Pass through successful responses
     async (error: AxiosError) => {
       const originalRequest = error.config as
-        | RetriableNachetAuthRequestConfig
-        | undefined;
+        RetriableNachetAuthRequestConfig | undefined;
 
       // Check if this is a 401 error and we haven't already retried
       if (
