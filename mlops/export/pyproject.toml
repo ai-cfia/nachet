@@ -2,13 +2,13 @@
 name = "nachet-export"
 version = "0.2.0"
 description = "Checkpoint export, browser preparation and approved model releases"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.14,<3.15"
 dependencies = [
     "huggingface-hub==0.36.2",
-    "numpy==2.4.3",
+    "numpy==2.5.3",
     "onnx==1.21.0",
     "onnxconverter-common==1.16.0",
-    "onnxruntime==1.24.4",
+    "onnxruntime==1.30.0",
     "optimum-onnx==0.1.0",
     "pillow==12.1.1",
     "safetensors==0.8.0",
