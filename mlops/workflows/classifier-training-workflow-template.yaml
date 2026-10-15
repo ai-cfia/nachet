@@ -139,6 +139,25 @@ spec:
                   value: "{{item}}"
                 - name: mlflow-run-id
                   value: "{{steps.train.outputs.parameters.mlflow-run-id}}"
+        - - name: release-model
+            templateRef:
+              name: nachet-model-release
+              template: release-selected
+            when: "{{=workflow.parameters['external-validation-dir'] != 'none'}}"
+            arguments:
+              parameters:
+                - name: model-kind
+                  value: classifier
+                - name: training-run
+                  value: "{{workflow.name}}"
+                - name: checkpoints
+                  value: "{{steps.check-checkpoint-selections.outputs.parameters.selected-checkpoints}}"
+                - name: mlflow-run-id
+                  value: "{{steps.train.outputs.parameters.mlflow-run-id}}"
+                - name: validation-input
+                  value: "{{workflow.parameters.external-validation-dir}}"
+                - name: gpu-node
+                  value: "{{workflow.parameters.gpu-node}}"
       outputs:
         parameters:
           - name: mlflow-run-id

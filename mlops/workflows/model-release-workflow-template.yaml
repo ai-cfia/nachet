@@ -1,0 +1,500 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: nachet-model-release
+  namespace: argo-workflows
+  labels:
+    app.kubernetes.io/name: nachet-model-release
+    app.kubernetes.io/part-of: nachet
+spec:
+  entrypoint: release-selected
+  serviceAccountName: argo-workflow
+  arguments:
+    parameters:
+      - name: model-kind
+        enum: [classifier, detector]
+      - name: training-run
+        description: Training workflow containing the evaluated checkpoints.
+      - name: checkpoints
+        description: JSON array of checkpoint names already evaluated in MLflow.
+      - name: mlflow-run-id
+        description: Parent MLflow run for checkpoint and converted-model results.
+      - name: validation-input
+        description: External image directory or detector dataset config below inputs.
+      - name: gpu-node
+        value: ai-lab-1
+        enum: [ai-lab-1, ai-lab-2, ai-lab-3]
+  templates:
+    - name: release-selected
+      inputs:
+        parameters:
+          - name: model-kind
+          - name: training-run
+          - name: checkpoints
+          - name: mlflow-run-id
+          - name: validation-input
+          - name: gpu-node
+      steps:
+        - - name: choose-checkpoint
+            template: checkpoint-review
+            arguments:
+              parameters:
+                - name: checkpoint
+                  value: "{{=toJson({'enum': sprig.concat(sprig.list('none'), jsonpath(inputs.parameters.checkpoints, '$'))})}}"
+        - - name: check-selection
+            template: check-selection
+            when: "{{=steps['choose-checkpoint'].outputs.parameters.checkpoint != 'none'}}"
+            arguments:
+              parameters:
+                - name: model-kind
+                  value: "{{inputs.parameters.model-kind}}"
+                - name: training-run
+                  value: "{{inputs.parameters.training-run}}"
+                - name: checkpoints
+                  value: "{{inputs.parameters.checkpoints}}"
+                - name: checkpoint
+                  value: "{{steps.choose-checkpoint.outputs.parameters.checkpoint}}"
+        - - name: release
+            template: release-model
+            when: "{{=steps['choose-checkpoint'].outputs.parameters.checkpoint != 'none'}}"
+            arguments:
+              parameters:
+                - name: model-kind
+                  value: "{{inputs.parameters.model-kind}}"
+                - name: training-run
+                  value: "{{inputs.parameters.training-run}}"
+                - name: checkpoint
+                  value: "{{steps.choose-checkpoint.outputs.parameters.checkpoint}}"
+                - name: quantize
+                  value: "{{steps.choose-checkpoint.outputs.parameters.quantize}}"
+                - name: device
+                  value: "{{steps.choose-checkpoint.outputs.parameters.device}}"
+                - name: mlflow-run-id
+                  value: "{{inputs.parameters.mlflow-run-id}}"
+                - name: validation-input
+                  value: "{{inputs.parameters.validation-input}}"
+                - name: gpu-node
+                  value: "{{inputs.parameters.gpu-node}}"
+
+    - name: checkpoint-review
+      suspend: {}
+      inputs:
+        parameters:
+          - name: checkpoint
+            description: Choose one evaluated checkpoint to release, or none to finish.
+          - name: quantize
+            default: "false"
+            enum: ["false", "true"]
+            description: Also export and evaluate the AVX512 INT8 variant on CPU.
+          - name: device
+            default: cuda
+            enum: [cpu, cuda]
+            description: Device for FP32 and classifier FP16 evaluation.
+      outputs:
+        parameters:
+          - name: checkpoint
+            valueFrom:
+              supplied: {}
+          - name: quantize
+            valueFrom:
+              supplied: {}
+          - name: device
+            valueFrom:
+              supplied: {}
+
+    - name: check-selection
+      inputs:
+        parameters:
+          - name: model-kind
+          - name: training-run
+          - name: checkpoints
+          - name: checkpoint
+      container:
+        image: "ghcr.io/ai-cfia/nachet-{{inputs.parameters.model-kind}}-trainer:main"
+        imagePullPolicy: Always
+        command: [python, -m, checkpoints]
+        args:
+          - --runs-root
+          - /runs
+          - --run-id
+          - "{{inputs.parameters.training-run}}"
+          - validate-selection
+          - --checkpoint-options
+          - "{{=toJson({'enum': jsonpath(inputs.parameters.checkpoints, '$')})}}"
+          - --selected-checkpoint
+          - "{{inputs.parameters.checkpoint}}"
+          - --output
+          - /tmp/release-selection
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          readOnlyRootFilesystem: true
+        volumeMounts:
+          - name: training-storage
+            mountPath: /runs
+            subPath: "nachet/{{inputs.parameters.model-kind}}-training/runs"
+            readOnly: true
+          - name: tmp
+            mountPath: /tmp
+
+    - name: release-model
+      inputs:
+        parameters:
+          - name: model-kind
+          - name: training-run
+          - name: checkpoint
+          - name: quantize
+          - name: device
+          - name: mlflow-run-id
+          - name: validation-input
+          - name: gpu-node
+      steps:
+        - - name: export
+            templateRef:
+              name: nachet-model-export
+              template: export-model
+            arguments:
+              parameters:
+                - name: model-kind
+                  value: "{{inputs.parameters.model-kind}}"
+                - name: training-run
+                  value: "{{inputs.parameters.training-run}}"
+                - name: checkpoint
+                  value: "{{inputs.parameters.checkpoint}}"
+                - name: quantize
+                  value: "{{inputs.parameters.quantize}}"
+        - - name: evaluate-fp32
+            template: evaluate-converted
+            arguments:
+              parameters:
+                - name: model-kind
+                  value: "{{inputs.parameters.model-kind}}"
+                - name: training-run
+                  value: "{{inputs.parameters.training-run}}"
+                - name: checkpoint
+                  value: "{{inputs.parameters.checkpoint}}"
+                - name: mlflow-run-id
+                  value: "{{inputs.parameters.mlflow-run-id}}"
+                - name: validation-input
+                  value: "{{inputs.parameters.validation-input}}"
+                - name: gpu-node
+                  value: "{{inputs.parameters.gpu-node}}"
+                - name: device
+                  value: "{{inputs.parameters.device}}"
+                - name: variant
+                  value: fp32
+                - name: onnx-file
+                  value: onnx-fp32/model.onnx
+        - - name: evaluate-int8
+            template: evaluate-converted
+            when: "{{=inputs.parameters.quantize == 'true'}}"
+            arguments:
+              parameters:
+                - name: model-kind
+                  value: "{{inputs.parameters.model-kind}}"
+                - name: training-run
+                  value: "{{inputs.parameters.training-run}}"
+                - name: checkpoint
+                  value: "{{inputs.parameters.checkpoint}}"
+                - name: mlflow-run-id
+                  value: "{{inputs.parameters.mlflow-run-id}}"
+                - name: validation-input
+                  value: "{{inputs.parameters.validation-input}}"
+                - name: gpu-node
+                  value: "{{inputs.parameters.gpu-node}}"
+                - name: device
+                  value: cpu
+                - name: variant
+                  value: int8
+                - name: onnx-file
+                  value: onnx-quant/model_quantized.onnx
+        - - name: evaluate-browser
+            template: evaluate-converted
+            when: "{{=inputs.parameters['model-kind'] == 'classifier'}}"
+            arguments:
+              parameters:
+                - name: model-kind
+                  value: "{{inputs.parameters.model-kind}}"
+                - name: training-run
+                  value: "{{inputs.parameters.training-run}}"
+                - name: checkpoint
+                  value: "{{inputs.parameters.checkpoint}}"
+                - name: mlflow-run-id
+                  value: "{{inputs.parameters.mlflow-run-id}}"
+                - name: validation-input
+                  value: "{{inputs.parameters.validation-input}}"
+                - name: gpu-node
+                  value: "{{inputs.parameters.gpu-node}}"
+                - name: device
+                  value: "{{inputs.parameters.device}}"
+                - name: variant
+                  value: browser-fp16
+                - name: onnx-file
+                  value: browser/model_browser.fp16.onnx
+        - - name: review-publication
+            template: publication-review
+        - - name: publish-fp32
+            template: publish
+            when: "{{=steps['review-publication'].outputs.parameters.approve == 'yes'}}"
+            arguments:
+              parameters:
+                - name: model-kind
+                  value: "{{inputs.parameters.model-kind}}"
+                - name: training-run
+                  value: "{{inputs.parameters.training-run}}"
+                - name: checkpoint
+                  value: "{{inputs.parameters.checkpoint}}"
+                - name: browser
+                  value: "false"
+                - name: quantize
+                  value: "{{inputs.parameters.quantize}}"
+                - name: repo-id
+                  value: "{{steps.review-publication.outputs.parameters.repo-id}}"
+                - name: model-card
+                  value: "{{steps.review-publication.outputs.parameters.model-card}}"
+        - - name: publish-browser
+            template: publish
+            when: "{{=steps['review-publication'].outputs.parameters.approve == 'yes' && inputs.parameters['model-kind'] == 'classifier' && steps['review-publication'].outputs.parameters['browser-repo-id'] != 'none'}}"
+            arguments:
+              parameters:
+                - name: model-kind
+                  value: "{{inputs.parameters.model-kind}}"
+                - name: training-run
+                  value: "{{inputs.parameters.training-run}}"
+                - name: checkpoint
+                  value: "{{inputs.parameters.checkpoint}}"
+                - name: browser
+                  value: "true"
+                - name: quantize
+                  value: "false"
+                - name: repo-id
+                  value: "{{steps.review-publication.outputs.parameters.browser-repo-id}}"
+                - name: model-card
+                  value: "{{steps.review-publication.outputs.parameters.browser-model-card}}"
+
+    - name: evaluate-converted
+      inputs:
+        parameters:
+          - name: model-kind
+          - name: training-run
+          - name: checkpoint
+          - name: mlflow-run-id
+          - name: validation-input
+          - name: gpu-node
+          - name: device
+          - name: variant
+          - name: onnx-file
+      retryStrategy:
+        limit: "2"
+        retryPolicy: OnFailure
+      synchronization:
+        mutexes:
+          - name: nachet-training-{{inputs.parameters.gpu-node}}
+      nodeSelector:
+        kubernetes.io/hostname: "{{inputs.parameters.gpu-node}}"
+      podSpecPatch: >-
+        {"containers":[{"name":"main","resources":{
+        "requests":{"nvidia.com/gpu":"{{=inputs.parameters.device == 'cuda' ? '1' : '0'}}"},
+        "limits":{"nvidia.com/gpu":"{{=inputs.parameters.device == 'cuda' ? '1' : '0'}}"}}}]}
+      container:
+        image: "ghcr.io/ai-cfia/nachet-{{inputs.parameters.model-kind}}-trainer:main"
+        imagePullPolicy: Always
+        workingDir: /inputs
+        command: [sh, -ec]
+        args:
+          - |
+            if [ "$1" = classifier ]; then
+              set -- python -m validation_classifier --model_path "$2" \
+                --test_data_path "$3" --output_path "$4" \
+                --onnx_path "$5" --device "$6"
+            else
+              set -- python -m validation_detector --model_path "$2" \
+                --config_path "$3" --output_dir "$4" \
+                --onnx_path "$5" --device "$6"
+            fi
+            exec python -m evaluation_runtime \
+              --parent-run-id "$RELEASE_PARENT_RUN_ID" \
+              --checkpoint "$RELEASE_CHECKPOINT" \
+              --output-dir "$RELEASE_EVALUATION_DIR" -- "$@"
+          - evaluate
+          - "{{inputs.parameters.model-kind}}"
+          - "/runs/{{inputs.parameters.training-run}}/trainer-output/{{inputs.parameters.checkpoint}}"
+          - "/inputs/{{inputs.parameters.validation-input}}"
+          - "/exports/{{workflow.name}}/evaluation/{{inputs.parameters.variant}}/reports"
+          - "/exports/{{workflow.name}}/{{inputs.parameters.onnx-file}}"
+          - "{{inputs.parameters.device}}"
+        envFrom:
+          - secretRef:
+              name: nachet-training-s3
+        env:
+          - name: RELEASE_PARENT_RUN_ID
+            value: "{{inputs.parameters.mlflow-run-id}}"
+          - name: RELEASE_CHECKPOINT
+            value: "{{inputs.parameters.checkpoint}}"
+          - name: RELEASE_EVALUATION_DIR
+            value: "/exports/{{workflow.name}}/evaluation/{{inputs.parameters.variant}}"
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.mlflow.svc.cluster.local:5000
+          - name: HF_HOME
+            value: /scratch/huggingface
+          - name: HF_HUB_OFFLINE
+            value: "1"
+          - name: MPLCONFIGDIR
+            value: /scratch/matplotlib
+          - name: MPLBACKEND
+            value: Agg
+          - name: XDG_CACHE_HOME
+            value: /scratch/cache
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          readOnlyRootFilesystem: true
+        volumeMounts:
+          - name: training-storage
+            mountPath: /inputs
+            subPath: "nachet/{{inputs.parameters.model-kind}}-training/inputs"
+            readOnly: true
+          - name: training-storage
+            mountPath: /runs
+            subPath: "nachet/{{inputs.parameters.model-kind}}-training/runs"
+            readOnly: true
+          - name: training-storage
+            mountPath: /exports
+            subPath: nachet/exports
+          - name: scratch
+            mountPath: /scratch
+          - name: tmp
+            mountPath: /tmp
+
+    - name: publication-review
+      suspend: {}
+      inputs:
+        parameters:
+          - name: approve
+            default: "no"
+            enum: ["no", "yes"]
+            description: Choose yes only after reviewing all converted-model results in MLflow.
+          - name: repo-id
+            default: ""
+            description: Approved Hugging Face repository for the FP32 release.
+          - name: model-card
+            default: ""
+            description: Reviewed model-card file below this model's inputs directory.
+          - name: browser-repo-id
+            default: none
+            description: Classifier CAM repository, or none to skip the browser release.
+          - name: browser-model-card
+            default: ""
+            description: Reviewed classifier CAM model-card file below inputs.
+      outputs:
+        parameters:
+          - name: approve
+            valueFrom:
+              supplied: {}
+          - name: repo-id
+            valueFrom:
+              supplied: {}
+          - name: model-card
+            valueFrom:
+              supplied: {}
+          - name: browser-repo-id
+            valueFrom:
+              supplied: {}
+          - name: browser-model-card
+            valueFrom:
+              supplied: {}
+
+    - name: publish
+      inputs:
+        parameters:
+          - name: model-kind
+          - name: training-run
+          - name: checkpoint
+          - name: browser
+          - name: quantize
+          - name: repo-id
+          - name: model-card
+      container:
+        image: ghcr.io/ai-cfia/nachet-export:main
+        imagePullPolicy: Always
+        command: [sh, -ec]
+        args:
+          - |
+            set -- python ModelRelease.py --checkpoint "$1" --exports "$2" \
+              --model-card "$3" --repo-id "$4" --output /tmp/release
+            if [ "$RELEASE_BROWSER" = true ]; then
+              cp "$RELEASE_REPORTS/browser-fp16/reports/validation_metrics.json" /tmp/browser-metrics.json
+              set -- "$@" --browser --evaluation /tmp/browser-metrics.json
+            else
+              cp "$RELEASE_REPORTS/fp32/reports/$RELEASE_METRICS" /tmp/fp32-metrics.json
+              set -- "$@" --evaluation /tmp/fp32-metrics.json
+              if [ "$RELEASE_QUANTIZE" = true ]; then
+                cp "$RELEASE_REPORTS/int8/reports/$RELEASE_METRICS" /tmp/int8-metrics.json
+                set -- "$@" /tmp/int8-metrics.json --include-int8
+              fi
+            fi
+            exec "$@"
+          - publish
+          - "/runs/{{inputs.parameters.training-run}}/trainer-output/{{inputs.parameters.checkpoint}}"
+          - "/exports/{{workflow.name}}"
+          - "/inputs/{{inputs.parameters.model-card}}"
+          - "{{inputs.parameters.repo-id}}"
+        env:
+          - name: RELEASE_BROWSER
+            value: "{{inputs.parameters.browser}}"
+          - name: RELEASE_QUANTIZE
+            value: "{{inputs.parameters.quantize}}"
+          - name: RELEASE_REPORTS
+            value: "/exports/{{workflow.name}}/evaluation"
+          - name: RELEASE_METRICS
+            value: "{{=inputs.parameters['model-kind'] == 'classifier' ? 'validation_metrics.json' : 'detection_metrics.json'}}"
+          - name: HF_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: nachet-model-publication
+                key: HF_TOKEN
+        resources:
+          requests:
+            cpu: "1"
+            memory: 1Gi
+          limits:
+            cpu: "2"
+            memory: 2Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          readOnlyRootFilesystem: true
+        volumeMounts:
+          - name: training-storage
+            mountPath: /inputs
+            subPath: "nachet/{{inputs.parameters.model-kind}}-training/inputs"
+            readOnly: true
+          - name: training-storage
+            mountPath: /runs
+            subPath: "nachet/{{inputs.parameters.model-kind}}-training/runs"
+            readOnly: true
+          - name: training-storage
+            mountPath: /exports
+            subPath: nachet/exports
+            readOnly: true
+          - name: tmp
+            mountPath: /tmp
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  volumes:
+    # PVC handoffs are provisional until RAM/blob staging is agreed.
+    - name: training-storage
+      persistentVolumeClaim:
+        claimName: nachet-training-workspace-pvc
+    - name: scratch
+      emptyDir: {}
+    - name: tmp
+      emptyDir: {}

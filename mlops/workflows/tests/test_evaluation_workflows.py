@@ -15,11 +15,9 @@ import torch
 from transformers import SwinConfig, SwinForImageClassification, ViTImageProcessor
 import yaml
 
+from mlops.export.tests.test_export_model import save_tiny_detector
 
 MLOPS = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(MLOPS / "training/detector/tests"))
-import test_detector_evaluation  # noqa: E402
-sys.path.pop(0)
 
 
 class EvaluationWorkflowTests(unittest.TestCase):
@@ -33,7 +31,8 @@ class EvaluationWorkflowTests(unittest.TestCase):
     def check_workflow(self, kind, root):
         spec = yaml.safe_load((MLOPS / "workflows" / f"{kind}-training-workflow-template.yaml").read_text())["spec"]
         templates = {item["name"]: item for item in spec["templates"]}
-        step = templates[f"{kind}-training"]["steps"][-1][0]
+        step = next(step for group in templates[f"{kind}-training"]["steps"]
+                    for step in group if step["name"] == "evaluate-checkpoints")
         parameter = "external-validation-dir" if kind == "classifier" else "external-validation-config"
         defaults = {item["name"]: item["value"] for item in spec["arguments"]["parameters"]}
         self.assertEqual(defaults[parameter], "none")
@@ -58,7 +57,7 @@ class EvaluationWorkflowTests(unittest.TestCase):
                 Image.new("RGB", (40, 40), "red").save(folder / "seed.png")
             external = "external"
         else:
-            model = test_detector_evaluation.DetectorEvaluationTest().model()
+            model = save_tiny_detector(checkpoint)
             model.config.id2label = {0: "seed"}
             model.config.label2id = {"seed": 0}
             from transformers import RTDetrImageProcessor
@@ -95,11 +94,14 @@ class EvaluationWorkflowTests(unittest.TestCase):
             "/inputs/": str(inputs) + "/",
         }
         command = [*container["command"], *container["args"]]
-        command[0] = sys.executable
+        evaluation_python = Path(os.environ.get(f"NACHET_{kind.upper()}_PYTHON", sys.executable))
+        command[0] = str(evaluation_python)
         for old, new in replacements.items():
             command = [arg.replace(old, new) for arg in command]
         self.assertNotIn("{{", " ".join(command))
-        env = dict(os.environ, MLFLOW_TRACKING_URI=(root / "mlruns").as_uri())
+        env = dict(os.environ, MLFLOW_TRACKING_URI=(root / "mlruns").as_uri(),
+                   HF_HOME=str(root / "huggingface"))
+        env["PATH"] = str(evaluation_python.parent) + os.pathsep + os.environ["PATH"]
         env["PYTHONPATH"] = os.pathsep.join([
             str(MLOPS / "training" / kind / "src"), str(MLOPS / "training"),
             os.environ.get("PYTHONPATH", ""),

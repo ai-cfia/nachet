@@ -1,0 +1,96 @@
+---
+name: MLOps workflow tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "mlops/workflows/**"
+      - "mlops/export/**"
+      - "mlops/training/**"
+      - ".github/workflows/mlops-workflows-test.yml"
+  push:
+    branches: [main]
+    paths:
+      - "mlops/workflows/**"
+      - "mlops/export/**"
+      - "mlops/training/**"
+      - ".github/workflows/mlops-workflows-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  workflow-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      HF_HUB_OFFLINE: "1"
+      HF_DATASETS_OFFLINE: "1"
+      MPLBACKEND: Agg
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NACHET_EXPORT_PYTHON: ${{ github.workspace }}/mlops/export/.venv/bin/python
+      NACHET_CLASSIFIER_PYTHON: ${{ github.workspace }}/mlops/training/classifier/.venv/bin/python
+      NACHET_DETECTOR_PYTHON: ${{ github.workspace }}/mlops/training/detector/.venv/bin/python
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
+        with:
+          version: "0.11.24"
+          enable-cache: true
+          cache-dependency-glob: "mlops/**/uv.lock"
+
+      - name: Install Argo CLI
+        run: |
+          mkdir -p "$RUNNER_TEMP/argo-cli"
+          cd "$RUNNER_TEMP/argo-cli"
+          curl -fsSLO https://github.com/argoproj/argo-workflows/releases/download/v4.1.1/argo-linux-amd64.gz
+          curl -fsSLO https://github.com/argoproj/argo-workflows/releases/download/v4.1.1/argo-workflows-cli-checksums.txt
+          sha256sum --check --ignore-missing argo-workflows-cli-checksums.txt
+          gunzip argo-linux-amd64.gz
+          chmod +x argo-linux-amd64
+          echo "$RUNNER_TEMP/argo-cli" >> "$GITHUB_PATH"
+
+      - name: Check workflow files
+        run: |
+          uvx ruff==0.1.0 check mlops/workflows/tests
+          argo-linux-amd64 lint --offline mlops/workflows
+          kubectl kustomize mlops/workflows > /dev/null
+
+      - name: Install test environments
+        run: |
+          uv sync --locked --project mlops/export --no-dev
+          for trainer in classifier detector; do
+            uv sync --locked --project "mlops/training/$trainer" --no-dev --group test
+            # Trainer locks omit the PyTorch supplied by their NVIDIA image.
+            uv pip install --python "mlops/training/$trainer/.venv/bin/python" \
+              --index-url https://download.pytorch.org/whl/cpu \
+              'torch==2.9.0+cpu' 'torchvision==0.24.0+cpu'
+          done
+
+      - name: Test export workflow
+        run: |
+          "$NACHET_EXPORT_PYTHON" -m unittest mlops.workflows.tests.test_export_workflow -v
+
+      - name: Test evaluation and release workflows
+        env:
+          PYTHONPATH: mlops/training/classifier/src:mlops/training
+        run: |
+          "$NACHET_CLASSIFIER_PYTHON" -m unittest \
+            mlops.workflows.tests.test_evaluation_workflows \
+            mlops.workflows.tests.test_release_workflow -v
