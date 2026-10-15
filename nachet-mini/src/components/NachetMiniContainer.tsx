@@ -144,12 +144,12 @@ const NachetMiniContainer = () => {
   >(undefined);
 
   const currentImage = getCurrentImage();
-  const inferenceImages =
-    checkedImages.size > 0
-      ? images.filter((image) => checkedImages.has(image.index))
-      : currentImage
-        ? [currentImage]
-        : [];
+  let inferenceImages: typeof images = [];
+  if (checkedImages.size > 0) {
+    inferenceImages = images.filter((image) => checkedImages.has(image.index));
+  } else if (currentImage) {
+    inferenceImages = [currentImage];
+  }
   const currentResult = activeResultKey
     ? (results.get(activeResultKey) ?? null)
     : null;
