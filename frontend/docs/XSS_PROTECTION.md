@@ -292,6 +292,6 @@ Our protection handles these attack types:
 
 - [OWASP XSS Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
 - [Content Security Policy Guide](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP)
-- [HTML Escaping Best Practices](<https://www.owasp.org/index.php/XSS_(Cross_Site_Scripting)_Prevention_Cheat_Sheet>)
+- [HTML Escaping Best Practices](https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html)
 - [Input Validation vs Sanitization](https://owasp.org/www-community/Injection_Theory) - Why rejection is often better than sanitization
-- [Fail-Safe Defaults Principle](https://owasp.org/www-pdf-archive/OWASP_Top_10_2010.pdf) - OWASP guidance on secure defaults
+- [Fail-Safe Defaults Principle](https://community.owasp.org/Fail_securely) - OWASP guidance on secure defaults

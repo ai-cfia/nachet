@@ -22,8 +22,7 @@ interface MsalAuthProviderProps {
 
 const mapAccount = (account: AccountInfo): NachetAuthAccount => {
   const idTokenClaims = account.idTokenClaims as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   const oidClaim = idTokenClaims?.oid;
   const subClaim = idTokenClaims?.sub;
   const acctClaim = idTokenClaims?.acct;
