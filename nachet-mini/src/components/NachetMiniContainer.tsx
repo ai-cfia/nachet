@@ -88,6 +88,9 @@ const NachetMiniContainer = () => {
   const markProcessing = useInferenceQueueStore((s) => s.markProcessing);
   const markDone = useInferenceQueueStore((s) => s.markDone);
   const cancel = useInferenceQueueStore((s) => s.cancel);
+  const cancelAllPending = useInferenceQueueStore(
+    (state) => state.cancelAllPending,
+  );
   const nextPendingId = useInferenceQueueStore(
     (s) => s.queue.find((i) => i.status === "pending")?.id ?? null,
   );
@@ -365,9 +368,7 @@ const NachetMiniContainer = () => {
 
   const handleModelLoadDialogCancel = () => {
     setModelLoadDialogOpen(false);
-    for (const item of useInferenceQueueStore.getState().queue) {
-      if (item.status === "pending") cancel(item.id);
-    }
+    cancelAllPending();
   };
 
   const handleModelLoadDialogContinue = () => {
