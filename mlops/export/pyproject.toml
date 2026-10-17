@@ -16,7 +16,7 @@ dependencies = [
     # Saved fast image processors use torchvision's preprocessing backend.
     "torchvision==0.23.0",
     # optimum-onnx 0.1.0 requires transformers<4.58; training uses 5.16.1.
-    "transformers==4.57.6",
+    "transformers==5.10.1",
 ]
 
 [tool.uv]
