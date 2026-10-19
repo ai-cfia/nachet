@@ -33,6 +33,7 @@ interface InferenceQueueState {
     > & { prompt?: string | null },
   ) => void;
   cancel: (id: string) => void;
+  cancelAllPending: () => void;
   markProcessing: (id: string) => void;
   markDetectionDone: (id: string, durationMs: number, boxCount: number) => void;
   markDone: (id: string, classificationDurationMs: number) => void;
@@ -68,6 +69,18 @@ export const useInferenceQueueStore = create<InferenceQueueState>()((set) => ({
         item.id === id ? { ...item, status: "cancelled" } : item,
       ),
     })),
+
+  cancelAllPending: () => {
+    set((state) => {
+      const updatedQueue = state.queue.map((item): QueuedInferenceItem => {
+        if (item.status === "pending") {
+          return { ...item, status: "cancelled" };
+        }
+        return item;
+      });
+      return { queue: updatedQueue };
+    });
+  },
 
   markProcessing: (id) =>
     set((state) => ({

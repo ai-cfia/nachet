@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   useInferenceQueueStore,
   selectNextPending,
@@ -83,6 +83,50 @@ describe("useInferenceQueueStore", () => {
       getStore().enqueue({ imageSrc: "a.jpg", imageIndex: 0 });
       getStore().cancel("non-existent-id");
       expect(getStore().queue[0].status).toBe("pending");
+    });
+  });
+
+  describe("cancelAllPending", () => {
+    it("cancels all pending items in one update, preserving other statuses", () => {
+      for (let index = 0; index < 5; index++) {
+        getStore().enqueue({ imageSrc: `${index}.jpg`, imageIndex: index });
+      }
+      const [processingItem, cancelledItem, completedItem, ...pendingItems] =
+        getStore().queue;
+      useInferenceQueueStore.setState({
+        queue: [
+          { ...processingItem, status: "processing" },
+          { ...cancelledItem, status: "cancelled" },
+          { ...completedItem, status: "done" },
+          ...pendingItems,
+        ],
+      });
+      const queueBeforeCancellation = getStore().queue;
+      const onStoreChange = vi.fn();
+      const unsubscribe = useInferenceQueueStore.subscribe(onStoreChange);
+
+      try {
+        getStore().cancelAllPending();
+
+        const queueAfterCancellation = getStore().queue;
+        const statuses = queueAfterCancellation.map((item) => item.status);
+        expect(statuses).toEqual([
+          "processing",
+          "cancelled",
+          "done",
+          "cancelled",
+          "cancelled",
+        ]);
+        for (let index = 0; index < 3; index++) {
+          expect(queueAfterCancellation[index]).toBe(
+            queueBeforeCancellation[index],
+          );
+        }
+        expect(selectNextPending(getStore())).toBeNull();
+        expect(onStoreChange).toHaveBeenCalledTimes(1);
+      } finally {
+        unsubscribe();
+      }
     });
   });
 
