@@ -5,6 +5,7 @@ import {
   generateCsvFromManifest,
   drawAnnotatedImage,
   generateExportZip,
+  validateExportNames,
 } from "../exportUtils";
 import type { Images, InferenceResult, InferenceBox } from "../types";
 import type { ExportManifest, ExportBoxEntry } from "../exportTypes";
@@ -36,7 +37,7 @@ const zipMock = vi.hoisted(() => {
 const exportSaveMock = vi.hoisted(() => ({
   getDefaultExportFileName: vi.fn(),
   normalizeExportFileName: vi.fn(),
-  saveExportBlob: vi.fn(),
+  writeExportBlob: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -171,7 +172,7 @@ beforeEach(() => {
   exportSaveMock.normalizeExportFileName.mockImplementation(
     (fileName: string) => `normalized-${fileName}`,
   );
-  exportSaveMock.saveExportBlob.mockResolvedValue(undefined);
+  exportSaveMock.writeExportBlob.mockResolvedValue(undefined);
   vi.clearAllMocks();
 });
 
@@ -598,9 +599,10 @@ describe("generateExportZip", () => {
     expect(exportSaveMock.normalizeExportFileName).toHaveBeenCalledWith(
       "nachet-mini-export-test.zip",
     );
-    expect(exportSaveMock.saveExportBlob).toHaveBeenCalledWith(
+    expect(exportSaveMock.writeExportBlob).toHaveBeenCalledWith(
       expect.any(Blob),
       "normalized-nachet-mini-export-test.zip",
+      null,
     );
   });
 
@@ -612,9 +614,20 @@ describe("generateExportZip", () => {
     expect(exportSaveMock.normalizeExportFileName).toHaveBeenCalledWith(
       "custom-export.zip",
     );
-    expect(exportSaveMock.saveExportBlob).toHaveBeenCalledWith(
+    expect(exportSaveMock.writeExportBlob).toHaveBeenCalledWith(
       expect.any(Blob),
       "normalized-custom-export.zip",
+      null,
+    );
+  });
+
+  it("writes to the provided file handle", async () => {
+    const fileHandle = { createWritable: vi.fn() };
+    await generateExportZip(makeManifest(), images, { fileHandle });
+    expect(exportSaveMock.writeExportBlob).toHaveBeenCalledWith(
+      expect.any(Blob),
+      "normalized-nachet-mini-export-test.zip",
+      fileHandle,
     );
   });
 
@@ -715,5 +728,50 @@ describe("generateExportZip", () => {
     await generateExportZip(makeManifest(), [], { includeImages: true });
     // It should not attempt to write the image file
     expect(zipMock.imagesFolder.file).not.toHaveBeenCalled();
+  });
+});
+
+describe("validateExportNames", () => {
+  const withNames = (...names: string[]) => {
+    const manifest = makeManifest();
+    manifest.images = names.map((imageName, i) => ({
+      ...makeManifest().images[0],
+      fileName: `images/${i}.png`,
+      metadata: { ...makeManifest().images[0].metadata, imageName },
+    }));
+    return manifest;
+  };
+  const on = {
+    humanReadable: true,
+    includeImages: true,
+    includeAnnotatedImages: false,
+  };
+
+  it("throws DUPLICATE_NAME when two images share a name", () => {
+    expect(() => validateExportNames(withNames("same", "same"), on)).toThrow(
+      "DUPLICATE_NAME:same",
+    );
+  });
+
+  it("allows unique names", () => {
+    expect(() => validateExportNames(withNames("a", "b"), on)).not.toThrow();
+  });
+
+  it("ignores duplicates when humanReadable is off", () => {
+    expect(() =>
+      validateExportNames(withNames("same", "same"), {
+        ...on,
+        humanReadable: false,
+      }),
+    ).not.toThrow();
+  });
+
+  it("ignores duplicates when no image files are exported", () => {
+    expect(() =>
+      validateExportNames(withNames("same", "same"), {
+        ...on,
+        includeImages: false,
+      }),
+    ).not.toThrow();
   });
 });

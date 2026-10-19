@@ -11,20 +11,31 @@ import frCommon from "../../locales/fr/common";
 import { useImageStore } from "@stores/useImageStore";
 import { useInferenceStore } from "@stores/useInferenceStore";
 import ExportDialog from "../ExportDialog";
+import { ExportCancelledError } from "@common/exportSave";
 
-const { mockBuildExportManifest, mockGenerateExportZip } = vi.hoisted(() => ({
+const {
+  mockBuildExportManifest,
+  mockGenerateExportZip,
+  mockValidateExportNames,
+  mockRequestExportFileHandle,
+} = vi.hoisted(() => ({
   mockBuildExportManifest: vi.fn(),
   mockGenerateExportZip: vi.fn(),
+  mockValidateExportNames: vi.fn(),
+  mockRequestExportFileHandle: vi.fn(),
 }));
 
 vi.mock("@common/exportUtils", () => ({
   buildExportManifest: mockBuildExportManifest,
   generateExportZip: mockGenerateExportZip,
+  validateExportNames: mockValidateExportNames,
 }));
 
 vi.mock("@common/exportSave", () => ({
   ExportCancelledError: class ExportCancelledError extends Error {},
   getDefaultExportFileName: () => "nachet-mini-export-test.zip",
+  normalizeExportFileName: (fileName: string) => fileName,
+  requestExportFileHandle: mockRequestExportFileHandle,
 }));
 
 vi.mock("@stores/useImageStore", () => ({ useImageStore: vi.fn() }));
@@ -100,6 +111,8 @@ describe("ExportDialog", () => {
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     mockBuildExportManifest.mockReset();
     mockGenerateExportZip.mockReset();
+    mockValidateExportNames.mockReset();
+    mockRequestExportFileHandle.mockReset();
     mockBuildExportManifest.mockReturnValue({ images: [] });
     mockGenerateExportZip.mockResolvedValue(undefined);
     setStores();
@@ -609,6 +622,92 @@ describe("ExportDialog", () => {
       await expect
         .element(page.getByRole("button", { name: enMain.exportDialog.title }))
         .not.toBeDisabled();
+    });
+
+    it("opens the save picker before generating the ZIP (issue #886)", async () => {
+      renderDialog({ checkedImages: new Set([0]) });
+      await page
+        .getByRole("button", { name: enMain.exportDialog.title })
+        .click();
+      await vi.waitFor(() =>
+        expect(mockGenerateExportZip).toHaveBeenCalledOnce(),
+      );
+      expect(mockRequestExportFileHandle).toHaveBeenCalledWith(
+        "nachet-mini-export-test.zip",
+      );
+      expect(
+        mockRequestExportFileHandle.mock.invocationCallOrder[0],
+      ).toBeLessThan(mockGenerateExportZip.mock.invocationCallOrder[0]);
+    });
+
+    it("passes the picked file handle to generateExportZip", async () => {
+      const fileHandle = { createWritable: vi.fn() };
+      mockRequestExportFileHandle.mockResolvedValue(fileHandle);
+      renderDialog({ checkedImages: new Set([0]) });
+      await page
+        .getByRole("button", { name: enMain.exportDialog.title })
+        .click();
+      await vi.waitFor(() =>
+        expect(mockGenerateExportZip).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.anything(),
+          expect.objectContaining({ fileHandle }),
+        ),
+      );
+    });
+
+    it("stops without an error when the save picker is cancelled", async () => {
+      mockRequestExportFileHandle.mockRejectedValue(new ExportCancelledError());
+      const onClose = vi.fn();
+      renderDialog({ checkedImages: new Set([0]), onClose });
+      await page
+        .getByRole("button", { name: enMain.exportDialog.title })
+        .click();
+      await vi.waitFor(() =>
+        expect(mockRequestExportFileHandle).toHaveBeenCalledOnce(),
+      );
+      expect(mockGenerateExportZip).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(
+        await page.getByText(enMain.exportDialog.exportFailed).all(),
+      ).toHaveLength(0);
+    });
+
+    it("reports duplicate names before opening the save picker", async () => {
+      mockValidateExportNames.mockImplementation(() => {
+        throw new Error("DUPLICATE_NAME:image-0.png");
+      });
+      renderDialog({ checkedImages: new Set([0]) });
+      await page
+        .getByRole("button", { name: enMain.exportDialog.title })
+        .click();
+      await vi.waitFor(() =>
+        expect(
+          page
+            .getByText(
+              enMain.exportDialog.duplicateNameError.replace(
+                "{{name}}",
+                "image-0.png",
+              ),
+            )
+            .element(),
+        ).toBeTruthy(),
+      );
+      expect(mockRequestExportFileHandle).not.toHaveBeenCalled();
+      expect(mockGenerateExportZip).not.toHaveBeenCalled();
+    });
+
+    it("shows an error when the save picker is blocked", async () => {
+      mockRequestExportFileHandle.mockRejectedValue(
+        new DOMException("blocked", "SecurityError"),
+      );
+      renderDialog({ checkedImages: new Set([0]) });
+      await page
+        .getByRole("button", { name: enMain.exportDialog.title })
+        .click();
+      await expect
+        .element(page.getByText(enMain.exportDialog.exportFailed))
+        .toBeVisible();
     });
   });
 

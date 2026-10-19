@@ -14,10 +14,16 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { useImageStore } from "@stores/useImageStore";
 import { useInferenceStore } from "@stores/useInferenceStore";
-import { buildExportManifest, generateExportZip } from "@common/exportUtils";
+import {
+  buildExportManifest,
+  generateExportZip,
+  validateExportNames,
+} from "@common/exportUtils";
 import {
   ExportCancelledError,
   getDefaultExportFileName,
+  normalizeExportFileName,
+  requestExportFileHandle,
 } from "@common/exportSave";
 import { useTranslation } from "react-i18next";
 
@@ -91,6 +97,16 @@ const ExportDialog = ({
         getResultsForImage,
         results,
       );
+      // Sync checks first, then the picker as the FIRST await: Chrome only
+      // allows showSaveFilePicker shortly after the click (issue #886).
+      validateExportNames(manifest, {
+        humanReadable,
+        includeImages,
+        includeAnnotatedImages,
+      });
+      const fileHandle = await requestExportFileHandle(
+        normalizeExportFileName(fileName),
+      );
       await generateExportZip(manifest, images, {
         includeImages,
         includeResults,
@@ -98,6 +114,7 @@ const ExportDialog = ({
         includeAnnotatedImages,
         humanReadable,
         fileName,
+        fileHandle,
       });
       onExportComplete();
       onClose();
@@ -110,6 +127,7 @@ const ExportDialog = ({
         setExportError("");
       } else {
         console.error("Export error:", message);
+        setExportError(t("exportDialog.exportFailed"));
       }
     } finally {
       setExporting(false);

@@ -66,6 +66,7 @@ const main = {
     fileNameRequired: "Export filename is required",
     duplicateNameError:
       "Duplicate image name: {{name}}. Rename before exporting.",
+    exportFailed: "Export failed. Please try again.",
   },
   resultsTable: {
     title: "Classification Results",
