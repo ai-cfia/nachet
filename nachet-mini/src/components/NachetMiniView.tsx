@@ -80,7 +80,7 @@ export interface NachetMiniViewProps {
     i: number,
   ) => Array<{ modelConfigId: string; result: InferenceResult }>;
 
-  // Selections (for export)
+  // Selections (for inference and export)
   checkedImages: Set<number>;
   checkedResults: Set<string>;
   setCheckedImages: Dispatch<SetStateAction<Set<number>>>;

@@ -12,6 +12,6 @@ export interface TsAppVersion {
 export const versions: TsAppVersion = {
   version: "0.10.20",
   name: "nachet-mini",
-  versionDate: "2026-10-19T21:33:12.728Z",
+  versionDate: "2026-10-15T20:20:18.481Z",
 };
 export default versions;
