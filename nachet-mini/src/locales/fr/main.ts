@@ -67,6 +67,7 @@ const main = {
     fileNameRequired: "Le nom du fichier d’exportation est obligatoire",
     duplicateNameError:
       "Nom d'image en double : {{name}}. Renommez avant d'exporter.",
+    exportFailed: "L'exportation a échoué. Veuillez réessayer.",
   },
   resultsTable: {
     title: "R\u00e9sultats de classification",

@@ -5,7 +5,9 @@ import {
   ExportCancelledError,
   getDefaultExportFileName,
   normalizeExportFileName,
+  requestExportFileHandle,
   saveExportBlob,
+  writeExportBlob,
 } from "../exportSave";
 
 vi.mock("file-saver", () => ({ saveAs: vi.fn() }));
@@ -77,5 +79,46 @@ describe("saveExportBlob", () => {
     await expect(
       saveExportBlob(content, "custom-export.zip"),
     ).rejects.toBeInstanceOf(ExportCancelledError);
+  });
+});
+
+describe("requestExportFileHandle", () => {
+  it("returns null when the browser save picker is unavailable", async () => {
+    await expect(requestExportFileHandle("a.zip")).resolves.toBeNull();
+  });
+
+  it("rethrows non-cancel picker errors", async () => {
+    vi.stubGlobal(
+      "showSaveFilePicker",
+      vi.fn().mockRejectedValue(new DOMException("blocked", "SecurityError")),
+    );
+
+    await expect(requestExportFileHandle("a.zip")).rejects.toMatchObject({
+      name: "SecurityError",
+    });
+  });
+});
+
+describe("writeExportBlob", () => {
+  const content = new Blob(["zip"]);
+
+  it("falls back to file-saver when no handle is given", async () => {
+    await writeExportBlob(content, "a.zip", null);
+
+    expect(saveAs).toHaveBeenCalledWith(content, "a.zip");
+  });
+
+  it("writes to the provided handle", async () => {
+    const write = vi.fn().mockResolvedValue(undefined);
+    const close = vi.fn().mockResolvedValue(undefined);
+    const handle = {
+      createWritable: vi.fn().mockResolvedValue({ write, close }),
+    };
+
+    await writeExportBlob(content, "a.zip", handle);
+
+    expect(write).toHaveBeenCalledWith(content);
+    expect(close).toHaveBeenCalledOnce();
+    expect(saveAs).not.toHaveBeenCalled();
   });
 });

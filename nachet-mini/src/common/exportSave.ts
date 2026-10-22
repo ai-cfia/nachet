@@ -20,7 +20,7 @@ type FileSystemWritableFileStream = {
   close: () => Promise<void>;
 };
 
-type FileSystemFileHandle = {
+export type FileSystemFileHandle = {
   createWritable: () => Promise<FileSystemWritableFileStream>;
 };
 
@@ -53,30 +53,47 @@ export const normalizeExportFileName = (fileName: string): string => {
   return safeName.toLowerCase().endsWith(".zip") ? safeName : `${safeName}.zip`;
 };
 
-export const saveExportBlob = async (content: Blob, fileName: string) => {
+/**
+ * Open the browser Save As dialog. Must be called directly from the click
+ * handler, before any slow work, or Chrome blocks it (user-activation window).
+ * Returns null when the browser has no save picker (fallback to file-saver).
+ */
+export const requestExportFileHandle = async (
+  fileName: string,
+): Promise<FileSystemFileHandle | null> => {
   const picker = (window as WindowWithSaveFilePicker).showSaveFilePicker;
-  if (picker) {
-    try {
-      const handle = await picker({
-        suggestedName: fileName,
-        types: [
-          {
-            description: "ZIP archive",
-            accept: { "application/zip": [".zip"] },
-          },
-        ],
-      });
-      const writable = await handle.createWritable();
-      await writable.write(content);
-      await writable.close();
-      return;
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        throw new ExportCancelledError();
-      }
-      throw error;
+  if (!picker) return null;
+  try {
+    return await picker({
+      suggestedName: fileName,
+      types: [
+        {
+          description: "ZIP archive",
+          accept: { "application/zip": [".zip"] },
+        },
+      ],
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ExportCancelledError();
     }
+    throw error;
   }
-
-  saveAs(content, fileName);
 };
+
+export const writeExportBlob = async (
+  content: Blob,
+  fileName: string,
+  handle: FileSystemFileHandle | null,
+) => {
+  if (!handle) {
+    saveAs(content, fileName);
+    return;
+  }
+  const writable = await handle.createWritable();
+  await writable.write(content);
+  await writable.close();
+};
+
+export const saveExportBlob = async (content: Blob, fileName: string) =>
+  writeExportBlob(content, fileName, await requestExportFileHandle(fileName));

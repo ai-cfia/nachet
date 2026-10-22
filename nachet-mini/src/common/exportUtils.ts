@@ -9,7 +9,8 @@ import type {
 import {
   getDefaultExportFileName,
   normalizeExportFileName,
-  saveExportBlob,
+  writeExportBlob,
+  type FileSystemFileHandle,
 } from "@common/exportSave";
 
 interface ResultEntry {
@@ -283,7 +284,39 @@ export const drawAnnotatedImage = async (
 };
 
 /**
- * Generate a ZIP file from the manifest and image data, then trigger download.
+ * Throw DUPLICATE_NAME:<name> if human-readable export would write two
+ * files with the same name. Sync, so it can run before the save picker.
+ */
+export const validateExportNames = (
+  manifest: ExportManifest,
+  options: {
+    humanReadable: boolean;
+    includeImages: boolean;
+    includeAnnotatedImages: boolean;
+  },
+): void => {
+  if (
+    !options.humanReadable ||
+    !(options.includeImages || options.includeAnnotatedImages)
+  ) {
+    return;
+  }
+
+  const nameCounts = new Map<string, number>();
+  for (const entry of manifest.images) {
+    const name = entry.metadata.imageName;
+    nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
+  }
+  for (const [name, count] of nameCounts) {
+    if (count > 1) {
+      throw new Error(`DUPLICATE_NAME:${name}`);
+    }
+  }
+};
+
+/**
+ * Generate a ZIP file from the manifest and image data, then write it to
+ * `fileHandle` (from requestExportFileHandle) or fall back to a download.
  */
 export const generateExportZip = async (
   manifest: ExportManifest,
@@ -295,6 +328,7 @@ export const generateExportZip = async (
     humanReadable?: boolean;
     includeAnnotatedImages?: boolean;
     fileName?: string;
+    fileHandle?: FileSystemFileHandle | null;
   },
 ): Promise<void> => {
   const zip = new JSZip();
@@ -304,19 +338,11 @@ export const generateExportZip = async (
   const humanReadable = options?.humanReadable ?? false;
   const includeAnnotatedImages = options?.includeAnnotatedImages ?? false;
 
-  // Check for duplicate image names when human-readable is enabled
-  if (humanReadable && (includeImages || includeAnnotatedImages)) {
-    const nameCounts = new Map<string, number>();
-    for (const entry of manifest.images) {
-      const name = entry.metadata.imageName;
-      nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
-    }
-    for (const [name, count] of nameCounts) {
-      if (count > 1) {
-        throw new Error(`DUPLICATE_NAME:${name}`);
-      }
-    }
-  }
+  validateExportNames(manifest, {
+    humanReadable,
+    includeImages,
+    includeAnnotatedImages,
+  });
 
   // Compute annotated filenames before CSV generation so the column is populated
   if (includeAnnotatedImages) {
@@ -396,8 +422,9 @@ export const generateExportZip = async (
   }
 
   const content = await zip.generateAsync({ type: "blob" });
-  await saveExportBlob(
+  await writeExportBlob(
     content,
     normalizeExportFileName(options?.fileName ?? getDefaultExportFileName()),
+    options?.fileHandle ?? null,
   );
 };
