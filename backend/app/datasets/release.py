@@ -172,6 +172,8 @@ class DatasetController:
                 self.container, key, data, overwrite=False, content_type=content_type
             )
         except BlobAlreadyExistsError:
+            # Idempotent publish path: if the blob already exists, verify below that
+            # the stored bytes exactly match `data`; otherwise raise ReleaseConflict.
             pass
         stored = await self.storage.download_blob(self.container, key)
         if stored != data:
