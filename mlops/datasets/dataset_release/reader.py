@@ -13,7 +13,7 @@ from .release import DatasetController, ReleaseNotReady
 class ReleasedDataset:
     """Read a verified, pinned version without depending on a source PVC.
 
-    Iterators fetch one image/crop at a time. The training repository can adapt
+    Iterators fetch one image/crop at a time. A training runtime can adapt
     these records to its Dataset implementation without introducing local paths.
     No random split or silent missing-file fallback is performed here.
     """

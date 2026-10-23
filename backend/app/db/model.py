@@ -10,10 +10,8 @@ from sqlalchemy import (
     ForeignKey,
     Double,
     UUID,
-    Uuid,
     UniqueConstraint,
     Index,
-    CheckConstraint,
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.sql import func
@@ -24,36 +22,6 @@ from datetime import datetime, date
 
 class Base(AsyncAttrs, DeclarativeBase):
     pass
-
-
-class DatasetRelease(Base):
-    """Registration only; reviewed membership and labels live in blob storage.
-
-    Picture requires app folder/user/RBAC ownership. External training images
-    therefore remain blob references, optionally linked to existing Pictures in
-    the release COCO. This does not create a second mutable image catalogue.
-    """
-
-    __tablename__ = "dataset_release"
-    __table_args__ = (
-        UniqueConstraint("name", "version", name="uq_dataset_release_name_version"),
-        CheckConstraint("status IN ('staging', 'ready')", name="ck_dataset_release_status"),
-        CheckConstraint(
-            "status != 'ready' OR manifest_sha256 IS NOT NULL",
-            name="ck_dataset_release_ready_manifest",
-        ),
-    )
-
-    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
-    name: Mapped[str] = mapped_column(Text, nullable=False)
-    version: Mapped[str] = mapped_column(Text, nullable=False)
-    author: Mapped[str] = mapped_column(Text, nullable=False)
-    date_created: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    container: Mapped[str] = mapped_column(Text, nullable=False)
-    request_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
-    manifest_key: Mapped[str] = mapped_column(Text, nullable=False)
-    manifest_sha256: Mapped[Optional[str]] = mapped_column(String(64))
-    status: Mapped[str] = mapped_column(Text, nullable=False, default="staging")
 
 
 class ModelTask(Base):
