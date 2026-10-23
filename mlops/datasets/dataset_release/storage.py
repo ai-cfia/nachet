@@ -25,11 +25,13 @@ class BlobNotFoundError(FileNotFoundError):
 class BlobStorage(Protocol):
     async def upload_blob(
         self, container: str, name: str, data: bytes, **kwargs: Any
-    ) -> dict[str, Any]: ...
+    ) -> dict[str, Any]:
+        pass
 
     async def download_blob(
         self, container: str, name: str, **kwargs: Any
-    ) -> bytes: ...
+    ) -> bytes:
+        pass
 
 
 def environment_flag(name: str, default: bool) -> bool:
