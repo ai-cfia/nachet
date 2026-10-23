@@ -1,4 +1,10 @@
-# Example approval workflow
+# MLOps
+
+The standalone [dataset release tools](datasets/README.md) publish reviewed
+COCO versions, generate seed crops and provide verified training inputs. Their
+storage adapter, registry migration, dependencies and tests live in `datasets/`.
+
+## Example approval workflow
 
 `workflows/example-workflow-template.yaml` is a small control-flow example used
 to verify Nachet's Argo Workflows setup before model-training steps are added.
