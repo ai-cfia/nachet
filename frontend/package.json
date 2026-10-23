@@ -1,7 +1,7 @@
 {
   "name": "nachet-frontend",
   "private": true,
-  "version": "3.0.7",
+  "version": "3.1.0",
   "acia-cfia": {
     "backend-version": "2.9.4"
   },
@@ -119,7 +119,7 @@
   },
   "engines": {
     "npm": "^11.21.0",
-    "node": "^24.5.0"
+    "node": "^26.12.1"
   },
   "overrides": {
     "compression": "^1.8.2",
