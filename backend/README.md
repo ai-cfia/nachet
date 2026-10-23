@@ -3,9 +3,6 @@
 ([*Le français est disponible au bas de la
 page*](#nachet-backend-fr))
 
-For publishing reviewed training datasets, see the
-[dataset release guide](docs/dataset-releases.md).
-
 ## Table of Contents
 
 - [High level sequence diagram](#high-level-sequence-diagram)

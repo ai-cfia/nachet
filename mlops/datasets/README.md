@@ -1,11 +1,13 @@
-# Reviewed dataset releases
+# Reviewed dataset releases (MLOps)
 
 The dataset release component implements the reviewed-data handoff described in
 [the October 20 draft of #895](https://github.com/ai-cfia/nachet/issues/895#issuecomment-6303217149).
 It runs after PNG preparation and FiftyOne review. Blob storage holds the dataset
 files and version snapshots; the database registers their identity and readiness.
 
-All implementation changes are in Nachet. The current external detector script,
+This is a standalone uv project under `mlops/datasets/`. Its publisher, S3
+adapter, database registry, migration, readers, tests and examples are all owned
+by MLOps and do not import the backend application. The current external detector script,
 `nachetmodel/HFTrainer_detector_2026012601_js.py` in `nachet-model-ccds`, is unchanged.
 The S3-aware record reader is its integration point, described below.
 
@@ -32,23 +34,20 @@ conversion recipe, crop recipe, reviewed COCO checksum, image inventory and crop
 relationships. Each crop identifies its COCO image, annotation, category, split,
 pixel rectangle, blob key, size and checksum. The containing manifest supplies
 the dataset version. Metadata remains readable without mirroring all COCO boxes
-into application `Annotation` or `Object` rows.
+into application annotation or object rows.
 
 The `dataset_release` table contains one registration per `(name, version)`:
 its UUID, author, creation time, container, request hash, manifest location/hash
 and `staging` or `ready` status. Membership, labels and crop mappings remain in
-the blob snapshot. This table is administrative, with no new public HTTP routes.
-
-Existing `Picture` rows require application folder, user and RBAC ownership.
-External training images therefore remain blob references. An optional
-`picture_id` links a member to an existing `Picture`; publication verifies that
-the record exists and its `sha256` matches the PNG. No application upload,
-scanning, sanitization, access rules or annotation JSON is changed. Link only
-when the application's stored hash represents the same exact PNG bytes.
+the blob snapshot. On PostgreSQL it lives in a dedicated `nachet_datasets` schema
+by default, with its own `dataset_release_version` migration-version table.
+The registry does not change the backend schema or its Alembic head.
+Application picture identifiers can be retained as extra COCO provenance fields;
+the standalone publisher does not query or create application picture records.
 
 ## Prepare a release specification
 
-Use the structure in `docs/examples/dataset-release.json`. Replace its example
+Use the structure in `examples/dataset-release.json`. Replace its example
 hash and dimensions with a real prepared PNG reference and its image dimensions.
 The file describes inputs; it does not upload or convert the source images.
 
@@ -74,30 +73,46 @@ inherits its parent's split. Unchanged crop bytes reuse the same blob key.
 
 ## Run
 
-Install the normal backend dependencies and apply the additive Alembic migration
-`a895d501ea01` through the existing deployment process before publication. This
-module never creates production tables, buckets or permissions automatically.
-
-Run from `backend/`, using the existing database and provider environment
-variables in `.env`, or an explicitly selected `NACHET_ENV_FILE`:
+Run from `mlops/datasets/`. Install the locked standalone dependencies:
 
 ```bash
-uv run python -m app.scripts.dataset_release --container training-datasets \
-  publish docs/examples/dataset-release.json
+uv sync --locked
+```
 
-uv run python -m app.scripts.dataset_release --container training-datasets \
+Set `DATASET_DATABASE_URL` to an explicit async connection URL, such as
+`postgresql+psycopg://<user>:<password>@<host>/<database>`. The default PostgreSQL
+schema is `nachet_datasets`; `DATASET_REGISTRY_SCHEMA` can select another existing
+schema dedicated to MLOps. Provision that schema and its role permissions before
+running the migration. A local SQLite registry can use
+`sqlite+aiosqlite:///dataset-registry.local` and needs no schema.
+
+Load these settings from the job environment, `.env`, or a `DATASET_ENV_FILE`.
+Apply the standalone migration explicitly before publication:
+
+```bash
+uv run alembic -c alembic.ini upgrade head
+```
+
+This runs only the MLOps registry migration `a895d501ea01`; it does not run the
+backend migrations. Argo CD is not configured to invoke it automatically.
+The publication command never creates tables, schemas, buckets or permissions.
+
+```bash
+uv run python -m dataset_release --container training-datasets \
+  publish examples/dataset-release.json
+
+uv run python -m dataset_release --container training-datasets \
   inspect reviewed-seeds v1
 
-uv run python -m app.scripts.dataset_release --container training-datasets \
+uv run python -m dataset_release --container training-datasets \
   validate reviewed-seeds v1 --expected-manifest-sha256 <saved-manifest-sha256>
 ```
 
-Set `TESTING=false` for the configured PostgreSQL connection; the existing
-`Settings` test mode selects a local SQLite database. Set `DB_USER`,
-`DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME` and `NACHET_SCHEMA` as usual.
-For S3, configure `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION_NAME`,
-`S3_ENDPOINT_URL`, `S3_USE_SSL` and `S3_VERIFY` as appropriate. These are the
-backend's existing settings. The publication command targets S3-compatible storage.
+For S3, use boto3's standard AWS credentials/role providers or supply
+`S3_ACCESS_KEY` and `S3_SECRET_KEY` together. Optional settings are
+`S3_REGION_NAME`, `S3_ENDPOINT_URL`, `S3_USE_SSL` and `S3_VERIFY`.
+`AWS_ENDPOINT_URL_S3`, `AWS_REGION` and `AWS_DEFAULT_REGION` are also supported. The standalone S3
+adapter performs conditional writes and checksums without importing `app.blob`.
 
 The commands output JSON containing the dataset UUID, version, manifest
 location/hash and the value to store in `Model.dataset`. `inspect` also returns
@@ -138,19 +153,19 @@ objects. Argo execution location and its credentials/mounts are not deployed her
 
 ## Training integration
 
-`app.datasets.reader.ReleasedDataset` resolves a verified release and fetches
-detector images or classifier crops one at a time through `app.blob`. It does
+`dataset_release.reader.ReleasedDataset` resolves a verified release and fetches
+detector images or classifier crops one at a time through the MLOps S3 adapter. It does
 not require a shared FiftyOne PVC or create a permanent local image collection.
 Full verification at open reads the entire release; each later sample read also
 verifies its checksum. Measure those reads and representative training epochs
-before introducing a cache or staging layer. Provider calls currently inherit
-the backend blob client's synchronous I/O inside async methods.
+before introducing a cache or staging layer. Blocking boto3 reads/writes run in
+worker threads so they do not block the asynchronous controller.
 
 ```python
-from app.datasets.reader import ReleasedDataset
+from dataset_release.reader import ReleasedDataset
 
-# controller is a DatasetController configured with the job's blob client,
-# database session factory and dataset container.
+# controller is a DatasetController configured with the job's S3Storage,
+# standalone registry session factory and dataset container.
 reader = await ReleasedDataset.open(
     controller, "reviewed-seeds", "v1", expected_manifest_sha256=saved_hash
 )
@@ -184,16 +199,16 @@ contract; it does not change that external trainer or automatically wire MLflow.
 
 ## Validation
 
-From `backend/`:
+From `mlops/datasets/`:
 
 ```bash
-uv run pytest tests/test_dataset_release.py
+uv run pytest
 ```
 
 Set `NACHET_MODEL_CCDS` to the local `nachet-model-ccds` checkout to enable the
 compatibility test against its actual `nachetmodel/coco_to_hf_dataset.py`.
-Install `datasets==4.4.1` in the test environment for that optional check; it is
-not a dependency of the release publisher.
+Run `uv sync --locked --group compatibility` to install that optional check's
+HuggingFace dependency. It is not needed by the release publisher.
 That test compares labels, decimal boxes and decoded pixels in all three saved
 splits. Without the variable, only that external compatibility test is skipped.
 

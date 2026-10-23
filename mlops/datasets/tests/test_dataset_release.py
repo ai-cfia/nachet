@@ -4,26 +4,31 @@ import asyncio
 import importlib.util
 import json
 import os
+import sqlite3
+import subprocess
+import sys
 from copy import deepcopy
-from io import BytesIO
+from io import BytesIO, StringIO
 from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
 import pytest_asyncio
+from alembic import command
 from alembic.autogenerate import compare_metadata
+from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from PIL import Image
 from sqlalchemy import MetaData, func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from app.blob.exceptions import BlobAlreadyExistsError, BlobNotFoundError
-from app.blob.interface import BlobStorageInterface
-from app.datasets.contract import ReleaseSpec, canonical_json, sha256
-from app.datasets.reader import ReleasedDataset
-from app.datasets.release import DatasetController, ReleaseConflict, ReleaseNotReady
-from app.db.model import DatasetRelease
+from dataset_release.contract import ReleaseSpec, canonical_json, sha256
+from dataset_release.reader import ReleasedDataset
+from dataset_release.registry import DatasetRelease
+from dataset_release.release import DatasetController, ReleaseConflict, ReleaseNotReady
+from dataset_release.settings import Settings
+from dataset_release.storage import BlobAlreadyExistsError, BlobNotFoundError, S3Storage
 
 
 class MemoryStorage:
@@ -48,11 +53,6 @@ class MemoryStorage:
             return self.objects[container, name]
         except KeyError as error:
             raise BlobNotFoundError(container, name) from error
-
-
-# Only upload/download are exercised by the controller; register this small
-# test double with the ABC so the application's runtime type checks still run.
-BlobStorageInterface.register(MemoryStorage)
 
 
 def png_bytes(color):
@@ -383,7 +383,7 @@ async def test_current_detector_loader_matches_released_records(release_env, tmp
 async def test_migration_matches_orm_and_downgrades(tmp_path):
     migration = (
         Path(__file__).parents[1]
-        / "app/db/alembic/versions/2026_10_22_0000-a895d501ea01_add_dataset_releases.py"
+        / "migrations/versions/a895d501ea01_dataset_releases.py"
     )
     spec = importlib.util.spec_from_file_location(
         "dataset_release_migration", migration
@@ -411,17 +411,14 @@ async def test_migration_matches_orm_and_downgrades(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_s3_non_overwriting_upload_uses_atomic_condition(monkeypatch):
+async def test_s3_non_overwriting_upload_uses_atomic_condition():
     from botocore.exceptions import ClientError
 
-    from app.blob.s3.operations import blob_operations
-
-    monkeypatch.setattr(blob_operations, "_logger", Mock())
     client = Mock()
     client.put_object.side_effect = ClientError(
         {"Error": {"Code": "PreconditionFailed"}}, "PutObject"
     )
-    operations = blob_operations.BlobOperations(client)
+    operations = S3Storage(client)
     with pytest.raises(BlobAlreadyExistsError):
         await operations.upload_blob(
             "datasets", "releases/a/v1/coco.json", b"{}", overwrite=False
@@ -431,12 +428,9 @@ async def test_s3_non_overwriting_upload_uses_atomic_condition(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_s3_successful_upload_preserves_overwrite_behavior(monkeypatch):
+async def test_s3_successful_upload_preserves_overwrite_behavior():
     from datetime import UTC, datetime
 
-    from app.blob.s3.operations import blob_operations
-
-    monkeypatch.setattr(blob_operations, "_logger", Mock())
     client = Mock()
     client.meta.endpoint_url = "https://s3.example.test"
     client.put_object.return_value = {"ETag": '"etag"'}
@@ -444,7 +438,7 @@ async def test_s3_successful_upload_preserves_overwrite_behavior(monkeypatch):
         "LastModified": datetime.now(UTC),
         "ContentLength": 2,
     }
-    operations = blob_operations.BlobOperations(client)
+    operations = S3Storage(client)
     result = await operations.upload_blob(
         "datasets", "file.json", b"{}", overwrite=False
     )
@@ -452,3 +446,109 @@ async def test_s3_successful_upload_preserves_overwrite_behavior(monkeypatch):
     assert client.put_object.call_args.kwargs["IfNoneMatch"] == "*"
     await operations.upload_blob("datasets", "file.json", b"{}", overwrite=True)
     assert "IfNoneMatch" not in client.put_object.call_args.kwargs
+
+
+@pytest.mark.asyncio
+async def test_s3_download_closes_stream_and_translates_missing_object():
+    from botocore.exceptions import ClientError
+
+    client = Mock()
+    stream = BytesIO(b"image-bytes")
+    client.get_object.return_value = {"Body": stream}
+    storage = S3Storage(client)
+    assert await storage.download_blob("datasets", "image.png") == b"image-bytes"
+    assert stream.closed
+    client.get_object.side_effect = ClientError(
+        {"Error": {"Code": "NoSuchKey"}}, "GetObject"
+    )
+    with pytest.raises(BlobNotFoundError):
+        await storage.download_blob("datasets", "missing.png")
+
+
+def test_standalone_migration_and_imports_do_not_use_backend(tmp_path, monkeypatch):
+    project = Path(__file__).parents[1]
+    registry_path = tmp_path / "standalone.sqlite"
+    monkeypatch.setenv("DATASET_DATABASE_URL", f"sqlite+aiosqlite:///{registry_path}")
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "-c", "alembic.ini", "upgrade", "head"],
+        cwd=project,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    with sqlite3.connect(registry_path) as connection:
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "select name from sqlite_master where type='table'"
+            )
+        }
+        assert tables == {"dataset_release", "dataset_release_version"}
+        assert connection.execute(
+            "select version_num from dataset_release_version"
+        ).fetchone() == ("a895d501ea01",)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; import dataset_release.cli, dataset_release.reader; assert not any(name == 'app' or name.startswith('app.') for name in sys.modules)",
+        ],
+        cwd=project,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+
+
+def test_postgresql_migration_targets_only_mlops_schema(monkeypatch):
+    monkeypatch.setenv(
+        "DATASET_DATABASE_URL", "postgresql+psycopg://example@localhost/datasets"
+    )
+    monkeypatch.delenv("DATASET_REGISTRY_SCHEMA", raising=False)
+    output = StringIO()
+    config = Config(
+        str(Path(__file__).parents[1] / "alembic.ini"), output_buffer=output
+    )
+    command.upgrade(config, "head", sql=True)
+    sql = output.getvalue()
+    assert "CREATE TABLE nachet_datasets.dataset_release (" in sql
+    assert "CREATE TABLE nachet_datasets.dataset_release_version (" in sql
+    assert "alembic_version" not in sql
+
+
+def test_registry_configuration_is_explicit(monkeypatch):
+    monkeypatch.delenv("DATASET_DATABASE_URL", raising=False)
+    with pytest.raises(ValueError, match="DATASET_DATABASE_URL"):
+        Settings.from_environment()
+    monkeypatch.setenv(
+        "DATASET_DATABASE_URL", "postgresql+psycopg://example@localhost/datasets"
+    )
+    monkeypatch.setenv("DATASET_REGISTRY_SCHEMA", "nachet_datasets")
+    assert Settings.from_environment().registry_schema == "nachet_datasets"
+    monkeypatch.setenv("DATASET_REGISTRY_SCHEMA", "bad;schema")
+    with pytest.raises(ValueError, match="schema name"):
+        Settings.from_environment()
+
+
+def test_s3_configuration_preserves_standard_region_and_credential_chain(monkeypatch):
+    from dataset_release import storage
+
+    for name in (
+        "S3_REGION_NAME",
+        "AWS_REGION",
+        "S3_ACCESS_KEY",
+        "S3_SECRET_KEY",
+        "S3_ENDPOINT_URL",
+        "S3_USE_SSL",
+        "S3_VERIFY",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "garage")
+    monkeypatch.setenv("AWS_ENDPOINT_URL_S3", "http://object-store:3900")
+    client = Mock()
+    monkeypatch.setattr(storage.boto3, "client", client)
+    S3Storage.from_environment()
+    assert client.call_args.kwargs["region_name"] == "garage"
+    assert client.call_args.kwargs["use_ssl"] is False
+    assert "aws_access_key_id" not in client.call_args.kwargs

@@ -1,19 +1,20 @@
 """Register immutable reviewed dataset releases.
 
 Revision ID: a895d501ea01
-Revises: 030caf3bf366
+Standalone MLOps registry; independent of the backend Alembic history.
 """
 
 import sqlalchemy as sa
 from alembic import op
 
 revision = "a895d501ea01"
-down_revision = "030caf3bf366"
+down_revision = None
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
+    schema = op.get_context().opts.get("version_table_schema")
     op.create_table(
         "dataset_release",
         sa.Column("id", sa.Uuid(), nullable=False),
@@ -35,8 +36,11 @@ def upgrade() -> None:
             "status != 'ready' OR manifest_sha256 IS NOT NULL",
             name="ck_dataset_release_ready_manifest",
         ),
+        schema=schema,
     )
 
 
 def downgrade() -> None:
-    op.drop_table("dataset_release")
+    op.drop_table(
+        "dataset_release", schema=op.get_context().opts.get("version_table_schema")
+    )
