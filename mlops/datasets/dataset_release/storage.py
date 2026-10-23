@@ -28,9 +28,7 @@ class BlobStorage(Protocol):
     ) -> dict[str, Any]:
         pass
 
-    async def download_blob(
-        self, container: str, name: str, **kwargs: Any
-    ) -> bytes:
+    async def download_blob(self, container: str, name: str, **kwargs: Any) -> bytes:
         pass
 
 
