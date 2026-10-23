@@ -28,6 +28,7 @@ from ...exceptions import (
     BlobNotFoundError,
     ConnectionError,
     BlobStorageError,
+    BlobAlreadyExistsError,
 )
 
 # Lazy-loaded logger to avoid circular imports
@@ -94,18 +95,6 @@ class BlobOperations:
         # Convert data to bytes if it's a string
         data = ValidationHelper.convert_string_data_to_bytes(data)
 
-        # Check if blob exists when overwrite is False
-        if not overwrite:
-            try:
-                self._client.head_object(Bucket=container, Key=name)
-                from ...exceptions import BlobAlreadyExistsError
-
-                raise BlobAlreadyExistsError(container, name)
-            except ClientError as e:
-                error_code = e.response.get("Error", {}).get("Code", "Unknown")
-                if error_code != "404":
-                    raise
-
         # Prepare put_object parameters
         put_params = {
             "Bucket": container,
@@ -113,6 +102,11 @@ class BlobOperations:
             "Body": data,
             "ContentType": content_type,
         }
+
+        # A separate HEAD followed by PUT lets concurrent writers replace the
+        # same key. Conditional creation must be enforced by the object store.
+        if not overwrite:
+            put_params["IfNoneMatch"] = "*"
 
         # Add metadata if provided
         if metadata:
@@ -130,7 +124,15 @@ class BlobOperations:
 
         # Upload blob
         _get_logger().info("Uploading blob to S3", container=container, blob=name)
-        response = self._client.put_object(**put_params)
+        try:
+            response = self._client.put_object(**put_params)
+        except ClientError as error:
+            if not overwrite and error.response.get("Error", {}).get("Code") in (
+                "PreconditionFailed",
+                "412",
+            ):
+                raise BlobAlreadyExistsError(container, name) from error
+            raise
 
         # Add tags if provided (separate operation in S3)
         if tags:

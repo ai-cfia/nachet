@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "name": "reviewed-seeds",
+  "version": "v1",
+  "author": "reviewer",
+  "conversion": {
+    "code_revision": "replace-with-converter-revision",
+    "settings": { "format": "PNG", "mode": "RGB" }
+  },
+  "generate_crops": true,
+  "coco": {
+    "info": { "description": "Replace the example with a reviewed COCO export" },
+    "images": [
+      {
+        "id": 1,
+        "file_name": "png/detection/0000000000000000000000000000000000000000000000000000000000000000.png",
+        "width": 640,
+        "height": 480,
+        "split": "train",
+        "sources": [
+          {
+            "original_path": "network-share/batch-001/tray-001/image.tiff",
+            "collection_date": "2026-10-22",
+            "species": "Avena sativa",
+            "batch": "batch-001",
+            "tray": "tray-001",
+            "specimen_group": "collection-001/specimen-001"
+          }
+        ]
+      }
+    ],
+    "categories": [ { "id": 1, "name": "Avena sativa" } ],
+    "annotations": [
+      {
+        "id": 1,
+        "image_id": 1,
+        "category_id": 1,
+        "bbox": [ 10.25, 20.5, 40.75, 60.25 ],
+        "iscrowd": 0
+      }
+    ]
+  }
+}
