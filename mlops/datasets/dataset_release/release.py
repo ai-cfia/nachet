@@ -272,6 +272,8 @@ class DatasetController:
                 content_type="application/json",
             )
         except BlobAlreadyExistsError:
+            # Expected for idempotent publish/retry when manifest already exists.
+            # Integrity is verified immediately below by downloading and comparing bytes.
             pass
         stored = await self.storage.download_blob(
             self.container, registration.manifest_key
