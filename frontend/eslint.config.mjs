@@ -1,14 +1,14 @@
-const globals = require("globals");
-const js = require("@eslint/js");
-const typescriptParser = require("@typescript-eslint/parser");
-const typescriptPlugin = require("@typescript-eslint/eslint-plugin");
-const reactPlugin = require("eslint-plugin-react");
-const reactHooksPlugin = require("eslint-plugin-react-hooks");
-const reactRefreshPlugin = require("eslint-plugin-react-refresh");
-const prettierPlugin = require("eslint-plugin-prettier");
-const prettierConfig = require("eslint-config-prettier");
+import globals from "globals"
+import js from "@eslint/js";
+import typescriptParser from "@typescript-eslint/parser";
+import typescriptPlugin from "@typescript-eslint/eslint-plugin";
+import eslintReact from "@eslint-react/eslint-plugin";
+import reactHooksPlugin from "eslint-plugin-react-hooks";
+import reactRefreshPlugin from "eslint-plugin-react-refresh";
+import prettierPlugin from "eslint-plugin-prettier";
+import prettierConfig from "eslint-config-prettier";
 
-module.exports = [
+export default [
   {
     ignores: [
       "**/dist",
@@ -22,6 +22,7 @@ module.exports = [
     ],
   },
   js.configs.recommended,
+  eslintReact.configs["recommended-typescript"],
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
@@ -44,14 +45,13 @@ module.exports = [
     },
     plugins: {
       "@typescript-eslint": typescriptPlugin,
-      react: reactPlugin,
       "react-hooks": reactHooksPlugin,
       "react-refresh": reactRefreshPlugin.default ?? reactRefreshPlugin,
       prettier: prettierPlugin,
     },
     rules: {
       ...typescriptPlugin.configs.recommended.rules,
-      ...reactPlugin.configs.recommended.rules,
+      ...eslintReact.configs["recommended-typescript"].rules,
       ...reactHooksPlugin.configs.recommended.rules,
       ...prettierConfig.rules,
 
