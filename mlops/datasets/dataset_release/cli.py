@@ -9,10 +9,13 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from app.datasets.contract import ReleaseSpec
-from app.datasets.release import DatasetController, ReleaseConflict, ReleaseNotReady
+from .contract import ReleaseSpec
+from .registry import registry_engine
+from .release import DatasetController, ReleaseConflict, ReleaseNotReady
+from .settings import Settings
+from .storage import S3Storage
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -34,14 +37,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 async def execute(args: argparse.Namespace) -> dict:
-    # Use the existing provider and connection configuration. No bucket/schema
-    # creation, app upload flow, or production migration is performed by this CLI.
-    from app.api.config import Settings
-    from app.blob import create_blob_storage_client
-
-    settings = Settings()
-    storage = create_blob_storage_client("s3", settings.s3_storage_config)
-    engine = create_async_engine(settings.db_conn_info["url"])
+    # Registry provisioning is an explicit MLOps operation, separate from the
+    # backend application's database and Alembic revision history.
+    settings = Settings.from_environment()
+    storage = S3Storage.from_environment()
+    engine = registry_engine(settings.database_url, settings.registry_schema)
     try:
         controller = DatasetController(
             storage, async_sessionmaker(engine), args.container
@@ -68,14 +68,15 @@ async def execute(args: argparse.Namespace) -> dict:
         return registration.training_reference()
     finally:
         await engine.dispose()
+        storage.close()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    # Match other backend command-line tools while keeping --help import-light.
+    # Parse first so --help works without credentials or database configuration.
     args = parse_args(argv)
     from dotenv import load_dotenv
 
-    load_dotenv(os.environ.get("NACHET_ENV_FILE", ".env"))
+    load_dotenv(os.environ.get("DATASET_ENV_FILE", ".env"))
     try:
         result = asyncio.run(execute(args))
     except (ReleaseConflict, ReleaseNotReady) as error:

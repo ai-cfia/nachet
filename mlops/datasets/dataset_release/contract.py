@@ -1,4 +1,4 @@
-"""The versioned release contract, independent of FiftyOne and training runtimes."""
+"""The versioned release contract, independent of the backend and trainers."""
 
 from __future__ import annotations
 
@@ -65,7 +65,6 @@ class CocoImage(BaseModel):
     height: PositiveInt
     split: Split
     sources: list[Source] = Field(default_factory=list)
-    picture_id: UUID | None = None
 
 
 class CocoCategory(BaseModel):
