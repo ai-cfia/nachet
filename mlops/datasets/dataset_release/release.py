@@ -169,6 +169,8 @@ class DatasetController:
                 self.container, key, data, overwrite=False, content_type=content_type
             )
         except BlobAlreadyExistsError:
+            # Expected for idempotent retries when the object is already present.
+            # Integrity is validated below by downloading and comparing exact bytes.
             pass
         stored = await self.storage.download_blob(self.container, key)
         if stored != data:
