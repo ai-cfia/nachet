@@ -15,7 +15,7 @@ from .contract import ReleaseSpec
 from .registry import registry_engine
 from .release import DatasetController, ReleaseConflict, ReleaseNotReady
 from .settings import Settings
-from .storage import S3Storage
+from .storage import BlobStorageAdapter
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -40,9 +40,10 @@ async def execute(args: argparse.Namespace) -> dict:
     # Registry provisioning is an explicit MLOps operation, separate from the
     # backend application's database and Alembic revision history.
     settings = Settings.from_environment()
-    storage = S3Storage.from_environment()
     engine = registry_engine(settings.database_url, settings.registry_schema)
+    storage = None
     try:
+        storage = await asyncio.to_thread(BlobStorageAdapter.from_environment)
         controller = DatasetController(
             storage, async_sessionmaker(engine), args.container
         )
@@ -68,7 +69,8 @@ async def execute(args: argparse.Namespace) -> dict:
         return registration.training_reference()
     finally:
         await engine.dispose()
-        storage.close()
+        if storage is not None:
+            await asyncio.to_thread(storage.close)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

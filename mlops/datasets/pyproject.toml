@@ -11,6 +11,8 @@ dependencies = [
     "aiosqlite>=0.21,<1",
     "alembic>=1.16.5,<2",
     "boto3>=1.40.55,<2",
+    "beartype>=0.21,<1",
+    "azure-storage-blob==12.28.0",
     "pillow==12.2.0",
     "psycopg[binary]>=3.2.10,<4",
     "pydantic==2.13.0",
@@ -26,7 +28,7 @@ dev = ["pytest>=8.4,<10", "pytest-asyncio>=1,<2", "ruff>=0.13,<1"]
 compatibility = ["datasets==4.4.1"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["dataset_release"]
+packages = ["dataset_release", "mlops_blob"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

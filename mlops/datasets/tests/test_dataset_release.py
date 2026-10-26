@@ -10,7 +10,7 @@ import sys
 from copy import deepcopy
 from io import BytesIO, StringIO
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 import pytest_asyncio
@@ -28,7 +28,15 @@ from dataset_release.reader import ReleasedDataset
 from dataset_release.registry import DatasetRelease
 from dataset_release.release import DatasetController, ReleaseConflict, ReleaseNotReady
 from dataset_release.settings import Settings
-from dataset_release.storage import BlobAlreadyExistsError, BlobNotFoundError, S3Storage
+from dataset_release.storage import BlobStorageAdapter
+from mlops_blob import create_blob_storage_client
+from mlops_blob.exceptions import BlobAlreadyExistsError, BlobNotFoundError
+
+
+def s3_storage(client):
+    """Use the copied factory and provider, replacing only its SDK transport."""
+    with patch("mlops_blob.s3.storage.create_s3_client", return_value=client):
+        return BlobStorageAdapter(create_blob_storage_client("s3", {}))
 
 
 class MemoryStorage:
@@ -129,6 +137,47 @@ async def release_env(tmp_path):
         yield controller, storage, sessions
     finally:
         await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_release_uses_copied_blob_provider_for_publication_and_reads(
+    release_env, blob_provider
+):
+    _, original_storage, sessions = release_env
+    spec = specification(original_storage)
+    blob_provider.objects.update(original_storage.objects)
+    controller = DatasetController(blob_provider.storage, sessions, "datasets")
+    # Interrupt after writing the manifest but before marking the row ready.
+    # The retry must reuse existing crops/COCO/manifest via the common conflicts.
+    with patch.object(controller, "_validate", side_effect=OSError("Interrupted")):
+        with pytest.raises(OSError, match="Interrupted"):
+            await controller.publish(spec)
+    assert (await controller.registration(spec.name, spec.version)).status == "staging"
+    interrupted_objects = dict(blob_provider.objects)
+    first = await controller.publish(spec)
+    assert first.status == "ready"
+    assert blob_provider.objects == interrupted_objects
+    saved_objects = dict(blob_provider.objects)
+    assert await controller.publish(spec) == first
+    assert blob_provider.objects == saved_objects
+
+    reader = await ReleasedDataset.open(
+        controller, spec.name, spec.version, first.manifest_sha256
+    )
+    assert len(reader.manifest.crops) == 3
+    records = [record async for record in reader.detector_records("train")]
+    crops = [record async for record in reader.classifier_records("train")]
+    assert records[0]["image_id"] == crops[0]["image_id"] == 1
+    assert (
+        records[0]["image"]["bytes"]
+        == saved_objects["datasets", spec.coco.images[0].file_name]
+    )
+    changed = specification(original_storage).model_copy(
+        update={"author": "another reviewer"}
+    )
+    with pytest.raises(ReleaseConflict):
+        await controller.publish(changed)
+    assert blob_provider.objects == saved_objects
 
 
 @pytest.mark.asyncio
@@ -418,7 +467,7 @@ async def test_s3_non_overwriting_upload_uses_atomic_condition():
     client.put_object.side_effect = ClientError(
         {"Error": {"Code": "PreconditionFailed"}}, "PutObject"
     )
-    operations = S3Storage(client)
+    operations = s3_storage(client)
     with pytest.raises(BlobAlreadyExistsError):
         await operations.upload_blob(
             "datasets", "releases/a/v1/coco.json", b"{}", overwrite=False
@@ -438,7 +487,7 @@ async def test_s3_successful_upload_preserves_overwrite_behavior():
         "LastModified": datetime.now(UTC),
         "ContentLength": 2,
     }
-    operations = S3Storage(client)
+    operations = s3_storage(client)
     result = await operations.upload_blob(
         "datasets", "file.json", b"{}", overwrite=False
     )
@@ -455,7 +504,7 @@ async def test_s3_download_closes_stream_and_translates_missing_object():
     client = Mock()
     stream = BytesIO(b"image-bytes")
     client.get_object.return_value = {"Body": stream}
-    storage = S3Storage(client)
+    storage = s3_storage(client)
     assert await storage.download_blob("datasets", "image.png") == b"image-bytes"
     assert stream.closed
     client.get_object.side_effect = ClientError(
@@ -532,7 +581,7 @@ def test_registry_configuration_is_explicit(monkeypatch):
 
 
 def test_s3_configuration_preserves_standard_region_and_credential_chain(monkeypatch):
-    from dataset_release import storage
+    from mlops_blob.s3 import client as s3_client
 
     for name in (
         "S3_REGION_NAME",
@@ -547,8 +596,12 @@ def test_s3_configuration_preserves_standard_region_and_credential_chain(monkeyp
     monkeypatch.setenv("AWS_DEFAULT_REGION", "garage")
     monkeypatch.setenv("AWS_ENDPOINT_URL_S3", "http://object-store:3900")
     client = Mock()
-    monkeypatch.setattr(storage.boto3, "client", client)
-    S3Storage.from_environment()
+    monkeypatch.setenv("DATASET_BLOB_PROVIDER", "s3")
+    monkeypatch.setattr(s3_client.boto3, "client", client)
+    storage = BlobStorageAdapter.from_environment()
     assert client.call_args.kwargs["region_name"] == "garage"
     assert client.call_args.kwargs["use_ssl"] is False
     assert "aws_access_key_id" not in client.call_args.kwargs
+    client.return_value.list_buckets.assert_not_called()
+    storage.close()
+    client.return_value.close.assert_called_once()
