@@ -10,6 +10,8 @@ from mlops_blob import BlobStorageInterface, create_blob_storage_client
 from mlops_blob.exceptions import BlobAlreadyExistsError as BlobAlreadyExistsError
 from mlops_blob.exceptions import BlobNotFoundError as BlobNotFoundError
 
+from .errors import ConfigurationError
+
 
 class BlobStorage(Protocol):
     """The two operations required by the dataset release and reader."""
@@ -28,7 +30,7 @@ def environment_flag(name: str, default: bool) -> bool:
     if value is None:
         return default
     if value.lower() not in ("true", "false", "1", "0"):
-        raise ValueError(f"{name} must be true or false")
+        raise ConfigurationError(f"{name} must be true or false")
     return value.lower() in ("true", "1")
 
 
@@ -39,7 +41,9 @@ def s3_configuration() -> dict[str, Any]:
     access_key = os.environ.get("S3_ACCESS_KEY")
     secret_key = os.environ.get("S3_SECRET_KEY")
     if bool(access_key) != bool(secret_key):
-        raise ValueError("S3_ACCESS_KEY and S3_SECRET_KEY must be supplied together")
+        raise ConfigurationError(
+            "S3_ACCESS_KEY and S3_SECRET_KEY must be supplied together"
+        )
     config: dict[str, Any] = {
         "s3_endpoint_url": endpoint,
         "s3_region_name": os.environ.get("S3_REGION_NAME")
@@ -80,12 +84,12 @@ class BlobStorageAdapter:
         elif provider == "azure":
             connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
             if not connection_string:
-                raise ValueError(
+                raise ConfigurationError(
                     "AZURE_STORAGE_CONNECTION_STRING is required for Azure"
                 )
             config = {"connection_string": connection_string}
         else:
-            raise ValueError("DATASET_BLOB_PROVIDER must be s3 or azure")
+            raise ConfigurationError("DATASET_BLOB_PROVIDER must be s3 or azure")
         return cls(create_blob_storage_client(provider, config))
 
     async def upload_blob(

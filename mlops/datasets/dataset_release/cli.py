@@ -12,6 +12,7 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from .contract import ReleaseSpec
+from .errors import ConfigurationError
 from .registry import registry_engine
 from .release import DatasetController, ReleaseConflict, ReleaseNotReady
 from .settings import Settings
@@ -81,7 +82,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     load_dotenv(os.environ.get("DATASET_ENV_FILE", ".env"))
     try:
         result = asyncio.run(execute(args))
-    except (ReleaseConflict, ReleaseNotReady) as error:
+    except (ConfigurationError, ReleaseConflict, ReleaseNotReady) as error:
         raise SystemExit(f"Dataset release failed: {error}") from None
     except Exception as error:
         # Do not echo settings or connection strings (which include credentials).
