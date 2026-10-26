@@ -161,8 +161,13 @@ class ContainerOperations:
                 metadata = {
                     tag["Key"]: tag["Value"] for tag in tag_response.get("TagSet", [])
                 }
-            except ClientError:
-                pass
+            except ClientError as e:
+                # Tag retrieval is optional for existing buckets; continue with empty metadata.
+                _get_logger().debug(
+                    "Unable to retrieve bucket tags; proceeding without metadata",
+                    bucket=name,
+                    error=str(e),
+                )
 
             container_info = ContainerInfo(
                 name=name,
