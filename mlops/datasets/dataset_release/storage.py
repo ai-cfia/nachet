@@ -7,7 +7,6 @@ import os
 from typing import Any, Protocol
 
 from mlops_blob import BlobStorageInterface, create_blob_storage_client
-from mlops_blob.exceptions import BlobNotFoundError as BlobNotFoundError
 
 from .errors import ConfigurationError
 
