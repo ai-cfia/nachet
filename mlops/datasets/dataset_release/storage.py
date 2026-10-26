@@ -1,28 +1,19 @@
-"""Small S3 adapter owned by MLOps, with atomic non-overwriting writes."""
+"""Dataset-facing adapter to the standalone copy of backend app.blob."""
 
 from __future__ import annotations
 
 import asyncio
 import os
-from contextlib import closing
 from typing import Any, Protocol
 
-import boto3
-from botocore.config import Config
-from botocore.exceptions import ClientError
-
-
-class BlobAlreadyExistsError(FileExistsError):
-    def __init__(self, container: str, key: str):
-        super().__init__(f"Object already exists: {container}/{key}")
-
-
-class BlobNotFoundError(FileNotFoundError):
-    def __init__(self, container: str, key: str):
-        super().__init__(f"Referenced object is missing: {container}/{key}")
+from mlops_blob import BlobStorageInterface, create_blob_storage_client
+from mlops_blob.exceptions import BlobAlreadyExistsError as BlobAlreadyExistsError
+from mlops_blob.exceptions import BlobNotFoundError as BlobNotFoundError
 
 
 class BlobStorage(Protocol):
+    """The two operations required by the dataset release and reader."""
+
     async def upload_blob(
         self, container: str, name: str, data: bytes, **kwargs: Any
     ) -> dict[str, Any]:
@@ -41,76 +32,77 @@ def environment_flag(name: str, default: bool) -> bool:
     return value.lower() in ("true", "1")
 
 
-class S3Storage:
-    def __init__(self, client: Any):
-        self.client = client
+def s3_configuration() -> dict[str, Any]:
+    endpoint = os.environ.get("S3_ENDPOINT_URL") or os.environ.get(
+        "AWS_ENDPOINT_URL_S3"
+    )
+    access_key = os.environ.get("S3_ACCESS_KEY")
+    secret_key = os.environ.get("S3_SECRET_KEY")
+    if bool(access_key) != bool(secret_key):
+        raise ValueError("S3_ACCESS_KEY and S3_SECRET_KEY must be supplied together")
+    config: dict[str, Any] = {
+        "s3_endpoint_url": endpoint,
+        "s3_region_name": os.environ.get("S3_REGION_NAME")
+        or os.environ.get("AWS_REGION")
+        or os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
+        "s3_use_ssl": environment_flag(
+            "S3_USE_SSL", not (endpoint or "").startswith("http://")
+        ),
+        "s3_verify": environment_flag("S3_VERIFY", True),
+        "s3_connect_timeout": 5,
+        "s3_read_timeout": 30,
+    }
+    if access_key:
+        config["s3_access_key"] = access_key
+        config["s3_secret_key"] = secret_key
+        if os.environ.get("S3_SESSION_TOKEN"):
+            config["s3_session_token"] = os.environ["S3_SESSION_TOKEN"]
+    return config
+
+
+class BlobStorageAdapter:
+    """Delegate storage behavior to a copied app.blob provider.
+
+    Those providers expose async methods around synchronous SDKs. Execute each
+    operation, including stream consumption, in a worker's event loop so that
+    storage calls do not block the controller's event loop. No backend manager,
+    application startup or global storage account registry is needed.
+    """
+
+    def __init__(self, provider: BlobStorageInterface):
+        self.provider = provider
 
     @classmethod
-    def from_environment(cls) -> S3Storage:
-        endpoint = os.environ.get("S3_ENDPOINT_URL") or os.environ.get(
-            "AWS_ENDPOINT_URL_S3"
-        )
-        options: dict[str, Any] = {
-            "endpoint_url": endpoint,
-            "region_name": os.environ.get("S3_REGION_NAME")
-            or os.environ.get("AWS_REGION")
-            or os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
-            "use_ssl": environment_flag(
-                "S3_USE_SSL", not (endpoint or "").startswith("http://")
-            ),
-            "verify": environment_flag("S3_VERIFY", True),
-            "config": Config(
-                connect_timeout=5,
-                read_timeout=30,
-                retries={"mode": "standard", "max_attempts": 3},
-            ),
-        }
-        # Otherwise leave credentials to boto3's standard AWS environment,
-        # profile, workload identity and role providers.
-        if os.environ.get("S3_ACCESS_KEY") or os.environ.get("S3_SECRET_KEY"):
-            if not os.environ.get("S3_ACCESS_KEY") or not os.environ.get(
-                "S3_SECRET_KEY"
-            ):
+    def from_environment(cls) -> BlobStorageAdapter:
+        provider = os.environ.get("DATASET_BLOB_PROVIDER", "s3").strip().lower()
+        if provider == "s3":
+            config = s3_configuration()
+        elif provider == "azure":
+            connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+            if not connection_string:
                 raise ValueError(
-                    "S3_ACCESS_KEY and S3_SECRET_KEY must be supplied together"
+                    "AZURE_STORAGE_CONNECTION_STRING is required for Azure"
                 )
-            options["aws_access_key_id"] = os.environ["S3_ACCESS_KEY"]
-            options["aws_secret_access_key"] = os.environ["S3_SECRET_KEY"]
-        return cls(boto3.client("s3", **options))
+            config = {"connection_string": connection_string}
+        else:
+            raise ValueError("DATASET_BLOB_PROVIDER must be s3 or azure")
+        return cls(create_blob_storage_client(provider, config))
 
     async def upload_blob(
         self, container: str, name: str, data: bytes, **kwargs: Any
     ) -> dict[str, Any]:
-        overwrite = kwargs.get("overwrite", True)
-        parameters = {
-            "Bucket": container,
-            "Key": name,
-            "Body": data,
-            "ContentType": kwargs.get("content_type", "application/octet-stream"),
-        }
-        if not overwrite:
-            parameters["IfNoneMatch"] = "*"
-        try:
-            response = await asyncio.to_thread(self.client.put_object, **parameters)
-        except ClientError as error:
-            code = error.response.get("Error", {}).get("Code")
-            if not overwrite and code in ("PreconditionFailed", "412"):
-                raise BlobAlreadyExistsError(container, name) from error
-            raise
-        return {"size": len(data), "etag": response.get("ETag", "")}
+        def upload() -> dict[str, Any]:
+            return asyncio.run(
+                self.provider.upload_blob(container, name, data, **kwargs)
+            )
+
+        return await asyncio.to_thread(upload)
 
     async def download_blob(self, container: str, name: str, **kwargs: Any) -> bytes:
         def download() -> bytes:
-            try:
-                response = self.client.get_object(Bucket=container, Key=name)
-            except ClientError as error:
-                if error.response.get("Error", {}).get("Code") in ("NoSuchKey", "404"):
-                    raise BlobNotFoundError(container, name) from error
-                raise
-            with closing(response["Body"]) as stream:
-                return stream.read()
+            return asyncio.run(self.provider.download_blob(container, name, **kwargs))
 
         return await asyncio.to_thread(download)
 
     def close(self) -> None:
-        self.client.close()
+        self.provider.close()

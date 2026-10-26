@@ -5,11 +5,18 @@ The dataset release component implements the reviewed-data handoff described in
 It runs after PNG preparation and FiftyOne review. Blob storage holds the dataset
 files and version snapshots; the database registers their identity and readiness.
 
-This is a standalone uv project under `mlops/datasets/`. Its publisher, S3
+This is a standalone uv project under `mlops/datasets/`. Its publisher, blob
 adapter, database registry, migration, readers, tests and examples are all owned
 by MLOps and do not import the backend application. The current external detector script,
 `nachetmodel/HFTrainer_detector_2026012601_js.py` in `nachet-model-ccds`, is unchanged.
-The S3-aware record reader is its integration point, described below.
+The storage-aware record reader is its integration point, described below.
+
+Storage providers are a temporary copy of `backend/app/blob/` in `mlops_blob/`.
+`DatasetController` uses `BlobStorageAdapter`, which delegates to that copy's
+`BlobStorageInterface` and S3/Azure implementations. The original standalone
+S3 upload/download implementation has been replaced. See
+[the copy's provenance and differences](mlops_blob/README.md) for the future
+extraction into `nachet/common`; the backend source remains unchanged.
 
 ## Files and registration
 
@@ -108,11 +115,23 @@ uv run python -m dataset_release --container training-datasets \
   validate reviewed-seeds v1 --expected-manifest-sha256 <saved-manifest-sha256>
 ```
 
+`DATASET_BLOB_PROVIDER` selects `s3` (the default) or `azure`.
 For S3, use boto3's standard AWS credentials/role providers or supply
 `S3_ACCESS_KEY` and `S3_SECRET_KEY` together. Optional settings are
 `S3_REGION_NAME`, `S3_ENDPOINT_URL`, `S3_USE_SSL` and `S3_VERIFY`.
-`AWS_ENDPOINT_URL_S3`, `AWS_REGION` and `AWS_DEFAULT_REGION` are also supported. The standalone S3
+Temporary explicit credentials also accept `S3_SESSION_TOKEN`.
+`AWS_ENDPOINT_URL_S3`, `AWS_REGION` and `AWS_DEFAULT_REGION` are also supported. The S3
 adapter performs conditional writes and checksums without importing `app.blob`.
+
+For Azure, set `DATASET_BLOB_PROVIDER=azure` and
+`AZURE_STORAGE_CONNECTION_STRING`. Use an existing container and the same
+publish/inspect/validate commands. The copied Azure provider uses the SDK's
+non-overwriting upload and translates conflicts into the common blob exception.
+The database settings, release format and training reader contract are the same
+for both providers. For library use, pass a copied provider to
+`BlobStorageAdapter(create_blob_storage_client(provider, config))`, or use
+`BlobStorageAdapter.from_environment()`; this replaces the former `S3Storage`
+helper. Close the adapter when the job finishes.
 
 The commands output JSON containing the dataset UUID, version, manifest
 location/hash and the value to store in `Model.dataset`. `inspect` also returns
@@ -154,17 +173,17 @@ objects. Argo execution location and its credentials/mounts are not deployed her
 ## Training integration
 
 `dataset_release.reader.ReleasedDataset` resolves a verified release and fetches
-detector images or classifier crops one at a time through the MLOps S3 adapter. It does
+detector images or classifier crops one at a time through the MLOps blob adapter. It does
 not require a shared FiftyOne PVC or create a permanent local image collection.
 Full verification at open reads the entire release; each later sample read also
 verifies its checksum. Measure those reads and representative training epochs
-before introducing a cache or staging layer. Blocking boto3 reads/writes run in
+before introducing a cache or staging layer. Blocking provider reads/writes run in
 worker threads so they do not block the asynchronous controller.
 
 ```python
 from dataset_release.reader import ReleasedDataset
 
-# controller is a DatasetController configured with the job's S3Storage,
+# controller is a DatasetController configured with the job's BlobStorageAdapter,
 # standalone registry session factory and dataset container.
 reader = await ReleasedDataset.open(
     controller, "reviewed-seeds", "v1", expected_manifest_sha256=saved_hash
@@ -215,6 +234,7 @@ splits. Without the variable, only that external compatibility test is skipped.
 The suite exercises publication, interrupted uploads, identical and conflicting
 retries, concurrent publishers, corrected versions, missing/corrupt files,
 provenance, split leakage, crop dimensions, negative detection images, the
-additive migration and atomic S3 request behavior. It uses temporary SQLite
-databases and an in-memory object store; it does not establish production S3
+additive migration and atomic S3 request behavior. It also publishes and recovers
+releases through the actual copied S3/Azure providers using fake SDK transports.
+It uses temporary SQLite databases and in-memory object stores; it does not establish production S3/Azure
 compatibility, live PostgreSQL deployment, GPU training quality or throughput.

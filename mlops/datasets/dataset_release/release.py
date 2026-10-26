@@ -15,6 +15,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from mlops_blob.exceptions import BlobAlreadyExistsError
+
 from .contract import (
     CropReference,
     FileReference,
@@ -25,7 +27,7 @@ from .contract import (
     sha256,
 )
 from .registry import DatasetRelease
-from .storage import BlobAlreadyExistsError, BlobStorage
+from .storage import BlobStorage
 
 
 class ReleaseConflict(ValueError):
