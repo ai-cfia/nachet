@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, use } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NachetAuthContextValue } from "../NachetAuthContext";
@@ -89,7 +89,7 @@ const TestAuthContext = createContext<NachetAuthContextValue | undefined>(
 );
 
 const TestConsumer = () => {
-  const auth = useContext(TestAuthContext);
+  const auth = use(TestAuthContext);
 
   return (
     <div>
@@ -108,7 +108,7 @@ const TestConsumer = () => {
 };
 
 const TokenConsumer = () => {
-  const auth = useContext(TestAuthContext);
+  const auth = use(TestAuthContext);
 
   return (
     <button
@@ -131,7 +131,7 @@ const TokenCaptureConsumer = ({
   forceRefresh?: boolean;
   scopes?: string[];
 }) => {
-  const auth = useContext(TestAuthContext);
+  const auth = use(TestAuthContext);
 
   return (
     <button
@@ -153,7 +153,7 @@ const TokenCaptureConsumer = ({
 };
 
 const ConcurrentTokenConsumer = () => {
-  const auth = useContext(TestAuthContext);
+  const auth = use(TestAuthContext);
 
   return (
     <button
@@ -178,7 +178,7 @@ const ConcurrentTokenConsumer = () => {
 };
 
 const OrderedScopesConsumer = () => {
-  const auth = useContext(TestAuthContext);
+  const auth = use(TestAuthContext);
 
   return (
     <div>

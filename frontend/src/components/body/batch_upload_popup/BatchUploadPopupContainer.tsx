@@ -97,7 +97,7 @@ export const BatchUploadPopupContainer = (
   const [magnification, setMagnification] = useState<number>(1);
 
   // Track if user has manually edited folder name
-  const folderNameManuallyEdited = useRef<boolean>(false);
+  const folderNameManuallyEditedRef = useRef<boolean>(false);
 
   // Validation error states
   const [folderNameError, setFolderNameError] = useState<string>("");
@@ -233,7 +233,7 @@ export const BatchUploadPopupContainer = (
 
   // Auto-prefill folder name when both genus and species are set (only if not manually edited)
   useEffect(() => {
-    if (suggestedFolderName && !folderNameManuallyEdited.current) {
+    if (suggestedFolderName && !folderNameManuallyEditedRef.current) {
       setFolderName(suggestedFolderName);
     }
   }, [suggestedFolderName]);
@@ -336,7 +336,7 @@ export const BatchUploadPopupContainer = (
     setMagnification(1);
     setFiles(null);
     setFileCount(0);
-    folderNameManuallyEdited.current = false;
+    folderNameManuallyEditedRef.current = false;
     // Reset folder creation state
     setCreatedFolderId("");
     setFolderNameError("");
@@ -635,7 +635,7 @@ export const BatchUploadPopupContainer = (
     onFilesSelected: handleFilesSelected,
     onFolderNameChange: (value: string) => {
       setFolderName(value);
-      folderNameManuallyEdited.current = true;
+      folderNameManuallyEditedRef.current = true;
       if (folderNameError) setFolderNameError("");
       // Reset created folder ID when folder name changes
       if (createdFolderId) setCreatedFolderId("");

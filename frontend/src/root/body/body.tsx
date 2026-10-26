@@ -97,7 +97,7 @@ const Body: React.FC<params> = (props) => {
   } = useDirectoryModalStore();
 
   // Folder store
-  const { curDir, setCurDir } = useFolderStore();
+  const { curDir } = useFolderStore();
 
   // Workflow store actions
   const { addWorkflow, removeWorkflow, getWorkflowByImageIndex } =
@@ -144,16 +144,15 @@ const Body: React.FC<params> = (props) => {
   }, [currentImageData]);
 
   // Get active inference result for label occurrences
+  const activeWorkflowId = currentImageData?.activeWorkflowId;
   const labelOccurrences = useMemo(() => {
-    if (!currentImageData?.activeWorkflowId) return {};
+    if (!activeWorkflowId) return {};
 
     const inferenceResult =
-      useInferenceResultsStore
-        .getState()
-        .getResult(currentImageData.activeWorkflowId) ?? null;
+      useInferenceResultsStore.getState().getResult(activeWorkflowId) ?? null;
 
     return getLabelOccurrence(inferenceResult);
-  }, [currentImageData?.activeWorkflowId]);
+  }, [activeWorkflowId]);
 
   const decodedTiff = useDecoderTiff(imageTiff);
   const backendUrl = useBackendUrl();
@@ -384,6 +383,8 @@ const Body: React.FC<params> = (props) => {
         setReadAzureStorage(!readAzureStorage);
 
         // Remove workflow from store after completion
+        // Finish global store cleanup even if this view unmounts first.
+        // eslint-disable-next-line @eslint-react/web-api-no-leaked-timeout
         setTimeout(() => {
           removeWorkflow(workflowId);
         }, 1000); // Keep for 1 second to show "completed" status
@@ -596,7 +597,9 @@ const Body: React.FC<params> = (props) => {
     }
 
     // Don't override if user has already selected a folder
-    if (curDir !== null) {
+    const { curDir: selectedFolder, setCurDir: selectFolder } =
+      useFolderStore.getState();
+    if (selectedFolder !== null) {
       return;
     }
 
@@ -610,9 +613,8 @@ const Body: React.FC<params> = (props) => {
     );
 
     if (defaultFolder) {
-      setCurDir(defaultFolder);
+      selectFolder(defaultFolder);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [azureStorageDir, accounts]);
 
   return (

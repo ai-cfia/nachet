@@ -929,6 +929,7 @@ export function validateApiResponse<T>(
       );
       throw new Error(
         `Invalid API response from ${apiName}: ${error.issues.map((e) => e.message).join(", ")}`,
+        { cause: error },
       );
     }
     throw error;

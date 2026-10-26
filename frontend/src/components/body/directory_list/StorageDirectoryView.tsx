@@ -104,7 +104,7 @@ const StorageDirectoryView: React.FC<params> = (props) => {
             {azureStorageDir.map(
               (item: AzureStorageDirectoryItem, index: number) => (
                 <TableRow
-                  key={index}
+                  key={item.folderId}
                   sx={{
                     backgroundColor:
                       curDir?.folderId === item.folderId

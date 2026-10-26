@@ -96,7 +96,7 @@ const ImageCache: React.FC = () => {
       >
         <Table sx={{ borderBottom: 0 }}>
           <TableBody sx={{ borderBottom: 0 }}>
-            {savedImages.map((item: any, i) => {
+            {savedImages.map((item: any) => {
               const workflow = getWorkflowByImageIndex(item.index);
               const isProcessing =
                 workflow?.status === "processing" ||
@@ -108,7 +108,7 @@ const ImageCache: React.FC = () => {
 
               return (
                 <TableRow
-                  key={i}
+                  key={item.index}
                   sx={{
                     backgroundColor:
                       item.index === imageIndex
