@@ -7,6 +7,11 @@ on:
     paths:
       - "mlops/preparation/**"
       - ".github/workflows/mlops-preparation-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "mlops/preparation/**"
+      - ".github/workflows/mlops-preparation-tests.yml"
   workflow_dispatch:
 
 permissions:
