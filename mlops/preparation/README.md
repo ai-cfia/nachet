@@ -69,6 +69,9 @@ rename the PNG for an unchanged raw image.
 
 ## Index contents
 
+Each image records `image_sha256`, the SHA-256 of its PNG bytes. This is the
+same hash used in `file_name`; it identifies the PNG rather than the raw file.
+
 Each image's `sources` list records the species, the path relative to the
 collection, the raw file's SHA-256 and its legacy MD5. Batch, tray and specimen
 meaning is not inferred from folder names. With `--raw-prefix`, each source
