@@ -177,7 +177,8 @@ def prepare_images(
             raise ValueError(f"Image escapes the collection: {relative}")
         raw_bytes = path.read_bytes()
         png_bytes, width, height = to_png(raw_bytes, relative)
-        key = f"png/detection/{hashlib.sha256(png_bytes).hexdigest()}.png"
+        image_sha256 = hashlib.sha256(png_bytes).hexdigest()
+        key = f"png/detection/{image_sha256}.png"
         source = {
             "path": relative.as_posix(),
             "species": species,
@@ -190,6 +191,7 @@ def prepare_images(
             key,
             {
                 "file_name": key,
+                "image_sha256": image_sha256,
                 "width": width,
                 "height": height,
                 "split": image_split,
