@@ -19,6 +19,7 @@ on:
       - "mlops/training/**"
       - "mlops/export/**"
       - "mlops/datasets/**"
+      - "mlops/blob/**"
       - ".github/workflows/mlops-lint.yml"
   push:
     branches:
@@ -27,6 +28,7 @@ on:
       - "mlops/training/**"
       - "mlops/export/**"
       - "mlops/datasets/**"
+      - "mlops/blob/**"
       - ".github/workflows/mlops-lint.yml"
   workflow_dispatch:
 
@@ -55,8 +57,8 @@ jobs:
         run: uv sync --locked
       - name: Check Python
         run: |
-          uv run --no-sync ruff check dataset_release mlops_blob migrations tests
-          uv run --no-sync ruff format --check dataset_release mlops_blob migrations tests
+          uv run --no-sync ruff check dataset_release migrations tests
+          uv run --no-sync ruff format --check dataset_release migrations tests
       - name: Test standalone release tools
         run: uv run --no-sync pytest
 
