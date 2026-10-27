@@ -13,10 +13,14 @@ from prepare_images import save_coco
 PROMPTS = ("foreground object", "thick long seed", "insect")
 SCORE_THRESHOLD = 0.5
 MASK_THRESHOLD = 0.5
+# Notebook 1.02 accepts a prompt's result when it has 1 to 9 boxes.
+MAX_BOXES = 9
+HIGH_BIT_MODES = {"I", "F", "I;16", "I;16B", "I;16L"}
 
 
 class Sam3Predictor:
     def __init__(self, model_path: Path, device: str):
+        # Imported here so the rest of the module works without the sam3 group.
         import torch
         from transformers import Sam3Model, Sam3Processor
 
@@ -57,6 +61,7 @@ class Sam3Predictor:
 def coco_box(
     box: list[float], width: int, height: int, padding: int
 ) -> list[float] | None:
+    """Clip a SAM3 XYXY box to the image and pad it; None if nothing is left."""
     if len(box) != 4 or not all(math.isfinite(value) for value in box):
         return None
     x0, y0, x1, y1 = box
@@ -69,7 +74,49 @@ def coco_box(
     return [left, top, right - left, bottom - top]
 
 
+def contains(outer: list[float], inner: list[float]) -> bool:
+    """Whether COCO box `inner` lies within `outer` (notebook's box_in_box_coco)."""
+    return (
+        outer[0] <= inner[0]
+        and outer[1] <= inner[1]
+        and outer[0] + outer[2] >= inner[0] + inner[2]
+        and outer[1] + outer[3] >= inner[1] + inner[3]
+    )
+
+
+def first_accepted(predictor, image: Image.Image) -> tuple[str, list[list[float]]]:
+    """Try the prompts in order; return the first result with 1 to 9 boxes.
+
+    If no prompt is accepted, the last prompt's result is returned for review.
+    """
+    for prompt in PROMPTS[:-1]:
+        boxes = predictor(image, prompt)
+        if 0 < len(boxes) <= MAX_BOXES:
+            return prompt, boxes
+    prompt = PROMPTS[-1]
+    return prompt, predictor(image, prompt)
+
+
+def review_outcome(boxes: list, padded: list) -> tuple[str, str | None]:
+    """Return (prelabel_status, prelabel_reason) for one image's detections."""
+    if not boxes:
+        return "needs_review", "no_detections"
+    if len(boxes) > MAX_BOXES:
+        return "needs_review", "too_many_detections"
+    if len(padded) != len(boxes):
+        return "needs_review", "invalid_boxes"
+    if any(
+        contains(outer, inner)
+        for outer in padded
+        for inner in padded
+        if outer is not inner
+    ):
+        return "draft", "nested_boxes"
+    return "draft", None
+
+
 def prelabel(coco: dict, media_root: Path, predictor, *, padding: int = 3) -> dict:
+    """Return a copy of an unannotated index with draft boxes and review fields."""
     if coco["annotations"]:
         raise ValueError(
             "Pre-labeling requires an unannotated index; refusing to replace labels"
@@ -83,46 +130,28 @@ def prelabel(coco: dict, media_root: Path, predictor, *, padding: int = 3) -> di
         with Image.open(path) as image:
             if image.size != (record["width"], record["height"]):
                 raise ValueError(f"COCO dimensions do not match {path}")
-            if image.mode in {"I", "F", "I;16", "I;16B", "I;16L"}:
+            if image.mode in HIGH_BIT_MODES:
                 record.update(
                     prelabel_status="needs_review",
                     prelabel_reason="high_bit_depth",
                     prelabel_prompt=None,
                 )
                 continue
-            image = image.convert("RGB")
-            for prompt in PROMPTS:
-                boxes = predictor(image, prompt)
-                if 0 < len(boxes) < 10:
-                    break
-        record["prelabel_status"] = "draft" if 0 < len(boxes) < 10 else "needs_review"
-        record["prelabel_prompt"] = prompt
-        record["prelabel_reason"] = None
-        if record["prelabel_status"] == "needs_review":
-            record["prelabel_reason"] = (
-                "no_detections" if not boxes else "too_many_detections"
+            prompt, boxes = first_accepted(predictor, image.convert("RGB"))
+        padded = [
+            box
+            for box in (
+                coco_box(box, record["width"], record["height"], padding)
+                for box in boxes
             )
-        candidates = [
-            coco_box(box, record["width"], record["height"], padding) for box in boxes
+            if box is not None
         ]
-        padded = [box for box in candidates if box is not None]
-        if len(padded) != len(candidates) and record["prelabel_status"] == "draft":
-            record.update(
-                prelabel_status="needs_review", prelabel_reason="invalid_boxes"
-            )
-        if record["prelabel_status"] == "draft":
-            for outer in padded:
-                for inner in padded:
-                    if outer is inner:
-                        continue
-                    if (
-                        outer[0] <= inner[0]
-                        and outer[1] <= inner[1]
-                        and outer[0] + outer[2] >= inner[0] + inner[2]
-                        and outer[1] + outer[3] >= inner[1] + inner[3]
-                    ):
-                        record["prelabel_reason"] = "nested_boxes"
+        status, reason = review_outcome(boxes, padded)
+        record.update(
+            prelabel_status=status, prelabel_prompt=prompt, prelabel_reason=reason
+        )
         for box in padded:
+            # Annotation IDs run across the whole dataset.
             result["annotations"].append(
                 {
                     "id": len(result["annotations"]),
@@ -166,9 +195,8 @@ def main(argv: list[str] | None = None) -> None:
         "precision": "bf16" if args.device == "cuda" else "fp32",
     }
     save_coco(args.output, result)
-    print(
-        f"Wrote {len(result['annotations'])} draft boxes for {len(result['images'])} images"
-    )
+    boxes, images = len(result["annotations"]), len(result["images"])
+    print(f"Wrote {boxes} draft boxes for {images} images")
 
 
 if __name__ == "__main__":

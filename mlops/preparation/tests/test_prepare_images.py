@@ -5,42 +5,17 @@ import json
 import pytest
 from PIL import Image
 
-from prelabel import coco_box, prelabel
 from prepare_images import main, prepare_images, save_coco
 
 
-@pytest.fixture
-def intake(tmp_path):
-    source = tmp_path / "source"
-    for name, mode, color in [
-        ("Avena fatua/batch-01/tray-a/a.tiff", "RGB", "red"),
-        ("Zea mays/batch-01/tray-b/b.jpg", "RGB", "green"),
-        ("Avena fatua/other/c.png", "L", 127),
-        ("Avena fatua/other/d.tiff", "I;16", 1000),
-    ]:
-        path = source / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        Image.new(mode, (100, 80), color).save(path)
-    return source, tmp_path / "prepared"
-
-
-def prepare(intake):
-    return prepare_images(
-        *intake,
-        code_revision="test-revision",
-        split="train",
-        raw_prefix="raw/intake-01/Training",
-    )
-
-
-def test_conversion_preserves_raw_pixels_lineage_and_split(intake):
+def test_conversion_preserves_raw_pixels_lineage_and_split(prepare, intake):
     source, output = intake
     before = {
         p.relative_to(source).as_posix(): p.read_bytes()
         for p in source.rglob("*")
         if p.is_file()
     }
-    coco = prepare(intake)
+    coco = prepare()
     assert len(coco["images"]) == 4
     assert coco["annotations"] == []
     assert [item["name"] for item in coco["categories"]] == ["Avena fatua", "Zea mays"]
@@ -76,15 +51,15 @@ def test_conversion_preserves_raw_pixels_lineage_and_split(intake):
         for p in source.rglob("*")
         if p.is_file()
     }
-    assert prepare(intake) == coco
+    assert prepare() == coco
 
 
-def test_identical_pngs_share_bytes_but_keep_both_source_paths(intake):
+def test_identical_pngs_share_bytes_but_keep_both_source_paths(prepare, intake):
     source, _ = intake
     copy = source / "Avena fatua/batch-02/tray-c/copy.png"
     copy.parent.mkdir(parents=True)
     copy.write_bytes((source / "Avena fatua/other/c.png").read_bytes())
-    result = prepare(intake)
+    result = prepare()
     assert len(result["images"]) == 4
     duplicates = [image for image in result["images"] if len(image["sources"]) == 2]
     assert len(duplicates) == 1
@@ -94,13 +69,13 @@ def test_identical_pngs_share_bytes_but_keep_both_source_paths(intake):
     }
 
 
-def test_duplicate_png_cannot_have_different_species(intake):
+def test_duplicate_png_cannot_have_different_species(prepare, intake):
     source, _ = intake
     (source / "Zea mays/copy.png").write_bytes(
         (source / "Avena fatua/other/c.png").read_bytes()
     )
     with pytest.raises(ValueError, match="conflicting species or splits"):
-        prepare(intake)
+        prepare()
 
 
 def test_unknown_split_stays_unset_and_s3_is_optional(intake):
@@ -138,7 +113,7 @@ def test_cli_reads_species_folders_without_an_intake_file(intake, capsys):
     assert "Prepared 4 images from 4 sources" in capsys.readouterr().out
 
 
-def test_hidden_files_are_skipped_and_empty_species_are_retained(intake):
+def test_hidden_files_are_skipped_and_empty_species_are_retained(prepare, intake):
     source, _ = intake
     (source / "Empty species").mkdir()
     for name in [
@@ -150,7 +125,7 @@ def test_hidden_files_are_skipped_and_empty_species_are_retained(intake):
         path.parent.mkdir(parents=True, exist_ok=True)
         Image.new("RGB", (2, 2), "blue").save(path)
     (source / "Avena fatua/notes.txt").write_text("metadata, not an image")
-    result = prepare(intake)
+    result = prepare()
     assert len(result["images"]) == 4
     assert [category["name"] for category in result["categories"]] == [
         "Avena fatua",
@@ -159,17 +134,17 @@ def test_hidden_files_are_skipped_and_empty_species_are_retained(intake):
     ]
 
 
-def test_source_root_images_require_a_species_folder(intake):
+def test_source_root_images_require_a_species_folder(prepare, intake):
     source, output = intake
     Image.new("RGB", (2, 2)).save(source / "unlabelled.png")
-    with pytest.raises(ValueError, match="species subfolder: .*unlabelled.png"):
-        prepare(intake)
+    with pytest.raises(ValueError, match="species folder: .*unlabelled.png"):
+        prepare()
     assert not output.exists()
 
 
 def test_output_cannot_be_inside_the_input_tree(intake):
     source, _ = intake
-    with pytest.raises(ValueError, match="outside the source root"):
+    with pytest.raises(ValueError, match="outside the collection"):
         prepare_images(source, source / "generated", code_revision="test")
     assert not (source / "generated").exists()
 
@@ -177,7 +152,7 @@ def test_output_cannot_be_inside_the_input_tree(intake):
 def test_empty_species_tree_is_reported(tmp_path):
     source = tmp_path / "source"
     (source / "Avena fatua").mkdir(parents=True)
-    with pytest.raises(ValueError, match="No images found in species subfolders"):
+    with pytest.raises(ValueError, match="No images found in species folders"):
         prepare_images(source, tmp_path / "out", code_revision="test")
 
 
@@ -194,11 +169,11 @@ def test_invalid_split_is_not_recorded(intake):
         prepare_images(*intake, code_revision="test", split="unknown")
 
 
-def test_corrupt_input_is_named_and_cannot_replace_working_coco(intake):
+def test_corrupt_input_is_named_and_cannot_replace_working_coco(prepare, intake):
     source, output = intake
     (source / "Avena fatua/batch-01/tray-a/a.tiff").write_bytes(b"broken TIFF")
     with pytest.raises(OSError, match="Avena fatua/batch-01/tray-a/a.tiff"):
-        prepare(intake)
+        prepare()
     save_coco(output / "index.json", {"annotations": ["human correction"]})
     with pytest.raises(ValueError, match="Refusing to replace"):
         save_coco(output / "index.json", {"annotations": []})
@@ -219,7 +194,7 @@ def test_png_encoding_error_names_the_source_file(tmp_path, mode):
 
 
 @pytest.mark.parametrize("kind", ["file", "species_folder"])
-def test_source_symlinks_cannot_escape_the_input_tree(intake, tmp_path, kind):
+def test_source_symlinks_cannot_escape_the_input_tree(prepare, intake, tmp_path, kind):
     source, output = intake
     outside = tmp_path / "outside"
     outside.mkdir()
@@ -229,7 +204,7 @@ def test_source_symlinks_cannot_escape_the_input_tree(intake, tmp_path, kind):
     else:
         (source / "Outside species").symlink_to(outside, target_is_directory=True)
     with pytest.raises(ValueError, match="escapes"):
-        prepare(intake)
+        prepare()
     assert not (output / "index.coco.json").exists()
 
 
@@ -281,25 +256,6 @@ def test_high_bit_colour_tiff_is_rejected_before_writing_png(tmp_path):
         prepare_images(source, tmp_path / "prepared", code_revision="test")
     assert not list((tmp_path / "prepared").glob("**/*.png"))
     assert path.read_bytes().endswith(pixels)
-
-
-@pytest.fixture
-def automatic_collection(tmp_path):
-    root = tmp_path / "collection"
-    for index, relative in enumerate(
-        [
-            "Training/A/seed.tiff",
-            "Training/B/seed.tiff",
-            "Training/C/seed.tiff",
-            "Validation/A/seed.tiff",
-            "Validation/C/seed.tiff",
-            "D/tray/seed.tiff",
-        ]
-    ):
-        path = root / relative
-        path.parent.mkdir(parents=True, exist_ok=True)
-        Image.new("RGB", (8, 6), (index * 30, 10, 20)).save(path)
-    return root, tmp_path / "prepared"
 
 
 def test_automatic_layout_shares_categories_and_preserves_mixed_splits(
@@ -372,7 +328,9 @@ def test_automatic_layout_rejects_an_image_in_training_and_validation(
 
 
 def test_global_split_cannot_override_discovered_split_folders(automatic_collection):
-    with pytest.raises(ValueError, match="--split cannot override"):
+    with pytest.raises(
+        ValueError, match="Cannot set a split for a collection with split folders"
+    ):
         prepare_images(*automatic_collection, code_revision="test", split="train")
 
 
@@ -392,8 +350,49 @@ def test_automatic_split_folder_cannot_be_an_escaping_symlink(
     outside = tmp_path / "outside"
     (root / "Training").rename(outside)
     (root / "Training").symlink_to(outside, target_is_directory=True)
-    with pytest.raises(ValueError, match="Split folder escapes"):
+    with pytest.raises(ValueError, match="Split folder escapes the collection"):
         prepare_images(*automatic_collection, code_revision="test")
+
+
+def test_empty_split_symlink_outside_collection_is_rejected(
+    automatic_collection, tmp_path
+):
+    root, output = automatic_collection
+    outside = tmp_path / "empty-outside"
+    outside.mkdir()
+    (root / "Test").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(ValueError, match="Split folder escapes the collection"):
+        prepare_images(root, output, code_revision="test")
+    assert not output.exists()
+
+
+def test_conversion_reads_the_file_that_was_resolved(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    root = (tmp_path / "collection").resolve()
+    (root / "Avena fatua").mkdir(parents=True)
+    inside = root / ".inside.png"
+    outside = tmp_path / "outside.png"
+    Image.new("RGB", (8, 6), "red").save(inside)
+    Image.new("RGB", (8, 6), "blue").save(outside)
+    alias = root / "Avena fatua/seed.png"
+    alias.symlink_to(inside)
+    original_resolve = Path.resolve
+    retargeted = []
+
+    def retarget(path, *args, **kwargs):
+        resolved = original_resolve(path, *args, **kwargs)
+        if path == alias and not retargeted:
+            alias.unlink()
+            alias.symlink_to(outside)
+            retargeted.append(True)
+        return resolved
+
+    monkeypatch.setattr(Path, "resolve", retarget)
+    result = prepare_images(root, tmp_path / "prepared", code_revision="test")
+    assert retargeted
+    source = result["images"][0]["sources"][0]
+    assert source["raw_sha256"] == hashlib.sha256(inside.read_bytes()).hexdigest()
 
 
 @pytest.mark.parametrize(
@@ -432,185 +431,3 @@ def test_species_folders_that_differ_only_in_case_are_rejected(
     (root / "Validation/C").rename(root / "Validation/c")
     with pytest.raises(ValueError, match="differ only in case: 'C', 'c'"):
         prepare_images(*automatic_collection, code_revision="test")
-
-
-def draft_index(intake):
-    coco = prepare(intake)
-    coco["images"] = [
-        image
-        for image in coco["images"]
-        if not image["sources"][0]["path"].endswith("d.tiff")
-    ]
-    return coco
-
-
-def test_prelabel_assigns_unique_ids_padded_boxes_and_species(intake):
-    coco = draft_index(intake)
-    calls = []
-
-    def predict(image, prompt):
-        calls.append((image.size, prompt))
-        return [[10.5, 20.25, 30.75, 40.5], [0, 0, 2, 3]]
-
-    coco["images"][0]["prelabel_reason"] = "old warning"
-    result = prelabel(coco, intake[1], predict)
-    assert all(image["prelabel_reason"] is None for image in result["images"])
-    assert len(calls) == 3
-    assert [annotation["id"] for annotation in result["annotations"]] == list(range(6))
-    assert {annotation["image_id"] for annotation in result["annotations"]} == {
-        image["id"] for image in coco["images"]
-    }
-    assert result["annotations"][0]["bbox"] == [7.5, 17.25, 29.25, 29.25]
-    assert result["annotations"][1]["bbox"] == [0, 0, 8, 9]
-    by_id = {image["id"]: image for image in result["images"]}
-    names = {category["id"]: category["name"] for category in result["categories"]}
-    for annotation in result["annotations"]:
-        assert (
-            names[annotation["category_id"]]
-            == by_id[annotation["image_id"]]["sources"][0]["species"]
-        )
-    for before, after in zip(coco["images"], result["images"]):
-        assert before["sources"] == after["sources"]
-        assert before["split"] == after["split"]
-    assert coco["annotations"] == []
-
-
-def test_prompt_fallback_and_empty_image_are_retained(intake):
-    coco = draft_index(intake)
-    calls = []
-
-    def predict(image, prompt):
-        calls.append(prompt)
-        return []
-
-    result = prelabel(coco, intake[1], predict)
-    assert len(calls) == 9
-    assert result["annotations"] == []
-    assert len(result["images"]) == 3
-    assert all(image["prelabel_status"] == "needs_review" for image in result["images"])
-
-
-def test_prelabel_cannot_replace_existing_labels(intake):
-    coco = prepare(intake)
-    coco["annotations"] = [{"id": 10}]
-    with pytest.raises(ValueError, match="refusing to replace labels"):
-        prelabel(coco, intake[1], lambda *args: [])
-
-
-def test_high_bit_depth_images_remain_for_review_without_stopping_the_batch(intake):
-    calls = []
-    result = prelabel(
-        prepare(intake), intake[1], lambda *args: calls.append(1) or [[1, 1, 3, 3]]
-    )
-    high_bit = next(
-        i for i in result["images"] if i["sources"][0]["path"].endswith("d.tiff")
-    )
-    assert high_bit["prelabel_status"] == "needs_review"
-    assert high_bit["prelabel_reason"] == "high_bit_depth"
-    assert high_bit["prelabel_prompt"] is None
-    assert len(calls) == 3
-    assert high_bit["id"] not in {a["image_id"] for a in result["annotations"]}
-
-
-@pytest.mark.parametrize(
-    "box", [[110, 10, 120, 20], [1, 1, 1, 2], [0, 0, float("nan"), 20]]
-)
-def test_invalid_boxes_keep_valid_detections_and_mark_the_image_for_review(intake, box):
-    coco = draft_index(intake)
-    result = prelabel(coco, intake[1], lambda *args: [[10, 10, 30, 30], box])
-    assert len(result["annotations"]) == len(coco["images"])
-    assert all(i["prelabel_status"] == "needs_review" for i in result["images"])
-    assert all(i["prelabel_reason"] == "invalid_boxes" for i in result["images"])
-
-
-@pytest.mark.parametrize("count", [10, 11])
-def test_too_many_detections_reason_survives_invalid_geometry(intake, count):
-    coco = draft_index(intake)
-    boxes = [[10, 10, 30, 30]] * (count - 1) + [[110, 10, 120, 20]]
-    result = prelabel(coco, intake[1], lambda *args: boxes)
-    assert all(i["prelabel_status"] == "needs_review" for i in result["images"])
-    assert all(i["prelabel_reason"] == "too_many_detections" for i in result["images"])
-    assert len(result["annotations"]) == len(coco["images"]) * (count - 1)
-
-
-@pytest.mark.parametrize(
-    "box, expected",
-    [
-        ([-0.4, 10, 50, 60], [0, 7, 56, 59]),
-        ([10, 10, 100.3, 60], [7, 7, 93, 59]),
-        ([0, 0, 101, 80], [0, 0, 100, 80]),
-    ],
-)
-def test_edge_predictions_are_clipped(box, expected):
-    assert coco_box(box, 100, 80, 3) == expected
-
-
-def test_nested_drafts_retain_the_notebook_warning(intake):
-    coco = draft_index(intake)
-    result = prelabel(
-        coco, intake[1], lambda image, prompt: [[0, 0, 50, 60], [10, 10, 30, 30]]
-    )
-    assert all(image["prelabel_status"] == "draft" for image in result["images"])
-    assert all(image["prelabel_reason"] == "nested_boxes" for image in result["images"])
-    assert len(result["annotations"]) == 6
-
-
-def test_prelabel_cli_records_run_options_once(intake, tmp_path, monkeypatch):
-    import json
-
-    import prelabel as command
-
-    source = tmp_path / "index.json"
-    save_coco(source, draft_index(intake))
-    output = tmp_path / "draft.json"
-    monkeypatch.setattr(
-        command, "Sam3Predictor", lambda *args: lambda image, prompt: []
-    )
-    command.main(
-        [
-            str(source),
-            str(intake[1]),
-            str(output),
-            "--model-path",
-            "/models/sam3",
-            "--model-revision",
-            "test-weights",
-            "--device",
-            "cpu",
-            "--padding",
-            "4",
-        ]
-    )
-    result = json.loads(output.read_text())
-    assert result["info"]["prelabel"] == {
-        "model_path": "/models/sam3",
-        "model_revision": "test-weights",
-        "padding": 4,
-        "device": "cpu",
-        "precision": "fp32",
-    }
-    assert len(result["images"]) == 3
-
-
-def test_automatic_collection_keeps_labels_and_splits_through_prelabel(
-    automatic_collection,
-):
-    root, output = automatic_collection
-    index = prepare_images(
-        root, output, code_revision="test", raw_prefix="raw/collection"
-    )
-    draft = prelabel(index, output, lambda *args: [[1, 1, 3, 3]])
-    images = {i["id"]: i for i in draft["images"]}
-    classes = {c["id"]: c["name"] for c in draft["categories"]}
-    c_splits = set()
-    for box in draft["annotations"]:
-        image = images[box["image_id"]]
-        source = image["sources"][0]
-        assert classes[box["category_id"]] == source["species"]
-        assert source["raw_key"] == "raw/collection/" + source["path"]
-        if source["species"] == "C":
-            assert box["category_id"] == 3
-            c_splits.add(image["split"])
-    assert c_splits == {"train", "validation"}
-    assert len(draft["annotations"]) == 6
-    assert any(i["split"] is None for i in draft["images"])
