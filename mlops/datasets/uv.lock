@@ -760,15 +760,39 @@ wheels = [
 ]
 
 [[package]]
+name = "nachet-blob"
+version = "0.1.0"
+source = { editable = "../blob" }
+dependencies = [
+    { name = "azure-storage-blob" },
+    { name = "beartype" },
+    { name = "boto3" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "azure-storage-blob", specifier = "==12.28.0" },
+    { name = "beartype", specifier = ">=0.21,<1" },
+    { name = "boto3", specifier = ">=1.40.55,<2" },
+    { name = "pydantic", specifier = "==2.13.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=8.4,<10" },
+    { name = "pytest-asyncio", specifier = ">=1,<2" },
+    { name = "ruff", specifier = ">=0.13,<1" },
+]
+
+[[package]]
 name = "nachet-dataset-release"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
-    { name = "azure-storage-blob" },
-    { name = "beartype" },
-    { name = "boto3" },
+    { name = "nachet-blob" },
     { name = "pillow" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
@@ -790,9 +814,7 @@ dev = [
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21,<1" },
     { name = "alembic", specifier = ">=1.16.5,<2" },
-    { name = "azure-storage-blob", specifier = "==12.28.0" },
-    { name = "beartype", specifier = ">=0.21,<1" },
-    { name = "boto3", specifier = ">=1.40.55,<2" },
+    { name = "nachet-blob", editable = "../blob" },
     { name = "pillow", specifier = "==13.0.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2.10,<4" },
     { name = "pydantic", specifier = "==2.13.0" },

@@ -11,12 +11,19 @@ by MLOps and do not import the backend application. The current external detecto
 `nachetmodel/HFTrainer_detector_2026012601_js.py` in `nachet-model-ccds`, is unchanged.
 The storage-aware record reader is its integration point, described below.
 
-Storage providers are a temporary copy of `backend/app/blob/` in `mlops_blob/`.
-`DatasetController` uses `BlobStorageAdapter`, which delegates to that copy's
+Storage providers come from the standalone `nachet-blob` project in
+[`mlops/blob`](../blob/README.md), installed as a local editable dependency.
+Its `mlops_blob` module is a temporary copy of `backend/app/blob/`.
+`DatasetController` uses `BlobStorageAdapter`, which delegates to that module's
 `BlobStorageInterface` and S3/Azure implementations. The original standalone
 S3 upload/download implementation has been replaced. See
-[the copy's provenance and differences](mlops_blob/README.md) for the future
+[the copy's provenance and differences](../blob/mlops_blob/README.md) for the future
 extraction into `nachet/common`; the backend source remains unchanged.
+
+Keep `mlops/blob/` beside `mlops/datasets/` when checking out, copying or mounting
+the source for a job. `uv sync --locked` installs both projects. The dataset
+wheel contains only `dataset_release`; deployments that install wheels must
+also supply the standalone `nachet-blob` wheel.
 
 ## Files and registration
 
@@ -223,6 +230,10 @@ From `mlops/datasets/`:
 ```bash
 uv run pytest
 ```
+
+Provider tests run separately from `mlops/blob/` with `uv run pytest`.
+Dataset adapter and publication/reader integration tests remain in this project.
+The dataset CI job also runs when the sibling blob project changes.
 
 Set `NACHET_MODEL_CCDS` to the local `nachet-model-ccds` checkout to enable the
 compatibility test against its actual `nachetmodel/coco_to_hf_dataset.py`.
