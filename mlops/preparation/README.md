@@ -143,8 +143,11 @@ uv run --project mlops/preparation --no-sync python \
 Use the server's MongoDB URI and, if customized, `FIFTYONE_DATABASE_NAME`.
 The command requires `FIFTYONE_DATABASE_URI` and refuses an implicit local
 database. Draft boxes go in `draft_boxes`. Source records, split assignments
-and the pre-label fields described above stay on each sample. `object_key`
-keeps the PNG key, and `dataset.info` keeps the COCO `info` block.
+and the pre-label fields described above stay on each sample. `source_species`
+copies the first source's species for filtering, or stays `null` when it is
+unknown. It records the original species separately from reviewed box labels.
+`object_key` keeps the PNG key, and `dataset.info` keeps the COCO `info` block.
+Images imported before pre-labeling get `prelabel_status: "unannotated"`.
 
 Existing dataset names are refused so a rerun cannot overwrite review work.
 An import uses a temporary `preparation-import-*` name and renames the dataset
@@ -159,8 +162,11 @@ uv run --project mlops/preparation --no-sync python -m pytest mlops/preparation/
 ```
 
 The SDK checks need the `fiftyone` group and a disposable MongoDB instance.
-CI starts its own test database; cluster deployment settings stay in
-`howard-on-prem`.
+They cover registration, review protection and recovery after a failed or
+killed import. A preparation-to-FiftyOne test converts generated images and
+imports draft boxes from supplied predictions, without model weights.
+CI runs these checks against its own test database. Cluster deployment settings
+stay in `howard-on-prem`.
 
 ```bash
 PREPARATION_TEST_MONGO_URI='<disposable-mongo-uri>' \

@@ -8,6 +8,7 @@ from uuid import uuid4
 
 
 def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
+    """Import draft COCO into a new persistent dataset; refuse an existing name."""
     import fiftyone as fo
 
     if fo.dataset_exists(name):
@@ -18,14 +19,14 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
     if not server_root.is_absolute():
         raise ValueError("server_media_root must be an absolute server-visible path")
     coco = json.loads(labels.read_text())
-    records = {image["id"]: image for image in coco["images"]}
-    paths = {}
+    records, paths = {}, {}
     for record in coco["images"]:
         key = PurePosixPath(record["file_name"])
         if key.is_absolute() or ".." in key.parts:
             raise ValueError(
                 f"Expected an image key under the server media root: {key}"
             )
+        records[record["id"]] = record
         paths[record["file_name"]] = str(server_root / key)
 
     # A killed import must not reserve the requested review-dataset name.
@@ -41,13 +42,16 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
         )
         if len(dataset) != len(coco["images"]):
             raise ValueError("FiftyOne did not import every COCO image")
-        # These fields may be unknown on the first sample, so inference is insufficient.
+        # Declare nullable fields even when the first sample has no value.
+        dataset.add_sample_field("source_species", fo.StringField)
         dataset.add_sample_field("split", fo.StringField)
         dataset.add_sample_field("prelabel_reason", fo.StringField)
         dataset.add_sample_field("prelabel_prompt", fo.StringField)
         for sample in dataset.iter_samples(autosave=True):
             record = records[sample.coco_id]
-            sample["sources"] = record["sources"]
+            sources = record["sources"]
+            sample["sources"] = sources
+            sample["source_species"] = sources[0].get("species") if sources else None
             sample["split"] = record["split"]
             sample["object_key"] = record["file_name"]
             sample["prelabel_status"] = record.get("prelabel_status", "unannotated")
