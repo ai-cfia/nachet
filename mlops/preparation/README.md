@@ -9,21 +9,28 @@ uv sync --project mlops/preparation --locked
 
 ## Convert and index
 
-Provide a CSV with `path,species` columns. Paths are relative to the source
-root. Optional source fields such as batch, tray and specimen group are kept
-in `images[].sources`. A known specimen group cannot cross splits; use IDs
-that are unique across the intake. Leave unknown splits empty until review.
+Pass a directory whose immediate subfolders are species, as in notebook 1.01.
+Images are discovered recursively beneath each species. Hidden files and
+folders are skipped. The output directory must be outside the input tree.
 
-```csv
-path,species,split,batch,tray,specimen_group
-batch-01/tray-a/a.tiff,Avena fatua,train,batch-01,tray-a,seed-a
+```text
+Training/
+  Avena fatua/
+    batch-01/tray-a/a.tiff
+  Zea mays/
+    b.jpg
 ```
 
 ```bash
 uv run --project mlops/preparation --no-sync python \
   mlops/preparation/prepare_images.py \
-  /work/raw intake.csv /work/prepared --code-revision <commit>
+  /work/raw/Training /work/prepared/train \
+  --split train --raw-prefix raw/intake-01/Training --code-revision <commit>
 ```
+
+Run the existing validation folder separately with `--split validation` and a
+fresh output directory. `--split` applies to the whole input folder; omit it
+when the split is unknown. The command does not create train/validation splits.
 
 Outputs are `index.coco.json` and `png/detection/<sha256>.png`. Raw files stay
 unchanged. Existing PNGs keep their bytes. TIFF/JPEG inputs become PNGs;
@@ -31,10 +38,17 @@ unsupported high-bit colour TIFFs and multi-frame inputs fail with the
 filename. Compatible 16-bit grayscale is preserved. An encoder update can
 change PNG keys for the same raw image.
 
-Source records keep the raw SHA-256, the legacy raw-byte MD5 and available
-CSV fields. Identical PNGs share one image record while retaining their
-sources. Named working outputs allow identical retries; use a fresh output
-path when the intake or settings change.
+CMYK inputs are converted to RGB; this can change colour values.
+
+COCO `images[].sources` records the species, original path relative to the
+input root, raw SHA-256 and legacy raw-byte MD5. Nested batch/tray folders stay
+in the path; their meaning and physical specimen groups are not inferred.
+When supplied, `--raw-prefix` adds the matching S3 `raw_key` for each original.
+It records the object-key mapping and does not perform an S3 upload.
+
+Identical PNGs share one image record while retaining their source paths.
+Conflicting species fail. Named working outputs allow identical retries; use
+a fresh output path when the collection or settings change.
 
 ## Checks
 

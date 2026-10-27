@@ -1,55 +1,41 @@
-import csv
 import hashlib
 import io
+import json
 
 import pytest
 from PIL import Image
 
-from prepare_images import prepare_images, save_coco
+from prepare_images import main, prepare_images, save_coco
 
 
 @pytest.fixture
 def intake(tmp_path):
     source = tmp_path / "source"
-    source.mkdir()
-    rows = []
-    for index, (name, mode, color, species, split) in enumerate(
-        [
-            ("batch/tray/a.tiff", "RGB", "red", "Avena fatua", "train"),
-            ("batch/tray/b.jpg", "RGB", "green", "Zea mays", "validation"),
-            ("other/c.png", "L", 127, "Avena fatua", "train"),
-            ("other/d.tiff", "I;16", 1000, "Avena fatua", "train"),
-        ]
-    ):
+    for name, mode, color in [
+        ("Avena fatua/batch-01/tray-a/a.tiff", "RGB", "red"),
+        ("Zea mays/batch-01/tray-b/b.jpg", "RGB", "green"),
+        ("Avena fatua/other/c.png", "L", 127),
+        ("Avena fatua/other/d.tiff", "I;16", 1000),
+    ]:
         path = source / name
         path.parent.mkdir(parents=True, exist_ok=True)
         Image.new(mode, (100, 80), color).save(path)
-        rows.append(
-            {
-                "path": name,
-                "species": species,
-                "split": split,
-                "batch": "batch",
-                "tray": "tray",
-                "specimen_group": f"seed-{index}",
-            }
-        )
-    manifest = tmp_path / "intake.csv"
-    with manifest.open("w", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
-    return source, manifest, tmp_path / "prepared"
+    return source, tmp_path / "prepared"
 
 
 def prepare(intake):
-    return prepare_images(*intake, code_revision="test-revision")
+    return prepare_images(
+        *intake,
+        code_revision="test-revision",
+        split="train",
+        raw_prefix="raw/intake-01/Training",
+    )
 
 
 def test_conversion_preserves_raw_pixels_lineage_and_split(intake):
-    source, _, output = intake
+    source, output = intake
     before = {
-        str(p.relative_to(source)): p.read_bytes()
+        p.relative_to(source).as_posix(): p.read_bytes()
         for p in source.rglob("*")
         if p.is_file()
     }
@@ -64,7 +50,9 @@ def test_conversion_preserves_raw_pixels_lineage_and_split(intake):
             == f"png/detection/{hashlib.sha256(data).hexdigest()}.png"
         )
         original = image["sources"][0]
-        assert original["batch"] == "batch"
+        assert original["original_path"] == original["path"]
+        assert original["raw_key"] == f"raw/intake-01/Training/{original['path']}"
+        assert original["species"] == original["path"].split("/")[0]
         assert (
             original["raw_sha256"]
             == hashlib.sha256(before[original["path"]]).hexdigest()
@@ -81,67 +69,167 @@ def test_conversion_preserves_raw_pixels_lineage_and_split(intake):
             assert list(png.get_flattened_data()) == list(raw.get_flattened_data())
         if original["path"].endswith("c.png"):
             assert data == before[original["path"]]
-        assert image["split"] == (
-            "validation" if original["species"] == "Zea mays" else "train"
-        )
+        assert image["split"] == "train"
     assert before == {
-        str(p.relative_to(source)): p.read_bytes()
+        p.relative_to(source).as_posix(): p.read_bytes()
         for p in source.rglob("*")
         if p.is_file()
     }
     assert prepare(intake) == coco
 
 
-def test_identical_pngs_share_bytes_but_keep_both_sources(intake):
-    source, manifest, _ = intake
-    (source / "other/copy.png").write_bytes((source / "other/c.png").read_bytes())
-    with manifest.open("a") as stream:
-        stream.write("other/copy.png,Avena fatua,train,batch,second-tray,seed-copy\n")
+def test_identical_pngs_share_bytes_but_keep_both_source_paths(intake):
+    source, _ = intake
+    copy = source / "Avena fatua/batch-02/tray-c/copy.png"
+    copy.parent.mkdir(parents=True)
+    copy.write_bytes((source / "Avena fatua/other/c.png").read_bytes())
     result = prepare(intake)
     assert len(result["images"]) == 4
     duplicates = [image for image in result["images"] if len(image["sources"]) == 2]
     assert len(duplicates) == 1
-    assert {s["tray"] for s in duplicates[0]["sources"]} == {"tray", "second-tray"}
+    assert {s["original_path"] for s in duplicates[0]["sources"]} == {
+        "Avena fatua/other/c.png",
+        "Avena fatua/batch-02/tray-c/copy.png",
+    }
 
 
-@pytest.mark.parametrize(
-    "species,split", [("Zea mays", "train"), ("Avena fatua", "test")]
-)
-def test_duplicate_png_cannot_leak_across_species_or_splits(intake, species, split):
-    source, manifest, _ = intake
-    (source / "copy.png").write_bytes((source / "other/c.png").read_bytes())
-    with manifest.open("a") as stream:
-        stream.write(f"copy.png,{species},{split},batch,tray,seed-copy\n")
-    with pytest.raises(ValueError, match="conflicting species or splits"):
+def test_duplicate_png_cannot_have_different_species(intake):
+    source, _ = intake
+    (source / "Zea mays/copy.png").write_bytes(
+        (source / "Avena fatua/other/c.png").read_bytes()
+    )
+    with pytest.raises(ValueError, match="conflicting species"):
         prepare(intake)
 
 
+def test_unknown_split_stays_unset_and_s3_is_optional(intake):
+    result = prepare_images(*intake, code_revision="test")
+    assert all(image["split"] is None for image in result["images"])
+    assert all(
+        "raw_key" not in source
+        for image in result["images"]
+        for source in image["sources"]
+    )
+
+
+def test_cli_reads_species_folders_without_an_intake_file(intake, capsys):
+    source, output = intake
+    main(
+        [
+            str(source),
+            str(output),
+            "--code-revision",
+            "test-cli",
+            "--split",
+            "validation",
+            "--raw-prefix",
+            "raw/intake-01/Validation",
+        ]
+    )
+    result = json.loads((output / "index.coco.json").read_text())
+    assert result["info"]["preparation"]["code_revision"] == "test-cli"
+    assert all(image["split"] == "validation" for image in result["images"])
+    assert all(
+        source["raw_key"] == f"raw/intake-01/Validation/{source['path']}"
+        for image in result["images"]
+        for source in image["sources"]
+    )
+    assert "Prepared 4 images from 4 sources" in capsys.readouterr().out
+
+
+def test_hidden_files_are_skipped_and_empty_species_are_retained(intake):
+    source, _ = intake
+    (source / "Empty species").mkdir()
+    for name in [
+        ".hidden-root/hidden.png",
+        "Avena fatua/.hidden.png",
+        "Avena fatua/.hidden/tray.png",
+    ]:
+        path = source / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (2, 2), "blue").save(path)
+    (source / "Avena fatua/notes.txt").write_text("metadata, not an image")
+    result = prepare(intake)
+    assert len(result["images"]) == 4
+    assert [category["name"] for category in result["categories"]] == [
+        "Avena fatua",
+        "Empty species",
+        "Zea mays",
+    ]
+
+
+def test_source_root_images_require_a_species_folder(intake):
+    source, output = intake
+    Image.new("RGB", (2, 2)).save(source / "unlabelled.png")
+    with pytest.raises(ValueError, match="species subfolder: .*unlabelled.png"):
+        prepare(intake)
+    assert not output.exists()
+
+
+def test_output_cannot_be_inside_the_input_tree(intake):
+    source, _ = intake
+    with pytest.raises(ValueError, match="outside the source root"):
+        prepare_images(source, source / "generated", code_revision="test")
+    assert not (source / "generated").exists()
+
+
+def test_empty_species_tree_is_reported(tmp_path):
+    source = tmp_path / "source"
+    (source / "Avena fatua").mkdir(parents=True)
+    with pytest.raises(ValueError, match="No images found in species subfolders"):
+        prepare_images(source, tmp_path / "out", code_revision="test")
+
+
+@pytest.mark.parametrize(
+    "raw_prefix", ["/raw/collection", "raw/../other", "s3://bucket/raw"]
+)
+def test_raw_prefix_is_an_object_key_under_raw(intake, raw_prefix):
+    with pytest.raises(ValueError, match="raw_prefix must start with raw/"):
+        prepare_images(*intake, code_revision="test", raw_prefix=raw_prefix)
+
+
+def test_invalid_split_is_not_recorded(intake):
+    with pytest.raises(ValueError, match="Invalid split"):
+        prepare_images(*intake, code_revision="test", split="unknown")
+
+
 def test_corrupt_input_is_named_and_cannot_replace_working_coco(intake):
-    source, _, output = intake
-    (source / "batch/tray/a.tiff").write_bytes(b"broken TIFF")
-    with pytest.raises(OSError, match="batch/tray/a.tiff"):
+    source, output = intake
+    (source / "Avena fatua/batch-01/tray-a/a.tiff").write_bytes(b"broken TIFF")
+    with pytest.raises(OSError, match="Avena fatua/batch-01/tray-a/a.tiff"):
         prepare(intake)
     save_coco(output / "index.json", {"annotations": ["human correction"]})
     with pytest.raises(ValueError, match="Refusing to replace"):
         save_coco(output / "index.json", {"annotations": []})
 
 
-def test_known_specimen_group_cannot_cross_splits(intake):
-    _, manifest, _ = intake
-    manifest.write_text(manifest.read_text().replace("seed-1", "seed-0"))
-    with pytest.raises(ValueError, match="Specimen group"):
-        prepare(intake)
+@pytest.mark.parametrize("mode", ["YCbCr", "LAB"])
+def test_png_encoding_error_names_the_source_file(tmp_path, mode):
+    source = tmp_path / "source"
+    species = source / "Avena fatua"
+    species.mkdir(parents=True)
+    filename = f"unsupported-{mode}.tiff"
+    Image.new(mode, (8, 6)).save(species / filename, format="TIFF")
+    with pytest.raises(
+        OSError,
+        match=rf"Avena fatua/unsupported-{mode}\.tiff: cannot write mode {mode}",
+    ):
+        prepare_images(source, tmp_path / "prepared", code_revision="test")
 
 
-@pytest.mark.parametrize("absolute", [False, True])
-def test_source_paths_cannot_escape_the_intake_root(intake, tmp_path, absolute):
-    source, manifest, _ = intake
-    outside = tmp_path / "outside.tiff"
-    outside.write_bytes((source / "batch/tray/a.tiff").read_bytes())
-    bad_path = str(outside) if absolute else "../outside.tiff"
-    manifest.write_text(manifest.read_text().replace("batch/tray/a.tiff", bad_path))
+@pytest.mark.parametrize("kind", ["file", "species_folder"])
+def test_source_symlinks_cannot_escape_the_input_tree(intake, tmp_path, kind):
+    source, output = intake
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    Image.new("RGB", (4, 3), "blue").save(outside / "outside.png")
+    if kind == "file":
+        (source / "Avena fatua/escape.png").symlink_to(outside / "outside.png")
+    else:
+        (source / "Outside species").symlink_to(outside, target_is_directory=True)
     with pytest.raises(ValueError, match="escapes"):
         prepare(intake)
+    assert not (output / "index.coco.json").exists()
 
 
 def test_interrupted_output_publication_can_be_retried(tmp_path, monkeypatch):
@@ -165,8 +253,8 @@ def test_high_bit_colour_tiff_is_rejected_before_writing_png(tmp_path):
     import struct
 
     source = tmp_path / "source"
-    source.mkdir()
-    path = source / "rgb16.tiff"
+    path = source / "Avena fatua/rgb16.tiff"
+    path.parent.mkdir(parents=True)
     pixels = struct.pack("<HHH", 40000, 1000, 65535) * 4
     entries = [
         (256, 3, 1, 2),
@@ -188,9 +276,7 @@ def test_high_bit_colour_tiff_is_rejected_before_writing_png(tmp_path):
             else struct.pack("<I", value)
         )
     path.write_bytes(data + b"\0\0\0\0" + struct.pack("<HHH", 16, 16, 16) + pixels)
-    manifest = tmp_path / "intake.csv"
-    manifest.write_text("path,species\nrgb16.tiff,Avena fatua\n")
     with pytest.raises(ValueError, match="rgb16.tiff.*lossless conversion policy"):
-        prepare_images(source, manifest, tmp_path / "prepared", code_revision="test")
+        prepare_images(source, tmp_path / "prepared", code_revision="test")
     assert not list((tmp_path / "prepared").glob("**/*.png"))
     assert path.read_bytes().endswith(pixels)

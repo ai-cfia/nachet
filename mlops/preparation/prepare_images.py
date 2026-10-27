@@ -1,13 +1,12 @@
-"""Convert an explicitly described intake into hash-named PNGs and a COCO index."""
+"""Convert species folders into hash-named PNGs and a COCO image index."""
 
 import argparse
-import csv
 import hashlib
 import io
 import json
 import os
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from PIL import Image
 
@@ -38,39 +37,61 @@ def save_coco(path: Path, data: dict) -> None:
 
 def prepare_images(
     source_root: Path,
-    intake: Path,
     output_root: Path,
     *,
     code_revision: str,
+    split: str | None = None,
+    raw_prefix: str | None = None,
 ) -> dict:
-    """Keep provenance before flattening; folder names are not a label API."""
+    """Use immediate subfolders as species and preserve paths before flattening."""
     source_root = source_root.resolve(strict=True)
-    with intake.open(newline="", encoding="utf-8-sig") as stream:
-        reader = csv.DictReader(stream)
-        if not {"path", "species"}.issubset(reader.fieldnames or []):
-            raise ValueError("Intake CSV needs path and species columns")
-        records = list(reader)
+    if output_root.resolve().is_relative_to(source_root):
+        raise ValueError("Output directory must be outside the source root")
+    if split not in {None, "train", "validation", "test"}:
+        raise ValueError(f"Invalid split: {split!r}")
+    prefix = PurePosixPath(raw_prefix) if raw_prefix is not None else None
+    if prefix is not None and (
+        prefix.is_absolute() or ".." in prefix.parts or prefix.parts[:1] != ("raw",)
+    ):
+        raise ValueError("raw_prefix must start with raw/")
+
+    extensions = {".tif", ".tiff", ".jpg", ".jpeg", ".png"}
+    records = []
+    species_names = []
+    for species_dir in sorted(source_root.iterdir()):
+        if species_dir.name.startswith("."):
+            continue
+        if species_dir.is_file():
+            if species_dir.suffix.lower() in extensions:
+                raise ValueError(
+                    f"Image must be inside a species subfolder: {species_dir}"
+                )
+            continue
+        if not species_dir.is_dir():
+            continue
+        if not species_dir.resolve().is_relative_to(source_root):
+            raise ValueError(f"Species folder escapes the source root: {species_dir}")
+        species_names.append(species_dir.name)
+        for path in sorted(species_dir.rglob("*")):
+            relative = path.relative_to(source_root)
+            if (
+                path.is_file()
+                and path.suffix.lower() in extensions
+                and not any(part.startswith(".") for part in relative.parts)
+            ):
+                records.append(
+                    {"path": relative.as_posix(), "species": species_dir.name}
+                )
     if not records:
-        raise ValueError("Intake CSV has no images")
+        raise ValueError(f"No images found in species subfolders: {source_root}")
 
     images = {}
-    group_splits = {}
-    for record in sorted(records, key=lambda item: item["path"]):
+    for record in records:
         relative = Path(record["path"])
         path = (source_root / relative).resolve(strict=True)
-        if relative.is_absolute() or not path.is_relative_to(source_root):
+        if not path.is_relative_to(source_root):
             raise ValueError(f"Source escapes the input root: {relative}")
-        species = record["species"].strip()
-        if not species:
-            raise ValueError(f"Missing species for {relative}")
-        split = record.get("split", "").strip() or None
-        if split not in {None, "train", "validation", "test"}:
-            raise ValueError(f"Invalid split for {relative}: {split!r}")
-        group = record.get("specimen_group", "").strip()
-        if group and split:
-            if group in group_splits and group_splits[group] != split:
-                raise ValueError(f"Specimen group appears in different splits: {group}")
-            group_splits[group] = split
+        species = record["species"]
 
         raw_bytes = path.read_bytes()
         raw_digest = hashlib.sha256(raw_bytes).hexdigest()
@@ -104,29 +125,27 @@ def prepare_images(
             else:
                 image = original.convert("RGB") if original.mode == "CMYK" else original
                 buffer = io.BytesIO()
-                image.save(buffer, format="PNG", compress_level=6)
+                try:
+                    image.save(buffer, format="PNG", compress_level=6)
+                except OSError as error:
+                    raise OSError(f"{relative}: {error}") from error
                 png_bytes = buffer.getvalue()
 
         digest = hashlib.sha256(png_bytes).hexdigest()
         key = f"png/detection/{digest}.png"
         source = {
-            field: value
-            for field, value in record.items()
-            if field != "split" and value not in (None, "")
+            "path": record["path"],
+            "original_path": record["path"],
+            "species": species,
+            "raw_sha256": raw_digest,
+            "legacy_md5": hashlib.md5(raw_bytes, usedforsecurity=False).hexdigest(),
         }
-        source.update(
-            original_path=record.get("original_path") or str(relative),
-            path=str(relative),
-            species=species,
-            raw_sha256=raw_digest,
-            legacy_md5=hashlib.md5(raw_bytes, usedforsecurity=False).hexdigest(),
-        )
+        if prefix is not None:
+            source["raw_key"] = str(prefix / relative.as_posix())
         if key in images:
             prior = images[key]
-            if prior["split"] != split or prior["sources"][0]["species"] != species:
-                raise ValueError(
-                    f"Identical PNG has conflicting species or splits: {relative}"
-                )
+            if prior["sources"][0]["species"] != species:
+                raise ValueError(f"Identical PNG has conflicting species: {relative}")
             prior["sources"].append(source)
         else:
             images[key] = {
@@ -140,9 +159,7 @@ def prepare_images(
 
     categories = [
         {"id": index, "name": name, "supercategory": "seed"}
-        for index, name in enumerate(
-            sorted({row["species"].strip() for row in records}), start=1
-        )
+        for index, name in enumerate(species_names, start=1)
     ]
     return {
         "info": {
@@ -163,22 +180,26 @@ def prepare_images(
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("source_root", type=Path)
     parser.add_argument(
-        "intake",
+        "source_root",
         type=Path,
-        help="CSV with path, species and optional split/source fields",
+        help="Directory whose immediate subfolders are species",
     )
     parser.add_argument(
         "output_root", type=Path, help="Working directory for PNGs and COCO"
     )
     parser.add_argument("--code-revision", required=True)
+    parser.add_argument("--split", choices=["train", "validation", "test"])
+    parser.add_argument(
+        "--raw-prefix", help="Matching S3 raw/ prefix to record in source metadata"
+    )
     args = parser.parse_args(argv)
     result = prepare_images(
         args.source_root,
-        args.intake,
         args.output_root,
         code_revision=args.code_revision,
+        split=args.split,
+        raw_prefix=args.raw_prefix,
     )
     save_coco(args.output_root / "index.coco.json", result)
     print(
