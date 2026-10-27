@@ -1,0 +1,38 @@
+---
+name: MLOps blob storage
+
+on:
+  pull_request:
+    paths:
+      - "mlops/blob/**"
+      - ".github/workflows/blob-storage.yml"
+  push:
+    branches: [main]
+    paths:
+      - "mlops/blob/**"
+      - ".github/workflows/blob-storage.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  blob-storage-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: mlops/blob
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
+        with:
+          version: "0.11.24"
+      - run: uv sync --locked
+      - run: uv run --no-sync ruff check mlops_blob tests
+      - run: uv run --no-sync ruff format --check mlops_blob tests
+      - run: uv run --no-sync pytest
+      - run: uv build --wheel

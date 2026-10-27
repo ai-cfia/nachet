@@ -3,17 +3,15 @@
 This package copies the provider-independent interface, exceptions, models,
 validation, factory and S3/Azure implementations from `backend/app/blob/` at
 repository revision `88212e11aca9b76d93025e4ce89b0e38b82d681f`.
-The backend originals are unchanged. This package ships inside the standalone
-`nachet-dataset-release` distribution, so installing `mlops/datasets/` installs
-both `dataset_release` and `mlops_blob` without the backend application.
+The backend originals are unchanged. This package ships as the standalone `nachet-blob` distribution. Installing
+`mlops/blob/` installs `mlops_blob` without backend or dataset release code.
 
 The application-specific manager, account registry, health checks, backend
 logging service and backend tests are deliberately excluded. Providers are
 created through `create_blob_storage_client(provider, config)` and implement
-`BlobStorageInterface`. The dataset component's `BlobStorageAdapter` holds one
-of those providers and delegates its uploads/downloads to it. Provider SDK calls
-and stream reads run in worker threads because the copied implementations use
-synchronous SDKs inside async methods.
+`BlobStorageInterface`. Provider implementations expose async methods around synchronous SDKs. Consumers
+that need non-blocking execution must run those calls in workers. The dataset
+adapter and its worker execution remain in the separate dataset release PR.
 
 ## Differences to preserve when extracting the shared package
 
@@ -42,8 +40,7 @@ fixes and their contract tests, then switch both backend and MLOps imports to
 the shared package. Do that packaging/import migration in a separate PR.
 Until then, fixes to either copy need an explicit comparison against the other.
 
-Tests in `tests/test_blob_storage.py` and the dataset publication suite exercise
-the actual copied providers with SDK transports replaced by deterministic fakes.
-They verify release publication and retries, reader output, atomic request
-conditions, shared error types, configuration and connection cleanup. They do
-not verify every copied provider operation or a live storage service.
+Provider tests run independently of backend and dataset release code. They use
+real copied providers with deterministic fake SDK transports to verify conflicts,
+non-overwriting requests, missing objects, stream/client cleanup and configuration.
+Live service behavior and provider operations outside those tests remain unverified.
