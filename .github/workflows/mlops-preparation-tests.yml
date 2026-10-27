@@ -1,0 +1,32 @@
+---
+name: MLOps preparation tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "mlops/preparation/**"
+      - ".github/workflows/mlops-preparation-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  commands:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
+        with:
+          version: "0.11.24"
+      - run: uv sync --locked --project mlops/preparation
+      - run: uv run --project mlops/preparation --no-sync python -m pytest mlops/preparation/tests -q
