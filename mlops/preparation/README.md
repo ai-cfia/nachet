@@ -9,28 +9,46 @@ uv sync --project mlops/preparation --locked
 
 ## Convert and index
 
-Pass a directory whose immediate subfolders are species, as in notebook 1.01.
-Images are discovered recursively beneath each species. Hidden files and
-folders are skipped. The output directory must be outside the input tree.
+Pass the collection folder. `Training` and `Validation` subfolders are
+recognized automatically, ignoring case. Their immediate subfolders are
+species. Ordinary species folders directly under the collection keep their
+split unassigned. Images are discovered recursively beneath each species;
+hidden files and folders are skipped. The output must be outside the input tree.
 
 ```text
-Training/
-  Avena fatua/
-    batch-01/tray-a/a.tiff
+Collection/
+  Training/
+    Avena fatua/batch-01/tray-a/a.tiff
+  Validation/
+    Avena fatua/b.tiff
   Zea mays/
-    b.jpg
+    new-image.jpg
 ```
 
 ```bash
 uv run --project mlops/preparation --no-sync python \
   mlops/preparation/prepare_images.py \
-  /work/raw/Training /work/prepared/train \
-  --split train --raw-prefix raw/intake-01/Training --code-revision <commit>
+  /work/raw/Collection /work/prepared \
+  --raw-prefix raw/Collection --code-revision <commit>
 ```
 
-Run the existing validation folder separately with `--split validation` and a
-fresh output directory. `--split` applies to the whole input folder; omit it
-when the split is unknown. The command does not create train/validation splits.
+The same command handles split, unsplit and mixed collections. In this
+example, the two Avena images retain their train/validation assignments and
+the new Zea image keeps `split: null`. No random split is created.
+
+For a nonstandard layout, optional `--input SPLIT DIRECTORY` overrides can
+select folders relative to the collection root. A whole collection with one
+known assignment can use `--split train`, `validation` or `test`; this cannot
+override discovered Training/Validation folders or explicit `--input` options.
+Arbitrary wrapper folders are not discovered as additional collection roots.
+
+One output contains all selected images, a shared category list and each
+image's assignment. Category IDs belong to that output; match independent
+indexes by category name. Identical PNGs assigned to different splits fail instead
+of crossing the train/validation boundary. This catches exact duplicates,
+not different photographs of the same specimen. Specimen grouping still
+needs source information and an agreed splitting policy. Independently
+generated indexes cannot detect overlaps with each other.
 
 Outputs are `index.coco.json` and `png/detection/<sha256>.png`. Raw files stay
 unchanged. Existing PNGs keep their bytes. TIFF/JPEG inputs become PNGs;
@@ -47,8 +65,8 @@ When supplied, `--raw-prefix` adds the matching S3 `raw_key` for each original.
 It records the object-key mapping and does not perform an S3 upload.
 
 Identical PNGs share one image record while retaining their source paths.
-Conflicting species fail. Named working outputs allow identical retries; use
-a fresh output path when the collection or settings change.
+Conflicting species or split assignments fail. Named working outputs allow
+identical retries; use a fresh output path when the collection or settings change.
 
 ## Checks
 

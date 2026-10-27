@@ -50,7 +50,7 @@ def test_conversion_preserves_raw_pixels_lineage_and_split(intake):
             == f"png/detection/{hashlib.sha256(data).hexdigest()}.png"
         )
         original = image["sources"][0]
-        assert original["original_path"] == original["path"]
+        assert "original_path" not in original
         assert original["raw_key"] == f"raw/intake-01/Training/{original['path']}"
         assert original["species"] == original["path"].split("/")[0]
         assert (
@@ -87,7 +87,7 @@ def test_identical_pngs_share_bytes_but_keep_both_source_paths(intake):
     assert len(result["images"]) == 4
     duplicates = [image for image in result["images"] if len(image["sources"]) == 2]
     assert len(duplicates) == 1
-    assert {s["original_path"] for s in duplicates[0]["sources"]} == {
+    assert {s["path"] for s in duplicates[0]["sources"]} == {
         "Avena fatua/other/c.png",
         "Avena fatua/batch-02/tray-c/copy.png",
     }
@@ -98,7 +98,7 @@ def test_duplicate_png_cannot_have_different_species(intake):
     (source / "Zea mays/copy.png").write_bytes(
         (source / "Avena fatua/other/c.png").read_bytes()
     )
-    with pytest.raises(ValueError, match="conflicting species"):
+    with pytest.raises(ValueError, match="conflicting species or splits"):
         prepare(intake)
 
 
@@ -280,3 +280,291 @@ def test_high_bit_colour_tiff_is_rejected_before_writing_png(tmp_path):
         prepare_images(source, tmp_path / "prepared", code_revision="test")
     assert not list((tmp_path / "prepared").glob("**/*.png"))
     assert path.read_bytes().endswith(pixels)
+
+
+@pytest.fixture
+def split_collection(tmp_path):
+    root = tmp_path / "collection"
+    paths = [
+        "Training/A/seed.tiff",
+        "Training/B/seed.tiff",
+        "Training/C/seed.tiff",
+        "Validation/A/seed.tiff",
+        "Validation/C/seed.tiff",
+        "New/D/seed.tiff",
+    ]
+    for index, name in enumerate(paths):
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (8, 6), (index * 30, 10, 20)).save(path)
+    return root, tmp_path / "prepared"
+
+
+def test_split_folders_share_categories_and_keep_source_keys(split_collection):
+    root, output = split_collection
+    result = prepare_images(
+        root,
+        output,
+        code_revision="test",
+        inputs=[("train", "Training"), ("validation", "Validation")],
+        raw_prefix="raw/collection",
+    )
+    assert [c["name"] for c in result["categories"]] == ["A", "B", "C"]
+    assert len(result["images"]) == 5
+    assert result["annotations"] == []
+    for image in result["images"]:
+        source = image["sources"][0]
+        assert source["raw_key"] == "raw/collection/" + source["path"]
+        assert (
+            image["split"]
+            == {"Training": "train", "Validation": "validation"}[
+                source["path"].split("/")[0]
+            ]
+        )
+        assert "original_path" not in source
+    reversed_result = prepare_images(
+        root,
+        output,
+        code_revision="test",
+        inputs=[("validation", "Validation"), ("train", "Training")],
+    )
+    assert reversed_result["categories"] == result["categories"]
+
+
+def test_mixed_collection_keeps_unsplit_images_unassigned(split_collection):
+    result = prepare_images(
+        *split_collection,
+        code_revision="test",
+        inputs=[
+            ("train", "Training"),
+            ("validation", "Validation"),
+            ("unassigned", "New"),
+        ],
+    )
+    assert [c["name"] for c in result["categories"]] == ["A", "B", "C", "D"]
+    new_images = [
+        i for i in result["images"] if i["sources"][0]["path"].startswith("New/")
+    ]
+    assert len(new_images) == 1
+    assert new_images[0]["split"] is None
+
+
+@pytest.mark.parametrize("second_split", ["validation", "unassigned"])
+def test_same_image_cannot_cross_input_splits(split_collection, second_split):
+    root, output = split_collection
+    (root / "Validation/C/seed.tiff").write_bytes(
+        (root / "Training/C/seed.tiff").read_bytes()
+    )
+    with pytest.raises(
+        ValueError, match="conflicting species or splits: Validation/C/seed.tiff"
+    ):
+        prepare_images(
+            root,
+            output,
+            code_revision="test",
+            inputs=[("train", "Training"), (second_split, "Validation")],
+        )
+    assert not (output / "index.coco.json").exists()
+
+
+def test_same_split_can_reuse_an_image_from_two_folders(split_collection):
+    root, output = split_collection
+    (root / "Validation/C/seed.tiff").write_bytes(
+        (root / "Training/C/seed.tiff").read_bytes()
+    )
+    result = prepare_images(
+        root,
+        output,
+        code_revision="test",
+        inputs=[("train", "Training"), ("train", "Validation")],
+    )
+    assert len(result["images"]) == 4
+    combined = next(i for i in result["images"] if len(i["sources"]) == 2)
+    assert combined["split"] == "train"
+    assert {s["path"] for s in combined["sources"]} == {
+        "Training/C/seed.tiff",
+        "Validation/C/seed.tiff",
+    }
+
+
+def test_joint_input_cli_accepts_split_and_unsplit_folders(split_collection):
+    root, output = split_collection
+    main(
+        [
+            str(root),
+            str(output),
+            "--code-revision",
+            "test-cli",
+            "--input",
+            "train",
+            "Training",
+            "--input",
+            "validation",
+            "Validation",
+            "--input",
+            "unassigned",
+            "New",
+            "--raw-prefix",
+            "raw/collection",
+        ]
+    )
+    result = json.loads((output / "index.coco.json").read_text())
+    assert {i["split"] for i in result["images"]} == {"train", "validation", None}
+    assert len(result["categories"]) == 4
+    assert all(
+        s["raw_key"] == "raw/collection/" + s["path"]
+        for i in result["images"]
+        for s in i["sources"]
+    )
+
+
+def test_per_folder_inputs_cannot_be_combined_with_a_global_split(split_collection):
+    with pytest.raises(ValueError, match="--input assignments or --split"):
+        prepare_images(
+            *split_collection,
+            code_revision="test",
+            split="train",
+            inputs=[("validation", "Validation")],
+        )
+
+
+@pytest.mark.parametrize("directory", ["../outside", "/tmp", "escape"])
+def test_selected_input_folders_cannot_escape_the_collection(
+    split_collection, directory
+):
+    root, output = split_collection
+    (root / "escape").symlink_to(root.parent, target_is_directory=True)
+    with pytest.raises(ValueError, match="Input directory escapes"):
+        prepare_images(
+            root, output, code_revision="test", inputs=[("train", directory)]
+        )
+
+
+def test_unknown_input_split_is_rejected(split_collection):
+    with pytest.raises(ValueError, match="Invalid input split"):
+        prepare_images(
+            *split_collection, code_revision="test", inputs=[("typo", "Training")]
+        )
+
+
+@pytest.fixture
+def automatic_collection(tmp_path):
+    root = tmp_path / "collection"
+    for index, relative in enumerate(
+        [
+            "Training/A/seed.tiff",
+            "Training/B/seed.tiff",
+            "Training/C/seed.tiff",
+            "Validation/A/seed.tiff",
+            "Validation/C/seed.tiff",
+            "D/tray/seed.tiff",
+        ]
+    ):
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (8, 6), (index * 30, 10, 20)).save(path)
+    return root, tmp_path / "prepared"
+
+
+def test_automatic_layout_shares_categories_and_preserves_mixed_splits(
+    automatic_collection,
+):
+    result = prepare_images(
+        *automatic_collection, code_revision="test", raw_prefix="raw/collection"
+    )
+    assert [c["name"] for c in result["categories"]] == ["A", "B", "C", "D"]
+    assert len(result["images"]) == 6
+    assert result["annotations"] == []
+    for image in result["images"]:
+        source = image["sources"][0]
+        parent = source["path"].split("/")[0]
+        assert (
+            image["split"]
+            == {"Training": "train", "Validation": "validation", "D": None}[parent]
+        )
+        assert source["species"] == (
+            "D" if parent == "D" else source["path"].split("/")[1]
+        )
+        assert source["raw_key"] == "raw/collection/" + source["path"]
+        assert "original_path" not in source
+
+
+@pytest.mark.parametrize("layout", ["split", "unsplit", "mixed"])
+def test_collection_cli_needs_no_split_mapping(automatic_collection, layout):
+    import shutil
+
+    root, output = automatic_collection
+    if layout == "split":
+        shutil.rmtree(root / "D")
+    elif layout == "unsplit":
+        shutil.rmtree(root / "Training")
+        shutil.rmtree(root / "Validation")
+    main(
+        [
+            str(root),
+            str(output),
+            "--code-revision",
+            "test-cli",
+            "--raw-prefix",
+            "raw/collection",
+        ]
+    )
+    result = json.loads((output / "index.coco.json").read_text())
+    expected = {
+        "split": {"train", "validation"},
+        "unsplit": {None},
+        "mixed": {"train", "validation", None},
+    }[layout]
+    assert {i["split"] for i in result["images"]} == expected
+    assert all(
+        c["name"] not in {"Training", "Validation"} for c in result["categories"]
+    )
+
+
+def test_automatic_layout_rejects_an_image_in_training_and_validation(
+    automatic_collection,
+):
+    root, output = automatic_collection
+    (root / "Validation/C/seed.tiff").write_bytes(
+        (root / "Training/C/seed.tiff").read_bytes()
+    )
+    with pytest.raises(
+        ValueError, match="conflicting species or splits: Validation/C/seed.tiff"
+    ):
+        main([str(root), str(output), "--code-revision", "test"])
+    assert not (output / "index.coco.json").exists()
+
+
+def test_global_split_cannot_override_discovered_split_folders(automatic_collection):
+    with pytest.raises(ValueError, match="--split cannot override"):
+        prepare_images(*automatic_collection, code_revision="test", split="train")
+
+
+def test_automatic_split_folder_names_are_case_insensitive(automatic_collection):
+    root, _ = automatic_collection
+    (root / "Training").rename(root / "training")
+    (root / "Validation").rename(root / "VALIDATION")
+    result = prepare_images(*automatic_collection, code_revision="test")
+    assert {i["split"] for i in result["images"]} == {"train", "validation", None}
+    assert {c["name"] for c in result["categories"]} == {"A", "B", "C", "D"}
+
+
+def test_automatic_split_folder_cannot_be_an_escaping_symlink(
+    automatic_collection, tmp_path
+):
+    root, _ = automatic_collection
+    outside = tmp_path / "outside"
+    (root / "Training").rename(outside)
+    (root / "Training").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(ValueError, match="Input directory escapes"):
+        prepare_images(*automatic_collection, code_revision="test")
+
+
+def test_nested_folder_names_do_not_invent_a_split(tmp_path):
+    root = tmp_path / "collection"
+    path = root / "Avena fatua/Validation/seed.tiff"
+    path.parent.mkdir(parents=True)
+    Image.new("RGB", (8, 6), "red").save(path)
+    result = prepare_images(root, tmp_path / "prepared", code_revision="test")
+    assert result["images"][0]["split"] is None
+    assert result["images"][0]["sources"][0]["species"] == "Avena fatua"

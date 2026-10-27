@@ -42,6 +42,7 @@ def prepare_images(
     code_revision: str,
     split: str | None = None,
     raw_prefix: str | None = None,
+    inputs: list[tuple[str, str]] | None = None,
 ) -> dict:
     """Use immediate subfolders as species and preserve paths before flattening."""
     source_root = source_root.resolve(strict=True)
@@ -49,6 +50,8 @@ def prepare_images(
         raise ValueError("Output directory must be outside the source root")
     if split not in {None, "train", "validation", "test"}:
         raise ValueError(f"Invalid split: {split!r}")
+    if inputs and split is not None:
+        raise ValueError("Use --input assignments or --split, not both")
     prefix = PurePosixPath(raw_prefix) if raw_prefix is not None else None
     if prefix is not None and (
         prefix.is_absolute() or ".." in prefix.parts or prefix.parts[:1] != ("raw",)
@@ -56,32 +59,62 @@ def prepare_images(
         raise ValueError("raw_prefix must start with raw/")
 
     extensions = {".tif", ".tiff", ".jpg", ".jpeg", ".png"}
+    split_folders = {"training": "train", "validation": "validation"}
+    if not inputs:
+        discovered = [
+            (split_folders[path.name.casefold()], path.name)
+            for path in sorted(source_root.iterdir())
+            if path.is_dir() and path.name.casefold() in split_folders
+        ]
+        if discovered and split is not None:
+            raise ValueError("--split cannot override Training/Validation folders")
+        inputs = discovered + [(split, ".")]
     records = []
-    species_names = []
-    for species_dir in sorted(source_root.iterdir()):
-        if species_dir.name.startswith("."):
-            continue
-        if species_dir.is_file():
-            if species_dir.suffix.lower() in extensions:
-                raise ValueError(
-                    f"Image must be inside a species subfolder: {species_dir}"
-                )
-            continue
-        if not species_dir.is_dir():
-            continue
-        if not species_dir.resolve().is_relative_to(source_root):
-            raise ValueError(f"Species folder escapes the source root: {species_dir}")
-        species_names.append(species_dir.name)
-        for path in sorted(species_dir.rglob("*")):
-            relative = path.relative_to(source_root)
+    species_names = set()
+    for assignment, directory in inputs:
+        assignment = None if assignment == "unassigned" else assignment
+        if assignment not in {None, "train", "validation", "test"}:
+            raise ValueError(f"Invalid input split: {assignment!r}")
+        input_root = source_root / directory
+        if Path(directory).is_absolute() or not input_root.resolve().is_relative_to(
+            source_root
+        ):
+            raise ValueError(f"Input directory escapes the source root: {directory}")
+        for species_dir in sorted(input_root.iterdir()):
+            if species_dir.name.startswith("."):
+                continue
             if (
-                path.is_file()
-                and path.suffix.lower() in extensions
-                and not any(part.startswith(".") for part in relative.parts)
+                input_root == source_root
+                and species_dir.name.casefold() in split_folders
             ):
-                records.append(
-                    {"path": relative.as_posix(), "species": species_dir.name}
+                continue
+            if species_dir.is_file():
+                if species_dir.suffix.lower() in extensions:
+                    raise ValueError(
+                        f"Image must be inside a species subfolder: {species_dir}"
+                    )
+                continue
+            if not species_dir.is_dir():
+                continue
+            if not species_dir.resolve().is_relative_to(source_root):
+                raise ValueError(
+                    f"Species folder escapes the source root: {species_dir}"
                 )
+            species_names.add(species_dir.name)
+            for path in sorted(species_dir.rglob("*")):
+                relative = path.relative_to(source_root)
+                if (
+                    path.is_file()
+                    and path.suffix.lower() in extensions
+                    and not any(part.startswith(".") for part in relative.parts)
+                ):
+                    records.append(
+                        {
+                            "path": relative.as_posix(),
+                            "species": species_dir.name,
+                            "split": assignment,
+                        }
+                    )
     if not records:
         raise ValueError(f"No images found in species subfolders: {source_root}")
 
@@ -135,7 +168,6 @@ def prepare_images(
         key = f"png/detection/{digest}.png"
         source = {
             "path": record["path"],
-            "original_path": record["path"],
             "species": species,
             "raw_sha256": raw_digest,
             "legacy_md5": hashlib.md5(raw_bytes, usedforsecurity=False).hexdigest(),
@@ -144,22 +176,27 @@ def prepare_images(
             source["raw_key"] = str(prefix / relative.as_posix())
         if key in images:
             prior = images[key]
-            if prior["sources"][0]["species"] != species:
-                raise ValueError(f"Identical PNG has conflicting species: {relative}")
+            if (
+                prior["sources"][0]["species"] != species
+                or prior["split"] != record["split"]
+            ):
+                raise ValueError(
+                    f"Identical PNG has conflicting species or splits: {relative}"
+                )
             prior["sources"].append(source)
         else:
             images[key] = {
                 "file_name": key,
                 "width": width,
                 "height": height,
-                "split": split,
+                "split": record["split"],
                 "sources": [source],
             }
         write_new(output_root / key, png_bytes)
 
     categories = [
         {"id": index, "name": name, "supercategory": "seed"}
-        for index, name in enumerate(species_names, start=1)
+        for index, name in enumerate(sorted(species_names), start=1)
     ]
     return {
         "info": {
@@ -183,13 +220,20 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "source_root",
         type=Path,
-        help="Directory whose immediate subfolders are species",
+        help="Collection with species folders and/or Training/Validation folders",
     )
     parser.add_argument(
         "output_root", type=Path, help="Working directory for PNGs and COCO"
     )
     parser.add_argument("--code-revision", required=True)
     parser.add_argument("--split", choices=["train", "validation", "test"])
+    parser.add_argument(
+        "--input",
+        action="append",
+        nargs=2,
+        metavar=("SPLIT", "DIRECTORY"),
+        help="Override automatic discovery for an unusual layout; split is train, validation, test or unassigned",
+    )
     parser.add_argument(
         "--raw-prefix", help="Matching S3 raw/ prefix to record in source metadata"
     )
@@ -200,6 +244,7 @@ def main(argv: list[str] | None = None) -> None:
         code_revision=args.code_revision,
         split=args.split,
         raw_prefix=args.raw_prefix,
+        inputs=args.input,
     )
     save_coco(args.output_root / "index.coco.json", result)
     print(
