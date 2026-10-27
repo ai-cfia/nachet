@@ -21,10 +21,8 @@ def test_conversion_preserves_raw_pixels_lineage_and_split(prepare, intake):
     assert [item["name"] for item in coco["categories"]] == ["Avena fatua", "Zea mays"]
     for image in coco["images"]:
         data = (output / image["file_name"]).read_bytes()
-        assert (
-            image["file_name"]
-            == f"png/detection/{hashlib.sha256(data).hexdigest()}.png"
-        )
+        assert image["image_sha256"] == hashlib.sha256(data).hexdigest()
+        assert image["file_name"] == f"png/detection/{image['image_sha256']}.png"
         original = image["sources"][0]
         assert "original_path" not in original
         assert original["raw_key"] == f"raw/intake-01/Training/{original['path']}"
@@ -33,6 +31,8 @@ def test_conversion_preserves_raw_pixels_lineage_and_split(prepare, intake):
             original["raw_sha256"]
             == hashlib.sha256(before[original["path"]]).hexdigest()
         )
+        if not original["path"].endswith(".png"):
+            assert image["image_sha256"] != original["raw_sha256"]
         assert (
             original["legacy_md5"]
             == hashlib.md5(before[original["path"]], usedforsecurity=False).hexdigest()
@@ -105,6 +105,11 @@ def test_cli_reads_species_folders_without_an_intake_file(intake, capsys):
     result = json.loads((output / "index.coco.json").read_text())
     assert result["info"]["preparation"]["code_revision"] == "test-cli"
     assert all(image["split"] == "validation" for image in result["images"])
+    assert all(
+        image["image_sha256"]
+        == hashlib.sha256((output / image["file_name"]).read_bytes()).hexdigest()
+        for image in result["images"]
+    )
     assert all(
         source["raw_key"] == f"raw/intake-01/Validation/{source['path']}"
         for image in result["images"]
