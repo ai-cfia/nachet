@@ -9,13 +9,12 @@ from io import BytesIO
 from typing import Any
 from uuid import UUID, uuid4
 
+from mlops_blob.exceptions import BlobAlreadyExistsError
 from PIL import Image
 from PIL import __version__ as pillow_version
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-
-from mlops_blob.exceptions import BlobAlreadyExistsError
 
 from .contract import (
     CropReference,

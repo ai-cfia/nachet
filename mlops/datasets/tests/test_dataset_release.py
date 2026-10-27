@@ -19,6 +19,8 @@ from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from mlops_blob import create_blob_storage_client
+from mlops_blob.exceptions import BlobAlreadyExistsError, BlobNotFoundError
 from PIL import Image
 from sqlalchemy import MetaData, func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -29,8 +31,6 @@ from dataset_release.registry import DatasetRelease
 from dataset_release.release import DatasetController, ReleaseConflict, ReleaseNotReady
 from dataset_release.settings import Settings
 from dataset_release.storage import BlobStorageAdapter
-from mlops_blob import create_blob_storage_client
-from mlops_blob.exceptions import BlobAlreadyExistsError, BlobNotFoundError
 
 
 def s3_storage(client):

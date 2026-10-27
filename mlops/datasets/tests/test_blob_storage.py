@@ -6,8 +6,6 @@ from unittest.mock import Mock
 
 import pytest
 from botocore.exceptions import ClientError
-
-from dataset_release.storage import BlobStorageAdapter
 from mlops_blob import BlobStorageInterface, create_blob_storage_client
 from mlops_blob.exceptions import (
     BlobAlreadyExistsError,
@@ -18,6 +16,8 @@ from mlops_blob.exceptions import (
 from mlops_blob.exceptions import (
     PermissionError as BlobPermissionError,
 )
+
+from dataset_release.storage import BlobStorageAdapter
 
 
 @pytest.mark.asyncio
