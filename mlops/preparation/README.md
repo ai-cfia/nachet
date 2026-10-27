@@ -146,7 +146,10 @@ database. Draft boxes go in `draft_boxes`. Source records, split assignments
 and the pre-label fields described above stay on each sample. `source_species`
 copies the first source's species for filtering, or stays `null` when it is
 unknown. It records the original species separately from reviewed box labels.
-`object_key` keeps the PNG key, and `dataset.info` keeps the COCO `info` block.
+`object_key` keeps the PNG key, and `image_sha256` copies its hash from the
+COCO image record. Each input image must include this field; the import does
+not read image bytes to recalculate it. Raw-file hashes stay in `sources`.
+`dataset.info` keeps the COCO `info` block.
 Images imported before pre-labeling get `prelabel_status: "unannotated"`.
 
 Existing dataset names are refused so a rerun cannot overwrite review work.

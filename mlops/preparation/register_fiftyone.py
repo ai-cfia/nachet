@@ -42,6 +42,7 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
         )
         if len(dataset) != len(coco["images"]):
             raise ValueError("FiftyOne did not import every COCO image")
+        dataset.add_sample_field("image_sha256", fo.StringField)
         # Declare nullable fields even when the first sample has no value.
         dataset.add_sample_field("source_species", fo.StringField)
         dataset.add_sample_field("split", fo.StringField)
@@ -54,6 +55,7 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
             sample["source_species"] = sources[0].get("species") if sources else None
             sample["split"] = record["split"]
             sample["object_key"] = record["file_name"]
+            sample["image_sha256"] = record["image_sha256"]
             sample["prelabel_status"] = record.get("prelabel_status", "unannotated")
             sample["prelabel_reason"] = record.get("prelabel_reason")
             sample["prelabel_prompt"] = record.get("prelabel_prompt")

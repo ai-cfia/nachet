@@ -37,6 +37,7 @@ def test_registration_keeps_fields_and_refuses_to_replace_review_work(
     dataset = fiftyone.load_dataset(review_name)
     assert dataset.persistent
     assert len(dataset) == 3
+    assert isinstance(dataset.get_field("image_sha256"), fiftyone.StringField)
     samples = {sample.coco_id: sample for sample in dataset}
     for record in draft_coco["images"]:
         sample = samples[record["id"]]
@@ -47,6 +48,7 @@ def test_registration_keeps_fields_and_refuses_to_replace_review_work(
         assert sample["source_species"] == record["sources"][0]["species"]
         assert sample["split"] == record["split"]
         assert sample["object_key"] == record["file_name"]
+        assert sample["image_sha256"] == record["image_sha256"]
         assert sample["prelabel_prompt"] == record["prelabel_prompt"]
         assert sample["prelabel_status"] == record["prelabel_status"]
         assert sample["prelabel_reason"] == record["prelabel_reason"]
@@ -66,6 +68,7 @@ def test_registration_keeps_fields_and_refuses_to_replace_review_work(
     assert reviewed.draft_boxes.detections[0].label == "Zea mays"
     assert reviewed.draft_boxes.detections[0].bounding_box == [0.1, 0.2, 0.3, 0.4]
     assert reviewed["source_species"] == "Avena fatua"
+    assert reviewed["image_sha256"] == first["image_sha256"]
     assert dataset.info["preparation"] == draft_coco["info"]["preparation"]
     assert dataset.info["prelabel"] == draft_coco["info"]["prelabel"]
 
@@ -214,6 +217,8 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
         assert sample.filepath == str(prepared / record["file_name"])
         assert (
             hashlib.sha256(Path(sample.filepath).read_bytes()).hexdigest()
+            == sample["image_sha256"]
+            == record["image_sha256"]
             == Path(sample.filepath).stem
         )
         assert sample["prelabel_status"] == record["prelabel_status"]

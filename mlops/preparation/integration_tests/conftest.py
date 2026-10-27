@@ -33,6 +33,7 @@ def draft_coco():
             {
                 "id": 11 + index * 7,
                 "file_name": "png/detection/" + str(index) * 64 + ".png",
+                "image_sha256": str(index) * 64,
                 "width": 100,
                 "height": 80,
                 "split": ["train", "validation", None][index],
