@@ -8,38 +8,14 @@ from PIL import Image
 from prepare_images import main, prepare_images, save_coco
 
 
-@pytest.fixture
-def intake(tmp_path):
-    source = tmp_path / "source"
-    for name, mode, color in [
-        ("Avena fatua/batch-01/tray-a/a.tiff", "RGB", "red"),
-        ("Zea mays/batch-01/tray-b/b.jpg", "RGB", "green"),
-        ("Avena fatua/other/c.png", "L", 127),
-        ("Avena fatua/other/d.tiff", "I;16", 1000),
-    ]:
-        path = source / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        Image.new(mode, (100, 80), color).save(path)
-    return source, tmp_path / "prepared"
-
-
-def prepare(intake):
-    return prepare_images(
-        *intake,
-        code_revision="test-revision",
-        split="train",
-        raw_prefix="raw/intake-01/Training",
-    )
-
-
-def test_conversion_preserves_raw_pixels_lineage_and_split(intake):
+def test_conversion_preserves_raw_pixels_lineage_and_split(prepare, intake):
     source, output = intake
     before = {
         p.relative_to(source).as_posix(): p.read_bytes()
         for p in source.rglob("*")
         if p.is_file()
     }
-    coco = prepare(intake)
+    coco = prepare()
     assert len(coco["images"]) == 4
     assert coco["annotations"] == []
     assert [item["name"] for item in coco["categories"]] == ["Avena fatua", "Zea mays"]
@@ -75,15 +51,15 @@ def test_conversion_preserves_raw_pixels_lineage_and_split(intake):
         for p in source.rglob("*")
         if p.is_file()
     }
-    assert prepare(intake) == coco
+    assert prepare() == coco
 
 
-def test_identical_pngs_share_bytes_but_keep_both_source_paths(intake):
+def test_identical_pngs_share_bytes_but_keep_both_source_paths(prepare, intake):
     source, _ = intake
     copy = source / "Avena fatua/batch-02/tray-c/copy.png"
     copy.parent.mkdir(parents=True)
     copy.write_bytes((source / "Avena fatua/other/c.png").read_bytes())
-    result = prepare(intake)
+    result = prepare()
     assert len(result["images"]) == 4
     duplicates = [image for image in result["images"] if len(image["sources"]) == 2]
     assert len(duplicates) == 1
@@ -93,13 +69,13 @@ def test_identical_pngs_share_bytes_but_keep_both_source_paths(intake):
     }
 
 
-def test_duplicate_png_cannot_have_different_species(intake):
+def test_duplicate_png_cannot_have_different_species(prepare, intake):
     source, _ = intake
     (source / "Zea mays/copy.png").write_bytes(
         (source / "Avena fatua/other/c.png").read_bytes()
     )
     with pytest.raises(ValueError, match="conflicting species or splits"):
-        prepare(intake)
+        prepare()
 
 
 def test_unknown_split_stays_unset_and_s3_is_optional(intake):
@@ -137,7 +113,7 @@ def test_cli_reads_species_folders_without_an_intake_file(intake, capsys):
     assert "Prepared 4 images from 4 sources" in capsys.readouterr().out
 
 
-def test_hidden_files_are_skipped_and_empty_species_are_retained(intake):
+def test_hidden_files_are_skipped_and_empty_species_are_retained(prepare, intake):
     source, _ = intake
     (source / "Empty species").mkdir()
     for name in [
@@ -149,7 +125,7 @@ def test_hidden_files_are_skipped_and_empty_species_are_retained(intake):
         path.parent.mkdir(parents=True, exist_ok=True)
         Image.new("RGB", (2, 2), "blue").save(path)
     (source / "Avena fatua/notes.txt").write_text("metadata, not an image")
-    result = prepare(intake)
+    result = prepare()
     assert len(result["images"]) == 4
     assert [category["name"] for category in result["categories"]] == [
         "Avena fatua",
@@ -158,17 +134,17 @@ def test_hidden_files_are_skipped_and_empty_species_are_retained(intake):
     ]
 
 
-def test_source_root_images_require_a_species_folder(intake):
+def test_source_root_images_require_a_species_folder(prepare, intake):
     source, output = intake
     Image.new("RGB", (2, 2)).save(source / "unlabelled.png")
-    with pytest.raises(ValueError, match="species subfolder: .*unlabelled.png"):
-        prepare(intake)
+    with pytest.raises(ValueError, match="species folder: .*unlabelled.png"):
+        prepare()
     assert not output.exists()
 
 
 def test_output_cannot_be_inside_the_input_tree(intake):
     source, _ = intake
-    with pytest.raises(ValueError, match="outside the source root"):
+    with pytest.raises(ValueError, match="outside the collection"):
         prepare_images(source, source / "generated", code_revision="test")
     assert not (source / "generated").exists()
 
@@ -176,7 +152,7 @@ def test_output_cannot_be_inside_the_input_tree(intake):
 def test_empty_species_tree_is_reported(tmp_path):
     source = tmp_path / "source"
     (source / "Avena fatua").mkdir(parents=True)
-    with pytest.raises(ValueError, match="No images found in species subfolders"):
+    with pytest.raises(ValueError, match="No images found in species folders"):
         prepare_images(source, tmp_path / "out", code_revision="test")
 
 
@@ -193,11 +169,11 @@ def test_invalid_split_is_not_recorded(intake):
         prepare_images(*intake, code_revision="test", split="unknown")
 
 
-def test_corrupt_input_is_named_and_cannot_replace_working_coco(intake):
+def test_corrupt_input_is_named_and_cannot_replace_working_coco(prepare, intake):
     source, output = intake
     (source / "Avena fatua/batch-01/tray-a/a.tiff").write_bytes(b"broken TIFF")
     with pytest.raises(OSError, match="Avena fatua/batch-01/tray-a/a.tiff"):
-        prepare(intake)
+        prepare()
     save_coco(output / "index.json", {"annotations": ["human correction"]})
     with pytest.raises(ValueError, match="Refusing to replace"):
         save_coco(output / "index.json", {"annotations": []})
@@ -218,7 +194,7 @@ def test_png_encoding_error_names_the_source_file(tmp_path, mode):
 
 
 @pytest.mark.parametrize("kind", ["file", "species_folder"])
-def test_source_symlinks_cannot_escape_the_input_tree(intake, tmp_path, kind):
+def test_source_symlinks_cannot_escape_the_input_tree(prepare, intake, tmp_path, kind):
     source, output = intake
     outside = tmp_path / "outside"
     outside.mkdir()
@@ -228,7 +204,7 @@ def test_source_symlinks_cannot_escape_the_input_tree(intake, tmp_path, kind):
     else:
         (source / "Outside species").symlink_to(outside, target_is_directory=True)
     with pytest.raises(ValueError, match="escapes"):
-        prepare(intake)
+        prepare()
     assert not (output / "index.coco.json").exists()
 
 
@@ -280,25 +256,6 @@ def test_high_bit_colour_tiff_is_rejected_before_writing_png(tmp_path):
         prepare_images(source, tmp_path / "prepared", code_revision="test")
     assert not list((tmp_path / "prepared").glob("**/*.png"))
     assert path.read_bytes().endswith(pixels)
-
-
-@pytest.fixture
-def automatic_collection(tmp_path):
-    root = tmp_path / "collection"
-    for index, relative in enumerate(
-        [
-            "Training/A/seed.tiff",
-            "Training/B/seed.tiff",
-            "Training/C/seed.tiff",
-            "Validation/A/seed.tiff",
-            "Validation/C/seed.tiff",
-            "D/tray/seed.tiff",
-        ]
-    ):
-        path = root / relative
-        path.parent.mkdir(parents=True, exist_ok=True)
-        Image.new("RGB", (8, 6), (index * 30, 10, 20)).save(path)
-    return root, tmp_path / "prepared"
 
 
 def test_automatic_layout_shares_categories_and_preserves_mixed_splits(
@@ -371,7 +328,9 @@ def test_automatic_layout_rejects_an_image_in_training_and_validation(
 
 
 def test_global_split_cannot_override_discovered_split_folders(automatic_collection):
-    with pytest.raises(ValueError, match="--split cannot override"):
+    with pytest.raises(
+        ValueError, match="Cannot set a split for a collection with split folders"
+    ):
         prepare_images(*automatic_collection, code_revision="test", split="train")
 
 
@@ -391,8 +350,49 @@ def test_automatic_split_folder_cannot_be_an_escaping_symlink(
     outside = tmp_path / "outside"
     (root / "Training").rename(outside)
     (root / "Training").symlink_to(outside, target_is_directory=True)
-    with pytest.raises(ValueError, match="Split folder escapes"):
+    with pytest.raises(ValueError, match="Split folder escapes the collection"):
         prepare_images(*automatic_collection, code_revision="test")
+
+
+def test_empty_split_symlink_outside_collection_is_rejected(
+    automatic_collection, tmp_path
+):
+    root, output = automatic_collection
+    outside = tmp_path / "empty-outside"
+    outside.mkdir()
+    (root / "Test").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(ValueError, match="Split folder escapes the collection"):
+        prepare_images(root, output, code_revision="test")
+    assert not output.exists()
+
+
+def test_conversion_reads_the_file_that_was_resolved(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    root = (tmp_path / "collection").resolve()
+    (root / "Avena fatua").mkdir(parents=True)
+    inside = root / ".inside.png"
+    outside = tmp_path / "outside.png"
+    Image.new("RGB", (8, 6), "red").save(inside)
+    Image.new("RGB", (8, 6), "blue").save(outside)
+    alias = root / "Avena fatua/seed.png"
+    alias.symlink_to(inside)
+    original_resolve = Path.resolve
+    retargeted = []
+
+    def retarget(path, *args, **kwargs):
+        resolved = original_resolve(path, *args, **kwargs)
+        if path == alias and not retargeted:
+            alias.unlink()
+            alias.symlink_to(outside)
+            retargeted.append(True)
+        return resolved
+
+    monkeypatch.setattr(Path, "resolve", retarget)
+    result = prepare_images(root, tmp_path / "prepared", code_revision="test")
+    assert retargeted
+    source = result["images"][0]["sources"][0]
+    assert source["raw_sha256"] == hashlib.sha256(inside.read_bytes()).hexdigest()
 
 
 @pytest.mark.parametrize(
