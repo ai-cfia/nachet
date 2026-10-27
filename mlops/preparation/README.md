@@ -84,6 +84,25 @@ Outputs can be regenerated: a rerun that produces the same bytes succeeds, and a
 run that would change an existing file fails. Use a new output directory when
 the collection or settings change.
 
+## Pre-label with SAM3
+
+Install the `sam3` group and provide local model weights.
+
+```bash
+uv sync --project mlops/preparation --locked --group sam3
+uv run --project mlops/preparation --no-sync python \
+  mlops/preparation/prelabel.py /work/prepared/index.coco.json \
+  /work/prepared /work/draft.coco.json \
+  --model-path /models/sam3 --model-revision <weights-revision> --device cuda
+```
+
+CUDA follows the notebook's BF16 autocast and TF32 settings; CPU uses FP32.
+The revision is an operator-provided label for those weights. The source
+species supplies the class. Prompts propose object locations, and every box
+needs review. Prompt failures and nested boxes retain a reason field.
+Invalid boxes are omitted and flagged for review. High-bit images skip
+inference and remain marked for review until a normalization policy is chosen.
+
 ## Checks
 
 ```bash
@@ -96,6 +115,7 @@ Adapted from `ai-cfia/nachet-model-ccds`:
 
 - Image conversion: `nachetmodel/tiff_jpg_to_png.py` at `b7ba50b`.
 - COCO indexing: `notebooks/1.01_js_init_coco_dataset.ipynb` at `52988ae`.
+- SAM3 drafts: `notebooks/1.02_js_pre_annotate_sam3_hf.ipynb` at `b7ba50b`.
 
 Copyright (c) 2025 AI @ Canadian Food Inspection Agency (CFIA).
 See the [MIT licence](../../LICENSE).
