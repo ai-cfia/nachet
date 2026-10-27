@@ -43,6 +43,7 @@ def test_prelabel_assigns_unique_ids_padded_boxes_and_species(coco, intake):
             == by_id[annotation["image_id"]]["sources"][0]["species"]
         )
     for before, after in zip(coco["images"], result["images"]):
+        assert before["image_sha256"] == after["image_sha256"]
         assert before["sources"] == after["sources"]
         assert before["split"] == after["split"]
     assert coco["annotations"] == []
@@ -90,15 +91,17 @@ def test_high_bit_depth_images_remain_for_review_without_stopping_the_batch(
     prepare, intake
 ):
     calls = []
-    result = prelabel(
-        prepare(), intake[1], lambda *args: calls.append(1) or [[1, 1, 3, 3]]
-    )
+    index = prepare()
+    result = prelabel(index, intake[1], lambda *args: calls.append(1) or [[1, 1, 3, 3]])
     high_bit = next(
         i for i in result["images"] if i["sources"][0]["path"].endswith("d.tiff")
     )
     assert high_bit["prelabel_status"] == "needs_review"
     assert high_bit["prelabel_reason"] == "high_bit_depth"
     assert high_bit["prelabel_prompt"] is None
+    assert high_bit["image_sha256"] == next(
+        i["image_sha256"] for i in index["images"] if i["id"] == high_bit["id"]
+    )
     assert len(calls) == 3
     assert high_bit["id"] not in {a["image_id"] for a in result["annotations"]}
 
@@ -178,6 +181,9 @@ def test_prelabel_cli_records_run_options_once(coco, intake, tmp_path, monkeypat
         "precision": "fp32",
     }
     assert len(result["images"]) == 3
+    assert [image["image_sha256"] for image in result["images"]] == [
+        image["image_sha256"] for image in coco["images"]
+    ]
 
 
 def test_automatic_collection_keeps_labels_and_splits_through_prelabel(
