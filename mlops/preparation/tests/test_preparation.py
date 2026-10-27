@@ -444,7 +444,7 @@ def draft_index(intake):
     return coco
 
 
-def test_prelabel_first_image_unique_ids_boxes_and_metadata(intake):
+def test_prelabel_assigns_unique_ids_padded_boxes_and_species(intake):
     coco = draft_index(intake)
     calls = []
 
@@ -521,6 +521,16 @@ def test_invalid_boxes_keep_valid_detections_and_mark_the_image_for_review(intak
     assert len(result["annotations"]) == len(coco["images"])
     assert all(i["prelabel_status"] == "needs_review" for i in result["images"])
     assert all(i["prelabel_reason"] == "invalid_boxes" for i in result["images"])
+
+
+@pytest.mark.parametrize("count", [10, 11])
+def test_too_many_detections_reason_survives_invalid_geometry(intake, count):
+    coco = draft_index(intake)
+    boxes = [[10, 10, 30, 30]] * (count - 1) + [[110, 10, 120, 20]]
+    result = prelabel(coco, intake[1], lambda *args: boxes)
+    assert all(i["prelabel_status"] == "needs_review" for i in result["images"])
+    assert all(i["prelabel_reason"] == "too_many_detections" for i in result["images"])
+    assert len(result["annotations"]) == len(coco["images"]) * (count - 1)
 
 
 @pytest.mark.parametrize(

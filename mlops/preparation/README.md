@@ -86,7 +86,9 @@ the collection or settings change.
 
 ## Pre-label with SAM3
 
-Install the `sam3` group and provide local model weights.
+`prelabel.py` adds draft boxes to the COCO index for review in FiftyOne.
+Install the `sam3` group and provide a local directory containing the SAM3
+weights. The command does not download weights.
 
 ```bash
 uv sync --project mlops/preparation --locked --group sam3
@@ -96,12 +98,31 @@ uv run --project mlops/preparation --no-sync python \
   --model-path /models/sam3 --model-revision <weights-revision> --device cuda
 ```
 
-CUDA follows the notebook's BF16 autocast and TF32 settings; CPU uses FP32.
-The revision is an operator-provided label for those weights. The source
-species supplies the class. Prompts propose object locations, and every box
-needs review. Prompt failures and nested boxes retain a reason field.
-Invalid boxes are omitted and flagged for review. High-bit images skip
-inference and remain marked for review until a normalization policy is chosen.
+For each image, the command tries the notebook's prompts in order:
+"foreground object", "thick long seed", then "insect". It stops at the first
+prompt returning 1 to 9 boxes. Boxes keep the species recorded in the index.
+Padding follows the notebook: `p` pixels on the left and top, `2p` on the
+right and bottom, clipped to the image. `--padding` sets `p` (default: 3).
+
+CUDA uses BF16 autocast and TF32; CPU uses FP32. `--model-revision` is a label
+you choose for the local weights, recorded in `info.prelabel`.
+
+Each image records its `prelabel_status`, `prelabel_prompt` and
+`prelabel_reason`. The prompt is the last one attempted, or `null` if
+inference was skipped.
+
+| Status | Reason | Meaning |
+| --- | --- | --- |
+| `draft` | `null` | A prompt returned 1 to 9 valid boxes. |
+| `draft` | `nested_boxes` | One padded box lies inside another. |
+| `needs_review` | `no_detections` | All prompts failed the count check; the last returned no boxes. |
+| `needs_review` | `too_many_detections` | All prompts failed the count check; the last returned at least 10 boxes. |
+| `needs_review` | `invalid_boxes` | A prompt returned 1 to 9 boxes, but invalid geometry was dropped. |
+| `needs_review` | `high_bit_depth` | High-bit grayscale image; inference skipped pending a normalization policy. |
+
+Both statuses require human review. The command refuses an index that already
+has annotations. Output is written after the full batch; an interrupted run
+currently starts again from the beginning.
 
 ## Checks
 

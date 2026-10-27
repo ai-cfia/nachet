@@ -106,7 +106,7 @@ def prelabel(coco: dict, media_root: Path, predictor, *, padding: int = 3) -> di
             coco_box(box, record["width"], record["height"], padding) for box in boxes
         ]
         padded = [box for box in candidates if box is not None]
-        if len(padded) != len(candidates):
+        if len(padded) != len(candidates) and record["prelabel_status"] == "draft":
             record.update(
                 prelabel_status="needs_review", prelabel_reason="invalid_boxes"
             )
