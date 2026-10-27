@@ -142,9 +142,11 @@ def test_imports_do_not_load_backend_or_dataset_release():
         [
             sys.executable,
             "-c",
-            "import sys; import mlops_blob.s3.storage, mlops_blob.azure.storage; "
-            "assert not any(n == 'app' or n.startswith('app.') or "
-            "n == 'dataset_release' or n.startswith('dataset_release.') for n in sys.modules)",
+            (
+                "import sys; import mlops_blob.s3.storage, mlops_blob.azure.storage; "
+                + "assert not any(n == 'app' or n.startswith('app.') or "
+                + "n == 'dataset_release' or n.startswith('dataset_release.') for n in sys.modules)"
+            ),
         ],
         check=True,
     )
