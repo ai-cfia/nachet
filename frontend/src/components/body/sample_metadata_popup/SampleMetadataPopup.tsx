@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Box,
   Dialog,
@@ -55,8 +55,11 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
   const [sampleIdPrefix, setSampleIdPrefix] = useState<string>("");
   const [sampleDescription, setSampleDescription] = useState<string>("");
 
-  // Load persisted values when popup opens (only when transitioning to open)
-  useEffect(() => {
+  const [wasOpen, setWasOpen] = useState(false);
+
+  // Load persisted values on open; keep unsaved edits while the store changes.
+  if (isSampleMetadataOpen !== wasOpen) {
+    setWasOpen(isSampleMetadataOpen);
     if (isSampleMetadataOpen) {
       console.log("DEBUG: Loading sample metadata from store:", sampleMetadata);
 
@@ -76,8 +79,7 @@ const SampleMetadataPopup: React.FC<SampleMetadataPopupProps> = (props) => {
         sampleMetadata.sampleIdPrefix,
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSampleMetadataOpen]); // Only re-run when dialog opens/closes
+  }
 
   // Validation error states
   const [brandError, setBrandError] = useState<string>("");

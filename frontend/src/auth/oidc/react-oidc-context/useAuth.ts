@@ -4,11 +4,11 @@
  *
  * Original project is MIT licensed. See LICENSE in this directory.
  */
-import { useContext } from "react";
+import { use } from "react";
 import { AuthContext } from "./AuthContext";
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
+  const context = use(AuthContext);
 
   if (context === undefined) {
     throw new Error("useAuth must be used within AuthProvider");

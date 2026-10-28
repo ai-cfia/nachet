@@ -401,9 +401,9 @@ export const NegativeFeedbackForm = (props: NegativeFeedbackFormProps) => {
                 minWidth: "100%",
               }}
             >
-              {reasons.map((reason, index) => {
+              {reasons.map((reason) => {
                 return (
-                  <MenuItem key={index} value={reason}>
+                  <MenuItem key={reason} value={reason}>
                     {reason}
                   </MenuItem>
                 );

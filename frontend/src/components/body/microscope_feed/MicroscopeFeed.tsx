@@ -76,7 +76,34 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
   //   top: height / 2 - 50,
   // };
 
-  const [imageData, setImageData] = useState<ImageWithInference | null>(null);
+  const imageData = useMemo<ImageWithInference | null>(() => {
+    const image = imageCache.find((img) => img.index === imageIndex);
+    const activeResult = image?.activeWorkflowId
+      ? getResult(image.activeWorkflowId)
+      : null;
+
+    if (
+      !image ||
+      !activeResult ||
+      activeResult.scores.length === 0 ||
+      activeResult.boxes.length === 0 ||
+      activeResult.classifications.length === 0 ||
+      !(image.imageDims[0] > 0)
+    ) {
+      return null;
+    }
+
+    return {
+      ...image,
+      annotated: true,
+      scores: activeResult.scores,
+      classifications: activeResult.classifications,
+      boxes: activeResult.boxes,
+      topN: activeResult.topN,
+      overlapping: activeResult.overlapping,
+      overlappingIndices: activeResult.overlappingIndices,
+    };
+  }, [imageCache, imageIndex, getResult]);
   const [feedbackMode, setFeedbackMode] = useState<boolean>(false);
   const [isNewAnnotation, setIsNewAnnotation] = useState<boolean>(false);
   const [scaledFeedbackBox, setScaledFeedbackBox] = useState<BoxCSS | null>(
@@ -111,8 +138,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     }
   }, [scaledFeedbackBox, boxDragEnabled, feedbackMode, onFreeformBoxChange]);
 
-  // Update inferenceForRevision box coordinates when scaledFeedbackBox changes
-  useEffect(() => {
+  const feedbackForRevision = useMemo(() => {
     if (
       feedbackMode &&
       scaledFeedbackBox &&
@@ -127,7 +153,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
         scaledFeedbackBox,
       );
 
-      setInferenceForRevision({
+      return {
         ...inferenceForRevision,
         boxes: [
           {
@@ -135,8 +161,9 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
             box: unscaledBox,
           },
         ],
-      });
+      };
     }
+    return inferenceForRevision;
   }, [
     scaledFeedbackBox,
     feedbackMode,
@@ -340,51 +367,6 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
     setFeedbackMode(true);
   };
 
-  useEffect(() => {
-    if (imageCache.length > 0) {
-      const image = imageCache.find((img) => img.index === imageIndex);
-      if (!image) {
-        setImageData(null);
-        return;
-      }
-
-      // Get active inference result
-      const activeWorkflowId = image.activeWorkflowId;
-      if (!activeWorkflowId) {
-        setImageData(null);
-        return;
-      }
-
-      const activeResult = getResult(activeWorkflowId);
-      if (!activeResult) {
-        setImageData(null);
-        return;
-      }
-
-      // Check if we have valid inference data
-      if (
-        activeResult.scores.length > 0 &&
-        activeResult.boxes.length > 0 &&
-        activeResult.classifications.length > 0 &&
-        image.imageDims[0] > 0
-      ) {
-        // Merge image with inference result
-        const mergedImageData: ImageWithInference = {
-          ...image,
-          annotated: true,
-          scores: activeResult.scores,
-          classifications: activeResult.classifications,
-          boxes: activeResult.boxes,
-          topN: activeResult.topN,
-          overlapping: activeResult.overlapping,
-          overlappingIndices: activeResult.overlappingIndices,
-        };
-        setImageData(mergedImageData);
-      } else {
-        setImageData(null);
-      }
-    }
-  }, [imageIndex, imageCache, getResult]);
   return (
     <Box
       sx={{
@@ -411,7 +393,7 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
         apiError={apiError}
         feedbackMode={feedbackMode}
         scaledFeedbackBox={scaledFeedbackBox}
-        inferenceForRevision={inferenceForRevision}
+        inferenceForRevision={feedbackForRevision}
         isNewAnnotation={isNewAnnotation}
         boxDragEnabled={boxDragEnabled}
         isWebcamActive={isWebcamActive}
