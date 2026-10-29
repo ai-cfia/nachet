@@ -78,6 +78,99 @@ specimen. Identical image keys and known specimen groups must not cross splits.
 Unknown specimen identity cannot be detected from metadata alone; assign splits
 upstream using the available collection knowledge.
 
+### Export reviewed FiftyOne labels without copying images
+
+The exporter uses FiftyOne's [labels-only COCO API](https://docs.voxel51.com/api/fiftyone.utils.coco.html)
+with `export_media=False`. It writes JSON only. Full images must already exist
+in the publisher's container at `png/detection/<sha256>.png`.
+
+Run the export in the annotation environment with FiftyOne installed and access
+to its dataset database. Install this project and its sibling blob package in
+that environment if needed, using its Python interpreter from `mlops/datasets/`:
+
+```bash
+python -m pip install -e ../blob -e .
+```
+
+FiftyOne is deliberately not a publisher dependency. Use the annotation
+environment's existing FiftyOne version; the offline preparation and publishing
+commands do not require it. This script does not deploy a job or connect to a
+cluster on its own.
+
+Before exporting, give each selected FiftyOne sample an explicit `split` field
+containing `train`, `validation` or `test`. An optional `sha256` field identifies
+the exact stored PNG bytes. If absent, a `<sha256>.png` filename supplies the
+hash; other filenames require reading and hashing the local file without
+converting it. The publisher subsequently verifies the actual blob bytes.
+An optional `sources` field is a list of source dictionaries described above.
+If absent, the exporter records the sample filepath and FiftyOne sample ID.
+`--split-field`, `--sha256-field` and `--sources-field` select other field names.
+The detection field must contain corrected `Detections`; use an empty
+`Detections` for a reviewed negative image. Image dimensions must be available
+in FiftyOne metadata or readable from the local media by FiftyOne.
+
+Copy `examples/release-metadata.json` to a working file and set the release
+name/version, author, and the revision/settings used to prepare the PNGs.
+It contains release metadata only, without a `coco` field. Export the reviewed
+dataset, or restrict it to a saved reviewed view:
+
+```bash
+python -m dataset_release.fiftyone_export \
+  --dataset seeds --view reviewed --label-field corrected_detections \
+  --release-metadata release-metadata.json --output-dir reviewed-v1
+```
+
+Omit `--view` to export the entire dataset. Pause edits to the selected samples
+while exporting; this reads the dataset and does not lock the annotation UI.
+The view must retain the split/hash/source fields needed for the handoff.
+
+The new output folder contains `coco.json` and `dataset-release.json`. COCO
+image paths are replaced with blob keys, and each image includes `sha256`,
+`split` and `sources`. Image/annotation/category IDs, reviewed boxes and extra
+COCO attributes are retained. Export joins use full paths rather than basenames;
+missing, duplicate or conflicting membership fails preparation. The output
+folder must not already exist. Crops are disabled for this handoff.
+
+If COCO has already been exported, prepare it without connecting to FiftyOne:
+
+```bash
+uv run python -m dataset_release.fiftyone_export \
+  --coco labels.json --membership membership.json \
+  --release-metadata release-metadata.json --output-dir reviewed-v1
+```
+
+`membership.json` is a JSON list with exactly one record per exported image:
+
+```json
+[
+  {
+    "file_name": "/datasets/reviewed/seed.png",
+    "sha256": "replace-with-the-64-character-lowercase-png-sha256",
+    "split": "train",
+    "sources": [{ "original_path": "collection/tray/seed.tiff" }]
+  }
+]
+```
+
+`file_name` must match the corresponding exported COCO path, including its
+directories; slash direction is normalized. `sources` can be omitted to retain
+sources already in COCO. The optional explicit COCO `sha256` field is validated
+against its blob key. Older releases without that field retain their serialized
+shape and remain compatible with identical publication retries.
+
+Publish the prepared specification using the existing database/blob settings
+and registry provisioning described below:
+
+```bash
+uv run python -m dataset_release --container training-datasets \
+  publish reviewed-v1/dataset-release.json
+```
+
+`DatasetController.publish()` writes `coco.json`, the release manifest and its
+database registration. It downloads existing PNGs for integrity/dimension
+checks, without copying or uploading those images. This requires the existing
+registry migration; no additional database migration is needed for export.
+
 Set `generate_crops` to `true` to publish a classifier-ready release. The cropper
 uses the reviewed COCO boxes, not pre-labeling predictions or live MongoDB state.
 COCO decimal coordinates remain unchanged. Pixel extraction uses floor for
