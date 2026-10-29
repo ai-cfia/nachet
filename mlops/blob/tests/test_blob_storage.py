@@ -141,6 +141,7 @@ def test_imports_do_not_load_backend_or_dataset_release():
     subprocess.run(
         [
             sys.executable,
+            "-I",
             "-c",
             (
                 "import sys; import mlops_blob.s3.storage, mlops_blob.azure.storage; "

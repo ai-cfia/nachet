@@ -5,6 +5,8 @@ validation, factory and S3/Azure implementations from `backend/app/blob/` at
 repository revision `88212e11aca9b76d93025e4ce89b0e38b82d681f`.
 The backend originals are unchanged. This package ships as the standalone `nachet-blob` distribution. Installing
 `mlops/blob/` installs `mlops_blob` without backend or dataset release code.
+The shared Python files and the `azure/` and `s3/` directories now live directly
+under `mlops/blob/`. The package mapping preserves the `mlops_blob` import name.
 
 The application-specific manager, account registry, health checks, backend
 logging service and backend tests are deliberately excluded. Providers are
@@ -18,6 +20,8 @@ adapter and its worker execution remain in the separate dataset release PR.
 - Imports refer to `mlops_blob`; a standard-library logging shim replaces
   `app.service.logs`. No application startup, FastAPI dependency or backend
   storage manager is imported.
+- The logging shim is `logs.py`, avoiding a collision with Python's standard
+  `logging` module when working from the flat source directory.
 - S3 `overwrite=False` uses `IfNoneMatch="*"` on the PUT itself. A 412 response
   becomes the common `BlobAlreadyExistsError`. Unsupported conditions, access
   failures and 409 conditional-write conflicts propagate as failures; there is
