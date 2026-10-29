@@ -66,6 +66,20 @@ class CocoImage(BaseModel):
     split: Split
     sources: list[Source] = Field(default_factory=list)
 
+    @model_validator(mode="after")
+    def validate_sha256(self) -> CocoImage:
+        # Keep this optional extra absent on older releases so their serialized
+        # specification and immutable request hash do not change on retries.
+        if "sha256" in self.model_extra:
+            digest = self.model_extra["sha256"]
+            if (
+                not isinstance(digest, str)
+                or not re.fullmatch(r"[a-f0-9]{64}", digest)
+                or self.file_name != f"png/detection/{digest}.png"
+            ):
+                raise ValueError("COCO image SHA-256 does not match its blob key")
+        return self
+
 
 class CocoCategory(BaseModel):
     model_config = ConfigDict(extra="allow", frozen=True)

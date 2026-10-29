@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "name": "reviewed-seeds",
+  "version": "v1",
+  "author": "replace-with-reviewer",
+  "conversion": {
+    "code_revision": "replace-with-image-preparation-revision",
+    "settings": { "format": "PNG", "mode": "RGB" }
+  },
+  "generate_crops": false
+}
