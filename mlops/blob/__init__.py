@@ -1,4 +1,4 @@
-"""Standalone copy of backend app.blob; see README.md for provenance."""
+"""Standalone copy of backend app.blob; see PROVENANCE.md for provenance."""
 
 from .exceptions import InvalidConfigurationError
 from .interface import BlobStorageInterface
