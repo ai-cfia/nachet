@@ -1,6 +1,6 @@
 import { render, fireEvent } from "@testing-library/react";
 import { describe, expect, vi, beforeEach, test } from "vitest";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import StorageDirectoryContainer from "../StorageDirectoryContainer";
 import { useFolderStore } from "@stores/useFolderStore";
 import { useDirectoryModalStore } from "@stores/useDirectoryModalStore";

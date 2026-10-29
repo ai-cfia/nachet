@@ -95,7 +95,7 @@ export const validateUserInput = {
       return safeTextSchema.parse(input);
     } catch (error) {
       console.error("Text validation error:", error);
-      throw new Error("Invalid text input");
+      throw new Error("Invalid text input", { cause: error });
     }
   },
 
@@ -105,7 +105,7 @@ export const validateUserInput = {
       return safeUserInputSchema.parse(input);
     } catch (error) {
       console.error("User input validation error:", error);
-      throw new Error("Unsafe user input detected");
+      throw new Error("Unsafe user input detected", { cause: error });
     }
   },
 
@@ -115,7 +115,7 @@ export const validateUserInput = {
       return safeUrlSchema.parse(input);
     } catch (error) {
       console.error("URL validation error:", error);
-      throw new Error("Invalid or unsafe URL");
+      throw new Error("Invalid or unsafe URL", { cause: error });
     }
   },
 };

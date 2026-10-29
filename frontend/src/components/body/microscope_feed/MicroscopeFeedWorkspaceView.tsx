@@ -454,7 +454,7 @@ export const MicroscopeFeedWorkspaceView = (
                 imageData.boxes.map((box, index) => {
                   return (
                     <ScaledInferenceBox
-                      key={index}
+                      key={`${box.inferenceId}:${box.boxId}`}
                       index={index}
                       box={{ ...box }}
                       label={

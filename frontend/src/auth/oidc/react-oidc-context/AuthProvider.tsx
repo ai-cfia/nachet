@@ -65,15 +65,15 @@ export const AuthProvider = ({
 }: AuthProviderProps) => {
   const [userManager] = useState(() => new UserManager(settings));
   const [state, setState] = useState<AuthState>(initialAuthState);
-  const didInitialize = useRef(false);
+  const didInitializeRef = useRef(false);
 
   useEffect(() => {
     // React StrictMode replays effects in development. An authorization code
     // can only be exchanged once, so initialization must run once per mount.
-    if (didInitialize.current) {
+    if (didInitializeRef.current) {
       return;
     }
-    didInitialize.current = true;
+    didInitializeRef.current = true;
 
     const initialise = async (): Promise<void> => {
       try {
@@ -167,5 +167,5 @@ export const AuthProvider = ({
     [state, userManager],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext value={value}>{children}</AuthContext>;
 };

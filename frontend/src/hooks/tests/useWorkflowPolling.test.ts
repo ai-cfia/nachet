@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { useWorkflowPolling } from "../useWorkflowPolling";
 import { useWorkflowStore } from "@stores/useWorkflowStore";
 import * as commonApi from "@common/index";
@@ -123,7 +123,7 @@ describe("useWorkflowPolling", () => {
       );
 
       // Fast-forward past initial delay
-      vi.advanceTimersByTime(25000);
+      act(() => vi.advanceTimersByTime(25000));
 
       expect(commonApi.getWorkflowStatus).not.toHaveBeenCalled();
     });
@@ -138,7 +138,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      vi.advanceTimersByTime(25000);
+      act(() => vi.advanceTimersByTime(25000));
 
       expect(commonApi.getWorkflowStatus).not.toHaveBeenCalled();
     });
@@ -153,7 +153,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      vi.advanceTimersByTime(25000);
+      act(() => vi.advanceTimersByTime(25000));
 
       expect(commonApi.getWorkflowStatus).not.toHaveBeenCalled();
     });
@@ -173,7 +173,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      vi.advanceTimersByTime(25000);
+      act(() => vi.advanceTimersByTime(25000));
 
       expect(commonApi.getWorkflowStatus).not.toHaveBeenCalled();
     });
@@ -195,11 +195,11 @@ describe("useWorkflowPolling", () => {
       );
 
       // Before initial delay
-      await vi.advanceTimersByTimeAsync(19000);
+      await act(() => vi.advanceTimersByTimeAsync(19000));
       expect(commonApi.getWorkflowStatus).not.toHaveBeenCalled();
 
       // After initial delay
-      await vi.advanceTimersByTimeAsync(1000);
+      await act(() => vi.advanceTimersByTimeAsync(1000));
       expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(1);
     });
 
@@ -218,15 +218,15 @@ describe("useWorkflowPolling", () => {
       );
 
       // First poll after initial delay
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
       expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(1);
 
       // Second poll after 10 seconds
-      await vi.advanceTimersByTimeAsync(10000);
+      await act(() => vi.advanceTimersByTimeAsync(10000));
       expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(2);
 
       // Third poll after another 10 seconds
-      await vi.advanceTimersByTimeAsync(10000);
+      await act(() => vi.advanceTimersByTimeAsync(10000));
       expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(3);
     });
 
@@ -255,7 +255,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
       const workflow = useWorkflowStore
         .getState()
         .workflows.get(mockWorkflowId);
@@ -292,7 +292,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       expect(commonApi.getWorkflowStatus).toHaveBeenCalledWith({
         backendUrl: mockBackendUrl,
@@ -335,7 +335,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       const workflow = useWorkflowStore
         .getState()
@@ -362,11 +362,11 @@ describe("useWorkflowPolling", () => {
       );
 
       // First poll
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
       expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(1);
 
       // Should not poll again
-      await vi.advanceTimersByTimeAsync(10000);
+      await act(() => vi.advanceTimersByTimeAsync(10000));
       expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(1);
     });
   });
@@ -397,7 +397,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       expect(mockOnError).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -431,7 +431,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       expect(mockOnError).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -465,7 +465,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       expect(mockOnError).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -499,7 +499,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       expect(mockOnError).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -533,7 +533,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       const workflow = useWorkflowStore
         .getState()
@@ -567,7 +567,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       const workflow = useWorkflowStore
         .getState()
@@ -592,11 +592,11 @@ describe("useWorkflowPolling", () => {
       );
 
       // First poll
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
       expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(1);
 
       // Should not poll again
-      await vi.advanceTimersByTimeAsync(10000);
+      await act(() => vi.advanceTimersByTimeAsync(10000));
       expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(1);
     });
 
@@ -615,7 +615,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       expect(errorLogger.logError).toHaveBeenCalledWith(
         expect.stringContaining("Workflow workflow-123 failed"),
@@ -650,7 +650,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       expect(errorLogger.logError).toHaveBeenCalledWith(
         expect.stringContaining("Failed to poll workflow status"),
@@ -673,7 +673,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       expect(mockOnError).toHaveBeenCalledWith(apiError);
     });
@@ -696,7 +696,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       expect(errorLogger.logError).toHaveBeenCalledWith(
         expect.stringContaining("Failed to fetch workflow results"),
@@ -734,7 +734,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       const workflow = useWorkflowStore
         .getState()
@@ -761,7 +761,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       expect(mockOnError).toHaveBeenCalledWith(resultsError);
     });
@@ -780,7 +780,7 @@ describe("useWorkflowPolling", () => {
         }),
       );
 
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       expect(errorLogger.logError).toHaveBeenCalled();
 
@@ -805,14 +805,14 @@ describe("useWorkflowPolling", () => {
       );
 
       // Start polling
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
       expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(1);
 
       // Unmount
       unmount();
 
       // Should not poll after unmount
-      await vi.advanceTimersByTimeAsync(10000);
+      await act(() => vi.advanceTimersByTimeAsync(10000));
       expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(1);
     });
 
@@ -827,7 +827,7 @@ describe("useWorkflowPolling", () => {
       ).unmount();
 
       // Should not poll even after initial delay time
-      vi.advanceTimersByTime(25000);
+      act(() => vi.advanceTimersByTime(25000));
       expect(commonApi.getWorkflowStatus).not.toHaveBeenCalled();
     });
 
@@ -848,12 +848,12 @@ describe("useWorkflowPolling", () => {
       );
 
       // No polling when disabled
-      vi.advanceTimersByTime(25000);
+      act(() => vi.advanceTimersByTime(25000));
       expect(commonApi.getWorkflowStatus).not.toHaveBeenCalled();
 
       // Enable polling
       rerender({ enabled: true });
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(1);
     });
@@ -883,21 +883,204 @@ describe("useWorkflowPolling", () => {
       );
 
       // Trigger first poll
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
 
       // Try to trigger second poll while first is still pending
-      await vi.advanceTimersByTimeAsync(10000);
+      await act(() => vi.advanceTimersByTimeAsync(10000));
 
       // Resolve first poll
       resolveFirstPoll();
-      await vi.advanceTimersByTimeAsync(0);
+      await act(() => vi.advanceTimersByTimeAsync(0));
 
       // Should only have been called once (concurrent call prevented)
       expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(1);
     });
   });
 
+  describe("Callback changes", () => {
+    it.each(["completed", "failed"])(
+      "keeps a pending %s response with its original workflow callbacks",
+      async (status) => {
+        let resolveStatus!: (response: WorkflowStatusResponse) => void;
+        vi.mocked(commonApi.getWorkflowStatus).mockReturnValue(
+          new Promise((resolve) => {
+            resolveStatus = resolve;
+          }),
+        );
+        vi.mocked(commonApi.getWorkflowResults).mockResolvedValue(
+          mockInferenceResults,
+        );
+        const nextOnComplete = vi.fn();
+        const nextOnError = vi.fn();
+        const { rerender } = renderHook(
+          ({ workflowId, onComplete, onError }) =>
+            useWorkflowPolling({
+              workflowId,
+              backendUrl: mockBackendUrl,
+              enabled: true,
+              onComplete,
+              onError,
+            }),
+          {
+            initialProps: {
+              workflowId: mockWorkflowId,
+              onComplete: mockOnComplete,
+              onError: mockOnError,
+            },
+          },
+        );
+
+        await act(() => vi.advanceTimersByTimeAsync(20000));
+        rerender({
+          workflowId: "next-workflow",
+          onComplete: nextOnComplete,
+          onError: nextOnError,
+        });
+        await act(async () => {
+          resolveStatus(createMockStatusResponse(status));
+          await Promise.resolve();
+        });
+
+        if (status === "completed") {
+          expect(mockOnComplete).toHaveBeenCalledWith(mockInferenceResults);
+        } else {
+          expect(mockOnError).toHaveBeenCalledWith(expect.any(Error));
+        }
+        expect(nextOnComplete).not.toHaveBeenCalled();
+        expect(nextOnError).not.toHaveBeenCalled();
+      },
+    );
+
+    it("keeps the polling interval with inline callbacks", async () => {
+      vi.mocked(commonApi.getWorkflowStatus).mockResolvedValue(
+        createMockStatusResponse("pending"),
+      );
+      const { result } = renderHook(() =>
+        useWorkflowPolling({
+          workflowId: mockWorkflowId,
+          backendUrl: mockBackendUrl,
+          enabled: true,
+          onComplete: (results) => mockOnComplete(results),
+          onError: (error) => mockOnError(error),
+        }),
+      );
+
+      await act(() => vi.advanceTimersByTimeAsync(20000));
+      expect(result.current.isPolling).toBe(true);
+      expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(1);
+      await act(() => vi.advanceTimersByTimeAsync(10000));
+      expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(2);
+      expect(result.current.isPolling).toBe(true);
+    });
+
+    it("uses the latest completion callback without restarting the timer", async () => {
+      vi.mocked(commonApi.getWorkflowStatus).mockResolvedValue(
+        createMockStatusResponse("completed"),
+      );
+      vi.mocked(commonApi.getWorkflowResults).mockResolvedValue(
+        mockInferenceResults,
+      );
+      const nextOnComplete = vi.fn();
+      const { rerender } = renderHook(
+        ({ onComplete }) =>
+          useWorkflowPolling({
+            workflowId: mockWorkflowId,
+            backendUrl: mockBackendUrl,
+            enabled: true,
+            onComplete,
+          }),
+        { initialProps: { onComplete: mockOnComplete } },
+      );
+
+      await act(() => vi.advanceTimersByTimeAsync(10000));
+      rerender({ onComplete: nextOnComplete });
+      await act(() => vi.advanceTimersByTimeAsync(10000));
+      expect(nextOnComplete).toHaveBeenCalledWith(mockInferenceResults);
+      expect(mockOnComplete).not.toHaveBeenCalled();
+    });
+
+    it("uses the latest error callback when a pending request fails", async () => {
+      let rejectStatus!: (error: Error) => void;
+      vi.mocked(commonApi.getWorkflowStatus).mockReturnValue(
+        new Promise((_resolve, reject) => {
+          rejectStatus = reject;
+        }),
+      );
+      const nextOnError = vi.fn();
+      const { rerender } = renderHook(
+        ({ onError }) =>
+          useWorkflowPolling({
+            workflowId: mockWorkflowId,
+            backendUrl: mockBackendUrl,
+            enabled: true,
+            onComplete: mockOnComplete,
+            onError,
+          }),
+        { initialProps: { onError: mockOnError } },
+      );
+
+      await act(() => vi.advanceTimersByTimeAsync(20000));
+      rerender({ onError: nextOnError });
+      const error = new Error("Status unavailable");
+      await act(async () => {
+        rejectStatus(error);
+        await Promise.resolve();
+      });
+      expect(nextOnError).toHaveBeenCalledWith(error);
+      expect(mockOnError).not.toHaveBeenCalled();
+    });
+  });
+
   describe("Return Value", () => {
+    it("resets polling status and the initial delay when disabled and re-enabled", async () => {
+      vi.mocked(commonApi.getWorkflowStatus).mockResolvedValue(
+        createMockStatusResponse("pending"),
+      );
+      const { result, rerender } = renderHook(
+        ({ enabled }) =>
+          useWorkflowPolling({
+            workflowId: mockWorkflowId,
+            backendUrl: mockBackendUrl,
+            enabled,
+            onComplete: mockOnComplete,
+          }),
+        { initialProps: { enabled: true } },
+      );
+
+      await act(() => vi.advanceTimersByTimeAsync(20000));
+      expect(result.current.isPolling).toBe(true);
+
+      rerender({ enabled: false });
+      expect(result.current.isPolling).toBe(false);
+      rerender({ enabled: true });
+      expect(result.current.isPolling).toBe(false);
+
+      await act(() => vi.advanceTimersByTimeAsync(19999));
+      expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(1);
+      await act(() => vi.advanceTimersByTimeAsync(1));
+      expect(result.current.isPolling).toBe(true);
+      expect(commonApi.getWorkflowStatus).toHaveBeenCalledTimes(2);
+    });
+
+    it("returns false after a terminal workflow status", async () => {
+      vi.mocked(commonApi.getWorkflowStatus).mockResolvedValue(
+        createMockStatusResponse("failed"),
+      );
+      const { result } = renderHook(() =>
+        useWorkflowPolling({
+          workflowId: mockWorkflowId,
+          backendUrl: mockBackendUrl,
+          enabled: true,
+          onComplete: mockOnComplete,
+          onError: mockOnError,
+        }),
+      );
+
+      await act(() => vi.advanceTimersByTimeAsync(20000));
+      expect(result.current.isPolling).toBe(false);
+      expect(mockOnError).toHaveBeenCalled();
+    });
+
     it("should return isPolling false when not enabled", () => {
       const { result } = renderHook(() =>
         useWorkflowPolling({
@@ -929,7 +1112,8 @@ describe("useWorkflowPolling", () => {
       expect(result.current.isPolling).toBe(false);
 
       // After initial delay - polling should start
-      await vi.advanceTimersByTimeAsync(20000);
+      await act(() => vi.advanceTimersByTimeAsync(20000));
+      expect(result.current.isPolling).toBe(true);
 
       // The API should have been called, confirming polling started
       expect(commonApi.getWorkflowStatus).toHaveBeenCalled();

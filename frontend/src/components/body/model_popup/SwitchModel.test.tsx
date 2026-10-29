@@ -1,7 +1,7 @@
 // src/components/body/model_popup/SwitchModel.test.tsx
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import SwitchModel from "./ModelPopup";
 import testData from "../../../static_data/static_model_data.json";
 import { useModalStore } from "@stores/useModalStore";

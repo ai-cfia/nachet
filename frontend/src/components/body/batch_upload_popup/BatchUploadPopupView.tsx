@@ -409,7 +409,9 @@ export const BatchUploadPopupView = (props: BatchUploadPopupViewProps) => {
                       const status = uploadInfo?.status || "pending";
 
                       return (
-                        <ListItem key={index}>
+                        <ListItem
+                          key={`${file.webkitRelativePath || file.name}:${file.size}:${file.lastModified}`}
+                        >
                           {status === "completed" ? (
                             <CheckCircleOutlinedIcon
                               sx={{

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { getWorkflowStatus, getWorkflowResults } from "@common/index";
 import { useWorkflowStore } from "@stores/useWorkflowStore";
 import { ApiInferenceData, WorkflowStatus } from "@common/types";
@@ -49,6 +49,22 @@ export const useWorkflowPolling = ({
     null,
   );
   const isPollingRef = useRef(false);
+  const [isPolling, setIsPolling] = useState(false);
+  const callbacksRef = useRef({ workflowId, backendUrl, onComplete, onError });
+
+  // Refresh callbacks without sending an older workflow's response to a new one.
+  useEffect(() => {
+    const callbacks = callbacksRef.current;
+    if (
+      callbacks.workflowId !== workflowId ||
+      callbacks.backendUrl !== backendUrl
+    ) {
+      callbacksRef.current = { workflowId, backendUrl, onComplete, onError };
+    } else {
+      callbacks.onComplete = onComplete;
+      callbacks.onError = onError;
+    }
+  }, [workflowId, backendUrl, onComplete, onError]);
 
   /**
    * Stop polling and clean up the interval
@@ -57,6 +73,7 @@ export const useWorkflowPolling = ({
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
+      setIsPolling(false);
       console.log(`[Workflow] Stopped polling for workflow_id=${workflowId}`);
     }
   }, [workflowId]);
@@ -65,6 +82,7 @@ export const useWorkflowPolling = ({
     // Prevent concurrent polling
     if (isPollingRef.current) return;
     isPollingRef.current = true;
+    const callbacks = callbacksRef.current;
 
     try {
       console.log(`[Workflow] Polling status for workflow_id=${workflowId}`);
@@ -120,7 +138,7 @@ export const useWorkflowPolling = ({
           );
 
           // Call the completion callback with results
-          onComplete(results);
+          callbacks.onComplete(results);
 
           // Clean up the workflow from the store
           removeWorkflow(workflowId);
@@ -131,9 +149,7 @@ export const useWorkflowPolling = ({
             { workflowId },
           );
           updateWorkflowStatus(workflowId, "failed", "Failed to fetch results");
-          if (onError) {
-            onError(error as Error);
-          }
+          callbacks.onError?.(error as Error);
         }
       }
       // Handle failed workflow
@@ -156,9 +172,7 @@ export const useWorkflowPolling = ({
           { workflowId, statusResponse },
         );
 
-        if (onError) {
-          onError(new Error(errorMessage));
-        }
+        callbacks.onError?.(new Error(errorMessage));
 
         // Note: We don't remove failed workflows from the store so users can see the error
       }
@@ -173,9 +187,7 @@ export const useWorkflowPolling = ({
         "failed",
         "Failed to check workflow status",
       );
-      if (onError) {
-        onError(error as Error);
-      }
+      callbacks.onError?.(error as Error);
     } finally {
       isPollingRef.current = false;
     }
@@ -184,8 +196,6 @@ export const useWorkflowPolling = ({
     backendUrl,
     updateWorkflowStatus,
     removeWorkflow,
-    onComplete,
-    onError,
     stopPolling,
   ]);
 
@@ -207,6 +217,7 @@ export const useWorkflowPolling = ({
       pollingIntervalRef.current = setInterval(() => {
         pollWorkflowStatus();
       }, POLLING_INTERVAL_MS);
+      setIsPolling(true);
     }, INITIAL_DELAY_MS);
 
     // Cleanup on unmount or when dependencies change
@@ -216,6 +227,7 @@ export const useWorkflowPolling = ({
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
       }
+      setIsPolling(false);
     };
   }, [
     enabled,
@@ -227,6 +239,6 @@ export const useWorkflowPolling = ({
   ]);
 
   return {
-    isPolling: enabled && pollingIntervalRef.current !== null,
+    isPolling: enabled && isAuthenticated && !authLoading && isPolling,
   };
 };

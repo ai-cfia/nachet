@@ -91,6 +91,8 @@ const ClassificationResults: React.FC<params> = (props) => {
 
           return (
             <Typography
+              // These stateless rows represent ranks; labels need not be unique.
+              // eslint-disable-next-line @eslint-react/no-array-index-key
               key={index}
               variant="body2"
               style={{
@@ -176,7 +178,7 @@ const ClassificationResults: React.FC<params> = (props) => {
             {switchTable &&
               Object.keys(labelOccurrences).map((key, index) => (
                 <TableRow
-                  key={index}
+                  key={key}
                   sx={{
                     backgroundColor:
                       selectedLabel === key

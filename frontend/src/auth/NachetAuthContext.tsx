@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, use } from "react";
 
 export type AuthProviderKind = "msal" | "oidc";
 
@@ -33,7 +33,7 @@ export const NachetAuthContext = createContext<
 >(undefined);
 
 export const useNachetAuth = (): NachetAuthContextValue => {
-  const context = useContext(NachetAuthContext);
+  const context = use(NachetAuthContext);
   if (!context) {
     throw new Error("useNachetAuth must be used within NachetAuthProvider");
   }

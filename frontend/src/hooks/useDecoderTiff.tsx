@@ -8,11 +8,11 @@ export interface DecodedTiff {
 }
 
 const useDecoderTiff = (imageSrc: string) => {
-  const [decodedTiff, setDecodedTiff] = useState<DecodedTiff>({
+  const [decodedTiff, setDecodedTiff] = useState<DecodedTiff>(() => ({
     rgba: new Uint8Array(0) as Uint8Array<ArrayBufferLike>,
     width: 0,
     height: 0,
-  });
+  }));
   useEffect(() => {
     void decodeTiff(imageSrc).then((dTiff: DecodedTiff) => {
       setDecodedTiff(dTiff);

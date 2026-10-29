@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Box,
   Dialog,
@@ -59,8 +59,20 @@ const ImageMetadataPopup: React.FC<ImageMetadataPopupProps> = (props) => {
   const [magnification, setMagnification] = useState<number>(1);
   const [sampleDescription, setSampleDescription] = useState<string>("");
 
-  // Load image-specific data when popup opens
-  useEffect(() => {
+  const [loadedSelection, setLoadedSelection] = useState({
+    open: false,
+    index: null as number | null,
+  });
+
+  // Reset for a new editing session without overwriting edits on store updates.
+  if (
+    loadedSelection.open !== isImageMetadataOpen ||
+    loadedSelection.index !== imageMetadataImageIndex
+  ) {
+    setLoadedSelection({
+      open: isImageMetadataOpen,
+      index: imageMetadataImageIndex,
+    });
     if (isImageMetadataOpen && imageMetadataImageIndex !== null) {
       const currentImage = images.find(
         (img) => img.index === imageMetadataImageIndex,
@@ -82,8 +94,7 @@ const ImageMetadataPopup: React.FC<ImageMetadataPopupProps> = (props) => {
         setSampleDescription(() => currentImage.imageDescription || "");
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isImageMetadataOpen, imageMetadataImageIndex]); // Only re-run when dialog opens/closes or image index changes
+  }
 
   // Validation error states
   const [imageNameError, setImageNameError] = useState<string>("");

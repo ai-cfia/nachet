@@ -110,9 +110,9 @@ const SwitchModel: React.FC = () => {
               borderColor: "darkgrey",
             }}
           >
-            {dataToDisplay.map((data, index) => (
+            {dataToDisplay.map((data) => (
               <Box
-                key={index}
+                key={data.pipelineId}
                 sx={{
                   display: "flex",
                   flexDirection: "column",
