@@ -26,6 +26,7 @@ from sqlalchemy import MetaData, func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from dataset_release.contract import ReleaseSpec, canonical_json, sha256
+from dataset_release.fiftyone_export import ImageMembership, remap_coco
 from dataset_release.reader import ReleasedDataset
 from dataset_release.registry import DatasetRelease
 from dataset_release.release import DatasetController, ReleaseConflict, ReleaseNotReady
@@ -312,6 +313,50 @@ async def test_detection_only_release_and_negative_images_are_preserved(release_
     assert samples[0]["objects"]["bbox"] == []
     with pytest.raises(ReleaseNotReady, match="classifier-ready"):
         _ = [sample async for sample in reader.classifier_records("train")]
+
+
+@pytest.mark.asyncio
+async def test_remapped_release_publishes_only_json_and_reuses_existing_pngs(
+    release_env,
+):
+    controller, storage, _ = release_env
+    prepared = specification(storage, crops=False).model_dump(mode="json")
+    exported = deepcopy(prepared["coco"])
+    members = []
+    for image in exported["images"]:
+        digest = image["file_name"].rsplit("/", 1)[-1][:-4]
+        image["file_name"] = f"/fiftyone/reviewed/{digest}.png"
+        members.append(
+            ImageMembership(
+                file_name=image["file_name"],
+                sha256=digest,
+                split=image.pop("split"),
+                sources=image.pop("sources"),
+            )
+        )
+    prepared["coco"] = remap_coco(exported, members).model_dump(mode="json")
+    spec = ReleaseSpec.model_validate(prepared)
+    original_images = dict(storage.objects)
+    # Any attempt to upload an image, even an identical one, is a failure.
+    upload = storage.upload_blob
+
+    async def json_only(container, name, data, **kwargs):
+        assert name.endswith(".json")
+        return await upload(container, name, data, **kwargs)
+
+    storage.upload_blob = json_only
+    registration = await controller.publish(spec)
+    assert registration.status == "ready"
+    assert set(storage.objects) - set(original_images) == {
+        ("datasets", "releases/reviewed-seeds/v1/coco.json"),
+        ("datasets", "releases/reviewed-seeds/v1/release.json"),
+    }
+    for key, data in original_images.items():
+        assert storage.objects[key] == data
+    _, manifest, coco = await controller.resolve(spec.name, spec.version)
+    assert manifest.crops == []
+    assert coco.images[0].sha256 == members[0].sha256
+    assert await controller.publish(spec) == registration
 
 
 @pytest.mark.asyncio
