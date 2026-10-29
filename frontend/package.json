@@ -127,13 +127,13 @@
     "compression": "^1.8.2",
     "js-yaml@^4.0.0": "^4.3.2",
     "js-yaml@^5.0.0": "^5.4.1",
-    "katex": "^0.18.2",
+    "katex": "^0.19.0",
     "markdown-it": "^14.3.1",
     "smol-toml": "^1.9.0",
     "esbuild": "^0.28.0",
     "on-headers": "^1.1.0",
     "cross-spawn": "^7.0.6",
-    "@swc/core": "1.15.46"
+    "@swc/core": "1.16.20"
   },
   "allowScripts": {
     "@swc/core@1.15.46": true,
