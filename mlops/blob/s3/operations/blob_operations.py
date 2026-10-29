@@ -42,7 +42,7 @@ def _get_logger():
     """Lazy load logger to avoid circular imports"""
     global _logger
     if _logger is None:
-        from mlops_blob.logging import LogService
+        from mlops_blob.logs import LogService
 
         _logger = LogService.get_logger()
     return _logger
