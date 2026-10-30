@@ -82,8 +82,8 @@ Set `generate_crops` to `true` to publish a classifier-ready release. The croppe
 uses the reviewed COCO boxes, not pre-labeling predictions or live MongoDB state.
 COCO decimal coordinates remain unchanged. Pixel extraction uses floor for
 left/top and ceil for right/bottom, converts to RGB and saves PNG at compression
-level 6. The recipe includes its algorithm ID and Pillow version. Each crop
-inherits its parent's split. Unchanged crop bytes reuse the same blob key.
+level 6 using OpenCV. The recipe includes its algorithm ID and OpenCV version.
+Each crop inherits its parent's split. Unchanged crop bytes reuse the same blob key.
 
 ## Run
 

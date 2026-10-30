@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from io import BytesIO
-from typing import Any
 from uuid import UUID, uuid4
 
 from mlops_blob.exceptions import BlobAlreadyExistsError
-from PIL import Image
-from PIL import __version__ as pillow_version
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from utility.crop import crop_image, crop_recipe, decode_png, pixel_box
 
 from .contract import (
     CropReference,
@@ -35,28 +32,6 @@ class ReleaseConflict(ValueError):
 
 class ReleaseNotReady(ValueError):
     """A release has not completed publication."""
-
-
-def crop_recipe() -> dict[str, Any]:
-    return {
-        "code_revision": "nachet-coco-crop-v1",
-        "pillow_version": pillow_version,
-        "coordinates": "floor-left-top-ceil-right-bottom",
-        "mode": "RGB",
-        "format": "PNG",
-        "compress_level": 6,
-    }
-
-
-def pixel_box(bbox: list[float]) -> tuple[int, int, int, int]:
-    x, y, width, height = bbox
-    return math.floor(x), math.floor(y), math.ceil(x + width), math.ceil(y + height)
-
-
-def render_crop(image: Image.Image, box: tuple[int, int, int, int]) -> bytes:
-    output = BytesIO()
-    image.convert("RGB").crop(box).save(output, format="PNG", compress_level=6)
-    return output.getvalue()
 
 
 @dataclass(frozen=True)
@@ -213,34 +188,30 @@ class DatasetController:
                 raise ValueError(
                     f"PNG bytes do not match hash filename: {image.file_name}"
                 )
-            with Image.open(BytesIO(data)) as decoded:
-                if decoded.format != "PNG" or decoded.size != (
-                    image.width,
-                    image.height,
-                ):
-                    raise ValueError(
-                        f"Image dimensions/format do not match COCO: {image.id}"
-                    )
-                decoded.load()
-                images[image.file_name] = FileReference(
-                    key=image.file_name, sha256=digest, size=len(data)
-                )
-                if spec.generate_crops:
-                    for annotation in annotations.get(image.id, []):
-                        box = pixel_box(annotation.bbox)
-                        crop = render_crop(decoded, box)
-                        key = f"png/classification/{sha256(crop)}.png"
-                        reference = await self._put_unchanged(key, crop, "image/png")
-                        crops.append(
-                            CropReference(
-                                image_id=image.id,
-                                annotation_id=annotation.id,
-                                category_id=annotation.category_id,
-                                split=image.split,
-                                pixel_box=box,
-                                file=reference,
-                            )
+            try:
+                decoded = decode_png(data, (image.width, image.height))
+            except ValueError as error:
+                raise ValueError(
+                    f"Image dimensions/format do not match COCO: {image.id}"
+                ) from error
+            images[image.file_name] = FileReference(
+                key=image.file_name, sha256=digest, size=len(data)
+            )
+            if spec.generate_crops:
+                for annotation in annotations.get(image.id, []):
+                    box, crop = crop_image(decoded, annotation.bbox)
+                    key = f"png/classification/{sha256(crop)}.png"
+                    reference = await self._put_unchanged(key, crop, "image/png")
+                    crops.append(
+                        CropReference(
+                            image_id=image.id,
+                            annotation_id=annotation.id,
+                            category_id=annotation.category_id,
+                            split=image.split,
+                            pixel_box=box,
+                            file=reference,
                         )
+                    )
         if spec.generate_crops and not crops:
             raise ValueError("A classifier-ready release requires at least one crop")
         coco = await self._put_unchanged(
