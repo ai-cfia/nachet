@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from uuid import UUID, uuid4
 
 from mlops_blob.exceptions import BlobAlreadyExistsError
@@ -15,8 +15,10 @@ from utility.crop import crop_image, crop_recipe, decode_png, pixel_box
 
 from .contract import (
     CropReference,
+    DatasetDescription,
     FileReference,
     ReleaseManifest,
+    ReleaseMetadata,
     ReleaseSpec,
     ReviewedCoco,
     canonical_json,
@@ -46,6 +48,14 @@ class ReleaseRegistration:
     manifest_key: str
     manifest_sha256: str | None
     status: str
+    description: str | None
+    has_bounding_boxes: bool | None
+    has_classes: bool | None
+    num_classes: int | None
+    num_multi_object_images: int | None
+    num_single_object_images: int | None
+    dataset_cutoff_date: date | None
+    previous_version: str | None
 
     @classmethod
     def from_row(cls, row: DatasetRelease) -> ReleaseRegistration:
@@ -65,7 +75,18 @@ class ReleaseRegistration:
             row.manifest_key,
             row.manifest_sha256,
             row.status,
+            row.description,
+            row.has_bounding_boxes,
+            row.has_classes,
+            row.num_classes,
+            row.num_multi_object_images,
+            row.num_single_object_images,
+            row.dataset_cutoff_date,
+            row.previous_version,
         )
+
+    def metadata(self) -> ReleaseMetadata:
+        return ReleaseMetadata.model_validate(self, from_attributes=True)
 
     def training_reference(self) -> dict[str, str]:
         """Persist these MLflow params and reuse them on resume/evaluation."""
@@ -126,6 +147,7 @@ class DatasetController:
                     request_sha256=request_hash,
                     manifest_key=f"releases/{spec.name}/{spec.version}/release.json",
                     status="staging",
+                    **ReleaseMetadata.from_spec(spec).model_dump(),
                 )
                 session.add(row)
                 await session.flush()
@@ -163,10 +185,15 @@ class DatasetController:
         # Re-validate at the boundary in case nested mutable lists were edited.
         spec = ReleaseSpec.model_validate(spec.model_dump(mode="json"))
         recipe = crop_recipe() if spec.generate_crops else None
+        request_spec = spec.model_dump(mode="json")
+        # Preserve request hashes for specifications written before these fields.
+        for field in DatasetDescription.model_fields:
+            if request_spec[field] is None:
+                del request_spec[field]
         request_hash = sha256(
             canonical_json(
                 {
-                    "spec": spec.model_dump(mode="json"),
+                    "spec": request_spec,
                     "crop_recipe": recipe,
                 }
             )
@@ -220,6 +247,7 @@ class DatasetController:
             "application/json",
         )
         manifest = ReleaseManifest(
+            **registration.metadata().model_dump(),
             release_id=registration.id,
             name=spec.name,
             version=spec.version,
@@ -232,7 +260,16 @@ class DatasetController:
             images=sorted(images.values(), key=lambda item: item.key),
             crops=crops,
         )
-        manifest_bytes = canonical_json(manifest.model_dump(mode="json"))
+        # Legacy staging registrations may already have an immutable manifest.
+        # Omit unknown metadata to preserve its original bytes on retry.
+        unknown_metadata = {
+            field
+            for field in ReleaseMetadata.model_fields
+            if getattr(manifest, field) is None
+        }
+        manifest_bytes = canonical_json(
+            manifest.model_dump(mode="json", exclude=unknown_metadata)
+        )
         # release.json is intentionally separate from COCO: standard COCO has no
         # crop lineage or publication metadata. This is the v1 companion format.
         try:
@@ -292,6 +329,10 @@ class DatasetController:
             or manifest.author != registration.author
             or manifest.created_at != registration.created_at
             or manifest.request_sha256 != registration.request_sha256
+            or ReleaseMetadata.model_validate(
+                manifest.model_dump(include=set(ReleaseMetadata.model_fields))
+            )
+            != registration.metadata()
         ):
             raise ReleaseConflict("Manifest identity does not match its registration")
         coco = ReviewedCoco.model_validate_json(await self.read_file(manifest.coco))
@@ -299,6 +340,10 @@ class DatasetController:
         return registration, manifest, coco
 
     async def _validate(self, manifest: ReleaseManifest, coco: ReviewedCoco) -> None:
+        for field, expected in ReleaseMetadata.statistics(coco).items():
+            recorded = getattr(manifest, field)
+            if recorded is not None and recorded != expected:
+                raise ValueError(f"Manifest {field} differs from reviewed COCO")
         files = {reference.key: reference for reference in manifest.images}
         if len(files) != len(manifest.images) or set(files) != {
             image.file_name for image in coco.images

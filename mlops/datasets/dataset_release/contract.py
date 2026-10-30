@@ -6,6 +6,8 @@ import hashlib
 import json
 import math
 import re
+from collections import Counter
+from datetime import date
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
@@ -142,7 +144,13 @@ class ConversionRecipe(ContractModel):
     settings: dict[str, Any]
 
 
-class ReleaseSpec(ContractModel):
+class DatasetDescription(ContractModel):
+    description: str | None = None
+    dataset_cutoff_date: date | None = None
+    previous_version: str | None = None
+
+
+class ReleaseSpec(DatasetDescription):
     schema_version: Literal[1] = 1
     name: ReleaseName
     version: ReleaseName
@@ -150,6 +158,33 @@ class ReleaseSpec(ContractModel):
     conversion: ConversionRecipe
     coco: ReviewedCoco
     generate_crops: StrictBool = False
+
+
+class ReleaseMetadata(DatasetDescription):
+    # None means unknown for releases published before metadata was recorded.
+    has_bounding_boxes: StrictBool | None = None
+    has_classes: StrictBool | None = None
+    num_classes: Identifier | None = None
+    num_multi_object_images: Identifier | None = None
+    num_single_object_images: Identifier | None = None
+
+    @classmethod
+    def from_spec(cls, spec: ReleaseSpec) -> ReleaseMetadata:
+        return cls(
+            **spec.model_dump(include=set(DatasetDescription.model_fields)),
+            **cls.statistics(spec.coco),
+        )
+
+    @staticmethod
+    def statistics(coco: ReviewedCoco) -> dict[str, bool | int]:
+        counts = Counter(annotation.image_id for annotation in coco.annotations)
+        return {
+            "has_bounding_boxes": bool(coco.annotations),
+            "has_classes": bool(coco.categories),
+            "num_classes": len(coco.categories),
+            "num_multi_object_images": sum(count > 1 for count in counts.values()),
+            "num_single_object_images": sum(count == 1 for count in counts.values()),
+        }
 
 
 class FileReference(ContractModel):
@@ -177,7 +212,7 @@ class CropReference(ContractModel):
     file: FileReference
 
 
-class ReleaseManifest(ContractModel):
+class ReleaseManifest(ReleaseMetadata):
     schema_version: Literal[1] = 1
     release_id: UUID
     name: ReleaseName

@@ -1,9 +1,19 @@
 """MLOps release registrations; no backend models or application tables."""
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -25,11 +35,28 @@ class DatasetRelease(Base):
             "status != 'ready' OR manifest_sha256 IS NOT NULL",
             name="ck_dataset_release_ready_manifest",
         ),
+        CheckConstraint("num_classes >= 0", name="ck_dataset_release_num_classes"),
+        CheckConstraint(
+            "num_multi_object_images >= 0",
+            name="ck_dataset_release_num_multi_object_images",
+        ),
+        CheckConstraint(
+            "num_single_object_images >= 0",
+            name="ck_dataset_release_num_single_object_images",
+        ),
     )
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     version: Mapped[str] = mapped_column(Text, nullable=False)
     author: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    has_bounding_boxes: Mapped[bool | None] = mapped_column(Boolean)
+    has_classes: Mapped[bool | None] = mapped_column(Boolean)
+    num_classes: Mapped[int | None] = mapped_column(Integer)
+    num_multi_object_images: Mapped[int | None] = mapped_column(Integer)
+    num_single_object_images: Mapped[int | None] = mapped_column(Integer)
+    dataset_cutoff_date: Mapped[date | None] = mapped_column(Date)
+    previous_version: Mapped[str | None] = mapped_column(Text)
     date_created: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

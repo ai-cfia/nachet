@@ -52,7 +52,9 @@ into application annotation or object rows.
 
 The `dataset_release` table contains one registration per `(name, version)`:
 its UUID, author, creation time, container, request hash, manifest location/hash
-and `staging` or `ready` status. Membership, labels and crop mappings remain in
+and `staging` or `ready` status, plus the dataset description, cutoff date,
+previous-version reference and annotation statistics described below.
+Membership, labels and crop mappings remain in
 the blob snapshot. On PostgreSQL it lives in a dedicated `nachet_datasets` schema
 by default, with its own `dataset_release_version` migration-version table.
 The registry does not change the backend schema or its Alembic head.
@@ -69,6 +71,37 @@ Required inputs include the dataset name/version, author, conversion code
 revision/settings and reviewed COCO. Every image needs an explicit `split` of
 `train`, `validation` or `test`. COCO `file_name` must be the existing
 `png/detection/<sha256>.png` key within the selected container.
+
+Optional top-level fields describe the dataset version:
+
+- `description`: free text explaining the dataset's content and purpose.
+- `dataset_cutoff_date`: a date in `YYYY-MM-DD` format indicating the data
+  inclusion cutoff, supplied by the publisher rather than inferred from publication time.
+- `previous_version`: free text referencing the preceding version, such as `v1`,
+  a manifest object key, or a URL. Omit it or use `null` for the first version.
+  This is a reference for readers; the publisher does not fetch or validate its target.
+
+Publication calculates these fields from the reviewed COCO and stores them in
+both the registry and `release.json`; do not enter them in the specification:
+
+- `has_bounding_boxes`: whether at least one bounding-box annotation exists.
+- `has_classes`: whether the COCO category list contains classes. The current
+  reviewed-COCO contract requires at least one category, so this is always `true`.
+- `num_classes`: number of declared COCO categories, including unused categories.
+- `num_multi_object_images`: number of COCO image records with two or more annotations.
+- `num_single_object_images`: number of COCO image records with exactly one annotation.
+
+Image counts cover all splits and count COCO image IDs, including separate records
+that share image bytes. Images with no annotations belong to neither object-count
+group. Each annotation counts as one labeled object, including an `iscrowd` annotation;
+the publisher does not infer how many actual objects a crowd box contains.
+These counts describe the reviewed labels, not objects missing from the annotations.
+
+The description, cutoff date and previous-version reference are also saved in the
+registry and manifest. `inspect` returns all eight fields. Changing descriptive
+metadata changes the release inputs and requires a new version after publication.
+Existing releases retain their original manifests and hashes; metadata not recorded
+by the old publisher remains `null`, rather than being guessed or backfilled.
 
 Add source records to `images[].sources` when known. Multiple records preserve
 original paths, collection dates, species, batch and tray information for shared
@@ -107,8 +140,12 @@ Apply the standalone migration explicitly before publication:
 uv run alembic -c alembic.ini upgrade head
 ```
 
-This runs only the MLOps registry migration `a895d501ea01`; it does not run the
-backend migrations. Argo CD is not configured to invoke it automatically.
+This runs only the MLOps registry migrations: `a895d501ea01` creates the registry
+and `b72e15c4d901` adds the eight nullable metadata columns and nonnegative-count
+constraints. For an existing registry, run the same command before using the
+updated publisher. Existing rows remain intact with `NULL` metadata, and no blob
+objects are modified. It does not run backend migrations.
+Argo CD is not configured to invoke it automatically.
 The publication command never creates tables, schemas, buckets or permissions.
 
 ```bash
@@ -142,7 +179,7 @@ helper. Close the adapter when the job finishes.
 
 The commands output JSON containing the dataset UUID, version, manifest
 location/hash and the value to store in `Model.dataset`. `inspect` also returns
-image/annotation/crop counts and split counts. Both `inspect` and `validate`
+dataset metadata, image/annotation/crop counts and split counts. Both `inspect` and `validate`
 verify every referenced file, so inspection performs dataset reads.
 
 ## Publication, retries and retention
