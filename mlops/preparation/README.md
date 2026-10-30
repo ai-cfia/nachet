@@ -87,6 +87,46 @@ Outputs can be regenerated: a rerun that produces the same bytes succeeds, and a
 run that would change an existing file fails. Use a new output directory when
 the collection or settings change.
 
+## Pre-label with SAM3
+
+`prelabel.py` adds draft boxes to the COCO index for review in FiftyOne.
+Install the `sam3` group and provide a local directory containing the SAM3
+weights. The command does not download weights.
+
+```bash
+uv sync --project mlops/preparation --locked --group sam3
+uv run --project mlops/preparation --no-sync python \
+  mlops/preparation/prelabel.py /work/prepared/index.coco.json \
+  /work/prepared /work/draft.coco.json \
+  --model-path /models/sam3 --model-revision <weights-revision> --device cuda
+```
+
+For each image, the command tries the notebook's prompts in order:
+"foreground object", "thick long seed", then "insect". It stops at the first
+prompt returning 1 to 9 boxes. Boxes keep the species recorded in the index.
+Padding follows the notebook: `p` pixels on the left and top, `2p` on the
+right and bottom, clipped to the image. `--padding` sets `p` (default: 3).
+
+CUDA uses BF16 autocast and TF32; CPU uses FP32. `--model-revision` is a label
+you choose for the local weights, recorded in `info.prelabel`.
+
+Each image records its `prelabel_status`, `prelabel_prompt` and
+`prelabel_reason`. The prompt is the last one attempted, or `null` if
+inference was skipped.
+
+| Status | Reason | Meaning |
+| --- | --- | --- |
+| `draft` | `null` | A prompt returned 1 to 9 valid boxes. |
+| `draft` | `nested_boxes` | One padded box lies inside another. |
+| `needs_review` | `no_detections` | All prompts failed the count check; the last returned no boxes. |
+| `needs_review` | `too_many_detections` | All prompts failed the count check; the last returned at least 10 boxes. |
+| `needs_review` | `invalid_boxes` | A prompt returned 1 to 9 boxes, but invalid geometry was dropped. |
+| `needs_review` | `high_bit_depth` | High-bit grayscale image; inference skipped pending a normalization policy. |
+
+Both statuses require human review. The command refuses an index that already
+has annotations. Output is written after the full batch; an interrupted run
+currently starts again from the beginning.
+
 ## Checks
 
 ```bash
@@ -99,6 +139,7 @@ Adapted from `ai-cfia/nachet-model-ccds`:
 
 - Image conversion: `nachetmodel/tiff_jpg_to_png.py` at `b7ba50b`.
 - COCO indexing: `notebooks/1.01_js_init_coco_dataset.ipynb` at `52988ae`.
+- SAM3 drafts: `notebooks/1.02_js_pre_annotate_sam3_hf.ipynb` at `b7ba50b`.
 
 Copyright (c) 2025 AI @ Canadian Food Inspection Agency (CFIA).
 See the [MIT licence](../../LICENSE).
