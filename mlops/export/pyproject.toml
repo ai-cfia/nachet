@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "Checkpoint export, browser preparation and approved model releases"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "huggingface-hub==0.36.2",
+    "huggingface-hub==2.3.0",
     "numpy==2.4.3",
     "onnx==1.21.0",
     "onnxconverter-common==1.16.0",

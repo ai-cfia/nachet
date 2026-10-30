@@ -13,7 +13,7 @@ dependencies = [
     "numpy==2.5.3",
     "onnxruntime-gpu==1.30.0; sys_platform == 'linux'",
     "onnxruntime==1.30.0; sys_platform != 'linux'",
-    "opencv-python-headless==4.13.0.90",
+    "opencv-python-headless==5.0.0.93",
     "pandas==3.0.5",
     "pillow==12.0.0",
     "pycocotools==2.0.10",

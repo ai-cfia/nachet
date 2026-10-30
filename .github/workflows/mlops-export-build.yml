@@ -22,7 +22,7 @@ concurrency:
 jobs:
   build-and-push-export:
     if: github.event.action != 'closed' || github.event.pull_request.merged == true
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     env:
       IMAGE: ghcr.io/ai-cfia/nachet-export
     outputs:
@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up uv
         uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
