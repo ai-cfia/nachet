@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 
-from .errors import ConfigurationError
+from ..errors import ConfigurationError
 
 
 @dataclass(frozen=True)

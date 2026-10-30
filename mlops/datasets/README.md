@@ -5,25 +5,30 @@ The dataset release component implements the reviewed-data handoff described in
 It runs after PNG preparation and FiftyOne review. Blob storage holds the dataset
 files and version snapshots; the database registers their identity and readiness.
 
-This is a standalone uv project under `mlops/datasets/`. Its publisher, blob
-adapter, database registry, migration, readers, tests and examples are all owned
-by MLOps and do not import the backend application. The current external detector script,
+This is a standalone uv project under `mlops/datasets/`. Its command, exporter,
+readers, registry migration, integration tests and examples consume the separate
+[`DatasetController` package](../DatasetController/README.md). The controller owns
+release publication, validation, contracts, blob adaptation, registry mapping and
+configuration. Both projects are owned by MLOps and do not import the backend
+application. The current external detector script,
 `nachetmodel/HFTrainer_detector_2026012601_js.py` in `nachet-model-ccds`, is unchanged.
 The storage-aware record reader is its integration point, described below.
 
 Storage providers come from the standalone `nachet-blob` project in
-[`mlops/blob`](../blob/README.md), installed as a local editable dependency.
+[`mlops/blob`](../blob/README.md), installed through the controller dependency.
 Its `mlops_blob` module is a temporary copy of `backend/app/blob/`.
 `DatasetController` uses `BlobStorageAdapter`, which delegates to that module's
 `BlobStorageInterface` and S3/Azure implementations. The original standalone
 S3 upload/download implementation has been replaced. See
-[the copy's provenance and differences](../blob/mlops_blob/README.md) for the future
+[the copy's provenance and differences](../blob/PROVENANCE.md) for the future
 extraction into `nachet/common`; the backend source remains unchanged.
 
-Keep `mlops/blob/` beside `mlops/datasets/` when checking out, copying or mounting
-the source for a job. `uv sync --locked` installs both projects. The dataset
-wheel contains only `dataset_release`; deployments that install wheels must
-also supply the standalone `nachet-blob` wheel.
+Keep `mlops/DatasetController/` and `mlops/blob/` beside `mlops/datasets/` when
+checking out, copying or mounting the source for a job. `uv sync --locked`
+installs all three projects. The dataset wheel contains only `dataset_release`;
+deployments that install wheels must also supply `nachet-dataset-controller` and
+`nachet-blob` wheels. Import the facade with
+`from dataset_controller import DatasetController, ReleaseSpec`.
 
 ## Files and registration
 
@@ -89,7 +94,7 @@ to its dataset database. Install this project and its sibling blob package in
 that environment if needed, using its Python interpreter from `mlops/datasets/`:
 
 ```bash
-python -m pip install -e ../blob -e .
+python -m pip install -e ../blob -e ../DatasetController -e .
 ```
 
 FiftyOne is deliberately not a publisher dependency. Use the annotation
@@ -325,8 +330,10 @@ uv run pytest
 ```
 
 Provider tests run separately from `mlops/blob/` with `uv run pytest`.
+Standalone controller and crop tests run from `mlops/DatasetController/` with
+`uv run python -I -m pytest`.
 Dataset adapter and publication/reader integration tests remain in this project.
-The dataset CI job also runs when the sibling blob project changes.
+The controller and dataset CI jobs also run when either sibling package changes.
 
 Set `NACHET_MODEL_CCDS` to the local `nachet-model-ccds` checkout to enable the
 compatibility test against its actual `nachetmodel/coco_to_hf_dataset.py`.

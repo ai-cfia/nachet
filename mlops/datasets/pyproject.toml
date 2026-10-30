@@ -10,9 +10,7 @@ requires-python = ">=3.12,<3.14"
 dependencies = [
     "aiosqlite>=0.21,<1",
     "alembic>=1.16.5,<2",
-    "nachet-blob",
-    "numpy>=1.26,<3",
-    "opencv-python-headless>=4.10,<5",
+    "nachet-dataset-controller",
     "pillow==13.0.0",
     "psycopg[binary]>=3.2.10,<4",
     "pydantic==2.13.0",
@@ -28,10 +26,10 @@ dev = ["pytest>=8.4,<10", "pytest-asyncio>=1,<2", "ruff>=0.13,<1"]
 compatibility = ["datasets==4.4.1"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["dataset_release", "utility"]
+packages = ["dataset_release"]
 
 [tool.uv.sources]
-nachet-blob = { path = "../blob", editable = true }
+nachet-dataset-controller = { path = "../DatasetController", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

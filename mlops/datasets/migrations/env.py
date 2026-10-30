@@ -4,10 +4,9 @@ import asyncio
 import os
 
 from alembic import context
+from dataset_controller.config.dataset_config import Settings
+from dataset_controller.repositories.registry import Base, registry_engine
 from dotenv import load_dotenv
-
-from dataset_release.registry import Base, registry_engine
-from dataset_release.settings import Settings
 
 load_dotenv(os.environ.get("DATASET_ENV_FILE", ".env"))
 settings = Settings.from_environment()

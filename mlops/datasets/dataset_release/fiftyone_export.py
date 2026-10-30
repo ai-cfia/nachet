@@ -12,9 +12,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
-from pydantic import Field
-
-from .contract import (
+from dataset_controller.models.dataset import (
     SHA256,
     ContractModel,
     ReleaseSpec,
@@ -22,6 +20,7 @@ from .contract import (
     Source,
     Split,
 )
+from pydantic import Field
 
 
 class ImageMembership(ContractModel):

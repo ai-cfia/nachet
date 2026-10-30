@@ -6,7 +6,9 @@ import hashlib
 import json
 import math
 import re
-from typing import Annotated, Any, Literal
+from dataclasses import dataclass
+from datetime import UTC
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import (
@@ -17,6 +19,12 @@ from pydantic import (
     StrictInt,
     model_validator,
 )
+
+from ..errors import ReleaseNotReady
+
+if TYPE_CHECKING:
+    from ..repositories.registry import DatasetRelease
+
 
 Split = Literal["train", "validation", "test"]
 Identifier = Annotated[StrictInt, Field(ge=0)]
@@ -57,7 +65,7 @@ class Source(BaseModel):
     specimen_group: str | None = None
 
 
-class CocoImage(BaseModel):
+class DatasetMember(BaseModel):
     model_config = ConfigDict(extra="allow", frozen=True)
     id: Identifier
     file_name: str = Field(pattern=r"^png/detection/[a-f0-9]{64}\.png$")
@@ -67,7 +75,7 @@ class CocoImage(BaseModel):
     sources: list[Source] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_sha256(self) -> CocoImage:
+    def validate_sha256(self) -> DatasetMember:
         # Keep this optional extra absent on older releases so their serialized
         # specification and immutable request hash do not change on retries.
         if "sha256" in self.model_extra:
@@ -101,7 +109,7 @@ class ReviewedCoco(BaseModel):
     """COCO with explicit splits and optional provenance on each image."""
 
     model_config = ConfigDict(extra="allow", frozen=True)
-    images: list[CocoImage] = Field(min_length=1)
+    images: list[DatasetMember] = Field(min_length=1)
     categories: list[CocoCategory] = Field(min_length=1)
     annotations: list[CocoAnnotation]
 
@@ -156,7 +164,9 @@ class ConversionRecipe(ContractModel):
     settings: dict[str, Any]
 
 
-class ReleaseSpec(ContractModel):
+class Dataset(ContractModel):
+    """Reviewed membership and release metadata ready for publication."""
+
     schema_version: Literal[1] = 1
     name: ReleaseName
     version: ReleaseName
@@ -166,42 +176,54 @@ class ReleaseSpec(ContractModel):
     generate_crops: StrictBool = False
 
 
-class FileReference(ContractModel):
-    key: str
-    sha256: SHA256
-    size: Annotated[StrictInt, Field(gt=0)]
-
-    @model_validator(mode="after")
-    def validate_key(self) -> FileReference:
-        if not re.fullmatch(
-            r"(?:png/(?:detection|classification)/[a-f0-9]{64}\.png|"
-            r"releases/[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+/coco\.json)",
-            self.key,
-        ):
-            raise ValueError("Invalid release object key")
-        return self
+# Existing release callers keep their public model names and JSON contract.
+ReleaseSpec = Dataset
+CocoImage = DatasetMember
 
 
-class CropReference(ContractModel):
-    image_id: Identifier
-    annotation_id: Identifier
-    category_id: Identifier
-    split: Split
-    pixel_box: tuple[int, int, int, int]
-    file: FileReference
-
-
-class ReleaseManifest(ContractModel):
-    schema_version: Literal[1] = 1
-    release_id: UUID
-    name: ReleaseName
-    version: ReleaseName
+@dataclass(frozen=True)
+class ReleaseRegistration:
+    id: UUID
+    name: str
+    version: str
     author: str
     created_at: str
-    request_sha256: SHA256
-    hash_rule: Literal["sha256-file-bytes"] = "sha256-file-bytes"
-    conversion: ConversionRecipe
-    crop_recipe: dict[str, Any] | None
-    coco: FileReference
-    images: list[FileReference]
-    crops: list[CropReference]
+    container: str
+    request_sha256: str
+    manifest_key: str
+    manifest_sha256: str | None
+    status: str
+
+    @classmethod
+    def from_row(cls, row: DatasetRelease) -> ReleaseRegistration:
+        # SQLite returns naive timestamps; PostgreSQL returns aware timestamps.
+        created_at = row.date_created
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=UTC)
+        created_at = created_at.astimezone(UTC)
+        return cls(
+            row.id,
+            row.name,
+            row.version,
+            row.author,
+            created_at.isoformat(),
+            row.container,
+            row.request_sha256,
+            row.manifest_key,
+            row.manifest_sha256,
+            row.status,
+        )
+
+    def training_reference(self) -> dict[str, str]:
+        """Persist these MLflow params and reuse them on resume/evaluation."""
+        if self.status != "ready" or self.manifest_sha256 is None:
+            raise ReleaseNotReady(f"{self.name}/{self.version}")
+        return {
+            "dataset_release_id": str(self.id),
+            "dataset_name": self.name,
+            "dataset_version": self.version,
+            "dataset_manifest_key": self.manifest_key,
+            "dataset_manifest_sha256": self.manifest_sha256,
+            "dataset_container": self.container,
+            "model_dataset": f"{self.id}@sha256:{self.manifest_sha256}",
+        }

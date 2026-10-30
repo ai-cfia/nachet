@@ -8,8 +8,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from dataset_controller.models.dataset import CocoImage, ReleaseSpec, sha256
 
-from dataset_release.contract import CocoImage, ReleaseSpec, sha256
 from dataset_release.fiftyone_export import (
     ImageMembership,
     export_collection,

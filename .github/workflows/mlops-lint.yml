@@ -19,6 +19,7 @@ on:
       - "mlops/training/**"
       - "mlops/export/**"
       - "mlops/datasets/**"
+      - "mlops/DatasetController/**"
       - "mlops/blob/**"
       - ".github/workflows/mlops-lint.yml"
   push:
@@ -28,11 +29,43 @@ on:
       - "mlops/training/**"
       - "mlops/export/**"
       - "mlops/datasets/**"
+      - "mlops/DatasetController/**"
       - "mlops/blob/**"
       - ".github/workflows/mlops-lint.yml"
   workflow_dispatch:
 
 jobs:
+  dataset-controller-checks:
+    name: Validate standalone DatasetController
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: mlops/DatasetController
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
+        with:
+          version: "0.11.24"
+      - name: Install locked dependencies
+        run: uv sync --locked
+      - name: Check Python
+        run: |
+          uv run --no-sync ruff check .
+          uv run --no-sync ruff format --check .
+      - name: Test standalone controller
+        run: uv run --no-sync python -I -m pytest
+      - name: Build controller wheel
+        run: uv build --wheel
+
   dataset-release-checks:
     name: Validate dataset release tools
     runs-on: ubuntu-latest

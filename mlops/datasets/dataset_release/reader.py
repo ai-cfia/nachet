@@ -6,8 +6,8 @@ from collections import defaultdict
 from collections.abc import AsyncIterator
 from typing import Any
 
-from .contract import Split, canonical_json
-from .release import DatasetController, ReleaseNotReady
+from dataset_controller import DatasetController, ReleaseNotReady
+from dataset_controller.models.dataset import Split, canonical_json
 
 
 class ReleasedDataset:

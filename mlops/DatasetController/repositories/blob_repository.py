@@ -7,8 +7,11 @@ import os
 from typing import Any, Protocol
 
 from mlops_blob import BlobStorageInterface, create_blob_storage_client
+from mlops_blob.exceptions import BlobAlreadyExistsError
 
-from .errors import ConfigurationError
+from ..errors import ConfigurationError, ReleaseConflict
+from ..models.dataset import sha256
+from ..models.manifest import FileReference
 
 
 class BlobStorage(Protocol):
@@ -21,6 +24,41 @@ class BlobStorage(Protocol):
 
     async def download_blob(self, container: str, name: str, **kwargs: Any) -> bytes:
         pass
+
+
+class BlobRepository:
+    """Container-scoped reads and immutable writes through the blob interface."""
+
+    def __init__(self, storage: BlobStorage, container: str):
+        self.storage = storage
+        self.container = container
+
+    async def download(self, key: str) -> bytes:
+        return await self.storage.download_blob(self.container, key)
+
+    async def put_unchanged(
+        self,
+        key: str,
+        data: bytes,
+        content_type: str,
+        *,
+        conflict_message: str | None = None,
+    ) -> None:
+        try:
+            await self.storage.upload_blob(
+                self.container, key, data, overwrite=False, content_type=content_type
+            )
+        except BlobAlreadyExistsError:
+            # Identical retries can reuse objects, after comparing their exact bytes.
+            pass
+        if await self.download(key) != data:
+            raise ReleaseConflict(
+                conflict_message or f"Object already has different content: {key}"
+            )
+
+    async def put_file(self, key: str, data: bytes, content_type: str) -> FileReference:
+        await self.put_unchanged(key, data, content_type)
+        return FileReference(key=key, sha256=sha256(data), size=len(data))
 
 
 def environment_flag(name: str, default: bool) -> bool:

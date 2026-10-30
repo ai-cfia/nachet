@@ -3,7 +3,12 @@ from io import BytesIO
 import pytest
 from PIL import Image
 
-from utility.crop import crop_image, crop_recipe, decode_png, pixel_box
+from dataset_controller.utility.crop import (
+    crop_image,
+    crop_recipe,
+    decode_png,
+    pixel_box,
+)
 
 
 def test_render_crop_returns_rgb_png_with_outward_rounded_box():

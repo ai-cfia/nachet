@@ -19,19 +19,19 @@ from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from dataset_controller import DatasetController, ReleaseConflict, ReleaseNotReady
+from dataset_controller.config.dataset_config import Settings
+from dataset_controller.models.dataset import ReleaseSpec, canonical_json, sha256
+from dataset_controller.repositories.blob_repository import BlobStorageAdapter
+from dataset_controller.repositories.registry import DatasetRelease
 from mlops_blob import create_blob_storage_client
 from mlops_blob.exceptions import BlobAlreadyExistsError, BlobNotFoundError
 from PIL import Image
 from sqlalchemy import MetaData, func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from dataset_release.contract import ReleaseSpec, canonical_json, sha256
 from dataset_release.fiftyone_export import ImageMembership, remap_coco
 from dataset_release.reader import ReleasedDataset
-from dataset_release.registry import DatasetRelease
-from dataset_release.release import DatasetController, ReleaseConflict, ReleaseNotReady
-from dataset_release.settings import Settings
-from dataset_release.storage import BlobStorageAdapter
 
 
 def s3_storage(client):
@@ -150,7 +150,10 @@ async def test_release_uses_copied_blob_provider_for_publication_and_reads(
     controller = DatasetController(blob_provider.storage, sessions, "datasets")
     # Interrupt after writing the manifest but before marking the row ready.
     # The retry must reuse existing crops/COCO/manifest via the common conflicts.
-    with patch.object(controller, "_validate", side_effect=OSError("Interrupted")):
+    with patch(
+        "dataset_controller.services.validation_service.ValidationService.validate",
+        side_effect=OSError("Interrupted"),
+    ):
         with pytest.raises(OSError, match="Interrupted"):
             await controller.publish(spec)
     assert (await controller.registration(spec.name, spec.version)).status == "staging"

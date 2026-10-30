@@ -9,9 +9,8 @@ from unittest.mock import Mock
 import pytest
 from azure.core.exceptions import ResourceExistsError
 from botocore.exceptions import ClientError
+from dataset_controller.repositories.blob_repository import BlobStorageAdapter
 from mlops_blob import create_blob_storage_client
-
-from dataset_release.storage import BlobStorageAdapter
 
 
 @pytest.fixture(params=["s3", "azure"])

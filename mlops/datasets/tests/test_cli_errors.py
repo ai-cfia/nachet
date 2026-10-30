@@ -3,11 +3,11 @@
 from unittest.mock import AsyncMock
 
 import pytest
+from dataset_controller.config.dataset_config import Settings
+from dataset_controller.errors import ConfigurationError
+from dataset_controller.repositories.blob_repository import BlobStorageAdapter
 
 from dataset_release import cli
-from dataset_release.errors import ConfigurationError
-from dataset_release.settings import Settings
-from dataset_release.storage import BlobStorageAdapter
 
 
 def test_cli_reports_missing_database_setting(monkeypatch):

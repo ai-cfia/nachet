@@ -1,8 +1,10 @@
 # MLOps
 
 The standalone [dataset release tools](datasets/README.md) publish reviewed
-COCO versions, generate seed crops and provide verified training inputs. Their
-storage adapter, registry migration, dependencies and tests live in `datasets/`.
+COCO versions, generate seed crops and provide verified training inputs. The
+standalone [DatasetController](DatasetController/README.md) owns the release API,
+contracts, storage adapter, registry mapping and crop helper. Commands, export,
+readers and registry migrations live in `datasets/`.
 
 ## Example approval workflow
 
