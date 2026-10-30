@@ -1,4 +1,4 @@
-FROM node:24.13.0
+FROM node:26.12.0
 
 WORKDIR /nachet-frontend
 
