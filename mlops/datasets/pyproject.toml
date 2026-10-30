@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nachet-dataset-release"
+version = "0.1.0"
+description = "Publish and read immutable reviewed datasets for Nachet model training"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "aiosqlite>=0.21,<1",
+    "alembic>=1.16.5,<2",
+    "nachet-blob",
+    "numpy>=1.26,<3",
+    "opencv-python-headless>=4.10,<5",
+    "pillow==13.0.0",
+    "psycopg[binary]>=3.2.10,<4",
+    "pydantic==2.13.0",
+    "python-dotenv>=1.2.2,<2",
+    "sqlalchemy[asyncio]>=2.0.43,<3",
+]
+
+[project.scripts]
+nachet-dataset-release = "dataset_release.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8.4,<10", "pytest-asyncio>=1,<2", "ruff>=0.13,<1"]
+compatibility = ["datasets==4.4.1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["dataset_release", "utility"]
+
+[tool.uv.sources]
+nachet-blob = { path = "../blob", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "strict"
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP"]
