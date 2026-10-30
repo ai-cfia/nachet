@@ -10,6 +10,7 @@ dependencies = [
 [dependency-groups]
 dev = ["pytest==9.1.1", "ruff==0.17.2"]
 sam3 = ["torch==2.9.0", "torchvision==0.24.0", "transformers==5.16.1"]
+fiftyone = ["fiftyone==1.22.1"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

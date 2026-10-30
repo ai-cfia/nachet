@@ -127,10 +127,57 @@ Both statuses require human review. The command refuses an index that already
 has annotations. Output is written after the full batch; an interrupted run
 currently starts again from the beginning.
 
+## Register for review
+
+`register_fiftyone.py` imports the draft COCO into a new persistent FiftyOne
+dataset. It reads only the COCO file. Set `--server-media-root` to the path
+where the FiftyOne server can read the `png/detection/...` files; the import
+worker does not need access to that path. The command does not copy or upload
+images.
+
+```bash
+uv sync --project mlops/preparation --locked --group fiftyone
+export FIFTYONE_DATABASE_URI='<mongo-uri>'
+uv run --project mlops/preparation --no-sync python \
+  mlops/preparation/register_fiftyone.py collection-01-review \
+  /work/draft.coco.json --server-media-root /srv/datasets
+```
+
+Use the server's MongoDB URI and, if customized, `FIFTYONE_DATABASE_NAME`.
+The command requires `FIFTYONE_DATABASE_URI` and refuses an implicit local
+database. Draft boxes go in `draft_boxes`. Source records, split assignments
+and the pre-label fields described above stay on each sample. `source_species`
+copies the first source's species for filtering, or stays `null` when it is
+unknown. It records the original species separately from reviewed box labels.
+`object_key` keeps the PNG key, and `image_sha256` copies its hash from the
+COCO image record. Each input image must include this field; the import does
+not read image bytes to recalculate it. Raw-file hashes stay in `sources`.
+`dataset.info` keeps the COCO `info` block.
+Images imported before pre-labeling get `prelabel_status: "unannotated"`.
+
+Existing dataset names are refused so a rerun cannot overwrite review work.
+An import uses a temporary `preparation-import-*` name and renames the dataset
+only after success. A caught failure deletes that temporary dataset. A killed
+process can leave it behind, but a retry uses a new temporary name. Remove a
+leftover only after confirming its job has stopped; keep review datasets.
+
 ## Checks
 
 ```bash
 uv run --project mlops/preparation --no-sync python -m pytest mlops/preparation/tests
+```
+
+The SDK checks need the `fiftyone` group and a disposable MongoDB instance.
+They cover registration, review protection and recovery after a failed or
+killed import. A preparation-to-FiftyOne test converts generated images and
+imports draft boxes from supplied predictions, without model weights.
+CI runs these checks against its own test database. Cluster deployment settings
+stay in `howard-on-prem`.
+
+```bash
+PREPARATION_TEST_MONGO_URI='<disposable-mongo-uri>' \
+  uv run --project mlops/preparation --no-sync python -m pytest \
+  mlops/preparation/integration_tests/test_fiftyone_registration.py -q
 ```
 
 ## Research origins
