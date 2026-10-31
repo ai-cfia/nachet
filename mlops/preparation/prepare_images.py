@@ -56,6 +56,16 @@ def find_images(
     """Return (path, species, split) for each image and the sorted species names.
 
     Species folders sit directly under the collection or under a split folder.
+
+    Example file structure from the Seed Lab:
+        Nachet Images-RGB seed images/
+            Amaranthus albus/
+                AmAl-02_2026-03-27/
+                    Tray_A/
+                        AmAl-02-i47.tiff
+
+    Pass the top folder as collection. Images stay unassigned unless a split
+    is provided.
     """
     split_folders = [
         (SPLIT_FOLDERS[path.name.casefold()], path)
