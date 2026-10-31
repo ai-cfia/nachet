@@ -2,6 +2,8 @@ import hashlib
 import io
 import json
 
+import cv2
+import numpy as np
 import pytest
 from PIL import Image
 
@@ -185,17 +187,20 @@ def test_corrupt_input_is_named_and_cannot_replace_working_coco(prepare, intake)
 
 
 @pytest.mark.parametrize("mode", ["YCbCr", "LAB"])
-def test_png_encoding_error_names_the_source_file(tmp_path, mode):
+def test_non_rgb_tiff_matches_the_research_opencv_conversion(tmp_path, mode):
     source = tmp_path / "source"
     species = source / "Avena fatua"
     species.mkdir(parents=True)
-    filename = f"unsupported-{mode}.tiff"
+    filename = f"seed-{mode}.tiff"
     Image.new(mode, (8, 6)).save(species / filename, format="TIFF")
-    with pytest.raises(
-        OSError,
-        match=rf"Avena fatua/unsupported-{mode}\.tiff: cannot write mode {mode}",
-    ):
-        prepare_images(source, tmp_path / "prepared", code_revision="test")
+    # The research converter reads file paths with this flag.
+    expected = cv2.imread(str(species / filename), cv2.IMREAD_UNCHANGED)
+    output = tmp_path / "prepared"
+    result = prepare_images(source, output, code_revision="test")
+    actual = cv2.imread(
+        str(output / result["images"][0]["file_name"]), cv2.IMREAD_UNCHANGED
+    )
+    np.testing.assert_array_equal(actual, expected)
 
 
 @pytest.mark.parametrize("kind", ["file", "species_folder"])
@@ -230,7 +235,7 @@ def test_interrupted_output_publication_can_be_retried(tmp_path, monkeypatch):
     assert output.read_text().strip() == '{\n  "images": []\n}'
 
 
-def test_high_bit_colour_tiff_is_rejected_before_writing_png(tmp_path):
+def test_rgb16_tiff_keeps_every_channel_value(tmp_path):
     import struct
 
     source = tmp_path / "source"
@@ -257,10 +262,109 @@ def test_high_bit_colour_tiff_is_rejected_before_writing_png(tmp_path):
             else struct.pack("<I", value)
         )
     path.write_bytes(data + b"\0\0\0\0" + struct.pack("<HHH", 16, 16, 16) + pixels)
-    with pytest.raises(ValueError, match="rgb16.tiff.*lossless conversion policy"):
-        prepare_images(source, tmp_path / "prepared", code_revision="test")
-    assert not list((tmp_path / "prepared").glob("**/*.png"))
+    output = tmp_path / "prepared"
+    result = prepare_images(source, output, code_revision="test")
+    image = result["images"][0]
+    encoded = (output / image["file_name"]).read_bytes()
+    decoded = cv2.imdecode(np.frombuffer(encoded, np.uint8), cv2.IMREAD_UNCHANGED)
+    assert decoded.dtype == np.uint16
+    assert decoded.shape == (2, 2, 3)
+    # OpenCV returns BGR; the TIFF fixture above stores RGB.
+    np.testing.assert_array_equal(
+        decoded, np.full((2, 2, 3), (65535, 1000, 40000), dtype=np.uint16)
+    )
+    assert image["image_sha256"] == hashlib.sha256(encoded).hexdigest()
     assert path.read_bytes().endswith(pixels)
+
+
+def test_rgb16_png_is_copied_byte_for_byte(tmp_path):
+    source = tmp_path / "source"
+    path = source / "Avena fatua/rgb16.png"
+    path.parent.mkdir(parents=True)
+    pixels = np.full((2, 2, 3), (65535, 1000, 40000), dtype=np.uint16)
+    ok, encoded = cv2.imencode(".png", pixels)
+    assert ok
+    path.write_bytes(encoded.tobytes())
+    output = tmp_path / "prepared"
+    result = prepare_images(source, output, code_revision="test")
+    assert (output / result["images"][0]["file_name"]).read_bytes() == path.read_bytes()
+
+
+def test_grayscale_alpha_tiff_is_rejected_before_conversion_can_drop_alpha(tmp_path):
+    source = tmp_path / "source"
+    path = source / "Avena fatua/gray-alpha.tiff"
+    path.parent.mkdir(parents=True)
+    image = Image.new("LA", (2, 1))
+    image.putdata([(70, 0), (150, 255)])
+    image.save(path)
+    raw = path.read_bytes()
+    output = tmp_path / "prepared"
+    with pytest.raises(ValueError, match="gray-alpha.tiff: grayscale TIFF with alpha"):
+        prepare_images(source, output, code_revision="test")
+    assert path.read_bytes() == raw
+    assert not list(output.rglob("*.png"))
+
+
+def test_grayscale_alpha_png_is_copied_with_its_transparency(tmp_path):
+    source = tmp_path / "source"
+    path = source / "Avena fatua/gray-alpha.png"
+    path.parent.mkdir(parents=True)
+    image = Image.new("LA", (2, 1))
+    image.putdata([(70, 0), (150, 255)])
+    image.save(path)
+    raw = path.read_bytes()
+    output = tmp_path / "prepared"
+    result = prepare_images(source, output, code_revision="test")
+    assert (output / result["images"][0]["file_name"]).read_bytes() == raw
+
+
+def test_signed_tiff_is_rejected_before_png_can_clip_pixels(tmp_path):
+    source = tmp_path / "source"
+    path = source / "Avena fatua/signed16.tiff"
+    path.parent.mkdir(parents=True)
+    pixels = np.array([[-100, 0], [100, 1000]], dtype=np.int16)
+    ok, encoded = cv2.imencode(".tiff", pixels)
+    assert ok
+    raw = encoded.tobytes()
+    path.write_bytes(raw)
+    output = tmp_path / "prepared"
+    with pytest.raises(ValueError, match="signed16.tiff: int16.*lossless conversion"):
+        prepare_images(source, output, code_revision="test")
+    assert path.read_bytes() == raw
+    assert not list(output.rglob("*.png"))
+
+
+def test_float_tiff_is_rejected_before_png_can_reduce_its_depth(tmp_path):
+    source = tmp_path / "source"
+    path = source / "Avena fatua/float32.tiff"
+    path.parent.mkdir(parents=True)
+    Image.new("F", (2, 2), 1.5).save(path)
+    with pytest.raises(ValueError, match="float32.tiff.*lossless conversion policy"):
+        prepare_images(source, tmp_path / "prepared", code_revision="test")
+
+
+@pytest.mark.parametrize(
+    ("operation", "result", "message"),
+    [
+        ("imdecode", None, "cannot decode image"),
+        ("imencode", (False, None), "cannot encode PNG"),
+    ],
+)
+def test_opencv_failure_names_the_input_file(
+    prepare, monkeypatch, operation, result, message
+):
+    monkeypatch.setattr(cv2, operation, lambda *args: result)
+    with pytest.raises(OSError, match=rf"Avena fatua/.*a\.tiff: {message}"):
+        prepare()
+
+
+def test_opencv_exception_names_the_input_file(prepare, monkeypatch):
+    def fail_decode(*args):
+        raise cv2.error("synthetic codec error")
+
+    monkeypatch.setattr(cv2, "imdecode", fail_decode)
+    with pytest.raises(OSError, match=r"Avena fatua/.*a\.tiff: synthetic codec error"):
+        prepare()
 
 
 def test_automatic_layout_shares_categories_and_preserves_mixed_splits(

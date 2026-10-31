@@ -60,11 +60,13 @@ generated indexes by category name.
 ## Conversion
 
 Raw files are never modified. PNG inputs are copied byte for byte. TIFF and JPEG
-inputs are re-encoded as PNG, and 16-bit grayscale stays 16-bit. CMYK inputs are
-converted to RGB, which can change colour values. High-bit colour TIFFs and
-multi-frame images fail with the filename until a conversion policy is agreed.
+conversion uses the research script's OpenCV `IMREAD_UNCHANGED` flag and default
+PNG encoding. Both 16-bit grayscale and 16-bit RGB TIFFs keep their depth.
+Converted files follow OpenCV's colour handling and do not copy ICC profiles.
+Grayscale TIFFs with alpha, signed pixel values, multi-frame images and TIFF
+samples above 16 bits fail with the filename.
 
-PNG names are the SHA-256 of the PNG bytes, so a Pillow encoder change can
+PNG names are the SHA-256 of the PNG bytes, so an encoder change can
 rename the PNG for an unchanged raw image.
 
 ## Index contents

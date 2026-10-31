@@ -8,6 +8,8 @@ import os
 import tempfile
 from pathlib import Path, PurePosixPath
 
+import cv2
+import numpy as np
 from PIL import Image
 
 SPLITS = {"train", "validation", "test"}
@@ -22,7 +24,6 @@ SPLIT_FOLDERS = {
 }
 IMAGE_SUFFIXES = {".tif", ".tiff", ".jpg", ".jpeg", ".png"}
 TIFF_BITS_PER_SAMPLE = 258
-HIGH_BIT_GRAYSCALE = {"I;16", "I;16B", "I;16L"}
 
 
 def write_new(path: Path, data: bytes) -> None:
@@ -123,26 +124,37 @@ def to_png(raw_bytes: bytes, relative: Path) -> tuple[bytes, int, int]:
                 f"Multi-frame image needs an explicit frame choice: {relative}"
             )
         if image.format == "TIFF":
+            if image.mode == "LA":
+                raise ValueError(
+                    f"{relative}: grayscale TIFF with alpha needs a lossless conversion policy"
+                )
             bits = image.tag_v2.get(TIFF_BITS_PER_SAMPLE, (8,))
             bits = (bits,) if isinstance(bits, int) else bits
-            if max(bits) > 16 or (
-                max(bits) > 8 and image.mode not in HIGH_BIT_GRAYSCALE
-            ):
+            if max(bits) > 16:
                 raise ValueError(
                     f"{relative}: {bits}-bit TIFF needs a lossless conversion policy"
                 )
         try:
-            image.load()
             width, height = image.size
             if image.format == "PNG":
+                image.load()
                 return raw_bytes, width, height
-            converted = image.convert("RGB") if image.mode == "CMYK" else image
-            buffer = io.BytesIO()
-            # Keep compression explicit because PNG keys depend on the encoded bytes.
-            converted.save(buffer, format="PNG", compress_level=6)
-        except OSError as error:
+            # Match the research converter, using the bytes already read for hashing.
+            pixels = cv2.imdecode(
+                np.frombuffer(raw_bytes, np.uint8), cv2.IMREAD_UNCHANGED
+            )
+            if pixels is None:
+                raise OSError("cannot decode image")
+            if pixels.dtype not in (np.uint8, np.uint16):
+                raise ValueError(
+                    f"{relative}: {pixels.dtype} image needs a lossless conversion policy"
+                )
+            ok, encoded = cv2.imencode(".png", pixels)
+            if not ok:
+                raise OSError("cannot encode PNG")
+        except (OSError, cv2.error) as error:
             raise OSError(f"{relative}: {error}") from error
-    return buffer.getvalue(), width, height
+    return encoded.tobytes(), width, height
 
 
 def prepare_images(
