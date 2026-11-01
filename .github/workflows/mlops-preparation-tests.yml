@@ -35,3 +35,29 @@ jobs:
           version: "0.11.24"
       - run: uv sync --locked --project mlops/preparation
       - run: uv run --project mlops/preparation --no-sync python -m pytest mlops/preparation/tests -q
+
+  fiftyone:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      mongo:
+        image: mongo:7.0.28@sha256:4510cf3d7050003e958745adb25d2deb3fb907430716162d9cc1a92eda2a6047
+        ports: ["127.0.0.1:27017:27017"]
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1})'"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      FIFTYONE_DO_NOT_TRACK: "true"
+      PREPARATION_TEST_MONGO_URI: mongodb://127.0.0.1:27017
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
+        with:
+          version: "0.11.24"
+      - run: uv sync --locked --project mlops/preparation --group fiftyone
+      - run: >-
+          uv run --project mlops/preparation --no-sync python -m pytest
+          mlops/preparation/integration_tests/test_fiftyone_registration.py -q
