@@ -164,14 +164,31 @@ class DatasetDescription(ContractModel):
     previous_version: str | None = None
 
 
-class ReleaseSpec(DatasetDescription):
+class ImageMembership(ContractModel):
+    """An exported filename's PNG identity, split and provenance."""
+
+    file_name: str = Field(min_length=1)
+    sha256: SHA256
+    split: Split
+    sources: list[Source] = Field(default_factory=list)
+
+
+class ReleaseDefinition(DatasetDescription):
     schema_version: Literal[1] = 1
     name: ReleaseName
     version: ReleaseName
     author: str = Field(min_length=1)
     conversion: ConversionRecipe
-    coco: ReviewedCoco
     generate_crops: StrictBool = False
+
+    @model_validator(mode="after")
+    def validate_settings(self) -> ReleaseDefinition:
+        canonical_json(self.conversion.settings)
+        return self
+
+
+class ReleaseSpec(ReleaseDefinition):
+    coco: ReviewedCoco
 
 
 class ReleaseMetadata(DatasetDescription):
@@ -240,3 +257,12 @@ class ReleaseManifest(ReleaseMetadata):
     coco: FileReference
     images: list[FileReference]
     crops: list[CropReference]
+
+    def document(self) -> bytes:
+        """Preserve the v1 omission of unknown descriptive/statistical metadata."""
+        unknown = {
+            field
+            for field in ReleaseMetadata.model_fields
+            if getattr(self, field) is None
+        }
+        return canonical_json(self.model_dump(mode="json", exclude=unknown))
