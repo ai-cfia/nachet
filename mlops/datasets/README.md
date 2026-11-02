@@ -80,6 +80,26 @@ upstream using the available collection knowledge.
 
 ### Export reviewed FiftyOne labels without copying images
 
+The two JSON inputs have different sources:
+
+| Input | Who supplies it | When it is needed |
+| --- | --- | --- |
+| `--release-metadata` | The release author edits a copy of `examples/release-metadata.json` with the release name/version, author and actual PNG conversion revision/settings. | Both export workflows. |
+| `--membership` | The offline caller supplies a verified mapping from each exported COCO filename to its PNG hash, assigned split and optional source records. This tool does not generate a standalone membership file. | Only `--coco`. With `--dataset`, the exporter builds membership in memory from FiftyOne samples. |
+
+The dataset curator must assign the splits before export. PNG hashes and source
+records come from image preparation or existing sample metadata, with the
+fallbacks described below. A standard web COCO export alone does not supply all
+the inputs this handoff requires.
+
+These files are preparation inputs. During publication, membership and source
+records are saved in the versioned `coco.json`, while release identity and
+conversion metadata are saved in `release.json`. The existing `dataset_release`
+database row registers that snapshot and its checksum. There are currently no
+SQL tables for editing or querying per-image release membership. Adding that
+workflow would require a separate schema design; supplying these JSON inputs
+does not create those tables.
+
 The exporter uses FiftyOne's [labels-only COCO API](https://docs.voxel51.com/api/fiftyone.utils.coco.html)
 with `export_media=False`. It writes JSON only. Full images must already exist
 in the publisher's container at `png/detection/<sha256>.png`.

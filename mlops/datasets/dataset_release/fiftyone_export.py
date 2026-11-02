@@ -182,9 +182,22 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--split-field", default="split")
     parser.add_argument("--sources-field", default="sources")
     parser.add_argument(
-        "--membership", type=Path, help="Image metadata JSON for --coco"
+        "--membership",
+        type=Path,
+        help=(
+            "User-supplied per-image mapping for --coco: exported file_name, "
+            "sha256, split and optional sources; built from samples with --dataset"
+        ),
     )
-    parser.add_argument("--release-metadata", type=Path, required=True)
+    parser.add_argument(
+        "--release-metadata",
+        type=Path,
+        required=True,
+        help=(
+            "User-edited copy of examples/release-metadata.json containing "
+            "release name/version, author and PNG conversion revision/settings"
+        ),
+    )
     parser.add_argument(
         "--output-dir", type=Path, required=True, help="New output folder"
     )
