@@ -68,6 +68,20 @@ class CocoImage(BaseModel):
     split: Split
     sources: list[Source] = Field(default_factory=list)
 
+    @model_validator(mode="after")
+    def validate_sha256(self) -> CocoImage:
+        # Keep this optional extra absent on older releases so their serialized
+        # specification and immutable request hash do not change on retries.
+        if "sha256" in self.model_extra:
+            digest = self.model_extra["sha256"]
+            if (
+                not isinstance(digest, str)
+                or not re.fullmatch(r"[a-f0-9]{64}", digest)
+                or self.file_name != f"png/detection/{digest}.png"
+            ):
+                raise ValueError("COCO image SHA-256 does not match its blob key")
+        return self
+
 
 class CocoCategory(BaseModel):
     model_config = ConfigDict(extra="allow", frozen=True)
@@ -150,14 +164,31 @@ class DatasetDescription(ContractModel):
     previous_version: str | None = None
 
 
-class ReleaseSpec(DatasetDescription):
+class ImageMembership(ContractModel):
+    """An exported filename's PNG identity, split and provenance."""
+
+    file_name: str = Field(min_length=1)
+    sha256: SHA256
+    split: Split
+    sources: list[Source] = Field(default_factory=list)
+
+
+class ReleaseDefinition(DatasetDescription):
     schema_version: Literal[1] = 1
     name: ReleaseName
     version: ReleaseName
     author: str = Field(min_length=1)
     conversion: ConversionRecipe
-    coco: ReviewedCoco
     generate_crops: StrictBool = False
+
+    @model_validator(mode="after")
+    def validate_settings(self) -> ReleaseDefinition:
+        canonical_json(self.conversion.settings)
+        return self
+
+
+class ReleaseSpec(ReleaseDefinition):
+    coco: ReviewedCoco
 
 
 class ReleaseMetadata(DatasetDescription):
@@ -226,3 +257,12 @@ class ReleaseManifest(ReleaseMetadata):
     coco: FileReference
     images: list[FileReference]
     crops: list[CropReference]
+
+    def document(self) -> bytes:
+        """Preserve the v1 omission of unknown descriptive/statistical metadata."""
+        unknown = {
+            field
+            for field in ReleaseMetadata.model_fields
+            if getattr(self, field) is None
+        }
+        return canonical_json(self.model_dump(mode="json", exclude=unknown))

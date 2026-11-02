@@ -11,7 +11,7 @@ from pathlib import Path
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from .contract import ReleaseSpec
+from .contract import ConversionRecipe, ImageMembership, ReleaseDefinition, Source
 from .errors import ConfigurationError
 from .registry import registry_engine
 from .release import DatasetController, ReleaseConflict, ReleaseNotReady
@@ -25,32 +25,146 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--container", required=True, help="Existing dataset bucket/container"
     )
     actions = parser.add_subparsers(dest="action", required=True)
-    publish = actions.add_parser(
-        "publish", help="Validate and publish a release specification"
+    create = actions.add_parser(
+        "create", help="Register release metadata as a database draft"
     )
-    publish.add_argument("spec", type=Path)
-    for command in ("inspect", "validate"):
+    create.add_argument("name")
+    create.add_argument("version")
+    create.add_argument("--author", required=True)
+    create.add_argument("--conversion-revision", required=True)
+    create.add_argument(
+        "--setting",
+        action="append",
+        default=[],
+        help="PNG conversion setting KEY=VALUE (JSON or plain text)",
+    )
+    create.add_argument("--description")
+    create.add_argument("--dataset-cutoff-date")
+    create.add_argument("--previous-version")
+    create.add_argument("--generate-crops", action="store_true")
+    member = actions.add_parser(
+        "add-image", help="Add an offline export's image membership to a draft"
+    )
+    member.add_argument("name")
+    member.add_argument("version")
+    member.add_argument(
+        "--file-name", required=True, help="Exact exported COCO file_name"
+    )
+    member.add_argument("--sha256", required=True)
+    member.add_argument(
+        "--split", required=True, choices=("train", "validation", "test")
+    )
+    member.add_argument("--original-path")
+    member.add_argument("--specimen-group")
+    export = actions.add_parser(
+        "export", help="Generate JSON on request from release records"
+    )
+    export.add_argument("name")
+    export.add_argument("version")
+    export.add_argument(
+        "document", choices=("metadata", "membership", "spec", "coco", "manifest")
+    )
+    export.add_argument(
+        "--output", type=Path, help="New output file (otherwise print JSON)"
+    )
+    for command in ("publish", "inspect", "validate"):
         action = actions.add_parser(command)
         action.add_argument("name")
         action.add_argument("version")
-        action.add_argument("--expected-manifest-sha256")
+        if command != "publish":
+            action.add_argument("--expected-manifest-sha256")
     return parser.parse_args(argv)
 
 
-async def execute(args: argparse.Namespace) -> dict:
+async def execute(args: argparse.Namespace) -> dict | list:
     # Registry provisioning is an explicit MLOps operation, separate from the
     # backend application's database and Alembic revision history.
     settings = Settings.from_environment()
     engine = registry_engine(settings.database_url, settings.registry_schema)
     storage = None
     try:
-        storage = await asyncio.to_thread(BlobStorageAdapter.from_environment)
+        if args.action in ("publish", "inspect", "validate") or (
+            args.action == "export" and args.document == "manifest"
+        ):
+            storage = await asyncio.to_thread(BlobStorageAdapter.from_environment)
         controller = DatasetController(
             storage, async_sessionmaker(engine), args.container
         )
-        if args.action == "publish":
-            spec = ReleaseSpec.model_validate_json(args.spec.read_bytes())
-            registration = await controller.publish(spec)
+        if args.action == "create":
+            conversion_settings = {}
+            for setting in args.setting:
+                key, separator, value = setting.partition("=")
+                if not separator or not key or key in conversion_settings:
+                    raise ConfigurationError(
+                        "Each --setting must have a unique KEY=VALUE"
+                    )
+                try:
+                    conversion_settings[key] = json.loads(value)
+                except json.JSONDecodeError:
+                    conversion_settings[key] = value
+            registration = await controller.create_release(
+                ReleaseDefinition(
+                    name=args.name,
+                    version=args.version,
+                    author=args.author,
+                    conversion=ConversionRecipe(
+                        code_revision=args.conversion_revision,
+                        settings=conversion_settings,
+                    ),
+                    description=args.description,
+                    dataset_cutoff_date=args.dataset_cutoff_date,
+                    previous_version=args.previous_version,
+                    generate_crops=args.generate_crops,
+                )
+            )
+            return {
+                "name": registration.name,
+                "version": registration.version,
+                "status": registration.status,
+            }
+        elif args.action == "add-image":
+            sources = []
+            if args.original_path:
+                sources = [
+                    Source(
+                        original_path=args.original_path,
+                        specimen_group=args.specimen_group,
+                    )
+                ]
+            elif args.specimen_group:
+                raise ConfigurationError("--specimen-group requires --original-path")
+            await controller.catalog.add_membership(
+                args.name,
+                args.version,
+                ImageMembership(
+                    file_name=args.file_name,
+                    sha256=args.sha256,
+                    split=args.split,
+                    sources=sources,
+                ),
+            )
+            return {
+                "name": args.name,
+                "version": args.version,
+                "file_name": args.file_name,
+            }
+        elif args.action == "export":
+            if (
+                args.document == "coco"
+                and not (
+                    await controller.registration(args.name, args.version)
+                ).database_backed
+            ):
+                storage = await asyncio.to_thread(BlobStorageAdapter.from_environment)
+                controller.storage = storage
+            data = await controller.export_json(args.name, args.version, args.document)
+            if args.output:
+                with args.output.open("xb") as output:
+                    output.write(data)
+                return {"output": str(args.output)}
+            return json.loads(data)
+        elif args.action == "publish":
+            registration = await controller.publish(args.name, args.version)
         else:
             registration, manifest, coco = await controller.resolve(
                 args.name, args.version, args.expected_manifest_sha256
