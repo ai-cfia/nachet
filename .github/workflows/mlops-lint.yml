@@ -20,6 +20,7 @@ on:
       - "mlops/export/**"
       - "mlops/datasets/**"
       - "mlops/blob/**"
+      - "mlops/preparation/**"
       - ".github/workflows/mlops-lint.yml"
   push:
     branches:
@@ -29,6 +30,7 @@ on:
       - "mlops/export/**"
       - "mlops/datasets/**"
       - "mlops/blob/**"
+      - "mlops/preparation/**"
       - ".github/workflows/mlops-lint.yml"
   workflow_dispatch:
 
@@ -61,6 +63,29 @@ jobs:
           uv run --no-sync ruff format --check dataset_release migrations tests
       - name: Test standalone release tools
         run: uv run --no-sync pytest
+
+  preparation-checks:
+    name: Check dataset preparation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: mlops/preparation
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
+        with:
+          version: "0.11.24"
+      - run: uv sync --locked
+      - name: Check Python
+        run: |
+          uv run --no-sync ruff check .
+          uv run --no-sync ruff format --check .
 
   training-python-lint:
     uses: ai-cfia/github-workflows/.github/workflows/workflow-lint-python-mono.yml@c504dacdff61c8a1f7c796934e9ad20749f6d136

@@ -58,6 +58,7 @@ async def execute(args: argparse.Namespace) -> dict:
             if args.action == "inspect":
                 return {
                     **registration.training_reference(),
+                    **registration.metadata().model_dump(mode="json"),
                     "images": len(coco.images),
                     "annotations": len(coco.annotations),
                     "crops": len(manifest.crops),

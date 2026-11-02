@@ -3,6 +3,9 @@
   "name": "reviewed-seeds",
   "version": "v1",
   "author": "reviewer",
+  "description": "Reviewed seed images with species labels and bounding boxes.",
+  "dataset_cutoff_date": "2026-10-22",
+  "previous_version": null,
   "conversion": {
     "code_revision": "replace-with-converter-revision",
     "settings": { "format": "PNG", "mode": "RGB" }
