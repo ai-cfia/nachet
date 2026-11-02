@@ -127,7 +127,8 @@ The view must retain the split/hash/source fields needed for the handoff.
 The new output folder contains `coco.json` and `dataset-release.json`. COCO
 image paths are replaced with blob keys, and each image includes `sha256`,
 `split` and `sources`. Image/annotation/category IDs, reviewed boxes and extra
-COCO attributes are retained. Export joins use full paths rather than basenames;
+COCO attributes are retained. The script requests `abs_paths=True` and joins
+the resulting full paths to the original sample filepaths;
 missing, duplicate or conflicting membership fails preparation. The output
 folder must not already exist. Crops are disabled for this handoff.
 
@@ -152,11 +153,31 @@ uv run python -m dataset_release.fiftyone_export \
 ]
 ```
 
-`file_name` must match the corresponding exported COCO path, including its
-directories; slash direction is normalized. `sources` can be omitted to retain
+`file_name` must match the actual `images[].file_name` in the exported COCO,
+including any directories or renamed filenames; only slash direction is
+normalized. It is not necessarily the original FiftyOne sample filepath.
+`sources` can be omitted to retain
 sources already in COCO. The optional explicit COCO `sha256` field is validated
 against its blob key. Older releases without that field retain their serialized
 shape and remain compatible with identical publication retries.
+
+For a web App export through `@voxel51/io/export_samples`, choose **Labels only**,
+**COCO**, the reviewed detection field, and enable **Absolute paths**. In the
+[upstream I/O plugin](https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/io/__init__.py),
+the Absolute paths checkbox defaults to false; Labels only sets
+`export_media=False`, and the checkbox value is passed to the exporter as
+`abs_paths`. The [COCO exporter](https://github.com/voxel51/fiftyone/blob/main/fiftyone/utils/coco.py)
+writes the media exporter's path when `abs_paths=True`, otherwise its generated
+identifier. Exporting media can also change the path to the exported copy.
+Separator normalization cannot undo these changes.
+
+Before preparing a web export, inspect `images[].file_name` in its JSON and
+confirm that every membership key matches. If paths were rewritten, re-export
+labels only with Absolute paths enabled or supply a verified mapping keyed by
+the actual exported names. Do not guess from basenames or sample order: separate
+source directories can contain identically named images. These settings were
+verified against upstream source; the deployed App version and a real
+web export still require verification in the annotation environment.
 
 Publish the prepared specification using the existing database/blob settings
 and registry provisioning described below:

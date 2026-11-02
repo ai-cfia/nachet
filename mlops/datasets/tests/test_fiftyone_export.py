@@ -111,6 +111,38 @@ def test_remap_preserves_existing_sources_and_normalizes_windows_separators(hand
     assert result.images[0].sources[0].original_path == "original.tiff"
 
 
+@pytest.mark.parametrize(
+    "exported_paths",
+    [
+        ["seed.png", "seed-2.png"],
+        ["a/seed.png", "b/seed.png"],
+        ["/export/data/seed.png", "/export/data/seed-2.png"],
+    ],
+)
+def test_remap_requires_explicit_membership_for_rewritten_export_paths(
+    handoff, exported_paths
+):
+    coco, members = handoff
+    for image, path in zip(coco["images"], exported_paths):
+        image["file_name"] = path
+
+    # Original sample paths cannot identify flattened/renamed export paths.
+    with pytest.raises(ValueError, match="Absolute paths enabled"):
+        remap_coco(coco, members)
+
+    # An explicit mapping using the actual export keys is supported, including
+    # relative paths; never infer membership from basename or export order.
+    exported_members = [
+        member.model_copy(update={"file_name": path})
+        for member, path in zip(members, exported_paths)
+    ]
+    reviewed = remap_coco(coco, reversed(exported_members))
+    assert [image.sha256 for image in reviewed.images] == [
+        member.sha256 for member in members
+    ]
+    assert [image.split for image in reviewed.images] == ["train", "test"]
+
+
 def test_matching_sources_do_not_conflict_when_optional_fields_are_omitted(handoff):
     coco, members = handoff
     coco["images"][0]["sources"] = [

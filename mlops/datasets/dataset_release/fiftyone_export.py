@@ -25,7 +25,7 @@ from .contract import (
 
 
 class ImageMembership(ContractModel):
-    """Join exported image paths to existing blobs and explicit split metadata."""
+    """Join exact exported COCO file names to blobs and explicit split metadata."""
 
     file_name: str = Field(min_length=1)
     sha256: SHA256
@@ -34,8 +34,8 @@ class ImageMembership(ContractModel):
 
 
 def path_identity(path: str) -> str:
-    # Exported paths can come from a Windows FiftyOne host or a Linux pod.
-    # Do not join on basename: different directories may contain the same name.
+    # Normalize separators only; this cannot recover paths rewritten by an export.
+    # Membership must use the actual COCO file_name, including any directories.
     return path.replace("\\", "/")
 
 
@@ -55,7 +55,12 @@ def remap_coco(
     for image in result["images"]:
         key = path_identity(image["file_name"])
         if key not in by_path:
-            raise ValueError(f"Missing membership for COCO image: {image['file_name']}")
+            raise ValueError(
+                f"Missing membership for COCO image: {image['file_name']}. "
+                "Membership file_name must match the exported COCO file_name. "
+                "To match original FiftyOne filepaths, export labels only with "
+                "Absolute paths enabled (abs_paths=True)."
+            )
         if key in used:
             raise ValueError(f"Duplicate COCO image path: {image['file_name']}")
         used.add(key)
