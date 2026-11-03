@@ -21,10 +21,11 @@ from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from mlops_blob import create_blob_storage_client
-from mlops_blob.exceptions import BlobAlreadyExistsError, BlobNotFoundError
+from blob_controller import create_blob_storage_client
+from blob_controller.exceptions import BlobAlreadyExistsError, BlobNotFoundError
 from PIL import Image
 from sqlalchemy import MetaData, Table, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from dataset_release import cli
@@ -46,7 +47,7 @@ from dataset_release.storage import BlobStorageAdapter
 
 def s3_storage(client):
     """Use the copied factory and provider, replacing only its SDK transport."""
-    with patch("mlops_blob.s3.storage.create_s3_client", return_value=client):
+    with patch("blob_controller.s3.storage.create_s3_client", return_value=client):
         return BlobStorageAdapter(create_blob_storage_client("s3", {}))
 
 
@@ -281,7 +282,7 @@ async def test_metadata_survives_publication_registry_reader_and_inspect(
     monkeypatch.setenv("DATASET_DATABASE_URL", str(sessions.kw["bind"].url))
     monkeypatch.setattr(BlobStorageAdapter, "from_environment", lambda: storage)
     storage.close = Mock()
-    result = await cli.execute(
+    result = await cli.run_dataset_release_command(
         cli.parse_args(["--container", "datasets", "inspect", spec.name, spec.version])
     )
     assert {field: result[field] for field in expected} == expected
@@ -660,7 +661,7 @@ async def test_cli_creates_entities_and_exports_without_blob_credentials(
         "from_environment",
         Mock(side_effect=AssertionError("No blob access expected")),
     )
-    result = await cli.execute(
+    result = await cli.run_dataset_release_command(
         cli.parse_args(
             [
                 "--container",
@@ -680,7 +681,7 @@ async def test_cli_creates_entities_and_exports_without_blob_credentials(
         )
     )
     assert result["status"] == "draft"
-    await cli.execute(
+    await cli.run_dataset_release_command(
         cli.parse_args(
             [
                 "--container",
@@ -701,7 +702,7 @@ async def test_cli_creates_entities_and_exports_without_blob_credentials(
             ]
         )
     )
-    metadata = await cli.execute(
+    metadata = await cli.run_dataset_release_command(
         cli.parse_args(
             ["--container", "datasets", "export", "from-cli", "v1", "metadata"]
         )
@@ -723,12 +724,12 @@ async def test_cli_creates_entities_and_exports_without_blob_credentials(
             str(output),
         ]
     )
-    await cli.execute(args)
+    await cli.run_dataset_release_command(args)
     assert (
         json.loads(output.read_bytes())[0]["sources"][0]["specimen_group"] == "seed-1"
     )
     with pytest.raises(FileExistsError):
-        await cli.execute(args)
+        await cli.run_dataset_release_command(args)
 
 
 @pytest.mark.asyncio
@@ -744,10 +745,10 @@ async def test_cli_publishes_database_release_and_exports_manifest(
     monkeypatch.setenv("DATASET_DATABASE_URL", str(sessions.kw["bind"].url))
     monkeypatch.setattr(BlobStorageAdapter, "from_environment", lambda: storage)
     storage.close = Mock()
-    result = await cli.execute(
+    result = await cli.run_dataset_release_command(
         cli.parse_args(["--container", "datasets", "publish", spec.name, spec.version])
     )
-    document = await cli.execute(
+    document = await cli.run_dataset_release_command(
         cli.parse_args(
             ["--container", "datasets", "export", spec.name, spec.version, "manifest"]
         )
@@ -859,7 +860,6 @@ async def test_migration_matches_orm_and_downgrades(tmp_path):
     migrations = []
     for filename in (
         "a895d501ea01_dataset_releases.py",
-        "b72e15c4d901_dataset_metadata.py",
         "c83f26d5ea02_database_release_inputs.py",
     ):
         migration = Path(__file__).parents[1] / "migrations/versions" / filename
@@ -890,12 +890,18 @@ async def test_migration_matches_orm_and_downgrades(tmp_path):
                 )
             )
             migrations[1].upgrade()
-            migrations[2].upgrade()
         assert compare_metadata(context, Base.metadata) == []
         row = connection.execute(select(DatasetRelease.__table__)).mappings().one()
         assert row["id"] == release_id
         assert row["manifest_sha256"] == "b" * 64
         assert all(row[field] is None for field in ReleaseMetadata.model_fields)
+        for field in (
+            "num_classes",
+            "num_multi_object_images",
+            "num_single_object_images",
+        ):
+            with pytest.raises(IntegrityError), connection.begin_nested():
+                connection.execute(old_table.update().values({field: -1}))
         assert row["database_backed"] is False
         connection.execute(
             DatasetRelease.__table__.update().values(database_backed=True)
@@ -904,12 +910,11 @@ async def test_migration_matches_orm_and_downgrades(tmp_path):
             Operations.context(context),
             pytest.raises(RuntimeError, match="Cannot downgrade"),
         ):
-            migrations[2].downgrade()
+            migrations[1].downgrade()
         connection.execute(
             DatasetRelease.__table__.update().values(database_backed=False)
         )
         with Operations.context(context):
-            migrations[2].downgrade()
             migrations[1].downgrade()
         restored = Table("dataset_release", MetaData(), autoload_with=connection)
         assert connection.execute(select(restored.c.id)).scalar_one() == release_id.hex
@@ -1018,6 +1023,23 @@ def test_standalone_migration_and_imports_do_not_use_backend(tmp_path, monkeypat
         text=True,
     )
     assert result.returncode == 0
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "-c", "alembic.ini", "downgrade", "base"],
+        cwd=project,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    with sqlite3.connect(registry_path) as connection:
+        assert connection.execute(
+            "select name from sqlite_master where type='table'"
+        ).fetchall() == [("dataset_release_version",)]
+        assert (
+            connection.execute(
+                "select version_num from dataset_release_version"
+            ).fetchall()
+            == []
+        )
 
 
 def test_postgresql_migration_targets_only_mlops_schema(monkeypatch):
@@ -1033,11 +1055,10 @@ def test_postgresql_migration_targets_only_mlops_schema(monkeypatch):
     sql = output.getvalue()
     assert "CREATE TABLE nachet_datasets.dataset_release (" in sql
     assert "CREATE TABLE nachet_datasets.dataset_release_version (" in sql
-    assert (
-        "ALTER TABLE nachet_datasets.dataset_release ADD COLUMN description TEXT" in sql
-    )
-    assert "ADD COLUMN dataset_cutoff_date DATE" in sql
-    assert "ADD COLUMN has_bounding_boxes BOOLEAN" in sql
+    assert "description TEXT" in sql
+    assert "dataset_cutoff_date DATE" in sql
+    assert "has_bounding_boxes BOOLEAN" in sql
+    assert "ADD COLUMN description TEXT" not in sql
     assert "alembic_version" not in sql
 
 
@@ -1056,7 +1077,7 @@ def test_registry_configuration_is_explicit(monkeypatch):
 
 
 def test_s3_configuration_preserves_standard_region_and_credential_chain(monkeypatch):
-    from mlops_blob.s3 import client as s3_client
+    from blob_controller.s3 import client as s3_client
 
     for name in (
         "S3_REGION_NAME",

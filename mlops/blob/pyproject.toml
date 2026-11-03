@@ -3,7 +3,7 @@ requires = ["setuptools>=80,<100"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nachet-blob"
+name = "blob-controller"
 version = "0.1.0"
 description = "Reusable blob storage providers for Nachet MLOps"
 readme = "README.md"
@@ -20,19 +20,19 @@ dev = ["pytest>=8.4,<10", "pytest-asyncio>=1,<2", "ruff>=0.13,<1"]
 
 [tool.setuptools]
 packages = [
-    "mlops_blob",
-    "mlops_blob.azure",
-    "mlops_blob.azure.operations",
-    "mlops_blob.azure.utils",
-    "mlops_blob.s3",
-    "mlops_blob.s3.operations",
-    "mlops_blob.s3.utils",
+    "blob_controller",
+    "blob_controller.azure",
+    "blob_controller.azure.operations",
+    "blob_controller.azure.utils",
+    "blob_controller.s3",
+    "blob_controller.s3.operations",
+    "blob_controller.s3.utils",
 ]
-package-dir = { mlops_blob = "." }
+package-dir = { blob_controller = "." }
 include-package-data = false
 
 [tool.setuptools.package-data]
-mlops_blob = ["PROVENANCE.md"]
+blob_controller = ["PROVENANCE.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -46,4 +46,4 @@ target-version = "py312"
 select = ["E4", "E7", "E9", "F", "I", "UP"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["mlops_blob"]
+known-first-party = ["blob_controller"]

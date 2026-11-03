@@ -26,6 +26,11 @@ class ReleasedDataset:
         version: str,
         expected_manifest_sha256: str | None = None,
     ) -> ReleasedDataset:
+        """Verify a ready release and index its files, annotations, and categories.
+
+        When supplied, the expected manifest digest pins the selected version.
+        Category indices follow sorted COCO IDs so both readers use the same labels.
+        """
         reader = cls()
         reader.controller = controller
         reader.registration, reader.manifest, reader.coco = await controller.resolve(
@@ -53,6 +58,7 @@ class ReleasedDataset:
     def training_reference(
         self, run_settings: dict[str, Any] | None = None
     ) -> dict[str, str]:
+        """Return the pinned release identifiers and canonical training settings."""
         reference = self.registration.training_reference()
         reference["dataset_run_settings"] = canonical_json(run_settings or {}).decode(
             "utf-8"
@@ -95,6 +101,10 @@ class ReleasedDataset:
             }
 
     async def classifier_records(self, split: Split) -> AsyncIterator[dict[str, Any]]:
+        """Yield verified crop bytes and zero-based labels for the requested split.
+
+        Raise ReleaseNotReady when the release has no crop generation recipe.
+        """
         if self.manifest.crop_recipe is None:
             raise ReleaseNotReady("This release is not classifier-ready")
         for crop in self.manifest.crops:

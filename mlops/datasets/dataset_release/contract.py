@@ -29,7 +29,7 @@ Coordinate = Annotated[float, Field(strict=True, allow_inf_nan=False)]
 
 
 def canonical_json(value: Any) -> bytes:
-    """Hash JSON meaning rather than whitespace; reject NaN and Infinity."""
+    """Serialize JSON deterministically as UTF-8, rejecting NaN and Infinity."""
     return json.dumps(
         value,
         sort_keys=True,
@@ -40,6 +40,7 @@ def canonical_json(value: Any) -> bytes:
 
 
 def sha256(data: bytes) -> str:
+    """Return the lowercase SHA-256 digest of the exact supplied bytes."""
     return hashlib.sha256(data).hexdigest()
 
 
@@ -109,6 +110,11 @@ class ReviewedCoco(BaseModel):
 
     @model_validator(mode="after")
     def validate_references(self) -> ReviewedCoco:
+        """Reject duplicate IDs, broken references, invalid boxes, and split leakage.
+
+        Image paths and specimen groups must stay within one split. Extra COCO
+        metadata must also serialize as finite JSON.
+        """
         for name in ("images", "categories", "annotations"):
             items = getattr(self, name)
             if len({item.id for item in items}) != len(items):
@@ -201,6 +207,7 @@ class ReleaseMetadata(DatasetDescription):
 
     @classmethod
     def from_spec(cls, spec: ReleaseSpec) -> ReleaseMetadata:
+        """Combine the release description with statistics from reviewed COCO."""
         return cls(
             **spec.model_dump(include=set(DatasetDescription.model_fields)),
             **cls.statistics(spec.coco),
@@ -208,6 +215,11 @@ class ReleaseMetadata(DatasetDescription):
 
     @staticmethod
     def statistics(coco: ReviewedCoco) -> dict[str, bool | int]:
+        """Count declared classes and images with one or multiple annotations.
+
+        Unused categories count as classes; images without annotations contribute
+        to neither the single-object nor the multi-object count.
+        """
         counts = Counter(annotation.image_id for annotation in coco.annotations)
         return {
             "has_bounding_boxes": bool(coco.annotations),
@@ -225,6 +237,7 @@ class FileReference(ContractModel):
 
     @model_validator(mode="after")
     def validate_key(self) -> FileReference:
+        """Allow only hash-addressed PNGs and versioned COCO snapshot keys."""
         if not re.fullmatch(
             r"(?:png/(?:detection|classification)/[a-f0-9]{64}\.png|"
             r"releases/[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+/coco\.json)",

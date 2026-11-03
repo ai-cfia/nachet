@@ -20,6 +20,7 @@ from .storage import BlobStorageAdapter
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    """Parse release preparation, publication, and export commands for a container."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--container", required=True, help="Existing dataset bucket/container"
@@ -76,7 +77,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-async def execute(args: argparse.Namespace) -> dict | list:
+async def run_dataset_release_command(args: argparse.Namespace) -> dict | list:
+    """Run the selected release command and return its JSON-compatible result.
+
+    The registry must already be provisioned. Database and storage resources
+    are released after the command, including when publication or validation fails.
+    """
     # Registry provisioning is an explicit MLOps operation, separate from the
     # backend application's database and Alembic revision history.
     settings = Settings.from_environment()
@@ -190,13 +196,14 @@ async def execute(args: argparse.Namespace) -> dict | list:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Load CLI settings, print the result, and report errors without credentials."""
     # Parse first so --help works without credentials or database configuration.
     args = parse_args(argv)
     from dotenv import load_dotenv
 
     load_dotenv(os.environ.get("DATASET_ENV_FILE", ".env"))
     try:
-        result = asyncio.run(execute(args))
+        result = asyncio.run(run_dataset_release_command(args))
     except (ConfigurationError, ReleaseConflict, ReleaseNotReady) as error:
         raise SystemExit(f"Dataset release failed: {error}") from None
     except Exception as error:

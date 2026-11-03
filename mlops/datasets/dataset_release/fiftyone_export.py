@@ -23,6 +23,7 @@ from .contract import (
 
 
 def path_identity(path: str) -> str:
+    """Normalize path separators while retaining the complete exported image path."""
     # Normalize separators only; this cannot recover paths rewritten by an export.
     # Membership must use the actual COCO file_name, including any directories.
     return path.replace("\\", "/")
@@ -31,7 +32,11 @@ def path_identity(path: str) -> str:
 def remap_coco(
     coco: dict[str, Any], memberships: Iterable[ImageMembership]
 ) -> ReviewedCoco:
-    """Preserve COCO IDs/labels, replacing paths and attaching release metadata."""
+    """Join COCO images to memberships by complete paths and assign blob keys.
+
+    Preserve IDs and labels in a copy of the input. Reject duplicate or unmatched
+    paths and conflicting hashes, splits, or provenance before validating COCO.
+    """
     by_path = {}
     for member in memberships:
         key = path_identity(member.file_name)
@@ -82,6 +87,7 @@ def remap_coco(
 
 
 def sample_field(sample: Any, field: str) -> Any:
+    """Read an optional FiftyOne field, returning None when it is unavailable."""
     try:
         return sample.get_field(field)
     except (AttributeError, KeyError):
@@ -89,6 +95,11 @@ def sample_field(sample: Any, field: str) -> Any:
 
 
 def image_digest(filepath: str, stored_digest: Any) -> str:
+    """Use the stored digest, a hash filename, or the exact local file bytes.
+
+    Reject a stored digest that conflicts with a hash filename. Hash file bytes
+    only when neither stored identity is available, without decoding the image.
+    """
     filename = path_identity(filepath).rsplit("/", 1)[-1]
     match = re.fullmatch(r"([a-f0-9]{64})\.png", filename)
     if stored_digest is not None:
@@ -110,7 +121,12 @@ def export_collection(
     split_field: str = "split",
     sources_field: str = "sources",
 ) -> tuple[ReviewedCoco, list[ImageMembership]]:
-    """Accept a FiftyOne dataset/view; leave its media and documents unchanged."""
+    """Export reviewed labels and memberships from a FiftyOne dataset or view.
+
+    Use absolute paths and labels-only COCO, leaving media and documents unchanged.
+    Every sample needs Detections, empty for reviewed negatives; reject exports
+    that lose reviewed annotations.
+    """
     # FiftyOne belongs to the annotation environment, not the publisher's
     # dependency graph. Offline remapping and publishing never import it.
     import fiftyone as fo
@@ -161,6 +177,7 @@ def export_collection(
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    """Parse dataset/view or offline COCO input for preparing an existing draft."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--container", required=True, help="Dataset bucket/container")
     parser.add_argument("--name", required=True, help="Existing draft release name")
@@ -191,6 +208,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 async def prepare(args: argparse.Namespace, controller) -> ReleaseSpec:
+    """Save reviewed labels and membership to an existing release draft.
+
+    Export a FiftyOne collection or remap offline COCO using database membership.
+    Optionally write generated JSON documents to a new output directory.
+    """
     if args.output_dir and args.output_dir.exists():
         raise ValueError("Output folder already exists; choose a new folder")
     # Fail before connecting to FiftyOne when the draft has not been registered.
@@ -228,6 +250,7 @@ async def prepare(args: argparse.Namespace, controller) -> ReleaseSpec:
 
 
 async def execute(args):
+    """Run draft preparation with a registry connection and dispose of its engine."""
     from sqlalchemy.ext.asyncio import async_sessionmaker
 
     from .registry import registry_engine
@@ -244,6 +267,7 @@ async def execute(args):
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Load environment settings, prepare the draft, and print its summary as JSON."""
     args = parse_args(argv)
     from dotenv import load_dotenv
 

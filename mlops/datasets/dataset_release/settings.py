@@ -17,6 +17,11 @@ class Settings:
 
     @classmethod
     def from_environment(cls) -> "Settings":
+        """Validate the async registry URL and select its dedicated schema.
+
+        PostgreSQL defaults to nachet_datasets; local SQLite uses no schema.
+        Invalid settings raise ConfigurationError without exposing their values.
+        """
         database_url = os.environ.get("DATASET_DATABASE_URL")
         if not database_url:
             raise ConfigurationError("DATASET_DATABASE_URL is required")

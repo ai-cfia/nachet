@@ -6,7 +6,7 @@ import asyncio
 import os
 from typing import Any, Protocol
 
-from mlops_blob import BlobStorageInterface, create_blob_storage_client
+from blob_controller import BlobStorageInterface, create_blob_storage_client
 
 from .errors import ConfigurationError
 
@@ -17,13 +17,16 @@ class BlobStorage(Protocol):
     async def upload_blob(
         self, container: str, name: str, data: bytes, **kwargs: Any
     ) -> dict[str, Any]:
+        """Upload bytes using provider options such as overwrite and content type."""
         pass
 
     async def download_blob(self, container: str, name: str, **kwargs: Any) -> bytes:
+        """Return the complete bytes of an object in the selected container."""
         pass
 
 
 def environment_flag(name: str, default: bool) -> bool:
+    """Read a true/false or 1/0 setting, using the default only when it is absent."""
     value = os.environ.get(name)
     if value is None:
         return default
@@ -33,6 +36,11 @@ def environment_flag(name: str, default: bool) -> bool:
 
 
 def s3_configuration() -> dict[str, Any]:
+    """Build S3 settings from endpoint, region, TLS, and credential environment values.
+
+    Explicit access and secret keys must be paired. When absent, the provider
+    uses the SDK's normal credential chain.
+    """
     endpoint = os.environ.get("S3_ENDPOINT_URL") or os.environ.get(
         "AWS_ENDPOINT_URL_S3"
     )
@@ -72,10 +80,16 @@ class BlobStorageAdapter:
     """
 
     def __init__(self, provider: BlobStorageInterface):
+        """Wrap an existing provider for use by the async dataset controller."""
         self.provider = provider
 
     @classmethod
     def from_environment(cls) -> BlobStorageAdapter:
+        """Create the configured S3 or Azure provider, defaulting to S3.
+
+        Unsupported providers and missing Azure connection strings raise
+        ConfigurationError before a controller starts using storage.
+        """
         provider = os.environ.get("DATASET_BLOB_PROVIDER", "s3").strip().lower()
         if provider == "s3":
             config = s3_configuration()
@@ -93,6 +107,8 @@ class BlobStorageAdapter:
     async def upload_blob(
         self, container: str, name: str, data: bytes, **kwargs: Any
     ) -> dict[str, Any]:
+        """Upload in a worker thread to keep synchronous SDK calls off the event loop."""
+
         def upload() -> dict[str, Any]:
             return asyncio.run(
                 self.provider.upload_blob(container, name, data, **kwargs)
@@ -101,10 +117,13 @@ class BlobStorageAdapter:
         return await asyncio.to_thread(upload)
 
     async def download_blob(self, container: str, name: str, **kwargs: Any) -> bytes:
+        """Download and consume object bytes in a worker thread's event loop."""
+
         def download() -> bytes:
             return asyncio.run(self.provider.download_blob(container, name, **kwargs))
 
         return await asyncio.to_thread(download)
 
     def close(self) -> None:
+        """Release the wrapped provider's SDK connection pool."""
         self.provider.close()

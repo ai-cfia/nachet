@@ -8,9 +8,10 @@ those database records when requested. JSON exports are outputs, not separately
 maintained release inputs.
 
 The publisher, registry, migrations, readers and tests belong to MLOps and do not
-import the backend application. Storage uses the sibling `nachet-blob` project
-under `mlops/blob/`, through `BlobStorageAdapter`. Keep the two projects together
-when checking out or mounting source. Wheel deployments must install both wheels.
+import the backend application. Storage uses the sibling `blob-controller` project
+under `mlops/blob/`, through `BlobStorageAdapter` and the `blob_controller` package.
+Keep the two projects together when checking out or mounting source. Wheel
+deployments must install both wheels.
 The external detector trainer is unchanged; the reader is its integration point.
 
 ## Database entities and files
@@ -78,7 +79,7 @@ Before upgrading an existing registry:
    uv run alembic -c alembic.ini current
    ```
 
-   Expect revision `c83f26d5ea02`. It follows `b72e15c4d901`, extends
+   Expect revision `c83f26d5ea02`. It follows `a895d501ea01`, extends
    `dataset_release`, allows `draft` status, and creates `dataset_membership` and
    `dataset_crop`. Existing registrations remain intact and use their legacy
    snapshot path. No blob reads or writes occur during migration.
@@ -90,7 +91,7 @@ migrations. Argo CD does not invoke them automatically. Publication does not
 create schemas, tables, buckets or permissions. This change has not been applied
 to a live server.
 
-Downgrading to `b72e15c4d901` is supported only while no database-backed releases
+Downgrading to `a895d501ea01` is supported only while no database-backed releases
 exist. Once new entities have been created, downgrading would discard the source
 of truth; the migration refuses it. Roll back by restoring the pre-upgrade backup
 and previous runtime instead. Do not delete new rows merely to bypass that guard.

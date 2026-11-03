@@ -134,6 +134,7 @@ class DatasetCrop(Base):
 
 
 def registry_engine(database_url: str, schema: str | None) -> AsyncEngine:
+    """Create an async engine that targets the configured MLOps registry schema."""
     return create_async_engine(
         database_url, execution_options={"schema_translate_map": {None: schema}}
     )

@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
 
 def definition(row: DatasetRelease) -> ReleaseDefinition:
+    """Reconstruct release metadata and conversion settings from a catalog row."""
     return ReleaseDefinition(
         name=row.name,
         version=row.version,
@@ -46,6 +47,7 @@ def definition(row: DatasetRelease) -> ReleaseDefinition:
 
 
 def new_release(value: ReleaseDefinition, container: str) -> DatasetRelease:
+    """Build an unsaved database-backed draft with a new identity and timestamp."""
     return DatasetRelease(
         id=uuid4(),
         name=value.name,
@@ -66,13 +68,20 @@ def new_release(value: ReleaseDefinition, container: str) -> DatasetRelease:
 
 
 class ReleaseCatalog:
+    """Manage release metadata, membership, and generated output references in SQL."""
+
     def __init__(self, sessions: async_sessionmaker[AsyncSession], container: str):
+        """Bind registry sessions and the dataset container owned by this catalog."""
         self.sessions = sessions
         self.container = container
 
     async def row(
         self, session: AsyncSession, name: str, version: str, *, lock: bool = False
     ) -> DatasetRelease:
+        """Load a named release in the caller's session, optionally locking its row.
+
+        Reject unknown versions and releases belonging to another container.
+        """
         query = select(DatasetRelease).where(
             DatasetRelease.name == name, DatasetRelease.version == version
         )
@@ -87,10 +96,12 @@ class ReleaseCatalog:
 
     @staticmethod
     def require_draft(row: DatasetRelease) -> None:
+        """Reject preparation or edits unless the release is a database-backed draft."""
         if row.status != "draft" or not row.database_backed:
             raise ReleaseConflict("Only draft releases can be prepared or edited")
 
     async def create(self, value: ReleaseDefinition) -> None:
+        """Validate and commit a draft, rejecting an existing name/version pair."""
         value = ReleaseDefinition.model_validate(value.model_dump(mode="json"))
         try:
             async with self.sessions.begin() as session:
@@ -99,6 +110,7 @@ class ReleaseCatalog:
             raise ReleaseConflict("Release name/version already exists") from error
 
     async def metadata(self, name: str, version: str) -> ReleaseDefinition:
+        """Read catalog metadata, rejecting legacy releases whose metadata is in blobs."""
         async with self.sessions() as session:
             row = await self.row(session, name, version)
             if not row.database_backed:
@@ -108,6 +120,7 @@ class ReleaseCatalog:
     async def members(
         self, session: AsyncSession, row: DatasetRelease
     ) -> list[DatasetMembership]:
+        """Load membership entities in their recorded image order using this session."""
         return list(
             await session.scalars(
                 select(DatasetMembership)
@@ -117,6 +130,7 @@ class ReleaseCatalog:
         )
 
     async def memberships(self, name: str, version: str) -> list[ImageMembership]:
+        """Return ordered exported paths, PNG hashes, splits, and source provenance."""
         async with self.sessions() as session:
             row = await self.row(session, name, version)
             return [
@@ -132,6 +146,10 @@ class ReleaseCatalog:
     async def add_membership(
         self, name: str, version: str, member: ImageMembership
     ) -> None:
+        """Append an image to a draft before labels fix its membership.
+
+        Normalize path separators and reject duplicate paths within the release.
+        """
         member = ImageMembership.model_validate(member.model_dump(mode="json"))
         from .fiftyone_export import path_identity
 
@@ -163,7 +181,12 @@ class ReleaseCatalog:
         coco: ReviewedCoco,
         memberships: list[ImageMembership] | None = None,
     ) -> None:
-        """Atomically save reviewed labels and their per-image entities."""
+        """Atomically save reviewed labels, image entities, and derived statistics.
+
+        Supplied memberships follow COCO image order; otherwise derive them from
+        the hash-addressed images. Existing paths, hashes, splits, and provenance
+        must match, although empty provenance may be filled from reviewed labels.
+        """
         coco = ReviewedCoco.model_validate(coco.model_dump(mode="json"))
         from .fiftyone_export import path_identity
 
@@ -253,6 +276,10 @@ class ReleaseCatalog:
                 setattr(row, field, value)
 
     async def spec(self, name: str, version: str) -> ReleaseSpec:
+        """Rebuild a specification from catalog metadata and ordered reviewed images.
+
+        Reject releases whose reviewed labels have not been prepared in SQL.
+        """
         async with self.sessions() as session:
             row = await self.row(session, name, version)
             if not row.database_backed or row.coco_annotations is None:
@@ -290,6 +317,10 @@ class ReleaseCatalog:
         images: dict[str, FileReference],
         crops: list[CropReference],
     ) -> None:
+        """Record verified image sizes and replace crop references under a row lock.
+
+        Completed releases are unchanged; staging retries record identical outputs.
+        """
         async with self.sessions.begin() as session:
             row = await session.get(DatasetRelease, release_id, with_for_update=True)
             if row.status == "ready":
@@ -318,6 +349,11 @@ class ReleaseCatalog:
     async def manifest(
         self, registration: ReleaseRegistration, spec: ReleaseSpec
     ) -> ReleaseManifest:
+        """Generate a manifest from recorded outputs and the reviewed specification.
+
+        Derive crop lineage from annotations and compute the canonical COCO file
+        reference without reading or writing blob objects.
+        """
         async with self.sessions() as session:
             row = await session.get(DatasetRelease, registration.id)
             images = {}

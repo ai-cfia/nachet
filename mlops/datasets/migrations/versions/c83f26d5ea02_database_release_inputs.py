@@ -1,19 +1,20 @@
 """Store release inputs, membership and crop lineage as database entities.
 
 Revision ID: c83f26d5ea02
-Revises: b72e15c4d901
+Revises: a895d501ea01
 """
 
 import sqlalchemy as sa
 from alembic import op
 
 revision = "c83f26d5ea02"
-down_revision = "b72e15c4d901"
+down_revision = "a895d501ea01"
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
+    """Add draft preparation entities while preserving legacy release registrations."""
     schema = op.get_context().opts.get("version_table_schema")
     with op.batch_alter_table("dataset_release", schema=schema) as batch:
         batch.drop_constraint("ck_dataset_release_status", type_="check")
@@ -82,6 +83,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Remove preparation entities only when no database-backed releases would be lost."""
     schema = op.get_context().opts.get("version_table_schema")
     # Refuse to discard authoritative records or invalidate generated releases.
     if op.get_context().as_sql:
