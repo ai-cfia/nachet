@@ -167,6 +167,62 @@ def to_png(raw_bytes: bytes, relative: Path) -> tuple[bytes, int, int]:
     return encoded.tobytes(), width, height
 
 
+def add_image(
+    images: dict,
+    raw_bytes: bytes,
+    relative: Path,
+    *,
+    species: str,
+    split: str | None,
+    raw_prefix: PurePosixPath | None,
+) -> tuple[dict, bytes]:
+    """Convert one image, retain its source record and return the PNG bytes."""
+    png_bytes, width, height = to_png(raw_bytes, relative)
+    image_sha256 = hashlib.sha256(png_bytes).hexdigest()
+    key = f"png/detection/{image_sha256}.png"
+    source = {
+        "path": relative.as_posix(),
+        "species": species,
+        "raw_sha256": hashlib.sha256(raw_bytes).hexdigest(),
+        "legacy_md5": hashlib.md5(raw_bytes, usedforsecurity=False).hexdigest(),
+    }
+    if raw_prefix is not None:
+        source["raw_key"] = str(raw_prefix / relative.as_posix())
+    image = images.setdefault(
+        key,
+        {
+            "file_name": key,
+            "image_sha256": image_sha256,
+            "width": width,
+            "height": height,
+            "split": split,
+            "sources": [],
+        },
+    )
+    if image["sources"] and (
+        image["sources"][0]["species"] != species or image["split"] != split
+    ):
+        raise ValueError(f"Identical PNG has conflicting species or splits: {relative}")
+    image["sources"].append(source)
+    return image, png_bytes
+
+
+def coco_index(images: dict, species_names: list[str], code_revision: str) -> dict:
+    """Assign stable image/category IDs after the complete collection is known."""
+    return {
+        "info": {"preparation": {"code_revision": code_revision}},
+        "images": [
+            {"id": index, **images[key]}
+            for index, key in enumerate(sorted(images), start=1)
+        ],
+        "categories": [
+            {"id": index, "name": name, "supercategory": "seed"}
+            for index, name in enumerate(species_names, start=1)
+        ],
+        "annotations": [],
+    }
+
+
 def prepare_images(
     collection: Path,
     output_root: Path,
@@ -197,50 +253,16 @@ def prepare_images(
         path = path.resolve(strict=True)
         if not path.is_relative_to(collection):
             raise ValueError(f"Image escapes the collection: {relative}")
-        raw_bytes = path.read_bytes()
-        png_bytes, width, height = to_png(raw_bytes, relative)
-        image_sha256 = hashlib.sha256(png_bytes).hexdigest()
-        key = f"png/detection/{image_sha256}.png"
-        source = {
-            "path": relative.as_posix(),
-            "species": species,
-            "raw_sha256": hashlib.sha256(raw_bytes).hexdigest(),
-            "legacy_md5": hashlib.md5(raw_bytes, usedforsecurity=False).hexdigest(),
-        }
-        if prefix is not None:
-            source["raw_key"] = str(prefix / relative.as_posix())
-        image = images.setdefault(
-            key,
-            {
-                "file_name": key,
-                "image_sha256": image_sha256,
-                "width": width,
-                "height": height,
-                "split": image_split,
-                "sources": [],
-            },
+        image, png_bytes = add_image(
+            images,
+            path.read_bytes(),
+            relative,
+            species=species,
+            split=image_split,
+            raw_prefix=prefix,
         )
-        if image["sources"] and (
-            image["sources"][0]["species"] != species or image["split"] != image_split
-        ):
-            raise ValueError(
-                f"Identical PNG has conflicting species or splits: {relative}"
-            )
-        image["sources"].append(source)
-        write_new(output_root / key, png_bytes)
-
-    return {
-        "info": {"preparation": {"code_revision": code_revision}},
-        "images": [
-            {"id": index, **images[key]}
-            for index, key in enumerate(sorted(images), start=1)
-        ],
-        "categories": [
-            {"id": index, "name": name, "supercategory": "seed"}
-            for index, name in enumerate(species_names, start=1)
-        ],
-        "annotations": [],
-    }
+        write_new(output_root / image["file_name"], png_bytes)
+    return coco_index(images, species_names, code_revision)
 
 
 def main(argv: list[str] | None = None) -> None:

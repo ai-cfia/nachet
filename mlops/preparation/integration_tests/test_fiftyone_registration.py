@@ -1,5 +1,6 @@
 """SDK checks against an explicitly selected disposable MongoDB instance."""
 
+import asyncio
 import hashlib
 import json
 import os
@@ -15,8 +16,9 @@ from PIL import Image
 
 from prelabel import Prediction, prelabel
 from prepare_images import main as convert_images
-from prepare_images import save_coco
+from prepare_images import save_coco, write_new
 from register_fiftyone import register_fiftyone
+from upload_preparation import upload_preparation
 
 
 def test_registration_keeps_fields_and_refuses_to_replace_review_work(
@@ -154,8 +156,8 @@ def test_killed_import_leaves_a_temporary_dataset_and_allows_retry(
             fiftyone.delete_dataset(staging_name)
 
 
-def test_preparation_output_registers_with_boxes_sources_and_splits(
-    tmp_path, fiftyone, review_name
+def test_uploaded_preparation_registers_with_boxes_sources_and_splits(
+    tmp_path, fiftyone, review_name, s3_provider
 ):
     from fiftyone import ViewField as F
 
@@ -189,6 +191,20 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
         ]
     )
     index = json.loads((prepared / "index.coco.json").read_text())
+    for _ in range(2):
+        assert (
+            asyncio.run(
+                upload_preparation(index, prepared, s3_provider.storage, "datasets")
+            )
+            == 4
+        )
+    assert len(s3_provider.objects) == 4
+    server_root = tmp_path / "fiftyone-media"
+    for record in index["images"]:
+        data = asyncio.run(
+            s3_provider.storage.download_blob("datasets", record["file_name"])
+        )
+        write_new(server_root / record["file_name"], data)
 
     def supplied_predictions(image):
         red, green, blue = image.getpixel((0, 0))
@@ -198,7 +214,7 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
     draft = prelabel(index, prepared, supplied_predictions, padding=0)
     labels = tmp_path / "draft.coco.json"
     save_coco(labels, draft)
-    register_fiftyone(review_name, labels, str(prepared))
+    register_fiftyone(review_name, labels, str(server_root))
     dataset = fiftyone.load_dataset(review_name)
     assert dataset.persistent
     assert len(dataset) == 4
@@ -224,7 +240,7 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
         )
         assert (collection / relative).read_bytes() == raw_bytes[relative]
         assert sample["object_key"] == record["file_name"]
-        assert sample.filepath == str(prepared / record["file_name"])
+        assert sample.filepath == str(server_root / record["file_name"])
         assert (
             hashlib.sha256(Path(sample.filepath).read_bytes()).hexdigest()
             == sample["image_sha256"]

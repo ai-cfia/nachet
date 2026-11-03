@@ -1,13 +1,50 @@
 # Dataset preparation
 
-`prepare_images.py` converts a folder of seed images into SHA-256-named PNGs
-and a COCO image index that later steps use for pre-labeling and review. It is
-a standalone uv project on Python 3.12. Run the commands below from the
-repository root.
+Convert a seed-image collection into SHA-256-named PNGs and a COCO image index
+for pre-labeling and review. Use `prepare_s3.py` for originals in S3, or
+`prepare_images.py` for a local collection. Run these Python 3.12 commands from
+the repository root.
 
 ```bash
 uv sync --project mlops/preparation --locked
 ```
+
+## Convert originals from S3
+
+`prepare_s3.py` reads originals under `raw/` through the shared blob package,
+converts each image in memory and uploads it to `png/detection/<sha256>.png` in
+the same bucket. It uses the local converter's settings and source records.
+Neither originals nor generated PNGs are saved locally.
+
+```bash
+uv sync --project mlops/preparation --locked --group storage
+uv run --project mlops/preparation --no-sync python \
+  mlops/preparation/prepare_s3.py /work/prepared \
+  --bucket training-datasets --endpoint-url https://s3.example.test \
+  --region us-east-1 --raw-prefix raw/collection-01 \
+  --code-revision <commit>
+```
+
+The S3 keys below the collection prefix must follow the species/split layout
+described below. Source paths stay relative to that prefix. Empty species
+folders are retained when the listing includes directory markers for them.
+The index records hashes of the original bytes read; it does not require
+ingestion-specific hash metadata. Originals must already be in S3 and remain
+unchanged during a run.
+
+Only `index.coco.json` is saved in the output directory, after every upload
+succeeds. On failure, already uploaded PNGs remain in S3; a retry uses the same
+hash keys. It rereads and converts the originals, so this is restartable rather
+than a resumable conversion. Use a new output directory for a changed collection.
+
+All writers to `png/detection/` must use the PNG byte hash as the filename. The
+uploader requests create-only writes, but some S3-compatible stores ignore that
+condition and upload the same bytes again on retries. It does not read back
+existing PNGs or protect against a writer that puts other bytes under a hash key.
+
+The SAM3 command below still reads a local media directory. Reading these PNGs
+from S3 in that step needs an S3 image reader. The COCO source records do not
+create database mappings.
 
 ## Collection layout
 
@@ -134,6 +171,24 @@ Both statuses require human review. The command refuses an index that already
 has annotations. Output is written after the full batch; an interrupted run
 currently starts again from the beginning.
 
+## Upload prepared PNGs
+
+```bash
+uv sync --project mlops/preparation --locked --group storage
+uv run --project mlops/preparation --no-sync python \
+  mlops/preparation/upload_preparation.py /work/draft.coco.json \
+  /work/prepared --bucket datasets \
+  --endpoint-url 'https://<s3-endpoint>' --region '<region>'
+```
+
+Pass the index or draft COCO. The uploader checks each local PNG against
+`image_sha256` and writes it to `png/detection/<sha256>.png`. Use this command
+after local-folder conversion; S3 conversion already uploads the PNGs. The
+COCO file stays unchanged. It shares the hash-key retry policy described above.
+
+Credentials come from the AWS credential chain. For a private CA, set
+`AWS_CA_BUNDLE`. Use `--allow-http` only with a trusted test endpoint.
+
 ## Register for review
 
 `register_fiftyone.py` imports the draft COCO into a new persistent FiftyOne
@@ -171,21 +226,22 @@ leftover only after confirming its job has stopped; keep review datasets.
 ## Checks
 
 ```bash
+uv sync --project mlops/preparation --locked --group storage
 uv run --project mlops/preparation --no-sync python -m pytest mlops/preparation/tests
 ```
 
-The SDK checks need the `fiftyone` group and a disposable MongoDB instance.
-They cover registration, review protection and recovery after a failed or
-killed import. A preparation-to-FiftyOne test converts generated images and
-imports draft boxes from supplied predictions, without model weights.
-CI runs these checks against its own test database. Cluster deployment settings
-stay in `howard-on-prem`.
+The SDK tests use FiftyOne 1.22.1 and a disposable MongoDB. They cover registration,
+interrupted imports and conversion through PNG upload into FiftyOne, using the
+shared storage provider with a fake S3 SDK and supplied predictions.
 
 ```bash
+uv sync --project mlops/preparation --locked --group fiftyone --group storage
 PREPARATION_TEST_MONGO_URI='<disposable-mongo-uri>' \
   uv run --project mlops/preparation --no-sync python -m pytest \
   mlops/preparation/integration_tests/test_fiftyone_registration.py -q
 ```
+
+The deployed FiftyOne media mount and live S3 still need checking.
 
 ## Research origins
 
