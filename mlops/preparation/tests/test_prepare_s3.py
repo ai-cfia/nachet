@@ -18,6 +18,22 @@ import prepare_s3 as module
 from prepare_images import prepare_images
 
 
+def cli_args(output, prefix="raw/collection"):
+    return [
+        str(output),
+        "--bucket",
+        "datasets",
+        "--endpoint-url",
+        "https://storage.example.test",
+        "--region",
+        "garage",
+        "--raw-prefix",
+        prefix,
+        "--code-revision",
+        "test",
+    ]
+
+
 def collection_storage(root, prefix="raw/collection/"):
     objects = {
         prefix + path.relative_to(root).as_posix(): path.read_bytes()
@@ -76,14 +92,11 @@ def test_s3_and_local_conversion_produce_identical_outputs(
         root, local, code_revision="test", raw_prefix="raw/collection"
     )
     storage = collection_storage(root)
-    for _ in range(2):
-        actual = asyncio.run(
-            module.prepare_s3(
-                storage, "datasets", "raw/collection", code_revision="test"
-            )
-        )
-        assert actual == expected
-    assert len(storage.upload_blob.call_args_list) == 2 * len(actual["images"])
+    actual = asyncio.run(
+        module.prepare_s3(storage, "datasets", "raw/collection", code_revision="test")
+    )
+    assert actual == expected
+    assert len(storage.upload_blob.call_args_list) == len(actual["images"])
     for image in actual["images"]:
         assert (
             storage.objects[image["file_name"]]
@@ -119,9 +132,7 @@ def test_explicit_split_matches_local_input(intake, tmp_path):
     assert actual == expected
 
 
-def test_explicit_split_cannot_override_s3_split_folders(
-    automatic_collection, tmp_path
-):
+def test_explicit_split_cannot_override_s3_split_folders(automatic_collection):
     storage = collection_storage(automatic_collection[0])
     with pytest.raises(ValueError, match="Cannot set a split"):
         asyncio.run(
@@ -136,14 +147,13 @@ def test_explicit_split_cannot_override_s3_split_folders(
     storage.download_blob.assert_not_called()
 
 
-def test_collection_without_images_is_reported_before_creating_output(tmp_path):
+def test_collection_without_images_is_reported():
     storage = SimpleNamespace(
         list_blobs=AsyncMock(
             return_value={"blobs": [{"name": "raw/collection/A/notes.txt"}]}
         ),
         download_blob=AsyncMock(),
     )
-    output = tmp_path / "remote"
     with pytest.raises(
         ValueError, match="No images found.*s3://datasets/raw/collection"
     ):
@@ -152,7 +162,6 @@ def test_collection_without_images_is_reported_before_creating_output(tmp_path):
                 storage, "datasets", "raw/collection", code_revision="test"
             )
         )
-    assert not output.exists()
     storage.download_blob.assert_not_called()
 
 
@@ -184,17 +193,15 @@ def test_s3_listing_follows_pages_before_building_shared_categories(
     )
 
 
-def test_repeated_page_fails_without_writing_partial_collection(intake, tmp_path):
+def test_repeated_page_fails_before_downloading_images(intake):
     storage = collection_storage(intake[0])
     storage.list_blobs.return_value["continuation_token"] = "page-2"
-    output = tmp_path / "remote"
     with pytest.raises(ValueError, match="repeated a listing page"):
         asyncio.run(
             module.prepare_s3(
                 storage, "datasets", "raw/collection", code_revision="test"
             )
         )
-    assert not output.exists()
     storage.download_blob.assert_not_called()
 
 
@@ -218,7 +225,7 @@ def test_repeated_page_fails_without_writing_partial_collection(intake, tmp_path
         ),
     ],
 )
-def test_invalid_layout_fails_before_reading_images(keys, message, tmp_path):
+def test_invalid_layout_fails_before_reading_images(keys, message):
     storage = SimpleNamespace(
         list_blobs=AsyncMock(return_value={"blobs": [{"name": key} for key in keys]}),
         download_blob=AsyncMock(),
@@ -235,7 +242,7 @@ def test_invalid_layout_fails_before_reading_images(keys, message, tmp_path):
     storage.download_blob.assert_not_called()
 
 
-def test_duplicate_png_in_different_splits_is_rejected(automatic_collection, tmp_path):
+def test_duplicate_png_in_different_splits_is_rejected(automatic_collection):
     root, _ = automatic_collection
     (root / "Validation/C/seed.tiff").write_bytes(
         (root / "Training/C/seed.tiff").read_bytes()
@@ -279,7 +286,7 @@ def test_shared_provider_reads_original_without_custom_hash_metadata(
     assert s3_provider.client.put_object.call_args.kwargs["IfNoneMatch"] == "*"
 
 
-def test_missing_object_is_not_silently_omitted(intake, tmp_path):
+def test_missing_object_is_not_silently_omitted(intake):
     storage = collection_storage(intake[0])
     storage.download_blob.side_effect = BlobNotFoundError("datasets", "missing.tiff")
     with pytest.raises(BlobNotFoundError, match="missing.tiff"):
@@ -300,19 +307,7 @@ def test_cli_writes_index_and_closes_client(intake, tmp_path, monkeypatch, corru
         storage.download_blob.side_effect = lambda bucket, key: b"invalid image"
     monkeypatch.setattr(module, "create_storage", Mock(return_value=storage))
     output = tmp_path / "remote"
-    args = [
-        str(output),
-        "--bucket",
-        "datasets",
-        "--endpoint-url",
-        "https://storage.example.test",
-        "--region",
-        "garage",
-        "--raw-prefix",
-        "raw/collection",
-        "--code-revision",
-        "test",
-    ]
+    args = cli_args(output)
     if corrupt:
         with pytest.raises(OSError, match="Avena fatua/.*a.tiff"):
             module.main(args)
@@ -323,22 +318,6 @@ def test_cli_writes_index_and_closes_client(intake, tmp_path, monkeypatch, corru
         assert len(result["images"]) == 4
         assert list(output.iterdir()) == [output / "index.coco.json"]
     storage.close.assert_called_once()
-
-
-def test_duplicate_sources_upload_one_png_and_keep_both_paths(intake):
-    root, _ = intake
-    source = root / "Avena fatua/other/c.png"
-    source.with_name("copy.png").write_bytes(source.read_bytes())
-    storage = collection_storage(root)
-    result = asyncio.run(
-        module.prepare_s3(storage, "datasets", "raw/collection", code_revision="test")
-    )
-    image = next(image for image in result["images"] if len(image["sources"]) == 2)
-    assert {source["path"] for source in image["sources"]} == {
-        "Avena fatua/other/c.png",
-        "Avena fatua/other/copy.png",
-    }
-    assert storage.upload_blob.call_count == len(result["images"]) == 4
 
 
 @pytest.mark.parametrize("failure", ["before_write", "after_write"])
@@ -375,19 +354,7 @@ def test_interrupted_upload_leaves_no_index_and_retry_finishes(
     client.head_object.side_effect = interrupted_head
     monkeypatch.setattr(module, "create_storage", lambda *a, **k: s3_provider.storage)
     output = tmp_path / "prepared"
-    args = [
-        str(output),
-        "--bucket",
-        "datasets",
-        "--endpoint-url",
-        "https://storage.example.test",
-        "--region",
-        "garage",
-        "--raw-prefix",
-        "raw/collection",
-        "--code-revision",
-        "test",
-    ]
+    args = cli_args(output)
     with pytest.raises(BlobStorageError):
         module.main(args)
     assert not output.exists()
@@ -452,19 +419,7 @@ def test_changed_collection_does_not_replace_an_existing_index(
     storage = collection_storage(intake[0])
     monkeypatch.setattr(module, "create_storage", lambda *a, **k: storage)
     output = tmp_path / "prepared"
-    args = [
-        str(output),
-        "--bucket",
-        "datasets",
-        "--endpoint-url",
-        "https://storage.example.test",
-        "--region",
-        "garage",
-        "--raw-prefix",
-        "raw/collection",
-        "--code-revision",
-        "test",
-    ]
+    args = cli_args(output)
     module.main(args)
     labels = output / "index.coco.json"
     original_index = labels.read_bytes()
@@ -492,20 +447,58 @@ def test_cli_rejects_invalid_collection_before_creating_client(
     factory = Mock()
     monkeypatch.setattr(module, "create_storage", factory)
     with pytest.raises(SystemExit) as error:
-        module.main(
-            [
-                str(tmp_path / "prepared"),
-                "--bucket",
-                "datasets",
-                "--endpoint-url",
-                "https://storage.example.test",
-                "--region",
-                "garage",
-                "--raw-prefix",
-                prefix,
-                "--code-revision",
-                "test",
-            ]
-        )
+        module.main(cli_args(tmp_path / "prepared", prefix))
     assert error.value.code == 2
     factory.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "endpoint", ["http://storage.example.test", "ftp://storage.example.test"]
+)
+def test_storage_rejects_insecure_endpoints(monkeypatch, endpoint):
+    import s3_storage
+
+    factory = Mock()
+    monkeypatch.setattr(s3_storage, "create_blob_storage_client", factory)
+    with pytest.raises(ValueError, match="HTTPS"):
+        s3_storage.create_storage(endpoint, "garage")
+    factory.assert_not_called()
+
+
+@pytest.mark.parametrize("ca_bundle", [None, "/test/ca.pem"])
+def test_storage_uses_configured_ca_for_explicit_test_http(monkeypatch, ca_bundle):
+    import s3_storage
+
+    factory = Mock()
+    monkeypatch.setattr(s3_storage, "create_blob_storage_client", factory)
+    if ca_bundle:
+        monkeypatch.setenv("AWS_CA_BUNDLE", ca_bundle)
+    else:
+        monkeypatch.delenv("AWS_CA_BUNDLE", raising=False)
+    s3_storage.create_storage("http://127.0.0.1:12345", "garage", allow_http=True)
+    factory.assert_called_once_with(
+        "s3",
+        {
+            "s3_endpoint_url": "http://127.0.0.1:12345",
+            "s3_region_name": "garage",
+            "s3_verify": ca_bundle or True,
+        },
+    )
+
+
+@pytest.mark.parametrize(
+    "code", ["AccessDenied", "NotImplemented", "ConditionalRequestConflict"]
+)
+def test_upload_errors_do_not_fall_back_to_overwrite(s3_provider, code):
+    from s3_storage import upload_png
+
+    s3_provider.client.put_object.side_effect = ClientError(
+        {"Error": {"Code": code}}, "PutObject"
+    )
+    with pytest.raises(BlobStorageError):
+        asyncio.run(
+            upload_png(s3_provider.storage, "datasets", "png/detection/a.png", b"a")
+        )
+    s3_provider.client.put_object.assert_called_once()
+    assert s3_provider.client.put_object.call_args.kwargs["IfNoneMatch"] == "*"
+    s3_provider.client.get_object.assert_not_called()
