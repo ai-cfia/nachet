@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from typing import Any
 from uuid import UUID, uuid4
 
 from blob_controller.exceptions import BlobAlreadyExistsError
@@ -210,12 +211,51 @@ class DatasetController:
         # Re-validate at the boundary in case nested mutable lists were edited.
         spec = ReleaseSpec.model_validate(spec.model_dump(mode="json"))
         recipe = crop_recipe() if spec.generate_crops else None
+        request_hash = self._request_hash(spec, recipe)
+
+        # Reserve this version before writing objects, or verify a completed retry.
+        registration = await self._claim(spec, request_hash)
+        if registration.status == "ready":
+            await self.resolve(spec.name, spec.version, registration.manifest_sha256)
+            return registration
+
+        images, crops = await self._prepare_media(spec)
+        coco = await self._put_unchanged(
+            f"releases/{spec.name}/{spec.version}/coco.json",
+            canonical_json(spec.coco.model_dump(mode="json")),
+            "application/json",
+        )
+        manifest = ReleaseManifest(
+            **registration.metadata().model_dump(),
+            release_id=registration.id,
+            name=spec.name,
+            version=spec.version,
+            author=spec.author,
+            created_at=registration.created_at,
+            request_sha256=request_hash,
+            conversion=spec.conversion,
+            crop_recipe=recipe,
+            coco=coco,
+            images=images,
+            crops=crops,
+        )
+        manifest_sha256 = await self._store_manifest(
+            registration.manifest_key, manifest
+        )
+
+        # Make the version selectable only after its complete snapshot is verified.
+        await self._validate(manifest, spec.coco)
+        return await self._mark_ready(registration, request_hash, manifest_sha256)
+
+    @staticmethod
+    def _request_hash(spec: ReleaseSpec, recipe: dict[str, Any] | None) -> str:
+        """Hash publication inputs while preserving retries without optional metadata."""
         request_spec = spec.model_dump(mode="json")
         # Preserve request hashes for specifications written before these fields.
         for field in DatasetDescription.model_fields:
             if request_spec[field] is None:
                 del request_spec[field]
-        request_hash = sha256(
+        return sha256(
             canonical_json(
                 {
                     "spec": request_spec,
@@ -223,11 +263,15 @@ class DatasetController:
                 }
             )
         )
-        registration = await self._claim(spec, request_hash)
-        if registration.status == "ready":
-            await self.resolve(spec.name, spec.version, registration.manifest_sha256)
-            return registration
 
+    async def _prepare_media(
+        self, spec: ReleaseSpec
+    ) -> tuple[list[FileReference], list[CropReference]]:
+        """Verify prepared PNGs and upload any requested classification crops.
+
+        Return unique images in key order and crops in image order, retaining each
+        image's annotation order and the bytes produced by identical retries.
+        """
         annotations: dict[int, list] = {}
         for annotation in spec.coco.annotations:
             annotations.setdefault(annotation.image_id, []).append(annotation)
@@ -266,25 +310,14 @@ class DatasetController:
                     )
         if spec.generate_crops and not crops:
             raise ValueError("A classifier-ready release requires at least one crop")
-        coco = await self._put_unchanged(
-            f"releases/{spec.name}/{spec.version}/coco.json",
-            canonical_json(spec.coco.model_dump(mode="json")),
-            "application/json",
-        )
-        manifest = ReleaseManifest(
-            **registration.metadata().model_dump(),
-            release_id=registration.id,
-            name=spec.name,
-            version=spec.version,
-            author=spec.author,
-            created_at=registration.created_at,
-            request_sha256=request_hash,
-            conversion=spec.conversion,
-            crop_recipe=recipe,
-            coco=coco,
-            images=sorted(images.values(), key=lambda item: item.key),
-            crops=crops,
-        )
+        return sorted(images.values(), key=lambda item: item.key), crops
+
+    async def _store_manifest(self, key: str, manifest: ReleaseManifest) -> str:
+        """Write and verify immutable manifest bytes, returning their SHA-256 digest.
+
+        Identical existing content is reused; different bytes raise ReleaseConflict.
+        Unknown metadata is omitted so older staging publications remain retryable.
+        """
         # Legacy staging registrations may already have an immutable manifest.
         # Omit unknown metadata to preserve its original bytes on retry.
         unknown_metadata = {
@@ -300,7 +333,7 @@ class DatasetController:
         try:
             await self.storage.upload_blob(
                 self.container,
-                registration.manifest_key,
+                key,
                 manifest_bytes,
                 overwrite=False,
                 content_type="application/json",
@@ -309,23 +342,29 @@ class DatasetController:
             # Expected for idempotent publish/retry when manifest already exists.
             # Integrity is verified immediately below by downloading and comparing bytes.
             pass
-        stored = await self.storage.download_blob(
-            self.container, registration.manifest_key
-        )
+        stored = await self.storage.download_blob(self.container, key)
         if stored != manifest_bytes:
             raise ReleaseConflict("Release manifest already has different content")
-        await self._validate(manifest, spec.coco)
+        return sha256(manifest_bytes)
+
+    async def _mark_ready(
+        self,
+        registration: ReleaseRegistration,
+        request_hash: str,
+        manifest_sha256: str,
+    ) -> ReleaseRegistration:
+        """Commit the verified manifest digest under a lock without replacing a release."""
         async with self.sessions.begin() as session:
             row = await session.get(
                 DatasetRelease, registration.id, with_for_update=True
             )
             if row is None or row.request_sha256 != request_hash:
                 raise ReleaseConflict("Release registration changed during publication")
-            if row.status == "ready" and row.manifest_sha256 != sha256(manifest_bytes):
+            if row.status == "ready" and row.manifest_sha256 != manifest_sha256:
                 raise ReleaseConflict("Published manifest cannot be replaced")
-            row.manifest_sha256 = sha256(manifest_bytes)
+            row.manifest_sha256 = manifest_sha256
             row.status = "ready"
-        return await self.registration(spec.name, spec.version)
+        return await self.registration(registration.name, registration.version)
 
     async def resolve(
         self,
