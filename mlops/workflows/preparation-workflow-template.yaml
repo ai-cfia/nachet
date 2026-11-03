@@ -1,0 +1,176 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: nachet-preparation
+  namespace: argo-workflows
+  labels:
+    app.kubernetes.io/name: nachet-preparation
+    app.kubernetes.io/part-of: nachet
+spec:
+  entrypoint: prepare-for-review
+  serviceAccountName: argo-workflow
+  arguments:
+    parameters:
+      - name: cpu-image
+        description: Pinned nachet-preparation-cpu image tag or digest.
+      - name: sam3-image
+        description: Pinned nachet-preparation-sam3 image tag or digest.
+      - name: registration-image
+        description: Pinned nachet-preparation-registration image tag or digest.
+      - name: code-revision
+        description: Source revision used to build these images.
+      - name: dataset-name
+        description: New FiftyOne review dataset; existing names are refused.
+      - name: raw-prefix
+        description: One collection below raw/ in the dataset bucket.
+      - name: bucket
+      - name: endpoint-url
+        description: HTTPS S3 endpoint reachable from the workers.
+      - name: region
+      - name: storage-secret
+        description: Existing Secret containing AWS credentials in this namespace.
+      - name: fiftyone-secret
+        description: Existing Secret containing FIFTYONE_DATABASE_URI.
+      - name: server-media-root
+        description: FiftyOne server path exposing the selected bucket root.
+      - name: model-pvc
+        description: Readable PVC in this namespace with SAM3 weights at its root.
+      - name: model-revision
+      - name: gpu-node
+        value: ai-lab-1
+        enum: [ai-lab-1, ai-lab-2, ai-lab-3]
+      - name: workspace-pvc
+        description: RWX working PVC in this namespace for the index and draft COCO files.
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  volumes:
+    - name: workspace
+      persistentVolumeClaim:
+        claimName: "{{workflow.parameters.workspace-pvc}}"
+    - name: model
+      persistentVolumeClaim:
+        claimName: "{{workflow.parameters.model-pvc}}"
+        readOnly: true
+    - name: tmp
+      emptyDir: {}
+  templates:
+    - name: prepare-for-review
+      steps:
+        - - name: prepare-images
+            template: prepare-images
+        - - name: prelabel
+            template: prelabel
+        - - name: register-for-review
+            template: register-for-review
+
+    - name: prepare-images
+      retryStrategy:
+        limit: "2"
+        retryPolicy: OnFailure
+      container:
+        image: "{{workflow.parameters.cpu-image}}"
+        command: [python, /opt/preparation/prepare_s3.py]
+        args:
+          - /workspace/{{workflow.name}}/prepared
+          - --bucket
+          - "{{workflow.parameters.bucket}}"
+          - --endpoint-url
+          - "{{workflow.parameters.endpoint-url}}"
+          - --region
+          - "{{workflow.parameters.region}}"
+          - --raw-prefix
+          - "{{workflow.parameters.raw-prefix}}"
+          - --code-revision
+          - "{{workflow.parameters.code-revision}}"
+        envFrom:
+          - secretRef:
+              name: "{{workflow.parameters.storage-secret}}"
+        resources:
+          requests: {cpu: "1", memory: 1Gi}
+          limits: {cpu: "2", memory: 4Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: tmp
+            mountPath: /tmp
+
+    - name: prelabel
+      synchronization:
+        mutexes:
+          - name: nachet-training-{{workflow.parameters.gpu-node}}
+      nodeSelector:
+        kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
+      container:
+        image: "{{workflow.parameters.sam3-image}}"
+        command: [python, /opt/preparation/prelabel.py]
+        args:
+          - /workspace/{{workflow.name}}/prepared/index.coco.json
+          - "s3://{{workflow.parameters.bucket}}"
+          - /workspace/{{workflow.name}}/prepared/draft.coco.json
+          - --endpoint-url
+          - "{{workflow.parameters.endpoint-url}}"
+          - --region
+          - "{{workflow.parameters.region}}"
+          - --model-path
+          - /model
+          - --model-revision
+          - "{{workflow.parameters.model-revision}}"
+          - --device
+          - cuda
+        envFrom:
+          - secretRef:
+              name: "{{workflow.parameters.storage-secret}}"
+        resources:
+          requests: {cpu: "2", memory: 8Gi, nvidia.com/gpu: "1"}
+          limits: {cpu: "4", memory: 16Gi, nvidia.com/gpu: "1"}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: model
+            mountPath: /model
+            readOnly: true
+          - name: tmp
+            mountPath: /tmp
+
+    - name: register-for-review
+      container:
+        image: "{{workflow.parameters.registration-image}}"
+        command: [python, /opt/preparation/register_fiftyone.py]
+        args:
+          - "{{workflow.parameters.dataset-name}}"
+          - /workspace/{{workflow.name}}/prepared/draft.coco.json
+          - --server-media-root
+          - "{{workflow.parameters.server-media-root}}"
+        envFrom:
+          - secretRef:
+              name: "{{workflow.parameters.fiftyone-secret}}"
+        resources:
+          requests: {cpu: 250m, memory: 1Gi}
+          limits: {cpu: "1", memory: 4Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+            readOnly: true
+          - name: tmp
+            mountPath: /tmp
