@@ -279,7 +279,7 @@ async def test_metadata_survives_publication_registry_reader_and_inspect(
     monkeypatch.setenv("DATASET_DATABASE_URL", str(sessions.kw["bind"].url))
     monkeypatch.setattr(BlobStorageAdapter, "from_environment", lambda: storage)
     storage.close = Mock()
-    result = await cli.execute(
+    result = await cli.run_dataset_release_command(
         cli.parse_args(["--container", "datasets", "inspect", spec.name, spec.version])
     )
     assert {field: result[field] for field in expected} == expected

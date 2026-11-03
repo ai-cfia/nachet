@@ -37,7 +37,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-async def execute(args: argparse.Namespace) -> dict:
+async def run_dataset_release_command(args: argparse.Namespace) -> dict:
     # Registry provisioning is an explicit MLOps operation, separate from the
     # backend application's database and Alembic revision history.
     settings = Settings.from_environment()
@@ -82,7 +82,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     load_dotenv(os.environ.get("DATASET_ENV_FILE", ".env"))
     try:
-        result = asyncio.run(execute(args))
+        result = asyncio.run(run_dataset_release_command(args))
     except (ConfigurationError, ReleaseConflict, ReleaseNotReady) as error:
         raise SystemExit(f"Dataset release failed: {error}") from None
     except Exception as error:

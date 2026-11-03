@@ -59,7 +59,7 @@ def test_cli_reports_safe_configuration_messages(monkeypatch, setting, value, me
         Settings.from_environment()
         BlobStorageAdapter.from_environment()
 
-    monkeypatch.setattr(cli, "execute", validate_configuration)
+    monkeypatch.setattr(cli, "run_dataset_release_command", validate_configuration)
     with pytest.raises(SystemExit) as error:
         cli.main(["--container", "datasets", "inspect", "seeds", "v1"])
     assert str(error.value) == f"Dataset release failed: {message}"
@@ -71,7 +71,9 @@ def test_cli_reports_safe_configuration_messages(monkeypatch, setting, value, me
 )
 def test_cli_keeps_unexpected_errors_redacted(monkeypatch, error):
     monkeypatch.setattr("dotenv.load_dotenv", lambda *args: None)
-    monkeypatch.setattr(cli, "execute", AsyncMock(side_effect=error))
+    monkeypatch.setattr(
+        cli, "run_dataset_release_command", AsyncMock(side_effect=error)
+    )
     with pytest.raises(SystemExit) as result:
         cli.main(["--container", "datasets", "inspect", "seeds", "v1"])
     assert str(result.value) == f"Dataset release failed: {type(error).__name__}"
