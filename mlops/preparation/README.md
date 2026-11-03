@@ -42,9 +42,7 @@ uploader requests create-only writes, but some S3-compatible stores ignore that
 condition and upload the same bytes again on retries. It does not read back
 existing PNGs or protect against a writer that puts other bytes under a hash key.
 
-The SAM3 command below still reads a local media directory. Reading these PNGs
-from S3 in that step needs an S3 image reader. The COCO source records do not
-create database mappings.
+The COCO source records do not create database mappings.
 
 ## Collection layout
 
@@ -139,6 +137,24 @@ uv run --project mlops/preparation --no-sync python \
   /work/prepared /work/draft.coco.json \
   --model-path /models/sam3 --model-revision <weights-revision> --device cuda
 ```
+
+For PNGs already in S3, install the `storage` group as well and pass the bucket
+root instead of a local media directory:
+
+```bash
+uv sync --project mlops/preparation --locked --group sam3 --group storage
+uv run --project mlops/preparation --no-sync python \
+  mlops/preparation/prelabel.py /work/prepared/index.coco.json \
+  s3://training-datasets /work/draft.coco.json \
+  --endpoint-url https://s3.example.test --region us-east-1 \
+  --model-path /models/sam3 --model-revision <weights-revision> --device cuda
+```
+
+S3 input reads one PNG into memory and checks its key and SHA-256 before
+decoding. A missing object, hash mismatch or dimension mismatch stops the run.
+PNGs are not saved locally. The bucket root contains the `png/detection/` keys
+from COCO; a key prefix in the S3 media-root argument is refused. Credentials
+and private-CA settings follow the upload command below.
 
 For each image, the command tries the notebook's prompts in order:
 "foreground object", "thick long seed", then "insect". It stops at the first
