@@ -5,17 +5,17 @@ from threading import Event, get_ident
 from unittest.mock import Mock
 
 import pytest
-from botocore.exceptions import ClientError
-from mlops_blob import BlobStorageInterface, create_blob_storage_client
-from mlops_blob.exceptions import (
+from blob_controller import BlobStorageInterface, create_blob_storage_client
+from blob_controller.exceptions import (
     BlobAlreadyExistsError,
     BlobNotFoundError,
     BlobStorageError,
     InvalidConfigurationError,
 )
-from mlops_blob.exceptions import (
+from blob_controller.exceptions import (
     PermissionError as BlobPermissionError,
 )
+from botocore.exceptions import ClientError
 
 from dataset_release.storage import BlobStorageAdapter
 
@@ -47,7 +47,9 @@ async def test_copied_provider_conflicts_missing_objects_and_cleanup(blob_provid
 )
 async def test_s3_conditional_failure_never_retries_with_overwrite(monkeypatch, code):
     client = Mock()
-    monkeypatch.setattr("mlops_blob.s3.storage.create_s3_client", lambda config: client)
+    monkeypatch.setattr(
+        "blob_controller.s3.storage.create_s3_client", lambda config: client
+    )
     storage = BlobStorageAdapter(create_blob_storage_client("s3", {}))
     client.put_object.side_effect = ClientError({"Error": {"Code": code}}, "PutObject")
     with pytest.raises(BlobStorageError) as error:

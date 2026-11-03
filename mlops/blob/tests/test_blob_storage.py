@@ -6,18 +6,18 @@ from unittest.mock import Mock, patch
 import pytest
 from botocore.exceptions import ClientError
 
-from mlops_blob import BlobStorageInterface, create_blob_storage_client
-from mlops_blob.exceptions import (
+from blob_controller import BlobStorageInterface, create_blob_storage_client
+from blob_controller.exceptions import (
     BlobAlreadyExistsError,
     BlobNotFoundError,
     BlobStorageError,
     InvalidConfigurationError,
 )
-from mlops_blob.exceptions import PermissionError as BlobPermissionError
+from blob_controller.exceptions import PermissionError as BlobPermissionError
 
 
 def s3_storage(client):
-    with patch("mlops_blob.s3.storage.create_s3_client", return_value=client):
+    with patch("blob_controller.s3.storage.create_s3_client", return_value=client):
         return create_blob_storage_client("s3", {})
 
 
@@ -48,7 +48,9 @@ async def test_copied_provider_conflicts_missing_objects_and_cleanup(blob_provid
 )
 async def test_s3_conditional_failure_never_retries_with_overwrite(monkeypatch, code):
     client = Mock()
-    monkeypatch.setattr("mlops_blob.s3.storage.create_s3_client", lambda config: client)
+    monkeypatch.setattr(
+        "blob_controller.s3.storage.create_s3_client", lambda config: client
+    )
     storage = create_blob_storage_client("s3", {})
     client.put_object.side_effect = ClientError({"Error": {"Code": code}}, "PutObject")
     with pytest.raises(BlobStorageError) as error:
@@ -122,7 +124,7 @@ async def test_s3_download_closes_stream_and_translates_missing_object():
 
 
 def test_s3_factory_preserves_credential_chain_and_avoids_list_buckets(monkeypatch):
-    from mlops_blob.s3 import client as s3_client
+    from blob_controller.s3 import client as s3_client
 
     factory = Mock()
     monkeypatch.setattr(s3_client.boto3, "client", factory)
@@ -144,7 +146,7 @@ def test_imports_do_not_load_backend_or_dataset_release():
             "-I",
             "-c",
             (
-                "import sys; import mlops_blob.s3.storage, mlops_blob.azure.storage; "
+                "import sys; import blob_controller.s3.storage, blob_controller.azure.storage; "
                 + "assert not any(n == 'app' or n.startswith('app.') or "
                 + "n == 'dataset_release' or n.startswith('dataset_release.') for n in sys.modules)"
             ),

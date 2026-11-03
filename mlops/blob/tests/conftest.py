@@ -10,7 +10,7 @@ import pytest
 from azure.core.exceptions import ResourceExistsError
 from botocore.exceptions import ClientError
 
-from mlops_blob import create_blob_storage_client
+from blob_controller import create_blob_storage_client
 
 
 @pytest.fixture(params=["s3", "azure"])
@@ -46,7 +46,7 @@ def blob_provider(request, monkeypatch):
         client.get_object.side_effect = get_object
         client.head_object.side_effect = head_object
         monkeypatch.setattr(
-            "mlops_blob.s3.storage.create_s3_client", lambda config: client
+            "blob_controller.s3.storage.create_s3_client", lambda config: client
         )
         config = {}
     else:
@@ -81,7 +81,7 @@ def blob_provider(request, monkeypatch):
         client.get_blob_client.side_effect = get_blob_client
         client.get_container_client.return_value.exists.return_value = True
         monkeypatch.setattr(
-            "mlops_blob.azure.storage.create_blob_service_client",
+            "blob_controller.azure.storage.create_blob_service_client",
             lambda *args, **kwargs: client,
         )
         config = {"connection_string": "test-only"}

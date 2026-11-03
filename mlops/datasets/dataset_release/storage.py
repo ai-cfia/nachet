@@ -6,7 +6,7 @@ import asyncio
 import os
 from typing import Any, Protocol
 
-from mlops_blob import BlobStorageInterface, create_blob_storage_client
+from blob_controller import BlobStorageInterface, create_blob_storage_client
 
 from .errors import ConfigurationError
 

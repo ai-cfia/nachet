@@ -20,4 +20,4 @@ class StorageLogger(logging.LoggerAdapter):
 class LogService:
     @staticmethod
     def get_logger() -> StorageLogger:
-        return StorageLogger(logging.getLogger("mlops_blob"), {})
+        return StorageLogger(logging.getLogger("blob_controller"), {})

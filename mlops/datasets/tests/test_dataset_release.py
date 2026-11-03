@@ -21,8 +21,8 @@ from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from mlops_blob import create_blob_storage_client
-from mlops_blob.exceptions import BlobAlreadyExistsError, BlobNotFoundError
+from blob_controller import create_blob_storage_client
+from blob_controller.exceptions import BlobAlreadyExistsError, BlobNotFoundError
 from PIL import Image
 from sqlalchemy import MetaData, Table, func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -44,7 +44,7 @@ from dataset_release.storage import BlobStorageAdapter
 
 def s3_storage(client):
     """Use the copied factory and provider, replacing only its SDK transport."""
-    with patch("mlops_blob.s3.storage.create_s3_client", return_value=client):
+    with patch("blob_controller.s3.storage.create_s3_client", return_value=client):
         return BlobStorageAdapter(create_blob_storage_client("s3", {}))
 
 
@@ -776,7 +776,7 @@ def test_registry_configuration_is_explicit(monkeypatch):
 
 
 def test_s3_configuration_preserves_standard_region_and_credential_chain(monkeypatch):
-    from mlops_blob.s3 import client as s3_client
+    from blob_controller.s3 import client as s3_client
 
     for name in (
         "S3_REGION_NAME",
