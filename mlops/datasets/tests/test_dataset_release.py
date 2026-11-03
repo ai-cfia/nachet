@@ -25,6 +25,7 @@ from blob_controller import create_blob_storage_client
 from blob_controller.exceptions import BlobAlreadyExistsError, BlobNotFoundError
 from PIL import Image
 from sqlalchemy import MetaData, Table, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from dataset_release import cli
@@ -594,26 +595,23 @@ async def test_current_detector_loader_matches_released_records(release_env, tmp
 
 @pytest.mark.asyncio
 async def test_migration_matches_orm_and_downgrades(tmp_path):
-    migrations = []
-    for filename in (
-        "a895d501ea01_dataset_releases.py",
-        "b72e15c4d901_dataset_metadata.py",
-    ):
-        migration = Path(__file__).parents[1] / "migrations/versions" / filename
-        spec = importlib.util.spec_from_file_location(filename, migration)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        migrations.append(module)
+    migration = (
+        Path(__file__).parents[1]
+        / "migrations/versions/a895d501ea01_dataset_releases.py"
+    )
+    spec = importlib.util.spec_from_file_location("dataset_releases", migration)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
     engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'migration.sqlite'}")
 
     def check(connection):
         context = MigrationContext.configure(connection)
         with Operations.context(context):
-            migrations[0].upgrade()
-            old_table = Table("dataset_release", MetaData(), autoload_with=connection)
+            module.upgrade()
+            table = Table("dataset_release", MetaData(), autoload_with=connection)
             release_id = uuid4()
             connection.execute(
-                old_table.insert().values(
+                table.insert().values(
                     id=release_id.hex,
                     name="existing",
                     version="v1",
@@ -626,7 +624,6 @@ async def test_migration_matches_orm_and_downgrades(tmp_path):
                     status="ready",
                 )
             )
-            migrations[1].upgrade()
         metadata = MetaData()
         DatasetRelease.__table__.to_metadata(metadata)
         assert compare_metadata(context, metadata) == []
@@ -634,12 +631,15 @@ async def test_migration_matches_orm_and_downgrades(tmp_path):
         assert row["id"] == release_id
         assert row["manifest_sha256"] == "b" * 64
         assert all(row[field] is None for field in ReleaseMetadata.model_fields)
+        for field in (
+            "num_classes",
+            "num_multi_object_images",
+            "num_single_object_images",
+        ):
+            with pytest.raises(IntegrityError), connection.begin_nested():
+                connection.execute(table.update().values({field: -1}))
         with Operations.context(context):
-            migrations[1].downgrade()
-        restored = Table("dataset_release", MetaData(), autoload_with=connection)
-        assert connection.execute(select(restored.c.id)).scalar_one() == release_id.hex
-        with Operations.context(context):
-            migrations[0].downgrade()
+            module.downgrade()
         assert compare_metadata(context, MetaData()) == []
 
     try:
@@ -725,7 +725,7 @@ def test_standalone_migration_and_imports_do_not_use_backend(tmp_path, monkeypat
         assert tables == {"dataset_release", "dataset_release_version"}
         assert connection.execute(
             "select version_num from dataset_release_version"
-        ).fetchone() == ("b72e15c4d901",)
+        ).fetchone() == ("a895d501ea01",)
     result = subprocess.run(
         [
             sys.executable,
@@ -738,6 +738,23 @@ def test_standalone_migration_and_imports_do_not_use_backend(tmp_path, monkeypat
         text=True,
     )
     assert result.returncode == 0
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "-c", "alembic.ini", "downgrade", "base"],
+        cwd=project,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    with sqlite3.connect(registry_path) as connection:
+        assert connection.execute(
+            "select name from sqlite_master where type='table'"
+        ).fetchall() == [("dataset_release_version",)]
+        assert (
+            connection.execute(
+                "select version_num from dataset_release_version"
+            ).fetchall()
+            == []
+        )
 
 
 def test_postgresql_migration_targets_only_mlops_schema(monkeypatch):
@@ -753,11 +770,10 @@ def test_postgresql_migration_targets_only_mlops_schema(monkeypatch):
     sql = output.getvalue()
     assert "CREATE TABLE nachet_datasets.dataset_release (" in sql
     assert "CREATE TABLE nachet_datasets.dataset_release_version (" in sql
-    assert (
-        "ALTER TABLE nachet_datasets.dataset_release ADD COLUMN description TEXT" in sql
-    )
-    assert "ADD COLUMN dataset_cutoff_date DATE" in sql
-    assert "ADD COLUMN has_bounding_boxes BOOLEAN" in sql
+    assert "description TEXT" in sql
+    assert "dataset_cutoff_date DATE" in sql
+    assert "has_bounding_boxes BOOLEAN" in sql
+    assert "ALTER TABLE" not in sql
     assert "alembic_version" not in sql
 
 

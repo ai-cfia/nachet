@@ -21,6 +21,14 @@ def upgrade() -> None:
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("version", sa.Text(), nullable=False),
         sa.Column("author", sa.Text(), nullable=False),
+        sa.Column("description", sa.Text(), nullable=True),
+        sa.Column("has_bounding_boxes", sa.Boolean(), nullable=True),
+        sa.Column("has_classes", sa.Boolean(), nullable=True),
+        sa.Column("num_classes", sa.Integer(), nullable=True),
+        sa.Column("num_multi_object_images", sa.Integer(), nullable=True),
+        sa.Column("num_single_object_images", sa.Integer(), nullable=True),
+        sa.Column("dataset_cutoff_date", sa.Date(), nullable=True),
+        sa.Column("previous_version", sa.Text(), nullable=True),
         sa.Column("date_created", sa.DateTime(timezone=True), nullable=False),
         sa.Column("container", sa.Text(), nullable=False),
         sa.Column("request_sha256", sa.String(64), nullable=False),
@@ -35,6 +43,15 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "status != 'ready' OR manifest_sha256 IS NOT NULL",
             name="ck_dataset_release_ready_manifest",
+        ),
+        sa.CheckConstraint("num_classes >= 0", name="ck_dataset_release_num_classes"),
+        sa.CheckConstraint(
+            "num_multi_object_images >= 0",
+            name="ck_dataset_release_num_multi_object_images",
+        ),
+        sa.CheckConstraint(
+            "num_single_object_images >= 0",
+            name="ck_dataset_release_num_single_object_images",
         ),
         schema=schema,
     )

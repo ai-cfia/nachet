@@ -140,11 +140,9 @@ Apply the standalone migration explicitly before publication:
 uv run alembic -c alembic.ini upgrade head
 ```
 
-This runs only the MLOps registry migrations: `a895d501ea01` creates the registry
-and `b72e15c4d901` adds the eight nullable metadata columns and nonnegative-count
-constraints. For an existing registry, run the same command before using the
-updated publisher. Existing rows remain intact with `NULL` metadata, and no blob
-objects are modified. It does not run backend migrations.
+This runs the single initial MLOps registry migration, `a895d501ea01`, which
+creates the registry with all eight nullable metadata columns and nonnegative-count
+constraints. It does not modify blob objects or run backend migrations.
 Argo CD is not configured to invoke it automatically.
 The publication command never creates tables, schemas, buckets or permissions.
 
@@ -282,7 +280,7 @@ splits. Without the variable, only that external compatibility test is skipped.
 The suite exercises publication, interrupted uploads, identical and conflicting
 retries, concurrent publishers, corrected versions, missing/corrupt files,
 provenance, split leakage, crop dimensions, negative detection images, the
-additive migration and atomic S3 request behavior. It also publishes and recovers
+initial migration and atomic S3 request behavior. It also publishes and recovers
 releases through the actual copied S3/Azure providers using fake SDK transports.
 It uses temporary SQLite databases and in-memory object stores; it does not establish production S3/Azure
 compatibility, live PostgreSQL deployment, GPU training quality or throughput.
