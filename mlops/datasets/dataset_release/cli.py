@@ -20,6 +20,7 @@ from .storage import BlobStorageAdapter
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    """Parse a publish, inspect, or validate command and its dataset container."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--container", required=True, help="Existing dataset bucket/container"
@@ -38,6 +39,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 async def run_dataset_release_command(args: argparse.Namespace) -> dict:
+    """Run the selected release command and return its JSON-compatible result.
+
+    The registry must already be provisioned. Database and storage resources
+    are released after the command, including when publication or validation fails.
+    """
     # Registry provisioning is an explicit MLOps operation, separate from the
     # backend application's database and Alembic revision history.
     settings = Settings.from_environment()
@@ -76,6 +82,7 @@ async def run_dataset_release_command(args: argparse.Namespace) -> dict:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Load CLI settings, print the result, and report errors without credentials."""
     # Parse first so --help works without credentials or database configuration.
     args = parse_args(argv)
     from dotenv import load_dotenv

@@ -14,6 +14,7 @@ depends_on = None
 
 
 def upgrade() -> None:
+    """Create the release registry with metadata and publication integrity constraints."""
     schema = op.get_context().opts.get("version_table_schema")
     op.create_table(
         "dataset_release",
@@ -58,6 +59,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Drop the release registry table from the configured MLOps schema."""
     op.drop_table(
         "dataset_release", schema=op.get_context().opts.get("version_table_schema")
     )

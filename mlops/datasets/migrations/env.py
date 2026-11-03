@@ -14,6 +14,7 @@ settings = Settings.from_environment()
 
 
 def options() -> dict:
+    """Configure MLOps metadata and its separate migration version table."""
     return {
         "target_metadata": Base.metadata,
         "version_table": "dataset_release_version",
@@ -22,12 +23,14 @@ def options() -> dict:
 
 
 def migrate(connection):
+    """Run registry migrations in a transaction on the supplied sync connection."""
     context.configure(connection=connection, **options())
     with context.begin_transaction():
         context.run_migrations()
 
 
 async def online():
+    """Open the configured registry connection, migrate, and dispose of the engine."""
     engine = registry_engine(settings.database_url, settings.registry_schema)
     try:
         async with engine.connect() as connection:

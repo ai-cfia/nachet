@@ -5,6 +5,7 @@ import logging
 
 class StorageLogger(logging.LoggerAdapter):
     def process(self, message, kwargs):
+        """Append structured fields while preserving standard logging options."""
         # The backend logger accepts structured keyword fields. Keep that calling
         # convention without importing the backend's service/logging lifecycle.
         fields = {
@@ -20,4 +21,5 @@ class StorageLogger(logging.LoggerAdapter):
 class LogService:
     @staticmethod
     def get_logger() -> StorageLogger:
+        """Return the provider logger without starting backend logging services."""
         return StorageLogger(logging.getLogger("blob_controller"), {})

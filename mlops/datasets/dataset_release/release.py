@@ -59,6 +59,7 @@ class ReleaseRegistration:
 
     @classmethod
     def from_row(cls, row: DatasetRelease) -> ReleaseRegistration:
+        """Copy a registry row into an immutable registration with a UTC timestamp."""
         # SQLite returns naive timestamps; PostgreSQL returns aware timestamps.
         created_at = row.date_created
         if created_at.tzinfo is None:
@@ -86,6 +87,7 @@ class ReleaseRegistration:
         )
 
     def metadata(self) -> ReleaseMetadata:
+        """Return descriptive metadata and recorded COCO statistics for this release."""
         return ReleaseMetadata.model_validate(self, from_attributes=True)
 
     def training_reference(self) -> dict[str, str]:
@@ -117,11 +119,16 @@ class DatasetController:
         sessions: async_sessionmaker[AsyncSession],
         container: str,
     ):
+        """Bind storage, registry sessions, and the existing dataset container."""
         self.storage = storage
         self.sessions = sessions
         self.container = container
 
     async def registration(self, name: str, version: str) -> ReleaseRegistration:
+        """Look up a release, rejecting unknown versions and container mismatches.
+
+        Staging registrations are returned so interrupted publications can resume.
+        """
         async with self.sessions() as session:
             row = await session.scalar(
                 select(DatasetRelease).where(
@@ -135,6 +142,11 @@ class DatasetController:
             return ReleaseRegistration.from_row(row)
 
     async def _claim(self, spec: ReleaseSpec, request_hash: str) -> ReleaseRegistration:
+        """Reserve a staging registration or reuse one with identical inputs.
+
+        The unique name/version constraint handles concurrent claims. Different
+        inputs for an existing version raise ReleaseConflict.
+        """
         try:
             async with self.sessions.begin() as session:
                 row = DatasetRelease(
@@ -162,6 +174,11 @@ class DatasetController:
     async def _put_unchanged(
         self, key: str, data: bytes, content_type: str
     ) -> FileReference:
+        """Create an object without overwriting and verify its exact stored bytes.
+
+        Identical existing content is safe to reuse on retry; different content
+        raises ReleaseConflict.
+        """
         try:
             await self.storage.upload_blob(
                 self.container, key, data, overwrite=False, content_type=content_type
@@ -176,12 +193,20 @@ class DatasetController:
         return FileReference(key=key, sha256=sha256(data), size=len(data))
 
     async def read_file(self, reference: FileReference) -> bytes:
+        """Download a referenced object and verify its recorded size and SHA-256."""
         data = await self.storage.download_blob(self.container, reference.key)
         if len(data) != reference.size or sha256(data) != reference.sha256:
             raise ReleaseConflict(f"Object checksum/size mismatch: {reference.key}")
         return data
 
     async def publish(self, spec: ReleaseSpec) -> ReleaseRegistration:
+        """Publish an immutable reviewed release from prepared hash-addressed PNGs.
+
+        Validate images, optionally generate classification crops, and store COCO
+        and manifest snapshots before marking the registration ready. Interrupted
+        writes leave a staging registration that identical inputs can resume;
+        a completed version is verified and reused.
+        """
         # Re-validate at the boundary in case nested mutable lists were edited.
         spec = ReleaseSpec.model_validate(spec.model_dump(mode="json"))
         recipe = crop_recipe() if spec.generate_crops else None
@@ -308,6 +333,11 @@ class DatasetController:
         version: str,
         expected_manifest_sha256: str | None = None,
     ) -> tuple[ReleaseRegistration, ReleaseManifest, ReviewedCoco]:
+        """Load a ready release and verify its identity, manifest, and files.
+
+        An expected manifest digest pins the selection. Incomplete releases raise
+        ReleaseNotReady; conflicting identities or checksums raise ReleaseConflict.
+        """
         registration = await self.registration(name, version)
         if registration.status != "ready" or registration.manifest_sha256 is None:
             raise ReleaseNotReady(f"Release is incomplete: {name}/{version}")
@@ -340,6 +370,7 @@ class DatasetController:
         return registration, manifest, coco
 
     async def _validate(self, manifest: ReleaseManifest, coco: ReviewedCoco) -> None:
+        """Verify snapshot statistics, image membership, crop lineage, and file bytes."""
         for field, expected in ReleaseMetadata.statistics(coco).items():
             recorded = getattr(manifest, field)
             if recorded is not None and recorded != expected:

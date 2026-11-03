@@ -10,6 +10,7 @@ PNG_COMPRESSION_LEVEL = 6
 
 
 def crop_recipe() -> dict[str, Any]:
+    """Describe the crop algorithm and encoder settings recorded in release manifests."""
     return {
         "code_revision": "nachet-coco-crop-v2",
         "opencv_version": cv2.__version__,  # adjusted from pillow to opencv
@@ -21,6 +22,7 @@ def crop_recipe() -> dict[str, Any]:
 
 
 def pixel_box(bbox: list[float]) -> tuple[int, int, int, int]:
+    """Round a COCO x/y/width/height box outward to left/top/right/bottom pixels."""
     x, y, width, height = bbox
     return math.floor(x), math.floor(y), math.ceil(x + width), math.ceil(y + height)
 
@@ -28,11 +30,16 @@ def pixel_box(bbox: list[float]) -> tuple[int, int, int, int]:
 def crop_image(
     image: NDArray[np.uint8], bbox: list[float]
 ) -> tuple[tuple[int, int, int, int], bytes]:
+    """Crop a decoded OpenCV image, returning the rounded box and encoded PNG bytes."""
     box = pixel_box(bbox)
     return box, render_crop(image, box)
 
 
 def decode_png(data: bytes, expected_size: tuple[int, int]) -> NDArray[np.uint8]:
+    """Decode PNG bytes into BGR pixels and verify the expected (width, height).
+
+    Reject non-PNG data, decoding failures, and dimensions that differ from COCO.
+    """
     if not data.startswith(PNG_SIGNATURE):
         raise ValueError("Image is not a PNG")
 
@@ -47,6 +54,10 @@ def decode_png(data: bytes, expected_size: tuple[int, int]) -> NDArray[np.uint8]
 
 
 def render_crop(image: NDArray[np.uint8], box: tuple[int, int, int, int]) -> bytes:
+    """Encode a BGR image region as PNG, excluding its right and bottom bounds.
+
+    Use the release compression setting and reject empty crops or encoding failures.
+    """
     left, top, right, bottom = box
     cropped = image[top:bottom, left:right]
     if cropped.size == 0:
