@@ -44,6 +44,9 @@ existing PNGs or protect against a writer that puts other bytes under a hash key
 
 The COCO source records do not create database mappings.
 
+Credentials come from the AWS credential chain. For a private CA, set
+`AWS_CA_BUNDLE`. Use `--allow-http` only with a trusted test endpoint.
+
 ## Collection layout
 
 Species folders sit directly under the collection or inside a split folder.
@@ -186,24 +189,6 @@ the predictor does not use prompts or inference was skipped.
 Both statuses require human review. The command refuses an index that already
 has annotations. Output is written after the full batch; an interrupted run
 currently starts again from the beginning.
-
-## Upload prepared PNGs
-
-```bash
-uv sync --project mlops/preparation --locked --group storage
-uv run --project mlops/preparation --no-sync python \
-  mlops/preparation/upload_preparation.py /work/draft.coco.json \
-  /work/prepared --bucket datasets \
-  --endpoint-url 'https://<s3-endpoint>' --region '<region>'
-```
-
-Pass the index or draft COCO. The uploader checks each local PNG against
-`image_sha256` and writes it to `png/detection/<sha256>.png`. Use this command
-after local-folder conversion; S3 conversion already uploads the PNGs. The
-COCO file stays unchanged. It shares the hash-key retry policy described above.
-
-Credentials come from the AWS credential chain. For a private CA, set
-`AWS_CA_BUNDLE`. Use `--allow-http` only with a trusted test endpoint.
 
 ## Register for review
 

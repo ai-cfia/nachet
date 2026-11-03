@@ -244,7 +244,7 @@ def main(argv: list[str] | None = None) -> None:
             parser.error("S3 media root must be s3://<bucket> without a key prefix")
         if not args.endpoint_url or not args.region:
             parser.error("S3 input requires --endpoint-url and --region")
-        from upload_preparation import create_storage
+        from s3_storage import create_storage
 
         try:
             storage = create_storage(

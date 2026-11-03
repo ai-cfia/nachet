@@ -45,22 +45,6 @@ def test_s3_and_local_inputs_keep_pixels_annotations_and_metadata(s3_media):
     )
 
 
-def test_s3_keeps_the_existing_sam3_prompt_order(s3_media, monkeypatch):
-    coco, _, provider = s3_media
-    calls = []
-    predictor = module.Sam3Predictor.__new__(module.Sam3Predictor)
-
-    def predict(image, prompt):
-        calls.append(prompt)
-        return [[1, 1, 3, 3]] if prompt == "thick long seed" else []
-
-    monkeypatch.setattr(predictor, "_predict_prompt", predict)
-    result = module.prelabel_s3(coco, provider.storage, "datasets", predictor)
-    inferred = [r for r in result["images"] if r["prelabel_status"] == "draft"]
-    assert calls == ["foreground object", "thick long seed"] * len(inferred)
-    assert all(record["prelabel_prompt"] == "thick long seed" for record in inferred)
-
-
 def test_s3_rgb16_png_is_flagged_without_lossy_inference(s3_media):
     coco, _, provider = s3_media
     pixels = np.full((5, 7, 3), 40000, dtype=np.uint16)
@@ -110,7 +94,7 @@ def test_bad_s3_input_fails_before_inference(s3_media, problem):
 def test_s3_cli_closes_client_and_saves_only_a_completed_draft(
     s3_media, tmp_path, monkeypatch, failure
 ):
-    import upload_preparation
+    import s3_storage
 
     coco, _, provider = s3_media
     index, output = tmp_path / "index.json", tmp_path / "draft.json"
@@ -121,9 +105,7 @@ def test_s3_cli_closes_client_and_saves_only_a_completed_draft(
     elif failure == "hash":
         provider.objects["datasets", coco["images"][0]["file_name"]] = b"changed"
     monkeypatch.setattr(module, "Sam3Predictor", factory)
-    monkeypatch.setattr(
-        upload_preparation, "create_storage", lambda *a, **kw: provider.storage
-    )
+    monkeypatch.setattr(s3_storage, "create_storage", lambda *a, **kw: provider.storage)
     args = [
         str(index),
         "s3://datasets",

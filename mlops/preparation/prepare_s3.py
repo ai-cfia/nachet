@@ -12,7 +12,7 @@ from prepare_images import (
     coco_index,
     save_coco,
 )
-from upload_preparation import create_storage, upload_png
+from s3_storage import create_storage, upload_png
 
 
 def collection_prefix(value: str) -> str:
