@@ -8,7 +8,7 @@ import pytest
 import yaml
 from PIL import Image
 
-import upload_preparation
+import s3_storage
 from prelabel import Prediction
 
 
@@ -27,7 +27,7 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         path.parent.mkdir(parents=True, exist_ok=True)
         Image.new("RGB", (12, 10), (index * 60, 20, 30)).save(path)
     monkeypatch.setattr(
-        upload_preparation,
+        s3_storage,
         "create_blob_storage_client",
         lambda *args, **kwargs: s3_provider.storage,
     )
