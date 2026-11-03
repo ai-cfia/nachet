@@ -1,0 +1,77 @@
+"""Public facade for the reviewed dataset release workflow."""
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from .models.dataset import (
+    Dataset,
+    ReleaseDefinition,
+    ReleaseRegistration,
+    ReviewedCoco,
+)
+from .models.manifest import FileReference, ReleaseManifest
+from .repositories.blob_repository import BlobRepository, BlobStorage
+from .repositories.catalog import ReleaseCatalog
+from .services.dataset_service import DatasetService
+from .services.manifest_service import ManifestService
+from .services.query_service import QueryService
+from .services.validation_service import ValidationService
+
+
+class DatasetController:
+    """Coordinate release operations without backend application dependencies.
+
+    Callers supply storage, a session factory and an existing container. Runtime
+    configuration and resource cleanup remain the caller's responsibility.
+    """
+
+    def __init__(
+        self,
+        storage: BlobStorage | None,
+        sessions: async_sessionmaker[AsyncSession],
+        container: str,
+    ):
+        blobs = BlobRepository(storage, container)
+        self.catalog = ReleaseCatalog(sessions, container)
+        manifests = ManifestService(self.catalog)
+        self._validation = ValidationService(blobs, self.catalog)
+        self._queries = QueryService(
+            sessions, blobs, self._validation, self.catalog, manifests
+        )
+        self._datasets = DatasetService(
+            blobs, sessions, self._queries, manifests, self._validation, self.catalog
+        )
+
+    async def create_release(self, metadata: ReleaseDefinition) -> ReleaseRegistration:
+        """Register the authoritative metadata for a draft release."""
+        return await self._datasets.create_release(metadata)
+
+    async def prepare_coco(self, name: str, version: str, coco: dict) -> Dataset:
+        """Prepare offline labels using membership entities in the registry."""
+        return await self._datasets.prepare_coco(name, version, coco)
+
+    async def export_json(self, name: str, version: str, document: str) -> bytes:
+        """Generate a document from release records when a consumer requests it."""
+        return await self._queries.export_json(name, version, document)
+
+    async def publish(
+        self, spec: Dataset | str, version: str | None = None
+    ) -> ReleaseRegistration:
+        """Publish or resume an immutable reviewed release."""
+        return await self._datasets.publish(spec, version)
+
+    async def registration(self, name: str, version: str) -> ReleaseRegistration:
+        """Look up a release, including an incomplete staging registration."""
+        return await self._queries.registration(name, version)
+
+    async def resolve(
+        self,
+        name: str,
+        version: str,
+        expected_manifest_sha256: str | None = None,
+    ) -> tuple[ReleaseRegistration, ReleaseManifest, ReviewedCoco]:
+        """Resolve a ready release and verify its identity and referenced files."""
+        return await self._queries.resolve(name, version, expected_manifest_sha256)
+
+    async def read_file(self, reference: FileReference) -> bytes:
+        """Download a referenced file and verify its checksum and size."""
+        return await self._validation.read_file(reference)

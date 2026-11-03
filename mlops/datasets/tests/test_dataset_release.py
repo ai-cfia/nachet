@@ -21,14 +21,9 @@ from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from mlops_blob import create_blob_storage_client
-from mlops_blob.exceptions import BlobAlreadyExistsError, BlobNotFoundError
-from PIL import Image
-from sqlalchemy import MetaData, Table, func, select
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
-from dataset_release import cli
-from dataset_release.contract import (
+from dataset_controller import DatasetController, ReleaseConflict, ReleaseNotReady
+from dataset_controller.config.dataset_config import Settings
+from dataset_controller.models.dataset import (
     DatasetDescription,
     ReleaseDefinition,
     ReleaseMetadata,
@@ -36,12 +31,21 @@ from dataset_release.contract import (
     canonical_json,
     sha256,
 )
+from dataset_controller.repositories.blob_repository import BlobStorageAdapter
+from dataset_controller.repositories.registry import (
+    Base,
+    DatasetMembership,
+    DatasetRelease,
+)
+from mlops_blob import create_blob_storage_client
+from mlops_blob.exceptions import BlobAlreadyExistsError, BlobNotFoundError
+from PIL import Image
+from sqlalchemy import MetaData, Table, func, select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+from dataset_release import cli
 from dataset_release.fiftyone_export import ImageMembership, remap_coco
 from dataset_release.reader import ReleasedDataset
-from dataset_release.registry import Base, DatasetMembership, DatasetRelease
-from dataset_release.release import DatasetController, ReleaseConflict, ReleaseNotReady
-from dataset_release.settings import Settings
-from dataset_release.storage import BlobStorageAdapter
 
 
 def s3_storage(client):
@@ -160,7 +164,9 @@ async def test_release_uses_copied_blob_provider_for_publication_and_reads(
     controller = DatasetController(blob_provider.storage, sessions, "datasets")
     # Interrupt after recording outputs but before marking the row ready.
     # The retry must reuse existing crops via the common conflicts.
-    with patch.object(controller, "_validate", side_effect=OSError("Interrupted")):
+    with patch.object(
+        controller._validation, "validate", side_effect=OSError("Interrupted")
+    ):
         with pytest.raises(OSError, match="Interrupted"):
             await controller.publish(spec)
     assert (await controller.registration(spec.name, spec.version)).status == "staging"
@@ -318,7 +324,7 @@ async def test_recorded_statistics_must_match_coco(release_env):
         if isinstance(value, bool):
             incorrect = not value
         with pytest.raises(ValueError, match=f"Manifest {field} differs"):
-            await controller._validate(
+            await controller._validation.validate(
                 manifest.model_copy(update={field: incorrect}), coco
             )
 
@@ -392,7 +398,7 @@ async def test_legacy_releases_keep_hashes_and_remain_retryable(release_env, sta
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("failure", ["record_outputs", "manifest"])
+@pytest.mark.parametrize("failure", ["record_outputs", "outputs"])
 async def test_interrupted_publication_is_unselectable_and_retryable(
     release_env, failure
 ):
@@ -620,7 +626,7 @@ async def test_database_workflow_generates_documents_without_saved_json(release_
 @pytest.mark.asyncio
 @pytest.mark.parametrize("target", ["conversion", "membership", "labels", "crop"])
 async def test_generated_manifest_detects_database_changes(release_env, target):
-    from dataset_release.registry import DatasetCrop
+    from dataset_controller.repositories.registry import DatasetCrop
 
     controller, storage, sessions = release_env
     spec = specification(storage)

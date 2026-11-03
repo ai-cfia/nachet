@@ -9,14 +9,18 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
+from dataset_controller import DatasetController, ReleaseConflict, ReleaseNotReady
+from dataset_controller.config.dataset_config import Settings
+from dataset_controller.errors import ConfigurationError
+from dataset_controller.models.dataset import (
+    ConversionRecipe,
+    ImageMembership,
+    ReleaseDefinition,
+    Source,
+)
+from dataset_controller.repositories.blob_repository import BlobStorageAdapter
+from dataset_controller.repositories.registry import registry_engine
 from sqlalchemy.ext.asyncio import async_sessionmaker
-
-from .contract import ConversionRecipe, ImageMembership, ReleaseDefinition, Source
-from .errors import ConfigurationError
-from .registry import registry_engine
-from .release import DatasetController, ReleaseConflict, ReleaseNotReady
-from .settings import Settings
-from .storage import BlobStorageAdapter
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -156,7 +160,9 @@ async def execute(args: argparse.Namespace) -> dict | list:
                 ).database_backed
             ):
                 storage = await asyncio.to_thread(BlobStorageAdapter.from_environment)
-                controller.storage = storage
+                controller = DatasetController(
+                    storage, async_sessionmaker(engine), args.container
+                )
             data = await controller.export_json(args.name, args.version, args.document)
             if args.output:
                 with args.output.open("xb") as output:

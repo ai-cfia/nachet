@@ -9,15 +9,17 @@ from unittest.mock import Mock
 
 import pytest
 import pytest_asyncio
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
-from dataset_release.contract import (
+from dataset_controller import DatasetController, ReleaseConflict
+from dataset_controller.models.dataset import (
     CocoImage,
     ConversionRecipe,
     ReleaseDefinition,
     ReleaseSpec,
     sha256,
 )
+from dataset_controller.repositories.registry import Base
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
 from dataset_release.fiftyone_export import (
     ImageMembership,
     export_collection,
@@ -26,8 +28,6 @@ from dataset_release.fiftyone_export import (
     prepare,
     remap_coco,
 )
-from dataset_release.registry import Base
-from dataset_release.release import DatasetController, ReleaseConflict
 
 
 @pytest.fixture

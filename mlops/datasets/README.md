@@ -7,10 +7,15 @@ storage holds the prepared detection PNGs and generated classification crops.
 those database records when requested. JSON exports are outputs, not separately
 maintained release inputs.
 
-The publisher, registry, migrations, readers and tests belong to MLOps and do not
-import the backend application. Storage uses the sibling `nachet-blob` project
-under `mlops/blob/`, through `BlobStorageAdapter`. Keep the two projects together
-when checking out or mounting source. Wheel deployments must install both wheels.
+The single controller implementation lives in the sibling
+[`mlops/DatasetController`](../DatasetController/README.md) package. Its models,
+services and repositories own preparation, publication, validation, database
+entities and JSON generation. This `mlops/datasets` project contains the CLI,
+FiftyOne exporter, training reader and Alembic migrations, and imports the
+`dataset_controller` package for those operations. Neither imports the backend
+application. Storage uses `nachet-blob` under `mlops/blob/`, through
+`BlobStorageAdapter`. Keep all three projects together when checking out or
+mounting source; wheel deployments must install all three wheels.
 The external detector trainer is unchanged; the reader is its integration point.
 
 ## Database entities and files
@@ -135,7 +140,7 @@ metadata requires it. FiftyOne is intentionally not a publisher dependency.
 Install the two sibling packages using the annotation interpreter if needed:
 
 ```bash
-python -m pip install -e ../blob -e .
+python -m pip install -e ../blob -e ../DatasetController -e .
 python -m dataset_release.fiftyone_export \
   --container training-datasets --name reviewed-seeds --version v1 \
   --dataset seeds --view reviewed --label-field corrected_detections

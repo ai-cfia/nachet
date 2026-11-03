@@ -10,24 +10,20 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from .contract import (
+from ..errors import ReleaseConflict, ReleaseNotReady
+from ..models.dataset import (
     ConversionRecipe,
-    CropReference,
-    FileReference,
     ImageMembership,
     ReleaseDefinition,
-    ReleaseManifest,
     ReleaseMetadata,
     ReleaseSpec,
     ReviewedCoco,
-    canonical_json,
-    sha256,
 )
-from .errors import ReleaseConflict, ReleaseNotReady
+from ..models.manifest import CropReference, FileReference
 from .registry import DatasetCrop, DatasetMembership, DatasetRelease
 
 if TYPE_CHECKING:
-    from .release import ReleaseRegistration
+    from ..models.dataset import ReleaseRegistration
 
 
 def definition(row: DatasetRelease) -> ReleaseDefinition:
@@ -133,7 +129,7 @@ class ReleaseCatalog:
         self, name: str, version: str, member: ImageMembership
     ) -> None:
         member = ImageMembership.model_validate(member.model_dump(mode="json"))
-        from .fiftyone_export import path_identity
+        from ..models.dataset import path_identity
 
         async with self.sessions.begin() as session:
             row = await self.row(session, name, version, lock=True)
@@ -165,7 +161,7 @@ class ReleaseCatalog:
     ) -> None:
         """Atomically save reviewed labels and their per-image entities."""
         coco = ReviewedCoco.model_validate(coco.model_dump(mode="json"))
-        from .fiftyone_export import path_identity
+        from ..models.dataset import path_identity
 
         async with self.sessions.begin() as session:
             row = await self.row(session, name, version, lock=True)
@@ -315,9 +311,9 @@ class ReleaseCatalog:
                 ]
             )
 
-    async def manifest(
+    async def outputs(
         self, registration: ReleaseRegistration, spec: ReleaseSpec
-    ) -> ReleaseManifest:
+    ) -> tuple[dict[str, FileReference], list[CropReference], dict | None]:
         async with self.sessions() as session:
             row = await session.get(DatasetRelease, registration.id)
             images = {}
@@ -349,22 +345,4 @@ class ReleaseCatalog:
                         ),
                     )
                 )
-            coco_bytes = canonical_json(spec.coco.model_dump(mode="json"))
-            return ReleaseManifest(
-                **registration.metadata().model_dump(),
-                release_id=row.id,
-                name=row.name,
-                version=row.version,
-                author=row.author,
-                created_at=registration.created_at,
-                request_sha256=row.request_sha256,
-                conversion=spec.conversion,
-                crop_recipe=row.crop_recipe,
-                coco=FileReference(
-                    key=f"releases/{row.name}/{row.version}/coco.json",
-                    sha256=sha256(coco_bytes),
-                    size=len(coco_bytes),
-                ),
-                images=sorted(images.values(), key=lambda item: item.key),
-                crops=crops,
-            )
+            return images, crops, row.crop_recipe
