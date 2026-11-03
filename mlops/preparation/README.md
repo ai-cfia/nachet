@@ -47,6 +47,9 @@ The COCO source records do not create database mappings.
 Credentials come from the AWS credential chain. For a private CA, set
 `AWS_CA_BUNDLE`. Use `--allow-http` only with a trusted test endpoint.
 
+Credentials come from the AWS credential chain. For a private CA, set
+`AWS_CA_BUNDLE`. Use `--allow-http` only with a trusted test endpoint.
+
 ## Collection layout
 
 Species folders sit directly under the collection or inside a split folder.
