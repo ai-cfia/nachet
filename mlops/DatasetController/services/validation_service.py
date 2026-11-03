@@ -6,15 +6,24 @@ from numpy import uint8
 from numpy.typing import NDArray
 
 from ..errors import ReleaseConflict
-from ..models.dataset import Dataset, DatasetMember, ReviewedCoco, sha256
+from ..models.dataset import (
+    Dataset,
+    DatasetMember,
+    ReleaseMetadata,
+    ReviewedCoco,
+    canonical_json,
+    sha256,
+)
 from ..models.manifest import FileReference, ReleaseManifest
 from ..repositories.blob_repository import BlobRepository
+from ..repositories.catalog import ReleaseCatalog
 from ..utility.crop import decode_png, pixel_box
 
 
 class ValidationService:
-    def __init__(self, blobs: BlobRepository):
+    def __init__(self, blobs: BlobRepository, catalog: ReleaseCatalog):
         self.blobs = blobs
+        self.catalog = catalog
 
     @staticmethod
     def validate_spec(dataset: Dataset) -> Dataset:
@@ -39,12 +48,27 @@ class ValidationService:
         )
 
     async def read_file(self, reference: FileReference) -> bytes:
-        data = await self.blobs.download(reference.key)
+        parts = reference.key.split("/")
+        if len(parts) == 4 and parts[0] == "releases" and parts[3] == "coco.json":
+            async with self.catalog.sessions() as session:
+                row = await self.catalog.row(session, parts[1], parts[2])
+                database_backed = row.database_backed
+        else:
+            database_backed = False
+        if database_backed:
+            spec = await self.catalog.spec(parts[1], parts[2])
+            data = canonical_json(spec.coco.model_dump(mode="json"))
+        else:
+            data = await self.blobs.download(reference.key)
         if len(data) != reference.size or sha256(data) != reference.sha256:
             raise ReleaseConflict(f"Object checksum/size mismatch: {reference.key}")
         return data
 
     async def validate(self, manifest: ReleaseManifest, coco: ReviewedCoco) -> None:
+        for field, expected in ReleaseMetadata.statistics(coco).items():
+            recorded = getattr(manifest, field)
+            if recorded is not None and recorded != expected:
+                raise ValueError(f"Manifest {field} differs from reviewed COCO")
         files = {reference.key: reference for reference in manifest.images}
         if len(files) != len(manifest.images) or set(files) != {
             image.file_name for image in coco.images

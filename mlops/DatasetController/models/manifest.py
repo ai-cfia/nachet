@@ -13,8 +13,10 @@ from .dataset import (
     ContractModel,
     ConversionRecipe,
     Identifier,
+    ReleaseMetadata,
     ReleaseName,
     Split,
+    canonical_json,
 )
 
 
@@ -43,7 +45,7 @@ class CropReference(ContractModel):
     file: FileReference
 
 
-class ReleaseManifest(ContractModel):
+class ReleaseManifest(ReleaseMetadata):
     schema_version: Literal[1] = 1
     release_id: UUID
     name: ReleaseName
@@ -57,3 +59,12 @@ class ReleaseManifest(ContractModel):
     coco: FileReference
     images: list[FileReference]
     crops: list[CropReference]
+
+    def document(self) -> bytes:
+        """Preserve the v1 omission of unknown descriptive/statistical metadata."""
+        unknown = {
+            field
+            for field in ReleaseMetadata.model_fields
+            if getattr(self, field) is None
+        }
+        return canonical_json(self.model_dump(mode="json", exclude=unknown))

@@ -29,11 +29,13 @@ class BlobStorage(Protocol):
 class BlobRepository:
     """Container-scoped reads and immutable writes through the blob interface."""
 
-    def __init__(self, storage: BlobStorage, container: str):
+    def __init__(self, storage: BlobStorage | None, container: str):
         self.storage = storage
         self.container = container
 
     async def download(self, key: str) -> bytes:
+        if self.storage is None:
+            raise ConfigurationError("Blob storage is required for file reads")
         return await self.storage.download_blob(self.container, key)
 
     async def put_unchanged(
@@ -44,6 +46,8 @@ class BlobRepository:
         *,
         conflict_message: str | None = None,
     ) -> None:
+        if self.storage is None:
+            raise ConfigurationError("Blob storage is required for file writes")
         try:
             await self.storage.upload_blob(
                 self.container, key, data, overwrite=False, content_type=content_type

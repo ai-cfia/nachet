@@ -4,10 +4,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from ..errors import ReleaseConflict, ReleaseNotReady
-from ..models.dataset import ReleaseRegistration, ReviewedCoco, sha256
+from ..models.dataset import (
+    ReleaseMetadata,
+    ReleaseRegistration,
+    ReviewedCoco,
+    canonical_json,
+    sha256,
+)
 from ..models.manifest import ReleaseManifest
 from ..repositories.blob_repository import BlobRepository
+from ..repositories.catalog import ReleaseCatalog
 from ..repositories.registry import DatasetRelease
+from .manifest_service import ManifestService
 from .validation_service import ValidationService
 
 
@@ -19,11 +27,15 @@ class QueryService:
         sessions: async_sessionmaker[AsyncSession],
         blobs: BlobRepository,
         validation: ValidationService,
+        catalog: ReleaseCatalog,
+        manifests: ManifestService,
     ):
         self.sessions = sessions
         self.blobs = blobs
         self.container = blobs.container
         self.validation = validation
+        self.catalog = catalog
+        self.manifests = manifests
 
     async def registration(self, name: str, version: str) -> ReleaseRegistration:
         async with self.sessions() as session:
@@ -37,6 +49,38 @@ class QueryService:
             if row.container != self.container:
                 raise ReleaseConflict("Release belongs to a different container")
             return ReleaseRegistration.from_row(row)
+
+    async def export_json(self, name: str, version: str, document: str) -> bytes:
+        """Generate a requested document from the authoritative database records."""
+        registration = await self.registration(name, version)
+        if registration.database_backed and registration.status == "ready":
+            spec = await self.catalog.spec(name, version)
+            manifest = await self.manifests.from_database(registration, spec)
+            if sha256(manifest.document()) != registration.manifest_sha256:
+                raise ReleaseConflict("Published release manifest checksum mismatch")
+        if document == "metadata":
+            value = (await self.catalog.metadata(name, version)).model_dump(mode="json")
+        elif document == "membership":
+            value = [
+                member.model_dump(mode="json")
+                for member in await self.catalog.memberships(name, version)
+            ]
+        elif document == "spec":
+            value = (await self.catalog.spec(name, version)).model_dump(mode="json")
+        elif document == "coco" and registration.database_backed:
+            value = (await self.catalog.spec(name, version)).coco.model_dump(
+                mode="json"
+            )
+        elif document in ("coco", "manifest"):
+            _, manifest, coco = await self.resolve(name, version)
+            if document == "manifest":
+                if not registration.database_backed:
+                    return await self.blobs.download(registration.manifest_key)
+                return manifest.document()
+            value = coco.model_dump(mode="json")
+        else:
+            raise ValueError("Unknown release document")
+        return canonical_json(value)
 
     async def resolve(
         self,
@@ -52,7 +96,12 @@ class QueryService:
             and expected_manifest_sha256 != registration.manifest_sha256
         ):
             raise ReleaseConflict("Pinned release differs from the selected version")
-        data = await self.blobs.download(registration.manifest_key)
+        if registration.database_backed:
+            spec = await self.catalog.spec(name, version)
+            manifest = await self.manifests.from_database(registration, spec)
+            data = manifest.document()
+        else:
+            data = await self.blobs.download(registration.manifest_key)
         if sha256(data) != registration.manifest_sha256:
             raise ReleaseConflict("Published release manifest checksum mismatch")
         manifest = ReleaseManifest.model_validate_json(data)
@@ -63,6 +112,10 @@ class QueryService:
             or manifest.author != registration.author
             or manifest.created_at != registration.created_at
             or manifest.request_sha256 != registration.request_sha256
+            or ReleaseMetadata.model_validate(
+                manifest.model_dump(include=set(ReleaseMetadata.model_fields))
+            )
+            != registration.metadata()
         ):
             raise ReleaseConflict("Manifest identity does not match its registration")
         coco = ReviewedCoco.model_validate_json(

@@ -6,8 +6,9 @@ import hashlib
 import json
 import math
 import re
+from collections import Counter
 from dataclasses import dataclass
-from datetime import UTC
+from datetime import UTC, date
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 from uuid import UUID
 
@@ -164,19 +165,67 @@ class ConversionRecipe(ContractModel):
     settings: dict[str, Any]
 
 
-class Dataset(ContractModel):
-    """Reviewed membership and release metadata ready for publication."""
+class DatasetDescription(ContractModel):
+    description: str | None = None
+    dataset_cutoff_date: date | None = None
+    previous_version: str | None = None
 
+
+class ImageMembership(ContractModel):
+    """An exported filename's PNG identity, split and provenance."""
+
+    file_name: str = Field(min_length=1)
+    sha256: SHA256
+    split: Split
+    sources: list[Source] = Field(default_factory=list)
+
+
+class ReleaseDefinition(DatasetDescription):
     schema_version: Literal[1] = 1
     name: ReleaseName
     version: ReleaseName
     author: str = Field(min_length=1)
     conversion: ConversionRecipe
-    coco: ReviewedCoco
     generate_crops: StrictBool = False
 
+    @model_validator(mode="after")
+    def validate_settings(self) -> ReleaseDefinition:
+        canonical_json(self.conversion.settings)
+        return self
 
-# Existing release callers keep their public model names and JSON contract.
+
+class Dataset(ReleaseDefinition):
+    coco: ReviewedCoco
+
+
+class ReleaseMetadata(DatasetDescription):
+    # None means unknown for releases published before metadata was recorded.
+    has_bounding_boxes: StrictBool | None = None
+    has_classes: StrictBool | None = None
+    num_classes: Identifier | None = None
+    num_multi_object_images: Identifier | None = None
+    num_single_object_images: Identifier | None = None
+
+    @classmethod
+    def from_spec(cls, spec: Dataset) -> ReleaseMetadata:
+        return cls(
+            **spec.model_dump(include=set(DatasetDescription.model_fields)),
+            **cls.statistics(spec.coco),
+        )
+
+    @staticmethod
+    def statistics(coco: ReviewedCoco) -> dict[str, bool | int]:
+        counts = Counter(annotation.image_id for annotation in coco.annotations)
+        return {
+            "has_bounding_boxes": bool(coco.annotations),
+            "has_classes": bool(coco.categories),
+            "num_classes": len(coco.categories),
+            "num_multi_object_images": sum(count > 1 for count in counts.values()),
+            "num_single_object_images": sum(count == 1 for count in counts.values()),
+        }
+
+
+# Compatibility names share the same models and serialization.
 ReleaseSpec = Dataset
 CocoImage = DatasetMember
 
@@ -189,10 +238,19 @@ class ReleaseRegistration:
     author: str
     created_at: str
     container: str
-    request_sha256: str
+    request_sha256: str | None
     manifest_key: str
     manifest_sha256: str | None
     status: str
+    description: str | None
+    has_bounding_boxes: bool | None
+    has_classes: bool | None
+    num_classes: int | None
+    num_multi_object_images: int | None
+    num_single_object_images: int | None
+    dataset_cutoff_date: date | None
+    previous_version: str | None
+    database_backed: bool
 
     @classmethod
     def from_row(cls, row: DatasetRelease) -> ReleaseRegistration:
@@ -212,7 +270,19 @@ class ReleaseRegistration:
             row.manifest_key,
             row.manifest_sha256,
             row.status,
+            row.description,
+            row.has_bounding_boxes,
+            row.has_classes,
+            row.num_classes,
+            row.num_multi_object_images,
+            row.num_single_object_images,
+            row.dataset_cutoff_date,
+            row.previous_version,
+            row.database_backed,
         )
+
+    def metadata(self) -> ReleaseMetadata:
+        return ReleaseMetadata.model_validate(self, from_attributes=True)
 
     def training_reference(self) -> dict[str, str]:
         """Persist these MLflow params and reuse them on resume/evaluation."""
@@ -227,3 +297,8 @@ class ReleaseRegistration:
             "dataset_container": self.container,
             "model_dataset": f"{self.id}@sha256:{self.manifest_sha256}",
         }
+
+
+def path_identity(path: str) -> str:
+    """Normalize separators without inferring rewritten export paths."""
+    return path.replace("\\", "/")

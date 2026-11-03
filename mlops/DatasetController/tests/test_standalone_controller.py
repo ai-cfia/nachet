@@ -13,7 +13,9 @@ from dataset_controller import (
     Dataset,
     DatasetController,
     DatasetMember,
+    ImageMembership,
     ReleaseConflict,
+    ReleaseDefinition,
 )
 from dataset_controller.models.dataset import sha256
 from dataset_controller.repositories.registry import Base
@@ -71,7 +73,20 @@ async def test_standalone_publish_retry_pin_and_integrity(tmp_path):
         async with engine.begin() as connection:
             await connection.run_sync(Base.metadata.create_all)
         controller = DatasetController(storage, async_sessionmaker(engine), "datasets")
-        registration = await controller.publish(spec)
+        await controller.create_release(
+            ReleaseDefinition.model_validate(spec.model_dump(exclude={"coco"}))
+        )
+        await controller.catalog.add_membership(
+            spec.name,
+            spec.version,
+            ImageMembership(
+                file_name="/reviewed/seed.png", sha256=sha256(image), split="train"
+            ),
+        )
+        reviewed = spec.coco.model_dump(mode="json")
+        reviewed["images"][0]["file_name"] = "/reviewed/seed.png"
+        spec = await controller.prepare_coco(spec.name, spec.version, reviewed)
+        registration = await controller.publish(spec.name, spec.version)
         assert registration.status == "ready"
         assert await controller.registration(spec.name, spec.version) == registration
         assert await controller.publish(spec) == registration
@@ -82,10 +97,11 @@ async def test_standalone_publish_retry_pin_and_integrity(tmp_path):
         assert coco == spec.coco
         assert manifest.crops == []
         assert await controller.read_file(manifest.images[0]) == image
-        assert storage.uploads == [
-            "releases/reviewed/v1/coco.json",
-            "releases/reviewed/v1/release.json",
-        ]
+        assert storage.uploads == []
+        assert (
+            sha256(await controller.export_json(spec.name, spec.version, "manifest"))
+            == registration.manifest_sha256
+        )
         with pytest.raises(ReleaseConflict, match="Pinned release"):
             await controller.resolve(spec.name, spec.version, "0" * 64)
         storage.objects["datasets", key] = b"corrupted"
