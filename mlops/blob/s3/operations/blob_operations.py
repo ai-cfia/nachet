@@ -531,6 +531,9 @@ class BlobOperations:
         if options.prefix:
             list_params["Prefix"] = options.prefix
 
+        if options.continuation_token:
+            list_params["ContinuationToken"] = options.continuation_token
+
         if options.max_results:
             list_params["MaxKeys"] = int(options.max_results)
 

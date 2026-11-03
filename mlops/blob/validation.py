@@ -128,7 +128,7 @@ def validate_blob_name(name: str) -> str:
     - No leading or trailing whitespace
     - Avoid period-only path segments (., ..)
     - No trailing dots, slashes, or backslashes
-    - Characters: Alphanumeric, hyphen, underscore, period, forward slash
+    - Characters: Alphanumeric, space, hyphen, underscore, period, forward slash
     - Path segments: Limited to prevent deep nesting issues
 
     Args:
@@ -182,11 +182,11 @@ def validate_blob_name(name: str) -> str:
         )
 
     # Check for allowed characters (conservative approach)
-    # Allow: alphanumeric, hyphen, underscore, period, forward slash
-    if not all(c.isalnum() or c in "-_/." for c in name):
-        invalid_chars = set(c for c in name if not (c.isalnum() or c in "-_/."))
+    # Allow: alphanumeric, space, hyphen, underscore, period, forward slash
+    if not all(c.isalnum() or c in "-_/. " for c in name):
+        invalid_chars = set(c for c in name if not (c.isalnum() or c in "-_/. "))
         raise BlobStorageError(
-            f"Blob name can only contain letters, numbers, hyphens, underscores, "
+            f"Blob name can only contain letters, numbers, spaces, hyphens, underscores, "
             f"periods, and forward slashes. "
             f"Invalid characters: {', '.join(repr(c) for c in sorted(invalid_chars))}"
         )
