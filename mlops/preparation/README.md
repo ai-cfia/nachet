@@ -248,6 +248,10 @@ The SAM3 build checks for a CUDA-enabled PyTorch and the required SAM3 classes.
 Actual GPU execution depends on the cluster's NVIDIA driver and model weights.
 Published images are `ghcr.io/ai-cfia/nachet-preparation-{cpu,sam3,registration}`.
 Use an immutable image tag or digest for a workflow run.
+Copy each published digest from the CPU, SAM3 and registration builds in one
+successful Actions run into `CPU_IMAGE`, `SAM3_IMAGE` and `REGISTRATION_IMAGE`.
+Set `CODE_REVISION` to that run's checked-out commit. Pull-request builds use
+the tested merge commit, which can differ from the PR head.
 
 ## Checks
 
