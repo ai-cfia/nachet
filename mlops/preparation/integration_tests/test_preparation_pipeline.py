@@ -54,13 +54,17 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         "raw-prefix": "raw/collection",
         "code-revision": "test-revision",
         "dataset-name": review_name,
+        "model-revision": "synthetic-weights",
     }
     config = {
         "bucket": "datasets",
-        "endpoint-url": "https://storage.example.test",
         "region": "test",
-        "model-revision": "synthetic-weights",
         "server-media-root": "/fiftyone-s3",
+    }
+    secrets = {
+        "nachet-training-s3": {"MLFLOW_S3_ENDPOINT_URL": "http://storage.example.test"},
+        # The fiftyone fixture supplies the isolated database connection.
+        "nachet-preparation-fiftyone": {},
     }
 
     def run_step(name):
@@ -69,6 +73,8 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
             entry["name"]: config[entry["valueFrom"]["configMapKeyRef"]["key"]]
             for entry in container.get("env", [])
         }
+        for source in container.get("envFrom", []):
+            environment.update(secrets[source["secretRef"]["name"]])
         args = []
         for value in container["args"]:
             for key, replacement in values.items():
@@ -89,6 +95,7 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
     for step in templates["prepare-for-review"]["steps"]:
         run_step(step[0]["template"])
     dataset = fiftyone.load_dataset(review_name)
+    assert dataset.info["prelabel"]["model_revision"] == "synthetic-weights"
     assert len(dataset) == 3
     assert set(dataset.values("split")) == {"train", "validation", None}
     for sample in dataset:
