@@ -75,7 +75,9 @@ def test_registration_keeps_fields_and_refuses_to_replace_review_work(
     assert dataset.info["prelabel"] == draft_coco["info"]["prelabel"]
 
 
-@pytest.mark.parametrize("sources", [[], [{"path": "raw/a.tiff"}]])
+@pytest.mark.parametrize(
+    "sources", [[], [{"original_path": "raw/a.tiff"}], [{"path": "raw/a.tiff"}]]
+)
 def test_first_sample_without_split_or_prelabels_keeps_nullable_fields(
     tmp_path, fiftyone, review_name, draft_coco, sources
 ):
@@ -91,6 +93,7 @@ def test_first_sample_without_split_or_prelabels_keeps_nullable_fields(
     register_fiftyone(review_name, labels, str(tmp_path))
     dataset = fiftyone.load_dataset(review_name)
     sample = dataset.match({"coco_id": record["id"]}).first()
+    assert (sample["sources"] or []) == sources
     assert sample["split"] is None
     assert sample["source_species"] is None
     assert sample["prelabel_status"] == "unannotated"
@@ -212,7 +215,7 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
     }
     for record in draft["images"]:
         sample = samples[record["id"]]
-        relative = record["sources"][0]["path"]
+        relative = record["sources"][0]["original_path"]
         assert (sample["source_species"], sample["split"]) == expected_assignments[
             relative
         ]

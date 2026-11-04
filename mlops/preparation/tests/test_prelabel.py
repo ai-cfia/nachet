@@ -15,7 +15,7 @@ def coco(prepare):
     coco["images"] = [
         image
         for image in coco["images"]
-        if not image["sources"][0]["path"].endswith("d.tiff")
+        if not image["sources"][0]["original_path"].endswith("d.tiff")
     ]
     return coco
 
@@ -114,7 +114,9 @@ def test_high_bit_depth_images_remain_for_review_without_stopping_the_batch(
         index, intake[1], lambda image: calls.append(1) or Prediction([[1, 1, 3, 3]])
     )
     high_bit = next(
-        i for i in result["images"] if i["sources"][0]["path"].endswith("d.tiff")
+        i
+        for i in result["images"]
+        if i["sources"][0]["original_path"].endswith("d.tiff")
     )
     assert high_bit["prelabel_status"] == "needs_review"
     assert high_bit["prelabel_reason"] == "high_bit_depth"
@@ -144,7 +146,7 @@ def test_colour_png_depth_is_checked_before_prediction(
     before = next(
         image
         for image in index["images"]
-        if image["sources"][0]["path"].endswith("colour.png")
+        if image["sources"][0]["original_path"].endswith("colour.png")
     )
     calls = []
     result = prelabel(
@@ -268,7 +270,7 @@ def test_automatic_collection_keeps_labels_and_splits_through_prelabel(
         image = images[box["image_id"]]
         source = image["sources"][0]
         assert classes[box["category_id"]] == source["species"]
-        assert source["raw_key"] == "raw/collection/" + source["path"]
+        assert source["raw_key"] == "raw/collection/" + source["original_path"]
         if source["species"] == "C":
             assert box["category_id"] == 3
             c_splits.add(image["split"])
