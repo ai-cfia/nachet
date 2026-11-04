@@ -93,9 +93,9 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
     assert set(dataset.values("split")) == {"train", "validation", None}
     for sample in dataset:
         source = sample.sources[0]
-        raw = (original / source["path"]).read_bytes()
+        raw = (original / source["original_path"]).read_bytes()
         assert source["raw_sha256"] == hashlib.sha256(raw).hexdigest()
-        assert source["raw_key"] == "raw/collection/" + source["path"]
+        assert source["raw_key"] == "raw/collection/" + source["original_path"]
         assert s3_provider.objects["datasets", source["raw_key"]] == raw
         png = s3_provider.objects["datasets", sample.object_key]
         assert sample.image_sha256 == hashlib.sha256(png).hexdigest()
