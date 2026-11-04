@@ -105,7 +105,7 @@ def test_s3_and_local_conversion_produce_identical_outputs(
     assert all(path.read_bytes() == data for path, data in before.items())
     downloaded = {call.args[1] for call in storage.download_blob.call_args_list}
     assert downloaded == {
-        "raw/collection/" + source["path"]
+        "raw/collection/" + source["original_path"]
         for image in actual["images"]
         for source in image["sources"]
     }
@@ -377,7 +377,7 @@ def test_interrupted_upload_leaves_no_index_and_retry_finishes(
         data = s3_provider.objects["datasets", image["file_name"]]
         assert hashlib.sha256(data).hexdigest() == image["image_sha256"]
         for source in image["sources"]:
-            assert source["raw_key"] == "raw/collection/" + source["path"]
+            assert source["raw_key"] == "raw/collection/" + source["original_path"]
             assert (
                 hashlib.sha256(originals["datasets", source["raw_key"]]).hexdigest()
                 == source["raw_sha256"]
