@@ -1,11 +1,15 @@
 """Generate draft COCO boxes with the SAM3 notebook's prompt and padding policy."""
 
 import argparse
+import asyncio
 import copy
+import hashlib
+import io
 import json
 import math
 from pathlib import Path
 from typing import NamedTuple
+from urllib.parse import urlsplit
 
 from PIL import Image
 
@@ -122,23 +126,52 @@ def prelabel(coco: dict, media_root: Path, predictor, *, padding: int = 3) -> di
 
     Prediction boxes use pixel XYXY coordinates; the prompt is optional.
     """
+    media_root = media_root.resolve(strict=True)
+    return _prelabel(
+        coco,
+        lambda record: (media_root / record["file_name"]).open("rb"),
+        predictor,
+        padding=padding,
+    )
+
+
+def prelabel_s3(
+    coco: dict, storage, bucket: str, predictor, *, padding: int = 3
+) -> dict:
+    """Check each prepared PNG's hash before giving its pixels to the predictor."""
+    with asyncio.Runner() as runner:
+
+        def open_image(record):
+            key, digest = record["file_name"], record["image_sha256"]
+            if key != f"png/detection/{digest}.png":
+                raise ValueError(f"PNG key does not match image_sha256: {key}")
+            data = runner.run(storage.download_blob(bucket, key))
+            if hashlib.sha256(data).hexdigest() != digest:
+                raise ValueError(f"PNG does not match image_sha256: {key}")
+            return io.BytesIO(data)
+
+        return _prelabel(coco, open_image, predictor, padding=padding)
+
+
+def _prelabel(coco: dict, open_image, predictor, *, padding: int) -> dict:
+    """Use the same decoding and annotation policy for local and S3 streams."""
     if coco["annotations"]:
         raise ValueError(
             "Pre-labeling requires an unannotated index; refusing to replace labels"
         )
     result = copy.deepcopy(coco)
     categories = {category["name"]: category["id"] for category in result["categories"]}
-    media_root = media_root.resolve(strict=True)
     for record in result["images"]:
         category_id = categories[record["sources"][0]["species"]]
-        path = media_root / record["file_name"]
-        with path.open("rb") as stream:
+        with open_image(record) as stream:
             # PNG's IHDR bit depth is byte 24; Pillow's RGB/RGBA modes hide it.
             header = stream.read(25)
             stream.seek(0)
             with Image.open(stream) as image:
                 if image.size != (record["width"], record["height"]):
-                    raise ValueError(f"COCO dimensions do not match {path}")
+                    raise ValueError(
+                        f"COCO dimensions do not match {record['file_name']}"
+                    )
                 if image.mode in HIGH_BIT_MODES or (
                     image.format == "PNG" and header[24] == 16
                 ):
@@ -181,7 +214,7 @@ def prelabel(coco: dict, media_root: Path, predictor, *, padding: int = 3) -> di
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("index", type=Path)
-    parser.add_argument("media_root", type=Path)
+    parser.add_argument("media_root", help="Local media directory or s3://<bucket>")
     parser.add_argument("output", type=Path)
     parser.add_argument("--model-path", required=True, type=Path)
     parser.add_argument(
@@ -191,16 +224,50 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument("--device", required=True, choices=["cpu", "cuda"])
     parser.add_argument("--padding", type=int, default=3)
+    parser.add_argument("--endpoint-url", help="HTTPS endpoint for S3 input")
+    parser.add_argument("--region", help="Region for S3 input")
+    parser.add_argument(
+        "--allow-http", action="store_true", help="Allow a trusted HTTP test endpoint"
+    )
     args = parser.parse_args(argv)
     if args.padding < 0:
         parser.error("padding must be non-negative")
-    predictor = Sam3Predictor(args.model_path, args.device)
-    result = prelabel(
-        json.loads(args.index.read_text()),
-        args.media_root,
-        predictor,
-        padding=args.padding,
-    )
+    source = urlsplit(args.media_root)
+    storage = None
+    if source.scheme == "s3":
+        if (
+            not source.netloc
+            or source.path not in ("", "/")
+            or source.query
+            or source.fragment
+        ):
+            parser.error("S3 media root must be s3://<bucket> without a key prefix")
+        if not args.endpoint_url or not args.region:
+            parser.error("S3 input requires --endpoint-url and --region")
+        from s3_storage import create_storage
+
+        try:
+            storage = create_storage(
+                args.endpoint_url, args.region, allow_http=args.allow_http
+            )
+        except ValueError as error:
+            parser.error(str(error))
+    elif args.endpoint_url or args.region or args.allow_http:
+        parser.error("S3 options require an s3://<bucket> media root")
+    try:
+        predictor = Sam3Predictor(args.model_path, args.device)
+        coco = json.loads(args.index.read_text())
+        if storage is not None:
+            result = prelabel_s3(
+                coco, storage, source.netloc, predictor, padding=args.padding
+            )
+        else:
+            result = prelabel(
+                coco, Path(args.media_root), predictor, padding=args.padding
+            )
+    finally:
+        if storage is not None:
+            storage.close()
     result["info"]["prelabel"] = {
         "model_path": str(args.model_path),
         "model_revision": args.model_revision,
