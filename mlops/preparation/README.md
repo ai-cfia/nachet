@@ -154,14 +154,14 @@ uv run --project mlops/preparation --no-sync python \
   mlops/preparation/prelabel.py /work/prepared/index.coco.json \
   s3://training-datasets /work/draft.coco.json \
   --endpoint-url https://s3.example.test --region us-east-1 \
-  --model-path /models/sam3 --model-revision <weights-revision> --device cuda
+  --model-path /models/sam3 --model-revision "$MODEL_REVISION" --device cuda
 ```
 
 S3 input reads one PNG into memory and checks its key and SHA-256 before
 decoding. A missing object, hash mismatch or dimension mismatch stops the run.
 PNGs are not saved locally. The bucket root contains the `png/detection/` keys
 from COCO; a key prefix in the S3 media-root argument is refused. Credentials
-and private-CA settings follow the upload command below.
+and private-CA settings are described under "Convert originals from S3".
 
 For each image, the command tries the notebook's prompts in order:
 "foreground object", "thick long seed", then "insect". It stops at the first
