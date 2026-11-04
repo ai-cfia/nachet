@@ -8,11 +8,11 @@ from mlops_blob.exceptions import BlobAlreadyExistsError
 
 
 def create_storage(endpoint_url: str, region: str, *, allow_http: bool = False):
-    """Use the shared credential chain and require TLS outside explicit tests."""
+    """Use shared credentials; allow HTTP only when explicitly requested."""
     scheme = urlsplit(endpoint_url).scheme
     if scheme != "https" and not (scheme == "http" and allow_http):
         raise ValueError(
-            "Use an HTTPS endpoint, or --allow-http for a trusted test endpoint"
+            "Use an HTTPS endpoint, or --allow-http for a trusted HTTP endpoint"
         )
     return create_blob_storage_client(
         "s3",
