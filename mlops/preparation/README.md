@@ -17,12 +17,13 @@ the same bucket. It uses the local converter's settings and source records.
 Neither originals nor generated PNGs are saved locally.
 
 ```bash
+CODE_REVISION=$(git rev-parse HEAD)
 uv sync --project mlops/preparation --locked --group storage
 uv run --project mlops/preparation --no-sync python \
   mlops/preparation/prepare_s3.py /work/prepared \
   --bucket training-datasets --endpoint-url https://s3.example.test \
   --region us-east-1 --raw-prefix raw/collection-01 \
-  --code-revision <commit>
+  --code-revision "$CODE_REVISION"
 ```
 
 The S3 keys below the collection prefix must follow the species/split layout
@@ -77,11 +78,13 @@ in case are also rejected.
 
 ## Convert and index
 
+Set `CODE_REVISION` to the source revision used for conversion.
+
 ```bash
 uv run --project mlops/preparation --no-sync python \
   mlops/preparation/prepare_images.py \
   /work/raw/Collection /work/prepared \
-  --raw-prefix raw/Collection --code-revision <commit>
+  --raw-prefix raw/Collection --code-revision "$CODE_REVISION"
 ```
 
 The output directory must be outside the collection. It receives
@@ -133,14 +136,15 @@ the collection or settings change.
 
 `prelabel.py` adds draft boxes to the COCO index for review in FiftyOne.
 Install the `sam3` group and provide a local directory containing the SAM3
-weights. The command does not download weights.
+weights. Set `MODEL_REVISION` to their revision label; it is recorded in the
+COCO file. The command does not download weights.
 
 ```bash
 uv sync --project mlops/preparation --locked --group sam3
 uv run --project mlops/preparation --no-sync python \
   mlops/preparation/prelabel.py /work/prepared/index.coco.json \
   /work/prepared /work/draft.coco.json \
-  --model-path /models/sam3 --model-revision <weights-revision> --device cuda
+  --model-path /models/sam3 --model-revision "$MODEL_REVISION" --device cuda
 ```
 
 For each image, the command tries the notebook's prompts in order:

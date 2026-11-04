@@ -490,14 +490,16 @@ def test_storage_uses_configured_ca_for_explicit_test_http(monkeypatch, ca_bundl
     "code", ["AccessDenied", "NotImplemented", "ConditionalRequestConflict"]
 )
 def test_upload_errors_do_not_fall_back_to_overwrite(s3_provider, code):
-    from s3_storage import upload_png
+    import s3_storage
 
     s3_provider.client.put_object.side_effect = ClientError(
         {"Error": {"Code": code}}, "PutObject"
     )
     with pytest.raises(BlobStorageError):
         asyncio.run(
-            upload_png(s3_provider.storage, "datasets", "png/detection/a.png", b"a")
+            s3_storage.upload_png(
+                s3_provider.storage, "datasets", "png/detection/a.png", b"a"
+            )
         )
     s3_provider.client.put_object.assert_called_once()
     assert s3_provider.client.put_object.call_args.kwargs["IfNoneMatch"] == "*"
