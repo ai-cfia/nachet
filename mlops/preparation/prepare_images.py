@@ -181,7 +181,7 @@ def add_image(
     image_sha256 = hashlib.sha256(png_bytes).hexdigest()
     key = f"png/detection/{image_sha256}.png"
     source = {
-        "path": relative.as_posix(),
+        "original_path": relative.as_posix(),
         "species": species,
         "raw_sha256": hashlib.sha256(raw_bytes).hexdigest(),
         "legacy_md5": hashlib.md5(raw_bytes, usedforsecurity=False).hexdigest(),
