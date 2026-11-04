@@ -228,6 +228,31 @@ only after success. A caught failure deletes that temporary dataset. A killed
 process can leave it behind, but a retry uses a new temporary name. Remove a
 leftover only after confirming its job has stopped; keep review datasets.
 
+## Runtime images
+
+The Dockerfile uses `mlops/` as its build context. The `cpu` target contains
+conversion and upload commands, `sam3` adds CUDA-enabled PyTorch and
+pre-labeling, and `registration` adds the FiftyOne SDK. Tests run during the
+build without network access. Weights and credentials are supplied at runtime.
+
+```bash
+docker build --platform linux/amd64 -f mlops/preparation/Dockerfile \
+  --target cpu -t nachet-preparation-cpu:local mlops
+docker build --platform linux/amd64 -f mlops/preparation/Dockerfile \
+  --target sam3 -t nachet-preparation-sam3:local mlops
+docker build --platform linux/amd64 -f mlops/preparation/Dockerfile \
+  --target registration -t nachet-preparation-registration:local mlops
+```
+
+The SAM3 build checks for a CUDA-enabled PyTorch and the required SAM3 classes.
+Actual GPU execution depends on the cluster's NVIDIA driver and model weights.
+Published images are `ghcr.io/ai-cfia/nachet-preparation-{cpu,sam3,registration}`.
+Use an immutable image tag or digest for a workflow run.
+Copy each published digest from the CPU, SAM3 and registration builds in one
+successful Actions run into `CPU_IMAGE`, `SAM3_IMAGE` and `REGISTRATION_IMAGE`.
+Set `CODE_REVISION` to that run's checked-out commit. Pull-request builds use
+the tested merge commit, which can differ from the PR head.
+
 ## Checks
 
 ```bash
