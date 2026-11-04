@@ -466,7 +466,17 @@ def test_storage_rejects_insecure_endpoints(monkeypatch, endpoint):
 
 
 @pytest.mark.parametrize("ca_bundle", [None, "/test/ca.pem"])
-def test_storage_uses_configured_ca_for_explicit_test_http(monkeypatch, ca_bundle):
+@pytest.mark.parametrize(
+    "endpoint,allow_http",
+    [
+        ("https://storage.example.test", False),
+        ("https://storage.example.test", True),
+        ("http://storage.example.test", True),
+    ],
+)
+def test_storage_preserves_endpoint_and_ca_settings(
+    monkeypatch, ca_bundle, endpoint, allow_http
+):
     import s3_storage
 
     factory = Mock()
@@ -475,11 +485,11 @@ def test_storage_uses_configured_ca_for_explicit_test_http(monkeypatch, ca_bundl
         monkeypatch.setenv("AWS_CA_BUNDLE", ca_bundle)
     else:
         monkeypatch.delenv("AWS_CA_BUNDLE", raising=False)
-    s3_storage.create_storage("http://127.0.0.1:12345", "garage", allow_http=True)
+    s3_storage.create_storage(endpoint, "garage", allow_http=allow_http)
     factory.assert_called_once_with(
         "s3",
         {
-            "s3_endpoint_url": "http://127.0.0.1:12345",
+            "s3_endpoint_url": endpoint,
             "s3_region_name": "garage",
             "s3_verify": ca_bundle or True,
         },

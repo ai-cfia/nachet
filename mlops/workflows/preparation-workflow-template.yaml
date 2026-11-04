@@ -27,14 +27,17 @@ spec:
         description: New FiftyOne review dataset; existing names are refused.
       - name: raw-prefix
         description: One collection below raw/ in the dataset bucket.
-      - name: model-pvc
-        description: Readable PVC in this namespace with SAM3 weights at its root.
+      - name: model-folder
+        description: Model folder below models/ on the workspace. Defaults to sam3; must match the runtime's predictor.
+        value: sam3
+      - name: model-revision
+        description: Revision label for the selected model files. Required; not verified automatically.
       - name: gpu-node
         description: GPU node for SAM3. Defaults to ai-lab-1.
         value: ai-lab-1
         enum: [ai-lab-1, ai-lab-2, ai-lab-3]
       - name: workspace-pvc
-        description: RWX workspace for COCO files. Defaults to nachet-training-workspace-pvc.
+        description: RWX workspace for COCO files and model folders. Defaults to nachet-training-workspace-pvc.
         value: nachet-training-workspace-pvc
   securityContext:
     runAsNonRoot: true
@@ -47,10 +50,6 @@ spec:
     - name: workspace
       persistentVolumeClaim:
         claimName: "{{workflow.parameters.workspace-pvc}}"
-    - name: model
-      persistentVolumeClaim:
-        claimName: "{{workflow.parameters.model-pvc}}"
-        readOnly: true
     - name: tmp
       emptyDir: {}
   templates:
@@ -75,7 +74,9 @@ spec:
           - --bucket
           - "$(PREPARATION_BUCKET)"
           - --endpoint-url
-          - "$(PREPARATION_ENDPOINT_URL)"
+          - "$(MLFLOW_S3_ENDPOINT_URL)"
+          # Howard's existing Ceph endpoint uses HTTP inside the cluster.
+          - --allow-http
           - --region
           - "$(PREPARATION_REGION)"
           - --raw-prefix
@@ -86,15 +87,12 @@ spec:
           - name: PREPARATION_BUCKET
             valueFrom:
               configMapKeyRef: {name: nachet-preparation-config, key: bucket}
-          - name: PREPARATION_ENDPOINT_URL
-            valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: endpoint-url}
           - name: PREPARATION_REGION
             valueFrom:
               configMapKeyRef: {name: nachet-preparation-config, key: region}
         envFrom:
           - secretRef:
-              name: nachet-preparation-storage
+              name: nachet-training-s3
         resources:
           requests: {cpu: "1", memory: 1Gi}
           limits: {cpu: "2", memory: 4Gi}
@@ -123,31 +121,26 @@ spec:
           - "s3://$(PREPARATION_BUCKET)"
           - /workspace/{{workflow.name}}/prepared/draft.coco.json
           - --endpoint-url
-          - "$(PREPARATION_ENDPOINT_URL)"
+          - "$(MLFLOW_S3_ENDPOINT_URL)"
+          - --allow-http
           - --region
           - "$(PREPARATION_REGION)"
           - --model-path
           - /model
           - --model-revision
-          - "$(PREPARATION_MODEL_REVISION)"
+          - "{{workflow.parameters.model-revision}}"
           - --device
           - cuda
         env:
           - name: PREPARATION_BUCKET
             valueFrom:
               configMapKeyRef: {name: nachet-preparation-config, key: bucket}
-          - name: PREPARATION_ENDPOINT_URL
-            valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: endpoint-url}
           - name: PREPARATION_REGION
             valueFrom:
               configMapKeyRef: {name: nachet-preparation-config, key: region}
-          - name: PREPARATION_MODEL_REVISION
-            valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: model-revision}
         envFrom:
           - secretRef:
-              name: nachet-preparation-storage
+              name: nachet-training-s3
         resources:
           requests: {cpu: "2", memory: 8Gi, nvidia.com/gpu: "1"}
           limits: {cpu: "4", memory: 16Gi, nvidia.com/gpu: "1"}
@@ -159,8 +152,9 @@ spec:
         volumeMounts:
           - name: workspace
             mountPath: /workspace
-          - name: model
+          - name: workspace
             mountPath: /model
+            subPath: "models/{{workflow.parameters.model-folder}}"
             readOnly: true
           - name: tmp
             mountPath: /tmp
