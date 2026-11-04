@@ -32,6 +32,10 @@ adapter and its worker execution remain in the separate dataset release PR.
 - S3 credentials can be omitted to use boto3's normal credential chain. Explicit
   access/secret keys must be paired; explicit session tokens are supported. Client
   construction does not call `ListBuckets`, allowing bucket-scoped credentials.
+- Object keys allow spaces within collection paths. Other compatibility checks,
+  including control characters and leading/trailing whitespace, remain in place.
+- `ListOptions.continuation_token` is forwarded to S3's `ContinuationToken` so
+  callers can continue a listing beyond its first page.
 - Azure accepts an explicit connection string as well as the original config
   dictionary. `overwrite=False` uses the Azure SDK's create-only behavior, and
   its `ResourceExistsError` becomes the same common `BlobAlreadyExistsError`.

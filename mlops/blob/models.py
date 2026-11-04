@@ -235,6 +235,9 @@ class ListOptions(BaseModel):
     """Options for blob/container listing operations."""
 
     prefix: Optional[str] = None
+    continuation_token: Optional[str] = Field(
+        default=None, description="Opaque S3 listing token; not used by Azure"
+    )
     max_results: Optional[int] = Field(default=None, gt=0, le=5000)
     include_metadata: bool = False
     include_tags: bool = False
