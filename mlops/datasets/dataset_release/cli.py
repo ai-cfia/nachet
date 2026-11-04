@@ -158,7 +158,7 @@ async def run_dataset_release_command(args: argparse.Namespace) -> dict | list:
             if (
                 args.document == "coco"
                 and not (
-                    await controller.registration(args.name, args.version)
+                    await controller.get_release_registration(args.name, args.version)
                 ).database_backed
             ):
                 storage = await asyncio.to_thread(BlobStorageAdapter.from_environment)
@@ -170,9 +170,9 @@ async def run_dataset_release_command(args: argparse.Namespace) -> dict | list:
                 return {"output": str(args.output)}
             return json.loads(data)
         elif args.action == "publish":
-            registration = await controller.publish(args.name, args.version)
+            registration = await controller.publish_release(args.name, args.version)
         else:
-            registration, manifest, coco = await controller.resolve(
+            registration, manifest, coco = await controller.load_verified_release(
                 args.name, args.version, args.expected_manifest_sha256
             )
             if args.action == "inspect":

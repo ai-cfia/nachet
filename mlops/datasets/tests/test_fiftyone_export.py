@@ -376,7 +376,9 @@ async def test_missing_database_membership_leaves_draft_unchanged(
     with pytest.raises(ValueError, match="Missing membership"):
         await prepare(export_args("--coco", str(labels)), draft)
     assert await draft.catalog.memberships("reviewed-seeds", "v1") == []
-    assert (await draft.registration("reviewed-seeds", "v1")).status == "draft"
+    assert (
+        await draft.get_release_registration("reviewed-seeds", "v1")
+    ).status == "draft"
 
 
 @pytest.mark.asyncio

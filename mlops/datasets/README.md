@@ -271,6 +271,12 @@ and cluster job deployment are outside these tools.
 
 ## Training integration
 
+Python jobs publish or resume a specification with
+`DatasetController.publish_release(spec)`. Use
+`get_release_registration(name, version)` to read registry state, including staging
+registrations, and `load_verified_release(name, version, expected_manifest_sha256)`
+to verify a ready release and return its registration, manifest and reviewed COCO.
+
 `dataset_release.reader.ReleasedDataset` resolves a verified release and fetches
 detector images or classifier crops one at a time through the MLOps blob adapter. It does
 not require a shared FiftyOne PVC or create a permanent local image collection.

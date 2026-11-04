@@ -126,7 +126,7 @@ class DatasetController:
     async def create_release(self, metadata: ReleaseDefinition) -> ReleaseRegistration:
         """Register draft metadata in the catalog and return its release identity."""
         await self.catalog.create(metadata)
-        return await self.registration(metadata.name, metadata.version)
+        return await self.get_release_registration(metadata.name, metadata.version)
 
     async def prepare_coco(self, name: str, version: str, coco: dict) -> ReleaseSpec:
         """Join offline labels to membership entities, then store reviewed labels."""
@@ -146,7 +146,7 @@ class DatasetController:
 
     async def export_json(self, name: str, version: str, document: str) -> bytes:
         """Generate a requested document from the authoritative database records."""
-        registration = await self.registration(name, version)
+        registration = await self.get_release_registration(name, version)
         if registration.database_backed and registration.status == "ready":
             spec = await self.catalog.spec(name, version)
             manifest = await self.catalog.manifest(registration, spec)
@@ -166,7 +166,7 @@ class DatasetController:
                 mode="json"
             )
         elif document in ("coco", "manifest"):
-            _, manifest, coco = await self.resolve(name, version)
+            _, manifest, coco = await self.load_verified_release(name, version)
             if document == "manifest":
                 if not registration.database_backed:
                     return await self.storage.download_blob(
@@ -178,7 +178,9 @@ class DatasetController:
             raise ValueError("Unknown release document")
         return canonical_json(value)
 
-    async def registration(self, name: str, version: str) -> ReleaseRegistration:
+    async def get_release_registration(
+        self, name: str, version: str
+    ) -> ReleaseRegistration:
         """Look up a release, rejecting unknown versions and container mismatches.
 
         Staging registrations are returned so interrupted publications can resume.
@@ -280,11 +282,11 @@ class DatasetController:
                         setattr(row, field, value)
         except IntegrityError:
             # The unique constraint also serializes concurrent initial claims.
-            existing = await self.registration(spec.name, spec.version)
+            existing = await self.get_release_registration(spec.name, spec.version)
             if existing.request_sha256 != request_hash:
                 raise ReleaseConflict("This name/version already has different inputs")
             return existing
-        return await self.registration(spec.name, spec.version)
+        return await self.get_release_registration(spec.name, spec.version)
 
     async def _put_unchanged(
         self, key: str, data: bytes, content_type: str
@@ -311,7 +313,7 @@ class DatasetController:
         """Read a blob or generate database-backed COCO, then verify size and SHA-256."""
         parts = reference.key.split("/")
         if len(parts) == 4 and parts[0] == "releases" and parts[3] == "coco.json":
-            registration = await self.registration(parts[1], parts[2])
+            registration = await self.get_release_registration(parts[1], parts[2])
         else:
             registration = None
         if registration is not None and registration.database_backed:
@@ -323,7 +325,7 @@ class DatasetController:
             raise ReleaseConflict(f"Object checksum/size mismatch: {reference.key}")
         return data
 
-    async def publish(
+    async def publish_release(
         self, spec: ReleaseSpec | str, version: str | None = None
     ) -> ReleaseRegistration:
         """Publish a prepared database release or retry an existing specification.
@@ -343,7 +345,9 @@ class DatasetController:
 
         registration = await self._claim(spec, request_hash, recipe)
         if registration.status == "ready":
-            await self.resolve(spec.name, spec.version, registration.manifest_sha256)
+            await self.load_verified_release(
+                spec.name, spec.version, registration.manifest_sha256
+            )
             return registration
 
         if registration.database_backed:
@@ -492,9 +496,11 @@ class DatasetController:
                 raise ReleaseConflict("Published manifest cannot be replaced")
             row.manifest_sha256 = manifest_sha256
             row.status = "ready"
-        return await self.registration(registration.name, registration.version)
+        return await self.get_release_registration(
+            registration.name, registration.version
+        )
 
-    async def resolve(
+    async def load_verified_release(
         self,
         name: str,
         version: str,
@@ -505,7 +511,7 @@ class DatasetController:
         An expected manifest digest pins the selection. Incomplete releases raise
         ReleaseNotReady; conflicting identities or checksums raise ReleaseConflict.
         """
-        registration = await self.registration(name, version)
+        registration = await self.get_release_registration(name, version)
         if registration.status != "ready" or registration.manifest_sha256 is None:
             raise ReleaseNotReady(f"Release is incomplete: {name}/{version}")
         if (

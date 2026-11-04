@@ -163,14 +163,16 @@ async def test_release_uses_copied_blob_provider_for_publication_and_reads(
     # The retry must reuse existing crops via the common conflicts.
     with patch.object(controller, "_validate", side_effect=OSError("Interrupted")):
         with pytest.raises(OSError, match="Interrupted"):
-            await controller.publish(spec)
-    assert (await controller.registration(spec.name, spec.version)).status == "staging"
+            await controller.publish_release(spec)
+    assert (
+        await controller.get_release_registration(spec.name, spec.version)
+    ).status == "staging"
     interrupted_objects = dict(blob_provider.objects)
-    first = await controller.publish(spec)
+    first = await controller.publish_release(spec)
     assert first.status == "ready"
     assert blob_provider.objects == interrupted_objects
     saved_objects = dict(blob_provider.objects)
-    assert await controller.publish(spec) == first
+    assert await controller.publish_release(spec) == first
     assert blob_provider.objects == saved_objects
 
     reader = await ReleasedDataset.open(
@@ -188,7 +190,7 @@ async def test_release_uses_copied_blob_provider_for_publication_and_reads(
         update={"author": "another reviewer"}
     )
     with pytest.raises(ReleaseConflict):
-        await controller.publish(changed)
+        await controller.publish_release(changed)
     assert blob_provider.objects == saved_objects
 
 
@@ -196,9 +198,9 @@ async def test_release_uses_copied_blob_provider_for_publication_and_reads(
 async def test_publish_retry_corrected_version_and_s3_readers(release_env):
     controller, storage, sessions = release_env
     spec = specification(storage)
-    first = await controller.publish(spec)
+    first = await controller.publish_release(spec)
     saved_objects = dict(storage.objects)
-    again = await controller.publish(spec)
+    again = await controller.publish_release(spec)
     assert again == first
     assert storage.objects == saved_objects
     async with sessions() as session:
@@ -227,15 +229,15 @@ async def test_publish_retry_corrected_version_and_s3_readers(release_env):
     corrected = spec.model_dump(mode="json")
     corrected["coco"]["annotations"][0]["bbox"] = [0.5, 1.5, 6.0, 5.0]
     with pytest.raises(ReleaseConflict):
-        await controller.publish(ReleaseSpec.model_validate(corrected))
+        await controller.publish_release(ReleaseSpec.model_validate(corrected))
     corrected["version"] = "v2"
-    second = await controller.publish(ReleaseSpec.model_validate(corrected))
+    second = await controller.publish_release(ReleaseSpec.model_validate(corrected))
     assert second.id != first.id
     assert all(storage.objects[key] == value for key, value in saved_objects.items())
     old = await ReleasedDataset.open(controller, spec.name, "v1", first.manifest_sha256)
     assert old.coco.annotations[0].bbox == [1.25, 2.5, 4.5, 3.0]
     with pytest.raises(ReleaseConflict, match="Pinned"):
-        await controller.resolve(spec.name, "v2", first.manifest_sha256)
+        await controller.load_verified_release(spec.name, "v2", first.manifest_sha256)
 
 
 @pytest.mark.asyncio
@@ -253,7 +255,7 @@ async def test_metadata_survives_publication_registry_reader_and_inspect(
     payload["coco"]["annotations"][1]["image_id"] = 1
     payload["coco"]["categories"].append({"id": 8, "name": "Unused category"})
     spec = ReleaseSpec.model_validate(payload)
-    registration = await controller.publish(spec)
+    registration = await controller.publish_release(spec)
     expected = {
         "description": payload["description"],
         "dataset_cutoff_date": "2026-10-22",
@@ -277,7 +279,7 @@ async def test_metadata_survives_publication_registry_reader_and_inspect(
     reader = await ReleasedDataset.open(controller, spec.name, spec.version)
     for field, value in expected.items():
         assert reader.manifest.model_dump(mode="json")[field] == value
-    assert await controller.publish(spec) == registration
+    assert await controller.publish_release(spec) == registration
 
     monkeypatch.setenv("DATASET_DATABASE_URL", str(sessions.kw["bind"].url))
     monkeypatch.setattr(BlobStorageAdapter, "from_environment", lambda: storage)
@@ -301,19 +303,19 @@ async def test_metadata_survives_publication_registry_reader_and_inspect(
 async def test_metadata_changes_require_a_new_version(release_env, field, value):
     controller, storage, _ = release_env
     spec = specification(storage)
-    await controller.publish(spec)
+    await controller.publish_release(spec)
     changed = spec.model_dump(mode="json")
     changed[field] = value
     with pytest.raises(ReleaseConflict, match="different inputs"):
-        await controller.publish(ReleaseSpec.model_validate(changed))
+        await controller.publish_release(ReleaseSpec.model_validate(changed))
 
 
 @pytest.mark.asyncio
 async def test_recorded_statistics_must_match_coco(release_env):
     controller, storage, _ = release_env
     spec = specification(storage)
-    await controller.publish(spec)
-    _, manifest, coco = await controller.resolve(spec.name, spec.version)
+    await controller.publish_release(spec)
+    _, manifest, coco = await controller.load_verified_release(spec.name, spec.version)
     for field, value in ReleaseMetadata.statistics(coco).items():
         incorrect = int(value) + 1
         if isinstance(value, bool):
@@ -353,7 +355,7 @@ def test_invalid_metadata_types_and_counts_are_rejected(field, value):
 async def test_legacy_releases_keep_hashes_and_remain_retryable(release_env, status):
     controller, storage, sessions = release_env
     spec = specification(storage)
-    registration = await controller.publish(spec)
+    registration = await controller.publish_release(spec)
     key = ("datasets", registration.manifest_key)
     # Recreate a manifest and registration from before metadata was introduced.
     legacy_manifest = json.loads(
@@ -382,11 +384,11 @@ async def test_legacy_releases_keep_hashes_and_remain_retryable(release_env, sta
         row.status = status
         row.manifest_sha256 = sha256(legacy_bytes) if status == "ready" else None
     saved_objects = dict(storage.objects)
-    result = await controller.publish(spec)
+    result = await controller.publish_release(spec)
     assert result.status == "ready"
     assert result.manifest_sha256 == sha256(legacy_bytes)
     assert storage.objects == saved_objects
-    _, manifest, _ = await controller.resolve(spec.name, spec.version)
+    _, manifest, _ = await controller.load_verified_release(spec.name, spec.version)
     assert all(
         getattr(manifest, field) is None for field in ReleaseMetadata.model_fields
     )
@@ -405,10 +407,10 @@ async def test_interrupted_publication_is_unselectable_and_retryable(
         side_effect=OSError("Interrupted database publication"),
     ):
         with pytest.raises(OSError):
-            await controller.publish(spec)
+            await controller.publish_release(spec)
     with pytest.raises(ReleaseNotReady):
-        await controller.resolve(spec.name, spec.version)
-    ready = await controller.publish(spec)
+        await controller.load_verified_release(spec.name, spec.version)
+    ready = await controller.publish_release(spec)
     assert ready.status == "ready"
     async with sessions() as session:
         assert (
@@ -420,7 +422,9 @@ async def test_interrupted_publication_is_unselectable_and_retryable(
 async def test_concurrent_identical_publishers_share_one_registration(release_env):
     controller, storage, sessions = release_env
     spec = specification(storage)
-    results = await asyncio.gather(controller.publish(spec), controller.publish(spec))
+    results = await asyncio.gather(
+        controller.publish_release(spec), controller.publish_release(spec)
+    )
     assert results[0] == results[1]
     async with sessions() as session:
         assert (
@@ -433,8 +437,8 @@ async def test_concurrent_identical_publishers_share_one_registration(release_en
 async def test_corruption_and_missing_referenced_files_fail(release_env, target):
     controller, storage, sessions = release_env
     spec = specification(storage)
-    registration = await controller.publish(spec)
-    _, manifest, _ = await controller.resolve(spec.name, spec.version)
+    registration = await controller.publish_release(spec)
+    _, manifest, _ = await controller.load_verified_release(spec.name, spec.version)
     # Legacy snapshot corruption remains detectable after the schema change.
     storage.objects["datasets", manifest.coco.key] = await controller.export_json(
         spec.name, spec.version, "coco"
@@ -454,11 +458,11 @@ async def test_corruption_and_missing_referenced_files_fail(release_env, target)
     original = storage.objects["datasets", key]
     storage.objects["datasets", key] = b"corrupted"
     with pytest.raises(ReleaseConflict):
-        await controller.resolve(spec.name, spec.version)
+        await controller.load_verified_release(spec.name, spec.version)
     storage.objects["datasets", key] = original
     del storage.objects["datasets", key]
     with pytest.raises(BlobNotFoundError):
-        await controller.resolve(spec.name, spec.version)
+        await controller.load_verified_release(spec.name, spec.version)
 
 
 @pytest.mark.asyncio
@@ -467,11 +471,11 @@ async def test_missing_parent_keeps_release_unready(release_env):
     spec = specification(storage)
     parent = storage.objects.pop(("datasets", spec.coco.images[0].file_name))
     with pytest.raises(BlobNotFoundError):
-        await controller.publish(spec)
+        await controller.publish_release(spec)
     storage.objects["datasets", spec.coco.images[0].file_name] = parent
     with pytest.raises(ReleaseNotReady):
-        await controller.resolve(spec.name, spec.version)
-    assert (await controller.publish(spec)).status == "ready"
+        await controller.load_verified_release(spec.name, spec.version)
+    assert (await controller.publish_release(spec)).status == "ready"
 
 
 @pytest.mark.asyncio
@@ -480,7 +484,7 @@ async def test_detection_only_release_and_negative_images_are_preserved(release_
     spec = specification(storage, crops=False).model_dump(mode="json")
     spec["coco"]["annotations"] = []
     spec = ReleaseSpec.model_validate(spec)
-    await controller.publish(spec)
+    await controller.publish_release(spec)
     reader = await ReleasedDataset.open(controller, spec.name, spec.version)
     samples = [sample async for sample in reader.detector_records("train")]
     assert len(samples) == 1
@@ -524,15 +528,15 @@ async def test_remapped_release_uses_database_and_reuses_existing_pngs(
         )
 
     storage.upload_blob = no_upload
-    registration = await controller.publish(spec)
+    registration = await controller.publish_release(spec)
     assert registration.status == "ready"
     assert storage.objects == original_images
     for key, data in original_images.items():
         assert storage.objects[key] == data
-    _, manifest, coco = await controller.resolve(spec.name, spec.version)
+    _, manifest, coco = await controller.load_verified_release(spec.name, spec.version)
     assert manifest.crops == []
     assert coco.images[0].sha256 == members[0].sha256
-    assert await controller.publish(spec) == registration
+    assert await controller.publish_release(spec) == registration
 
 
 @pytest.mark.asyncio
@@ -544,8 +548,8 @@ async def test_duplicate_bytes_keep_separate_provenance(release_env):
     image["sources"][0]["original_path"] = "other-share/same-image.tiff"
     spec["coco"]["images"].append(image)
     spec = ReleaseSpec.model_validate(spec)
-    await controller.publish(spec)
-    _, manifest, coco = await controller.resolve(spec.name, spec.version)
+    await controller.publish_release(spec)
+    _, manifest, coco = await controller.load_verified_release(spec.name, spec.version)
     assert len(manifest.images) == 3
     assert len(coco.images) == 4
     assert manifest.num_single_object_images == 3
@@ -561,9 +565,9 @@ async def test_database_workflow_generates_documents_without_saved_json(release_
     created = await controller.create_release(metadata)
     assert created.status == "draft"
     with pytest.raises(ReleaseNotReady):
-        await controller.resolve(metadata.name, metadata.version)
+        await controller.load_verified_release(metadata.name, metadata.version)
     with pytest.raises(ReleaseNotReady, match="not been prepared"):
-        await controller.publish(metadata.name, metadata.version)
+        await controller.publish_release(metadata.name, metadata.version)
     for image in original.coco.images:
         await controller.catalog.add_membership(
             metadata.name,
@@ -580,7 +584,7 @@ async def test_database_workflow_generates_documents_without_saved_json(release_
     )
     prepared = await controller.catalog.spec(metadata.name, metadata.version)
     before = dict(storage.objects)
-    result = await controller.publish(metadata.name, metadata.version)
+    result = await controller.publish_release(metadata.name, metadata.version)
     assert result.status == "ready"
     assert storage.objects == before
     assert json.loads(
@@ -596,7 +600,7 @@ async def test_database_workflow_generates_documents_without_saved_json(release_
         metadata.name, metadata.version, "manifest"
     )
     assert sha256(manifest_bytes) == result.manifest_sha256
-    assert await controller.publish(metadata.name, metadata.version) == result
+    assert await controller.publish_release(metadata.name, metadata.version) == result
     with pytest.raises(ReleaseConflict, match="Only draft"):
         await controller.catalog.add_membership(
             metadata.name,
@@ -625,7 +629,7 @@ async def test_generated_manifest_detects_database_changes(release_env, target):
 
     controller, storage, sessions = release_env
     spec = specification(storage)
-    registration = await controller.publish(spec)
+    registration = await controller.publish_release(spec)
     async with sessions.begin() as session:
         row = await session.get(DatasetRelease, registration.id)
         if target == "conversion":
@@ -645,7 +649,9 @@ async def test_generated_manifest_detects_database_changes(release_env, target):
             )
             crop.size += 1
     with pytest.raises(ReleaseConflict, match="checksum"):
-        await controller.resolve(spec.name, spec.version, registration.manifest_sha256)
+        await controller.load_verified_release(
+            spec.name, spec.version, registration.manifest_sha256
+        )
     with pytest.raises(ReleaseConflict, match="checksum"):
         await controller.export_json(spec.name, spec.version, "coco")
 
@@ -825,7 +831,7 @@ async def test_current_detector_loader_matches_released_records(release_env, tmp
 
     controller, storage, _ = release_env
     spec = specification(storage)
-    await controller.publish(spec)
+    await controller.publish_release(spec)
     reader = await ReleasedDataset.open(controller, spec.name, spec.version)
     # Exercise all saved splits independently; the existing loader is told not
     # to resplit them. These local fixtures are solely compatibility-test inputs.
