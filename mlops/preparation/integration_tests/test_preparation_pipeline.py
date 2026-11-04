@@ -51,27 +51,36 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
     )["spec"]
     templates = {template["name"]: template for template in spec["templates"]}
     values = {
+        "raw-prefix": "raw/collection",
+        "code-revision": "test-revision",
+        "dataset-name": review_name,
+    }
+    config = {
         "bucket": "datasets",
         "endpoint-url": "https://storage.example.test",
         "region": "test",
-        "raw-prefix": "raw/collection",
-        "code-revision": "test-revision",
         "model-revision": "synthetic-weights",
-        "dataset-name": review_name,
         "server-media-root": "/fiftyone-s3",
     }
 
     def run_step(name):
         container = templates[name]["container"]
+        environment = {
+            entry["name"]: config[entry["valueFrom"]["configMapKeyRef"]["key"]]
+            for entry in container.get("env", [])
+        }
         args = []
         for value in container["args"]:
             for key, replacement in values.items():
                 value = value.replace(
                     "{{workflow.parameters." + key + "}}", replacement
                 )
+            for key, replacement in environment.items():
+                value = value.replace("$(" + key + ")", replacement)
             value = value.replace("{{workflow.name}}", "preparation-test-run")
             value = value.replace("/workspace", str(tmp_path / "workspace"))
             assert "{{" not in value
+            assert "$(" not in value
             args.append(value)
         assert container["command"][0] == "python"
         module = importlib.import_module(Path(container["command"][1]).stem)

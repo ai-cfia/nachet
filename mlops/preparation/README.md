@@ -270,27 +270,36 @@ files, and a read-only model PVC with SAM3 weights. Images stay in S3. Each run
 writes under `/workspace/<workflow-name>/`; remove that directory after checking
 the result. A failed pre-labeling step restarts the batch.
 
-The workflow references existing Secrets in its own namespace. Howard/Vault
-owns their values and the cluster's network/storage configuration. The S3
-bucket root must match FiftyOne's `server-media-root`; check the deployed media
-mount before submitting a run. This template does not create buckets, Secrets,
-database tables or model weights.
+The workflow uses the `nachet-preparation-config` ConfigMap in `argo-workflows`
+with keys `bucket`, `endpoint-url`, `region`, `server-media-root` and
+`model-revision`. Howard must provide these values, an S3 credentials Secret
+named `nachet-preparation-storage`, and a FiftyOne database Secret named
+`nachet-preparation-fiftyone`. These resources are not configured yet. The
+server media root must expose the selected S3 bucket root. Confirm the actual
+FiftyOne mount before running the workflow.
+The storage Secret uses `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`,
+with `AWS_SESSION_TOKEN` for temporary credentials. The database Secret uses
+`FIFTYONE_DATABASE_URI`.
 
 ```bash
 argo submit -n argo-workflows --from workflowtemplate/nachet-preparation \
-  -p cpu-image="ghcr.io/ai-cfia/nachet-preparation-cpu:$REVISION" \
-  -p sam3-image="ghcr.io/ai-cfia/nachet-preparation-sam3:$REVISION" \
-  -p registration-image="ghcr.io/ai-cfia/nachet-preparation-registration:$REVISION" \
-  -p code-revision="$REVISION" -p dataset-name=collection-01-review \
-  -p raw-prefix=raw/collection-01 -p bucket=training-datasets \
-  -p endpoint-url=https://s3.example.test -p region=us-east-1 \
-  -p storage-secret="$STORAGE_SECRET" -p fiftyone-secret="$FIFTYONE_SECRET" \
-  -p workspace-pvc="$WORKSPACE_PVC" -p model-pvc="$MODEL_PVC" \
-  -p model-revision="$MODEL_REVISION" -p server-media-root="$SERVER_MEDIA_ROOT"
+  -p cpu-image="$CPU_IMAGE" \
+  -p sam3-image="$SAM3_IMAGE" \
+  -p registration-image="$REGISTRATION_IMAGE" \
+  -p code-revision="$CODE_REVISION" -p dataset-name=collection-01-review \
+  -p raw-prefix=raw/collection-01 -p model-pvc="$MODEL_PVC"
 ```
+
+The images default to the `main` tags, as in the training workflows, and the
+workspace defaults to `nachet-training-workspace-pvc`. Override the image
+references with digests to pin them. The code and model revisions are
+operator-supplied labels; they are not checked against the image or weights.
 
 The workflow ends at registration for human review. Reviewed export, release
 publication and training use their own components.
+Image-level progress and interrupted-SAM3 recovery are still required before
+long GPU runs. FiftyOne stores the source records in MongoDB; ownership of the
+controller mappings remains open.
 
 ## Checks
 

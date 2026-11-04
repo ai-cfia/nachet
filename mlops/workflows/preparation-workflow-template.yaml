@@ -13,35 +13,29 @@ spec:
   arguments:
     parameters:
       - name: cpu-image
-        description: Pinned nachet-preparation-cpu image tag or digest.
+        description: CPU preparation image. Defaults to the main build; use a digest to pin it.
+        value: ghcr.io/ai-cfia/nachet-preparation-cpu:main
       - name: sam3-image
-        description: Pinned nachet-preparation-sam3 image tag or digest.
+        description: SAM3 image. Defaults to the main build; use a digest to pin it.
+        value: ghcr.io/ai-cfia/nachet-preparation-sam3:main
       - name: registration-image
-        description: Pinned nachet-preparation-registration image tag or digest.
+        description: FiftyOne registration image. Defaults to the main build; use a digest to pin it.
+        value: ghcr.io/ai-cfia/nachet-preparation-registration:main
       - name: code-revision
-        description: Source revision used to build these images.
+        description: Source revision label for these images. Required; not verified automatically.
       - name: dataset-name
         description: New FiftyOne review dataset; existing names are refused.
       - name: raw-prefix
         description: One collection below raw/ in the dataset bucket.
-      - name: bucket
-      - name: endpoint-url
-        description: HTTPS S3 endpoint reachable from the workers.
-      - name: region
-      - name: storage-secret
-        description: Existing Secret containing AWS credentials in this namespace.
-      - name: fiftyone-secret
-        description: Existing Secret containing FIFTYONE_DATABASE_URI.
-      - name: server-media-root
-        description: FiftyOne server path exposing the selected bucket root.
       - name: model-pvc
         description: Readable PVC in this namespace with SAM3 weights at its root.
-      - name: model-revision
       - name: gpu-node
+        description: GPU node for SAM3. Defaults to ai-lab-1.
         value: ai-lab-1
         enum: [ai-lab-1, ai-lab-2, ai-lab-3]
       - name: workspace-pvc
-        description: RWX working PVC in this namespace for the index and draft COCO files.
+        description: RWX workspace for COCO files. Defaults to nachet-training-workspace-pvc.
+        value: nachet-training-workspace-pvc
   securityContext:
     runAsNonRoot: true
     runAsUser: 10001
@@ -79,18 +73,28 @@ spec:
         args:
           - /workspace/{{workflow.name}}/prepared
           - --bucket
-          - "{{workflow.parameters.bucket}}"
+          - "$(PREPARATION_BUCKET)"
           - --endpoint-url
-          - "{{workflow.parameters.endpoint-url}}"
+          - "$(PREPARATION_ENDPOINT_URL)"
           - --region
-          - "{{workflow.parameters.region}}"
+          - "$(PREPARATION_REGION)"
           - --raw-prefix
           - "{{workflow.parameters.raw-prefix}}"
           - --code-revision
           - "{{workflow.parameters.code-revision}}"
+        env:
+          - name: PREPARATION_BUCKET
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: bucket}
+          - name: PREPARATION_ENDPOINT_URL
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: endpoint-url}
+          - name: PREPARATION_REGION
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: region}
         envFrom:
           - secretRef:
-              name: "{{workflow.parameters.storage-secret}}"
+              name: nachet-preparation-storage
         resources:
           requests: {cpu: "1", memory: 1Gi}
           limits: {cpu: "2", memory: 4Gi}
@@ -116,21 +120,34 @@ spec:
         command: [python, /opt/preparation/prelabel.py]
         args:
           - /workspace/{{workflow.name}}/prepared/index.coco.json
-          - "s3://{{workflow.parameters.bucket}}"
+          - "s3://$(PREPARATION_BUCKET)"
           - /workspace/{{workflow.name}}/prepared/draft.coco.json
           - --endpoint-url
-          - "{{workflow.parameters.endpoint-url}}"
+          - "$(PREPARATION_ENDPOINT_URL)"
           - --region
-          - "{{workflow.parameters.region}}"
+          - "$(PREPARATION_REGION)"
           - --model-path
           - /model
           - --model-revision
-          - "{{workflow.parameters.model-revision}}"
+          - "$(PREPARATION_MODEL_REVISION)"
           - --device
           - cuda
+        env:
+          - name: PREPARATION_BUCKET
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: bucket}
+          - name: PREPARATION_ENDPOINT_URL
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: endpoint-url}
+          - name: PREPARATION_REGION
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: region}
+          - name: PREPARATION_MODEL_REVISION
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: model-revision}
         envFrom:
           - secretRef:
-              name: "{{workflow.parameters.storage-secret}}"
+              name: nachet-preparation-storage
         resources:
           requests: {cpu: "2", memory: 8Gi, nvidia.com/gpu: "1"}
           limits: {cpu: "4", memory: 16Gi, nvidia.com/gpu: "1"}
@@ -156,10 +173,14 @@ spec:
           - "{{workflow.parameters.dataset-name}}"
           - /workspace/{{workflow.name}}/prepared/draft.coco.json
           - --server-media-root
-          - "{{workflow.parameters.server-media-root}}"
+          - "$(PREPARATION_SERVER_MEDIA_ROOT)"
+        env:
+          - name: PREPARATION_SERVER_MEDIA_ROOT
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: server-media-root}
         envFrom:
           - secretRef:
-              name: "{{workflow.parameters.fiftyone-secret}}"
+              name: nachet-preparation-fiftyone
         resources:
           requests: {cpu: 250m, memory: 1Gi}
           limits: {cpu: "1", memory: 4Gi}
