@@ -33,7 +33,11 @@ class ReleasedDataset:
         """
         reader = cls()
         reader.controller = controller
-        reader.registration, reader.manifest, reader.coco = await controller.resolve(
+        (
+            reader.registration,
+            reader.manifest,
+            reader.coco,
+        ) = await controller.load_verified_release(
             name, version, expected_manifest_sha256
         )
         reader.images = {image.id: image for image in reader.coco.images}

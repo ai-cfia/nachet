@@ -125,7 +125,9 @@ class DatasetController:
         self.sessions = sessions
         self.container = container
 
-    async def registration(self, name: str, version: str) -> ReleaseRegistration:
+    async def get_release_registration(
+        self, name: str, version: str
+    ) -> ReleaseRegistration:
         """Look up a release, rejecting unknown versions and container mismatches.
 
         Staging registrations are returned so interrupted publications can resume.
@@ -166,11 +168,11 @@ class DatasetController:
                 await session.flush()
         except IntegrityError:
             # The unique constraint also serializes concurrent initial claims.
-            existing = await self.registration(spec.name, spec.version)
+            existing = await self.get_release_registration(spec.name, spec.version)
             if existing.request_sha256 != request_hash:
                 raise ReleaseConflict("This name/version already has different inputs")
             return existing
-        return await self.registration(spec.name, spec.version)
+        return await self.get_release_registration(spec.name, spec.version)
 
     async def _put_unchanged(
         self, key: str, data: bytes, content_type: str
@@ -200,7 +202,7 @@ class DatasetController:
             raise ReleaseConflict(f"Object checksum/size mismatch: {reference.key}")
         return data
 
-    async def publish(self, spec: ReleaseSpec) -> ReleaseRegistration:
+    async def publish_release(self, spec: ReleaseSpec) -> ReleaseRegistration:
         """Publish an immutable reviewed release from prepared hash-addressed PNGs.
 
         Validate images, optionally generate classification crops, and store COCO
@@ -216,7 +218,9 @@ class DatasetController:
         # Reserve this version before writing objects, or verify a completed retry.
         registration = await self._claim(spec, request_hash)
         if registration.status == "ready":
-            await self.resolve(spec.name, spec.version, registration.manifest_sha256)
+            await self.load_verified_release(
+                spec.name, spec.version, registration.manifest_sha256
+            )
             return registration
 
         images, crops = await self._prepare_media(spec)
@@ -364,9 +368,11 @@ class DatasetController:
                 raise ReleaseConflict("Published manifest cannot be replaced")
             row.manifest_sha256 = manifest_sha256
             row.status = "ready"
-        return await self.registration(registration.name, registration.version)
+        return await self.get_release_registration(
+            registration.name, registration.version
+        )
 
-    async def resolve(
+    async def load_verified_release(
         self,
         name: str,
         version: str,
@@ -377,7 +383,7 @@ class DatasetController:
         An expected manifest digest pins the selection. Incomplete releases raise
         ReleaseNotReady; conflicting identities or checksums raise ReleaseConflict.
         """
-        registration = await self.registration(name, version)
+        registration = await self.get_release_registration(name, version)
         if registration.status != "ready" or registration.manifest_sha256 is None:
             raise ReleaseNotReady(f"Release is incomplete: {name}/{version}")
         if (

@@ -56,9 +56,9 @@ async def run_dataset_release_command(args: argparse.Namespace) -> dict:
         )
         if args.action == "publish":
             spec = ReleaseSpec.model_validate_json(args.spec.read_bytes())
-            registration = await controller.publish(spec)
+            registration = await controller.publish_release(spec)
         else:
-            registration, manifest, coco = await controller.resolve(
+            registration, manifest, coco = await controller.load_verified_release(
                 args.name, args.version, args.expected_manifest_sha256
             )
             if args.action == "inspect":
