@@ -160,8 +160,12 @@ class ContainerOperations:
                 metadata = {
                     tag["Key"]: tag["Value"] for tag in tag_response.get("TagSet", [])
                 }
-            except ClientError:
-                pass
+            except ClientError as e:
+                _get_logger().debug(
+                    "Unable to fetch bucket tags; continuing with empty metadata",
+                    bucket=name,
+                    error=str(e),
+                )
 
             container_info = ContainerInfo(
                 name=name,

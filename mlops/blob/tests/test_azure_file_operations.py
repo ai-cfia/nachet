@@ -974,6 +974,7 @@ class TestFileErrorHandling(TestFileOperations):
                 await storage.delete_blob(TEST_CONTAINER, source_path)
                 await storage.delete_blob(TEST_CONTAINER, dest_path)
             except Exception:
+                # Best-effort cleanup in tests: ignore deletion failures to avoid masking assertion errors.
                 pass
 
     @pytest.mark.asyncio
@@ -1018,8 +1019,9 @@ class TestFileErrorHandling(TestFileOperations):
                 await storage.delete_blob(source_container, source_path)
                 await storage.delete_blob(dest_container, dest_path)
                 await storage.delete_container(dest_container)
-            except Exception:
-                pass
+            except Exception as cleanup_error:
+                # Cleanup is best-effort in tests; do not fail test on teardown issues.
+                print(f"Cleanup warning in test_copy_blob_different_containers: {cleanup_error}")
 
     @pytest.mark.asyncio
     async def test_copy_blob_source_not_found(self, storage):
@@ -1067,6 +1069,8 @@ class TestFileErrorHandling(TestFileOperations):
             try:
                 await storage.delete_blob(TEST_CONTAINER, source_path)
             except Exception:
+                # Best-effort test cleanup: ignore deletion failures so cleanup
+                # does not mask the assertion outcome of this test.
                 pass
 
     @pytest.mark.asyncio
@@ -1117,6 +1121,7 @@ class TestFileErrorHandling(TestFileOperations):
                 await storage.delete_blob(TEST_CONTAINER, source_path)
                 await storage.delete_blob(TEST_CONTAINER, dest_path)
             except Exception:
+                # Best-effort test cleanup: ignore deletion failures (e.g., blob already moved/deleted).
                 pass
 
     @pytest.mark.asyncio
@@ -1160,7 +1165,8 @@ class TestFileErrorHandling(TestFileOperations):
                 await storage.delete_blob(source_container, source_path)
                 await storage.delete_blob(dest_container, dest_path)
                 await storage.delete_container(dest_container)
-            except Exception:
+            except (BlobNotFoundError, ContainerNotFoundError):
+                # Best-effort cleanup: resources may already be absent.
                 pass
 
     @pytest.mark.asyncio
@@ -1208,8 +1214,10 @@ class TestFileErrorHandling(TestFileOperations):
             try:
                 await storage.delete_blob(TEST_CONTAINER, source_path)
                 await storage.delete_blob(TEST_CONTAINER, dest_path)
-            except Exception:
-                pass
+            except Exception as cleanup_error:
+                # Best-effort cleanup in test teardown: ignore cleanup failures so they
+                # don't mask the test's primary assertions/results.
+                _ = cleanup_error
 
     @pytest.mark.asyncio
     async def test_move_blob_complete_lifecycle(
@@ -1266,8 +1274,12 @@ class TestFileErrorHandling(TestFileOperations):
                 try:
                     await storage.delete_blob(TEST_CONTAINER, source_path)
                     await storage.delete_blob(TEST_CONTAINER, dest_path)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    # Best-effort cleanup: do not fail the test if teardown deletion fails.
+                    print(
+                        f"Cleanup warning: failed to delete blobs "
+                        f"'{source_path}' or '{dest_path}': {exc}"
+                    )
 
     # =============================================================================
     # Metadata and Tags Operations Tests
@@ -1305,6 +1317,7 @@ class TestFileErrorHandling(TestFileOperations):
             try:
                 await storage.delete_blob(TEST_CONTAINER, blob_path)
             except Exception:
+                # Best-effort test cleanup: ignore deletion failures to avoid masking test assertions.
                 pass
 
     @pytest.mark.asyncio
@@ -1324,6 +1337,7 @@ class TestFileErrorHandling(TestFileOperations):
             try:
                 await storage.delete_blob(TEST_CONTAINER, blob_path)
             except Exception:
+                # Best-effort test cleanup: ignore deletion failures to avoid masking test assertions.
                 pass
 
     @pytest.mark.asyncio
@@ -1363,6 +1377,7 @@ class TestFileErrorHandling(TestFileOperations):
             try:
                 await storage.delete_blob(TEST_CONTAINER, blob_path)
             except Exception:
+                # Best-effort test cleanup: ignore deletion failures to avoid masking test assertions.
                 pass
 
     @pytest.mark.asyncio
