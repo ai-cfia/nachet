@@ -6,9 +6,9 @@ for Apache Ozone S3-compatible storage.
 """
 
 import boto3
-from beartype.typing import Any, Dict, Optional
 from botocore.config import Config
-from botocore.exceptions import BotoCoreError
+from beartype.typing import Dict, Any, Optional
+from botocore.exceptions import BotoCoreError, ClientError
 
 
 class S3ConfigurationError(Exception):
@@ -25,7 +25,7 @@ def _get_logger():
     """Lazy load logger to avoid circular imports"""
     global _logger
     if _logger is None:
-        from mlops_blob.logs import LogService
+        from app.service.logs import LogService
 
         _logger = LogService.get_logger()
     return _logger
@@ -58,14 +58,14 @@ def create_s3_client(config: Dict[str, Any]):
         access_key_id = config.get("s3_access_key")
         secret_access_key = config.get("s3_secret_key")
 
-        if bool(access_key_id) != bool(secret_access_key):
+        if not access_key_id or not secret_access_key:
             _get_logger().error(
                 "Missing S3 credentials in configuration",
                 has_access_key=bool(access_key_id),
                 has_secret_key=bool(secret_access_key),
             )
             raise S3ConfigurationError(
-                "s3_access_key and s3_secret_key must be supplied together"
+                "S3 credentials (s3_access_key_id and s3_secret_access_key) are required"
             )
 
         # Extract configuration with defaults
@@ -87,6 +87,8 @@ def create_s3_client(config: Dict[str, Any]):
         client_params = {
             "service_name": "s3",
             "endpoint_url": endpoint_url,
+            "aws_access_key_id": access_key_id,
+            "aws_secret_access_key": secret_access_key,
             "region_name": region,
             "use_ssl": use_ssl,
             "verify": verify,
@@ -94,12 +96,6 @@ def create_s3_client(config: Dict[str, Any]):
         }
 
         # Log client creation
-        if access_key_id:
-            client_params["aws_access_key_id"] = access_key_id
-            client_params["aws_secret_access_key"] = secret_access_key
-        if config.get("s3_session_token"):
-            client_params["aws_session_token"] = config["s3_session_token"]
-
         _get_logger().info(
             f"Creating S3 client {'with custom endpoint' if endpoint_url else 'for AWS'}",
             endpoint_url=endpoint_url,
@@ -110,8 +106,27 @@ def create_s3_client(config: Dict[str, Any]):
         # Create the S3 client
         s3_client = boto3.client(**client_params)
 
-        # Dataset credentials can be restricted to one bucket. Do not require
-        # account-wide ListBuckets access or perform network I/O at construction.
+        # Test connection with a simple operation
+        try:
+            s3_client.list_buckets()
+            _get_logger().info("S3 client created and connection verified successfully")
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "Unknown")
+            if error_code in ["InvalidAccessKeyId", "SignatureDoesNotMatch"]:
+                _get_logger().error(
+                    "S3 authentication failed", error_code=error_code, error=str(e)
+                )
+                raise S3ConfigurationError(
+                    f"Invalid S3 credentials: {e.response.get('Error', {}).get('Message', str(e))}"
+                )
+            else:
+                # Other errors might not prevent basic operations
+                _get_logger().warning(
+                    "S3 client created but connection test failed",
+                    error_code=error_code,
+                    error=str(e),
+                )
+
         return s3_client
 
     except S3ConfigurationError:

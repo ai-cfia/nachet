@@ -5,18 +5,18 @@ This module handles blob metadata and tags operations including setting
 and retrieving custom metadata and index tags.
 """
 
-from azure.core.exceptions import ServiceRequestError
-from azure.storage.blob import BlobServiceClient
 from beartype.typing import Dict
+from azure.storage.blob import BlobServiceClient
+from azure.core.exceptions import ServiceRequestError
 
-from ...exceptions import (
-    BlobNotFoundError,
-    # ConnectionError,
-    BlobStorageError,
-    ContainerNotFoundError,
-)
 from ..utils.error_handling import ErrorHandler
 from ..utils.validation import ValidationHelper
+from ...exceptions import (
+    BlobStorageError,
+    ContainerNotFoundError,
+    BlobNotFoundError,
+    # ConnectionError,
+)
 
 
 class MetadataOperations:

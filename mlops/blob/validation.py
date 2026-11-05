@@ -9,8 +9,8 @@ differ, we use the stricter rule to ensure compatibility across both platforms.
 """
 
 from beartype.typing import Optional
-
 from .exceptions import BlobStorageError, ValidationError
+
 
 # Reserved S3 prefixes that cannot be used
 RESERVED_PREFIXES = ["xn--", "sthree-", "amzn-s3-demo-"]

@@ -5,25 +5,24 @@ This module handles security-related operations including SAS token generation
 for both blobs and containers with various permissions and expiry settings.
 """
 
-from datetime import UTC, datetime, timedelta
-
+from beartype.typing import List, Dict, Any
+from datetime import datetime, timedelta, timezone
 from azure.storage.blob import (
-    BlobSasPermissions,
     BlobServiceClient,
+    BlobSasPermissions,
     ContainerSasPermissions,
     generate_blob_sas,
     generate_container_sas,
 )
-from beartype.typing import Any, Dict, List
 
-from ...exceptions import (
-    BlobNotFoundError,
-    # BlobStorageError,
-    ContainerNotFoundError,
-    InvalidConfigurationError,
-)
 from ..utils.error_handling import ErrorHandler
 from ..utils.validation import ValidationHelper
+from ...exceptions import (
+    # BlobStorageError,
+    ContainerNotFoundError,
+    BlobNotFoundError,
+    InvalidConfigurationError,
+)
 
 
 class SecurityOperations:
@@ -98,11 +97,11 @@ class SecurityOperations:
             sas_permissions = BlobSasPermissions(**permission_kwargs)
 
             # Calculate expiry time
-            start_time = kwargs.get("start_time", datetime.now(UTC))
+            start_time = kwargs.get("start_time", datetime.now(timezone.utc))
             expiry_time = (
                 start_time + expiry
                 if isinstance(start_time, datetime)
-                else datetime.now(UTC) + expiry
+                else datetime.now(timezone.utc) + expiry
             )
 
             # Generate SAS token
@@ -192,11 +191,11 @@ class SecurityOperations:
             sas_permissions = ContainerSasPermissions(**permission_kwargs)
 
             # Calculate expiry time
-            start_time = kwargs.get("start_time", datetime.now(UTC))
+            start_time = kwargs.get("start_time", datetime.now(timezone.utc))
             expiry_time = (
                 start_time + expiry
                 if isinstance(start_time, datetime)
-                else datetime.now(UTC) + expiry
+                else datetime.now(timezone.utc) + expiry
             )
 
             # Generate SAS token

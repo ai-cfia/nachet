@@ -1,11 +1,10 @@
-from datetime import datetime, timedelta
-
 from azure.storage.blob import (
-    AccountSasPermissions,
     BlobServiceClient,
-    ResourceTypes,
     generate_account_sas,
+    ResourceTypes,
+    AccountSasPermissions,
 )
+from datetime import timedelta, datetime
 
 
 class ConnectionStringError(Exception):
@@ -20,7 +19,7 @@ def _get_logger():
     """Lazy load logger to avoid circular imports"""
     global _logger
     if _logger is None:
-        from mlops_blob.logs import LogService
+        from app.service.logs import LogService
 
         _logger = LogService.get_logger()
     return _logger

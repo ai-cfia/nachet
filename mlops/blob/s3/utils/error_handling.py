@@ -5,19 +5,17 @@ This module provides common error handling patterns for S3-compatible storage
 systems (Apache Ozone), promoting code reuse and consistency.
 """
 
-from beartype.typing import Any, Callable
-from botocore.exceptions import BotoCoreError, ClientError
+from beartype.typing import Callable, Any
+from botocore.exceptions import ClientError, BotoCoreError
 
 from ...exceptions import (
-    BlobAlreadyExistsError,
-    BlobNotFoundError,
     BlobStorageError,
-    ConnectionError,
-    ContainerAlreadyExistsError,
     ContainerNotFoundError,
+    BlobNotFoundError,
+    ContainerAlreadyExistsError,
+    BlobAlreadyExistsError,
+    ConnectionError,
     InvalidConfigurationError,
-)
-from ...exceptions import (
     PermissionError as BlobPermissionError,
 )
 
@@ -29,7 +27,7 @@ def _get_logger():
     """Lazy load logger to avoid circular imports"""
     global _logger
     if _logger is None:
-        from mlops_blob.logs import LogService
+        from app.service.logs import LogService
 
         _logger = LogService.get_logger()
     return _logger
