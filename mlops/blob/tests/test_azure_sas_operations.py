@@ -10,15 +10,17 @@ import os
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
-from ..azure.storage import AzureBlobStorage
-from ..exceptions import (
+from mlops_blob.azure.storage import AzureBlobStorage
+from mlops_blob.exceptions import (
     BlobStorageError,
     ContainerNotFoundError,
     BlobNotFoundError,
 )
-from app.api.config import get_settings
+from .settings import get_settings
 
 # Load test environment variables
+pytestmark = pytest.mark.integration
+
 if not os.getenv("BLOB_STORAGE_PROVIDER"):
     load_dotenv("../../.env.test.local")
 

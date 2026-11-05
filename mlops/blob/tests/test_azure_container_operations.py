@@ -26,17 +26,19 @@ from datetime import datetime
 from unittest.mock import patch, MagicMock
 from dotenv import load_dotenv
 
-from app.blob.azure.storage import AzureBlobStorage
-from app.blob.models import ContainerInfo
-from app.blob.exceptions import (
+from mlops_blob.azure.storage import AzureBlobStorage
+from mlops_blob.models import ContainerInfo
+from mlops_blob.exceptions import (
     InvalidConfigurationError,
     ConnectionError,
     BlobStorageError,
     ContainerNotFoundError,
 )
-from app.api.config import get_settings
+from .settings import get_settings
 
 # Load test environment variables
+pytestmark = pytest.mark.integration
+
 if not os.getenv("BLOB_STORAGE_PROVIDER"):
     load_dotenv("../../.env.test.local")
 

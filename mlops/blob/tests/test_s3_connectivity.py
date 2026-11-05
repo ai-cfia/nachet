@@ -12,11 +12,13 @@ Usage:
 import pytest
 import os
 from dotenv import load_dotenv
-from app.blob.s3.storage import S3BlobStorage
-from app.blob.s3.client import create_s3_client, validate_s3_connection
-from app.api.config import get_settings
+from mlops_blob.s3.storage import S3BlobStorage
+from mlops_blob.s3.client import create_s3_client, validate_s3_connection
+from .settings import get_settings
 
 # Load test environment variables
+pytestmark = pytest.mark.integration
+
 if not os.getenv("BLOB_STORAGE_PROVIDER"):
     load_dotenv("../../.env.test.local")
 
