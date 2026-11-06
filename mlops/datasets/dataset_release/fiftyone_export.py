@@ -125,7 +125,8 @@ def export_collection(
 
     Use absolute paths and labels-only COCO, leaving media and documents unchanged.
     Every sample needs Detections, empty for reviewed negatives; reject exports
-    that lose reviewed annotations.
+    that lose reviewed annotations. Return memberships in COCO image order with
+    the provenance retained by remapping, ready for database preparation.
     """
     # FiftyOne belongs to the annotation environment, not the publisher's
     # dependency graph. Offline remapping and publishing never import it.
@@ -173,7 +174,17 @@ def export_collection(
             "COCO export did not retain every reviewed detection; check the "
             "FiftyOne class definitions and pause edits during export"
         )
-    return remap_coco(coco, memberships), memberships
+    reviewed = remap_coco(coco, memberships)
+    # FiftyOne may export images in a different order from iter_samples(). Join
+    # by the original full path before handing ordered records to the catalog.
+    by_path = {path_identity(member.file_name): member for member in memberships}
+    ordered = [
+        by_path[path_identity(image["file_name"])].model_copy(
+            update={"sources": reviewed.images[index].sources}
+        )
+        for index, image in enumerate(coco["images"])
+    ]
+    return reviewed, ordered
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:

@@ -3,12 +3,17 @@
 import json
 import sys
 from copy import deepcopy
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 import pytest_asyncio
+from alembic import command
+from alembic.config import Config
+from PIL import Image
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from dataset_release.contract import (
@@ -20,13 +25,14 @@ from dataset_release.contract import (
 )
 from dataset_release.fiftyone_export import (
     ImageMembership,
+    execute,
     export_collection,
     image_digest,
     parse_args,
     prepare,
     remap_coco,
 )
-from dataset_release.registry import Base
+from dataset_release.registry import DatasetCrop, DatasetMembership
 from dataset_release.release import DatasetController, ReleaseConflict
 
 
@@ -270,10 +276,18 @@ def test_fiftyone_rejects_silently_dropped_annotations(fiftyone_stub, handoff):
 
 
 @pytest_asyncio.fixture
-async def draft(tmp_path):
-    engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'draft.sqlite'}")
+async def draft(tmp_path, monkeypatch):
+    database_url = f"sqlite+aiosqlite:///{tmp_path / 'draft.sqlite'}"
+    monkeypatch.setenv("DATASET_DATABASE_URL", database_url)
+    engine = create_async_engine(database_url)
+
+    def migrate(connection):
+        config = Config(str(Path(__file__).parents[1] / "alembic.ini"))
+        config.attributes["connection"] = connection
+        command.upgrade(config, "head")
+
     async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
+        await connection.run_sync(migrate)
     controller = DatasetController(None, async_sessionmaker(engine), "datasets")
     await controller.create_release(
         ReleaseDefinition(
@@ -316,7 +330,7 @@ async def test_offline_preparation_reads_database_and_generates_json_on_request(
     labels = tmp_path / "labels.json"
     labels.write_text(json.dumps(coco), encoding="utf-8")
     args = export_args("--coco", str(labels))
-    spec = await prepare(args, draft)
+    spec = await execute(args)
     assert spec.author == "reviewer"
     assert spec.conversion.settings == {"mode": "RGB"}
     assert spec.coco == remap_coco(coco, members)
@@ -338,14 +352,30 @@ async def test_offline_preparation_reads_database_and_generates_json_on_request(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("reverse_export_order", [False, True])
+@pytest.mark.parametrize("sources_from_coco", [False, True])
 async def test_dataset_command_saves_membership_from_saved_reviewed_view(
-    draft, fiftyone_stub
+    draft, fiftyone_stub, handoff, reverse_export_order, sources_from_coco
 ):
     fo, view = fiftyone_stub
+    coco, original_members = handoff
+    if reverse_export_order:
+        coco["images"].reverse()
+    if sources_from_coco:
+        image = next(image for image in coco["images"] if image["id"] == 17)
+        image["sources"] = [
+            source.model_dump(mode="json") for source in original_members[0].sources
+        ]
+        samples = list(view.iter_samples())
+        get_field = samples[0].get_field
+        samples[0].get_field = lambda field: (
+            [] if field == "sources" else get_field(field)
+        )
+        view.iter_samples.return_value = iter(samples)
     dataset = Mock()
     dataset.load_saved_view.return_value = view
     fo.load_dataset.return_value = dataset
-    spec = await prepare(
+    spec = await execute(
         export_args(
             "--dataset",
             "seeds",
@@ -354,17 +384,124 @@ async def test_dataset_command_saves_membership_from_saved_reviewed_view(
             "--label-field",
             "corrected_detections",
         ),
-        draft,
     )
     fo.load_dataset.assert_called_once_with("seeds")
     dataset.load_saved_view.assert_called_once_with("reviewed")
     members = await draft.catalog.memberships("reviewed-seeds", "v1")
     assert [item.file_name for item in members] == [
-        "/datasets/a/seed.png",
-        "/datasets/b/seed.png",
+        image["file_name"] for image in coco["images"]
     ]
-    assert members[1].sources[0].fiftyone_sample_id == "1"
+    by_path = {member.file_name: member for member in members}
+    assert by_path["/datasets/b/seed.png"].sources[0].fiftyone_sample_id == "1"
+    assert by_path["/datasets/a/seed.png"].sources == original_members[0].sources
+    assert [image.id for image in spec.coco.images] == [
+        image["id"] for image in coco["images"]
+    ]
     assert spec.coco == (await draft.catalog.spec("reviewed-seeds", "v1")).coco
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("changed_field", ["file_name", "sha256", "split", "sources"])
+async def test_dataset_preparation_preserves_registered_membership_on_conflict(
+    draft, fiftyone_stub, handoff, changed_field
+):
+    for index, member in enumerate(handoff[1]):
+        changes = {"sources": []}
+        if index == 0:
+            changes[changed_field] = {
+                "file_name": "/datasets/another/seed.png",
+                "sha256": "f" * 64,
+                "split": "validation",
+                "sources": [{"original_path": "/different/source.png"}],
+            }[changed_field]
+        await draft.catalog.add_membership(
+            "reviewed-seeds",
+            "v1",
+            ImageMembership.model_validate({**member.model_dump(), **changes}),
+        )
+    before = await draft.export_json("reviewed-seeds", "v1", "membership")
+    with pytest.raises(ReleaseConflict, match="differ from stored membership"):
+        await execute(
+            export_args("--dataset", "seeds", "--label-field", "corrected_detections")
+        )
+    assert await draft.export_json("reviewed-seeds", "v1", "membership") == before
+    assert (
+        await draft.get_release_registration("reviewed-seeds", "v1")
+    ).status == "draft"
+
+
+@pytest.mark.asyncio
+async def test_migrated_export_publishes_database_membership_and_crop_lineage(
+    draft, handoff, blob_provider, tmp_path, monkeypatch
+):
+    monkeypatch.setitem(sys.modules, "fiftyone", None)
+    coco, original_members = handoff
+    await draft.create_release(
+        ReleaseDefinition(
+            name="reviewed-seeds",
+            version="v2",
+            author="reviewer",
+            conversion=ConversionRecipe(
+                code_revision="png-v1", settings={"mode": "RGB"}
+            ),
+            generate_crops=True,
+        )
+    )
+    members = []
+    for member, color in zip(original_members, ("red", "blue")):
+        encoded = BytesIO()
+        Image.new("RGB", (20, 10), color).save(encoded, format="PNG")
+        data = encoded.getvalue()
+        member = member.model_copy(update={"sha256": sha256(data)})
+        members.append(member)
+        blob_provider.objects["datasets", f"png/detection/{member.sha256}.png"] = data
+    # Registration and COCO export order are independent; full paths identify
+    # the two images even though they share a basename.
+    for member in reversed(members):
+        await draft.catalog.add_membership("reviewed-seeds", "v2", member)
+    labels = tmp_path / "labels.json"
+    labels.write_text(json.dumps(coco), encoding="utf-8")
+    args = export_args("--coco", str(labels))
+    args.version = "v2"
+    spec = await execute(args)
+
+    publisher = DatasetController(blob_provider.storage, draft.sessions, "datasets")
+    registration = await publisher.publish_release(spec.name, spec.version)
+    assert registration.status == "ready"
+    assert registration.database_backed is True
+    assert registration.num_classes == 1
+    _, manifest, reviewed = await publisher.load_verified_release(
+        spec.name, spec.version
+    )
+    assert reviewed == spec.coco
+    assert json.loads(
+        await publisher.export_json(spec.name, spec.version, "coco")
+    ) == spec.coco.model_dump(mode="json")
+    async with draft.sessions() as session:
+        stored_members = list(
+            await session.scalars(
+                select(DatasetMembership)
+                .where(DatasetMembership.release_id == registration.id)
+                .order_by(DatasetMembership.position)
+            )
+        )
+        stored_crop = (
+            await session.scalars(
+                select(DatasetCrop).where(DatasetCrop.release_id == registration.id)
+            )
+        ).one()
+    assert [member.file_name for member in stored_members] == [
+        member.file_name for member in members
+    ]
+    assert [member.sha256 for member in stored_members] == [
+        member.sha256 for member in members
+    ]
+    assert all(member.size > 0 for member in stored_members)
+    assert stored_crop.annotation_id == coco["annotations"][0]["id"]
+    assert stored_crop.sha256 == manifest.crops[0].file.sha256
+    assert stored_crop.pixel_box == list(manifest.crops[0].pixel_box)
+    assert len(blob_provider.objects) == 3  # two existing PNGs and one generated crop
+    assert not any(key.startswith("releases/") for _, key in blob_provider.objects)
 
 
 @pytest.mark.asyncio
