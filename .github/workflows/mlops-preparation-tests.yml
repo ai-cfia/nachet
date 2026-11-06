@@ -23,11 +23,11 @@ concurrency:
 
 jobs:
   commands:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
@@ -37,11 +37,11 @@ jobs:
       - run: uv run --project mlops/preparation --no-sync python -m pytest mlops/preparation/tests -q
 
   fiftyone:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     services:
       mongo:
-        image: mongo:7.0.28@sha256:4510cf3d7050003e958745adb25d2deb3fb907430716162d9cc1a92eda2a6047
+        image: mongo:9.0.4@sha256:452bdaf2127b8ff851e31410a267809b9829eded219979f2210e7c7efb85a058
         ports: ["127.0.0.1:27017:27017"]
         options: >-
           --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1})'"
@@ -50,8 +50,8 @@ jobs:
       FIFTYONE_DO_NOT_TRACK: "true"
       PREPARATION_TEST_MONGO_URI: mongodb://127.0.0.1:27017
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929

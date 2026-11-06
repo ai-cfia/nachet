@@ -29,7 +29,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up uv
         uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
@@ -53,7 +53,7 @@ jobs:
       fail-fast: false
       matrix:
         trainer: [detector, classifier]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     env:
       IMAGE: ghcr.io/ai-cfia/nachet-${{ matrix.trainer }}-trainer
       VERSION: ${{ needs.get-trainer-versions.outputs[matrix.trainer] }}
@@ -63,7 +63,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e  # v4
