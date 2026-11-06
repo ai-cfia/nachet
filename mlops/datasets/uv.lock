@@ -809,6 +809,10 @@ source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
+    { name = "azure-core" },
+    { name = "boto3" },
+    { name = "botocore" },
+    { name = "loguru" },
     { name = "nachet-blob" },
     { name = "numpy" },
     { name = "opencv-python-headless" },
@@ -833,6 +837,10 @@ dev = [
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21,<1" },
     { name = "alembic", specifier = ">=1.16.5,<2" },
+    { name = "azure-core", specifier = ">=1.30,<2" },
+    { name = "boto3", specifier = ">=1.40.55,<2" },
+    { name = "botocore", specifier = ">=1.40.55,<2" },
+    { name = "loguru", specifier = ">=0.7.3,<1" },
     { name = "nachet-blob", editable = "../blob" },
     { name = "numpy", specifier = ">=1.26,<3" },
     { name = "opencv-python-headless", specifier = ">=4.10,<5" },

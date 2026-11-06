@@ -63,6 +63,14 @@ jobs:
           uv run --no-sync ruff format --check dataset_release migrations tests
       - name: Test standalone release tools
         run: uv run --no-sync pytest
+      - name: Verify dataset and blob wheels together
+        run: |
+          uv build --wheel
+          uv build --project ../blob --wheel --out-dir "$PWD/dist"
+          uv venv .cache/wheel-venv
+          uv pip install --python .cache/wheel-venv/bin/python dist/*.whl
+          uv pip check --python .cache/wheel-venv/bin/python
+          .cache/wheel-venv/bin/python -I tests/check_install.py
 
   preparation-checks:
     name: Check dataset preparation

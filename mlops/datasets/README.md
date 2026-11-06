@@ -11,7 +11,7 @@ by MLOps and do not import the backend application. The current external detecto
 `nachetmodel/HFTrainer_detector_2026012601_js.py` in `nachet-model-ccds`, is unchanged.
 The storage-aware record reader is its integration point, described below.
 
-Storage providers come from the standalone `nachet-blob` project in
+Storage providers come from the standalone `nachet-blob==0.1.0` project in
 [`mlops/blob`](../blob/README.md), installed as a local editable dependency.
 Its `blob` module is a temporary copy of `backend/app/blob/`.
 `DatasetController` uses `BlobStorageAdapter`, which delegates to that module's
@@ -25,8 +25,18 @@ extraction into `nachet/common`; the backend source remains unchanged.
 
 Keep `mlops/blob/` beside `mlops/datasets/` when checking out, copying or mounting
 the source for a job. `uv sync --locked` installs both projects. The dataset
-wheel contains only `dataset_release`; deployments that install wheels must
-also supply the standalone `nachet-blob` wheel.
+wheel contains `dataset_release` and its `utility` helpers; deployments that
+install wheels must also supply the matching standalone `nachet-blob` wheel.
+The dataset project explicitly declares the Azure Core, boto3, botocore, and
+Loguru dependencies used by its provider extensions.
+
+Run `uv sync --locked` and `uv run --no-sync python -I -m pytest` from this
+directory. The provider publication/readback tests construct both S3 and Azure
+adapters through `BlobStorageAdapter.from_environment()`, using deterministic
+SDK transports. CI additionally builds and installs both wheels in a separate
+environment, checks dependency compatibility, and runs `tests/check_install.py`
+to verify provider inheritance and the CLI without backend or legacy imports.
+These local checks do not contact live storage services.
 
 ## Files and registration
 
