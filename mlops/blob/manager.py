@@ -41,7 +41,7 @@ def _get_logger():
     """Lazy load logger to avoid circular imports"""
     global _logger
     if _logger is None:
-        from app.service.logs import LogService
+        from .logs import LogService
 
         _logger = LogService.get_logger()
     return _logger
@@ -455,7 +455,7 @@ async def _ensure_required_containers(settings: Any):
     Args:
         settings: Settings instance with container prefix and environment info
     """
-    from app.service.constants import Bucket
+    from .constants import Bucket
 
     _get_logger().info("Verifying required blob storage containers...")
 

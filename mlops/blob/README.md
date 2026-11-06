@@ -1,3 +1,80 @@
+# MLOps blob storage package
+
+This is the temporary copy of `backend/app/blob` used by MLOps. It installs as
+`nachet-blob` and is imported as `blob`, while the source files remain
+directly under `mlops/blob/`. Provider behavior is preserved. See
+[PROVENANCE.md](PROVENANCE.md) for the small import and dependency adaptations.
+
+## Installation and consumer dependency
+
+From the repository root, install into your active Python environment:
+
+```bash
+uv pip install -e ./mlops/blob
+```
+
+For a sibling consumer such as `mlops/DatasetController`, add `nachet-blob==0.1.0`
+to its existing project dependencies and configure its local source:
+
+```toml
+[tool.uv.sources]
+nachet-blob = { path = "../blob", editable = true }
+```
+
+The controller is maintained in a separate PR; this branch supplies its reusable
+dependency. Do not add `backend/` to `PYTHONPATH` to use it.
+
+```python
+from blob import BlobStorageInterface, create_blob_storage_client
+
+storage: BlobStorageInterface = create_blob_storage_client(
+    "azure",
+    {
+        "blob_storage_name": "myaccount",
+        "blob_storage_key": "<account-key>",
+        "blob_storage_endpoint_protocol": "https",
+        "blob_storage_endpoint_suffix": "core.windows.net",
+        "blob_storage_endpoint_base": "https://myaccount.blob.core.windows.net",
+    },
+)
+```
+
+S3 retains the backend's `s3_access_key`/`s3_secret_key` configuration and client
+startup connection check. Azure retains its existing flat configuration dictionary.
+Consumers configure the process-wide Loguru logger. No backend application, API
+configuration, or logging service needs to be installed. Providers still call
+synchronous SDKs from async methods; execution scheduling belongs to the consumer.
+
+## Local checks
+
+```bash
+cd mlops/blob
+uv sync --locked
+uv run --no-sync ruff check .
+uv run --no-sync python -I -m pytest
+uv build --wheel
+uv run --no-sync python -I tests/check_install.py
+```
+
+Use isolated Python (`-I`) from this flat source directory so its `azure/` folder
+does not shadow the Azure SDK. CI also installs the wheel in a separate environment
+and runs the import check with backend imports blocked.
+
+Copied Azure/S3 service tests are skipped by default. To run them, export the
+storage environment variables expected by `tests/settings.py`, then use
+`uv run --no-sync python -I -m pytest --run-integration -m integration`.
+Use dedicated test storage: these copied tests create and delete containers and
+objects. They retain their existing optional `.env.test.local` loading behavior.
+
+The later `nachet/common` migration will switch both backend and MLOps dependencies
+to the shared package. Provider behavior changes belong to separate PRs.
+
+## Original backend reference
+
+The documentation below is retained from the copied folder. Its `app.blob` imports,
+backend startup examples, and backend test commands describe the original backend
+module; use the installation, imports, and checks above for this MLOps copy.
+
 # Blob Storage Module
 
 The blob storage module provides a unified, provider-agnostic interface for managing cloud blob storage operations in the Nachet application. It implements a clean architecture with abstract interfaces, comprehensive error handling, and robust validation using Pydantic models.

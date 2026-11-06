@@ -12,13 +12,13 @@ Tests cover:
 """
 
 import pytest
-from app.blob.validation import (
+from blob.validation import (
     validate_container_name,
     validate_blob_name,
     validate_metadata_key,
     validate_metadata_value,
 )
-from app.blob.exceptions import BlobStorageError, ValidationError
+from blob.exceptions import BlobStorageError, ValidationError
 
 
 class TestContainerNameValidation:

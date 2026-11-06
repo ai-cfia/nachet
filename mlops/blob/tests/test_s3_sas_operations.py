@@ -14,15 +14,17 @@ import os
 from datetime import timedelta
 from dotenv import load_dotenv
 
-from app.blob.s3.storage import S3BlobStorage
-from app.blob.exceptions import (
+from blob.s3.storage import S3BlobStorage
+from blob.exceptions import (
     BlobStorageError,
     ContainerNotFoundError,
     BlobNotFoundError,
 )
-from app.api.config import get_settings
+from .settings import get_settings
 
 # Load test environment variables
+pytestmark = pytest.mark.integration
+
 if not os.getenv("BLOB_STORAGE_PROVIDER"):
     load_dotenv("../../.env.test.local")
 

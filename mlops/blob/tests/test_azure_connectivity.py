@@ -13,17 +13,19 @@ Set the environment variable AZURE_STORAGE_CONNECTION_STRING or use Azurite for 
 import pytest
 import os
 from dotenv import load_dotenv
-from app.blob.azure.storage import AzureBlobStorage
-from app.blob.models import ListOptions
-from app.blob.exceptions import (
+from blob.azure.storage import AzureBlobStorage
+from blob.models import ListOptions
+from blob.exceptions import (
     InvalidConfigurationError,
     ConnectionError,
     BlobStorageError,
 )
-from app.api.config import get_settings
+from .settings import get_settings
 from .test_utils import sanitize_config_for_display, sanitize_connection_string
 
 # Load test environment variables
+pytestmark = pytest.mark.integration
+
 if not os.getenv("BLOB_STORAGE_PROVIDER"):
     load_dotenv("../../.env.test.local")
 

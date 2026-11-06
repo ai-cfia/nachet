@@ -1,0 +1,46 @@
+---
+name: MLOps blob storage
+
+on:
+  pull_request:
+    paths:
+      - "mlops/blob/**"
+      - ".github/workflows/blob-storage.yml"
+  push:
+    branches: [main]
+    paths:
+      - "mlops/blob/**"
+      - ".github/workflows/blob-storage.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  blob-storage-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: mlops/blob
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
+        with:
+          version: "0.11.24"
+      - run: uv sync --locked
+      - run: uv run --no-sync ruff check .
+      - name: Lint extraction support code
+        run: uv run --no-sync ruff check --select E4,E7,E9,F,I,UP logs.py constants.py tests/conftest.py tests/settings.py tests/check_install.py tests/test_package.py
+      - name: Check formatting of extraction support code
+        run: uv run --no-sync ruff format --check logs.py constants.py tests/conftest.py tests/settings.py tests/check_install.py tests/test_package.py
+      - run: uv run --no-sync python -I -m pytest
+      - run: uv build --wheel
+      - name: Verify wheel independently of the source tree and backend
+        run: |
+          uv venv .cache/wheel-venv
+          uv pip install --python .cache/wheel-venv/bin/python dist/*.whl
+          .cache/wheel-venv/bin/python -I tests/check_install.py
