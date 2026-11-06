@@ -29,7 +29,7 @@ nachet-dataset-release = "dataset_release.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=8.4,<10", "pytest-asyncio>=1,<2", "ruff>=0.13,<1"]
-compatibility = ["datasets==4.4.1"]
+compatibility = ["datasets==5.0.1"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["dataset_release", "utility"]
