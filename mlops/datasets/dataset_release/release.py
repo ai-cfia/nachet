@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from blob.exceptions import BlobAlreadyExistsError
 from sqlalchemy import select
@@ -14,10 +14,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from utility.crop import crop_image, crop_recipe, decode_png, pixel_box
 
+from .catalog import ReleaseCatalog, new_release
 from .contract import (
     CropReference,
     DatasetDescription,
     FileReference,
+    ReleaseDefinition,
     ReleaseManifest,
     ReleaseMetadata,
     ReleaseSpec,
@@ -25,16 +27,9 @@ from .contract import (
     canonical_json,
     sha256,
 )
-from .registry import DatasetRelease
+from .errors import ReleaseConflict, ReleaseNotReady
+from .registry import DatasetMembership, DatasetRelease
 from .storage import BlobStorage
-
-
-class ReleaseConflict(ValueError):
-    """An existing version or object contains different content."""
-
-
-class ReleaseNotReady(ValueError):
-    """A release has not completed publication."""
 
 
 @dataclass(frozen=True)
@@ -45,7 +40,7 @@ class ReleaseRegistration:
     author: str
     created_at: str
     container: str
-    request_sha256: str
+    request_sha256: str | None
     manifest_key: str
     manifest_sha256: str | None
     status: str
@@ -57,11 +52,12 @@ class ReleaseRegistration:
     num_single_object_images: int | None
     dataset_cutoff_date: date | None
     previous_version: str | None
+    database_backed: bool
 
     @classmethod
     def from_row(cls, row: DatasetRelease) -> ReleaseRegistration:
-        """Copy a registry row into an immutable registration with a UTC timestamp."""
         # SQLite returns naive timestamps; PostgreSQL returns aware timestamps.
+        """Copy a registry row into an immutable registration with a UTC timestamp."""
         created_at = row.date_created
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=UTC)
@@ -85,6 +81,7 @@ class ReleaseRegistration:
             row.num_single_object_images,
             row.dataset_cutoff_date,
             row.previous_version,
+            row.database_backed,
         )
 
     def metadata(self) -> ReleaseMetadata:
@@ -116,7 +113,7 @@ class DatasetController:
 
     def __init__(
         self,
-        storage: BlobStorage,
+        storage: BlobStorage | None,
         sessions: async_sessionmaker[AsyncSession],
         container: str,
     ):
@@ -124,6 +121,62 @@ class DatasetController:
         self.storage = storage
         self.sessions = sessions
         self.container = container
+        self.catalog = ReleaseCatalog(sessions, container)
+
+    async def create_release(self, metadata: ReleaseDefinition) -> ReleaseRegistration:
+        """Register draft metadata in the catalog and return its release identity."""
+        await self.catalog.create(metadata)
+        return await self.get_release_registration(metadata.name, metadata.version)
+
+    async def prepare_coco(self, name: str, version: str, coco: dict) -> ReleaseSpec:
+        """Join offline labels to membership entities, then store reviewed labels."""
+        from .fiftyone_export import path_identity, remap_coco
+
+        members = await self.catalog.memberships(name, version)
+        reviewed = remap_coco(coco, members)
+        by_path = {path_identity(member.file_name): member for member in members}
+        ordered = [
+            by_path[path_identity(image["file_name"])].model_copy(
+                update={"sources": reviewed.images[index].sources}
+            )
+            for index, image in enumerate(coco["images"])
+        ]
+        await self.catalog.prepare(name, version, reviewed, ordered)
+        return await self.catalog.spec(name, version)
+
+    async def export_json(self, name: str, version: str, document: str) -> bytes:
+        """Generate a requested document from the authoritative database records."""
+        registration = await self.get_release_registration(name, version)
+        if registration.database_backed and registration.status == "ready":
+            spec = await self.catalog.spec(name, version)
+            manifest = await self.catalog.manifest(registration, spec)
+            if sha256(manifest.document()) != registration.manifest_sha256:
+                raise ReleaseConflict("Published release manifest checksum mismatch")
+        if document == "metadata":
+            value = (await self.catalog.metadata(name, version)).model_dump(mode="json")
+        elif document == "membership":
+            value = [
+                member.model_dump(mode="json")
+                for member in await self.catalog.memberships(name, version)
+            ]
+        elif document == "spec":
+            value = (await self.catalog.spec(name, version)).model_dump(mode="json")
+        elif document == "coco" and registration.database_backed:
+            value = (await self.catalog.spec(name, version)).coco.model_dump(
+                mode="json"
+            )
+        elif document in ("coco", "manifest"):
+            _, manifest, coco = await self.load_verified_release(name, version)
+            if document == "manifest":
+                if not registration.database_backed:
+                    return await self.storage.download_blob(
+                        self.container, registration.manifest_key
+                    )
+                return manifest.document()
+            value = coco.model_dump(mode="json")
+        else:
+            raise ValueError("Unknown release document")
+        return canonical_json(value)
 
     async def get_release_registration(
         self, name: str, version: str
@@ -144,28 +197,89 @@ class DatasetController:
                 raise ReleaseConflict("Release belongs to a different container")
             return ReleaseRegistration.from_row(row)
 
-    async def _claim(self, spec: ReleaseSpec, request_hash: str) -> ReleaseRegistration:
-        """Reserve a staging registration or reuse one with identical inputs.
+    async def _claim(
+        self, spec: ReleaseSpec, request_hash: str, recipe
+    ) -> ReleaseRegistration:
+        """Claim a prepared draft or reuse a registration with identical inputs.
 
-        The unique name/version constraint handles concurrent claims. Different
-        inputs for an existing version raise ReleaseConflict.
+        The row lock protects database-backed drafts; the unique name/version
+        constraint also handles concurrent initial claims.
         """
         try:
             async with self.sessions.begin() as session:
-                row = DatasetRelease(
-                    id=uuid4(),
-                    name=spec.name,
-                    version=spec.version,
-                    author=spec.author,
-                    date_created=datetime.now(UTC),
-                    container=self.container,
-                    request_sha256=request_hash,
-                    manifest_key=f"releases/{spec.name}/{spec.version}/release.json",
-                    status="staging",
-                    **ReleaseMetadata.from_spec(spec).model_dump(),
+                row = await session.scalar(
+                    select(DatasetRelease)
+                    .where(
+                        DatasetRelease.name == spec.name,
+                        DatasetRelease.version == spec.version,
+                    )
+                    .with_for_update()
                 )
-                session.add(row)
-                await session.flush()
+                if row is not None:
+                    if row.container != self.container:
+                        raise ReleaseConflict(
+                            "Release belongs to a different container"
+                        )
+                    if row.status == "draft":
+                        stored = await self.catalog.spec(spec.name, spec.version)
+                        if stored != spec:
+                            raise ReleaseConflict(
+                                "Publication differs from the prepared database release"
+                            )
+                    elif row.request_sha256 != request_hash:
+                        raise ReleaseConflict(
+                            "This name/version already has different inputs"
+                        )
+                else:
+                    row = new_release(
+                        ReleaseDefinition.model_validate(
+                            spec.model_dump(mode="json", exclude={"coco"})
+                        ),
+                        self.container,
+                    )
+                    payload = spec.coco.model_dump(mode="json")
+                    row.coco_categories = payload.pop("categories")
+                    row.coco_annotations = payload.pop("annotations")
+                    payload.pop("images")
+                    row.coco_attributes = payload
+                    session.add(row)
+                    await session.flush()
+                    for position, image in enumerate(spec.coco.images):
+                        data = image.model_dump(mode="json")
+                        for field in (
+                            "id",
+                            "file_name",
+                            "width",
+                            "height",
+                            "split",
+                            "sources",
+                        ):
+                            data.pop(field)
+                        session.add(
+                            DatasetMembership(
+                                release_id=row.id,
+                                position=position,
+                                file_name=image.file_name,
+                                sha256=image.file_name.rsplit("/", 1)[1][:-4],
+                                split=image.split,
+                                sources=[
+                                    source.model_dump(mode="json")
+                                    for source in image.sources
+                                ],
+                                image_id=image.id,
+                                width=image.width,
+                                height=image.height,
+                                attributes=data,
+                            )
+                        )
+                if row.status == "draft":
+                    row.request_sha256 = request_hash
+                    row.crop_recipe = recipe
+                    row.status = "staging"
+                    for field, value in (
+                        ReleaseMetadata.from_spec(spec).model_dump().items()
+                    ):
+                        setattr(row, field, value)
         except IntegrityError:
             # The unique constraint also serializes concurrent initial claims.
             existing = await self.get_release_registration(spec.name, spec.version)
@@ -196,56 +310,75 @@ class DatasetController:
         return FileReference(key=key, sha256=sha256(data), size=len(data))
 
     async def read_file(self, reference: FileReference) -> bytes:
-        """Download a referenced object and verify its recorded size and SHA-256."""
-        data = await self.storage.download_blob(self.container, reference.key)
+        """Read a blob or generate database-backed COCO, then verify size and SHA-256."""
+        parts = reference.key.split("/")
+        if len(parts) == 4 and parts[0] == "releases" and parts[3] == "coco.json":
+            registration = await self.get_release_registration(parts[1], parts[2])
+        else:
+            registration = None
+        if registration is not None and registration.database_backed:
+            spec = await self.catalog.spec(parts[1], parts[2])
+            data = canonical_json(spec.coco.model_dump(mode="json"))
+        else:
+            data = await self.storage.download_blob(self.container, reference.key)
         if len(data) != reference.size or sha256(data) != reference.sha256:
             raise ReleaseConflict(f"Object checksum/size mismatch: {reference.key}")
         return data
 
-    async def publish_release(self, spec: ReleaseSpec) -> ReleaseRegistration:
-        """Publish an immutable reviewed release from prepared hash-addressed PNGs.
+    async def publish_release(
+        self, spec: ReleaseSpec | str, version: str | None = None
+    ) -> ReleaseRegistration:
+        """Publish a prepared database release or retry an existing specification.
 
-        Validate images, optionally generate classification crops, and store COCO
-        and manifest snapshots before marking the registration ready. Interrupted
-        writes leave a staging registration that identical inputs can resume;
-        a completed version is verified and reused.
+        Verify images, generate requested crops, and record outputs before marking
+        the release ready. Database-backed JSON is generated from catalog entities;
+        legacy snapshots retain their immutable blob representation.
         """
+        if isinstance(spec, str):
+            if version is None:
+                raise ValueError("Publishing by name requires a version")
+            spec = await self.catalog.spec(spec, version)
         # Re-validate at the boundary in case nested mutable lists were edited.
         spec = ReleaseSpec.model_validate(spec.model_dump(mode="json"))
         recipe = crop_recipe() if spec.generate_crops else None
         request_hash = self._request_hash(spec, recipe)
 
-        # Reserve this version before writing objects, or verify a completed retry.
-        registration = await self._claim(spec, request_hash)
+        registration = await self._claim(spec, request_hash, recipe)
         if registration.status == "ready":
             await self.load_verified_release(
                 spec.name, spec.version, registration.manifest_sha256
             )
             return registration
 
+        if registration.database_backed:
+            # Read the claimed entities rather than trusting the caller's copy.
+            spec = await self.catalog.spec(spec.name, spec.version)
+
         images, crops = await self._prepare_media(spec)
-        coco = await self._put_unchanged(
-            f"releases/{spec.name}/{spec.version}/coco.json",
-            canonical_json(spec.coco.model_dump(mode="json")),
-            "application/json",
-        )
-        manifest = ReleaseManifest(
-            **registration.metadata().model_dump(),
-            release_id=registration.id,
-            name=spec.name,
-            version=spec.version,
-            author=spec.author,
-            created_at=registration.created_at,
-            request_sha256=request_hash,
-            conversion=spec.conversion,
-            crop_recipe=recipe,
-            coco=coco,
-            images=images,
-            crops=crops,
-        )
-        manifest_sha256 = await self._store_manifest(
-            registration.manifest_key, manifest
-        )
+        if registration.database_backed:
+            await self.catalog.record_outputs(registration.id, images, crops)
+            manifest = await self.catalog.manifest(registration, spec)
+        else:
+            coco = await self._put_unchanged(
+                f"releases/{spec.name}/{spec.version}/coco.json",
+                canonical_json(spec.coco.model_dump(mode="json")),
+                "application/json",
+            )
+            manifest = ReleaseManifest(
+                **registration.metadata().model_dump(),
+                release_id=registration.id,
+                name=spec.name,
+                version=spec.version,
+                author=spec.author,
+                created_at=registration.created_at,
+                request_sha256=request_hash,
+                conversion=spec.conversion,
+                crop_recipe=recipe,
+                coco=coco,
+                images=sorted(images.values(), key=lambda item: item.key),
+                crops=crops,
+            )
+        manifest_sha256 = await self._store_manifest(registration, manifest)
 
         # Make the version selectable only after its complete snapshot is verified.
         await self._validate(manifest, spec.coco)
@@ -270,11 +403,11 @@ class DatasetController:
 
     async def _prepare_media(
         self, spec: ReleaseSpec
-    ) -> tuple[list[FileReference], list[CropReference]]:
+    ) -> tuple[dict[str, FileReference], list[CropReference]]:
         """Verify prepared PNGs and upload any requested classification crops.
 
-        Return unique images in key order and crops in image order, retaining each
-        image's annotation order and the bytes produced by identical retries.
+        Return image references keyed by blob path and crops in image order,
+        retaining each image's annotation order and retry bytes.
         """
         annotations: dict[int, list] = {}
         for annotation in spec.coco.annotations:
@@ -314,30 +447,23 @@ class DatasetController:
                     )
         if spec.generate_crops and not crops:
             raise ValueError("A classifier-ready release requires at least one crop")
-        return sorted(images.values(), key=lambda item: item.key), crops
+        return images, crops
 
-    async def _store_manifest(self, key: str, manifest: ReleaseManifest) -> str:
-        """Write and verify immutable manifest bytes, returning their SHA-256 digest.
+    async def _store_manifest(
+        self, registration: ReleaseRegistration, manifest: ReleaseManifest
+    ) -> str:
+        """Hash the generated manifest and persist a snapshot only for legacy releases.
 
-        Identical existing content is reused; different bytes raise ReleaseConflict.
-        Unknown metadata is omitted so older staging publications remain retryable.
+        Database-backed releases reconstruct their JSON from catalog records.
+        Legacy snapshots reuse identical bytes and reject conflicting content.
         """
-        # Legacy staging registrations may already have an immutable manifest.
-        # Omit unknown metadata to preserve its original bytes on retry.
-        unknown_metadata = {
-            field
-            for field in ReleaseMetadata.model_fields
-            if getattr(manifest, field) is None
-        }
-        manifest_bytes = canonical_json(
-            manifest.model_dump(mode="json", exclude=unknown_metadata)
-        )
-        # release.json is intentionally separate from COCO: standard COCO has no
-        # crop lineage or publication metadata. This is the v1 companion format.
+        manifest_bytes = manifest.document()
+        if registration.database_backed:
+            return sha256(manifest_bytes)
         try:
             await self.storage.upload_blob(
                 self.container,
-                key,
+                registration.manifest_key,
                 manifest_bytes,
                 overwrite=False,
                 content_type="application/json",
@@ -346,7 +472,9 @@ class DatasetController:
             # Expected for idempotent publish/retry when manifest already exists.
             # Integrity is verified immediately below by downloading and comparing bytes.
             pass
-        stored = await self.storage.download_blob(self.container, key)
+        stored = await self.storage.download_blob(
+            self.container, registration.manifest_key
+        )
         if stored != manifest_bytes:
             raise ReleaseConflict("Release manifest already has different content")
         return sha256(manifest_bytes)
@@ -391,9 +519,14 @@ class DatasetController:
             and expected_manifest_sha256 != registration.manifest_sha256
         ):
             raise ReleaseConflict("Pinned release differs from the selected version")
-        data = await self.storage.download_blob(
-            self.container, registration.manifest_key
-        )
+        if registration.database_backed:
+            spec = await self.catalog.spec(name, version)
+            manifest = await self.catalog.manifest(registration, spec)
+            data = manifest.document()
+        else:
+            data = await self.storage.download_blob(
+                self.container, registration.manifest_key
+            )
         if sha256(data) != registration.manifest_sha256:
             raise ReleaseConflict("Published release manifest checksum mismatch")
         manifest = ReleaseManifest.model_validate_json(data)

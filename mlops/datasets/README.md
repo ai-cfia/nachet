@@ -1,15 +1,15 @@
 # Reviewed dataset releases (MLOps)
 
-The dataset release component implements the reviewed-data handoff described in
-[the October 20 draft of #895](https://github.com/ai-cfia/nachet/issues/895#issuecomment-6303217149).
-It runs after PNG preparation and FiftyOne review. Blob storage holds the dataset
-files and version snapshots; the database registers their identity and readiness.
+This standalone project prepares, publishes and reads reviewed training datasets.
+The database owns release metadata, image membership and reviewed labels. Blob
+storage holds the prepared detection PNGs and generated classification crops.
+`DatasetController` generates COCO, membership, metadata and manifest JSON from
+those database records when requested. JSON exports are outputs, not separately
+maintained release inputs.
 
-This is a standalone uv project under `mlops/datasets/`. Its publisher, blob
-adapter, database registry, migration, readers, tests and examples are all owned
-by MLOps and do not import the backend application. The current external detector script,
-`nachetmodel/HFTrainer_detector_2026012601_js.py` in `nachet-model-ccds`, is unchanged.
-The storage-aware record reader is its integration point, described below.
+The publisher, registry, migrations, readers and tests belong to MLOps and do not
+import the backend application. The external detector trainer is unchanged; the
+reader is its integration point.
 
 Storage providers come from the standalone `nachet-blob==0.1.0` project in
 [`mlops/blob`](../blob/README.md), installed as a local editable dependency.
@@ -38,192 +38,260 @@ environment, checks dependency compatibility, and runs `tests/check_install.py`
 to verify provider inheritance and the CLI without backend or legacy imports.
 These local checks do not contact live storage services.
 
-## Files and registration
+## Database entities and files
+
+| Entity | Stored information |
+| --- | --- |
+| `dataset_release` | Name/version, author, description, dates, previous version, PNG conversion revision/settings, crop option/recipe, reviewed COCO categories/annotations and extra attributes, statistics, status and checksums. |
+| `dataset_membership` | Release reference, image order and COCO ID, exact exported filename, PNG SHA-256, dimensions, split, sources, extra image attributes and verified byte size. |
+| `dataset_crop` | Release reference, annotation ID, output order, pixel rectangle, crop SHA-256 and byte size. Image, category and split are derived from reviewed labels and membership. |
+
+COCO categories, annotations and extensible source attributes retain their JSON
+structure in database columns. The release metadata fields and per-image
+membership are stored as entities rather than repeated inside a stored release
+specification. Array order is preserved because it contributes to release identity.
+Images with identical PNG bytes can retain separate COCO IDs and provenance.
 
 ```text
 <dataset bucket>/
-  png/detection/<sha256>.png          # prepared full images, uploaded beforehand
+  png/detection/<sha256>.png          # prepared images, uploaded beforehand
   png/classification/<sha256>.png     # crops generated during publication
-  releases/<name>/<version>/
-    coco.json                        # reviewed labels and fixed image splits
-    release.json                     # v1 release manifest and crop relationships
 ```
 
-The hash rule is SHA-256 of the exact saved file bytes, including PNG encoding.
-The component rejects a detection PNG whose bytes do not match its filename.
-JSON is saved as UTF-8 with sorted object keys, compact separators and finite
-numbers. Array order is part of the release identity. A SHA-256 of `release.json`
-is recorded in the database; the manifest does not contain its own hash.
+New releases do not upload `coco.json` or `release.json`. Their familiar
+`releases/<name>/<version>/...` keys identify generated documents; they are not
+physical blob locations. Use the controller or the `export` command to obtain
+them. The existing manifest hash and training-reference fields remain available
+for pinning and integrity checks.
 
-`release.json` is the companion format chosen for this implementation. It records
-the release UUID, name, version, author, UTC creation time, input-request hash,
-conversion recipe, crop recipe, reviewed COCO checksum, image inventory and crop
-relationships. Each crop identifies its COCO image, annotation, category, split,
-pixel rectangle, blob key, size and checksum. The containing manifest supplies
-the dataset version. Metadata remains readable without mirroring all COCO boxes
-into application annotation or object rows.
+Registrations created before migration `c83f26d5ea02` retain their original blob
+snapshots and hashes. They are marked `database_backed=false` and continue to be
+read through the legacy snapshot path. The migration does not copy old JSON into
+new entities or rewrite blobs. Complete old staging releases with the previous
+runtime, or its original `ReleaseSpec` through the library API, before retiring
+that workflow. New releases use the database workflow below.
 
-The `dataset_release` table contains one registration per `(name, version)`:
-its UUID, author, creation time, container, request hash, manifest location/hash
-and `staging` or `ready` status, plus the dataset description, cutoff date,
-previous-version reference and annotation statistics described below.
-Membership, labels and crop mappings remain in
-the blob snapshot. On PostgreSQL it lives in a dedicated `nachet_datasets` schema
-by default, with its own `dataset_release_version` migration-version table.
-The registry does not change the backend schema or its Alembic head.
-Application picture identifiers can be retained as extra COCO provenance fields;
-the standalone publisher does not query or create application picture records.
+## Migration runbook
 
-## Prepare a release specification
-
-Use the structure in `examples/dataset-release.json`. Replace its example
-hash and dimensions with a real prepared PNG reference and its image dimensions.
-The file describes inputs; it does not upload or convert the source images.
-
-Required inputs include the dataset name/version, author, conversion code
-revision/settings and reviewed COCO. Every image needs an explicit `split` of
-`train`, `validation` or `test`. COCO `file_name` must be the existing
-`png/detection/<sha256>.png` key within the selected container.
-
-Optional top-level fields describe the dataset version:
-
-- `description`: free text explaining the dataset's content and purpose.
-- `dataset_cutoff_date`: a date in `YYYY-MM-DD` format indicating the data
-  inclusion cutoff, supplied by the publisher rather than inferred from publication time.
-- `previous_version`: free text referencing the preceding version, such as `v1`,
-  a manifest object key, or a URL. Omit it or use `null` for the first version.
-  This is a reference for readers; the publisher does not fetch or validate its target.
-
-Publication calculates these fields from the reviewed COCO and stores them in
-both the registry and `release.json`; do not enter them in the specification:
-
-- `has_bounding_boxes`: whether at least one bounding-box annotation exists.
-- `has_classes`: whether the COCO category list contains classes. The current
-  reviewed-COCO contract requires at least one category, so this is always `true`.
-- `num_classes`: number of declared COCO categories, including unused categories.
-- `num_multi_object_images`: number of COCO image records with two or more annotations.
-- `num_single_object_images`: number of COCO image records with exactly one annotation.
-
-Image counts cover all splits and count COCO image IDs, including separate records
-that share image bytes. Images with no annotations belong to neither object-count
-group. Each annotation counts as one labeled object, including an `iscrowd` annotation;
-the publisher does not infer how many actual objects a crowd box contains.
-These counts describe the reviewed labels, not objects missing from the annotations.
-
-The description, cutoff date and previous-version reference are also saved in the
-registry and manifest. `inspect` returns all eight fields. Changing descriptive
-metadata changes the release inputs and requires a new version after publication.
-Existing releases retain their original manifests and hashes; metadata not recorded
-by the old publisher remains `null`, rather than being guessed or backfilled.
-
-Add source records to `images[].sources` when known. Multiple records preserve
-original paths, collection dates, species, batch and tray information for shared
-image bytes. Additional COCO and source attributes are preserved. Supply a
-globally consistent `specimen_group` when photographs represent the same known
-specimen. Identical image keys and known specimen groups must not cross splits.
-Unknown specimen identity cannot be detected from metadata alone; assign splits
-upstream using the available collection knowledge.
-
-Set `generate_crops` to `true` to publish a classifier-ready release. The cropper
-uses the reviewed COCO boxes, not pre-labeling predictions or live MongoDB state.
-COCO decimal coordinates remain unchanged. Pixel extraction uses floor for
-left/top and ceil for right/bottom, converts to RGB and saves PNG at compression
-level 6 using OpenCV. The recipe includes its algorithm ID and OpenCV version.
-Each crop inherits its parent's split. Unchanged crop bytes reuse the same blob key.
-
-## Run
-
-Run from `mlops/datasets/`. Install the locked standalone dependencies:
+Run from `mlops/datasets/` and install the locked dependencies:
 
 ```bash
 uv sync --locked
 ```
 
-Set `DATASET_DATABASE_URL` to an explicit async connection URL, such as
-`postgresql+psycopg://<user>:<password>@<host>/<database>`. The default PostgreSQL
-schema is `nachet_datasets`; `DATASET_REGISTRY_SCHEMA` can select another existing
-schema dedicated to MLOps. Provision that schema and its role permissions before
-running the migration. A local SQLite registry can use
-`sqlite+aiosqlite:///dataset-registry.local` and needs no schema.
+Set `DATASET_DATABASE_URL` to an explicit async SQLAlchemy URL, such as
+`postgresql+psycopg://<user>:<password>@<host>/<database>`. PostgreSQL defaults to
+schema `nachet_datasets`; `DATASET_REGISTRY_SCHEMA` can select another existing
+MLOps schema. Provision its role and permissions beforehand. Local testing can
+use `sqlite+aiosqlite:///dataset-registry.local` without a schema.
+Settings load from the environment, `.env`, or `DATASET_ENV_FILE`.
 
-Load these settings from the job environment, `.env`, or a `DATASET_ENV_FILE`.
-Apply the standalone migration explicitly before publication:
+Before upgrading an existing registry:
+
+1. Stop publisher/preparation jobs and back up the registry database. Retain the
+   existing dataset blobs for legacy releases.
+2. Confirm the selected registry and current revision:
+
+   ```bash
+   uv run alembic -c alembic.ini current
+   ```
+
+3. Apply the standalone migrations:
+
+   ```bash
+   uv run alembic -c alembic.ini upgrade head
+   uv run alembic -c alembic.ini current
+   ```
+
+   Expect revision `c83f26d5ea02`. It follows `a895d501ea01`, extends
+   `dataset_release`, allows `draft` status, and creates `dataset_membership` and
+   `dataset_crop`. Existing registrations remain intact and use their legacy
+   snapshot path. No blob reads or writes occur during migration.
+4. Check the tables in the selected MLOps schema, then validate an existing ready
+   release with its saved manifest hash before restarting jobs.
+
+These commands run only the standalone MLOps migration history, not backend
+migrations. Argo CD does not invoke them automatically. Publication does not
+create schemas, tables, buckets or permissions. This change has not been applied
+to a live server.
+
+Downgrading to `a895d501ea01` is supported only while no database-backed releases
+exist. Once new entities have been created, downgrading would discard the source
+of truth; the migration refuses it. Roll back by restoring the pre-upgrade backup
+and previous runtime instead. Do not delete new rows merely to bypass that guard.
+
+## Create release metadata
+
+Register metadata once in the database, using CLI options or
+`DatasetController.create_release(ReleaseDefinition(...))`:
 
 ```bash
-uv run alembic -c alembic.ini upgrade head
+uv run python -m dataset_release --container training-datasets \
+  create reviewed-seeds v1 --author reviewer \
+  --conversion-revision <image-preparation-revision> \
+  --setting format=PNG --setting mode=RGB \
+  --description "Reviewed seed images" --dataset-cutoff-date 2026-11-02
 ```
 
-This runs the single initial MLOps registry migration, `a895d501ea01`, which
-creates the registry with all eight nullable metadata columns and nonnegative-count
-constraints. It does not modify blob objects or run backend migrations.
-Argo CD is not configured to invoke it automatically.
-The publication command never creates tables, schemas, buckets or permissions.
+`--setting KEY=VALUE` accepts a JSON value or plain text. Record the actual
+revision/settings used to prepare the PNGs. Optional `--previous-version` records
+a prior-version reference. `--generate-crops` enables classification crops at
+publication; detection-only is the default. Creation reserves a unique name and
+version with status `draft`. There is no metadata JSON input or template to keep
+in sync.
+
+The dataset curator assigns `train`, `validation` or `test` before preparation.
+Known `specimen_group` values must not span splits. Neither the exporter nor the
+publisher invents splits or specimen identities. PNG hashes identify the exact
+saved file bytes, including PNG encoding. The publisher verifies those bytes
+against `png/detection/<sha256>.png` in the selected container.
+
+## Prepare reviewed labels
+
+Choose one input workflow for the draft release. Both save reviewed labels and
+membership atomically in the database. IDs, decimal boxes, negative images,
+extra annotation attributes and source provenance are preserved.
+
+### From FiftyOne
+
+Run in the annotation environment with FiftyOne installed and access to its
+dataset database, the MLOps registry, and the local media when hashing or image
+metadata requires it. FiftyOne is intentionally not a publisher dependency.
+Install the two sibling packages using the annotation interpreter if needed:
+
+```bash
+python -m pip install -e ../blob -e .
+python -m dataset_release.fiftyone_export \
+  --container training-datasets --name reviewed-seeds --version v1 \
+  --dataset seeds --view reviewed --label-field corrected_detections
+```
+
+Omit `--view` to use the full dataset. Retain the split/hash/source fields in the
+saved view. Every selected sample needs an explicit `split` and reviewed
+`Detections`; use empty `Detections` for reviewed negatives. Optional `sha256`
+identifies the stored PNG bytes. Otherwise a `<sha256>.png` filename supplies the
+hash, or the script hashes the exact local file bytes. Optional `sources` is a
+list of provenance records. If absent, the original path and FiftyOne sample ID
+are recorded. Use `--split-field`, `--sha256-field` and `--sources-field` for other
+field names. Image dimensions must be in FiftyOne metadata or readable from media.
+
+The exporter writes only temporary labels with `export_media=False` and
+`abs_paths=True`, then saves the resulting membership and labels in SQL. It
+does not copy images. Pause annotation edits during export; the script does not
+lock the FiftyOne App. Register the draft metadata before starting the export.
+
+### From an existing web COCO export
+
+Register each image's verified exported filename, PNG hash, split and optional
+provenance using `add-image` or the catalog's `add_membership` API. For example:
 
 ```bash
 uv run python -m dataset_release --container training-datasets \
-  publish examples/dataset-release.json
+  add-image reviewed-seeds v1 --file-name /datasets/reviewed/seed.png \
+  --sha256 <64-character-png-sha256> --split train \
+  --original-path collection/tray/seed.tiff --specimen-group seed-1
 
+uv run python -m dataset_release.fiftyone_export \
+  --container training-datasets --name reviewed-seeds --version v1 \
+  --coco labels.json
+```
+
+Repeat `add-image` for every exported image. Bulk callers can add each
+`ImageMembership` through the catalog API without authoring a membership JSON
+file. Reviewed COCO must match the registered paths exactly except for slash
+direction. Missing, duplicated or conflicting membership fails preparation;
+matching does not fall back to basename or image order.
+
+For the web App's `@voxel51/io/export_samples`, choose Labels only, COCO, the
+reviewed field and Absolute paths. The [upstream I/O plugin](https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/io/__init__.py)
+defaults Absolute paths to false. Inspect `images[].file_name` in the actual
+export before registering membership. If the export rewrites paths, register a
+verified mapping using the actual exported names or re-export with absolute
+paths. The deployed App behavior still needs live verification.
+
+A draft can be re-prepared with corrected labels for the same membership.
+Membership additions stop after labels are prepared. Publication freezes the
+release: further changes require a new version.
+
+## Publish and request JSON
+
+Publish the prepared database release by name and version:
+
+```bash
+uv run python -m dataset_release --container training-datasets \
+  publish reviewed-seeds v1
 uv run python -m dataset_release --container training-datasets \
   inspect reviewed-seeds v1
-
 uv run python -m dataset_release --container training-datasets \
   validate reviewed-seeds v1 --expected-manifest-sha256 <saved-manifest-sha256>
 ```
 
-`DATASET_BLOB_PROVIDER` selects `s3` (the default) or `azure`.
-For S3, use boto3's standard AWS credentials/role providers or supply
-`S3_ACCESS_KEY` and `S3_SECRET_KEY` together. Optional settings are
-`S3_REGION_NAME`, `S3_ENDPOINT_URL`, `S3_USE_SSL` and `S3_VERIFY`.
-Temporary explicit credentials also accept `S3_SESSION_TOKEN`.
-`AWS_ENDPOINT_URL_S3`, `AWS_REGION` and `AWS_DEFAULT_REGION` are also supported. The S3
-adapter performs conditional writes and checksums without importing `app.blob`.
+The controller derives label statistics from reviewed COCO and stores them with
+the release: bounding-box/class availability, class count, and counts of images
+with one or multiple reviewed objects. Negative images count in neither object
+count. `inspect` returns these statistics, descriptive metadata and split counts.
 
-For Azure, set `DATASET_BLOB_PROVIDER=azure` and
-`AZURE_STORAGE_CONNECTION_STRING`. Use an existing container and the same
-publish/inspect/validate commands. The copied Azure provider uses the SDK's
-non-overwriting upload and translates conflicts into the common blob exception.
-The database settings, release format and training reader contract are the same
-for both providers. For library use, pass a copied provider to
-`BlobStorageAdapter(create_blob_storage_client(provider, config))`, or use
-`BlobStorageAdapter.from_environment()`; this replaces the former `S3Storage`
-helper. Close the adapter when the job finishes.
+Generate JSON only when a consumer needs it:
 
-The commands output JSON containing the dataset UUID, version, manifest
-location/hash and the value to store in `Model.dataset`. `inspect` also returns
-dataset metadata, image/annotation/crop counts and split counts. Both `inspect` and `validate`
-verify every referenced file, so inspection performs dataset reads.
+```bash
+uv run python -m dataset_release --container training-datasets \
+  export reviewed-seeds v1 metadata
+uv run python -m dataset_release --container training-datasets \
+  export reviewed-seeds v1 membership
+uv run python -m dataset_release --container training-datasets \
+  export reviewed-seeds v1 coco --output coco.json
+uv run python -m dataset_release --container training-datasets \
+  export reviewed-seeds v1 manifest --output release.json
+```
 
-## Publication, retries and retention
+`metadata`, `membership`, `spec` and prepared `coco` documents can be exported from
+a draft. A manifest requires a ready release and validates the referenced files.
+`--output` refuses to overwrite a file. Without it, JSON goes to stdout.
+The Python API is `await controller.export_json(name, version, document)`.
+The FiftyOne preparation command also accepts an optional `--output-dir` to
+request generated COCO/spec files. These exports can be discarded and regenerated;
+they do not become publication inputs. `create`, `add-image`, preparation and
+metadata/membership/spec/COCO exports need database access only, without blob
+credentials for database-backed releases.
 
-Publication reserves the name/version with a database unique constraint before
-writing blobs. Conflicting inputs under that identity fail. Identical retries
-reuse the reservation and stored objects. A failure leaves the row in `staging`;
-readers refuse it. Retry the same specification to complete the operation.
-If the specification itself must change, use another version identity.
+## Storage, publication and retries
 
-The controller checks images, labels, dimensions, boxes and crop relationships,
-writes the reviewed COCO and manifest with overwrite disabled, verifies the
-stored bytes, then commits `ready` and the final manifest hash. Only registered
-`ready` releases can be resolved. Reads verify the saved hashes and fail on
-missing or changed inputs. A correction in FiftyOne must be exported as a new
-version, which can continue sharing unchanged PNGs with earlier versions.
+`DATASET_BLOB_PROVIDER` selects `s3` (default) or `azure`. S3 uses boto3's standard
+credential/role providers or explicit `S3_ACCESS_KEY` and `S3_SECRET_KEY` together.
+Optional settings are `S3_REGION_NAME`, `S3_ENDPOINT_URL`, `S3_USE_SSL`, `S3_VERIFY`
+and `S3_SESSION_TOKEN`; `AWS_ENDPOINT_URL_S3`, `AWS_REGION` and
+`AWS_DEFAULT_REGION` are also supported. Azure uses
+`AZURE_STORAGE_CONNECTION_STRING`. Close the adapter when a library job finishes.
+Use an existing container and provide publisher access for publication and file
+validation.
 
-S3 `overwrite=False` now uses an atomic `If-None-Match: *` PUT, rather than a
-separate existence check. The chosen S3 service must support conditional writes;
-publication fails if it does not. A concurrent S3 conditional-write conflict can
-be retried with the same specification. No operation silently falls back to an
-overwriting upload.
+Publication locks and changes the draft to `staging`, fixing the request hash and
+crop recipe before expensive work. It verifies existing detection PNG bytes and
+dimensions, optionally writes crops, records verified sizes and crop lineage,
+generates the manifest, validates its files, then commits `ready` and the manifest
+checksum. Detection-only publication writes no blobs. JSON is UTF-8 with sorted
+keys, compact separators and finite numbers. COCO array order is preserved.
 
-Use a dedicated dataset bucket and publisher credentials. Grant trainers only
-read access to the relevant objects and release registrations. Restrict writes
-to the dataset publisher and enforce retention/no deletion of referenced files
-with storage policy or object lock as appropriate. Application database RBAC
-does not protect direct S3 reads. Code protects writes made through this module;
-it cannot prevent an unrelated administrator from replacing objects or editing
-database rows. Checksums detect such changes. Database registration backups and
-blob backups/retention are separate operational requirements. Deletion and
-garbage collection are intentionally absent, including cleanup of failed-upload
-objects. Argo execution location and its credentials/mounts are not deployed here.
+Crop generation uses reviewed boxes, floors left/top and ceils right/bottom,
+converts to RGB, and saves PNG at compression level 6 using OpenCV. Its recorded
+recipe pins the algorithm and OpenCV version. Each crop inherits the image's
+split. Unchanged PNG bytes reuse their blob key.
+
+A failed publication remains `staging` and cannot be read for training. Retry
+`publish <name> <version>` to finish it; identical concurrent publishers reuse the
+same registration and content. Conflicting inputs require another version.
+New releases reconstruct documents from database entities and check the recorded
+manifest hash on read. Legacy releases continue checking their saved blob JSON.
+Missing/corrupted PNGs or altered published records fail validation.
+
+Crop writes use atomic non-overwriting storage operations. S3 requires support
+for `If-None-Match: *`; conditional conflicts can be retried without overwriting.
+Grant trainers read access to the registry and dataset objects; restrict writes
+to publishers. Database backups are now essential for new release metadata,
+membership and labels, while blob retention protects PNG bytes and legacy
+snapshots. Direct administrator edits can bypass application locks; saved hashes
+detect changes on read. Deletion, garbage collection, live migration application
+and cluster job deployment are outside these tools.
 
 ## Training integration
 
@@ -299,7 +367,7 @@ splits. Without the variable, only that external compatibility test is skipped.
 The suite exercises publication, interrupted uploads, identical and conflicting
 retries, concurrent publishers, corrected versions, missing/corrupt files,
 provenance, split leakage, crop dimensions, negative detection images, the
-initial migration and atomic S3 request behavior. It also publishes and recovers
+database migrations and atomic S3 request behavior. It also publishes and recovers
 releases through the actual copied S3/Azure providers using fake SDK transports.
 It uses temporary SQLite databases and in-memory object stores; it does not establish production S3/Azure
 compatibility, live PostgreSQL deployment, GPU training quality or throughput.
