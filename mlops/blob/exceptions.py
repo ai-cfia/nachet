@@ -5,7 +5,7 @@ This module defines all the custom exceptions used throughout the blob storage
 interface, providing clear error categorization and handling.
 """
 
-from beartype.typing import Any, Dict, Optional
+from beartype.typing import Optional, Dict, Any
 
 
 class BlobStorageError(Exception):

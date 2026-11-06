@@ -11,19 +11,22 @@ by MLOps and do not import the backend application. The current external detecto
 `nachetmodel/HFTrainer_detector_2026012601_js.py` in `nachet-model-ccds`, is unchanged.
 The storage-aware record reader is its integration point, described below.
 
-Storage providers come from the standalone `blob-controller` project in
+Storage providers come from the standalone `nachet-blob` project in
 [`mlops/blob`](../blob/README.md), installed as a local editable dependency.
-Its `blob_controller` module is a temporary copy of `backend/app/blob/`.
+Its `blob` module is a temporary copy of `backend/app/blob/`.
 `DatasetController` uses `BlobStorageAdapter`, which delegates to that module's
-`BlobStorageInterface` and S3/Azure implementations. The original standalone
-S3 upload/download implementation has been replaced. See
+`BlobStorageInterface` and S3/Azure implementations. Dataset-specific extensions
+in `dataset_release/providers/` preserve atomic create-only publication, SDK
+credential-chain support, Azure connection strings, and connection/stream cleanup.
+They use inheritance while leaving the reviewed shared `blob` package unchanged.
+The worker adapter keeps synchronous SDK calls off the controller event loop. See
 [the copy's provenance and differences](../blob/PROVENANCE.md) for the future
 extraction into `nachet/common`; the backend source remains unchanged.
 
 Keep `mlops/blob/` beside `mlops/datasets/` when checking out, copying or mounting
 the source for a job. `uv sync --locked` installs both projects. The dataset
 wheel contains only `dataset_release`; deployments that install wheels must
-also supply the standalone `blob-controller` wheel.
+also supply the standalone `nachet-blob` wheel.
 
 ## Files and registration
 

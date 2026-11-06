@@ -4,26 +4,27 @@ from io import BytesIO
 from unittest.mock import Mock, patch
 
 import pytest
-from botocore.exceptions import ClientError
-
-from blob_controller import BlobStorageInterface, create_blob_storage_client
-from blob_controller.exceptions import (
+from blob import BlobStorageInterface
+from blob.exceptions import (
     BlobAlreadyExistsError,
     BlobNotFoundError,
     BlobStorageError,
     InvalidConfigurationError,
 )
-from blob_controller.exceptions import PermissionError as BlobPermissionError
+from blob.exceptions import PermissionError as BlobPermissionError
+from botocore.exceptions import ClientError
+
+from dataset_release.providers import create_dataset_blob_storage_client
 
 
 def s3_storage(client):
-    with patch("blob_controller.s3.storage.create_s3_client", return_value=client):
-        return create_blob_storage_client("s3", {})
+    with patch("dataset_release.providers.s3.create_s3_client", return_value=client):
+        return create_dataset_blob_storage_client("s3", {})
 
 
 @pytest.mark.asyncio
 async def test_copied_provider_conflicts_missing_objects_and_cleanup(blob_provider):
-    storage = blob_provider.storage
+    storage = blob_provider.storage.provider
     assert isinstance(storage, BlobStorageInterface)
     await storage.upload_blob("datasets", "file.json", b"original", overwrite=False)
     with pytest.raises(BlobAlreadyExistsError):
@@ -49,9 +50,9 @@ async def test_copied_provider_conflicts_missing_objects_and_cleanup(blob_provid
 async def test_s3_conditional_failure_never_retries_with_overwrite(monkeypatch, code):
     client = Mock()
     monkeypatch.setattr(
-        "blob_controller.s3.storage.create_s3_client", lambda config: client
+        "dataset_release.providers.s3.create_s3_client", lambda config: client
     )
-    storage = create_blob_storage_client("s3", {})
+    storage = create_dataset_blob_storage_client("s3", {})
     client.put_object.side_effect = ClientError({"Error": {"Code": code}}, "PutObject")
     with pytest.raises(BlobStorageError) as error:
         await storage.upload_blob("datasets", "file.json", b"data", overwrite=False)
@@ -65,7 +66,7 @@ async def test_s3_conditional_failure_never_retries_with_overwrite(monkeypatch, 
 
 def test_copied_factory_rejects_unknown_provider():
     with pytest.raises(InvalidConfigurationError):
-        create_blob_storage_client("unknown", {})
+        create_dataset_blob_storage_client("unknown", {})
 
 
 @pytest.mark.asyncio
@@ -124,11 +125,11 @@ async def test_s3_download_closes_stream_and_translates_missing_object():
 
 
 def test_s3_factory_preserves_credential_chain_and_avoids_list_buckets(monkeypatch):
-    from blob_controller.s3 import client as s3_client
+    from dataset_release.providers import s3 as s3_client
 
     factory = Mock()
     monkeypatch.setattr(s3_client.boto3, "client", factory)
-    storage = create_blob_storage_client("s3", {"s3_region_name": "garage"})
+    storage = create_dataset_blob_storage_client("s3", {"s3_region_name": "garage"})
     assert factory.call_args.kwargs["region_name"] == "garage"
     assert "aws_access_key_id" not in factory.call_args.kwargs
     factory.return_value.list_buckets.assert_not_called()
@@ -146,7 +147,7 @@ def test_imports_do_not_load_backend_or_dataset_release():
             "-I",
             "-c",
             (
-                "import sys; import blob_controller.s3.storage, blob_controller.azure.storage; "
+                "import sys; import blob.s3.storage, blob.azure.storage; "
                 + "assert not any(n == 'app' or n.startswith('app.') or "
                 + "n == 'dataset_release' or n.startswith('dataset_release.') for n in sys.modules)"
             ),

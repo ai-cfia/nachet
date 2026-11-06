@@ -5,20 +5,15 @@ This module provides common error handling patterns extracted from the original
 AzureBlobStorage class to promote code reuse and consistency.
 """
 
-from azure.core.exceptions import (
-    ResourceExistsError,
-    ResourceNotFoundError,
-    ServiceRequestError,
-)
+from beartype.typing import Callable, Any, Optional
+from azure.core.exceptions import ServiceRequestError, ResourceNotFoundError
 from azure.storage.blob import BlobServiceClient
-from beartype.typing import Any, Callable, Optional
 
 from ...exceptions import (
-    BlobAlreadyExistsError,
-    BlobNotFoundError,
     BlobStorageError,
-    ConnectionError,
     ContainerNotFoundError,
+    BlobNotFoundError,
+    ConnectionError,
     InvalidConfigurationError,
 )
 
@@ -48,16 +43,6 @@ class ErrorHandler:
                 ):
                     # Re-raise our custom exceptions without wrapping
                     raise
-                except ResourceExistsError as error:
-                    # Azure's overwrite=False upload is conditional in the SDK.
-                    # Preserve the common conflict type for release retries.
-                    if operation_name == "upload blob" and not kwargs.get(
-                        "overwrite", True
-                    ):
-                        raise BlobAlreadyExistsError(args[1], args[2]) from error
-                    raise BlobStorageError(
-                        f"Failed to {operation_name}: {error}"
-                    ) from error
                 except ServiceRequestError as e:
                     raise ConnectionError(
                         f"Failed to connect to Azure storage during {operation_name}: {str(e)}"

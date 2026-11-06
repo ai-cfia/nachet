@@ -181,32 +181,6 @@ wheels = [
 ]
 
 [[package]]
-name = "blob-controller"
-version = "0.1.0"
-source = { editable = "../blob" }
-dependencies = [
-    { name = "azure-storage-blob" },
-    { name = "beartype" },
-    { name = "boto3" },
-    { name = "pydantic" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "azure-storage-blob", specifier = "==12.28.0" },
-    { name = "beartype", specifier = ">=0.21,<1" },
-    { name = "boto3", specifier = ">=1.40.55,<2" },
-    { name = "pydantic", specifier = "==2.13.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=8.4,<10" },
-    { name = "pytest-asyncio", specifier = ">=1,<2" },
-    { name = "ruff", specifier = ">=0.13,<1" },
-]
-
-[[package]]
 name = "boto3"
 version = "1.43.118"
 source = { registry = "https://pypi.org/simple" }
@@ -662,6 +636,19 @@ wheels = [
 ]
 
 [[package]]
+name = "loguru"
+version = "0.7.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "win32-setctime", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3a/05/a1dae3dffd1116099471c643b8924f5aa6524411dc6c63fdae648c4f1aca/loguru-0.7.3.tar.gz", hash = "sha256:19480589e77d47b8d85b2c827ad95d49bf31b0dcde16593892eb51dd18706eb6", size = 63559, upload-time = "2024-12-06T11:20:56.608Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/29/0348de65b8cc732daa3e33e67806420b2ae89bdce2b04af740289c5c6c8c/loguru-0.7.3-py3-none-any.whl", hash = "sha256:31a33c10c8e1e10422bfd431aeb5d351c7cf7fa671e3c4df004162264b28220c", size = 61595, upload-time = "2024-12-06T11:20:54.538Z" },
+]
+
+[[package]]
 name = "mako"
 version = "1.4.3"
 source = { registry = "https://pypi.org/simple" }
@@ -786,13 +773,43 @@ wheels = [
 ]
 
 [[package]]
+name = "nachet-blob"
+version = "0.1.0"
+source = { editable = "../blob" }
+dependencies = [
+    { name = "azure-storage-blob" },
+    { name = "beartype" },
+    { name = "boto3" },
+    { name = "loguru" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "azure-storage-blob", specifier = "==12.28.0" },
+    { name = "beartype", specifier = ">=0.21,<1" },
+    { name = "boto3", specifier = ">=1.40.55,<2" },
+    { name = "loguru", specifier = ">=0.7.3,<1" },
+    { name = "pydantic", specifier = "==2.13.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pydantic-settings", specifier = ">=2.10.1,<3" },
+    { name = "pytest", specifier = ">=8.4,<10" },
+    { name = "pytest-asyncio", specifier = ">=1,<2" },
+    { name = "python-dotenv", specifier = ">=1.2.2,<2" },
+    { name = "ruff", specifier = ">=0.13,<1" },
+]
+
+[[package]]
 name = "nachet-dataset-release"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
-    { name = "blob-controller" },
+    { name = "nachet-blob" },
     { name = "numpy" },
     { name = "opencv-python-headless" },
     { name = "pillow" },
@@ -816,7 +833,7 @@ dev = [
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21,<1" },
     { name = "alembic", specifier = ">=1.16.5,<2" },
-    { name = "blob-controller", editable = "../blob" },
+    { name = "nachet-blob", editable = "../blob" },
     { name = "numpy", specifier = ">=1.26,<3" },
     { name = "opencv-python-headless", specifier = ">=4.10,<5" },
     { name = "pillow", specifier = "==13.0.0" },
@@ -1380,6 +1397,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e3/05/b17359e1cefb4f909b5e40b1b90a496d987258916dbbf88e842c729f510e/urllib3-2.8.0.tar.gz", hash = "sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63", size = 458972, upload-time = "2026-09-15T19:29:36.253Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/92/9d/c4e665119135114480843e7ab388fa94d8480650450e6f8e26b70d323a4c/urllib3-2.8.0-py3-none-any.whl", hash = "sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3", size = 135717, upload-time = "2026-09-15T19:29:34.577Z" },
+]
+
+[[package]]
+name = "win32-setctime"
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1a/e4/f0f252c65f9bf7c4042b1f707ef338d49f799da582234e1d3e6e2cfca291/win32_setctime-1.2.1.tar.gz", hash = "sha256:077b35471bf1ff1d71e165c919ddc0cecf51b8e1802f5d820d33a96e2f6717dd", size = 4983, upload-time = "2026-10-25T18:21:32.318Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bd/df/5593480bc1e932eeae28e4fa182ab68174edd0d77409ced3b6491d02d1d5/win32_setctime-1.2.1-py3-none-any.whl", hash = "sha256:a9edc685b35414bec69392c866ed82456ad125ac4a6a4b703ec1d8b462d4f477", size = 4215, upload-time = "2026-10-25T18:21:30.939Z" },
 ]
 
 [[package]]

@@ -33,6 +33,14 @@ jobs:
           version: "0.11.24"
       - run: uv sync --locked
       - run: uv run --no-sync ruff check .
-      - run: uv run --no-sync ruff format --check .
+      - name: Lint extraction support code
+        run: uv run --no-sync ruff check --select E4,E7,E9,F,I,UP logs.py constants.py tests/conftest.py tests/settings.py tests/check_install.py tests/test_package.py
+      - name: Check formatting of extraction support code
+        run: uv run --no-sync ruff format --check logs.py constants.py tests/conftest.py tests/settings.py tests/check_install.py tests/test_package.py
       - run: uv run --no-sync python -I -m pytest
       - run: uv build --wheel
+      - name: Verify wheel independently of the source tree and backend
+        run: |
+          uv venv .cache/wheel-venv
+          uv pip install --python .cache/wheel-venv/bin/python dist/*.whl
+          .cache/wheel-venv/bin/python -I tests/check_install.py

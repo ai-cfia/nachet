@@ -8,9 +8,9 @@ from unittest.mock import Mock
 
 import pytest
 from azure.core.exceptions import ResourceExistsError
-from blob_controller import create_blob_storage_client
 from botocore.exceptions import ClientError
 
+from dataset_release.providers import create_dataset_blob_storage_client
 from dataset_release.storage import BlobStorageAdapter
 
 
@@ -47,7 +47,7 @@ def blob_provider(request, monkeypatch):
         client.get_object.side_effect = get_object
         client.head_object.side_effect = head_object
         monkeypatch.setattr(
-            "blob_controller.s3.storage.create_s3_client", lambda config: client
+            "dataset_release.providers.s3.create_s3_client", lambda config: client
         )
         config = {}
     else:
@@ -82,12 +82,14 @@ def blob_provider(request, monkeypatch):
         client.get_blob_client.side_effect = get_blob_client
         client.get_container_client.return_value.exists.return_value = True
         monkeypatch.setattr(
-            "blob_controller.azure.storage.create_blob_service_client",
+            "blob.azure.storage.create_blob_service_client",
             lambda *args, **kwargs: client,
         )
         config = {"connection_string": "test-only"}
 
-    storage = BlobStorageAdapter(create_blob_storage_client(request.param, config))
+    storage = BlobStorageAdapter(
+        create_dataset_blob_storage_client(request.param, config)
+    )
     try:
         yield SimpleNamespace(
             storage=storage, objects=objects, client=client, kind=request.param

@@ -1,6 +1,6 @@
 """Utility modules for S3 blob storage operations."""
 
-from blob_controller.s3.utils.error_handling import ErrorHandler
-from blob_controller.s3.utils.validation import ValidationHelper
+from .validation import ValidationHelper
+from .error_handling import ErrorHandler
 
 __all__ = ["ValidationHelper", "ErrorHandler"]

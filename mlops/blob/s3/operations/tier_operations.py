@@ -5,7 +5,7 @@ This module handles blob tier (storage class) management operations.
 Note: Apache Ozone may not support storage classes, so operations may be no-ops.
 """
 
-from beartype.typing import Any, cast
+from beartype.typing import cast, Any
 from botocore.exceptions import ClientError
 
 from ..utils.error_handling import ErrorHandler
@@ -19,7 +19,7 @@ def _get_logger():
     """Lazy load logger to avoid circular imports"""
     global _logger
     if _logger is None:
-        from blob_controller.logs import LogService
+        from ...logs import LogService
 
         _logger = LogService.get_logger()
     return _logger

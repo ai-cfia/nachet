@@ -7,27 +7,26 @@ using Pydantic models. The implementation uses a composition pattern
 with focused operation classes for better maintainability.
 """
 
+from beartype.typing import (
+    Dict,
+    Any,
+    List,
+    Union,
+    BinaryIO,
+    AsyncIterator,
+    Optional,
+)
 from datetime import timedelta
 
-from beartype.typing import (
-    Any,
-    AsyncIterator,
-    BinaryIO,
-    Dict,
-    List,
-    Optional,
-    Union,
-)
-
-from ..exceptions import InvalidConfigurationError
 from ..interface import BlobStorageInterface
+from ..exceptions import InvalidConfigurationError
 from .client import create_s3_client
 from .operations import (
-    AdvancedOperations,
     BlobOperations,
     ContainerOperations,
     MetadataOperations,
     SecurityOperations,
+    AdvancedOperations,
     TierOperations,
 )
 
@@ -39,7 +38,7 @@ def _get_logger():
     """Lazy load logger to avoid circular imports"""
     global _logger
     if _logger is None:
-        from blob_controller.logs import LogService
+        from ..logs import LogService
 
         _logger = LogService.get_logger()
     return _logger
@@ -102,10 +101,6 @@ class S3BlobStorage(BlobStorageInterface):
         self._security_ops = SecurityOperations(self._s3_client)
         self._advanced_ops = AdvancedOperations(self._s3_client)
         self._tier_ops = TierOperations(self._s3_client)
-
-    def close(self) -> None:
-        """Release the synchronous SDK client's connection pool."""
-        self._s3_client.close()
 
     # Container operations - delegate to ContainerOperations
     async def list_containers(self, **kwargs) -> Dict[str, Any]:

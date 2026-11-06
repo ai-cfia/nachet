@@ -10,7 +10,7 @@ requires-python = ">=3.12,<3.14"
 dependencies = [
     "aiosqlite>=0.21,<1",
     "alembic>=1.16.5,<2",
-    "blob-controller",
+    "nachet-blob",
     "numpy>=1.26,<3",
     "opencv-python-headless>=4.10,<5",
     "pillow==13.0.0",
@@ -31,7 +31,7 @@ compatibility = ["datasets==4.4.1"]
 packages = ["dataset_release", "utility"]
 
 [tool.uv.sources]
-blob-controller = { path = "../blob", editable = true }
+nachet-blob = { path = "../blob", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

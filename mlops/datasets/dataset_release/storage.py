@@ -6,9 +6,8 @@ import asyncio
 import os
 from typing import Any, Protocol
 
-from blob_controller import BlobStorageInterface, create_blob_storage_client
-
 from .errors import ConfigurationError
+from .providers import create_dataset_blob_storage_client
 
 
 class BlobStorage(Protocol):
@@ -22,6 +21,14 @@ class BlobStorage(Protocol):
 
     async def download_blob(self, container: str, name: str, **kwargs: Any) -> bytes:
         """Return the complete bytes of an object in the selected container."""
+        pass
+
+
+class DatasetBlobProvider(BlobStorage, Protocol):
+    """A dataset provider also owns an SDK connection pool that can be closed."""
+
+    def close(self) -> None:
+        """Release provider resources when the dataset command finishes."""
         pass
 
 
@@ -79,7 +86,7 @@ class BlobStorageAdapter:
     application startup or global storage account registry is needed.
     """
 
-    def __init__(self, provider: BlobStorageInterface):
+    def __init__(self, provider: DatasetBlobProvider):
         """Wrap an existing provider for use by the async dataset controller."""
         self.provider = provider
 
@@ -102,7 +109,7 @@ class BlobStorageAdapter:
             config = {"connection_string": connection_string}
         else:
             raise ConfigurationError("DATASET_BLOB_PROVIDER must be s3 or azure")
-        return cls(create_blob_storage_client(provider, config))
+        return cls(create_dataset_blob_storage_client(provider, config))
 
     async def upload_blob(
         self, container: str, name: str, data: bytes, **kwargs: Any

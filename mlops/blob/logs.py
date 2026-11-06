@@ -1,25 +1,17 @@
-"""Standard-library logging boundary for the copied provider implementations."""
+"""Use the same Loguru logger as the backend without importing its services."""
 
-import logging
+from typing import TYPE_CHECKING
 
+from loguru import logger
 
-class StorageLogger(logging.LoggerAdapter):
-    def process(self, message, kwargs):
-        """Append structured fields while preserving standard logging options."""
-        # The backend logger accepts structured keyword fields. Keep that calling
-        # convention without importing the backend's service/logging lifecycle.
-        fields = {
-            key: kwargs.pop(key)
-            for key in list(kwargs)
-            if key not in ("exc_info", "extra", "stack_info", "stacklevel")
-        }
-        if fields:
-            message = f"{message} {fields}"
-        return message, kwargs
+if TYPE_CHECKING:
+    from loguru import Logger
 
 
 class LogService:
+    """Keep the copied providers' logging calls independent of application setup."""
+
     @staticmethod
-    def get_logger() -> StorageLogger:
-        """Return the provider logger without starting backend logging services."""
-        return StorageLogger(logging.getLogger("blob_controller"), {})
+    def get_logger() -> "Logger":
+        """Return the process logger; the consuming application configures sinks."""
+        return logger

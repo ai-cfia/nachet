@@ -5,7 +5,7 @@ This module provides common validation patterns and helper functions
 used across different operation classes for S3-compatible storage (Apache Ozone).
 """
 
-from beartype.typing import Any, Dict, Optional
+from beartype.typing import Dict, Any, Optional
 
 from ...exceptions import BlobStorageError, InvalidConfigurationError
 from ...models import BlobTierInfo, ContainerInfo
