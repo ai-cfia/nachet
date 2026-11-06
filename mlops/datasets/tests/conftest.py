@@ -8,7 +8,6 @@ from unittest.mock import Mock
 
 import pytest
 from azure.core.exceptions import ResourceExistsError
-from blob_controller import create_blob_storage_client
 from botocore.exceptions import ClientError
 
 from dataset_release.storage import BlobStorageAdapter
@@ -20,9 +19,14 @@ def blob_provider(request, monkeypatch):
     write_lock = Lock()
     client = Mock()
     now = datetime.now(UTC)
+    monkeypatch.setenv("DATASET_BLOB_PROVIDER", request.param)
 
     if request.param == "s3":
         client.meta.endpoint_url = "https://storage.example.test"
+        monkeypatch.setenv("S3_ENDPOINT_URL", client.meta.endpoint_url)
+        monkeypatch.setenv("S3_REGION_NAME", "us-east-1")
+        for name in ("S3_ACCESS_KEY", "S3_SECRET_KEY", "S3_USE_SSL", "S3_VERIFY"):
+            monkeypatch.delenv(name, raising=False)
 
         def put_object(*, Bucket, Key, Body, **options):
             with write_lock:
@@ -47,9 +51,8 @@ def blob_provider(request, monkeypatch):
         client.get_object.side_effect = get_object
         client.head_object.side_effect = head_object
         monkeypatch.setattr(
-            "blob_controller.s3.storage.create_s3_client", lambda config: client
+            "dataset_release.providers.s3.boto3.client", lambda **kwargs: client
         )
-        config = {}
     else:
         blob_clients = {}
 
@@ -82,12 +85,12 @@ def blob_provider(request, monkeypatch):
         client.get_blob_client.side_effect = get_blob_client
         client.get_container_client.return_value.exists.return_value = True
         monkeypatch.setattr(
-            "blob_controller.azure.storage.create_blob_service_client",
+            "blob.azure.storage.create_blob_service_client",
             lambda *args, **kwargs: client,
         )
-        config = {"connection_string": "test-only"}
+        monkeypatch.setenv("AZURE_STORAGE_CONNECTION_STRING", "test-only")
 
-    storage = BlobStorageAdapter(create_blob_storage_client(request.param, config))
+    storage = BlobStorageAdapter.from_environment()
     try:
         yield SimpleNamespace(
             storage=storage, objects=objects, client=client, kind=request.param

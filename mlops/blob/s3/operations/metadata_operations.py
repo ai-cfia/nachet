@@ -5,7 +5,8 @@ This module handles blob metadata and tags operations including setting
 and retrieving custom metadata and object tags using boto3.
 """
 
-from beartype.typing import Any, Dict
+from beartype.typing import Dict, Any
+
 from botocore.exceptions import ClientError
 
 from ..utils.error_handling import ErrorHandler
@@ -19,7 +20,7 @@ def _get_logger():
     """Lazy load logger to avoid circular imports"""
     global _logger
     if _logger is None:
-        from blob_controller.logs import LogService
+        from ...logs import LogService
 
         _logger = LogService.get_logger()
     return _logger

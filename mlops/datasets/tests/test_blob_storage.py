@@ -5,18 +5,19 @@ from threading import Event, get_ident
 from unittest.mock import Mock
 
 import pytest
-from blob_controller import BlobStorageInterface, create_blob_storage_client
-from blob_controller.exceptions import (
+from blob import BlobStorageInterface
+from blob.exceptions import (
     BlobAlreadyExistsError,
     BlobNotFoundError,
     BlobStorageError,
     InvalidConfigurationError,
 )
-from blob_controller.exceptions import (
+from blob.exceptions import (
     PermissionError as BlobPermissionError,
 )
 from botocore.exceptions import ClientError
 
+from dataset_release.providers import create_dataset_blob_storage_client
 from dataset_release.storage import BlobStorageAdapter
 
 
@@ -48,9 +49,9 @@ async def test_copied_provider_conflicts_missing_objects_and_cleanup(blob_provid
 async def test_s3_conditional_failure_never_retries_with_overwrite(monkeypatch, code):
     client = Mock()
     monkeypatch.setattr(
-        "blob_controller.s3.storage.create_s3_client", lambda config: client
+        "dataset_release.providers.s3.create_s3_client", lambda config: client
     )
-    storage = BlobStorageAdapter(create_blob_storage_client("s3", {}))
+    storage = BlobStorageAdapter(create_dataset_blob_storage_client("s3", {}))
     client.put_object.side_effect = ClientError({"Error": {"Code": code}}, "PutObject")
     with pytest.raises(BlobStorageError) as error:
         await storage.upload_blob("datasets", "file.json", b"data", overwrite=False)
@@ -97,7 +98,9 @@ def test_environment_selects_copied_provider(monkeypatch, provider):
     monkeypatch.delenv("S3_ACCESS_KEY", raising=False)
     monkeypatch.delenv("S3_SECRET_KEY", raising=False)
     factory = Mock()
-    monkeypatch.setattr("dataset_release.storage.create_blob_storage_client", factory)
+    monkeypatch.setattr(
+        "dataset_release.storage.create_dataset_blob_storage_client", factory
+    )
     storage = BlobStorageAdapter.from_environment()
     assert storage.provider is factory.return_value
     assert factory.call_args.args[0] == provider
@@ -128,4 +131,4 @@ def test_invalid_configuration_fails_before_creating_sdk(monkeypatch, setting):
 
 def test_copied_factory_rejects_unknown_provider():
     with pytest.raises(InvalidConfigurationError):
-        create_blob_storage_client("unknown", {})
+        create_dataset_blob_storage_client("unknown", {})

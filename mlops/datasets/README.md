@@ -8,11 +8,35 @@ those database records when requested. JSON exports are outputs, not separately
 maintained release inputs.
 
 The publisher, registry, migrations, readers and tests belong to MLOps and do not
-import the backend application. Storage uses the sibling `blob-controller` project
-under `mlops/blob/`, through `BlobStorageAdapter` and the `blob_controller` package.
-Keep the two projects together when checking out or mounting source. Wheel
-deployments must install both wheels.
-The external detector trainer is unchanged; the reader is its integration point.
+import the backend application. The external detector trainer is unchanged; the
+reader is its integration point.
+
+Storage providers come from the standalone `nachet-blob==0.1.0` project in
+[`mlops/blob`](../blob/README.md), installed as a local editable dependency.
+Its `blob` module is a temporary copy of `backend/app/blob/`.
+`DatasetController` uses `BlobStorageAdapter`, which delegates to that module's
+`BlobStorageInterface` and S3/Azure implementations. Dataset-specific extensions
+in `dataset_release/providers/` preserve atomic create-only publication, SDK
+credential-chain support, Azure connection strings, and connection/stream cleanup.
+They use inheritance while leaving the reviewed shared `blob` package unchanged.
+The worker adapter keeps synchronous SDK calls off the controller event loop. See
+[the copy's provenance and differences](../blob/PROVENANCE.md) for the future
+extraction into `nachet/common`; the backend source remains unchanged.
+
+Keep `mlops/blob/` beside `mlops/datasets/` when checking out, copying or mounting
+the source for a job. `uv sync --locked` installs both projects. The dataset
+wheel contains `dataset_release` and its `utility` helpers; deployments that
+install wheels must also supply the matching standalone `nachet-blob` wheel.
+The dataset project explicitly declares the Azure Core, boto3, botocore, and
+Loguru dependencies used by its provider extensions.
+
+Run `uv sync --locked` and `uv run --no-sync python -I -m pytest` from this
+directory. The provider publication/readback tests construct both S3 and Azure
+adapters through `BlobStorageAdapter.from_environment()`, using deterministic
+SDK transports. CI additionally builds and installs both wheels in a separate
+environment, checks dependency compatibility, and runs `tests/check_install.py`
+to verify provider inheritance and the CLI without backend or legacy imports.
+These local checks do not contact live storage services.
 
 ## Database entities and files
 

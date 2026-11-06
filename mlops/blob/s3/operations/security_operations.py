@@ -5,9 +5,8 @@ This module handles security-related operations including presigned URL generati
 for both blobs and containers with various permissions and expiry settings.
 """
 
+from beartype.typing import List, Dict, Any
 from datetime import timedelta
-
-from beartype.typing import Any, Dict, List
 
 from ..utils.error_handling import ErrorHandler
 from ..utils.validation import ValidationHelper
@@ -20,7 +19,7 @@ def _get_logger():
     """Lazy load logger to avoid circular imports"""
     global _logger
     if _logger is None:
-        from blob_controller.logs import LogService
+        from ...logs import LogService
 
         _logger = LogService.get_logger()
     return _logger

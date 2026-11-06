@@ -6,18 +6,12 @@ ensuring consistency across different cloud storage providers.
 """
 
 from abc import ABC, abstractmethod
+from beartype.typing import AsyncIterator, List, Union, BinaryIO, Dict, Any
 from datetime import timedelta
-
-from beartype.typing import Any, AsyncIterator, BinaryIO, Dict, List, Union
 
 
 class BlobStorageInterface(ABC):
     """Abstract base class for blob storage providers."""
-
-    @abstractmethod
-    def close(self) -> None:
-        """Release SDK connections owned by this provider."""
-        pass
 
     @abstractmethod
     async def upload_blob(

@@ -5,34 +5,30 @@ This module handles basic blob CRUD operations including upload, download,
 delete, existence checks, and property retrieval using boto3.
 """
 
-from contextlib import closing
-from datetime import UTC
-
 from beartype.typing import (
-    Any,
-    AsyncIterator,
-    BinaryIO,
     Dict,
+    Any,
     Union,
+    BinaryIO,
+    AsyncIterator,
 )
 from botocore.exceptions import ClientError
 
-from ...exceptions import (
-    BlobAlreadyExistsError,
-    BlobNotFoundError,
-    BlobStorageError,
-    ConnectionError,
-    ContainerNotFoundError,
-)
-from ...models import (
-    BlobInfo,
-    BlobListResult,
-    BlobProperties,
-    ListOptions,
-    UploadResult,
-)
 from ..utils.error_handling import ErrorHandler
 from ..utils.validation import ValidationHelper
+from ...models import (
+    UploadResult,
+    BlobInfo,
+    BlobProperties,
+    ListOptions,
+    BlobListResult,
+)
+from ...exceptions import (
+    ContainerNotFoundError,
+    BlobNotFoundError,
+    ConnectionError,
+    BlobStorageError,
+)
 
 # Lazy-loaded logger to avoid circular imports
 _logger = None
@@ -42,7 +38,7 @@ def _get_logger():
     """Lazy load logger to avoid circular imports"""
     global _logger
     if _logger is None:
-        from blob_controller.logs import LogService
+        from ...logs import LogService
 
         _logger = LogService.get_logger()
     return _logger
@@ -86,6 +82,9 @@ class BlobOperations:
         ValidationHelper.validate_blob_name(name)
         ValidationHelper.validate_data_not_none(data)
 
+        # Check if container exists
+        await ErrorHandler.check_container_exists(self._client, container)
+
         # Extract options
         content_type = kwargs.get("content_type", "application/octet-stream")
         metadata = kwargs.get("metadata", {})
@@ -95,6 +94,18 @@ class BlobOperations:
         # Convert data to bytes if it's a string
         data = ValidationHelper.convert_string_data_to_bytes(data)
 
+        # Check if blob exists when overwrite is False
+        if not overwrite:
+            try:
+                self._client.head_object(Bucket=container, Key=name)
+                from ...exceptions import BlobAlreadyExistsError
+
+                raise BlobAlreadyExistsError(container, name)
+            except ClientError as e:
+                error_code = e.response.get("Error", {}).get("Code", "Unknown")
+                if error_code != "404":
+                    raise
+
         # Prepare put_object parameters
         put_params = {
             "Bucket": container,
@@ -102,11 +113,6 @@ class BlobOperations:
             "Body": data,
             "ContentType": content_type,
         }
-
-        if not overwrite:
-            # The condition must be evaluated atomically by the object store.
-            # A separate HEAD followed by PUT can overwrite another publisher.
-            put_params["IfNoneMatch"] = "*"
 
         # Add metadata if provided
         if metadata:
@@ -124,13 +130,7 @@ class BlobOperations:
 
         # Upload blob
         _get_logger().info("Uploading blob to S3", container=container, blob=name)
-        try:
-            response = self._client.put_object(**put_params)
-        except ClientError as error:
-            code = error.response.get("Error", {}).get("Code")
-            if not overwrite and code in ("PreconditionFailed", "412"):
-                raise BlobAlreadyExistsError(container, name) from error
-            raise
+        response = self._client.put_object(**put_params)
 
         # Add tags if provided (separate operation in S3)
         if tags:
@@ -189,6 +189,10 @@ class BlobOperations:
         ValidationHelper.validate_container_name(container)
         ValidationHelper.validate_blob_name(name)
 
+        # Check if container and blob exist
+        await ErrorHandler.check_container_exists(self._client, container)
+        await ErrorHandler.check_blob_exists(self._client, container, name)
+
         # Extract download options
         offset = kwargs.get("offset")
         length = kwargs.get("length")
@@ -210,16 +214,10 @@ class BlobOperations:
 
         # Download blob
         _get_logger().info("Downloading blob from S3", container=container, blob=name)
-        try:
-            response = self._client.get_object(**get_params)  # type: ignore[arg-type]
-        except ClientError as error:
-            if error.response.get("Error", {}).get("Code") == "404":
-                raise BlobNotFoundError(container, name) from error
-            raise
+        response = self._client.get_object(**get_params)  # type: ignore[arg-type]
 
         # Read all data from the StreamingBody
-        with closing(response["Body"]) as stream:
-            blob_data = stream.read()
+        blob_data = response["Body"].read()
 
         _get_logger().info(
             "Blob downloaded successfully",
@@ -583,9 +581,9 @@ class BlobOperations:
             # Create BlobInfo
             last_modified = obj.get("LastModified")
             if not last_modified:
-                from datetime import datetime
+                from datetime import datetime, timezone
 
-                last_modified = datetime.now(UTC)
+                last_modified = datetime.now(timezone.utc)
 
             blob_info = BlobInfo(
                 name=obj_key,

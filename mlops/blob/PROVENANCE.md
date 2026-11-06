@@ -1,50 +1,40 @@
-# Temporary MLOps copy of `app.blob`
+# Temporary copy of backend blob storage
 
-This package copies the provider-independent interface, exceptions, models,
-validation, factory and S3/Azure implementations from `backend/app/blob/` at
-repository revision `88212e11aca9b76d93025e4ce89b0e38b82d681f`.
-The backend originals are unchanged. This package ships as the standalone `blob-controller` distribution. Installing
-`mlops/blob/` installs `blob_controller` without backend or dataset release code.
-The shared Python files and the `azure/` and `s3/` directories now live directly
-under `mlops/blob/`. Packaging maps this flat layout to the `blob_controller` import name.
+The starting point is the complete `backend/app/blob/` copy in repository commit
+`9d76d770fd757495f3e8c8d2ee46d9432fa18c08`. The backend files remain unchanged.
+This directory installs as the `nachet-blob` distribution with Python imports
+under `blob`. The flat `azure/` and `s3/` source layout is preserved.
 
-The application-specific manager, account registry, health checks, backend
-logging service and backend tests are deliberately excluded. Providers are
-created through `create_blob_storage_client(provider, config)` and implement
-`BlobStorageInterface`. Provider implementations expose async methods around synchronous SDKs. Consumers
-that need non-blocking execution must run those calls in workers. The dataset
-adapter and its worker execution remain in the separate dataset release PR.
+## Changes needed to use the copy
 
-## Differences to preserve when extracting the shared package
+- Internal absolute `app.blob` imports become relative imports. This keeps the
+  provider implementation within this package and makes later relocation easier.
+- Lazy `app.service.logs` imports point to local `logs.py`. Its small `LogService`
+  facade returns the same process-wide Loguru logger used by the backend, without
+  importing backend logging initialization or OpenTelemetry services. The consumer
+  owns logging configuration.
+- The copied manager's `Bucket` import points to `constants.py`, containing only
+  the unchanged `Bucket` enum from `backend/app/service/constants.py`.
+- Copied tests import `blob`; live-service tests use storage-only environment
+  settings instead of importing the backend API application. They require explicit
+  opt-in. The original test files, fixtures, and naming documents remain present.
+- Packaging metadata, a dependency lockfile, installation checks, and CI are added.
+  Tests and backend application code are excluded from the wheel.
 
-- Imports refer to `blob_controller`; a standard-library logging shim replaces
-  `app.service.logs`. No application startup, FastAPI dependency or backend
-  storage manager is imported.
-- The logging shim is `logs.py`, avoiding a collision with Python's standard
-  `logging` module when working from the flat source directory.
-- S3 `overwrite=False` uses `IfNoneMatch="*"` on the PUT itself. A 412 response
-  becomes the common `BlobAlreadyExistsError`. Unsupported conditions, access
-  failures and 409 conditional-write conflicts propagate as failures; there is
-  no retry that removes the condition.
-- S3 upload/download do not issue existence checks before the actual request.
-  Missing-object responses retain the common exception. Downloaded response
-  streams are closed after reading, including on read failure.
-- S3 credentials can be omitted to use boto3's normal credential chain. Explicit
-  access/secret keys must be paired; explicit session tokens are supported. Client
-  construction does not call `ListBuckets`, allowing bucket-scoped credentials.
-- Azure accepts an explicit connection string as well as the original config
-  dictionary. `overwrite=False` uses the Azure SDK's create-only behavior, and
-  its `ResourceExistsError` becomes the same common `BlobAlreadyExistsError`.
-- Both providers implement the added `close()` interface method to release SDK
-  connection pools. Imports/formatting were normalized with the project's lint
-  settings; provider operations unrelated to dataset releases remain copied.
+## Behavior and future ownership
 
-The next extraction can move this package to `nachet/common`, including these
-fixes and their contract tests, then switch both backend and MLOps imports to
-the shared package. Do that packaging/import migration in a separate PR.
-Until then, fixes to either copy need an explicit comparison against the other.
+The interface, factory, manager, validation, models, exceptions, and provider
+operation logic remain copied. This extraction does not change credential rules,
+upload conditions, existence checks, connection-string handling, error mapping,
+SDK cleanup, or the synchronous SDK calls behind the async provider methods.
+The account manager and its backend-oriented startup helpers are retained for
+copy parity; dataset consumers can construct providers through the factory.
 
-Provider tests run independently of backend and dataset release code. They use
-real copied providers with deterministic fake SDK transports to verify conflicts,
-non-overwriting requests, missing objects, stream/client cleanup and configuration.
-Live service behavior and provider operations outside those tests remain unverified.
+A later PR can move the reusable package into `nachet/common`, update the package
+mapping and consumer dependencies, and point both backend and MLOps to it.
+Application-specific startup ownership can be settled in that PR. Keep provider
+behavior fixes separate from the copy and import migration.
+
+The `blob` import namespace is independent of its current MLOps source location.
+Future MLOps-specific behavior belongs in consumer adapters using composition or
+inheritance, keeping the shared provider implementation reusable by the backend.

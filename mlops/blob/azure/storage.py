@@ -7,20 +7,20 @@ using Pydantic models. The implementation uses a composition pattern
 with focused operation classes for better maintainability.
 """
 
+from beartype.typing import Dict, Any, List, Optional, Union, BinaryIO, AsyncIterator
 from datetime import timedelta
 
 from azure.storage.blob import BlobServiceClient
-from beartype.typing import Any, AsyncIterator, BinaryIO, Dict, List, Optional, Union
 
-from ..exceptions import InvalidConfigurationError
 from ..interface import BlobStorageInterface
+from ..exceptions import InvalidConfigurationError
 from .client import create_blob_service_client
 from .operations import (
-    AdvancedOperations,
     BlobOperations,
     ContainerOperations,
     MetadataOperations,
     SecurityOperations,
+    AdvancedOperations,
     TierOperations,
 )
 
@@ -32,7 +32,7 @@ def _get_logger():
     """Lazy load logger to avoid circular imports"""
     global _logger
     if _logger is None:
-        from blob_controller.logs import LogService
+        from ..logs import LogService
 
         _logger = LogService.get_logger()
     return _logger
@@ -99,8 +99,6 @@ class AzureBlobStorage(BlobStorageInterface):
 
     def azure_storage_connection_string(self) -> str:
         """Build Azure storage connection string from config dictionary."""
-        if self.config.get("connection_string"):
-            return self.config["connection_string"]
         # For core.windows.net, the account name is already in the base URL
         # For other endpoints (like Azurite), we need to append the account name
         endpoint_suffix = self.config["blob_storage_endpoint_suffix"]
@@ -119,10 +117,6 @@ class AzureBlobStorage(BlobStorageInterface):
             f"EndpointSuffix={endpoint_suffix};"
             f"BlobEndpoint={blob_endpoint};"
         )
-
-    def close(self) -> None:
-        """Release the synchronous SDK client's connection pool."""
-        self._blob_service_client.close()
 
     # Container operations - delegate to ContainerOperations
     async def list_containers(self, **kwargs) -> Dict[str, Any]:
