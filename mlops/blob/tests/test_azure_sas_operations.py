@@ -10,8 +10,8 @@ import os
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
-from mlops_blob.azure.storage import AzureBlobStorage
-from mlops_blob.exceptions import (
+from blob.azure.storage import AzureBlobStorage
+from blob.exceptions import (
     BlobStorageError,
     ContainerNotFoundError,
     BlobNotFoundError,

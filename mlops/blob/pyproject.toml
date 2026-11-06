@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nachet-blob"
 version = "0.1.0"
-description = "Copied Nachet blob storage providers for MLOps consumers"
+description = "Reusable Nachet blob storage providers"
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
 dependencies = [
@@ -27,19 +27,19 @@ dev = [
 
 [tool.setuptools]
 packages = [
-    "mlops_blob",
-    "mlops_blob.azure",
-    "mlops_blob.azure.operations",
-    "mlops_blob.azure.utils",
-    "mlops_blob.s3",
-    "mlops_blob.s3.operations",
-    "mlops_blob.s3.utils",
+    "blob",
+    "blob.azure",
+    "blob.azure.operations",
+    "blob.azure.utils",
+    "blob.s3",
+    "blob.s3.operations",
+    "blob.s3.utils",
 ]
-package-dir = { mlops_blob = "." }
+package-dir = { blob = "." }
 include-package-data = false
 
 [tool.setuptools.package-data]
-mlops_blob = ["PROVENANCE.md"]
+blob = ["PROVENANCE.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

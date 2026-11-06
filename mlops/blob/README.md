@@ -1,7 +1,7 @@
 # MLOps blob storage package
 
 This is the temporary copy of `backend/app/blob` used by MLOps. It installs as
-`nachet-blob` and is imported as `mlops_blob`, while the source files remain
+`nachet-blob` and is imported as `blob`, while the source files remain
 directly under `mlops/blob/`. Provider behavior is preserved. See
 [PROVENANCE.md](PROVENANCE.md) for the small import and dependency adaptations.
 
@@ -25,7 +25,7 @@ The controller is maintained in a separate PR; this branch supplies its reusable
 dependency. Do not add `backend/` to `PYTHONPATH` to use it.
 
 ```python
-from mlops_blob import BlobStorageInterface, create_blob_storage_client
+from blob import BlobStorageInterface, create_blob_storage_client
 
 storage: BlobStorageInterface = create_blob_storage_client(
     "azure",

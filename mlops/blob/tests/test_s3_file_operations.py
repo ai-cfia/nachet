@@ -35,8 +35,8 @@ import json
 from pathlib import Path
 from dotenv import load_dotenv
 
-from mlops_blob.s3.storage import S3BlobStorage
-from mlops_blob.exceptions import (
+from blob.s3.storage import S3BlobStorage
+from blob.exceptions import (
     BlobNotFoundError,
     ContainerNotFoundError,
 )

@@ -4,6 +4,7 @@ import importlib
 import importlib.abc
 import pkgutil
 import sys
+from importlib.metadata import distribution
 from pathlib import Path
 
 
@@ -16,11 +17,14 @@ class BlockBackendImports(importlib.abc.MetaPathFinder):
 
 def check_install() -> None:
     sys.meta_path.insert(0, BlockBackendImports())
-    package = importlib.import_module("mlops_blob")
+    package = importlib.import_module("blob")
+    assert distribution("nachet-blob").read_text("top_level.txt").splitlines() == [
+        "blob"
+    ]
     package_root = Path(package.__file__).resolve().parent
     count = 0
-    for info in pkgutil.walk_packages(package.__path__, "mlops_blob."):
-        if info.name == "mlops_blob.tests" or info.name.startswith("mlops_blob.tests."):
+    for info in pkgutil.walk_packages(package.__path__, "blob."):
+        if info.name == "blob.tests" or info.name.startswith("blob.tests."):
             continue
         module = importlib.import_module(info.name)
         assert Path(module.__file__).resolve().is_relative_to(package_root), info.name

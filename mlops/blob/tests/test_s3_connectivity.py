@@ -12,8 +12,8 @@ Usage:
 import pytest
 import os
 from dotenv import load_dotenv
-from mlops_blob.s3.storage import S3BlobStorage
-from mlops_blob.s3.client import create_s3_client, validate_s3_connection
+from blob.s3.storage import S3BlobStorage
+from blob.s3.client import create_s3_client, validate_s3_connection
 from .settings import get_settings
 
 # Load test environment variables

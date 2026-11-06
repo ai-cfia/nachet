@@ -26,9 +26,9 @@ from datetime import datetime
 from unittest.mock import patch, MagicMock
 from dotenv import load_dotenv
 
-from mlops_blob.azure.storage import AzureBlobStorage
-from mlops_blob.models import ContainerInfo
-from mlops_blob.exceptions import (
+from blob.azure.storage import AzureBlobStorage
+from blob.models import ContainerInfo
+from blob.exceptions import (
     InvalidConfigurationError,
     ConnectionError,
     BlobStorageError,

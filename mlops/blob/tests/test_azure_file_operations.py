@@ -38,10 +38,10 @@ from dotenv import load_dotenv
 from pathlib import Path
 from azure.storage.blob import BlobServiceClient
 
-from mlops_blob.azure.storage import AzureBlobStorage
+from blob.azure.storage import AzureBlobStorage
 
-# from mlops_blob.models import BlobInfo, UploadResult, BlobProperties, BlobTierInfo
-from mlops_blob.exceptions import (
+# from blob.models import BlobInfo, UploadResult, BlobProperties, BlobTierInfo
+from blob.exceptions import (
     # InvalidConfigurationError,
     ConnectionError,
     BlobStorageError,
