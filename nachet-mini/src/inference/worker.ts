@@ -78,21 +78,21 @@ const getDevice = async (): Promise<DeviceType> => {
 };
 
 /** Crop a rectangular region from an ImageBitmap using OffscreenCanvas. */
-const cropRegion = async (
+const cropRegion = (
   bitmap: ImageBitmap,
   xmin: number,
   ymin: number,
   xmax: number,
   ymax: number,
-): Promise<string> => {
+): RawImage => {
   const w = Math.max(1, Math.round(xmax - xmin));
   const h = Math.max(1, Math.round(ymax - ymin));
   const canvas = new OffscreenCanvas(w, h);
-  const ctx = canvas.getContext("2d");
+  // Keep the black background that JPEG encoding gave transparent pixels.
+  const ctx = canvas.getContext("2d", { alpha: false });
   if (!ctx) throw new Error("OffscreenCanvas 2D context unavailable");
   ctx.drawImage(bitmap, Math.round(xmin), Math.round(ymin), w, h, 0, 0, w, h);
-  const blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.9 });
-  return URL.createObjectURL(blob);
+  return RawImage.fromCanvas(canvas);
 };
 
 // ---------------------------------------------------------------------------
@@ -552,112 +552,105 @@ const classifyBoxes = async (
   for (let i = 0; i < boxes.length; i++) {
     const { topX: xmin, topY: ymin, bottomX: xmax, bottomY: ymax } = boxes[i];
 
-    let cropUrl: string | null = null;
-    try {
-      cropUrl = await cropRegion(bitmap, xmin, ymin, xmax, ymax);
+    const cropImage = cropRegion(bitmap, xmin, ymin, xmax, ymax);
+    const clsInputs = await classifierProcessor(cropImage);
 
-      const cropImage = await RawImage.read(cropUrl);
-      const clsInputs = await classifierProcessor(cropImage);
+    // Run the underlying ORT session directly (instead of the high-level
+    // classifierModel(clsInputs)) so we can also read the intermediate
+    // `swin_layernorm` output for DFF. The transformers.js wrapper keeps only
+    // recognized outputs (logits) and drops the rest. logits are identical.
+    const session = classifierModel.sessions.model;
+    const pv = clsInputs.pixel_values;
+    const rawOut = await session.run({ pixel_values: pv.ort_tensor ?? pv });
 
-      // Run the underlying ORT session directly (instead of the high-level
-      // classifierModel(clsInputs)) so we can also read the intermediate
-      // `swin_layernorm` output for DFF. The transformers.js wrapper keeps only
-      // recognized outputs (logits) and drops the rest. logits are identical.
-      const session = classifierModel.sessions.model;
-      const pv = clsInputs.pixel_values;
-      const rawOut = await session.run({ pixel_values: pv.ort_tensor ?? pv });
+    // squeeze batch dim to match the previous `clsOutputs.logits[0]` shape
+    const logits = {
+      data: rawOut.logits.data as Float32Array,
+      dims: [rawOut.logits.dims[rawOut.logits.dims.length - 1]],
+    };
+    const probs = new Tensor("float32", softmax(logits.data), logits.dims);
+    const [topValues, topIndices] = await topk(probs, config.classifierTopK);
 
-      // squeeze batch dim to match the previous `clsOutputs.logits[0]` shape
-      const logits = {
-        data: rawOut.logits.data as Float32Array,
-        dims: [rawOut.logits.dims[rawOut.logits.dims.length - 1]],
-      };
-      const probs = new Tensor("float32", softmax(logits.data), logits.dims);
-      const [topValues, topIndices] = await topk(probs, config.classifierTopK);
+    const clsId2label = classifierModel.config?.id2label ?? {};
+    const topValList = topValues.tolist() as number[];
+    // tolist() of an int64 index tensor yields BigInt; coerce to Number so
+    // downstream arithmetic (CAM weight indexing) doesn't mix BigInt + Number.
+    const topIdxList = (topIndices.tolist() as Array<number | bigint>).map(
+      Number,
+    );
 
-      const clsId2label = classifierModel.config?.id2label ?? {};
-      const topValList = topValues.tolist() as number[];
-      // tolist() of an int64 index tensor yields BigInt; coerce to Number so
-      // downstream arithmetic (CAM weight indexing) doesn't mix BigInt + Number.
-      const topIdxList = (topIndices.tolist() as Array<number | bigint>).map(
-        Number,
-      );
+    const classResults = topIdxList.map((idx: number, j: number) => ({
+      label: clsId2label[idx] ?? `LABEL_${idx}`,
+      score: topValList[j],
+    }));
 
-      const classResults = topIdxList.map((idx: number, j: number) => ({
-        label: clsId2label[idx] ?? `LABEL_${idx}`,
-        score: topValList[j],
-      }));
+    const topLabel = classResults[0]?.label ?? boxes[i].classId;
+    console.log(
+      `[worker] Classification ${i}: top=${topLabel} (${classResults[0]?.score.toFixed(3)})`,
+    );
 
-      const topLabel = classResults[0]?.label ?? boxes[i].classId;
-      console.log(
-        `[worker] Classification ${i}: top=${topLabel} (${classResults[0]?.score.toFixed(3)})`,
-      );
+    classifications[i] = topLabel;
+    topNResults[i] = classResults;
+    boxes[i] = { ...boxes[i], label: topLabel };
 
-      classifications[i] = topLabel;
-      topNResults[i] = classResults;
-      boxes[i] = { ...boxes[i], label: topLabel };
+    send({
+      type: "partial-result",
+      imageIndex,
+      modelConfigId,
+      result: {
+        scores: [...scores],
+        classifications: [...classifications],
+        boxes: [...boxes],
+        topN: [...topNResults],
+        overlapping: boxes.map(() => false),
+        overlappingIndices: boxes.map(() => 0),
+        labelOccurrence: buildLabelOccurrence(classifications),
+        totalBoxes: boxes.length,
+        models: [
+          { name: config.detectorModel, version: "1.0" },
+          { name: config.classifierModel, version: "1.0" },
+        ],
+        completedAt: "",
+        isActive: true,
+        minBoxSize: config.minBoxSize,
+      },
+    });
 
-      send({
-        type: "partial-result",
-        imageIndex,
-        modelConfigId,
-        result: {
-          scores: [...scores],
-          classifications: [...classifications],
-          boxes: [...boxes],
-          topN: [...topNResults],
-          overlapping: boxes.map(() => false),
-          overlappingIndices: boxes.map(() => 0),
-          labelOccurrence: buildLabelOccurrence(classifications),
-          totalBoxes: boxes.length,
-          models: [
-            { name: config.detectorModel, version: "1.0" },
-            { name: config.classifierModel, version: "1.0" },
-          ],
-          completedAt: "",
-          isActive: true,
-          minBoxSize: config.minBoxSize,
-        },
-      });
-
-      // ── Class Activation Mapping ─────────────────────────────────────────
-      // Only when the classifier declares head weights (`classifierHeadFile`)
-      // and exposes `swin_layernorm` (1, tokens, channels) — i.e. the patched
-      // model. One heatmap per top-K class so the UI can show which regions
-      // drive each candidate species. Streamed per box so maps arrive after
-      // each seed is classified.
-      const headFile = config.classifierHeadFile;
-      const featTensor = rawOut.swin_layernorm as
-        { data?: Float32Array; dims?: number[] } | undefined;
-      if (headFile && featTensor?.data && featTensor.dims?.length === 3) {
-        try {
-          const [, tokens, channels] = featTensor.dims;
-          const cam = await computeCam(
-            featTensor.data,
-            tokens,
-            channels,
-            topIdxList,
-            huggingFaceFileUrl(config.classifierModel, headFile),
-          );
-          send({
-            type: "cam-result",
-            imageIndex,
-            modelConfigId,
-            boxId: boxes[i].boxId,
-            grid: cam.grid,
-            classes: topIdxList.map((idx: number, j: number) => ({
-              classIndex: idx,
-              label: classResults[j]?.label ?? `LABEL_${idx}`,
-              score: classResults[j]?.score ?? 0,
-              heatmap: Array.from(cam.maps[j]),
-            })),
-          });
-        } catch (e) {
-          console.warn("[worker] CAM failed for box", i, e);
-        }
+    // ── Class Activation Mapping ─────────────────────────────────────────
+    // Only when the classifier declares head weights (`classifierHeadFile`)
+    // and exposes `swin_layernorm` (1, tokens, channels) — i.e. the patched
+    // model. One heatmap per top-K class so the UI can show which regions
+    // drive each candidate species. Streamed per box so maps arrive after
+    // each seed is classified.
+    const headFile = config.classifierHeadFile;
+    const featTensor = rawOut.swin_layernorm as
+      { data?: Float32Array; dims?: number[] } | undefined;
+    if (headFile && featTensor?.data && featTensor.dims?.length === 3) {
+      try {
+        const [, tokens, channels] = featTensor.dims;
+        const cam = await computeCam(
+          featTensor.data,
+          tokens,
+          channels,
+          topIdxList,
+          huggingFaceFileUrl(config.classifierModel, headFile),
+        );
+        send({
+          type: "cam-result",
+          imageIndex,
+          modelConfigId,
+          boxId: boxes[i].boxId,
+          grid: cam.grid,
+          classes: topIdxList.map((idx: number, j: number) => ({
+            classIndex: idx,
+            label: classResults[j]?.label ?? `LABEL_${idx}`,
+            score: classResults[j]?.score ?? 0,
+            heatmap: Array.from(cam.maps[j]),
+          })),
+        });
+      } catch (e) {
+        console.warn("[worker] CAM failed for box", i, e);
       }
-    } finally {
-      if (cropUrl) URL.revokeObjectURL(cropUrl);
     }
   }
 };
