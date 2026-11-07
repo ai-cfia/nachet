@@ -166,18 +166,22 @@ const handleMessage = async (data: WorkerInMessage): Promise<void> => {
       // Detector loading is delegated to the detector module, which handles
       // both the SAM 3 (text-promptable) and closed-vocabulary paths and frees
       // the other kind's memory before loading its own.
-      await loadDetector(config, {
-        transformersProgress: progressDetector as unknown as (
-          info: unknown,
-        ) => void,
-        sam3Progress: (info) => {
-          send({
-            type: "model-progress",
-            name: `detector: ${info.name}`,
-            progress: info.progress,
-          });
+      await loadDetector(
+        config,
+        {
+          transformersProgress: progressDetector as unknown as (
+            info: unknown,
+          ) => void,
+          sam3Progress: (info) => {
+            send({
+              type: "model-progress",
+              name: `detector: ${info.name}`,
+              progress: info.progress,
+            });
+          },
         },
-      });
+        device,
+      );
 
       // Load classifier processor + model (WebGPU if available)
       const [clsProc, clsMod] = await Promise.all([

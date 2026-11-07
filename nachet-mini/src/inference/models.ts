@@ -31,6 +31,8 @@ export interface ModelConfig {
   classifierHeadFile?: string;
   /** Optional ONNX filename for the detector (without .onnx), defaults to "model" */
   detectorModelFileName?: string;
+  /** Preferred backend; detectors without a preference keep using WASM. */
+  detectorDevice?: "webgpu" | "wasm";
   /** Minimum bounding-box size (longest dimension, px) for reliable classification */
   minBoxSize: number;
   /**
@@ -61,6 +63,7 @@ export interface DetectorModelEntry {
   threshold: number;
   /** Optional ONNX filename (without .onnx extension), defaults to "model" */
   modelFileName?: string;
+  device?: "webgpu" | "wasm";
   /**
    * What kind of detector this is. Defaults to `"object-detection"`.
    * `text-promptable-segmentation` (e.g. SAM3) is what makes the UI show a
@@ -162,12 +165,14 @@ export const DETECTOR_MODELS: DetectorModelEntry[] = [
   {
     id: "rt-detr-v2 64spp",
     model: "cfia-ai-lab/rtdetr_v2_r50vd-64spp-ft",
+    device: "webgpu",
     threshold: 0.3,
     modelFileName: "model_patched",
   },
   {
     id: "rt-detr-v2 101spp",
     model: "cfia-ai-lab/rtdetr_v2_r50vd-101spp-ft",
+    device: "webgpu",
     threshold: 0.8,
     modelFileName: "model_patched",
   },
@@ -278,6 +283,7 @@ export const buildModelConfig = (
     classifierTopK: classifier.topK,
     classifierHeadFile: classifier.classifierHeadFile,
     detectorModelFileName: detector.modelFileName,
+    detectorDevice: detector.device,
     minBoxSize: classifier.minBoxSize,
     // Multi-component / text-promptable detector fields. Undefined for the
     // standard single-file object-detection detectors.
