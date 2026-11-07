@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "nachet-dataset-release"
 version = "0.1.0"
 description = "Publish and read immutable reviewed datasets for Nachet model training"
-requires-python = ">=3.12,<3.14"
+requires-python = ">=3.15,<3.16"
 dependencies = [
     "aiosqlite>=0.21,<1",
     "alembic>=1.16.5,<2",
@@ -19,7 +19,7 @@ dependencies = [
     "opencv-python-headless>=4.10,<5",
     "pillow==13.0.0",
     "psycopg[binary]>=3.2.10,<4",
-    "pydantic==2.13.0",
+    "pydantic==2.14.2",
     "python-dotenv>=1.2.2,<2",
     "sqlalchemy[asyncio]>=2.0.43,<3",
 ]
