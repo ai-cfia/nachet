@@ -44,6 +44,23 @@ class PreparationStorage:
         with closing(response["Body"]) as body:
             return body.read()
 
+    @ErrorHandler.handle_service_errors("upload prepared PNG")
+    async def upload_png(self, bucket: str, key: str, data: bytes) -> None:
+        """Write verified, hash-named PNG bytes and allow identical retries."""
+        validate_container_name(bucket)
+        validate_blob_name(key)
+        try:
+            self._client.put_object(
+                Bucket=bucket,
+                Key=key,
+                Body=data,
+                ContentType="image/png",
+                IfNoneMatch="*",
+            )
+        except ClientError as error:
+            if error.response["Error"]["Code"] not in {"PreconditionFailed", "412"}:
+                raise
+
     def close(self) -> None:
         self._client.close()
 

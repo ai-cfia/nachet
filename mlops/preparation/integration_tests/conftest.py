@@ -39,7 +39,7 @@ def draft_coco():
                 "split": ["train", "validation", None][index],
                 "sources": [
                     {
-                        "path": f"collection/batch/tray/{index}.tiff",
+                        "original_path": f"collection/batch/tray/{index}.tiff",
                         "species": ["Avena fatua", "Zea mays", "Avena fatua"][index],
                         "batch": "batch",
                         "specimen_group": f"seed-{index}",
