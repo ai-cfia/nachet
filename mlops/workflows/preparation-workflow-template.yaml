@@ -1,0 +1,191 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: nachet-preparation
+  namespace: argo-workflows
+  labels:
+    app.kubernetes.io/name: nachet-preparation
+    app.kubernetes.io/part-of: nachet
+spec:
+  entrypoint: prepare-for-review
+  serviceAccountName: argo-workflow
+  arguments:
+    parameters:
+      - name: cpu-image
+        description: CPU preparation image. Defaults to the main build; use a digest to pin it.
+        value: ghcr.io/ai-cfia/nachet-preparation-cpu:main
+      - name: sam3-image
+        description: SAM3 image. Defaults to the main build; use a digest to pin it.
+        value: ghcr.io/ai-cfia/nachet-preparation-sam3:main
+      - name: registration-image
+        description: FiftyOne registration image. Defaults to the main build; use a digest to pin it.
+        value: ghcr.io/ai-cfia/nachet-preparation-registration:main
+      - name: code-revision
+        description: Source revision label for these images. Required; not verified automatically.
+      - name: dataset-name
+        description: New FiftyOne review dataset; existing names are refused.
+      - name: raw-prefix
+        description: One collection below raw/ in the dataset bucket.
+      - name: model-folder
+        description: Model folder below models/ on the workspace. Defaults to sam3; must match the runtime's predictor.
+        value: sam3
+      - name: model-revision
+        description: Revision label for the selected model files. Required; not verified automatically.
+      - name: gpu-node
+        description: GPU node for SAM3. Defaults to ai-lab-1.
+        value: ai-lab-1
+        enum: [ai-lab-1, ai-lab-2, ai-lab-3]
+      - name: workspace-pvc
+        description: RWX workspace for COCO files and model folders. Defaults to nachet-training-workspace-pvc.
+        value: nachet-training-workspace-pvc
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  volumes:
+    - name: workspace
+      persistentVolumeClaim:
+        claimName: "{{workflow.parameters.workspace-pvc}}"
+    - name: tmp
+      emptyDir: {}
+  templates:
+    - name: prepare-for-review
+      steps:
+        - - name: prepare-images
+            template: prepare-images
+        - - name: prelabel
+            template: prelabel
+        - - name: register-for-review
+            template: register-for-review
+
+    - name: prepare-images
+      retryStrategy:
+        limit: "2"
+        retryPolicy: OnFailure
+      container:
+        image: "{{workflow.parameters.cpu-image}}"
+        command: [python, /opt/preparation/prepare_s3.py]
+        args:
+          - /workspace/{{workflow.name}}/prepared
+          - --bucket
+          - "$(PREPARATION_BUCKET)"
+          - --endpoint-url
+          - "$(MLFLOW_S3_ENDPOINT_URL)"
+          # Howard's existing Ceph endpoint uses HTTP inside the cluster.
+          - --allow-http
+          - --region
+          - "$(PREPARATION_REGION)"
+          - --raw-prefix
+          - "{{workflow.parameters.raw-prefix}}"
+          - --code-revision
+          - "{{workflow.parameters.code-revision}}"
+        env:
+          - name: PREPARATION_BUCKET
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: bucket}
+          - name: PREPARATION_REGION
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: region}
+        envFrom:
+          - secretRef:
+              name: nachet-training-s3
+        resources:
+          requests: {cpu: "1", memory: 1Gi}
+          limits: {cpu: "2", memory: 4Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: tmp
+            mountPath: /tmp
+
+    - name: prelabel
+      synchronization:
+        mutexes:
+          - name: nachet-training-{{workflow.parameters.gpu-node}}
+      nodeSelector:
+        kubernetes.io/hostname: "{{workflow.parameters.gpu-node}}"
+      container:
+        image: "{{workflow.parameters.sam3-image}}"
+        command: [python, /opt/preparation/prelabel.py]
+        args:
+          - /workspace/{{workflow.name}}/prepared/index.coco.json
+          - "s3://$(PREPARATION_BUCKET)"
+          - /workspace/{{workflow.name}}/prepared/draft.coco.json
+          - --endpoint-url
+          - "$(MLFLOW_S3_ENDPOINT_URL)"
+          - --allow-http
+          - --region
+          - "$(PREPARATION_REGION)"
+          - --model-path
+          - /model
+          - --model-revision
+          - "{{workflow.parameters.model-revision}}"
+          - --device
+          - cuda
+        env:
+          - name: PREPARATION_BUCKET
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: bucket}
+          - name: PREPARATION_REGION
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: region}
+        envFrom:
+          - secretRef:
+              name: nachet-training-s3
+        resources:
+          requests: {cpu: "2", memory: 8Gi, nvidia.com/gpu: "1"}
+          limits: {cpu: "4", memory: 16Gi, nvidia.com/gpu: "1"}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: workspace
+            mountPath: /model
+            subPath: "models/{{workflow.parameters.model-folder}}"
+            readOnly: true
+          - name: tmp
+            mountPath: /tmp
+
+    - name: register-for-review
+      container:
+        image: "{{workflow.parameters.registration-image}}"
+        command: [python, /opt/preparation/register_fiftyone.py]
+        args:
+          - "{{workflow.parameters.dataset-name}}"
+          - /workspace/{{workflow.name}}/prepared/draft.coco.json
+          - --server-media-root
+          - "$(PREPARATION_SERVER_MEDIA_ROOT)"
+        env:
+          - name: PREPARATION_SERVER_MEDIA_ROOT
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: server-media-root}
+        envFrom:
+          - secretRef:
+              name: nachet-preparation-fiftyone
+        resources:
+          requests: {cpu: 250m, memory: 1Gi}
+          limits: {cpu: "1", memory: 4Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+            readOnly: true
+          - name: tmp
+            mountPath: /tmp

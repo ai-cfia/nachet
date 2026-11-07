@@ -46,7 +46,7 @@ existing PNGs or protect against a writer that puts other bytes under a hash key
 The COCO source records do not create database mappings.
 
 Credentials come from the AWS credential chain. For a private CA, set
-`AWS_CA_BUNDLE`. Use `--allow-http` only with a trusted test endpoint.
+`AWS_CA_BUNDLE`. Use `--allow-http` only with a trusted HTTP endpoint.
 
 ## Collection layout
 
@@ -253,6 +253,57 @@ successful Actions run into `CPU_IMAGE`, `SAM3_IMAGE` and `REGISTRATION_IMAGE`.
 Set `CODE_REVISION` to that run's checked-out commit. Pull-request builds use
 the tested merge commit, which can differ from the PR head.
 
+## Argo workflow
+
+`mlops/workflows/preparation-workflow-template.yaml` runs three steps:
+
+```text
+S3 originals -> convert/upload PNGs -> SAM3 reads S3 -> register in FiftyOne
+```
+
+Conversion uses the CPU image. Pre-labeling requests one NVIDIA GPU and uses
+the existing per-node training mutex. Only conversion and pre-labeling receive
+the storage Secret; registration receives the FiftyOne database Secret.
+
+Use the existing `nachet-training-workspace-pvc` in `argo-workflows`. Keep SAM3
+snapshots under `models/` on that claim. `model-folder` selects a subfolder
+(default `sam3`), mounted read-only at `/model`. Images stay in S3. Each run
+writes COCO files under `/workspace/<workflow-name>/`; remove only that run's
+directory after checking the result. A failed pre-labeling step restarts the batch.
+
+The `nachet-preparation-config` ConfigMap provides `bucket`, `region`,
+and `server-media-root`. The existing `nachet-training-s3` Secret provides
+`MLFLOW_S3_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, with
+`AWS_SESSION_TOKEN` for temporary credentials.
+The workflow explicitly passes `--allow-http` for Howard's internal Ceph
+connection. HTTPS connections still verify certificates and use `AWS_CA_BUNDLE`
+when configured.
+
+Howard also supplies `nachet-preparation-fiftyone` with `FIFTYONE_DATABASE_URI`.
+The server media root must map the COCO image keys to paths FiftyOne can read.
+Confirm the mount, available workspace capacity and model files before running.
+
+```bash
+argo submit -n argo-workflows --from workflowtemplate/nachet-preparation \
+  -p code-revision="$CODE_REVISION" -p dataset-name=collection-01-review \
+  -p raw-prefix=raw/collection-01 \
+  -p model-folder=sam3 -p model-revision="$MODEL_REVISION"
+```
+
+The images default to the `main` tags, as in the training workflows, and the
+workspace defaults to `nachet-training-workspace-pvc`. Override the image
+references with digests to pin them. The supplied image uses `Sam3Predictor`.
+The preparation function already accepts an injected predictor; another
+architecture needs its own adapter and runtime dependencies. The code and model
+revisions are operator-supplied labels; they are not checked against the image
+or weights.
+
+The workflow ends at registration for human review. Reviewed export, release
+publication and training use their own components.
+Image-level progress and interrupted-SAM3 recovery are still required before
+long GPU runs. FiftyOne stores the source records in MongoDB; ownership of the
+controller mappings remains open.
+
 ## Checks
 
 ```bash
@@ -261,14 +312,15 @@ uv run --project mlops/preparation --no-sync python -m pytest mlops/preparation/
 ```
 
 The SDK tests use FiftyOne 1.22.1 and a disposable MongoDB. They cover registration,
-interrupted imports and conversion through PNG upload into FiftyOne, using the
-shared storage provider with a fake S3 SDK and supplied predictions.
+interrupted imports and the workflow's command arguments, using the shared
+storage provider with a fake S3 SDK and supplied predictions. The workflow test
+checks source paths, hashes, boxes and splits through all three steps and retries.
 
 ```bash
 uv sync --project mlops/preparation --locked --group fiftyone --group storage
 PREPARATION_TEST_MONGO_URI='<disposable-mongo-uri>' \
   uv run --project mlops/preparation --no-sync python -m pytest \
-  mlops/preparation/integration_tests/test_fiftyone_registration.py -q
+  mlops/preparation/integration_tests -q
 ```
 
 The deployed FiftyOne media mount and live S3 still need checking.
