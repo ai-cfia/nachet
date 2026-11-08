@@ -224,10 +224,10 @@ def main(argv: list[str] | None = None) -> None:
     )
     parser.add_argument("--device", required=True, choices=["cpu", "cuda"])
     parser.add_argument("--padding", type=int, default=3)
-    parser.add_argument("--endpoint-url", help="HTTPS endpoint for S3 input")
+    parser.add_argument("--endpoint-url", help="S3 endpoint; HTTPS unless --allow-http")
     parser.add_argument("--region", help="Region for S3 input")
     parser.add_argument(
-        "--allow-http", action="store_true", help="Allow a trusted HTTP test endpoint"
+        "--allow-http", action="store_true", help="Allow a trusted HTTP endpoint"
     )
     args = parser.parse_args(argv)
     if args.padding < 0:

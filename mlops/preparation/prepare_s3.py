@@ -131,7 +131,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--code-revision", required=True)
     parser.add_argument("--split", choices=sorted(SPLITS))
     parser.add_argument(
-        "--allow-http", action="store_true", help="Allow a trusted HTTP test endpoint"
+        "--allow-http", action="store_true", help="Allow a trusted HTTP endpoint"
     )
     args = parser.parse_args(argv)
     try:

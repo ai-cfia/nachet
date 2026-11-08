@@ -8,12 +8,14 @@ on:
       - "mlops/preparation/**"
       - "mlops/blob/**"
       - ".github/workflows/mlops-preparation-tests.yml"
+      - "mlops/workflows/preparation-workflow-template.yaml"
   push:
     branches: [main]
     paths:
       - "mlops/preparation/**"
       - "mlops/blob/**"
       - ".github/workflows/mlops-preparation-tests.yml"
+      - "mlops/workflows/preparation-workflow-template.yaml"
   workflow_dispatch:
 
 permissions:
@@ -62,4 +64,4 @@ jobs:
       - run: uv sync --locked --project mlops/preparation --group fiftyone --group storage
       - run: >-
           uv run --project mlops/preparation --no-sync python -m pytest
-          mlops/preparation/integration_tests/test_fiftyone_registration.py -q
+          mlops/preparation/integration_tests -q
