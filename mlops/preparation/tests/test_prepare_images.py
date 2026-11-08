@@ -26,27 +26,31 @@ def test_conversion_preserves_raw_pixels_lineage_and_split(prepare, intake):
         assert image["image_sha256"] == hashlib.sha256(data).hexdigest()
         assert image["file_name"] == f"png/detection/{image['image_sha256']}.png"
         original = image["sources"][0]
-        assert "original_path" not in original
-        assert original["raw_key"] == f"raw/intake-01/Training/{original['path']}"
-        assert original["species"] == original["path"].split("/")[0]
+        assert "path" not in original
+        assert (
+            original["raw_key"] == f"raw/intake-01/Training/{original['original_path']}"
+        )
+        assert original["species"] == original["original_path"].split("/")[0]
         assert (
             original["raw_sha256"]
-            == hashlib.sha256(before[original["path"]]).hexdigest()
+            == hashlib.sha256(before[original["original_path"]]).hexdigest()
         )
-        if not original["path"].endswith(".png"):
+        if not original["original_path"].endswith(".png"):
             assert image["image_sha256"] != original["raw_sha256"]
         assert (
             original["legacy_md5"]
-            == hashlib.md5(before[original["path"]], usedforsecurity=False).hexdigest()
+            == hashlib.md5(
+                before[original["original_path"]], usedforsecurity=False
+            ).hexdigest()
         )
         with (
             Image.open(io.BytesIO(data)) as png,
-            Image.open(source / original["path"]) as raw,
+            Image.open(source / original["original_path"]) as raw,
         ):
             assert png.size == raw.size == (100, 80)
             assert list(png.get_flattened_data()) == list(raw.get_flattened_data())
-        if original["path"].endswith("c.png"):
-            assert data == before[original["path"]]
+        if original["original_path"].endswith("c.png"):
+            assert data == before[original["original_path"]]
         assert image["split"] == "train"
     assert before == {
         p.relative_to(source).as_posix(): p.read_bytes()
@@ -65,7 +69,7 @@ def test_identical_pngs_share_bytes_but_keep_both_source_paths(prepare, intake):
     assert len(result["images"]) == 4
     duplicates = [image for image in result["images"] if len(image["sources"]) == 2]
     assert len(duplicates) == 1
-    assert {s["path"] for s in duplicates[0]["sources"]} == {
+    assert {s["original_path"] for s in duplicates[0]["sources"]} == {
         "Avena fatua/other/c.png",
         "Avena fatua/batch-02/tray-c/copy.png",
     }
@@ -113,7 +117,7 @@ def test_cli_reads_species_folders_without_an_intake_file(intake, capsys):
         for image in result["images"]
     )
     assert all(
-        source["raw_key"] == f"raw/intake-01/Validation/{source['path']}"
+        source["raw_key"] == f"raw/intake-01/Validation/{source['original_path']}"
         for image in result["images"]
         for source in image["sources"]
     )
@@ -378,16 +382,16 @@ def test_automatic_layout_shares_categories_and_preserves_mixed_splits(
     assert result["annotations"] == []
     for image in result["images"]:
         source = image["sources"][0]
-        parent = source["path"].split("/")[0]
+        parent = source["original_path"].split("/")[0]
         assert (
             image["split"]
             == {"Training": "train", "Validation": "validation", "D": None}[parent]
         )
         assert source["species"] == (
-            "D" if parent == "D" else source["path"].split("/")[1]
+            "D" if parent == "D" else source["original_path"].split("/")[1]
         )
-        assert source["raw_key"] == "raw/collection/" + source["path"]
-        assert "original_path" not in source
+        assert source["raw_key"] == "raw/collection/" + source["original_path"]
+        assert "path" not in source
 
 
 @pytest.mark.parametrize("layout", ["split", "unsplit", "mixed"])
