@@ -371,3 +371,118 @@ database migrations and atomic S3 request behavior. It also publishes and recove
 releases through the actual copied S3/Azure providers using fake SDK transports.
 It uses temporary SQLite databases and in-memory object stores; it does not establish production S3/Azure
 compatibility, live PostgreSQL deployment, GPU training quality or throughput.
+
+## Argo release and smoke workflows
+
+`../workflows/dataset-release-workflow-template.yaml` defines
+`nachet-dataset-release`. It publishes an existing prepared release, passes the
+returned manifest SHA-256 to a separate validation pod, and exposes
+`dataset-reference` and `manifest-sha256` output parameters. Submission is the
+explicit publication action; the template does not create drafts, assign splits,
+export a live FiftyOne view, or run migrations. Use the preparation commands above
+before submitting it.
+
+`nachet-dataset-release-smoke` creates four tiny PNGs with separate train,
+validation and test membership, a reviewed negative image, two non-contiguous
+category IDs and three classification crops. It tests exact export-path matching,
+provenance, decimal boxes, category mapping, crop pixels, and saved splits. It
+removes one image to prove publication stays incomplete, restores it, then calls
+the **same release template** to finish publication. It checks identical retries,
+immutable inputs, split leakage, wrong manifest pins and corrupt bytes.
+
+The smoke run uses `dataset-smoke-<workflow UUID>/v1` and an `onExit` cleanup pod.
+Cleanup removes only that run's generated fixture keys and SQL entities, including
+after partial preparation. Fixture pixels and crop hashes differ between runs.
+The report is available in the workflow's `report` output and verify-pod logs;
+the temporary release reference stops being usable after cleanup.
+
+### Provision the runtime
+
+Both templates use namespace `argo-workflows` and service account `argo-workflow`,
+and are included in the existing Kustomize bundle. Howard's Argo CD application
+owns deployment from Git; do not manually apply these templates there. A merge
+deploys templates but does not submit runs.
+
+The image build uses the `mlops` context so `datasets` and `blob` stay siblings:
+
+```bash
+docker build -f mlops/datasets/Dockerfile -t nachet-dataset-release:local mlops
+```
+
+The smoke helper lives in `../workflows/scripts/dataset_release_smoke.py`.
+The Dockerfile copies it to `/opt/workflows/scripts/dataset_release_smoke.py`;
+it is not part of the dataset release wheel. The build runs the dataset tests
+before producing the non-root runtime.
+`.github/workflows/mlops-datasets-build.yml` builds and signs
+`ghcr.io/ai-cfia/nachet-dataset-release` using the existing PR, commit, branch and
+version tag patterns. The workflow's `image` parameter accepts a PR tag or digest
+to test the intended code rather than the default `main` image.
+
+Provision the existing bucket and standalone registry using the migration runbook
+above. Provide a Kubernetes Secret named `nachet-dataset-release` containing:
+
+- `DATASET_DATABASE_URL` and, for PostgreSQL, `DATASET_REGISTRY_SCHEMA`.
+- `DATASET_BLOB_PROVIDER` (`s3` or `azure`) and its storage settings documented
+  above. For Howard/Ceph, explicitly set `S3_ENDPOINT_URL` or
+  `AWS_ENDPOINT_URL_S3`; `MLFLOW_S3_ENDPOINT_URL` is not a release setting.
+- The S3 credentials/role configuration or `AZURE_STORAGE_CONNECTION_STRING`.
+
+Create a **separate** `nachet-dataset-release-smoke` Secret targeting a test
+registry/schema and an existing dedicated bucket named `nachet-dataset-smoke`
+or `nachet-dataset-smoke-<suffix>`. Smoke credentials need object read, write,
+overwrite and delete permissions, and registry insert, update, select and delete
+permissions. The smoke command refuses other bucket names. Run the same standalone
+migrations against that test registry before its first run. Neither template
+creates tables, schemas, buckets or Secrets, and this change does not provision
+Howard resources.
+
+### Submit a run
+
+After the image and templates are deployed:
+
+```bash
+argo submit --namespace argo-workflows \
+  --from workflowtemplate/nachet-dataset-release \
+  --parameter dataset-name=reviewed-seeds \
+  --parameter dataset-version=v1 \
+  --parameter container=training-datasets
+
+argo submit --namespace argo-workflows \
+  --from workflowtemplate/nachet-dataset-release-smoke \
+  --parameter 'image=ghcr.io/ai-cfia/nachet-dataset-release:<PR-number>' \
+  --parameter container=nachet-dataset-smoke
+```
+
+`credentials-secret` can select another provisioned Secret. Keep smoke credentials
+restricted to the test registry and bucket. Inspect the verify report and cleanup
+pod, not just whether publication succeeded. Stopping a run allows its exit
+handler to run; terminating it skips exit handlers. If cleanup cannot complete,
+use the **same image, Secret environment, container and workflow UUID** to retry:
+
+```bash
+python /opt/workflows/scripts/dataset_release_smoke.py \
+  --container nachet-dataset-smoke \
+  --name dataset-smoke-<workflow-UUID> cleanup
+```
+
+CI checks Argo syntax, Kustomize rendering, hash propagation, cleanup wiring, and
+the fixture lifecycle with SQLite and fake S3/Azure SDK transports. A successful
+submitted smoke run additionally proves connectivity and behavior against the
+selected live registry/object store. It does not test live FiftyOne export,
+trainer integration or GPU model quality.
+
+The smoke lifecycle tests live in
+`../workflows/tests/test_dataset_release_smoke.py`. They explicitly load the same
+provider fixture plugin as the dataset tests from
+`../test_support/dataset_blob_fixtures.py`. From the repository root, run them
+with the dataset project's environment and pytest configuration:
+
+```bash
+uv run --project mlops/datasets --no-sync python -I -m pytest \
+  -c mlops/datasets/pyproject.toml \
+  mlops/workflows/tests/test_dataset_release_smoke.py -q
+```
+
+The configuration adds the shared test-support directory to pytest's import
+path. The image's checks stage mounts both test directories and the shared
+fixtures, runs them together, and omits all test files from the runtime image.

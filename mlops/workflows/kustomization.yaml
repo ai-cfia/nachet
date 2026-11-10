@@ -10,6 +10,8 @@ resources:
   - model-export-workflow-template.yaml
   - model-release-workflow-template.yaml
   - preparation-workflow-template.yaml
+  - dataset-release-workflow-template.yaml
+  - dataset-release-smoke-workflow-template.yaml
   - example-workflow-template.yaml
 
 configMapGenerator:
