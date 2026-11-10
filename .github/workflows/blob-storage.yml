@@ -24,8 +24,8 @@ jobs:
       run:
         working-directory: mlops/blob
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@5c62c5926145985eec91f09e2e0a75f40daed929
