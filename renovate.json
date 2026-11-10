@@ -176,6 +176,55 @@
       "groupSlug": "mlops-dev-major",
       "matchPackageNames": ["*"],
       "matchFileNames": ["mlops/**"]
+    },
+
+    {
+      "matchManagers": ["docker-compose"],
+      "groupName": "frontend Docker Compose dependencies",
+      "groupSlug": "frontend-docker-compose",
+      "matchFileNames": ["frontend/**"]
+    },
+
+    {
+      "matchManagers": ["docker-compose"],
+      "groupName": "backend Docker Compose dependencies",
+      "groupSlug": "backend-docker-compose",
+      "matchFileNames": ["backend/**"]
+    },
+
+    {
+      "matchManagers": ["docker-compose"],
+      "groupName": "mlops Docker Compose dependencies",
+      "groupSlug": "mlops-docker-compose",
+      "matchFileNames": ["mlops/**"]
+    },
+
+    {
+      "matchManagers": ["docker-compose"],
+      "groupName": "root Docker Compose dependencies",
+      "groupSlug": "root-docker-compose",
+      "matchFileNames": ["docker-compose.yaml"]
+    },
+
+    {
+      "matchVulnerabilityAlerts": true,
+      "groupName": "frontend security updates",
+      "groupSlug": "frontend-security",
+      "matchFileNames": ["frontend/**"]
+    },
+
+    {
+      "matchVulnerabilityAlerts": true,
+      "groupName": "backend security updates",
+      "groupSlug": "backend-security",
+      "matchFileNames": ["backend/**"]
+    },
+
+    {
+      "matchVulnerabilityAlerts": true,
+      "groupName": "mlops security updates",
+      "groupSlug": "mlops-security",
+      "matchFileNames": ["mlops/**"]
     }
   ],
 
