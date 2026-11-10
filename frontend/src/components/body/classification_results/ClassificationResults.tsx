@@ -116,8 +116,8 @@ const ClassificationResults: React.FC<params> = (props) => {
         height: "22.23vh", // "22.425vh"
         border: `0.01vh solid LightGrey`,
         borderRadius: "0.4vh",
+        boxShadow: 0,
       }}
-      boxShadow={0}
       data-testid="classification-results-component"
     >
       <CardHeader
@@ -128,12 +128,16 @@ const ClassificationResults: React.FC<params> = (props) => {
             <strong>{modelDisplayName}</strong>
           </span>
         }
-        titleTypographyProps={{
-          variant: "h6",
-          align: "left",
-          fontWeight: 600,
-          fontSize: "1.3vh",
-          color: colours.CFIA_Font_Black,
+        slotProps={{
+          title: {
+            variant: "h6",
+            align: "left",
+            sx: {
+              fontWeight: 600,
+              fontSize: "1.3vh",
+              color: colours.CFIA_Font_Black,
+            },
+          },
         }}
         sx={{ padding: "0.8vh 1vh 0.8vh 0.8vh" }}
         action={
@@ -456,7 +460,7 @@ const ClassificationResults: React.FC<params> = (props) => {
                           {isExpanded && (
                             <TableRow>
                               <TableCell colSpan={6}>
-                                <Box p={2}>
+                                <Box sx={{ p: 2 }}>
                                   {topN?.length > 0 && renderTopResults(topN)}
                                 </Box>
                               </TableCell>

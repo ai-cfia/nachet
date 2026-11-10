@@ -139,7 +139,7 @@ const SwitchModel: React.FC = () => {
                     marginBottom: 1,
                   }}
                 >
-                  <Typography fontSize={20} variant="h6">
+                  <Typography sx={{ fontSize: 20 }} variant="h6">
                     {data.modelName}
                   </Typography>
                   <Radio

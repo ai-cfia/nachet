@@ -245,7 +245,7 @@ const SavePopup: React.FC<params> = (props) => {
                   value={props.imageLabel}
                   size="small"
                   fullWidth
-                  InputLabelProps={{ shrink: true }}
+                  slotProps={{ inputLabel: { shrink: true } }}
                   error={!!labelError}
                   helperText={labelError}
                   sx={{

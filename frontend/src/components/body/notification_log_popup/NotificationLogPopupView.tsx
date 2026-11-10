@@ -66,7 +66,13 @@ export default function NotificationLogPopupView({
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
           <Typography variant="h6">{translations.title}</Typography>
           <Box>
             {errors.length > 0 && (
@@ -95,11 +101,13 @@ export default function NotificationLogPopupView({
       <DialogContent dividers sx={{ maxHeight: "60vh", minHeight: "300px" }}>
         {errors.length === 0 ? (
           <Box
-            display="flex"
-            flexDirection="column"
-            alignItems="center"
-            justifyContent="center"
-            sx={{ py: 6 }}
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              py: 6,
+            }}
           >
             <NotificationsNoneIcon
               sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
@@ -127,8 +135,8 @@ export default function NotificationLogPopupView({
                 <ListItemText
                   primary={error.message}
                   secondary={formatTimestamp(error.timestamp)}
-                  primaryTypographyProps={{
-                    sx: { wordBreak: "break-word" },
+                  slotProps={{
+                    primary: { sx: { wordBreak: "break-word" } },
                   }}
                 />
                 <IconButton

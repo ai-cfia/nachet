@@ -264,7 +264,7 @@ describe("NachetAuthProvider", () => {
 
   it("does not start login while another MSAL interaction is in progress", async () => {
     vi.mocked(useMsal).mockReturnValue(
-      createMsalContext(InteractionStatus.Login),
+      createMsalContext(InteractionStatus.AcquireToken),
     );
 
     renderWithProvider();

@@ -375,8 +375,8 @@ export const MicroscopeFeedWorkspaceView = (
             border: `0.01vh solid LightGrey`,
             borderRadius: 1,
             background: colours.CFIA_Background_White,
+            boxShadow: 1,
           }}
-          boxShadow={1}
         >
           <ApiAction
             loading={apiLoading}

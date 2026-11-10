@@ -46,18 +46,22 @@ const StorageDirectoryView: React.FC<params> = (props) => {
         border: `0.01vh solid LightGrey`,
         borderRadius: "0.4vh",
         boxSizing: "border-box",
+        boxShadow: 0,
       }}
-      boxShadow={0}
       data-testid="storage-directory-component"
     >
       <CardHeader
         title={t("directoryList.title")}
-        titleTypographyProps={{
-          variant: "h6",
-          align: "left",
-          fontWeight: 600,
-          fontSize: "1.3vh",
-          color: colours.CFIA_Font_Black,
+        slotProps={{
+          title: {
+            variant: "h6",
+            align: "left",
+            sx: {
+              fontWeight: 600,
+              fontSize: "1.3vh",
+              color: colours.CFIA_Font_Black,
+            },
+          },
         }}
         sx={{ padding: "0.8vh 1vh 0.8vh 0.8vh" }}
         action={

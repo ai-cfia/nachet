@@ -9,13 +9,13 @@ The Nachet frontend is a **Single Page Application (SPA)** built with React 18 a
 ### Core Technologies
 
 - **React 18.2** - Component library with React.StrictMode
-- **TypeScript 5.8** - Type safety and developer experience
-- **Vite 5.2** - Build tool and development server
+- **TypeScript 6** - Type safety and developer experience
+- **Vite 8** - Build tool and development server
 - **React Router DOM 6.14** - Client-side routing with HashRouter
 
 ### UI Framework & Styling
 
-- **Material-UI 5.14** - Component library (`@mui/material`, `@emotion/react`)
+- **Material-UI 9** - Component library (`@mui/material`, `@emotion/react`)
 - **Styled Components 6.0** - CSS-in-JS styling
 - **React Icons 4.10** - Icon library
 
@@ -34,7 +34,7 @@ The Nachet frontend is a **Single Page Application (SPA)** built with React 18 a
 ### Development Tools
 
 - **ESLint 8.57** - Code linting with TypeScript support
-- **Prettier 3.5** - Code formatting
+- **Prettier 3.9** - Code formatting
 - **Vitest 1.4** - Unit testing framework
 - **React Testing Library 14.2** - Component testing utilities
 
