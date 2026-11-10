@@ -12,6 +12,11 @@ import {
 } from "../detector";
 import { loadSam3, runSam3, unloadSam3 } from "../sam3";
 import type { ModelConfig } from "../models";
+import {
+  buildModelConfig,
+  DEFAULT_CLASSIFIER,
+  DETECTOR_MODELS,
+} from "../models";
 
 // Mock the SAM 3 module — detector.ts delegates to it, we assert the calls.
 vi.mock("../sam3", () => ({
@@ -70,6 +75,7 @@ const callbacks = () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(AutoModelForObjectDetection.from_pretrained).mockReset();
   vi.mocked(AutoProcessor.from_pretrained).mockResolvedValue(
     makeFakeProcessor(),
   );
@@ -118,13 +124,13 @@ describe("patchProcessorSize", () => {
 describe("loadDetector", () => {
   it("delegates to loadSam3 for a text-promptable detector", async () => {
     const cb = callbacks();
-    await loadDetector(sam3Config, cb);
+    await loadDetector(sam3Config, cb, "webgpu");
     expect(loadSam3).toHaveBeenCalledWith(sam3Config, cb.sam3Progress);
     expect(AutoModelForObjectDetection.from_pretrained).not.toHaveBeenCalled();
   });
 
   it("loads a closed-vocabulary detector and reports it ready", async () => {
-    await loadDetector(objConfig, callbacks());
+    await loadDetector(objConfig, callbacks(), "wasm");
     expect(AutoProcessor.from_pretrained).toHaveBeenCalledWith(
       "cfia-ai-lab/rtdetr",
     );
@@ -133,7 +139,7 @@ describe("loadDetector", () => {
   });
 
   it("unloads SAM 3 BEFORE allocating the closed-vocab detector (OOM guard)", async () => {
-    await loadDetector(objConfig, callbacks());
+    await loadDetector(objConfig, callbacks(), "wasm");
     const unloadOrder = vi.mocked(unloadSam3).mock.invocationCallOrder[0];
     const modelOrder = vi.mocked(AutoModelForObjectDetection.from_pretrained)
       .mock.invocationCallOrder[0];
@@ -151,9 +157,79 @@ describe("loadDetector", () => {
     vi.mocked(
       AutoModelForObjectDetection.from_pretrained,
     ).mockResolvedValueOnce(model);
-    await loadDetector(objConfig, callbacks()); // loads `model`
-    await loadDetector(sam3Config, callbacks()); // switches away -> disposes it
+    await loadDetector(objConfig, callbacks(), "wasm"); // loads `model`
+    await loadDetector(sam3Config, callbacks(), "webgpu"); // switches away -> disposes it
     expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(DETECTOR_MODELS.filter((model) => model.kind === undefined))(
+    "selects the configured backend for $id",
+    async (model) => {
+      await loadDetector(
+        buildModelConfig(model, DEFAULT_CLASSIFIER),
+        callbacks(),
+        "webgpu",
+      );
+      const expected = model.id.startsWith("rt-detr-v2") ? "webgpu" : "wasm";
+      expect(AutoModelForObjectDetection.from_pretrained).toHaveBeenCalledWith(
+        model.model,
+        expect.objectContaining({ device: expected, dtype: "fp32" }),
+      );
+    },
+  );
+
+  it("uses WASM when no GPU adapter is available", async () => {
+    const config = buildModelConfig(DETECTOR_MODELS[0], DEFAULT_CLASSIFIER);
+    await loadDetector(config, callbacks(), "wasm");
+    expect(AutoModelForObjectDetection.from_pretrained).toHaveBeenCalledOnce();
+    expect(AutoModelForObjectDetection.from_pretrained).toHaveBeenCalledWith(
+      config.detectorModel,
+      expect.objectContaining({ device: "wasm" }),
+    );
+  });
+
+  it("retries a failed GPU load with the same model settings on WASM", async () => {
+    vi.mocked(
+      AutoModelForObjectDetection.from_pretrained,
+    ).mockRejectedValueOnce(new Error("GPU initialization failed"));
+    const config = buildModelConfig(DETECTOR_MODELS[0], DEFAULT_CLASSIFIER);
+    await loadDetector(config, callbacks(), "webgpu");
+    const calls = vi.mocked(AutoModelForObjectDetection.from_pretrained).mock
+      .calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0][1]?.device).toBe("webgpu");
+    expect(calls[1]).toEqual([
+      config.detectorModel,
+      { ...calls[0][1], device: "wasm" },
+    ]);
+    expect(isDetectorReady(config)).toBe(true);
+  });
+
+  it("reports a failed WASM retry without leaving a ready detector", async () => {
+    const config = buildModelConfig(DETECTOR_MODELS[0], DEFAULT_CLASSIFIER);
+    await loadDetector(config, callbacks(), "webgpu");
+    const wasmError = new Error("WASM load failed");
+    vi.mocked(AutoModelForObjectDetection.from_pretrained)
+      .mockRejectedValueOnce(new Error("GPU load failed"))
+      .mockRejectedValueOnce(wasmError);
+    await expect(loadDetector(config, callbacks(), "webgpu")).rejects.toBe(
+      wasmError,
+    );
+    expect(AutoModelForObjectDetection.from_pretrained).toHaveBeenCalledTimes(
+      3,
+    );
+    expect(isDetectorReady(config)).toBe(false);
+  });
+
+  it("does not retry a WASM-only failure", async () => {
+    const error = new Error("Model unavailable");
+    vi.mocked(
+      AutoModelForObjectDetection.from_pretrained,
+    ).mockRejectedValueOnce(error);
+    await expect(loadDetector(objConfig, callbacks(), "wasm")).rejects.toBe(
+      error,
+    );
+    expect(AutoModelForObjectDetection.from_pretrained).toHaveBeenCalledOnce();
   });
 });
 
@@ -168,7 +244,7 @@ describe("isDetectorReady", () => {
 
   it("is false for a closed-vocab detector before it is loaded", async () => {
     // Loading a SAM 3 detector clears any closed-vocab model state.
-    await loadDetector(sam3Config, callbacks());
+    await loadDetector(sam3Config, callbacks(), "webgpu");
     expect(isDetectorReady(objConfig)).toBe(false);
   });
 });
@@ -212,7 +288,7 @@ describe("runDetector", () => {
   });
 
   it("scales closed-vocab boxes to original pixel space and maps labels", async () => {
-    await loadDetector(objConfig, callbacks());
+    await loadDetector(objConfig, callbacks(), "wasm");
     const { detections, labelForClass } = await runDetector(
       objConfig,
       "data:image/png;base64,AAAA",

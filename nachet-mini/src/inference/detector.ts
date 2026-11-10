@@ -114,10 +114,8 @@ export const patchProcessorSize = (processor: any): void => {
 export const loadDetector = async (
   config: ModelConfig,
   callbacks: DetectorLoadCallbacks,
+  availableDevice: "webgpu" | "wasm",
 ): Promise<void> => {
-  // WebGPU has precision issues with detection models — always use WASM.
-  const detectorDevice = "wasm" as const;
-
   if (config.detectorKind === "text-promptable-segmentation") {
     console.log("[detector] Loading SAM 3 detector via sam3 module");
     // Dispose + free any previously-loaded closed-vocabulary detector first so
@@ -138,15 +136,28 @@ export const loadDetector = async (
   await unloadSam3();
   await disposeClosedVocabDetector();
 
+  const detectorDevice =
+    config.detectorDevice === "webgpu" ? availableDevice : "wasm";
+  const modelOptions = {
+    device: detectorDevice,
+    dtype: "fp32" as const,
+    model_file_name: config.detectorModelFileName ?? "model",
+    progress_callback: callbacks.transformersProgress as unknown as (
+      progress: unknown,
+    ) => void,
+  };
   const [detProc, detMod] = await Promise.all([
     AutoProcessor.from_pretrained(config.detectorModel),
-    AutoModelForObjectDetection.from_pretrained(config.detectorModel, {
-      device: detectorDevice,
-      dtype: "fp32" as const,
-      model_file_name: config.detectorModelFileName ?? "model",
-      progress_callback: callbacks.transformersProgress as unknown as (
-        progress: unknown,
-      ) => void,
+    AutoModelForObjectDetection.from_pretrained(
+      config.detectorModel,
+      modelOptions,
+    ).catch((error: unknown) => {
+      if (detectorDevice !== "webgpu") throw error;
+      console.warn("[detector] WebGPU load failed, retrying with WASM:", error);
+      return AutoModelForObjectDetection.from_pretrained(config.detectorModel, {
+        ...modelOptions,
+        device: "wasm",
+      });
     }),
   ]);
 
