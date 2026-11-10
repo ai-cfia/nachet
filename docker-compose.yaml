@@ -290,7 +290,7 @@ services:
 
   loki:
     container_name: nachet-loki
-    image: grafana/loki:3.7.1
+    image: grafana/loki:3.7.9
     ports:
       - "12310:3100"
     command: -config.file=/etc/loki/local-config.yaml
@@ -301,7 +301,7 @@ services:
 
   alloy:
     container_name: nachet-alloy
-    image: grafana/alloy:v1.15.1
+    image: grafana/alloy:v1.21.3
     ports:
       - "12317:4317" # OTLP gRPC receiver
       - "12318:4318" # OTLP HTTP receiver
@@ -316,7 +316,7 @@ services:
 
   grafana:
     container_name: nachet-grafana
-    image: grafana/grafana:13.0.1
+    image: grafana/grafana:13.3.0
     ports:
       - "12300:3000"
     env_file:
@@ -337,7 +337,7 @@ services:
 
   # Garage S3 compatible storage
   nachet-op-blob:
-    image: dxflrs/garage:v2.3.0
+    image: dxflrs/garage:v2.5.0
     container_name: nachet-op-blob
     restart: unless-stopped
     environment:
