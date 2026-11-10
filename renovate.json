@@ -204,29 +204,13 @@
       "groupName": "root Docker Compose dependencies",
       "groupSlug": "root-docker-compose",
       "matchFileNames": ["docker-compose.yaml"]
-    },
-
-    {
-      "matchVulnerabilityAlerts": true,
-      "groupName": "frontend security updates",
-      "groupSlug": "frontend-security",
-      "matchFileNames": ["frontend/**"]
-    },
-
-    {
-      "matchVulnerabilityAlerts": true,
-      "groupName": "backend security updates",
-      "groupSlug": "backend-security",
-      "matchFileNames": ["backend/**"]
-    },
-
-    {
-      "matchVulnerabilityAlerts": true,
-      "groupName": "mlops security updates",
-      "groupSlug": "mlops-security",
-      "matchFileNames": ["mlops/**"]
     }
   ],
+
+  "vulnerabilityAlerts": {
+    "groupName": "security updates",
+    "groupSlug": "security"
+  },
 
   "minimumReleaseAge": "1 week"
 }
