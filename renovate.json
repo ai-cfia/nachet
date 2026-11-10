@@ -140,6 +140,42 @@
       "groupSlug": "backend-dev-major",
       "matchPackageNames": ["*"],
       "matchFileNames": ["backend/**"]
+    },
+
+    {
+      "matchDepTypes": ["*"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "mlops non-major dependencies",
+      "groupSlug": "mlops-minor-patch",
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["mlops/**"]
+    },
+
+    {
+      "matchDepTypes": ["*"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "mlops major dependencies",
+      "groupSlug": "mlops-major",
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["mlops/**"]
+    },
+
+    {
+      "matchDepTypes": ["dependency-groups.dev"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "mlops non-major dev dependencies",
+      "groupSlug": "mlops-dev-minor-patch",
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["mlops/**"]
+    },
+
+    {
+      "matchDepTypes": ["dependency-groups.dev"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "mlops major dev dependencies",
+      "groupSlug": "mlops-dev-major",
+      "matchPackageNames": ["*"],
+      "matchFileNames": ["mlops/**"]
     }
   ],
 
