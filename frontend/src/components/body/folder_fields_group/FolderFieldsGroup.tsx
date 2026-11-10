@@ -110,7 +110,7 @@ export const FolderFieldsGroup = (props: FolderFieldsGroupProps) => {
           folderNamePlaceholder || t("createDirectory.directoryNamePlaceholder")
         }
         fullWidth
-        InputLabelProps={{ shrink: true }}
+        slotProps={{ inputLabel: { shrink: true } }}
         size="small"
       />
 
@@ -138,7 +138,7 @@ export const FolderFieldsGroup = (props: FolderFieldsGroupProps) => {
           t("createDirectory.descriptionPlaceholder")
         }
         fullWidth
-        InputLabelProps={{ shrink: true }}
+        slotProps={{ inputLabel: { shrink: true } }}
         size="small"
       />
     </Box>

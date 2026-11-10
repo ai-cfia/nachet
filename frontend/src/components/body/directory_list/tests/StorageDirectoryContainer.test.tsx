@@ -93,6 +93,18 @@ describe("StorageDirectoryContainer", () => {
     expect(directoryItem2.textContent).toContain("testDir2");
   });
 
+  test("renders the directory heading with its configured typography", () => {
+    const { getByTestId } = render(
+      <StorageDirectoryContainer azureStorageDir={mockAzureStorageDir} />,
+    );
+    const heading = getByTestId("storage-directory-component").querySelector(
+      ".MuiCardHeader-title",
+    );
+
+    expect(heading).toHaveClass("MuiTypography-h6");
+    expect(heading).toHaveStyle({ fontWeight: "600", fontSize: "1.3vh" });
+  });
+
   test("should call handleDelete and setDelDirectoryOpen when delete button is clicked", () => {
     const { getByTestId } = render(
       <StorageDirectoryContainer azureStorageDir={mockAzureStorageDir} />,

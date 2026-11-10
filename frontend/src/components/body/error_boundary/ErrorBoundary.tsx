@@ -66,21 +66,23 @@ class ErrorBoundary extends Component<Props, State> {
 
       return (
         <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          minHeight="400px"
-          p={3}
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: "400px",
+            p: 3,
+          }}
         >
           <Paper elevation={3} sx={{ p: 4, maxWidth: 600 }}>
             <Typography variant="h4" color="error" gutterBottom>
               {t("errors:boundary.title")}
             </Typography>
-            <Typography variant="body1" paragraph>
+            <Typography variant="body1" component="p" sx={{ mb: 2 }}>
               {t("errors:boundary.message")}
             </Typography>
             {process.env.NODE_ENV === "development" && this.state.error && (
-              <Box mt={2}>
+              <Box sx={{ mt: 2 }}>
                 <Typography variant="subtitle2" color="textSecondary">
                   {t("errors:boundary.devDetails")}
                 </Typography>
@@ -104,7 +106,7 @@ class ErrorBoundary extends Component<Props, State> {
                 </Paper>
               </Box>
             )}
-            <Box mt={3} display="flex" gap={2}>
+            <Box sx={{ mt: 3, display: "flex", gap: 2 }}>
               <Button
                 variant="contained"
                 color="primary"
@@ -122,8 +124,7 @@ class ErrorBoundary extends Component<Props, State> {
             <Typography
               variant="caption"
               color="textSecondary"
-              mt={2}
-              display="block"
+              sx={{ mt: 2, display: "block" }}
             >
               {t("errors:boundary.errorId", {
                 errorId: errorLogger.getCorrelationId(),

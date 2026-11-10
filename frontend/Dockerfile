@@ -1,4 +1,4 @@
-FROM node:24.13.0
+FROM node:26.12.1
 
 WORKDIR /nachet-frontend
 
@@ -6,7 +6,7 @@ WORKDIR /nachet-frontend
 COPY package*.json ./
 COPY tsconfig.json ./
 
-RUN npm install -g npm@11.21.0
+RUN npm install -g npm@12.0.0
 # RUN npm install --include=dev
 
 # Copy the rest of the application

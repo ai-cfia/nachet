@@ -30,7 +30,6 @@ const msalConfig: Configuration = {
     postLogoutRedirectUri:
       import.meta.env.VITE_AZURE_POST_LOGOUT_REDIRECT_URI ||
       window.location.origin, // Post logout redirect URI
-    navigateToLoginRequestUrl: true, // Navigate back to the page that initiated login
   },
   cache: {
     cacheLocation: "sessionStorage",

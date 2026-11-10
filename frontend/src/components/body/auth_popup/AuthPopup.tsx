@@ -36,7 +36,6 @@ const AuthPopup = ({ open, onClose }: AuthPopupProps) => {
     <Dialog
       open={open}
       onClose={isLoading ? undefined : onClose}
-      disableEscapeKeyDown={isLoading}
       maxWidth="sm"
       fullWidth
       slotProps={{

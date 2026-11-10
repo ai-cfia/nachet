@@ -11,54 +11,52 @@
     "allowSyntheticDefaultImports": true,
     "module": "es2022",
     "skipLibCheck": true,
-    /* Modified Bundler mode to Node for compatibility */
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
     /* Path mapping */
-    "baseUrl": ".",
     "paths": {
       "@common/*": [
-        "src/common/*"
+        "./src/common/*"
       ],
       "@common": [
-        "src/common"
+        "./src/common"
       ],
       "@hooks/*": [
-        "src/hooks/*"
+        "./src/hooks/*"
       ],
       "@hooks": [
-        "src/hooks"
+        "./src/hooks"
       ],
       "@components/*": [
-        "src/components/*"
+        "./src/components/*"
       ],
       "@components": [
-        "src/components"
+        "./src/components"
       ],
       "@styles/*": [
-        "src/styles/*"
+        "./src/styles/*"
       ],
       "@styles": [
-        "src/styles"
+        "./src/styles"
       ],
       "@stores/*": [
-        "src/stores/*"
+        "./src/stores/*"
       ],
       "@stores": [
-        "src/stores"
+        "./src/stores"
       ],
       "@auth/*": [
-        "src/auth/*"
+        "./src/auth/*"
       ],
       "@auth": [
-        "src/auth"
+        "./src/auth"
       ],
       "oidc-client-ts": [
-        "submodules/oidc-client-ts/dist/types/oidc-client-ts.d.ts"
+        "./submodules/oidc-client-ts/dist/types/oidc-client-ts.d.ts"
       ],
     },
     /* Linting */

@@ -375,8 +375,8 @@ const MicroscopeFeed = (props: MicroscopeFeedProps) => {
         maxHeight: { xs: "50vh", md: "80vh" },
         border: `0.01vh solid LightGrey`,
         borderRadius: "0.4vh",
+        boxShadow: 0,
       }}
-      boxShadow={0}
       data-testid="microscope-component"
     >
       <MicroscopeFeedControlsView

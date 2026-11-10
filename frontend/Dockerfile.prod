@@ -1,5 +1,5 @@
 # Build stage
-FROM node:24.13.0-alpine AS builder
+FROM node:26.12.1-alpine AS builder
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ COPY package*.json ./
 COPY tsconfig.json ./
 
 # Install ALL dependencies (including dev) for build
-RUN npm install -g npm@11.21.0 && npm ci
+RUN npm install -g npm@12.0.0 && npm ci
 
 # Copy source code
 COPY . .

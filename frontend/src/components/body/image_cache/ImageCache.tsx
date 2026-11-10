@@ -45,18 +45,22 @@ const ImageCache: React.FC = () => {
         borderRadius: "0.4vh",
         marginTop: "0.95vh",
         marginBottom: "0.95vh",
+        boxShadow: 0,
       }}
-      boxShadow={0}
       data-testid="image-cache-component"
     >
       <CardHeader
         title={t("imageCache.title")}
-        titleTypographyProps={{
-          variant: "h6",
-          align: "left",
-          fontWeight: 600,
-          fontSize: "1.3vh",
-          color: colours.CFIA_Font_Black,
+        slotProps={{
+          title: {
+            variant: "h6",
+            align: "left",
+            sx: {
+              fontWeight: 600,
+              fontSize: "1.3vh",
+              color: colours.CFIA_Font_Black,
+            },
+          },
         }}
         sx={{ padding: "0.8vh 1vh 0.8vh 0.8vh" }}
         action={
