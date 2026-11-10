@@ -8,6 +8,9 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
 from dataset_release.contract import ReleaseDefinition
 from dataset_release.registry import (
     Base,
@@ -16,8 +19,6 @@ from dataset_release.registry import (
     DatasetRelease,
 )
 from dataset_release.release import DatasetController
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 pytest_plugins = ["dataset_blob_fixtures"]
 

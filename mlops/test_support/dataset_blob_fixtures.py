@@ -9,6 +9,7 @@ from unittest.mock import Mock
 import pytest
 from azure.core.exceptions import ResourceExistsError
 from botocore.exceptions import ClientError
+
 from dataset_release.storage import BlobStorageAdapter
 
 

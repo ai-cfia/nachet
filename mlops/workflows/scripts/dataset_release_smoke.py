@@ -10,6 +10,10 @@ from io import BytesIO
 from uuid import UUID
 
 from blob.exceptions import BlobNotFoundError
+from PIL import Image
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import async_sessionmaker
+
 from dataset_release.contract import ImageMembership, ReleaseDefinition, sha256
 from dataset_release.errors import ReleaseConflict, ReleaseNotReady
 from dataset_release.reader import ReleasedDataset
@@ -22,9 +26,6 @@ from dataset_release.registry import (
 from dataset_release.release import DatasetController
 from dataset_release.settings import Settings
 from dataset_release.storage import BlobStorageAdapter
-from PIL import Image
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import async_sessionmaker
 from utility.crop import crop_image, decode_png
 
 VERSION = "v1"
