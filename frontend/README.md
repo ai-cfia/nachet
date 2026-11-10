@@ -171,6 +171,11 @@ npx cyclonedx-npm package-lock.json --output-reproducible --package-lock-only -v
 
 **Note**: The SBOM file (`sbom.json`) is tracked in version control to provide a complete record of dependencies for each release.
 
+CycloneDX npm 7 removes the optional native XML-validation dependency chain that
+pulled in deprecated, vulnerable `glob` 10. Development tools requiring
+`minimatch` 10 use a scoped override to patched version 11.0.6; remove that
+override once those tools support a patched version directly.
+
 ### Development with Docker
 
 For a consistent development environment, you can use Docker:

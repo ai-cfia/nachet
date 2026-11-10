@@ -82,7 +82,7 @@
     "@babel/preset-env": "^8.0.0",
     "@babel/preset-react": "^8.0.0",
     "@babel/preset-typescript": "^8.0.0",
-    "@cyclonedx/cyclonedx-npm": "^6.0.1",
+    "@cyclonedx/cyclonedx-npm": "^7.0.0",
     "@eslint-react/eslint-plugin": "^5.28.8",
     "@eslint/compat": "^2.1.1",
     "@eslint/eslintrc": "^3.3.7",
@@ -130,6 +130,7 @@
     "js-yaml@^5.0.0": "^5.4.1",
     "katex": "^0.19.0",
     "markdown-it": "^15.0.0",
+    "minimatch@^10.0.0": "11.0.6",
     "smol-toml": "^1.9.0",
     "esbuild": "^0.28.0",
     "on-headers": "^1.1.0",
@@ -139,7 +140,6 @@
   "allowScripts": {
     "@swc/core@1.16.20": true,
     "esbuild@0.28.1": true,
-    "libxmljs2@0.37.0": true,
     "unrs-resolver@1.12.2": true
   }
 }
