@@ -72,7 +72,7 @@ jobs:
           echo "name=$clean_name" >> "$GITHUB_OUTPUT"
       - name: Build pull request image
         if: github.event.pull_request.merged == false
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
         with:
           context: mlops
           file: mlops/preparation/Dockerfile
@@ -92,7 +92,7 @@ jobs:
             format('type=registry,ref={0}:cache-pr-amd64,mode=min', env.IMAGE) || '' }}
       - name: Build merged image
         if: github.event.pull_request.merged == true
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a  # v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
         with:
           context: mlops
           file: mlops/preparation/Dockerfile
