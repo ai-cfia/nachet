@@ -16,7 +16,7 @@ dependencies = [
     "loguru>=0.7.3,<1",
     "nachet-blob==0.1.0",
     "numpy>=1.26,<3",
-    "opencv-python-headless>=4.10,<5",
+    "opencv-python-headless>=5,<6",
     "pillow==13.0.0",
     "psycopg[binary]>=3.2.10,<4",
     "pydantic==2.13.0",
