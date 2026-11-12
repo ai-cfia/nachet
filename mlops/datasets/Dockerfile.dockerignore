@@ -18,8 +18,6 @@
 !workflows/scripts/dataset_release_smoke.py
 !workflows/tests/
 !workflows/tests/test_dataset_release_smoke.py
-!test_support/
-!test_support/dataset_blob_fixtures.py
 **/.venv/
 **/__pycache__/
 **/*.py[cod]

@@ -12,7 +12,6 @@ on:
       - "mlops/blob/**"
       - "mlops/workflows/scripts/dataset_release_smoke.py"
       - "mlops/workflows/tests/test_dataset_release_smoke.py"
-      - "mlops/test_support/**"
       - ".github/workflows/mlops-datasets-build.yml"
       - ".github/workflows/reusable-sign-container-images.yml"
 

@@ -1,4 +1,4 @@
-"""Shared dataset/workflow fixtures using real providers and in-memory SDKs."""
+"""Dataset provider fixtures exported for dataset and workflow tests."""
 
 from datetime import UTC, datetime
 from io import BytesIO

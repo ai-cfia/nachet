@@ -20,7 +20,7 @@ from dataset_release.registry import (
 )
 from dataset_release.release import DatasetController
 
-pytest_plugins = ["dataset_blob_fixtures"]
+pytest_plugins = ["mlops.datasets.tests.dataset_blob_fixtures"]
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/dataset_release_smoke.py"
 SPEC = importlib.util.spec_from_file_location("dataset_release_smoke", SCRIPT)

@@ -39,7 +39,7 @@ nachet-blob = { path = "../blob", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["../test_support"]
+pythonpath = ["..", "../.."]
 asyncio_mode = "strict"
 
 [tool.ruff]

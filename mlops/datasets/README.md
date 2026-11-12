@@ -474,7 +474,8 @@ trainer integration or GPU model quality.
 The smoke lifecycle tests live in
 `../workflows/tests/test_dataset_release_smoke.py`. They explicitly load the same
 provider fixture plugin as the dataset tests from
-`../test_support/dataset_blob_fixtures.py`. From the repository root, run them
+`mlops.datasets.tests.dataset_blob_fixtures`, defined in
+`tests/dataset_blob_fixtures.py`. From the repository root, run them
 with the dataset project's environment and pytest configuration:
 
 ```bash
@@ -483,6 +484,8 @@ uv run --project mlops/datasets --no-sync python -I -m pytest \
   mlops/workflows/tests/test_dataset_release_smoke.py -q
 ```
 
-The configuration adds the shared test-support directory to pytest's import
-path. The image's checks stage mounts both test directories and the shared
-fixtures, runs them together, and omits all test files from the runtime image.
+The configuration adds the MLOps and repository roots to pytest's import path so
+the provider package and the fixture module can be imported through `blob` and
+`mlops.datasets.tests`, respectively. The image's checks stage preserves that
+module layout, mounts both test directories, runs them together, and omits all
+test files from the runtime image.

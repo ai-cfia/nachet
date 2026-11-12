@@ -10,7 +10,6 @@ on:
       - "mlops/training/**"
       - "mlops/datasets/**"
       - "mlops/blob/**"
-      - "mlops/test_support/**"
       - ".github/workflows/mlops-workflows-test.yml"
   push:
     branches: [main]
@@ -20,7 +19,6 @@ on:
       - "mlops/training/**"
       - "mlops/datasets/**"
       - "mlops/blob/**"
-      - "mlops/test_support/**"
       - ".github/workflows/mlops-workflows-test.yml"
   workflow_dispatch:
 
