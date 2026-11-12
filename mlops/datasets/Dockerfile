@@ -19,6 +19,7 @@ ENV HOME=/tmp \
 
 FROM base AS checks
 RUN uv sync --locked --no-cache
+# Test sources are temporary bind mounts, not files stored in image layers.
 RUN --mount=type=bind,source=datasets/tests,target=/opt/mlops/datasets/tests \
     --mount=type=bind,source=datasets/migrations,target=/opt/mlops/datasets/migrations \
     --mount=type=bind,source=datasets/alembic.ini,target=/opt/mlops/datasets/alembic.ini \
@@ -27,9 +28,11 @@ RUN --mount=type=bind,source=datasets/tests,target=/opt/mlops/datasets/tests \
     uv run --no-sync python -I -m pytest -c pyproject.toml \
       tests /opt/workflows/tests/test_dataset_release_smoke.py -q
 
+# Start from base so the runtime excludes the checks stage's test dependencies.
 FROM base AS runtime
 RUN uv sync --locked --no-dev --no-cache
 ENV PATH="/opt/mlops/datasets/.venv/bin:$PATH"
+# Require successful checks while copying only the runtime smoke helper.
 COPY --from=checks /opt/workflows/scripts/dataset_release_smoke.py /opt/workflows/scripts/dataset_release_smoke.py
 USER 10001:10001
 ENTRYPOINT ["python", "-m", "dataset_release"]
