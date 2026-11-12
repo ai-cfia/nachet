@@ -19,8 +19,7 @@ on:
       - "mlops/training/**"
       - "mlops/export/**"
       - "mlops/datasets/**"
-      - "mlops/workflows/scripts/dataset_release_smoke.py"
-      - "mlops/workflows/tests/test_dataset_release_smoke.py"
+      - "mlops/workflows/**"
       - "mlops/test_support/**"
       - "mlops/blob/**"
       - "mlops/preparation/**"
@@ -32,8 +31,7 @@ on:
       - "mlops/training/**"
       - "mlops/export/**"
       - "mlops/datasets/**"
-      - "mlops/workflows/scripts/dataset_release_smoke.py"
-      - "mlops/workflows/tests/test_dataset_release_smoke.py"
+      - "mlops/workflows/**"
       - "mlops/test_support/**"
       - "mlops/blob/**"
       - "mlops/preparation/**"
@@ -66,11 +64,9 @@ jobs:
       - name: Check Python
         run: |
           uv run --no-sync ruff check dataset_release migrations tests \
-            ../workflows/scripts/dataset_release_smoke.py \
-            ../workflows/tests/test_dataset_release_smoke.py ../test_support
+            ../workflows ../test_support
           uv run --no-sync ruff format --check dataset_release migrations tests \
-            ../workflows/scripts/dataset_release_smoke.py \
-            ../workflows/tests/test_dataset_release_smoke.py ../test_support
+            ../workflows ../test_support
       - name: Test standalone release tools
         run: uv run --no-sync pytest
       - name: Verify dataset and blob wheels together
