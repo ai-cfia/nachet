@@ -97,10 +97,13 @@ jobs:
 
       - name: Test dataset release workflows and fixtures
         run: |
-          "$NACHET_EXPORT_PYTHON" -m unittest mlops.workflows.tests.test_dataset_release_workflow -v
+          # Discover each suite in the environment that provides its dependencies.
+          "$NACHET_EXPORT_PYTHON" -m unittest discover \
+            -s mlops/workflows/tests -p 'test_dataset_*workflow*.py' -v
           "$NACHET_DATASET_PYTHON" -I -m pytest \
             -c mlops/datasets/pyproject.toml \
-            mlops/workflows/tests/test_dataset_release_smoke.py -q
+            -o 'python_files=test_*smoke*.py' \
+            mlops/workflows/tests -q
 
       - name: Test evaluation and release workflows
         env:
