@@ -6,7 +6,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "huggingface-hub==0.36.2",
     "numpy==2.4.3",
-    "onnx==1.21.0",
+    "onnx==1.22.0",
     "onnxconverter-common==1.16.0",
     "onnxruntime==1.24.4",
     "optimum-onnx==0.1.0",
