@@ -1,0 +1,167 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: nachet-dataset-release
+  namespace: argo-workflows
+  labels:
+    app.kubernetes.io/name: nachet-dataset-release
+    app.kubernetes.io/part-of: nachet
+spec:
+  entrypoint: release
+  serviceAccountName: argo-workflow
+  arguments:
+    parameters:
+      - name: image
+        value: ghcr.io/ai-cfia/nachet-dataset-release:main
+        description: Dataset release image; use a digest to pin the runtime.
+      - name: dataset-name
+        description: Existing release with reviewed labels and explicit split membership.
+      - name: dataset-version
+      - name: container
+        description: Existing dataset bucket/container containing prepared PNGs.
+      - name: credentials-secret
+        value: nachet-dataset-release
+        description: Secret containing DATASET_DATABASE_URL and storage settings.
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  volumes:
+    - name: tmp
+      emptyDir: {}
+  templates:
+    - name: release
+      inputs:
+        parameters:
+          - name: image
+          - name: dataset-name
+          - name: dataset-version
+          - name: container
+          - name: credentials-secret
+      steps:
+        - - name: publish
+            template: publish
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{inputs.parameters.image}}"
+                - name: dataset-name
+                  value: "{{inputs.parameters.dataset-name}}"
+                - name: dataset-version
+                  value: "{{inputs.parameters.dataset-version}}"
+                - name: container
+                  value: "{{inputs.parameters.container}}"
+                - name: credentials-secret
+                  value: "{{inputs.parameters.credentials-secret}}"
+        - - name: validate
+            template: validate
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{inputs.parameters.image}}"
+                - name: dataset-name
+                  value: "{{inputs.parameters.dataset-name}}"
+                - name: dataset-version
+                  value: "{{inputs.parameters.dataset-version}}"
+                - name: container
+                  value: "{{inputs.parameters.container}}"
+                - name: credentials-secret
+                  value: "{{inputs.parameters.credentials-secret}}"
+                - name: manifest-sha256
+                  value: "{{steps.publish.outputs.parameters.manifest-sha256}}"
+      outputs:
+        parameters:
+          - name: manifest-sha256
+            valueFrom:
+              parameter: "{{steps.publish.outputs.parameters.manifest-sha256}}"
+          - name: dataset-reference
+            valueFrom:
+              parameter: "{{steps.publish.outputs.parameters.dataset-reference}}"
+
+    - name: publish
+      activeDeadlineSeconds: 600
+      inputs:
+        parameters:
+          - name: image
+          - name: dataset-name
+          - name: dataset-version
+          - name: container
+          - name: credentials-secret
+      retryStrategy:
+        limit: "2"
+        retryPolicy: OnFailure
+      outputs:
+        parameters:
+          - name: dataset-reference
+            valueFrom:
+              path: /tmp/dataset-reference.json
+          - name: manifest-sha256
+            valueFrom:
+              path: /tmp/manifest-sha256
+      container:
+        image: "{{inputs.parameters.image}}"
+        imagePullPolicy: Always
+        command: [sh, -ec]
+        args:
+          - |
+            python -m dataset_release --container "$1" publish "$2" "$3" > /tmp/dataset-reference.json
+            python -c 'import json; from pathlib import Path; value = json.loads(Path("/tmp/dataset-reference.json").read_text()); Path("/tmp/manifest-sha256").write_text(value["dataset_manifest_sha256"])'
+            cat /tmp/dataset-reference.json
+          - publish
+          - "{{inputs.parameters.container}}"
+          - "{{inputs.parameters.dataset-name}}"
+          - "{{inputs.parameters.dataset-version}}"
+        envFrom:
+          - secretRef:
+              name: "{{inputs.parameters.credentials-secret}}"
+        resources:
+          requests: {cpu: 250m, memory: 512Mi}
+          limits: {cpu: "2", memory: 2Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: tmp
+            mountPath: /tmp
+
+    - name: validate
+      activeDeadlineSeconds: 600
+      inputs:
+        parameters:
+          - name: image
+          - name: dataset-name
+          - name: dataset-version
+          - name: container
+          - name: credentials-secret
+          - name: manifest-sha256
+      container:
+        image: "{{inputs.parameters.image}}"
+        imagePullPolicy: Always
+        command: [python, -m, dataset_release]
+        args:
+          - --container
+          - "{{inputs.parameters.container}}"
+          - validate
+          - "{{inputs.parameters.dataset-name}}"
+          - "{{inputs.parameters.dataset-version}}"
+          - --expected-manifest-sha256
+          - "{{inputs.parameters.manifest-sha256}}"
+        envFrom:
+          - secretRef:
+              name: "{{inputs.parameters.credentials-secret}}"
+        resources:
+          requests: {cpu: 250m, memory: 512Mi}
+          limits: {cpu: "2", memory: 2Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: tmp
+            mountPath: /tmp

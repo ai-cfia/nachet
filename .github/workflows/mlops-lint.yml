@@ -19,6 +19,7 @@ on:
       - "mlops/training/**"
       - "mlops/export/**"
       - "mlops/datasets/**"
+      - "mlops/workflows/**"
       - "mlops/blob/**"
       - "mlops/preparation/**"
       - ".github/workflows/mlops-lint.yml"
@@ -29,6 +30,7 @@ on:
       - "mlops/training/**"
       - "mlops/export/**"
       - "mlops/datasets/**"
+      - "mlops/workflows/**"
       - "mlops/blob/**"
       - "mlops/preparation/**"
       - ".github/workflows/mlops-lint.yml"
@@ -59,8 +61,10 @@ jobs:
         run: uv sync --locked
       - name: Check Python
         run: |
-          uv run --no-sync ruff check dataset_release migrations tests
-          uv run --no-sync ruff format --check dataset_release migrations tests
+          uv run --no-sync ruff check dataset_release migrations tests \
+            ../workflows
+          uv run --no-sync ruff format --check dataset_release migrations tests \
+            ../workflows
       - name: Test standalone release tools
         run: uv run --no-sync pytest
       - name: Verify dataset and blob wheels together

@@ -27,6 +27,10 @@ class BlobStorage(Protocol):
 class DatasetBlobProvider(BlobStorage, Protocol):
     """A dataset provider also owns an SDK connection pool that can be closed."""
 
+    async def delete_blob(self, container: str, name: str) -> bool:
+        """Delete a fixture object; release publication never calls this operation."""
+        pass
+
     def close(self) -> None:
         """Release provider resources when the dataset command finishes."""
         pass

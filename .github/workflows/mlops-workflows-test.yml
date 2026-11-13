@@ -8,6 +8,8 @@ on:
       - "mlops/workflows/**"
       - "mlops/export/**"
       - "mlops/training/**"
+      - "mlops/datasets/**"
+      - "mlops/blob/**"
       - ".github/workflows/mlops-workflows-test.yml"
   push:
     branches: [main]
@@ -15,6 +17,8 @@ on:
       - "mlops/workflows/**"
       - "mlops/export/**"
       - "mlops/training/**"
+      - "mlops/datasets/**"
+      - "mlops/blob/**"
       - ".github/workflows/mlops-workflows-test.yml"
   workflow_dispatch:
 
@@ -38,6 +42,7 @@ jobs:
       NACHET_EXPORT_PYTHON: ${{ github.workspace }}/mlops/export/.venv/bin/python
       NACHET_CLASSIFIER_PYTHON: ${{ github.workspace }}/mlops/training/classifier/.venv/bin/python
       NACHET_DETECTOR_PYTHON: ${{ github.workspace }}/mlops/training/detector/.venv/bin/python
+      NACHET_DATASET_PYTHON: ${{ github.workspace }}/mlops/datasets/.venv/bin/python
 
     steps:
       - name: Checkout code
@@ -75,6 +80,7 @@ jobs:
       - name: Install test environments
         run: |
           uv sync --locked --project mlops/export --no-dev
+          uv sync --locked --project mlops/datasets
           for trainer in classifier detector; do
             uv sync --locked --project "mlops/training/$trainer" --no-dev --group test
             # Trainer locks omit the PyTorch supplied by their NVIDIA image.
@@ -86,6 +92,16 @@ jobs:
       - name: Test export workflow
         run: |
           "$NACHET_EXPORT_PYTHON" -m unittest mlops.workflows.tests.test_export_workflow -v
+
+      - name: Test dataset release workflows and fixtures
+        run: |
+          # Discover each suite in the environment that provides its dependencies.
+          "$NACHET_EXPORT_PYTHON" -m unittest discover \
+            -s mlops/workflows/tests -p 'test_dataset_*workflow*.py' -v
+          "$NACHET_DATASET_PYTHON" -I -m pytest \
+            -c mlops/datasets/pyproject.toml \
+            -o 'python_files=test_*smoke*.py' \
+            mlops/workflows/tests -q
 
       - name: Test evaluation and release workflows
         env:

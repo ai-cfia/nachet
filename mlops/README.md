@@ -4,6 +4,11 @@ The standalone [dataset release tools](datasets/README.md) publish reviewed
 COCO versions, generate seed crops and provide verified training inputs. Their
 storage adapter, registry migration, dependencies and tests live in `datasets/`.
 
+The [dataset release Argo workflows](datasets/README.md#argo-release-and-smoke-workflows)
+publish and validate a prepared release, or run a small integration smoke test
+against a separately provisioned test registry and object store. Their templates
+are included in `workflows/kustomization.yaml` alongside the training workflows.
+
 ## Example approval workflow
 
 `workflows/example-workflow-template.yaml` is a small control-flow example used

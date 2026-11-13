@@ -1,0 +1,154 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: nachet-dataset-release-smoke
+  namespace: argo-workflows
+  labels:
+    app.kubernetes.io/name: nachet-dataset-release-smoke
+    app.kubernetes.io/part-of: nachet
+spec:
+  entrypoint: smoke
+  onExit: cleanup
+  serviceAccountName: argo-workflow
+  arguments:
+    parameters:
+      - name: image
+        value: ghcr.io/ai-cfia/nachet-dataset-release:main
+        description: Use the PR image tag or a digest to test a particular build.
+      - name: container
+        value: nachet-dataset-smoke
+        description: Dedicated existing smoke bucket/container; optional suffix allowed.
+      - name: credentials-secret
+        value: nachet-dataset-release-smoke
+        description: Separate test registry and storage credentials, including delete access.
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  volumes:
+    - name: tmp
+      emptyDir: {}
+  templates:
+    - name: smoke
+      steps:
+        - - name: seed
+            template: seed
+        - - name: release
+            templateRef:
+              name: nachet-dataset-release
+              template: release
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{workflow.parameters.image}}"
+                - name: dataset-name
+                  value: "dataset-smoke-{{workflow.uid}}"
+                - name: dataset-version
+                  value: v1
+                - name: container
+                  value: "{{workflow.parameters.container}}"
+                - name: credentials-secret
+                  value: "{{workflow.parameters.credentials-secret}}"
+        - - name: verify
+            template: verify
+            arguments:
+              parameters:
+                - name: manifest-sha256
+                  value: "{{steps.release.outputs.parameters.manifest-sha256}}"
+      outputs:
+        parameters:
+          - name: report
+            valueFrom:
+              parameter: "{{steps.verify.outputs.result}}"
+
+    - name: seed
+      activeDeadlineSeconds: 300
+      container:
+        image: "{{workflow.parameters.image}}"
+        imagePullPolicy: Always
+        command: [python, /opt/workflows/scripts/dataset_release_smoke.py]
+        args:
+          - --container
+          - "{{workflow.parameters.container}}"
+          - --name
+          - "dataset-smoke-{{workflow.uid}}"
+          - seed
+        envFrom:
+          - secretRef:
+              name: "{{workflow.parameters.credentials-secret}}"
+        resources:
+          requests: {cpu: 250m, memory: 256Mi}
+          limits: {cpu: "1", memory: 1Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: tmp
+            mountPath: /tmp
+
+    - name: verify
+      activeDeadlineSeconds: 300
+      inputs:
+        parameters:
+          - name: manifest-sha256
+      container:
+        image: "{{workflow.parameters.image}}"
+        imagePullPolicy: Always
+        command: [python, /opt/workflows/scripts/dataset_release_smoke.py]
+        args:
+          - --container
+          - "{{workflow.parameters.container}}"
+          - --name
+          - "dataset-smoke-{{workflow.uid}}"
+          - verify
+          - --expected-manifest-sha256
+          - "{{inputs.parameters.manifest-sha256}}"
+        envFrom:
+          - secretRef:
+              name: "{{workflow.parameters.credentials-secret}}"
+        resources:
+          requests: {cpu: 250m, memory: 256Mi}
+          limits: {cpu: "1", memory: 1Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: tmp
+            mountPath: /tmp
+
+    - name: cleanup
+      activeDeadlineSeconds: 300
+      retryStrategy:
+        limit: "2"
+        retryPolicy: OnFailure
+      container:
+        image: "{{workflow.parameters.image}}"
+        imagePullPolicy: Always
+        command: [python, /opt/workflows/scripts/dataset_release_smoke.py]
+        args:
+          - --container
+          - "{{workflow.parameters.container}}"
+          - --name
+          - "dataset-smoke-{{workflow.uid}}"
+          - cleanup
+        envFrom:
+          - secretRef:
+              name: "{{workflow.parameters.credentials-secret}}"
+        resources:
+          requests: {cpu: 250m, memory: 256Mi}
+          limits: {cpu: "1", memory: 1Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: tmp
+            mountPath: /tmp
