@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nachet-backend"
-version = "3.0.11"
+version = "3.0.12"
 description = "Canadian government (CFIA) AI-powered seed identification system backend"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -33,7 +33,7 @@ dependencies = [
     "azure-identity==1.26.0",
     "python-dotenv==1.2.4",
     "hypercorn==0.18.0",
-    "Pillow==12.2.0",
+    "Pillow==13.0.0",
     "cryptography==50.0.2",
     "pyyaml==6.0.3",
     "pydantic==2.14.1",
