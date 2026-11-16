@@ -196,7 +196,7 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
     def supplied_predictions(image):
         red, green, blue = image.getpixel((0, 0))
         boxes = [] if blue > max(red, green) else [[2.25, 3.5, 9.25, 10.5]]
-        return Prediction(boxes)
+        return Prediction(boxes, scores=[0.875] if red > max(green, blue) else None)
 
     draft = prelabel(index, prepared, supplied_predictions, padding=0)
     labels = tmp_path / "draft.coco.json"
@@ -249,6 +249,7 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
             assert len(sample.draft_boxes.detections) == 1
             detection = sample.draft_boxes.detections[0]
             assert detection.label == expected_assignments[relative][0]
+            assert detection.confidence == (0.875 if relative == inputs[0][0] else None)
             assert detection.bounding_box == pytest.approx(
                 [0.1125, 0.21875, 0.35, 0.4375]
             )
