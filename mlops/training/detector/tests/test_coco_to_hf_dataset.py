@@ -54,15 +54,15 @@ class CocoDatasetSplitTest(unittest.TestCase):
             with self.subTest(split=name):
                 self.assertEqual(self.load([name, "test"]), {name: [1], other: []})
 
-    def test_rejects_a_test_only_source_in_split_mode(self):
-        with self.assertRaisesRegex(ValueError, "No usable COCO images"):
-            self.load(["test", "test"])
-
-    def test_rejects_mixed_or_unknown_split_assignments(self):
-        for invalid in (None, "unspecified"):
-            with self.subTest(split=invalid):
-                with self.assertRaisesRegex(ValueError, "split.*image 3"):
-                    self.load(["train", "validation", invalid])
+    def test_rejects_invalid_split_inputs(self):
+        for splits, message in (
+            (["train", "validation", None], "split.*image 3"),
+            (["train", "validation", "unspecified"], "split.*image 3"),
+            (["test", "test"], "No usable COCO images"),
+        ):
+            with self.subTest(splits=splits):
+                with self.assertRaisesRegex(ValueError, message):
+                    self.load(splits)
 
     def test_keeps_seeded_split_for_unassigned_inputs(self):
         splits = [None] * 5
