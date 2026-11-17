@@ -51,6 +51,12 @@ docker run --rm --platform linux/amd64 --network none \
 This writes the FP32 model to `onnx-fp32/` using opset 16, like the published
 Nachet models. `--quantize` also writes the AVX512 INT8 model to `onnx-quant/`.
 
+For RT-DETRv2 checkpoints with `tie_encoder_decoder=true`, export uses a
+temporary config with that setting disabled for the Transformers 4.57.6 loader.
+Other checkpoint files are linked into the temporary directory, so weights
+are not copied or modified. The original checkpoint stays unchanged. The
+exporter retains its existing Transformers and Optimum versions.
+
 ## Prepare classifier CAM files
 
 Use the same checkpoint that produced the ONNX model:

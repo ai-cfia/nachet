@@ -117,18 +117,33 @@ class SwinExportTest(unittest.TestCase):
 
 class DetectorExportTest(unittest.TestCase):
     def test_logits_and_boxes_match_pytorch(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            checkpoint = Path(tmp) / "checkpoint"
-            model = save_tiny_detector(checkpoint)
-            export_model.export_model(checkpoint, Path(tmp) / "export")
-            session = ort.InferenceSession(str(Path(tmp) / "export/onnx-fp32/model.onnx"),
-                                           providers=["CPUExecutionProvider"])
-            pixels = torch.rand(2, 3, 64, 64)
-            with torch.no_grad():
-                expected = model(pixel_values=pixels)
-            logits, boxes = session.run(["logits", "pred_boxes"], {"pixel_values": pixels.numpy()})
-            np.testing.assert_allclose(logits, expected.logits.numpy(), rtol=1e-4, atol=1e-5)
-            np.testing.assert_allclose(boxes, expected.pred_boxes.numpy(), rtol=1e-4, atol=1e-5)
+        for tie_encoder_decoder in (False, True):
+            with (
+                self.subTest(tie_encoder_decoder=tie_encoder_decoder),
+                tempfile.TemporaryDirectory() as tmp,
+            ):
+                checkpoint = Path(tmp) / "checkpoint"
+                model = save_tiny_detector(checkpoint)
+                config_path = checkpoint / "config.json"
+                config = json.loads(config_path.read_text())
+                config["tie_encoder_decoder"] = tie_encoder_decoder
+                config_path.write_text(json.dumps(config))
+                original = {path.name: path.read_bytes() for path in checkpoint.iterdir()}
+                for path in checkpoint.iterdir():
+                    path.chmod(0o444)
+
+                export_model.export_model(checkpoint, Path(tmp) / "export")
+                session = ort.InferenceSession(str(Path(tmp) / "export/onnx-fp32/model.onnx"),
+                                               providers=["CPUExecutionProvider"])
+                pixels = torch.rand(2, 3, 64, 64)
+                with torch.no_grad():
+                    expected = model(pixel_values=pixels)
+                logits, boxes = session.run(["logits", "pred_boxes"], {"pixel_values": pixels.numpy()})
+                np.testing.assert_allclose(logits, expected.logits.numpy(), rtol=1e-4, atol=1e-5)
+                np.testing.assert_allclose(boxes, expected.pred_boxes.numpy(), rtol=1e-4, atol=1e-5)
+                self.assertEqual(
+                    {path.name: path.read_bytes() for path in checkpoint.iterdir()}, original,
+                )
 
 
 if __name__ == "__main__":
