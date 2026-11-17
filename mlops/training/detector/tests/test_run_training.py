@@ -200,6 +200,12 @@ class MlflowClient:
         self.assertIn("--max_eval_samples", command)
         self.assertFalse((self.runs / "test-run").exists())
 
+        full = self.run_dry("--run-profile", "full")
+        self.assertEqual(full.returncode, 0, full.stderr)
+        self.assertEqual(
+            self.command_value(shlex.split(full.stdout), "--save_total_limit"), "2"
+        )
+
     def test_profile_values_can_be_overridden(self) -> None:
         result = self.run_dry(
             "--image-size",
