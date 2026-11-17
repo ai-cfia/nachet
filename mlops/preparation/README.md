@@ -271,10 +271,10 @@ snapshots under `models/` on that claim. `model-folder` selects a subfolder
 writes COCO files under `/workspace/<workflow-name>/`; remove only that run's
 directory after checking the result. A failed pre-labeling step restarts the batch.
 
-The `nachet-preparation-config` ConfigMap provides `bucket`, `region`,
-and `server-media-root`. The existing `nachet-training-s3` Secret provides
-`MLFLOW_S3_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, with
-`AWS_SESSION_TOKEN` for temporary credentials.
+Howard's `nachet-preparation-config` ConfigMap sets the cold Ceph endpoint,
+the `nachet-seed-image-dataset` bucket, the region and FiftyOne's media root.
+The `nachet-preparation-cold-s3` Secret provides `AWS_ACCESS_KEY_ID` and
+`AWS_SECRET_ACCESS_KEY`, with `AWS_SESSION_TOKEN` for temporary credentials.
 The workflow explicitly passes `--allow-http` for Howard's internal Ceph
 connection. HTTPS connections still verify certificates and use `AWS_CA_BUNDLE`
 when configured.
