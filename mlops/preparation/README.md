@@ -29,6 +29,9 @@ uv run --project mlops/preparation --no-sync python \
 The S3 keys below the collection prefix must follow the species/split layout
 described below. Source paths stay relative to that prefix. Empty species
 folders are retained when the listing includes directory markers for them.
+Pass original keys with spaces and punctuation unchanged; boto3 handles URL
+encoding. Do not percent-encode or decode keys before passing them to the SDK.
+Preparation retains the exact original key in source metadata.
 The index records hashes of the original bytes read; it does not require
 ingestion-specific hash metadata. Originals must already be in S3 and remain
 unchanged during a run.

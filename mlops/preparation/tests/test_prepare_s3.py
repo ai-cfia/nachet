@@ -216,14 +216,17 @@ def test_duplicate_png_in_different_splits_is_rejected(automatic_collection):
         )
 
 
-def test_reads_spaced_original_without_custom_hash_metadata(s3_provider, tmp_path):
+@pytest.mark.parametrize("filename", ["seed.tiff", "seed; (1), #50%+&résumé%2F.tiff"])
+def test_reads_original_key_without_custom_hash_metadata(
+    s3_provider, tmp_path, filename
+):
     root = tmp_path / "source"
-    path = root / "Amaranthus albus/seed.tiff"
+    path = root / "Amaranthus albus" / filename
     path.parent.mkdir(parents=True)
     Image.new("RGB", (3, 2), "red").save(path)
-    s3_provider.objects["datasets", "raw/collection/Amaranthus albus/seed.tiff"] = (
-        path.read_bytes()
-    )
+    raw_key = "raw/collection/Amaranthus albus/" + filename
+    original_bytes = path.read_bytes()
+    s3_provider.objects["datasets", raw_key] = original_bytes
     actual = asyncio.run(
         module.prepare_s3(
             s3_provider.storage,
@@ -237,6 +240,9 @@ def test_reads_spaced_original_without_custom_hash_metadata(s3_provider, tmp_pat
     )
     assert actual == expected
     image = actual["images"][0]
+    assert image["sources"][0]["raw_key"] == raw_key
+    assert image["sources"][0]["original_path"] == "Amaranthus albus/" + filename
+    assert s3_provider.objects["datasets", raw_key] == original_bytes
     assert (
         s3_provider.objects["datasets", image["file_name"]]
         == (tmp_path / "local" / image["file_name"]).read_bytes()
