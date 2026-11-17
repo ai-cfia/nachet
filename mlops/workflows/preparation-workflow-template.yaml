@@ -74,8 +74,8 @@ spec:
           - --bucket
           - "$(PREPARATION_BUCKET)"
           - --endpoint-url
-          - "$(MLFLOW_S3_ENDPOINT_URL)"
-          # Howard's existing Ceph endpoint uses HTTP inside the cluster.
+          - "$(PREPARATION_S3_ENDPOINT_URL)"
+          # Howard's cold Ceph endpoint uses HTTP inside the cluster.
           - --allow-http
           - --region
           - "$(PREPARATION_REGION)"
@@ -86,13 +86,16 @@ spec:
         env:
           - name: PREPARATION_BUCKET
             valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: bucket}
+              configMapKeyRef: {name: nachet-preparation-cold-config, key: bucket}
+          - name: PREPARATION_S3_ENDPOINT_URL
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-cold-config, key: endpoint-url}
           - name: PREPARATION_REGION
             valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: region}
+              configMapKeyRef: {name: nachet-preparation-cold-config, key: region}
         envFrom:
           - secretRef:
-              name: nachet-training-s3
+              name: nachet-preparation-cold-s3
         resources:
           requests: {cpu: "1", memory: 1Gi}
           limits: {cpu: "2", memory: 4Gi}
@@ -121,7 +124,7 @@ spec:
           - "s3://$(PREPARATION_BUCKET)"
           - /workspace/{{workflow.name}}/prepared/draft.coco.json
           - --endpoint-url
-          - "$(MLFLOW_S3_ENDPOINT_URL)"
+          - "$(PREPARATION_S3_ENDPOINT_URL)"
           - --allow-http
           - --region
           - "$(PREPARATION_REGION)"
@@ -134,13 +137,16 @@ spec:
         env:
           - name: PREPARATION_BUCKET
             valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: bucket}
+              configMapKeyRef: {name: nachet-preparation-cold-config, key: bucket}
+          - name: PREPARATION_S3_ENDPOINT_URL
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-cold-config, key: endpoint-url}
           - name: PREPARATION_REGION
             valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: region}
+              configMapKeyRef: {name: nachet-preparation-cold-config, key: region}
         envFrom:
           - secretRef:
-              name: nachet-training-s3
+              name: nachet-preparation-cold-s3
         resources:
           requests: {cpu: "2", memory: 8Gi, nvidia.com/gpu: "1"}
           limits: {cpu: "4", memory: 16Gi, nvidia.com/gpu: "1"}
@@ -171,7 +177,9 @@ spec:
         env:
           - name: PREPARATION_SERVER_MEDIA_ROOT
             valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: server-media-root}
+              configMapKeyRef:
+                name: nachet-preparation-cold-config
+                key: server-media-root
         envFrom:
           - secretRef:
               name: nachet-preparation-fiftyone

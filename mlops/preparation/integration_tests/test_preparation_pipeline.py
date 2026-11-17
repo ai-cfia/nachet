@@ -26,11 +26,15 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         path = original / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         Image.new("RGB", (12, 10), (index * 60, 20, 30)).save(path)
-    monkeypatch.setattr(
-        s3_storage.boto3,
-        "client",
-        lambda *args, **kwargs: s3_provider.client,
-    )
+    cold_endpoint = "http://cold-storage.example.test"
+
+    def s3_client(service, *, endpoint_url, region_name, **kwargs):
+        assert service == "s3"
+        assert endpoint_url == cold_endpoint
+        assert region_name == "test"
+        return s3_provider.client
+
+    monkeypatch.setattr(s3_storage.boto3, "client", s3_client)
     # Keep the workflow offline: supply draft boxes instead of loading SAM3 weights.
     import prelabel
 
@@ -56,23 +60,26 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         "dataset-name": review_name,
         "model-revision": "synthetic-weights",
     }
-    config = {
-        "bucket": "datasets",
-        "region": "test",
-        "server-media-root": "/fiftyone-s3",
+    config_maps = {
+        "nachet-preparation-cold-config": {
+            "bucket": "datasets",
+            "endpoint-url": cold_endpoint,
+            "region": "test",
+            "server-media-root": "/fiftyone-preparation-cold",
+        },
     }
     secrets = {
-        "nachet-training-s3": {"MLFLOW_S3_ENDPOINT_URL": "http://storage.example.test"},
+        "nachet-preparation-cold-s3": {},
         # The fiftyone fixture supplies the isolated database connection.
         "nachet-preparation-fiftyone": {},
     }
 
     def run_step(name):
         container = templates[name]["container"]
-        environment = {
-            entry["name"]: config[entry["valueFrom"]["configMapKeyRef"]["key"]]
-            for entry in container.get("env", [])
-        }
+        environment = {}
+        for entry in container.get("env", []):
+            ref = entry["valueFrom"]["configMapKeyRef"]
+            environment[entry["name"]] = config_maps[ref["name"]][ref["key"]]
         for source in container.get("envFrom", []):
             environment.update(secrets[source["secretRef"]["name"]])
         args = []
@@ -106,7 +113,7 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         assert s3_provider.objects["datasets", source["raw_key"]] == raw
         png = s3_provider.objects["datasets", sample.object_key]
         assert sample.image_sha256 == hashlib.sha256(png).hexdigest()
-        assert sample.filepath == "/fiftyone-s3/" + sample.object_key
+        assert sample.filepath == "/fiftyone-preparation-cold/" + sample.object_key
         assert len(sample.draft_boxes.detections) == 1
     before = dict(s3_provider.objects)
     for name in ("prepare-images", "prelabel"):
