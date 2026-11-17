@@ -42,6 +42,7 @@ def test_image_only_predictor_builds_coco_without_prompts(coco, intake):
     by_id = {image["id"]: image for image in result["images"]}
     names = {category["id"]: category["name"] for category in result["categories"]}
     for annotation in result["annotations"]:
+        assert "score" not in annotation
         assert (
             names[annotation["category_id"]]
             == by_id[annotation["image_id"]]["sources"][0]["species"]
@@ -63,7 +64,7 @@ def test_sam3_fallback_keeps_the_last_prompt_result(
 
     def predict(image, prompt):
         calls.append(prompt)
-        return [[10, 10, 20, 20]] * count
+        return Prediction([[10, 10, 20, 20]] * count, prompt, [0.8] * count)
 
     # Stub inference without loading weights; exercise SAM3's real prompt loop.
     predictor = Sam3Predictor.__new__(Sam3Predictor)
@@ -71,6 +72,7 @@ def test_sam3_fallback_keeps_the_last_prompt_result(
     result = prelabel(coco, intake[1], predictor)
     assert calls == ["foreground object", "thick long seed", "insect"] * 3
     assert len(result["annotations"]) == 3 * count
+    assert all(annotation["score"] == 0.8 for annotation in result["annotations"])
     assert len(result["images"]) == 3
     assert all(image["prelabel_status"] == "needs_review" for image in result["images"])
     assert all(image["prelabel_reason"] == reason for image in result["images"])
@@ -86,7 +88,9 @@ def test_sam3_stops_after_the_first_accepted_prompt(
 
     def predict(image, prompt):
         calls.append(prompt)
-        return [[1, 1, 3, 3]] * count if prompt == prompts[accepted] else []
+        if prompt == prompts[accepted]:
+            return Prediction([[1, 1, 3, 3]] * count, prompt, [0.8] * count)
+        return Prediction([], prompt, [])
 
     predictor = Sam3Predictor.__new__(Sam3Predictor)
     monkeypatch.setattr(predictor, "_predict_prompt", predict)
@@ -178,9 +182,17 @@ def test_invalid_boxes_keep_valid_detections_and_mark_the_image_for_review(
     coco, intake, box
 ):
     result = prelabel(
-        coco, intake[1], lambda image: Prediction([[10, 10, 30, 30], box])
+        coco,
+        intake[1],
+        lambda image: Prediction(
+            [[10, 10, 30, 30], box, [50, 50, 60, 60]],
+            scores=[0.8, 0.95, 0.7],
+        ),
     )
-    assert len(result["annotations"]) == len(coco["images"])
+    assert [
+        (annotation["bbox"], annotation["score"])
+        for annotation in result["annotations"]
+    ] == [([7, 7, 29, 29], 0.8), ([47, 47, 19, 19], 0.7)] * len(coco["images"])
     assert all(i["prelabel_status"] == "needs_review" for i in result["images"])
     assert all(i["prelabel_reason"] == "invalid_boxes" for i in result["images"])
 

@@ -164,10 +164,13 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
 
     collection = tmp_path / "Collection"
     prepared = tmp_path / "prepared"
+    scored_source = "Training/Avena fatua/batch/tray/seed.tiff"
+    unscored_source = "Validation/Zea mays/seed.jpg"
+    no_detections_source = "Avena fatua/new.png"
     inputs = [
-        ("Training/Avena fatua/batch/tray/seed.tiff", (200, 10, 10)),
-        ("Validation/Zea mays/seed.jpg", (10, 200, 10)),
-        ("Avena fatua/new.png", (10, 10, 200)),
+        (scored_source, (200, 10, 10)),
+        (unscored_source, (10, 200, 10)),
+        (no_detections_source, (10, 10, 200)),
     ]
     raw_bytes = {}
     for relative, color in inputs:
@@ -194,9 +197,10 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
     index = json.loads((prepared / "index.coco.json").read_text())
 
     def supplied_predictions(image):
+        # The predictor sees pixels, so the fixture colors identify each case.
         red, green, blue = image.getpixel((0, 0))
         boxes = [] if blue > max(red, green) else [[2.25, 3.5, 9.25, 10.5]]
-        return Prediction(boxes)
+        return Prediction(boxes, scores=[0.875] if red > max(green, blue) else None)
 
     draft = prelabel(index, prepared, supplied_predictions, padding=0)
     labels = tmp_path / "draft.coco.json"
@@ -208,9 +212,9 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
     assert isinstance(dataset.get_field("source_species"), fiftyone.StringField)
     samples = {sample.coco_id: sample for sample in dataset}
     expected_assignments = {
-        inputs[0][0]: ("Avena fatua", "train"),
-        inputs[1][0]: ("Zea mays", "validation"),
-        inputs[2][0]: ("Avena fatua", None),
+        scored_source: ("Avena fatua", "train"),
+        unscored_source: ("Zea mays", "validation"),
+        no_detections_source: ("Avena fatua", None),
         high_bit_relative: ("Avena fatua", "train"),
     }
     for record in draft["images"]:
@@ -249,6 +253,8 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
             assert len(sample.draft_boxes.detections) == 1
             detection = sample.draft_boxes.detections[0]
             assert detection.label == expected_assignments[relative][0]
+            expected_confidence = 0.875 if relative == scored_source else None
+            assert detection.confidence == expected_confidence
             assert detection.bounding_box == pytest.approx(
                 [0.1125, 0.21875, 0.35, 0.4375]
             )

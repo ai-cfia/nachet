@@ -26,6 +26,7 @@ HIGH_BIT_MODES = {"I", "F", "I;16", "I;16B", "I;16L"}
 class Prediction(NamedTuple):
     boxes: list[list[float]]
     prompt: str | None = None
+    scores: list[float] | None = None
 
 
 class Sam3Predictor:
@@ -51,13 +52,12 @@ class Sam3Predictor:
     def __call__(self, image: Image.Image) -> Prediction:
         """Use the first prompt with 1 to 9 boxes, or the last result for review."""
         for prompt in PROMPTS[:-1]:
-            boxes = self._predict_prompt(image, prompt)
-            if 0 < len(boxes) <= MAX_BOXES:
-                return Prediction(boxes, prompt)
-        prompt = PROMPTS[-1]
-        return Prediction(self._predict_prompt(image, prompt), prompt)
+            prediction = self._predict_prompt(image, prompt)
+            if 0 < len(prediction.boxes) <= MAX_BOXES:
+                return prediction
+        return self._predict_prompt(image, PROMPTS[-1])
 
-    def _predict_prompt(self, image: Image.Image, prompt: str) -> list[list[float]]:
+    def _predict_prompt(self, image: Image.Image, prompt: str) -> Prediction:
         inputs = self.processor(images=image, text=prompt, return_tensors="pt").to(
             self.device
         )
@@ -74,7 +74,11 @@ class Sam3Predictor:
             mask_threshold=MASK_THRESHOLD,
             target_sizes=inputs.get("original_sizes").tolist(),
         )[0]
-        return result["boxes"].detach().cpu().tolist()
+        return Prediction(
+            boxes=result["boxes"].detach().cpu().tolist(),
+            prompt=prompt,
+            scores=result["scores"].detach().cpu().tolist(),
+        )
 
 
 def coco_box(
@@ -124,7 +128,7 @@ def review_outcome(boxes: list, padded: list) -> tuple[str, str | None]:
 def prelabel(coco: dict, media_root: Path, predictor, *, padding: int = 3) -> dict:
     """Add draft boxes using an image-only callable returning a Prediction.
 
-    Prediction boxes use pixel XYXY coordinates; the prompt is optional.
+    Prediction boxes use pixel XYXY coordinates and may have one score per box.
     """
     media_root = media_root.resolve(strict=True)
     return _prelabel(
@@ -183,31 +187,29 @@ def _prelabel(coco: dict, open_image, predictor, *, padding: int) -> dict:
                     continue
                 prediction = predictor(image.convert("RGB"))
         boxes = prediction.boxes
-        padded = [
-            box
-            for box in (
-                coco_box(box, record["width"], record["height"], padding)
-                for box in boxes
-            )
-            if box is not None
-        ]
+        scores = [None] * len(boxes) if prediction.scores is None else prediction.scores
+        padded = []
+        for box, score in zip(boxes, scores, strict=True):
+            padded_box = coco_box(box, record["width"], record["height"], padding)
+            if padded_box is None:
+                continue
+            padded.append(padded_box)
+            annotation = {
+                "id": len(result["annotations"]),
+                "image_id": record["id"],
+                "category_id": category_id,
+                "bbox": padded_box,
+                "iscrowd": 0,
+            }
+            if score is not None:
+                annotation["score"] = score
+            result["annotations"].append(annotation)
         status, reason = review_outcome(boxes, padded)
         record.update(
             prelabel_status=status,
             prelabel_prompt=prediction.prompt,
             prelabel_reason=reason,
         )
-        for box in padded:
-            # Annotation IDs run across the whole dataset.
-            result["annotations"].append(
-                {
-                    "id": len(result["annotations"]),
-                    "image_id": record["id"],
-                    "category_id": category_id,
-                    "bbox": box,
-                    "iscrowd": 0,
-                }
-            )
     return result
 
 
