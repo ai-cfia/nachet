@@ -32,7 +32,7 @@ RUN_PROFILES = {
     ),
     "full": RunProfile(
         epochs=50,
-        checkpoint_retention=50,
+        checkpoint_retention=2,
         batch_size=80,
         gradient_accumulation_steps=1,
         max_train_samples=None,

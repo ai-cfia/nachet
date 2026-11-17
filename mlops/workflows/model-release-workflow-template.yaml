@@ -126,6 +126,12 @@ spec:
           - "{{inputs.parameters.checkpoint}}"
           - --output
           - /tmp/release-selection
+        envFrom:
+          - secretRef:
+              name: nachet-training-s3
+        env:
+          - name: MLFLOW_TRACKING_URI
+            value: http://mlflow.mlflow.svc.cluster.local:5000
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -135,7 +141,6 @@ spec:
           - name: training-storage
             mountPath: /runs
             subPath: "nachet/{{inputs.parameters.model-kind}}-training/runs"
-            readOnly: true
           - name: tmp
             mountPath: /tmp
 
