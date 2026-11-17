@@ -28,7 +28,10 @@ def load_coco_as_hf_dataset(
     Args:
         images_dir: Directory containing the images
         coco_json_path: Path to COCO annotations JSON
-        train_val_split: Fraction to use for validation
+        train_val_split: Validation fraction for COCO without split assignments.
+            Between 0 and 1, use declared train and validation splits when
+            present and exclude test images. Use 0 for all training or 1 for
+            all validation when the caller has already selected the images.
         seed: Random seed for splitting
         single_category: If True, collapse all categories into one
         single_category_name: Name to use for the single category label
@@ -57,6 +60,12 @@ def load_coco_as_hf_dataset(
     # Load COCO annotations
     with open(coco_json_path) as f:
         coco = json.load(f)
+
+    split_indices = None
+    if 0.0 < train_val_split < 1.0 and any(
+        image.get("split") is not None for image in coco["images"]
+    ):
+        split_indices = {"train": [], "validation": []}
 
     # Build category mapping (COCO uses 1-indexed, HF expects 0-indexed)
     coco_categories = {cat["id"]: cat["name"] for cat in coco["categories"]}
@@ -113,6 +122,15 @@ def load_coco_as_hf_dataset(
     empty_images = []
     for img_info in coco["images"]:
         image_id = img_info["id"]
+        declared_split = img_info.get("split")
+        if split_indices is not None:
+            if declared_split == "test":
+                continue
+            if declared_split not in ("train", "validation"):
+                raise ValueError(
+                    f"Invalid or missing split for COCO image {image_id}: {declared_split!r}"
+                )
+
         image_path = images_dir / img_info["file_name"]
 
         # Check if image is in reject list
@@ -151,6 +169,8 @@ def load_coco_as_hf_dataset(
             objects["bbox"].append(bbox)
             objects["category"].append(cat_id_to_idx[ann["category_id"]])
 
+        if split_indices is not None:
+            split_indices[declared_split].append(len(records))
         records.append(
             {
                 "image_id": image_id,
@@ -174,11 +194,22 @@ def load_coco_as_hf_dataset(
         if len(missing_images) > 5:
             print(f"  ... and {len(missing_images) - 5} more")
 
+    if split_indices is not None and not records:
+        raise ValueError("No usable COCO images in the declared train and validation splits")
+
     # Create dataset
     dataset = Dataset.from_list(records)
 
     # Cast image column to Image type
     dataset = dataset.cast_column("image", Image())
+
+    if split_indices is not None:
+        return (
+            DatasetDict(
+                {name: dataset.select(indices) for name, indices in split_indices.items()}
+            ),
+            categories,
+        )
 
     # Split into train/validation
     # Handle edge case: train_val_split >= 1.0 means all data goes to validation
@@ -230,7 +261,11 @@ def main():
         "--output_dir", required=True, help="Output directory for HF dataset"
     )
     parser.add_argument(
-        "--val_split", type=float, default=0.15, help="Validation split fraction"
+        "--val_split",
+        type=float,
+        default=0.15,
+        help="Validation fraction for COCO without split assignments. "
+        "Use 0 for all training or 1 for all validation.",
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed for splitting")
     parser.add_argument(
