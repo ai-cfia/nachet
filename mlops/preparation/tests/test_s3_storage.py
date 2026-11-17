@@ -2,10 +2,12 @@ import asyncio
 from contextlib import closing
 from io import BytesIO
 from unittest.mock import Mock
+from urllib.parse import quote, urlsplit
 
 import boto3
 import pytest
 from blob.exceptions import BlobNotFoundError, BlobStorageError
+from botocore.awsrequest import AWSResponse
 from botocore.stub import Stubber
 
 from s3_storage import PreparationStorage, create_storage
@@ -69,23 +71,61 @@ def test_repeated_continuation_token_fails_the_listing(s3_client):
             )
 
 
-def test_reads_the_exact_spaced_key_and_closes_the_stream(s3_client):
+@pytest.mark.parametrize(
+    "key",
+    [
+        SPACED_KEY,
+        PREFIX + "Amaranthus albus/seed;photo.tiff",
+        PREFIX + "Amaranthus albus/seed (1), #2+50%&résumé.tiff",
+        PREFIX + "Amaranthus albus/literal%20name.tiff",
+    ],
+)
+def test_reads_the_exact_original_key_and_closes_the_stream(s3_client, key):
     body = BytesIO(b"original")
     with Stubber(s3_client) as stubber:
         stubber.add_response(
-            "get_object", {"Body": body}, {"Bucket": BUCKET, "Key": SPACED_KEY}
+            "get_object", {"Body": body}, {"Bucket": BUCKET, "Key": key}
         )
         assert (
-            asyncio.run(PreparationStorage(s3_client).read_image(BUCKET, SPACED_KEY))
+            asyncio.run(PreparationStorage(s3_client).read_image(BUCKET, key))
             == b"original"
         )
     assert body.closed
 
 
+def test_sdk_encodes_the_original_key_once(s3_client):
+    key = PREFIX + "Amaranthus albus/seed; (1)#50%+&résumé%2F.tiff"
+    body = BytesIO(b"original")
+    requested_urls = []
+
+    def respond(request, **kwargs):
+        requested_urls.append(request.url)
+        return AWSResponse(request.url, 200, {"content-length": "8"}, body)
+
+    # Stop at the HTTP boundary: exercise SDK serialization without contacting S3.
+    s3_client.meta.events.register("before-send.s3.GetObject", respond)
+    assert (
+        asyncio.run(PreparationStorage(s3_client).read_image(BUCKET, key))
+        == b"original"
+    )
+    assert len(requested_urls) == 1
+    assert urlsplit(requested_urls[0]).path == "/" + quote(key, safe="/")
+    assert body.closed
+
+
 @pytest.mark.parametrize(
-    "key", [PREFIX + "A/../seed.tiff", SPACED_KEY + " ", PREFIX + "A/seed\n.tiff"]
+    "key",
+    [
+        PREFIX + "A/../seed.tiff",
+        SPACED_KEY + " ",
+        PREFIX + "A/seed\n.tiff",
+        "/" + SPACED_KEY,
+        PREFIX + "A\\seed.tiff",
+        PREFIX + "A//seed.tiff",
+        PREFIX + "é" * 512 + ".png",
+    ],
 )
-def test_shared_key_restrictions_still_apply(key):
+def test_unsafe_image_keys_are_rejected_before_requesting_s3(key):
     client = Mock()
     with pytest.raises(BlobStorageError):
         asyncio.run(PreparationStorage(client).read_image(BUCKET, key))

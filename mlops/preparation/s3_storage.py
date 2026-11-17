@@ -7,7 +7,11 @@ from urllib.parse import urlsplit
 import boto3
 from blob.exceptions import BlobNotFoundError, BlobStorageError
 from blob.s3.utils.error_handling import ErrorHandler
-from blob.validation import validate_blob_name, validate_container_name
+from blob.validation import (
+    CONTROL_CHARS,
+    validate_blob_name,
+    validate_container_name,
+)
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
@@ -33,8 +37,15 @@ class PreparationStorage:
             raise BlobStorageError(
                 "Image key cannot have leading or trailing whitespace"
             )
-        # Check the shared rules with spaces masked. S3 receives the original key.
-        validate_blob_name(key.replace(" ", "_"))
+        # Existing S3 keys may contain punctuation rejected by portable blob names.
+        # Keep path checks here; boto3 encodes the unchanged key for the request.
+        if (
+            len(key.encode("utf-8")) > 1024
+            or CONTROL_CHARS.intersection(key)
+            or "\\" in key
+            or any(part in {"", ".", ".."} for part in key.split("/"))
+        ):
+            raise BlobStorageError(f"Invalid S3 image key: {key!r}")
         try:
             response = self._client.get_object(Bucket=bucket, Key=key)
         except ClientError as error:
