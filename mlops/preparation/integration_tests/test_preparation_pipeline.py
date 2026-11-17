@@ -65,7 +65,7 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
             "bucket": "datasets",
             "endpoint-url": cold_endpoint,
             "region": "test",
-            "server-media-root": "/fiftyone-preparation-cold",
+            "server-media-root": "/fiftyone-preparation",
         },
     }
     secrets = {
@@ -113,7 +113,7 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         assert s3_provider.objects["datasets", source["raw_key"]] == raw
         png = s3_provider.objects["datasets", sample.object_key]
         assert sample.image_sha256 == hashlib.sha256(png).hexdigest()
-        assert sample.filepath == "/fiftyone-preparation-cold/" + sample.object_key
+        assert sample.filepath == "/fiftyone-preparation/" + sample.object_key
         assert len(sample.draft_boxes.detections) == 1
     before = dict(s3_provider.objects)
     for name in ("prepare-images", "prelabel"):
