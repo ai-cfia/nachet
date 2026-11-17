@@ -61,7 +61,7 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         "model-revision": "synthetic-weights",
     }
     config_maps = {
-        "nachet-preparation-cold-config": {
+        "nachet-preparation-config": {
             "bucket": "datasets",
             "endpoint-url": cold_endpoint,
             "region": "test",
