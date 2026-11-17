@@ -3,13 +3,16 @@
 import importlib.util
 import subprocess
 import sys
+from argparse import Namespace
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, Mock, call
 from uuid import uuid4
 
 import pytest
 import pytest_asyncio
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.schema import CreateSchema, DropSchema
 
 from dataset_release.contract import ReleaseDefinition
 from dataset_release.registry import (
@@ -159,6 +162,38 @@ async def test_cleanup_refuses_another_release_owner_before_deleting_blobs(smoke
 def test_smoke_target_rejects_non_fixture_names_and_buckets(name, container):
     with pytest.raises(ValueError):
         smoke.validate_target(name, container)
+
+
+@pytest.mark.asyncio
+async def test_postgres_smoke_migrates_and_cleans_only_the_uuid_schema(monkeypatch):
+    database_url = "postgresql+psycopg://test@localhost/mlops-test"
+    monkeypatch.setenv("DATASET_DATABASE_URL", database_url)
+    monkeypatch.setenv("DATASET_REGISTRY_SCHEMA", "unrelated_schema")
+    engine = MagicMock()
+    connection = engine.begin.return_value.__aenter__.return_value
+    connection.execute = AsyncMock()
+    connection.run_sync = AsyncMock()
+    engine.dispose = AsyncMock()
+    registry_engine = Mock(return_value=engine)
+    monkeypatch.setattr(smoke, "registry_engine", registry_engine)
+    monkeypatch.setattr(smoke.BlobStorageAdapter, "from_environment", Mock())
+    monkeypatch.setattr(smoke, "seed_fixture", AsyncMock())
+    delete_blobs = AsyncMock()
+    monkeypatch.setattr(smoke, "delete_fixture_blobs", delete_blobs)
+
+    uid = uuid4()
+    name = f"dataset-smoke-{uid}"
+    schema = f"nachet_smoke_{uid.hex}"
+    await smoke.run_command(Namespace(container=CONTAINER, name=name, action="seed"))
+    await smoke.run_command(Namespace(container=CONTAINER, name=name, action="cleanup"))
+
+    assert registry_engine.call_args_list == [call(database_url, schema)] * 2
+    create, drop = [item.args[0] for item in connection.execute.await_args_list]
+    assert isinstance(create, CreateSchema) and create.element == schema
+    assert isinstance(drop, DropSchema) and drop.element == schema
+    assert drop.cascade and drop.if_exists
+    connection.run_sync.assert_awaited_once()
+    delete_blobs.assert_awaited_once()
 
 
 def test_fixture_identity_is_recoverable_but_unique_per_workflow():
