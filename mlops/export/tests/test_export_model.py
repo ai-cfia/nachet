@@ -90,6 +90,18 @@ class ExportCommandTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unsupported model type: 'vit'"):
             export_model.export_model(self.checkpoint, self.output)
 
+    def test_detector_parity_failure_stops_before_quantization(self):
+        (self.checkpoint / "config.json").write_text(json.dumps({"model_type": "rt_detr_v2"}))
+        with (
+            patch("optimum.exporters.onnx.main_export") as export,
+            patch("detector_parity.validate_detector_export", side_effect=ValueError("detections differ")),
+            patch.object(export_model.subprocess, "run") as quantize,
+        ):
+            with self.assertRaisesRegex(ValueError, "detections differ"):
+                export_model.export_model(self.checkpoint, self.output, quantize=True)
+        self.assertFalse(export.call_args.kwargs["do_validation"])
+        quantize.assert_not_called()
+
 
 class SwinExportTest(unittest.TestCase):
     def test_fp32_matches_pytorch_and_int8_runs(self):
@@ -133,6 +145,9 @@ class DetectorExportTest(unittest.TestCase):
                     path.chmod(0o444)
 
                 export_model.export_model(checkpoint, Path(tmp) / "export")
+                report = json.loads((Path(tmp) / "export/detector-parity.json").read_text())
+                self.assertTrue(report["passed"])
+                self.assertGreater(report["comparisons"][0]["reference_count"], 0)
                 session = ort.InferenceSession(str(Path(tmp) / "export/onnx-fp32/model.onnx"),
                                                providers=["CPUExecutionProvider"])
                 pixels = torch.rand(2, 3, 64, 64)

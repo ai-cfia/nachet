@@ -57,6 +57,27 @@ Other checkpoint files are linked into the temporary directory, so weights
 are not copied or modified. The original checkpoint stays unchanged. The
 exporter retains its existing Transformers and Optimum versions.
 
+RT-DETRv2 export uses Optimum's Python API with its row-by-row validation
+disabled. It then runs PyTorch and ONNX Runtime on identical pixels and uses
+the same RT-DETR post-processing for both. Predictions are matched one to one
+by class, box overlap and score/coordinate tolerances. This accepts equivalent
+predictions in a different order while rejecting missing, extra or changed
+detections. Swin keeps Optimum's existing validation.
+
+The check writes `detector-parity.json` beside `onnx-fp32/`. It records the
+ONNX and input-tensor hashes, raw row-wise differences, matched differences and
+unmatched indices. The absolute tolerance is `1e-4` for scores and normalized
+box coordinates, with a minimum IoU of `0.99`. All post-processed top-k proposals
+are included, even at low scores, so two empty thresholded lists cannot hide
+a difference. A failed comparison stops export before optional quantization.
+
+The command's default probe is one deterministic synthetic RGB image. It checks
+numerical consistency, not detector accuracy. For additional local checks, the
+Python `detector_parity.validate_detector_export()` function accepts a list of
+representative PIL images. This is a library argument, not an export CLI flag.
+The report remains with the export; publication can include it through the
+existing `--evaluation` option after review.
+
 ## Prepare classifier CAM files
 
 Use the same checkpoint that produced the ONNX model:
