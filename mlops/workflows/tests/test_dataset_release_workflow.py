@@ -49,6 +49,21 @@ class DatasetReleaseWorkflowTests(unittest.TestCase):
             "--expected-manifest-sha256", templates["verify"]["container"]["args"]
         )
 
+    def test_smoke_assigns_one_schema_to_all_pods(self):
+        patch = yaml.safe_load(self.smoke["podSpecPatch"])
+        (main,) = patch["containers"]
+        self.assertEqual(main["name"], "main")
+        self.assertEqual(
+            main["env"],
+            [
+                {
+                    "name": "DATASET_REGISTRY_SCHEMA",
+                    "value": 'nachet_smoke_{{=sprig.replace("-", "", workflow.uid)}}',
+                }
+            ],
+        )
+        self.assertNotIn("podSpecPatch", self.release)
+
     def test_normal_release_validates_the_exact_hash_returned_by_publication(self):
         templates = {item["name"]: item for item in self.release["templates"]}
         steps = [group[0] for group in templates["release"]["steps"]]

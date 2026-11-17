@@ -390,9 +390,11 @@ removes one image to prove publication stays incomplete, restores it, then calls
 the **same release template** to finish publication. It checks identical retries,
 immutable inputs, split leakage, wrong manifest pins and corrupt bytes.
 
-The smoke run uses `dataset-smoke-<workflow UUID>/v1` and an `onExit` cleanup pod.
-Cleanup removes only that run's generated fixture keys and SQL entities, including
-after partial preparation. Fixture pixels and crop hashes differ between runs.
+The smoke run uses `dataset-smoke-<workflow UUID>/v1` and a PostgreSQL schema
+named `nachet_smoke_<workflow UUID without dashes>`. The seed pod creates and
+migrates that schema. The `onExit` pod drops it and deletes that run's generated
+fixture keys, including after partial preparation. Fixture pixels and crop hashes
+differ between runs.
 The report is available in the workflow's `report` output and verify-pod logs;
 the temporary release reference stops being usable after cleanup.
 
@@ -427,14 +429,13 @@ above. Provide a Kubernetes Secret named `nachet-dataset-release` containing:
   `AWS_ENDPOINT_URL_S3`; `MLFLOW_S3_ENDPOINT_URL` is not a release setting.
 - The S3 credentials/role configuration or `AZURE_STORAGE_CONNECTION_STRING`.
 
-Create a **separate** `nachet-dataset-release-smoke` Secret targeting a test
-registry/schema and an existing dedicated bucket named `nachet-dataset-smoke`
-or `nachet-dataset-smoke-<suffix>`. Smoke credentials need object read, write,
-overwrite and delete permissions, and registry insert, update, select and delete
-permissions. The smoke command refuses other bucket names. Run the same standalone
-migrations against that test registry before its first run. Neither template
-creates tables, schemas, buckets or Secrets, and this change does not provision
-Howard resources.
+Create a **separate** `nachet-dataset-release-smoke` Secret with
+`DATASET_DATABASE_URL` targeting a PostgreSQL test database and storage settings
+for an existing dedicated bucket named `nachet-dataset-smoke` or
+`nachet-dataset-smoke-<suffix>`. The PostgreSQL role needs permission to create
+schemas in that database. The storage credentials need object read, write,
+overwrite and delete permissions. The workflow derives its PostgreSQL schema
+from its UUID and runs migrations before seeding.
 
 ### Submit a run
 

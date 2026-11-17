@@ -11,6 +11,13 @@ spec:
   entrypoint: smoke
   onExit: cleanup
   serviceAccountName: argo-workflow
+  # Share the run schema with every pod, including the referenced release template.
+  podSpecPatch: |
+    containers:
+      - name: main
+        env:
+          - name: DATASET_REGISTRY_SCHEMA
+            value: 'nachet_smoke_{{=sprig.replace("-", "", workflow.uid)}}'
   arguments:
     parameters:
       - name: image

@@ -11,6 +11,9 @@ from dataset_release.settings import Settings
 
 load_dotenv(os.environ.get("DATASET_ENV_FILE", ".env"))
 settings = Settings.from_environment()
+registry_schema = context.config.attributes.get(
+    "registry_schema", settings.registry_schema
+)
 
 
 def options() -> dict:
@@ -18,7 +21,7 @@ def options() -> dict:
     return {
         "target_metadata": Base.metadata,
         "version_table": "dataset_release_version",
-        "version_table_schema": settings.registry_schema,
+        "version_table_schema": registry_schema,
     }
 
 
@@ -31,7 +34,7 @@ def migrate(connection):
 
 async def online():
     """Open the configured registry connection, migrate, and dispose of the engine."""
-    engine = registry_engine(settings.database_url, settings.registry_schema)
+    engine = registry_engine(settings.database_url, registry_schema)
     try:
         async with engine.connect() as connection:
             await connection.run_sync(migrate)

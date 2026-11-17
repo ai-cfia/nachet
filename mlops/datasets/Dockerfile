@@ -32,7 +32,10 @@ RUN --mount=type=bind,source=datasets/tests,target=/opt/mlops/datasets/tests \
 FROM base AS runtime
 RUN uv sync --locked --no-dev --no-cache
 ENV PATH="/opt/mlops/datasets/.venv/bin:$PATH"
-# Require successful checks while copying only the runtime smoke helper.
+# The smoke workflow upgrades its temporary PostgreSQL schema at runtime.
+COPY datasets/alembic.ini ./
+COPY datasets/migrations ./migrations
+# Require successful checks while copying the runtime smoke helper.
 COPY --from=checks /opt/workflows/scripts/dataset_release_smoke.py /opt/workflows/scripts/dataset_release_smoke.py
 USER 10001:10001
 ENTRYPOINT ["python", "-m", "dataset_release"]

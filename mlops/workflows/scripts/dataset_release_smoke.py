@@ -9,10 +9,14 @@ from copy import deepcopy
 from io import BytesIO
 from uuid import UUID
 
+from alembic import command
+from alembic.config import Config
 from blob.exceptions import BlobNotFoundError
 from PIL import Image
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.engine import Connection
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
+from sqlalchemy.schema import CreateSchema, DropSchema
 
 from dataset_release.contract import ImageMembership, ReleaseDefinition, sha256
 from dataset_release.errors import ReleaseConflict, ReleaseNotReady
@@ -30,6 +34,7 @@ from utility.crop import crop_image, decode_png
 
 VERSION = "v1"
 AUTHOR = "nachet-dataset-release-smoke"
+NAME_PREFIX = "dataset-smoke-"
 BBOX = [1.25, 2.5, 4.5, 3.0]
 
 
@@ -45,11 +50,8 @@ def check(condition: bool, message: str) -> None:
 
 def validate_target(name: str, container: str) -> None:
     """Limit fixture writes and cleanup to workflow UUIDs and smoke containers."""
-    prefix = "dataset-smoke-"
-    if (
-        not name.startswith(prefix)
-        or str(UUID(name[len(prefix) :])) != name[len(prefix) :]
-    ):
+    workflow_uid = name.removeprefix(NAME_PREFIX)
+    if not name.startswith(NAME_PREFIX) or str(UUID(workflow_uid)) != workflow_uid:
         raise ValueError("Smoke name must be dataset-smoke-<canonical workflow UUID>")
     if container != "nachet-dataset-smoke" and not container.startswith(
         "nachet-dataset-smoke-"
@@ -282,14 +284,20 @@ async def verify_fixture(
     }
 
 
-async def cleanup_fixture(controller: DatasetController, name: str) -> dict:
-    """Delete only this UUID's fixture blobs and matching registry entities."""
-    validate_target(name, controller.container)
+async def delete_fixture_blobs(controller: DatasetController, name: str) -> None:
+    """Delete the PNG and crop keys derived from this run's UUID."""
     _, _, blobs = build_fixture(name)
     keys = set(blobs)
     for data in list(blobs.values())[:3]:
         _, crop = crop_image(decode_png(data, (12, 10)), BBOX)
         keys.add(f"png/classification/{sha256(crop)}.png")
+    for key in sorted(keys):
+        await delete_blob(controller.storage, controller.container, key)
+
+
+async def cleanup_fixture(controller: DatasetController, name: str) -> dict:
+    """Clean up fixtures in an existing SQLite registry."""
+    validate_target(name, controller.container)
     # Retain SQL ownership evidence until all object deletions succeed.
     async with controller.sessions() as session:
         row = await session.scalar(
@@ -302,8 +310,7 @@ async def cleanup_fixture(controller: DatasetController, name: str) -> dict:
                 row.container == controller.container and row.author == AUTHOR,
                 "Refusing to clean a release not owned by this smoke run",
             )
-    for key in sorted(keys):
-        await delete_blob(controller.storage, controller.container, key)
+    await delete_fixture_blobs(controller, name)
     async with controller.sessions.begin() as session:
         row = await session.scalar(
             select(DatasetRelease).where(
@@ -320,13 +327,39 @@ async def cleanup_fixture(controller: DatasetController, name: str) -> dict:
     return {"name": name, "cleaned": True}
 
 
+async def create_smoke_registry(engine: AsyncEngine, schema: str) -> None:
+    """Create an empty registry and apply its migrations in one transaction."""
+    config = Config("alembic.ini", attributes={"registry_schema": schema})
+
+    def upgrade(connection: Connection) -> None:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "head")
+
+    async with engine.begin() as connection:
+        await connection.execute(CreateSchema(schema))
+        await connection.run_sync(upgrade)
+
+
 async def run_command(args: argparse.Namespace) -> dict:
     """Use the same environment and real providers as the normal release CLI."""
     validate_target(args.name, args.container)
     settings = Settings.from_environment()
-    engine = registry_engine(settings.database_url, settings.registry_schema)
+    schema = None
+    if settings.registry_schema is not None:
+        workflow_uid = UUID(args.name.removeprefix(NAME_PREFIX))
+        schema = f"nachet_smoke_{workflow_uid.hex}"
+    engine = registry_engine(settings.database_url, schema)
     storage = None
     try:
+        if schema is not None:
+            if args.action == "seed":
+                await create_smoke_registry(engine, schema)
+            elif args.action == "cleanup":
+                # This also succeeds when seed failed before creating the schema.
+                async with engine.begin() as connection:
+                    await connection.execute(
+                        DropSchema(schema, cascade=True, if_exists=True)
+                    )
         storage = await asyncio.to_thread(BlobStorageAdapter.from_environment)
         controller = DatasetController(
             storage, async_sessionmaker(engine), args.container
@@ -337,7 +370,10 @@ async def run_command(args: argparse.Namespace) -> dict:
             return await verify_fixture(
                 controller, args.name, args.expected_manifest_sha256
             )
-        return await cleanup_fixture(controller, args.name)
+        if schema is None:
+            return await cleanup_fixture(controller, args.name)
+        await delete_fixture_blobs(controller, args.name)
+        return {"name": args.name, "cleaned": True}
     finally:
         await engine.dispose()
         if storage is not None:
