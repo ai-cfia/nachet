@@ -12,8 +12,9 @@ import s3_storage
 from prelabel import Prediction
 
 
+@pytest.mark.parametrize("overrides", [False, True], ids=["defaults", "overrides"])
 def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
-    tmp_path, fiftyone, review_name, s3_provider, monkeypatch
+    tmp_path, fiftyone, review_name, s3_provider, monkeypatch, overrides
 ):
     original = tmp_path / "collection"
     for index, relative in enumerate(
@@ -54,12 +55,26 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         ).read_text()
     )["spec"]
     templates = {template["name"]: template for template in spec["templates"]}
+    parameters = spec["arguments"]["parameters"]
+    assert [
+        parameter["name"] for parameter in parameters if "value" not in parameter
+    ] == ["raw-prefix"]
     values = {
-        "raw-prefix": "raw/collection",
-        "code-revision": "test-revision",
-        "dataset-name": review_name,
-        "model-revision": "synthetic-weights",
+        parameter["name"]: parameter["value"]
+        for parameter in parameters
+        if "value" in parameter
     }
+    values["raw-prefix"] = "raw/collection"
+    workflow_name = review_name
+    if overrides:
+        workflow_name += "-workflow"
+        values.update(
+            {
+                "code-revision": "test-revision",
+                "dataset-name": review_name,
+                "model-revision": "synthetic-weights",
+            }
+        )
     config_maps = {
         "nachet-preparation-config": {
             "bucket": "datasets",
@@ -84,13 +99,17 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
             environment.update(secrets[source["secretRef"]["name"]])
         args = []
         for value in container["args"]:
+            value = value.replace(
+                "{{=sprig.default(workflow.name, workflow.parameters['dataset-name'])}}",
+                values["dataset-name"] or workflow_name,
+            )
             for key, replacement in values.items():
                 value = value.replace(
                     "{{workflow.parameters." + key + "}}", replacement
                 )
             for key, replacement in environment.items():
                 value = value.replace("$(" + key + ")", replacement)
-            value = value.replace("{{workflow.name}}", "preparation-test-run")
+            value = value.replace("{{workflow.name}}", workflow_name)
             value = value.replace("/workspace", str(tmp_path / "workspace"))
             assert "{{" not in value
             assert "$(" not in value
@@ -102,7 +121,12 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
     for step in templates["prepare-for-review"]["steps"]:
         run_step(step[0]["template"])
     dataset = fiftyone.load_dataset(review_name)
-    assert dataset.info["prelabel"]["model_revision"] == "synthetic-weights"
+    assert dataset.info["preparation"]["code_revision"] == (
+        "test-revision" if overrides else "unrecorded"
+    )
+    assert dataset.info["prelabel"]["model_revision"] == (
+        "synthetic-weights" if overrides else "unrecorded"
+    )
     assert len(dataset) == 3
     assert set(dataset.values("split")) == {"train", "validation", None}
     for sample in dataset:
