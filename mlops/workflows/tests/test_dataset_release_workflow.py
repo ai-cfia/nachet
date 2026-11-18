@@ -49,17 +49,18 @@ class DatasetReleaseWorkflowTests(unittest.TestCase):
             "--expected-manifest-sha256", templates["verify"]["container"]["args"]
         )
 
-    def test_smoke_assigns_one_schema_to_all_pods(self):
+    def test_smoke_assigns_one_schema_and_object_namespace_to_all_pods(self):
         patch = yaml.safe_load(self.smoke["podSpecPatch"])
         (main,) = patch["containers"]
         self.assertEqual(main["name"], "main")
         self.assertEqual(
             main["env"],
             [
+                {"name": "DATASET_SMOKE_RUN_ID", "value": "{{workflow.uid}}"},
                 {
                     "name": "DATASET_REGISTRY_SCHEMA",
                     "value": 'nachet_smoke_{{=sprig.replace("-", "", workflow.uid)}}',
-                }
+                },
             ],
         )
         self.assertNotIn("podSpecPatch", self.release)
@@ -111,6 +112,7 @@ class DatasetReleaseWorkflowTests(unittest.TestCase):
             for item in self.smoke["arguments"]["parameters"]
         }
         self.assertEqual(defaults["credentials-secret"], "nachet-dataset-release-smoke")
+        self.assertEqual(defaults["container"], "nachet-seed-image-dataset")
 
     def test_referenced_templates_have_the_required_volumes_and_nonroot_runtime(self):
         for spec in (self.release, self.smoke):

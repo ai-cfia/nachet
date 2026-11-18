@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 from copy import deepcopy
 from io import BytesIO
 from uuid import UUID
@@ -29,7 +30,7 @@ from dataset_release.registry import (
 )
 from dataset_release.release import DatasetController
 from dataset_release.settings import Settings
-from dataset_release.storage import BlobStorageAdapter
+from dataset_release.storage import SHARED_SMOKE_BUCKET, BlobStorageAdapter
 from utility.crop import crop_image, decode_png
 
 VERSION = "v1"
@@ -53,10 +54,13 @@ def validate_target(name: str, container: str) -> None:
     workflow_uid = name.removeprefix(NAME_PREFIX)
     if not name.startswith(NAME_PREFIX) or str(UUID(workflow_uid)) != workflow_uid:
         raise ValueError("Smoke name must be dataset-smoke-<canonical workflow UUID>")
-    if container != "nachet-dataset-smoke" and not container.startswith(
-        "nachet-dataset-smoke-"
-    ):
-        raise ValueError("Use a dedicated nachet-dataset-smoke container or suffix")
+    if container not in (
+        SHARED_SMOKE_BUCKET,
+        "nachet-dataset-smoke",
+    ) and not container.startswith("nachet-dataset-smoke-"):
+        raise ValueError(
+            f"Use {SHARED_SMOKE_BUCKET} or a dedicated nachet-dataset-smoke bucket"
+        )
 
 
 def build_fixture(name: str) -> tuple[dict, list[ImageMembership], dict[str, bytes]]:
@@ -110,11 +114,9 @@ def build_fixture(name: str) -> tuple[dict, list[ImageMembership], dict[str, byt
 
 
 async def delete_blob(storage: BlobStorageAdapter, container: str, key: str) -> None:
-    """Run the provider's synchronous SDK work outside the controller event loop."""
+    """Remove a smoke fixture object and tolerate a previous deletion."""
     try:
-        await asyncio.to_thread(
-            lambda: asyncio.run(storage.provider.delete_blob(container, key))
-        )
+        await storage.delete_blob(container, key)
     except BlobNotFoundError:
         pass  # Cleanup can be repeated after partial preparation or cleanup.
 
@@ -343,10 +345,18 @@ async def create_smoke_registry(engine: AsyncEngine, schema: str) -> None:
 async def run_command(args: argparse.Namespace) -> dict:
     """Use the same environment and real providers as the normal release CLI."""
     validate_target(args.name, args.container)
+    workflow_uid = UUID(args.name.removeprefix(NAME_PREFIX))
+    if (
+        args.container == SHARED_SMOKE_BUCKET
+        and args.action != "cleanup"
+        and os.environ.get("DATASET_SMOKE_RUN_ID") != str(workflow_uid)
+    ):
+        raise SmokeCheckError(
+            "Use the updated workflow template with the shared bucket"
+        )
     settings = Settings.from_environment()
     schema = None
     if settings.registry_schema is not None:
-        workflow_uid = UUID(args.name.removeprefix(NAME_PREFIX))
         schema = f"nachet_smoke_{workflow_uid.hex}"
     engine = registry_engine(settings.database_url, schema)
     storage = None
@@ -360,7 +370,9 @@ async def run_command(args: argparse.Namespace) -> dict:
                     await connection.execute(
                         DropSchema(schema, cascade=True, if_exists=True)
                     )
-        storage = await asyncio.to_thread(BlobStorageAdapter.from_environment)
+        storage = await asyncio.to_thread(
+            BlobStorageAdapter.from_environment, smoke_run_id=workflow_uid
+        )
         controller = DatasetController(
             storage, async_sessionmaker(engine), args.container
         )

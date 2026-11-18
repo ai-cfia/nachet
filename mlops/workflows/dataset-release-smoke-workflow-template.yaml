@@ -11,11 +11,13 @@ spec:
   entrypoint: smoke
   onExit: cleanup
   serviceAccountName: argo-workflow
-  # Share the run schema with every pod, including the referenced release template.
+  # Share the run schema and object namespace with the referenced release pods.
   podSpecPatch: |
     containers:
       - name: main
         env:
+          - name: DATASET_SMOKE_RUN_ID
+            value: "{{workflow.uid}}"
           - name: DATASET_REGISTRY_SCHEMA
             value: 'nachet_smoke_{{=sprig.replace("-", "", workflow.uid)}}'
   arguments:
@@ -24,8 +26,8 @@ spec:
         value: ghcr.io/ai-cfia/nachet-dataset-release:main
         description: Use the PR image tag or a digest to test a particular build.
       - name: container
-        value: nachet-dataset-smoke
-        description: Dedicated existing smoke bucket/container; optional suffix allowed.
+        value: nachet-seed-image-dataset
+        description: Shared Ceph bucket with a per-run smoke prefix, or a dedicated smoke bucket.
       - name: credentials-secret
         value: nachet-dataset-release-smoke
         description: Separate test registry and storage credentials, including delete access.
