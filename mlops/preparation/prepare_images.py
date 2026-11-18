@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import io
 import json
+import logging
 import os
 import tempfile
 from pathlib import Path, PurePosixPath
@@ -11,6 +12,8 @@ from pathlib import Path, PurePosixPath
 import cv2
 import numpy as np
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 SPLITS = {"train", "validation", "test"}
 # Folder names, in any case, that assign a split instead of naming a species.
@@ -175,6 +178,7 @@ def add_image(
     species: str,
     split: str | None,
     raw_prefix: PurePosixPath | None,
+    allow_conflicting_duplicates: bool = False,
 ) -> tuple[dict, bytes]:
     """Convert one image, retain its source record and return the PNG bytes."""
     png_bytes, width, height = to_png(raw_bytes, relative)
@@ -202,7 +206,24 @@ def add_image(
     if image["sources"] and (
         image["sources"][0]["species"] != species or image["split"] != split
     ):
-        raise ValueError(f"Identical PNG has conflicting species or splits: {relative}")
+        if not allow_conflicting_duplicates:
+            raise ValueError(
+                f"Identical PNG has conflicting species or splits: {relative}"
+            )
+        first_source = image["sources"][0]
+        logger.warning(
+            "Bypassing duplicate conflict: sha256=%s retained_path=%r "
+            "retained_species=%r retained_split=%r incoming_path=%r "
+            "incoming_species=%r incoming_split=%r; keeping first source species "
+            "and split",
+            image_sha256,
+            first_source.get("raw_key", first_source["original_path"]),
+            first_source["species"],
+            image["split"],
+            source.get("raw_key", source["original_path"]),
+            species,
+            split,
+        )
     image["sources"].append(source)
     return image, png_bytes
 
@@ -230,6 +251,7 @@ def prepare_images(
     code_revision: str,
     split: str | None = None,
     raw_prefix: str | None = None,
+    allow_conflicting_duplicates: bool = False,
 ) -> dict:
     """Write each image as png/detection/<sha256>.png and return the COCO index."""
     collection = collection.resolve(strict=True)
@@ -243,13 +265,27 @@ def prepare_images(
     ):
         raise ValueError("raw_prefix must start with raw/")
 
+    logger.info("Discovering images in %s", collection)
     found, species_names = find_images(collection, split)
     if not found:
         raise ValueError(f"No images found in species folders: {collection}")
+    logger.info(
+        "Preparing %s: sources=%d duplicate_conflicts=%s",
+        collection,
+        len(found),
+        "warn" if allow_conflicting_duplicates else "error",
+    )
+    if allow_conflicting_duplicates:
+        logger.warning(
+            "Temporary duplicate-conflict bypass enabled; retaining first source "
+            "species and split in sorted relative-path order"
+        )
+        found.sort(key=lambda item: item[0].relative_to(collection).as_posix())
 
     images = {}
-    for path, species, image_split in found:
+    for number, (path, species, image_split) in enumerate(found, start=1):
         relative = path.relative_to(collection)
+        logger.info("Processing image %d/%d: %s", number, len(found), relative)
         path = path.resolve(strict=True)
         if not path.is_relative_to(collection):
             raise ValueError(f"Image escapes the collection: {relative}")
@@ -260,8 +296,21 @@ def prepare_images(
             species=species,
             split=image_split,
             raw_prefix=prefix,
+            allow_conflicting_duplicates=allow_conflicting_duplicates,
         )
         write_new(output_root / image["file_name"], png_bytes)
+        logger.info(
+            "%s PNG %s for %s",
+            "Saved" if len(image["sources"]) == 1 else "Reused",
+            image["file_name"],
+            relative,
+        )
+    logger.info(
+        "Image processing complete: sources=%d unique_pngs=%d duplicate_sources=%d",
+        len(found),
+        len(images),
+        len(found) - len(images),
+    )
     return coco_index(images, species_names, code_revision)
 
 
@@ -284,13 +333,24 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--raw-prefix", help="Matching S3 raw/ prefix to record in source metadata"
     )
+    parser.add_argument(
+        "--duplicate-conflicts",
+        choices=["error", "warn"],
+        default="error",
+        help="Temporarily warn on conflicting duplicates, retaining first source species and split",
+    )
     args = parser.parse_args(argv)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
     result = prepare_images(
         args.collection,
         args.output_root,
         code_revision=args.code_revision,
         split=args.split,
         raw_prefix=args.raw_prefix,
+        allow_conflicting_duplicates=args.duplicate_conflicts == "warn",
     )
     save_coco(args.output_root / "index.coco.json", result)
     sources = sum(len(image["sources"]) for image in result["images"])

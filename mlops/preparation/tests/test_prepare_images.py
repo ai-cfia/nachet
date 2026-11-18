@@ -1,6 +1,10 @@
 import hashlib
 import io
 import json
+import logging
+import subprocess
+import sys
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -82,6 +86,90 @@ def test_duplicate_png_cannot_have_different_species(prepare, intake):
     )
     with pytest.raises(ValueError, match="conflicting species or splits"):
         prepare()
+
+
+def test_warn_mode_retains_conflicting_sources_and_logs(
+    conflicting_collection, tmp_path, caplog
+):
+    root, relatives, first_split = conflicting_collection
+    output = tmp_path / "prepared"
+    caplog.set_level(logging.INFO)
+    result = prepare_images(
+        root,
+        output,
+        code_revision="test",
+        raw_prefix="raw/collection",
+        allow_conflicting_duplicates=True,
+    )
+    assert len(result["images"]) == 1
+    image = result["images"][0]
+    assert [source["original_path"] for source in image["sources"]] == relatives
+    assert image["split"] == first_split
+    assert all(
+        source["raw_sha256"]
+        == hashlib.sha256((root / relative).read_bytes()).hexdigest()
+        for source, relative in zip(image["sources"], relatives, strict=True)
+    )
+    assert (
+        hashlib.sha256((output / image["file_name"]).read_bytes()).hexdigest()
+        == (image["image_sha256"])
+    )
+    conflicts = [
+        record.message
+        for record in caplog.records
+        if record.levelno == logging.WARNING
+        and "Bypassing duplicate conflict" in record.message
+    ]
+    assert len(conflicts) == 1
+    for value in [
+        image["image_sha256"],
+        *relatives,
+        *(source["species"] for source in image["sources"]),
+        f"retained_split={first_split!r}",
+    ]:
+        assert value in conflicts[0]
+    assert "incoming_split=" in conflicts[0]
+    assert any(
+        "1/2" in message and relatives[0] in message for message in caplog.messages
+    )
+    assert any(
+        "2/2" in message and relatives[1] in message for message in caplog.messages
+    )
+    assert any(
+        "sources=2 unique_pngs=1 duplicate_sources=1" in message
+        for message in caplog.messages
+    )
+
+
+def test_cli_bypass_emits_progress_to_stderr(intake):
+    source, output = intake
+    (source / "Zea mays/copy.png").write_bytes(
+        (source / "Avena fatua/other/c.png").read_bytes()
+    )
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(Path(__file__).resolve().parents[1] / "prepare_images.py"),
+            str(source),
+            str(output),
+            "--code-revision",
+            "test",
+            "--duplicate-conflicts",
+            "warn",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    result = json.loads((output / "index.coco.json").read_text())
+    assert len(result["images"]) == 4
+    assert sum(len(image["sources"]) for image in result["images"]) == 5
+    assert "Prepared 4 images from 5 sources" in completed.stdout
+    assert "INFO" in completed.stderr
+    assert "1/5" in completed.stderr
+    assert "WARNING" in completed.stderr
+    assert "Bypassing duplicate conflict" in completed.stderr
+    assert "sources=5 unique_pngs=4 duplicate_sources=1" in completed.stderr
 
 
 def test_unknown_split_stays_unset_and_s3_is_optional(intake):

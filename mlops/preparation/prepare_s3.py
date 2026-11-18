@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import logging
 from pathlib import Path, PurePosixPath
 
 from prepare_images import (
@@ -13,6 +14,8 @@ from prepare_images import (
     save_coco,
 )
 from s3_storage import create_storage
+
+logger = logging.getLogger(__name__)
 
 
 def collection_prefix(value: str) -> str:
@@ -96,18 +99,41 @@ async def prepare_s3(
     *,
     code_revision: str,
     split: str | None = None,
+    allow_conflicting_duplicates: bool = False,
 ) -> dict:
     """Read, convert and upload one image at a time; return an index on success."""
     prefix = collection_prefix(raw_prefix)
     if split is not None and split not in SPLITS:
         raise ValueError(f"Invalid split: {split!r}")
+    logger.info("Listing images in s3://%s/%s", bucket, prefix)
     keys = await storage.list_collection_keys(bucket, prefix)
     found, species_names = find_s3_images(keys, prefix, split)
     if not found:
         raise ValueError(f"No images found in species folders: s3://{bucket}/{prefix}")
+    logger.info(
+        "Preparing s3://%s/%s: sources=%d duplicate_conflicts=%s",
+        bucket,
+        prefix,
+        len(found),
+        "warn" if allow_conflicting_duplicates else "error",
+    )
+    if allow_conflicting_duplicates:
+        logger.warning(
+            "Temporary duplicate-conflict bypass enabled; retaining first source "
+            "species and split in sorted relative-path order"
+        )
+        found.sort(key=lambda item: item[0].as_posix())
     images = {}
-    for relative, species, image_split in found:
-        data = await storage.read_image(bucket, prefix + relative.as_posix())
+    for number, (relative, species, image_split) in enumerate(found, start=1):
+        source_key = prefix + relative.as_posix()
+        logger.info(
+            "Processing image %d/%d: s3://%s/%s",
+            number,
+            len(found),
+            bucket,
+            source_key,
+        )
+        data = await storage.read_image(bucket, source_key)
         image, png_bytes = add_image(
             images,
             data,
@@ -115,9 +141,23 @@ async def prepare_s3(
             species=species,
             split=image_split,
             raw_prefix=PurePosixPath(prefix),
+            allow_conflicting_duplicates=allow_conflicting_duplicates,
         )
         if len(image["sources"]) == 1:
             await storage.upload_png(bucket, image["file_name"], png_bytes)
+        logger.info(
+            "%s PNG s3://%s/%s for %s",
+            "Uploaded" if len(image["sources"]) == 1 else "Reused",
+            bucket,
+            image["file_name"],
+            source_key,
+        )
+    logger.info(
+        "Image processing complete: sources=%d unique_pngs=%d duplicate_sources=%d",
+        len(found),
+        len(images),
+        len(found) - len(images),
+    )
     return coco_index(images, species_names, code_revision)
 
 
@@ -133,7 +173,17 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--allow-http", action="store_true", help="Allow a trusted HTTP endpoint"
     )
+    parser.add_argument(
+        "--duplicate-conflicts",
+        choices=["error", "warn"],
+        default="error",
+        help="Temporarily warn on conflicting duplicates, retaining first source species and split",
+    )
     args = parser.parse_args(argv)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
     try:
         collection_prefix(args.raw_prefix)
         storage = create_storage(
@@ -149,6 +199,7 @@ def main(argv: list[str] | None = None) -> None:
                 args.raw_prefix,
                 code_revision=args.code_revision,
                 split=args.split,
+                allow_conflicting_duplicates=args.duplicate_conflicts == "warn",
             )
         )
         save_coco(args.output_root / "index.coco.json", result)

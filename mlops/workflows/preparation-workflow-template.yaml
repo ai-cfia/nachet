@@ -27,6 +27,10 @@ spec:
         description: New FiftyOne review dataset; existing names are refused.
       - name: raw-prefix
         description: One collection below raw/ in the dataset bucket.
+      - name: duplicate-conflicts
+        description: Temporary warn mode retains conflicting sources and the first species/split; error stays strict.
+        value: error
+        enum: [error, warn]
       - name: model-folder
         description: Model folder below models/ on the workspace. Defaults to sam3; must match the runtime's predictor.
         value: sam3
@@ -83,6 +87,8 @@ spec:
           - "{{workflow.parameters.raw-prefix}}"
           - --code-revision
           - "{{workflow.parameters.code-revision}}"
+          - --duplicate-conflicts
+          - "{{workflow.parameters.duplicate-conflicts}}"
         env:
           - name: PREPARATION_BUCKET
             valueFrom:

@@ -49,3 +49,50 @@ def automatic_collection(tmp_path):
         path.parent.mkdir(parents=True, exist_ok=True)
         Image.new("RGB", (8, 6), (index * 30, 10, 20)).save(path)
     return root, tmp_path / "prepared"
+
+
+@pytest.fixture(
+    params=[
+        pytest.param(
+            (
+                [
+                    "Amaranthus albus/Tray_A/ColorChecker - Jan. 09, 2026.tiff",
+                    "Amaranthus palmeri/AmPa-01; Date_ 20260617/Tray_A/ColorChecker - Jan. 09, 2026.tiff",
+                ],
+                None,
+            ),
+            id="species",
+        ),
+        pytest.param(
+            (
+                [
+                    "Training/Amaranthus palmeri/ColorChecker.tiff",
+                    "Validation/Amaranthus palmeri/ColorChecker.tiff",
+                ],
+                "train",
+            ),
+            id="split",
+        ),
+        pytest.param(
+            (
+                [
+                    "Abutilon theophrasti/ColorChecker.tiff",
+                    "Training/Zea mays/ColorChecker.tiff",
+                ],
+                None,
+            ),
+            id="mixed",
+        ),
+    ]
+)
+def conflicting_collection(request, tmp_path):
+    relatives, first_split = request.param
+    root = tmp_path / "conflicting"
+    first = root / relatives[0]
+    first.parent.mkdir(parents=True)
+    Image.new("RGB", (3, 2), "gray").save(first)
+    for relative in relatives[1:]:
+        path = root / relative
+        path.parent.mkdir(parents=True)
+        path.write_bytes(first.read_bytes())
+    return root, relatives, first_split
