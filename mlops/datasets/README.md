@@ -393,8 +393,9 @@ immutable inputs, split leakage, wrong manifest pins and corrupt bytes.
 The smoke run uses `dataset-smoke-<workflow UUID>/v1` and a PostgreSQL schema
 named `nachet_smoke_<workflow UUID without dashes>`. The seed pod creates and
 migrates that schema. The `onExit` pod drops it and deletes that run's generated
-fixture keys, including after partial preparation. Fixture pixels and crop hashes
-differ between runs.
+fixture keys, including after partial preparation. In the shared Ceph bucket,
+all smoke objects live under `smoke/<workflow UUID>/`. Fixture pixels and crop
+hashes differ between runs.
 The report is available in the workflow's `report` output and verify-pod logs;
 the temporary release reference stops being usable after cleanup.
 
@@ -431,10 +432,13 @@ above. Provide a Kubernetes Secret named `nachet-dataset-release` containing:
 
 Create a **separate** `nachet-dataset-release-smoke` Secret with
 `DATASET_DATABASE_URL` targeting a PostgreSQL test database and storage settings
-for an existing dedicated bucket named `nachet-dataset-smoke` or
-`nachet-dataset-smoke-<suffix>`. The PostgreSQL role needs permission to create
-schemas in that database. The storage credentials need object read, write,
-overwrite and delete permissions. The workflow derives its PostgreSQL schema
+for the shared smoke bucket. The `DATASET_SMOKE_ROOT` setting uses
+`<bucket>/smoke`. Howard syncs it from `TEST_ROOT_DIR` in the Vault smoke entry.
+The storage credentials need object read, write, overwrite, and delete
+permissions under `smoke/`. Leave `container` blank to use the configured bucket,
+or set it to `nachet-dataset-smoke` or `nachet-dataset-smoke-<suffix>` for a
+dedicated bucket. The PostgreSQL role needs permission to create schemas in the test
+database. The workflow derives its PostgreSQL schema
 from its UUID and runs migrations before seeding.
 
 ### Submit a run
@@ -450,19 +454,18 @@ argo submit --namespace argo-workflows \
 
 argo submit --namespace argo-workflows \
   --from workflowtemplate/nachet-dataset-release-smoke \
-  --parameter 'image=ghcr.io/ai-cfia/nachet-dataset-release:<PR-number>' \
-  --parameter container=nachet-dataset-smoke
+  --parameter 'image=ghcr.io/ai-cfia/nachet-dataset-release:<PR-number>'
 ```
 
 `credentials-secret` can select another provisioned Secret. Keep smoke credentials
-restricted to the test registry and bucket. Inspect the verify report and cleanup
-pod, not just whether publication succeeded. Stopping a run allows its exit
+restricted to the test registry and the smoke storage location. Check the verify
+report and cleanup pod after publication. Stopping a run allows its exit
 handler to run; terminating it skips exit handlers. If cleanup cannot complete,
-use the **same image, Secret environment, container and workflow UUID** to retry:
+use the **same image, Secret environment, and workflow UUID** to retry. If
+the original run used a dedicated bucket, pass the same `--container` value.
 
 ```bash
 python /opt/workflows/scripts/dataset_release_smoke.py \
-  --container nachet-dataset-smoke \
   --name dataset-smoke-<workflow-UUID> cleanup
 ```
 

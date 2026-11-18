@@ -22,6 +22,7 @@ from dataset_release.registry import (
     DatasetRelease,
 )
 from dataset_release.release import DatasetController
+from dataset_release.storage import BlobStorageAdapter
 
 pytest_plugins = ["mlops.datasets.tests.dataset_blob_fixtures"]
 
@@ -109,6 +110,81 @@ async def test_smoke_recovers_reads_rejects_bad_data_and_cleans_only_its_fixture
     assert (
         await controller.get_release_registration("unrelated", "v1")
     ).author != smoke.AUTHOR
+
+
+@pytest.mark.asyncio
+async def test_shared_bucket_smoke_leaves_production_and_other_runs_untouched(
+    smoke_env, monkeypatch
+):
+    controller, objects, sessions = smoke_env
+    bucket = "vault-smoke-fixtures"
+    monkeypatch.setenv("DATASET_SMOKE_ROOT", f"{bucket}/smoke")
+    workflow_uid = uuid4()
+    name = f"dataset-smoke-{workflow_uid}"
+    monkeypatch.setenv("DATASET_DATABASE_URL", str(sessions.kw["bind"].url))
+    monkeypatch.setenv("DATASET_BLOB_PROVIDER", "s3")
+    monkeypatch.setenv("DATASET_SMOKE_RUN_ID", str(workflow_uid))
+    monkeypatch.delenv("S3_ACCESS_KEY", raising=False)
+    monkeypatch.delenv("S3_SECRET_KEY", raising=False)
+    monkeypatch.setattr(
+        "dataset_release.storage.create_dataset_blob_storage_client",
+        lambda *args: controller.storage.provider,
+    )
+    unrelated = {
+        (bucket, "png/detection/production.png"): b"production",
+        (bucket, f"smoke/{uuid4()}/fixture.png"): b"other run",
+    }
+    objects.update(unrelated)
+
+    seeded = await smoke.run_command(Namespace(container="", name=name, action="seed"))
+    assert seeded["container"] == bucket
+    release_storage = BlobStorageAdapter.from_environment()
+    release = DatasetController(release_storage, sessions, seeded["container"])
+    try:
+        published = await release.publish_release(name, smoke.VERSION)
+    finally:
+        release_storage.close()
+    await smoke.run_command(
+        Namespace(
+            container=bucket,
+            name=name,
+            action="verify",
+            expected_manifest_sha256=published.manifest_sha256,
+        )
+    )
+    run_keys = objects.keys() - unrelated.keys()
+    assert len(run_keys) == 7
+    assert all(
+        container == bucket and key.startswith(f"smoke/{workflow_uid}/")
+        for container, key in run_keys
+    )
+    assert all(objects[key] == data for key, data in unrelated.items())
+
+    monkeypatch.delenv("DATASET_SMOKE_RUN_ID")
+    await smoke.run_command(Namespace(container="", name=name, action="cleanup"))
+    await smoke.run_command(Namespace(container="", name=name, action="cleanup"))
+    assert objects == unrelated
+
+
+@pytest.mark.asyncio
+async def test_shared_bucket_seed_rejects_a_template_without_the_run_id(monkeypatch):
+    monkeypatch.delenv("DATASET_SMOKE_RUN_ID", raising=False)
+    monkeypatch.setenv("DATASET_SMOKE_ROOT", "vault-smoke-fixtures/smoke")
+    with pytest.raises(RuntimeError, match="updated workflow template"):
+        await smoke.run_command(
+            Namespace(
+                container="",
+                name=f"dataset-smoke-{uuid4()}",
+                action="seed",
+            )
+        )
+
+
+@pytest.mark.parametrize("root", ["", "vault-fixtures", "vault-fixtures/production"])
+def test_smoke_requires_the_smoke_root_prefix(monkeypatch, root):
+    monkeypatch.setenv("DATASET_SMOKE_ROOT", root)
+    with pytest.raises(ValueError, match="<bucket>/smoke"):
+        smoke.validate_target(f"dataset-smoke-{uuid4()}", "")
 
 
 @pytest.mark.asyncio

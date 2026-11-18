@@ -5,9 +5,11 @@ from __future__ import annotations
 import asyncio
 import os
 from typing import Any, Protocol
+from uuid import UUID
 
 from .errors import ConfigurationError
 from .providers import create_dataset_blob_storage_client
+from .settings import is_dedicated_smoke_bucket, smoke_bucket_from_environment
 
 
 class BlobStorage(Protocol):
@@ -90,17 +92,38 @@ class BlobStorageAdapter:
     application startup or global storage account registry is needed.
     """
 
-    def __init__(self, provider: DatasetBlobProvider):
+    def __init__(
+        self,
+        provider: DatasetBlobProvider,
+        *,
+        smoke_run_id: UUID | None = None,
+        smoke_bucket: str | None = None,
+    ):
         """Wrap an existing provider for use by the async dataset controller."""
         self.provider = provider
+        self._smoke_run_id = smoke_run_id
+        self._smoke_bucket = smoke_bucket
 
     @classmethod
-    def from_environment(cls) -> BlobStorageAdapter:
+    def from_environment(
+        cls, *, smoke_run_id: UUID | None = None
+    ) -> BlobStorageAdapter:
         """Create the configured S3 or Azure provider, defaulting to S3.
 
         Unsupported providers and missing Azure connection strings raise
         ConfigurationError before a controller starts using storage.
         """
+        configured_run_id = os.environ.get("DATASET_SMOKE_RUN_ID")
+        if smoke_run_id is None and configured_run_id is not None:
+            try:
+                smoke_run_id = UUID(configured_run_id)
+            except ValueError:
+                raise ConfigurationError(
+                    "DATASET_SMOKE_RUN_ID must be a UUID"
+                ) from None
+        smoke_bucket = (
+            smoke_bucket_from_environment() if smoke_run_id is not None else None
+        )
         provider = os.environ.get("DATASET_BLOB_PROVIDER", "s3").strip().lower()
         if provider == "s3":
             config = s3_configuration()
@@ -113,16 +136,36 @@ class BlobStorageAdapter:
             config = {"connection_string": connection_string}
         else:
             raise ConfigurationError("DATASET_BLOB_PROVIDER must be s3 or azure")
-        return cls(create_dataset_blob_storage_client(provider, config))
+        return cls(
+            create_dataset_blob_storage_client(provider, config),
+            smoke_run_id=smoke_run_id,
+            smoke_bucket=smoke_bucket,
+        )
+
+    def _storage_key(self, container: str, name: str) -> str:
+        """Confine shared-bucket smoke objects to the current workflow's prefix."""
+        if self._smoke_run_id is None:
+            return name
+        if container != self._smoke_bucket:
+            if is_dedicated_smoke_bucket(container):
+                return name
+            raise ConfigurationError(
+                "Container does not match the configured smoke bucket"
+            )
+        if "\\" in name or any(part in ("", ".", "..") for part in name.split("/")):
+            raise ConfigurationError("Smoke object names must be relative object keys")
+        return f"smoke/{self._smoke_run_id}/{name}"
 
     async def upload_blob(
         self, container: str, name: str, data: bytes, **kwargs: Any
     ) -> dict[str, Any]:
         """Upload in a worker thread to keep synchronous SDK calls off the event loop."""
 
+        key = self._storage_key(container, name)
+
         def upload() -> dict[str, Any]:
             return asyncio.run(
-                self.provider.upload_blob(container, name, data, **kwargs)
+                self.provider.upload_blob(container, key, data, **kwargs)
             )
 
         return await asyncio.to_thread(upload)
@@ -130,10 +173,19 @@ class BlobStorageAdapter:
     async def download_blob(self, container: str, name: str, **kwargs: Any) -> bytes:
         """Download and consume object bytes in a worker thread's event loop."""
 
+        key = self._storage_key(container, name)
+
         def download() -> bytes:
-            return asyncio.run(self.provider.download_blob(container, name, **kwargs))
+            return asyncio.run(self.provider.download_blob(container, key, **kwargs))
 
         return await asyncio.to_thread(download)
+
+    async def delete_blob(self, container: str, name: str) -> bool:
+        """Delete one smoke object within the same namespace used for uploads."""
+        key = self._storage_key(container, name)
+        return await asyncio.to_thread(
+            lambda: asyncio.run(self.provider.delete_blob(container, key))
+        )
 
     def close(self) -> None:
         """Release the wrapped provider's SDK connection pool."""

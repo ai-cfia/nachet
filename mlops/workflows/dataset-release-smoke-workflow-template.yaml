@@ -11,11 +11,13 @@ spec:
   entrypoint: smoke
   onExit: cleanup
   serviceAccountName: argo-workflow
-  # Share the run schema with every pod, including the referenced release template.
+  # Share the run schema and object namespace with the referenced release pods.
   podSpecPatch: |
     containers:
       - name: main
         env:
+          - name: DATASET_SMOKE_RUN_ID
+            value: "{{workflow.uid}}"
           - name: DATASET_REGISTRY_SCHEMA
             value: 'nachet_smoke_{{=sprig.replace("-", "", workflow.uid)}}'
   arguments:
@@ -24,8 +26,8 @@ spec:
         value: ghcr.io/ai-cfia/nachet-dataset-release:main
         description: Use the PR image tag or a digest to test a particular build.
       - name: container
-        value: nachet-dataset-smoke
-        description: Dedicated existing smoke bucket/container; optional suffix allowed.
+        value: ""
+        description: Leave blank to use the Vault smoke bucket, or enter a dedicated smoke bucket.
       - name: credentials-secret
         value: nachet-dataset-release-smoke
         description: Separate test registry and storage credentials, including delete access.
@@ -56,13 +58,15 @@ spec:
                 - name: dataset-version
                   value: v1
                 - name: container
-                  value: "{{workflow.parameters.container}}"
+                  value: "{{=jsonpath(steps.seed.outputs.result, '$.container')}}"
                 - name: credentials-secret
                   value: "{{workflow.parameters.credentials-secret}}"
         - - name: verify
             template: verify
             arguments:
               parameters:
+                - name: container
+                  value: "{{=jsonpath(steps.seed.outputs.result, '$.container')}}"
                 - name: manifest-sha256
                   value: "{{steps.release.outputs.parameters.manifest-sha256}}"
       outputs:
@@ -102,6 +106,7 @@ spec:
       activeDeadlineSeconds: 300
       inputs:
         parameters:
+          - name: container
           - name: manifest-sha256
       container:
         image: "{{workflow.parameters.image}}"
@@ -109,7 +114,7 @@ spec:
         command: [python, /opt/workflows/scripts/dataset_release_smoke.py]
         args:
           - --container
-          - "{{workflow.parameters.container}}"
+          - "{{inputs.parameters.container}}"
           - --name
           - "dataset-smoke-{{workflow.uid}}"
           - verify
