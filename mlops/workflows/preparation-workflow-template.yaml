@@ -31,6 +31,13 @@ spec:
         description: Temporary warn mode retains conflicting sources and the first species/split; error stays strict.
         value: error
         enum: [error, warn]
+      - name: invalid-images
+        description: Skip mode logs and records undecodable images; storage failures remain fatal.
+        value: error
+        enum: [error, skip]
+      - name: resume-run-id
+        description: Workflow whose preparation checkpoint to use. Defaults to this run; originals must remain unchanged.
+        value: "{{workflow.name}}"
       - name: model-folder
         description: Model folder below models/ on the workspace. Defaults to sam3; must match the runtime's predictor.
         value: sam3
@@ -61,6 +68,8 @@ spec:
       steps:
         - - name: prepare-images
             template: prepare-images
+        - - name: audit-checksums
+            template: audit-checksums
         - - name: prelabel
             template: prelabel
         - - name: register-for-review
@@ -89,6 +98,53 @@ spec:
           - "{{workflow.parameters.code-revision}}"
           - --duplicate-conflicts
           - "{{workflow.parameters.duplicate-conflicts}}"
+          - --invalid-images
+          - "{{workflow.parameters.invalid-images}}"
+          - --checkpoint-dir
+          - /workspace/{{workflow.parameters.resume-run-id}}/prepared
+        env:
+          - name: PREPARATION_BUCKET
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: bucket}
+          - name: PREPARATION_S3_ENDPOINT_URL
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: endpoint-url}
+          - name: PREPARATION_REGION
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: region}
+        envFrom:
+          - secretRef:
+              name: nachet-preparation-cold-s3
+        resources:
+          requests: {cpu: "1", memory: 1Gi}
+          limits: {cpu: "2", memory: 4Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+          - name: tmp
+            mountPath: /tmp
+
+    - name: audit-checksums
+      retryStrategy:
+        limit: "2"
+        retryPolicy: OnFailure
+      container:
+        image: "{{workflow.parameters.cpu-image}}"
+        command: [python, /opt/preparation/audit_s3.py]
+        args:
+          - /workspace/{{workflow.name}}/prepared/index.coco.json
+          - --bucket
+          - "$(PREPARATION_BUCKET)"
+          - --endpoint-url
+          - "$(PREPARATION_S3_ENDPOINT_URL)"
+          - --allow-http
+          - --region
+          - "$(PREPARATION_REGION)"
         env:
           - name: PREPARATION_BUCKET
             valueFrom:
