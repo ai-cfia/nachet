@@ -1,0 +1,52 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: nachet-preparation-cleanup
+  namespace: argo-workflows
+  labels:
+    app.kubernetes.io/name: nachet-preparation-cleanup
+    app.kubernetes.io/part-of: nachet
+spec:
+  entrypoint: cleanup-selected-run
+  serviceAccountName: argo-workflow
+  arguments:
+    parameters:
+      - name: run-name
+        description: Workflow whose checkpoints may be removed after approval.
+      - name: cpu-image
+        value: ghcr.io/ai-cfia/nachet-preparation-cpu:main
+      - name: workspace-pvc
+        value: nachet-training-workspace-pvc
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  volumes:
+    - name: workspace
+      persistentVolumeClaim:
+        claimName: "{{workflow.parameters.workspace-pvc}}"
+    - name: tmp
+      emptyDir: {}
+  templates:
+    - name: cleanup-selected-run
+      steps:
+        - - name: approve-checkpoint-cleanup
+            templateRef:
+              name: nachet-preparation
+              template: approve-checkpoint-cleanup
+            arguments:
+              parameters:
+                - name: run-name
+                  value: "{{workflow.parameters.run-name}}"
+        - - name: cleanup-checkpoints
+            templateRef:
+              name: nachet-preparation
+              template: cleanup-checkpoints
+            arguments:
+              parameters:
+                - name: run-name
+                  value: "{{workflow.parameters.run-name}}"

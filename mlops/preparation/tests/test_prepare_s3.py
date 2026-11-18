@@ -2,6 +2,9 @@ import asyncio
 import hashlib
 import json
 import logging
+import sqlite3
+import tomllib
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -14,6 +17,7 @@ from blob.exceptions import (
 )
 from botocore.exceptions import ClientError
 from PIL import Image
+from semver import Version
 
 import prepare_s3 as module
 from prepare_images import prepare_images
@@ -456,9 +460,27 @@ def test_resume_avoids_completed_downloads_and_preserves_duplicate_sources(
     assert storage.read_image.call_count == 4
     assert storage.upload_png.call_count == 3
     actual = json.loads((output / "index.coco.json").read_text())
+    with Path(module.__file__).with_name("pyproject.toml").open("rb") as stream:
+        project_version = tomllib.load(stream)["project"]["version"]
+    database_path = (
+        output / "preparation-checkpoints" / project_version / "preparation.sqlite3"
+    )
+    with sqlite3.connect(database_path) as database:
+        settings = json.loads(
+            database.execute(
+                "SELECT value FROM metadata WHERE name='settings'"
+            ).fetchone()[0]
+        )
+    assert settings["version"] == project_version
     expected = prepare_images(
         root, tmp_path / "expected", code_revision="test", raw_prefix="raw/collection"
     )
+    for image in expected["images"]:
+        for source in image["sources"]:
+            source["preparation"] = {
+                "project_version": str(module.project_version()),
+                "code_revision": "test",
+            }
     assert actual == expected
     assert any(
         record.levelno == logging.DEBUG and "Resuming completed image" in record.message
@@ -477,7 +499,6 @@ def test_resume_avoids_completed_downloads_and_preserves_duplicate_sources(
     # Completed work cannot silently be reused for a different source or policy.
     for changed in [
         ["--split", "train"],
-        ["--code-revision", "changed"],
         ["--endpoint-url", "https://different.example.test"],
         ["--duplicate-conflicts", "warn"],
     ]:
@@ -490,6 +511,143 @@ def test_resume_avoids_completed_downloads_and_preserves_duplicate_sources(
     with pytest.raises(ValueError, match="Checkpoint settings"):
         module.main(args)
     storage.read_image.assert_not_called()
+
+
+def test_compatible_upgrade_reuses_progress_and_preserves_source_provenance(
+    intake, tmp_path, monkeypatch, caplog
+):
+    caplog.set_level(logging.INFO, logger=module.__name__)
+    storage = collection_storage(intake[0])
+    monkeypatch.setattr(module, "create_storage", lambda *a, **k: storage)
+    monkeypatch.setattr(module, "project_version", lambda: Version.parse("0.2.0"))
+    first = tmp_path / "first"
+    upload = storage.upload_png.side_effect
+    attempts = 0
+
+    def interrupt_second_upload(*args, **kwargs):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 2:
+            raise BlobStorageError("interrupted upload")
+        return upload(*args, **kwargs)
+
+    storage.upload_png.side_effect = interrupt_second_upload
+    with pytest.raises(BlobStorageError, match="interrupted upload"):
+        module.main(cli_args(first) + ["--resume", "--code-revision", "revision-a"])
+    first_key = storage.read_image.call_args_list[0].args[1]
+    original_db = first / "preparation-checkpoints/0.2.0/preparation.sqlite3"
+    assert original_db.exists()
+
+    monkeypatch.setattr(module, "project_version", lambda: Version.parse("0.2.1"))
+    storage.upload_png.side_effect = upload
+    storage.read_image.reset_mock()
+    resumed = tmp_path / "resumed"
+    module.main(
+        cli_args(resumed)
+        + ["--checkpoint-dir", str(first), "--code-revision", "revision-b"]
+    )
+    assert first_key not in {call.args[1] for call in storage.read_image.call_args_list}
+    result = json.loads((resumed / "index.coco.json").read_text())
+    sources = {
+        source["raw_key"]: source
+        for image in result["images"]
+        for source in image["sources"]
+    }
+    assert sources[first_key]["preparation"] == {
+        "project_version": "0.2.0",
+        "code_revision": "revision-a",
+    }
+    assert all(
+        source["preparation"]
+        == {"project_version": "0.2.1", "code_revision": "revision-b"}
+        for key, source in sources.items()
+        if key != first_key
+    )
+    assert "Resuming with a different code revision" in caplog.text
+    newer_db = first / "preparation-checkpoints/0.2.1/preparation.sqlite3"
+    with sqlite3.connect(original_db) as database:
+        old_settings = json.loads(
+            database.execute(
+                "SELECT value FROM metadata WHERE name='settings'"
+            ).fetchone()[0]
+        )
+        assert old_settings["version"] == "0.2.0"
+        assert database.execute("SELECT COUNT(*) FROM completed").fetchone()[0] == 1
+    with sqlite3.connect(newer_db) as database:
+        new_settings = json.loads(
+            database.execute(
+                "SELECT value FROM metadata WHERE name='settings'"
+            ).fetchone()[0]
+        )
+        assert new_settings["version"] == "0.2.1"
+        assert new_settings["code_revision"] == "revision-b"
+
+
+@pytest.mark.parametrize("next_version", ["0.2.0", "0.3.0"])
+def test_incompatible_or_newer_preparation_checkpoint_starts_fresh(
+    intake, tmp_path, monkeypatch, next_version
+):
+    storage = collection_storage(intake[0])
+    monkeypatch.setattr(module, "create_storage", lambda *a, **k: storage)
+    monkeypatch.setattr(module, "project_version", lambda: Version.parse("0.2.1"))
+    first = tmp_path / "first"
+    module.main(cli_args(first) + ["--resume"])
+    old_db = first / "preparation-checkpoints/0.2.1/preparation.sqlite3"
+    old_bytes = old_db.read_bytes()
+
+    monkeypatch.setattr(module, "project_version", lambda: Version.parse(next_version))
+    storage.read_image.reset_mock()
+    module.main(cli_args(tmp_path / "next") + ["--checkpoint-dir", str(first)])
+    assert storage.read_image.call_count == len(storage.objects) - 4
+    assert old_db.read_bytes() == old_bytes
+    assert (
+        first / "preparation-checkpoints" / next_version / "preparation.sqlite3"
+    ).exists()
+
+
+@pytest.mark.parametrize(
+    "problem", ["root-link", "version-link", "candidate-directory"]
+)
+def test_preparation_rejects_unsafe_checkpoint_paths(tmp_path, problem):
+    root = tmp_path / module.CHECKPOINT_DIRECTORY
+    settings = {"version": "0.3.1"}
+    if problem == "root-link":
+        actual = tmp_path / "elsewhere"
+        target = actual / "0.3.1" / "preparation.sqlite3"
+        target.parent.mkdir(parents=True)
+        target.write_text("not a database")
+        root.symlink_to(actual, target_is_directory=True)
+    elif problem == "version-link":
+        actual = tmp_path / "elsewhere"
+        actual.mkdir()
+        (actual / "preparation.sqlite3").write_text("not a database")
+        root.mkdir()
+        (root / "0.3.1").symlink_to(actual, target_is_directory=True)
+    else:
+        (root / "0.3.0" / "preparation.sqlite3").mkdir(parents=True)
+    with (
+        pytest.raises(
+            ValueError,
+            match="Checkpoint cannot be a symlink|Invalid preparation checkpoint",
+        ),
+        module.open_checkpoint(tmp_path, settings),
+    ):
+        pytest.fail("unsafe checkpoint path was accepted")
+
+
+def test_legacy_preparation_checkpoint_is_not_reused_or_removed(
+    intake, tmp_path, monkeypatch, caplog
+):
+    storage = collection_storage(intake[0])
+    monkeypatch.setattr(module, "create_storage", lambda *a, **k: storage)
+    output = tmp_path / "legacy"
+    output.mkdir()
+    legacy = output / "preparation.sqlite3"
+    legacy.write_bytes(b"legacy checkpoint")
+    module.main(cli_args(output) + ["--resume"])
+    assert legacy.read_bytes() == b"legacy checkpoint"
+    assert "Ignoring legacy integer-version checkpoint" in caplog.text
+    assert storage.read_image.call_count == 4
 
 
 @pytest.mark.parametrize("corrupt", [False, True])

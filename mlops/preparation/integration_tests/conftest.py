@@ -48,6 +48,8 @@ def draft_coco():
                 "prelabel_status": "needs_review" if index == 2 else "draft",
                 "prelabel_prompt": "thick long seed",
                 "prelabel_reason": "no_detections" if index == 2 else None,
+                "prelabel_project_version": "0.2.0" if index == 0 else "0.2.1",
+                "prelabel_code_revision": "revision-a" if index == 0 else "revision-b",
             }
         )
     return {

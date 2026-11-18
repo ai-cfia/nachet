@@ -43,7 +43,8 @@ Use a new output directory for a changed collection.
 
 ### Resume interrupted S3 preparation
 
-Pass `--resume` to persist progress in `output_root/preparation.sqlite3`.
+Pass `--resume` to persist progress in
+`output_root/preparation-checkpoints/<project-version>/preparation.sqlite3`.
 Each source is committed only after its PNG upload succeeds (or its identical
 PNG has already been uploaded). Rerun the same command and output directory to
 reconstruct the index from completed records without downloading, converting
@@ -57,18 +58,37 @@ directory. A checkpoint directory is created if absent; logs show its path and
 the number of completed sources. Preserve it on persistent storage, and use only
 one writer at a time.
 
-The endpoint, region, bucket, prefix, source-key listing, code revision, split
-and duplicate policy must match the checkpoint. Mismatches fail explicitly.
+The endpoint, region, bucket, prefix, source-key listing, split and duplicate
+policy must match the checkpoint. Mismatches fail explicitly.
 Original object bytes and previously uploaded PNGs **must remain unchanged**:
 resume does not download them to verify their contents. Start with a new
 checkpoint if those bytes change or prepared PNGs are removed.
 Skipped invalid images are not marked completed: every retry rechecks and logs
 them, and strict mode will still reject them. The invalid-image policy may
-therefore change between retries. Checkpointing is for S3 conversion/upload,
-not SAM3 pre-labeling or local collection conversion.
+therefore change between retries. Local collection conversion does not
+checkpoint.
 
-Runs made before checkpointing was enabled cannot recover progress from their
-uploaded PNGs alone; they need one full conversion with checkpointing enabled.
+### Checkpoint versions and provenance
+
+Preparation and pre-label checkpoints record `[project].version` from
+`pyproject.toml`. An older checkpoint can be reused by the same major version,
+except that versions below `1.0.0` must also have the same minor version. A
+checkpoint from a newer release is never reused. SemVer prerelease precedence
+applies; build metadata does not change precedence. Incompatible versions
+start separate checkpoints and leave existing progress untouched.
+
+Integer-version checkpoints from older runs are not reused or automatically
+deleted. A new run must process that work again. Cleanup requires approval as
+described below. Compatible checkpoints may be reused across different
+`--code-revision` labels: each checkpointed source records its producer in
+`sources[].preparation.project_version` and `sources[].preparation.code_revision`.
+`info.preparation.code_revision` identifies the run assembling the index, not
+necessarily every source's producer.
+
+Release maintainers must bump the compatibility boundary for checkpoint or
+output changes that cannot safely reuse prior results: the minor version while
+below `1.0.0`, and the major version afterward. Code and model revision labels
+are operator-supplied, not verified against the images or weights.
 
 All writers to `png/detection/` must use the PNG byte hash as the filename. The
 uploader requests create-only writes, but some S3-compatible stores ignore that
@@ -300,6 +320,24 @@ currently loads SAM3.
 CUDA uses BF16 autocast and TF32; CPU uses FP32. `--model-revision` is a label
 you choose for the local weights, recorded in `info.prelabel`.
 
+To resume pre-labeling, append
+`--checkpoint-dir /work/prelabel-checkpoints --code-revision "$CODE_REVISION"`.
+Completed images are committed individually and reused on retry; an interrupted
+image is processed again. The final draft is written only after all images
+finish. Checkpoints are scoped to the index, media location, model identity and
+revision, device, padding and inference policy. When the same model path can
+refer to different models, also set a distinct `--model-identity`; the Argo
+workflow uses `model-folder`. When supplied, it is recorded in
+`info.prelabel.model_identity`. Checkpointed Python callers must supply
+`predictor_identity` and `code_revision`; S3 callers must also supply a stable
+`storage_identity` for the endpoint and region.
+
+Reused images are not read again by pre-labeling. Keep their media unchanged;
+the Argo checksum audit rechecks the indexed S3 objects before pre-labeling.
+Checkpointed image records include `prelabel_project_version` and
+`prelabel_code_revision` for the original producer, even when a later
+compatible release assembles the draft.
+
 Each image records its `prelabel_status`, `prelabel_prompt` and
 `prelabel_reason`. The prompt is the last one attempted, or `null` if
 the predictor does not use prompts or inference was skipped.
@@ -314,8 +352,8 @@ the predictor does not use prompts or inference was skipped.
 | `needs_review` | `high_bit_depth` | High-bit image; inference skipped pending a normalization policy. |
 
 Both statuses require human review. The command refuses an index that already
-has annotations. Output is written after the full batch; an interrupted run
-currently starts again from the beginning.
+has annotations. Without `--checkpoint-dir`, an interrupted run starts again
+from the beginning.
 
 ## Register for review
 
@@ -378,17 +416,19 @@ the tested merge commit, which can differ from the PR head.
 
 ## Argo workflow
 
-`mlops/workflows/preparation-workflow-template.yaml` runs three steps:
+`mlops/workflows/preparation-workflow-template.yaml` runs:
 
 ```text
-S3 originals -> convert/upload PNGs -> checksum audit -> SAM3 reads S3 -> register in FiftyOne
+S3 originals -> convert/upload PNGs -> checksum audit -> SAM3 reads S3
+-> register in FiftyOne -> approval -> checkpoint cleanup
 ```
 
 Conversion and the checksum audit use the CPU image. The audit re-downloads and
 verifies all indexed original and prepared objects before pre-labeling; a
 failure prevents pre-labeling and registration. The audit retries twice on
 failure and starts its checks from the beginning on each attempt. Pre-labeling
-requests one NVIDIA GPU and uses the existing per-node training mutex.
+requests one NVIDIA GPU, uses the existing per-node training mutex, and retries
+failed attempts using completed image checkpoints.
 Conversion, audit and pre-labeling receive the storage Secret; registration
 receives the FiftyOne database Secret.
 
@@ -396,9 +436,8 @@ Use the existing `nachet-training-workspace-pvc` in `argo-workflows`. Keep SAM3
 snapshots under `models/` on that claim. `model-folder` selects a subfolder
 (default `sam3`), mounted read-only at `/model`. Images stay in S3. Each run
 writes COCO files under `/workspace/<workflow-name>/`; remove only that run's
-directory after checking the result. A failed pre-labeling step restarts the batch.
-Conversion always checkpoints onto this PVC, so automatic preparation retries
-reuse completed sources.
+directory after checking the result. Conversion and pre-labeling checkpoint
+onto this PVC, so automatic retries reuse completed work.
 
 Howard's `nachet-preparation-config` ConfigMap sets the cold Ceph endpoint,
 the `nachet-seed-image-dataset` bucket, the region and FiftyOne's media root.
@@ -429,14 +468,83 @@ automatically.
 
 To skip invalid images with warnings and index records, append
 `-p invalid-images=skip`; the workflow defaults to strict `error`.
-To reuse a previous workflow's preparation checkpoint in a new submission,
+To reuse a previous workflow's preparation and pre-label checkpoints in a new submission,
 append `-p resume-run-id=<previous-workflow-name>`. The default is the current
 workflow name. The new workflow writes its COCO outputs into its own directory
-but reads and extends the selected run's checkpoint. Keep the same conversion
-settings and immutable collection, and do not run both workflows concurrently.
+but reads and extends the selected run's checkpoints. The checksum audit still
+runs again. Keep the same conversion and model settings and immutable collection,
+and do not run both workflows concurrently.
 For a chain of resumed submissions, keep selecting the original checkpoint's
-workflow name. Rebuild/select the updated CPU image and apply the updated
-WorkflowTemplate before using these parameters.
+workflow name. Rebuild/select the updated CPU, SAM3 and registration images
+and deploy the updated WorkflowTemplates before using these parameters. The
+updated registration image preserves the checkpoint producer fields in
+FiftyOne.
+
+To start only pre-labeling from an earlier run, set `PREVIOUS_RUN` to that
+workflow's name and select the `prelabel` entrypoint:
+
+```bash
+argo submit -n argo-workflows --from workflowtemplate/nachet-preparation \
+  --entrypoint prelabel -p resume-run-id="$PREVIOUS_RUN" \
+  -p code-revision="$CODE_REVISION" -p model-revision="$MODEL_REVISION" \
+  -p raw-prefix=raw/collection-01 -p dataset-name=collection-01-review
+```
+
+The index is read from
+`/workspace/<previous-workflow-name>/prepared/index.coco.json`; the draft is
+written under the new workflow's directory. No audit, registration or cleanup
+step runs with this entrypoint. First verify that the previous audit passed for
+that exact index and bucket, and that the index, originals and prepared PNGs
+have not changed since. The report does not bind itself to the index hash, and
+the pre-label step does not verify the report.
+
+By default, the index and pre-label checkpoints both come from `resume-run-id`.
+Use the same model folder and revision to reuse its checkpoints. If the index
+is in a different run from the shared checkpoints, set `INDEX_RUN` to that
+workflow's name and pass `-p index-run-id="$INDEX_RUN"` as well. In the full
+workflow, pre-labeling always uses the current run's freshly audited index
+regardless of this input.
+
+To start only registration from an existing draft, set `DRAFT_RUN` to the name
+of the workflow that wrote it and select the `register-for-review` entrypoint:
+
+```bash
+argo submit -n argo-workflows --from workflowtemplate/nachet-preparation \
+  --entrypoint register-for-review -p draft-run-id="$DRAFT_RUN" \
+  -p dataset-name=collection-01-review -p raw-prefix=raw/collection-01 \
+  -p code-revision="$CODE_REVISION" -p model-revision="$MODEL_REVISION"
+```
+
+The draft is read from
+`/workspace/<draft-workflow-name>/prepared/draft.coco.json`. For a direct
+pre-labeling run, use that new workflow's name, not necessarily the earlier
+checkpoint or index workflow. `draft-run-id` defaults to `resume-run-id`. The
+full workflow always registers its own draft regardless of this input.
+
+This entrypoint does not run preparation, audit, pre-labeling or cleanup.
+Registration starts a new import rather than resuming individual samples and
+still refuses an existing dataset name. A killed import can leave a temporary
+dataset, as described above under "Register for review".
+
+After registration, the workflow suspends before checkpoint cleanup. Resuming
+the approval step authorizes irreversible cleanup of **only the current
+workflow's** checkpoints; it does not delete COCO files, audit reports, models,
+S3 objects, or FiftyOne datasets. A failed workflow never reaches this step.
+If `resume-run-id` names another workflow, its shared checkpoints remain.
+Before approving any cleanup, confirm that no other workflow still uses or
+extends the selected run.
+
+To clean an earlier run, including a failed run, submit the separate cleanup
+workflow and resume its approval step only when all dependent runs are finished:
+
+```bash
+argo submit -n argo-workflows --from workflowtemplate/nachet-preparation-cleanup \
+  -p run-name=<earlier-workflow-name>
+```
+
+Both cleanup paths remove recognized legacy and versioned checkpoint files
+only. Unexpected files or symlinks cause cleanup to fail rather than removing
+unrecognized data.
 
 The images default to the `main` tags, as in the training workflows, and the
 workspace defaults to `nachet-training-workspace-pvc`. Override the image
@@ -446,11 +554,9 @@ architecture needs its own adapter and runtime dependencies. The code and model
 revisions are operator-supplied labels; they are not checked against the image
 or weights.
 
-The workflow ends at registration for human review. Reviewed export, release
-publication and training use their own components.
-SAM3 image-level progress and interrupted-run recovery are still required before
-long GPU runs. FiftyOne stores the source records in MongoDB; ownership of the
-controller mappings remains open.
+Registration creates the dataset for human review; reviewed export, release
+publication and training use their own components. FiftyOne stores the source
+records in MongoDB; ownership of the controller mappings remains open.
 
 ## Checks
 
@@ -462,7 +568,8 @@ uv run --project mlops/preparation --no-sync python -m pytest mlops/preparation/
 The SDK tests use FiftyOne 1.22.1 and a disposable MongoDB. They cover registration,
 interrupted imports and the workflow's command arguments, using the shared
 storage provider with a fake S3 SDK and supplied predictions. The workflow test
-checks source paths, hashes, boxes and splits through all three steps and retries.
+checks source paths, hashes, boxes and splits through the preparation steps and
+retries.
 
 ```bash
 uv sync --project mlops/preparation --locked --group fiftyone --group storage

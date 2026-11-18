@@ -9,6 +9,8 @@ on:
       - "mlops/blob/**"
       - ".github/workflows/mlops-preparation-tests.yml"
       - "mlops/workflows/preparation-workflow-template.yaml"
+      - "mlops/workflows/preparation-cleanup-workflow-template.yaml"
+      - "mlops/workflows/kustomization.yaml"
   push:
     branches: [main]
     paths:
@@ -16,6 +18,8 @@ on:
       - "mlops/blob/**"
       - ".github/workflows/mlops-preparation-tests.yml"
       - "mlops/workflows/preparation-workflow-template.yaml"
+      - "mlops/workflows/preparation-cleanup-workflow-template.yaml"
+      - "mlops/workflows/kustomization.yaml"
   workflow_dispatch:
 
 permissions:

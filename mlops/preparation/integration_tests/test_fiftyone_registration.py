@@ -54,6 +54,8 @@ def test_registration_keeps_fields_and_refuses_to_replace_review_work(
         assert sample["prelabel_prompt"] == record["prelabel_prompt"]
         assert sample["prelabel_status"] == record["prelabel_status"]
         assert sample["prelabel_reason"] == record["prelabel_reason"]
+        assert sample["prelabel_project_version"] == record["prelabel_project_version"]
+        assert sample["prelabel_code_revision"] == record["prelabel_code_revision"]
     first = samples[11]
     detection = first.draft_boxes.detections[0]
     assert detection.label == "Avena fatua"

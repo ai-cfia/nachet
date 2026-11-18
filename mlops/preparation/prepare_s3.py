@@ -4,11 +4,19 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import sqlite3
+import tempfile
 from collections.abc import Iterator
 from contextlib import closing, contextmanager
 from pathlib import Path, PurePosixPath
 
+from checkpoint_version import (
+    compatible_checkpoint,
+    compatible_directories,
+    parse_version,
+    project_version,
+)
 from prepare_images import (
     IMAGE_SUFFIXES,
     SPLIT_FOLDERS,
@@ -23,6 +31,7 @@ from prepare_images import (
 from s3_storage import create_storage
 
 logger = logging.getLogger(__name__)
+CHECKPOINT_DIRECTORY = "preparation-checkpoints"
 
 
 def checkpoint_metadata(
@@ -42,6 +51,63 @@ def checkpoint_metadata(
         )
 
 
+def checkpoint_settings(checkpoint: sqlite3.Connection, settings: dict) -> None:
+    row = checkpoint.execute(
+        "SELECT value FROM metadata WHERE name = 'settings'"
+    ).fetchone()
+    if row is not None:
+        stored = json.loads(row[0])
+        if not isinstance(stored, dict):
+            raise ValueError("Invalid preparation checkpoint settings")
+        previous = parse_version(stored.get("version"), context="checkpoint version")
+        current = parse_version(settings.get("version"), context="project version")
+        if not compatible_checkpoint(previous, current):
+            raise ValueError(
+                f"Incompatible preparation checkpoint version {previous} for {current}"
+            )
+        ignored = {"version", "code_revision"}
+        if {k: v for k, v in stored.items() if k not in ignored} != {
+            k: v for k, v in settings.items() if k not in ignored
+        }:
+            raise ValueError(
+                "Checkpoint settings differ (settings); use a new checkpoint directory"
+            )
+        if stored.get("code_revision") != settings.get("code_revision"):
+            logger.info(
+                "Resuming with a different code revision; source provenance is retained"
+            )
+    with checkpoint:
+        checkpoint.execute(
+            "INSERT OR REPLACE INTO metadata VALUES ('settings', ?)",
+            (json.dumps(settings, sort_keys=True),),
+        )
+
+
+def snapshot_checkpoint(source: Path, target: Path) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, name = tempfile.mkstemp(
+        prefix=".snapshot-", suffix=".sqlite3", dir=target.parent
+    )
+    os.close(descriptor)
+    temporary = Path(name)
+    try:
+        with (
+            closing(
+                sqlite3.connect(source.resolve().as_uri() + "?mode=ro", uri=True)
+            ) as source_db,
+            closing(sqlite3.connect(temporary)) as target_db,
+        ):
+            source_db.backup(target_db)
+        try:
+            os.link(temporary, target)
+        except FileExistsError as error:
+            raise RuntimeError(
+                f"Checkpoint was created concurrently: {target}; use one writer"
+            ) from error
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 @contextmanager
 def open_checkpoint(
     directory: Path | None, settings: dict
@@ -50,7 +116,33 @@ def open_checkpoint(
         yield None
         return
     directory.mkdir(parents=True, exist_ok=True)
-    with closing(sqlite3.connect(directory / "preparation.sqlite3")) as checkpoint:
+    version = parse_version(settings.get("version"), context="project version")
+    root = directory / CHECKPOINT_DIRECTORY
+    target = root / str(version) / "preparation.sqlite3"
+    if root.is_symlink() or target.parent.is_symlink() or target.is_symlink():
+        raise ValueError(f"Checkpoint cannot be a symlink: {target}")
+    if (directory / "preparation.sqlite3").exists():
+        logger.warning(
+            "Ignoring legacy integer-version checkpoint %s",
+            directory / "preparation.sqlite3",
+        )
+    if not target.exists():
+        for previous, candidate_dir in compatible_directories(root, version):
+            candidate = candidate_dir / "preparation.sqlite3"
+            if candidate.is_symlink():
+                raise ValueError(f"Checkpoint cannot be a symlink: {candidate}")
+            if candidate.exists() and not candidate.is_file():
+                raise ValueError(f"Invalid preparation checkpoint: {candidate}")
+            if candidate.is_file():
+                snapshot_checkpoint(candidate, target)
+                logger.info(
+                    "Copied compatible preparation checkpoint %s into %s",
+                    previous,
+                    target,
+                )
+                break
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with closing(sqlite3.connect(target)) as checkpoint:
         with checkpoint:
             checkpoint.execute(
                 "CREATE TABLE IF NOT EXISTS metadata (name TEXT PRIMARY KEY, value TEXT NOT NULL)"
@@ -58,10 +150,10 @@ def open_checkpoint(
             checkpoint.execute(
                 "CREATE TABLE IF NOT EXISTS completed (path TEXT PRIMARY KEY, image TEXT NOT NULL)"
             )
-        checkpoint_metadata(checkpoint, "settings", settings)
+        checkpoint_settings(checkpoint, settings)
         logger.info(
             "Using preparation checkpoint %s: completed_sources=%d",
-            directory / "preparation.sqlite3",
+            target,
             checkpoint.execute("SELECT COUNT(*) FROM completed").fetchone()[0],
         )
         yield checkpoint
@@ -151,11 +243,16 @@ async def prepare_s3(
     allow_conflicting_duplicates: bool = False,
     skip_invalid_images: bool = False,
     checkpoint: sqlite3.Connection | None = None,
+    checkpoint_version: str | None = None,
 ) -> dict:
     """Read, convert and upload one image at a time; return an index on success."""
     prefix = collection_prefix(raw_prefix)
     if split is not None and split not in SPLITS:
         raise ValueError(f"Invalid split: {split!r}")
+    if checkpoint is not None:
+        version = parse_version(checkpoint_version, context="checkpoint version")
+        if not code_revision:
+            raise ValueError("code_revision is required for checkpoint provenance")
     logger.info("Listing images in s3://%s/%s", bucket, prefix)
     keys = await storage.list_collection_keys(bucket, prefix)
     found, species_names = find_s3_images(keys, prefix, split)
@@ -192,9 +289,23 @@ async def prepare_s3(
                 "SELECT image FROM completed WHERE path = ?", (source_key,)
             ).fetchone()
             if completed is not None:
+                record = json.loads(completed[0])
+                provenance = record["sources"][0]["preparation"]
+                producer_version = parse_version(
+                    provenance["project_version"], context="source producer version"
+                )
+                if not compatible_checkpoint(producer_version, version):
+                    raise ValueError(
+                        f"Incompatible source producer version {producer_version} for {version}"
+                    )
+                if (
+                    not isinstance(provenance.get("code_revision"), str)
+                    or not provenance["code_revision"]
+                ):
+                    raise ValueError(f"Missing source producer revision: {source_key}")
                 register_image(
                     images,
-                    json.loads(completed[0]),
+                    record,
                     allow_conflicting_duplicates=allow_conflicting_duplicates,
                 )
                 logger.debug("Resuming completed image: s3://%s/%s", bucket, source_key)
@@ -218,6 +329,10 @@ async def prepare_s3(
         if len(image["sources"]) == 1:
             await storage.upload_png(bucket, image["file_name"], png_bytes)
         if checkpoint is not None:
+            image["sources"][-1]["preparation"] = {
+                "project_version": str(version),
+                "code_revision": code_revision,
+            }
             record = {
                 **image,
                 "split": image_split,
@@ -273,7 +388,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--resume",
         action="store_true",
-        help="Persist and resume successful sources in output_root/preparation.sqlite3",
+        help="Persist and resume successful sources in output_root/preparation-checkpoints",
     )
     parser.add_argument(
         "--checkpoint-dir",
@@ -296,8 +411,9 @@ def main(argv: list[str] | None = None) -> None:
         checkpoint_dir = args.checkpoint_dir or (
             args.output_root if args.resume else None
         )
+        version = project_version() if checkpoint_dir is not None else None
         settings = {
-            "version": 1,
+            "version": str(version) if version is not None else None,
             "endpoint_url": args.endpoint_url,
             "region": args.region,
             "bucket": args.bucket,
@@ -317,6 +433,7 @@ def main(argv: list[str] | None = None) -> None:
                     allow_conflicting_duplicates=args.duplicate_conflicts == "warn",
                     skip_invalid_images=args.invalid_images == "skip",
                     checkpoint=checkpoint,
+                    checkpoint_version=str(version) if version is not None else None,
                 )
             )
             save_coco(args.output_root / "index.coco.json", result)
