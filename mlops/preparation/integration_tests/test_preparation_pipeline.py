@@ -2,6 +2,8 @@
 
 import hashlib
 import importlib
+import io
+import json
 from pathlib import Path
 
 import pytest
@@ -10,6 +12,68 @@ from PIL import Image
 
 import s3_storage
 from prelabel import Prediction
+
+
+@pytest.mark.parametrize("policy", [None, "warn"], ids=["default-strict", "warn"])
+def test_workflow_preparation_duplicate_policy(
+    tmp_path, s3_provider, monkeypatch, policy
+):
+    spec = yaml.safe_load(
+        (
+            Path(__file__).resolve().parents[2]
+            / "workflows/preparation-workflow-template.yaml"
+        ).read_text()
+    )["spec"]
+    values = {
+        parameter["name"]: parameter["value"]
+        for parameter in spec["arguments"]["parameters"]
+        if "value" in parameter
+    }
+    values.update({"raw-prefix": "raw/collection", "code-revision": "test"})
+    if policy is not None:
+        values["duplicate-conflicts"] = policy
+    container = next(
+        template["container"]
+        for template in spec["templates"]
+        if template["name"] == "prepare-images"
+    )
+    replacements = {
+        "/workspace": str(tmp_path),
+        "{{workflow.name}}": "bypass-test",
+        "$(PREPARATION_BUCKET)": "datasets",
+        "$(PREPARATION_S3_ENDPOINT_URL)": "http://cold-storage.example.test",
+        "$(PREPARATION_REGION)": "test",
+    }
+    replacements.update(
+        {"{{workflow.parameters." + key + "}}": value for key, value in values.items()}
+    )
+    args = list(container["args"])
+    for source, replacement in replacements.items():
+        args = [argument.replace(source, replacement) for argument in args]
+    assert all("{{" not in argument and "$(" not in argument for argument in args)
+
+    content = io.BytesIO()
+    Image.new("RGB", (3, 2), "gray").save(content, format="TIFF")
+    keys = [
+        "raw/collection/Amaranthus albus/ColorChecker.tiff",
+        "raw/collection/Amaranthus palmeri/ColorChecker.tiff",
+    ]
+    for key in keys:
+        s3_provider.objects["datasets", key] = content.getvalue()
+    module = importlib.import_module(Path(container["command"][1]).stem)
+    monkeypatch.setattr(
+        module, "create_storage", lambda *args, **kwargs: s3_provider.storage
+    )
+    if policy is None:
+        with pytest.raises(ValueError, match="conflicting species or splits"):
+            module.main(args)
+        assert not (Path(args[0]) / "index.coco.json").exists()
+    else:
+        module.main(args)
+        result = json.loads((Path(args[0]) / "index.coco.json").read_text())
+        assert len(result["images"]) == 1
+        assert [source["raw_key"] for source in result["images"][0]["sources"]] == keys
+        s3_provider.client.put_object.assert_called_once()
 
 
 def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
@@ -59,6 +123,7 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         "code-revision": "test-revision",
         "dataset-name": review_name,
         "model-revision": "synthetic-weights",
+        "duplicate-conflicts": "error",
     }
     config_maps = {
         "nachet-preparation-config": {

@@ -125,9 +125,49 @@ also gets `raw_key`, the expected S3 key under `raw/`. The command does not
 upload files or check whether those keys exist in S3.
 
 Identical PNGs share one image record and keep every source path. Identical
-PNGs with different species or different splits fail, which stops an exact
-duplicate from appearing in both training and validation. Different
+PNGs with different species or different splits fail by default, which stops
+an exact duplicate from appearing in both training and validation. Different
 photographs of the same specimen are not detected.
+
+### Temporary duplicate-conflict bypass
+
+Both conversion commands accept `--duplicate-conflicts warn` to temporarily
+continue past conflicting species or splits, for example when reference
+ColorChecker images occur under multiple species. The default is
+`--duplicate-conflicts error`; reference images are not automatically excluded.
+
+```bash
+# Local collection
+uv run --project mlops/preparation --no-sync python \
+  mlops/preparation/prepare_images.py /work/raw/Collection /work/prepared \
+  --code-revision "$CODE_REVISION" --duplicate-conflicts warn
+
+# Existing S3 collection
+uv run --project mlops/preparation --no-sync python \
+  mlops/preparation/prepare_s3.py /work/prepared \
+  --bucket training-datasets --endpoint-url https://s3.example.test \
+  --region us-east-1 --raw-prefix raw/collection-01 \
+  --code-revision "$CODE_REVISION" --duplicate-conflicts warn
+```
+
+In warn mode only, sources are processed in sorted relative POSIX-path order
+in both local and S3 preparation. Identical PNGs still have one image record,
+one hash-based key and all original source records. The first source's split
+is retained, even when a later source has a different split. Original files
+and S3 keys are not changed.
+
+**This is a temporary bypass, not label reconciliation.** Pre-labeling and
+FiftyOne still use the first source's species. Conflicting species remain
+ambiguous, and conflicting splits are not reconciled. Review these images
+before using the results for training; omit the option to restore strict checks.
+
+The conversion CLIs emit timestamped INFO/WARNING logs to stderr, captured by
+Argo. Logs show source discovery and the selected policy, each image's progress
+and saved/uploaded or reused PNG, and successful processing totals for sources,
+unique PNGs and duplicate sources. Enabling the bypass emits a warning, and
+each conflict logs the PNG hash, both paths, species and splits, and the retained
+values. Existing final summaries remain on stdout. Conversion/storage failures
+still stop the run and retain their traceback.
 
 Outputs can be regenerated: a rerun that produces the same bytes succeeds, and a
 run that would change an existing file fails. Use a new output directory when
@@ -293,6 +333,14 @@ argo submit -n argo-workflows --from workflowtemplate/nachet-preparation \
   -p model-folder=sam3 -p model-revision="$MODEL_REVISION"
 ```
 
+For the temporary duplicate-conflict bypass, append
+`-p duplicate-conflicts=warn`. The workflow defaults to `error`, just like the
+CLIs. Before using the new parameter, rebuild and select the updated CPU image
+and apply the updated
+[`preparation-workflow-template.yaml`](../workflows/preparation-workflow-template.yaml).
+An existing image or running container does not acquire the new CLI option
+automatically.
+
 The images default to the `main` tags, as in the training workflows, and the
 workspace defaults to `nachet-training-workspace-pvc`. Override the image
 references with digests to pin them. The supplied image uses `Sam3Predictor`.
@@ -303,7 +351,7 @@ or weights.
 
 The workflow ends at registration for human review. Reviewed export, release
 publication and training use their own components.
-Image-level progress and interrupted-SAM3 recovery are still required before
+SAM3 image-level progress and interrupted-run recovery are still required before
 long GPU runs. FiftyOne stores the source records in MongoDB; ownership of the
 controller mappings remains open.
 

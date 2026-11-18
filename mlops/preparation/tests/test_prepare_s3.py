@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import json
+import logging
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -109,6 +110,58 @@ def test_s3_and_local_conversion_produce_identical_outputs(
         for image in actual["images"]
         for source in image["sources"]
     }
+
+
+def test_warn_mode_matches_local_and_uploads_each_png_once(
+    conflicting_collection, tmp_path, s3_provider, caplog
+):
+    root, relatives, first_split = conflicting_collection
+    expected = prepare_images(
+        root,
+        tmp_path / "local",
+        code_revision="test",
+        raw_prefix="raw/collection",
+        allow_conflicting_duplicates=True,
+    )
+    originals = {
+        ("datasets", "raw/collection/" + relative): (root / relative).read_bytes()
+        for relative in relatives
+    }
+    s3_provider.objects.update(originals)
+    caplog.clear()
+    caplog.set_level(logging.INFO)
+    actual = asyncio.run(
+        module.prepare_s3(
+            s3_provider.storage,
+            "datasets",
+            "raw/collection",
+            code_revision="test",
+            allow_conflicting_duplicates=True,
+        )
+    )
+    assert actual == expected
+    assert actual["images"][0]["split"] == first_split
+    assert all(s3_provider.objects[key] == data for key, data in originals.items())
+    s3_provider.client.put_object.assert_called_once()
+    assert [
+        call.kwargs["Key"] for call in s3_provider.client.get_object.call_args_list
+    ] == ["raw/collection/" + relative for relative in relatives]
+    assert any(
+        record.levelno == logging.WARNING
+        and "Bypassing duplicate conflict" in record.message
+        and all(relative in record.message for relative in relatives)
+        for record in caplog.records
+    )
+    assert any(
+        "1/2" in message and relatives[0] in message for message in caplog.messages
+    )
+    assert any(
+        "2/2" in message and relatives[1] in message for message in caplog.messages
+    )
+    assert any(
+        "sources=2 unique_pngs=1 duplicate_sources=1" in message
+        for message in caplog.messages
+    )
 
 
 def test_explicit_split_matches_local_input(intake, tmp_path):
@@ -265,7 +318,10 @@ def test_missing_object_is_not_silently_omitted(intake):
 
 
 @pytest.mark.parametrize("corrupt", [False, True])
-def test_cli_writes_index_and_closes_client(intake, tmp_path, monkeypatch, corrupt):
+def test_cli_writes_index_and_closes_client(
+    intake, tmp_path, monkeypatch, corrupt, caplog
+):
+    caplog.set_level(logging.INFO)
     storage = collection_storage(intake[0])
     if corrupt:
         storage.read_image.side_effect = lambda bucket, key: b"invalid image"
@@ -276,11 +332,30 @@ def test_cli_writes_index_and_closes_client(intake, tmp_path, monkeypatch, corru
         with pytest.raises(OSError, match="Avena fatua/.*a.tiff"):
             module.main(args)
         assert not (output / "index.coco.json").exists()
+        assert not any(
+            "Image processing complete" in message for message in caplog.messages
+        )
     else:
         module.main(args)
         result = json.loads((output / "index.coco.json").read_text())
         assert len(result["images"]) == 4
         assert list(output.iterdir()) == [output / "index.coco.json"]
+    storage.close.assert_called_once()
+
+
+def test_cli_can_enable_duplicate_conflict_bypass(intake, tmp_path, monkeypatch):
+    root, _ = intake
+    (root / "Zea mays/copy.png").write_bytes(
+        (root / "Avena fatua/other/c.png").read_bytes()
+    )
+    storage = collection_storage(root)
+    monkeypatch.setattr(module, "create_storage", lambda *args, **kwargs: storage)
+    output = tmp_path / "remote"
+    module.main(cli_args(output) + ["--duplicate-conflicts", "warn"])
+    result = json.loads((output / "index.coco.json").read_text())
+    assert len(result["images"]) == 4
+    assert sum(len(image["sources"]) for image in result["images"]) == 5
+    assert storage.upload_png.call_count == 4
     storage.close.assert_called_once()
 
 
