@@ -129,7 +129,7 @@ def test_warn_mode_matches_local_and_uploads_each_png_once(
     }
     s3_provider.objects.update(originals)
     caplog.clear()
-    caplog.set_level(logging.INFO)
+    caplog.set_level(logging.DEBUG, logger="prepare_s3")
     actual = asyncio.run(
         module.prepare_s3(
             s3_provider.storage,
@@ -152,11 +152,16 @@ def test_warn_mode_matches_local_and_uploads_each_png_once(
         and all(relative in record.message for relative in relatives)
         for record in caplog.records
     )
+    for number, relative in enumerate(relatives, 1):
+        assert any(
+            record.levelno == logging.DEBUG
+            and f"Processing image {number}/2" in record.message
+            and relative in record.message
+            for record in caplog.records
+        )
     assert any(
-        "1/2" in message and relatives[0] in message for message in caplog.messages
-    )
-    assert any(
-        "2/2" in message and relatives[1] in message for message in caplog.messages
+        record.levelno == logging.DEBUG and "Uploaded PNG" in record.message
+        for record in caplog.records
     )
     assert any(
         "sources=2 unique_pngs=1 duplicate_sources=1" in message
@@ -315,6 +320,176 @@ def test_missing_object_is_not_silently_omitted(intake):
                 code_revision="test",
             )
         )
+
+
+def test_s3_skip_logs_truncated_source_but_not_storage_errors(intake, caplog):
+    storage = collection_storage(intake[0])
+    key = "raw/collection/Avena fatua/other/c.png"
+    storage.objects[key] = storage.objects[key][:41]
+    caplog.set_level(logging.INFO)
+    result = asyncio.run(
+        module.prepare_s3(
+            storage,
+            "datasets",
+            "raw/collection",
+            code_revision="test",
+            skip_invalid_images=True,
+        )
+    )
+    assert len(result["images"]) == 3
+    assert storage.upload_png.call_count == 3
+    skipped = result["info"]["preparation"]["skipped_images"]
+    assert skipped[0]["raw_key"] == key
+    assert "image file is truncated" in skipped[0]["error"]
+    assert any(
+        key in message and "Skipping invalid image" in message
+        for message in caplog.messages
+    )
+    storage.read_image.side_effect = BlobNotFoundError("datasets", key)
+    with pytest.raises(BlobNotFoundError):
+        asyncio.run(
+            module.prepare_s3(
+                storage,
+                "datasets",
+                "raw/collection",
+                code_revision="test",
+                skip_invalid_images=True,
+            )
+        )
+
+
+@pytest.mark.parametrize("corruption", ["truncated", "unidentified"])
+def test_resume_relogs_skips_and_never_treats_them_as_completed(
+    intake, tmp_path, monkeypatch, caplog, corruption
+):
+    root, _ = intake
+    storage = collection_storage(root)
+    key = "raw/collection/Avena fatua/other/c.png"
+    storage.objects[key] = (
+        storage.objects[key][:41] if corruption == "truncated" else b"not an image"
+    )
+    monkeypatch.setattr(module, "create_storage", lambda *a, **k: storage)
+    output = tmp_path / "skips"
+    args = cli_args(output) + ["--resume", "--invalid-images", "skip"]
+    module.main(args)
+    first = (output / "index.coco.json").read_bytes()
+    skipped = json.loads(first)["info"]["preparation"]["skipped_images"]
+    assert "0x" not in skipped[0]["error"]
+    storage.read_image.reset_mock()
+    storage.upload_png.reset_mock()
+    caplog.clear()
+    module.main(args)
+    storage.read_image.assert_awaited_once_with("datasets", key)
+    storage.upload_png.assert_not_called()
+    assert (output / "index.coco.json").read_bytes() == first
+    assert any(
+        "Skipping invalid image" in message and key in message
+        for message in caplog.messages
+    )
+    with pytest.raises(OSError, match="c.png"):
+        module.main(cli_args(tmp_path / "strict") + ["--checkpoint-dir", str(output)])
+    assert not (tmp_path / "strict/index.coco.json").exists()
+
+
+def test_resume_replays_conflicting_duplicates_with_the_same_policy(
+    conflicting_collection, tmp_path, monkeypatch, caplog
+):
+    root, _, first_split = conflicting_collection
+    storage = collection_storage(root)
+    monkeypatch.setattr(module, "create_storage", lambda *a, **k: storage)
+    output = tmp_path / "conflicts"
+    args = cli_args(output) + ["--resume", "--duplicate-conflicts", "warn"]
+    module.main(args)
+    expected = (output / "index.coco.json").read_bytes()
+    storage.read_image.reset_mock()
+    storage.upload_png.reset_mock()
+    caplog.clear()
+    module.main(args)
+    assert (output / "index.coco.json").read_bytes() == expected
+    storage.read_image.assert_not_called()
+    storage.upload_png.assert_not_called()
+    warnings = [
+        message
+        for message in caplog.messages
+        if "Bypassing duplicate conflict" in message
+    ]
+    assert len(warnings) == 1
+    if first_split == "train":
+        assert "incoming_split='validation'" in warnings[0]
+
+
+@pytest.mark.parametrize("after_write", [False, True])
+def test_resume_avoids_completed_downloads_and_preserves_duplicate_sources(
+    intake, tmp_path, monkeypatch, caplog, after_write
+):
+    root, _ = intake
+    (root / "Avena fatua/other/copy.png").write_bytes(
+        (root / "Avena fatua/other/c.png").read_bytes()
+    )
+    storage = collection_storage(root)
+    monkeypatch.setattr(module, "create_storage", lambda *a, **k: storage)
+    output = tmp_path / "resumable"
+    args = cli_args(output) + ["--resume"]
+    upload = storage.upload_png.side_effect
+    attempts = 0
+
+    def interrupted_upload(*args, **kwargs):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 2:
+            if after_write:
+                upload(*args, **kwargs)
+            raise BlobStorageError("interrupted upload")
+        return upload(*args, **kwargs)
+
+    storage.upload_png.side_effect = interrupted_upload
+    with pytest.raises(BlobStorageError, match="interrupted upload"):
+        module.main(args)
+    assert not (output / "index.coco.json").exists()
+    first_key = storage.read_image.call_args_list[0].args[1]
+    storage.read_image.reset_mock()
+    storage.upload_png.reset_mock()
+    storage.upload_png.side_effect = upload
+    caplog.set_level(logging.DEBUG, logger="prepare_s3")
+    module.main(args)
+    assert first_key not in {call.args[1] for call in storage.read_image.call_args_list}
+    assert storage.read_image.call_count == 4
+    assert storage.upload_png.call_count == 3
+    actual = json.loads((output / "index.coco.json").read_text())
+    expected = prepare_images(
+        root, tmp_path / "expected", code_revision="test", raw_prefix="raw/collection"
+    )
+    assert actual == expected
+    assert any(
+        record.levelno == logging.DEBUG and "Resuming completed image" in record.message
+        for record in caplog.records
+    )
+
+    # A fresh workflow can read the prior run's checkpoint into its own output.
+    storage.read_image.reset_mock()
+    storage.upload_png.reset_mock()
+    new_output = tmp_path / "new-run"
+    module.main(cli_args(new_output) + ["--checkpoint-dir", str(output)])
+    assert json.loads((new_output / "index.coco.json").read_text()) == expected
+    storage.read_image.assert_not_called()
+    storage.upload_png.assert_not_called()
+
+    # Completed work cannot silently be reused for a different source or policy.
+    for changed in [
+        ["--split", "train"],
+        ["--code-revision", "changed"],
+        ["--endpoint-url", "https://different.example.test"],
+        ["--duplicate-conflicts", "warn"],
+    ]:
+        with pytest.raises(ValueError, match="Checkpoint settings"):
+            module.main(args + changed)
+    storage.objects["raw/collection/Avena fatua/new.png"] = b"changed listing"
+    storage.list_collection_keys.return_value.append(
+        "raw/collection/Avena fatua/new.png"
+    )
+    with pytest.raises(ValueError, match="Checkpoint settings"):
+        module.main(args)
+    storage.read_image.assert_not_called()
 
 
 @pytest.mark.parametrize("corrupt", [False, True])

@@ -36,15 +36,78 @@ The index records hashes of the original bytes read; it does not require
 ingestion-specific hash metadata. Originals must already be in S3 and remain
 unchanged during a run.
 
-Only `index.coco.json` is saved in the output directory, after every upload
-succeeds. On failure, already uploaded PNGs remain in S3; a retry uses the same
-hash keys. It rereads and converts the originals, so this is restartable rather
-than a resumable conversion. Use a new output directory for a changed collection.
+The final `index.coco.json` is saved in the output directory only after every
+non-skipped source succeeds. On failure, already uploaded PNGs remain in S3; a retry uses the same
+hash keys. Without checkpointing it rereads and converts the originals.
+Use a new output directory for a changed collection.
+
+### Resume interrupted S3 preparation
+
+Pass `--resume` to persist progress in `output_root/preparation.sqlite3`.
+Each source is committed only after its PNG upload succeeds (or its identical
+PNG has already been uploaded). Rerun the same command and output directory to
+reconstruct the index from completed records without downloading, converting
+or uploading those sources again. An upload interrupted before its checkpoint
+commit is safely retried using the same hash key.
+
+To resume into a new output directory, pass
+`--checkpoint-dir /work/previous-run/prepared` instead. This reads and extends
+the earlier checkpoint while writing the final index into the new output
+directory. A checkpoint directory is created if absent; logs show its path and
+the number of completed sources. Preserve it on persistent storage, and use only
+one writer at a time.
+
+The endpoint, region, bucket, prefix, source-key listing, code revision, split
+and duplicate policy must match the checkpoint. Mismatches fail explicitly.
+Original object bytes and previously uploaded PNGs **must remain unchanged**:
+resume does not download them to verify their contents. Start with a new
+checkpoint if those bytes change or prepared PNGs are removed.
+Skipped invalid images are not marked completed: every retry rechecks and logs
+them, and strict mode will still reject them. The invalid-image policy may
+therefore change between retries. Checkpointing is for S3 conversion/upload,
+not SAM3 pre-labeling or local collection conversion.
+
+Runs made before checkpointing was enabled cannot recover progress from their
+uploaded PNGs alone; they need one full conversion with checkpointing enabled.
 
 All writers to `png/detection/` must use the PNG byte hash as the filename. The
 uploader requests create-only writes, but some S3-compatible stores ignore that
 condition and upload the same bytes again on retries. It does not read back
 existing PNGs or protect against a writer that puts other bytes under a hash key.
+
+### Audit S3 checksums
+
+After preparation, `audit_s3.py` downloads each indexed PNG and every indexed
+original, including all sources of duplicate PNGs, and compares their SHA-256
+hashes with the index. It also checks that each PNG key matches its hash.
+The audit collects malformed records, missing or unreadable objects and checksum
+mismatches while continuing to check the remaining valid records. It logs each
+issue and fails after completing the checks if any issues were found.
+Only indexed images are checked; invalid images skipped during preparation are
+not audited. This is a point-in-time check, so originals and PNGs must remain
+unchanged afterward. It rereads every indexed object and adds S3 traffic.
+
+The audit atomically writes `checksum-audit.json` beside the input index, even
+when validation finds issues. In Argo this is
+`/workspace/<workflow-name>/prepared/checksum-audit.json`. The report contains
+the bucket, `checked_pngs` and `checked_sources` (objects successfully read
+and hashed, including mismatches), and an `issues` list. Each issue includes
+a code, its location in the index, the object key when available, and a
+message; checksum mismatch messages include expected and actual hashes.
+`status` is `passed` or `failed` when the audit completes. It is `incomplete`
+if the audit was interrupted or could not finish. An interrupted or unexpected
+failure may leave an incomplete report without all the issues found so far;
+check the step logs as well. Each retry replaces the report with its own result.
+
+```bash
+uv run --project mlops/preparation --no-sync python \
+  mlops/preparation/audit_s3.py /work/prepared/index.coco.json \
+  --bucket training-datasets --endpoint-url https://s3.example.test \
+  --region us-east-1
+```
+
+Install the storage group as for S3 preparation; use `--allow-http` only for a
+trusted HTTP endpoint. The audit logs its PNG and source totals on success.
 
 The COCO source records do not create database mappings.
 
@@ -110,6 +173,21 @@ Converted files follow OpenCV's colour handling and do not copy ICC profiles.
 Grayscale TIFFs with alpha, signed pixel values, multi-frame images and TIFF
 samples above 16 bits fail with the filename.
 
+### Opt-in invalid-image skipping
+
+Both conversion commands accept `--invalid-images skip`; the default
+`--invalid-images error` still stops at the first unreadable image.
+Skip mode never enables Pillow's truncated-image recovery or uploads rejected
+image bytes. Each decode/encode failure emits a WARNING containing the source path
+(the full raw key for S3) and error. The final index records these paths and errors
+in `info.preparation.skipped_images`, and the processing summary includes
+`skipped_sources`. Valid images keep their normal hashes and source records.
+An entirely invalid collection still fails without publishing an index.
+
+Read/download/upload failures, duplicate conflicts and unsupported conversion
+policies (such as multi-frame images) remain fatal. Skip mode is not a storage
+error bypass.
+
 PNG names are the SHA-256 of the PNG bytes, so an encoder change can
 rename the PNG for an unchanged raw image.
 
@@ -162,12 +240,14 @@ ambiguous, and conflicting splits are not reconciled. Review these images
 before using the results for training; omit the option to restore strict checks.
 
 The conversion CLIs emit timestamped INFO/WARNING logs to stderr, captured by
-Argo. Logs show source discovery and the selected policy, each image's progress
-and saved/uploaded or reused PNG, and successful processing totals for sources,
-unique PNGs and duplicate sources. Enabling the bypass emits a warning, and
-each conflict logs the PNG hash, both paths, species and splits, and the retained
-values. Existing final summaries remain on stdout. Conversion/storage failures
-still stop the run and retain their traceback.
+Argo. INFO logs show source discovery, the selected policy and processing totals
+for sources, unique PNGs, duplicate sources and skipped sources. Per-image
+processing, saved/uploaded or reused PNGs, and resumed sources are DEBUG logs
+and are not shown at the CLIs' default INFO level. Enabling the bypass emits a
+warning, and each conflict logs the PNG hash, both paths, species and splits,
+and the retained values. Existing final summaries remain on stdout. Failures
+still stop the run and retain their traceback, except decode/encode failures
+explicitly opted into `--invalid-images skip`.
 
 Outputs can be regenerated: a rerun that produces the same bytes succeeds, and a
 run that would change an existing file fails. Use a new output directory when
@@ -301,18 +381,24 @@ the tested merge commit, which can differ from the PR head.
 `mlops/workflows/preparation-workflow-template.yaml` runs three steps:
 
 ```text
-S3 originals -> convert/upload PNGs -> SAM3 reads S3 -> register in FiftyOne
+S3 originals -> convert/upload PNGs -> checksum audit -> SAM3 reads S3 -> register in FiftyOne
 ```
 
-Conversion uses the CPU image. Pre-labeling requests one NVIDIA GPU and uses
-the existing per-node training mutex. Only conversion and pre-labeling receive
-the storage Secret; registration receives the FiftyOne database Secret.
+Conversion and the checksum audit use the CPU image. The audit re-downloads and
+verifies all indexed original and prepared objects before pre-labeling; a
+failure prevents pre-labeling and registration. The audit retries twice on
+failure and starts its checks from the beginning on each attempt. Pre-labeling
+requests one NVIDIA GPU and uses the existing per-node training mutex.
+Conversion, audit and pre-labeling receive the storage Secret; registration
+receives the FiftyOne database Secret.
 
 Use the existing `nachet-training-workspace-pvc` in `argo-workflows`. Keep SAM3
 snapshots under `models/` on that claim. `model-folder` selects a subfolder
 (default `sam3`), mounted read-only at `/model`. Images stay in S3. Each run
 writes COCO files under `/workspace/<workflow-name>/`; remove only that run's
 directory after checking the result. A failed pre-labeling step restarts the batch.
+Conversion always checkpoints onto this PVC, so automatic preparation retries
+reuse completed sources.
 
 Howard's `nachet-preparation-config` ConfigMap sets the cold Ceph endpoint,
 the `nachet-seed-image-dataset` bucket, the region and FiftyOne's media root.
@@ -340,6 +426,17 @@ and apply the updated
 [`preparation-workflow-template.yaml`](../workflows/preparation-workflow-template.yaml).
 An existing image or running container does not acquire the new CLI option
 automatically.
+
+To skip invalid images with warnings and index records, append
+`-p invalid-images=skip`; the workflow defaults to strict `error`.
+To reuse a previous workflow's preparation checkpoint in a new submission,
+append `-p resume-run-id=<previous-workflow-name>`. The default is the current
+workflow name. The new workflow writes its COCO outputs into its own directory
+but reads and extends the selected run's checkpoint. Keep the same conversion
+settings and immutable collection, and do not run both workflows concurrently.
+For a chain of resumed submissions, keep selecting the original checkpoint's
+workflow name. Rebuild/select the updated CPU image and apply the updated
+WorkflowTemplate before using these parameters.
 
 The images default to the `main` tags, as in the training workflows, and the
 workspace defaults to `nachet-training-workspace-pvc`. Override the image

@@ -11,7 +11,7 @@ from pathlib import Path, PurePosixPath
 
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,10 @@ SPLIT_FOLDERS = {
 }
 IMAGE_SUFFIXES = {".tif", ".tiff", ".jpg", ".jpeg", ".png"}
 TIFF_BITS_PER_SAMPLE = 258
+
+
+class ImageConversionError(OSError):
+    """Image bytes could not be decoded or encoded."""
 
 
 def write_new(path: Path, data: bytes) -> None:
@@ -127,8 +131,10 @@ def to_png(raw_bytes: bytes, relative: Path) -> tuple[bytes, int, int]:
     """Apply the conversion policy and return PNG bytes, width and height."""
     try:
         image = Image.open(io.BytesIO(raw_bytes))
+    except UnidentifiedImageError as error:
+        raise ImageConversionError(f"{relative}: cannot identify image file") from error
     except OSError as error:
-        raise OSError(f"{relative}: {error}") from error
+        raise ImageConversionError(f"{relative}: {error}") from error
     with image:
         if image.format not in {"PNG", "TIFF", "JPEG"}:
             raise ValueError(f"Expected PNG, TIFF or JPEG: {relative}")
@@ -166,7 +172,7 @@ def to_png(raw_bytes: bytes, relative: Path) -> tuple[bytes, int, int]:
             if not ok:
                 raise OSError("cannot encode PNG")
         except (OSError, cv2.error) as error:
-            raise OSError(f"{relative}: {error}") from error
+            raise ImageConversionError(f"{relative}: {error}") from error
     return encoded.tobytes(), width, height
 
 
@@ -192,17 +198,30 @@ def add_image(
     }
     if raw_prefix is not None:
         source["raw_key"] = str(raw_prefix / relative.as_posix())
-    image = images.setdefault(
-        key,
+    image = register_image(
+        images,
         {
             "file_name": key,
             "image_sha256": image_sha256,
             "width": width,
             "height": height,
             "split": split,
-            "sources": [],
+            "sources": [source],
         },
+        allow_conflicting_duplicates=allow_conflicting_duplicates,
     )
+    return image, png_bytes
+
+
+def register_image(
+    images: dict, incoming: dict, *, allow_conflicting_duplicates: bool = False
+) -> dict:
+    """Merge a converted or checkpointed source using the same duplicate policy."""
+    source = incoming["sources"][0]
+    species, split = source["species"], incoming["split"]
+    relative = source["original_path"]
+    image_sha256 = incoming["image_sha256"]
+    image = images.setdefault(incoming["file_name"], {**incoming, "sources": []})
     if image["sources"] and (
         image["sources"][0]["species"] != species or image["split"] != split
     ):
@@ -225,13 +244,40 @@ def add_image(
             split,
         )
     image["sources"].append(source)
-    return image, png_bytes
+    return image
 
 
-def coco_index(images: dict, species_names: list[str], code_revision: str) -> dict:
+def skip_image(
+    skipped: list[dict],
+    relative: Path,
+    error: ImageConversionError,
+    raw_prefix: PurePosixPath | None,
+) -> None:
+    record = {"original_path": relative.as_posix(), "error": str(error)}
+    if raw_prefix is not None:
+        record["raw_key"] = str(raw_prefix / relative.as_posix())
+    logger.warning(
+        "Skipping invalid image %s: %s",
+        record.get("raw_key", record["original_path"]),
+        error,
+    )
+    skipped.append(record)
+
+
+def coco_index(
+    images: dict,
+    species_names: list[str],
+    code_revision: str,
+    skipped_images: list[dict] | None = None,
+) -> dict:
     """Assign stable image/category IDs after the complete collection is known."""
+    if not images:
+        raise ValueError("No valid images remain after preparation")
+    preparation: dict = {"code_revision": code_revision}
+    if skipped_images:
+        preparation["skipped_images"] = skipped_images
     return {
-        "info": {"preparation": {"code_revision": code_revision}},
+        "info": {"preparation": preparation},
         "images": [
             {"id": index, **images[key]}
             for index, key in enumerate(sorted(images), start=1)
@@ -252,6 +298,7 @@ def prepare_images(
     split: str | None = None,
     raw_prefix: str | None = None,
     allow_conflicting_duplicates: bool = False,
+    skip_invalid_images: bool = False,
 ) -> dict:
     """Write each image as png/detection/<sha256>.png and return the COCO index."""
     collection = collection.resolve(strict=True)
@@ -270,10 +317,11 @@ def prepare_images(
     if not found:
         raise ValueError(f"No images found in species folders: {collection}")
     logger.info(
-        "Preparing %s: sources=%d duplicate_conflicts=%s",
+        "Preparing %s: sources=%d duplicate_conflicts=%s invalid_images=%s",
         collection,
         len(found),
         "warn" if allow_conflicting_duplicates else "error",
+        "skip" if skip_invalid_images else "error",
     )
     if allow_conflicting_duplicates:
         logger.warning(
@@ -282,36 +330,45 @@ def prepare_images(
         )
         found.sort(key=lambda item: item[0].relative_to(collection).as_posix())
 
-    images = {}
+    images, skipped = {}, []
     for number, (path, species, image_split) in enumerate(found, start=1):
         relative = path.relative_to(collection)
-        logger.info("Processing image %d/%d: %s", number, len(found), relative)
+        logger.debug("Processing image %d/%d: %s", number, len(found), relative)
         path = path.resolve(strict=True)
         if not path.is_relative_to(collection):
             raise ValueError(f"Image escapes the collection: {relative}")
-        image, png_bytes = add_image(
-            images,
-            path.read_bytes(),
-            relative,
-            species=species,
-            split=image_split,
-            raw_prefix=prefix,
-            allow_conflicting_duplicates=allow_conflicting_duplicates,
-        )
+        raw_bytes = path.read_bytes()
+        try:
+            image, png_bytes = add_image(
+                images,
+                raw_bytes,
+                relative,
+                species=species,
+                split=image_split,
+                raw_prefix=prefix,
+                allow_conflicting_duplicates=allow_conflicting_duplicates,
+            )
+        except ImageConversionError as error:
+            if not skip_invalid_images:
+                raise
+            skip_image(skipped, relative, error, prefix)
+            continue
         write_new(output_root / image["file_name"], png_bytes)
-        logger.info(
+        logger.debug(
             "%s PNG %s for %s",
             "Saved" if len(image["sources"]) == 1 else "Reused",
             image["file_name"],
             relative,
         )
+    result = coco_index(images, species_names, code_revision, skipped)
     logger.info(
-        "Image processing complete: sources=%d unique_pngs=%d duplicate_sources=%d",
+        "Image processing complete: sources=%d unique_pngs=%d duplicate_sources=%d skipped_sources=%d",
         len(found),
         len(images),
-        len(found) - len(images),
+        len(found) - len(skipped) - len(images),
+        len(skipped),
     )
-    return coco_index(images, species_names, code_revision)
+    return result
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -339,6 +396,12 @@ def main(argv: list[str] | None = None) -> None:
         default="error",
         help="Temporarily warn on conflicting duplicates, retaining first source species and split",
     )
+    parser.add_argument(
+        "--invalid-images",
+        choices=["error", "skip"],
+        default="error",
+        help="Skip undecodable images with warnings and index records; storage errors still fail",
+    )
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
@@ -351,6 +414,7 @@ def main(argv: list[str] | None = None) -> None:
         split=args.split,
         raw_prefix=args.raw_prefix,
         allow_conflicting_duplicates=args.duplicate_conflicts == "warn",
+        skip_invalid_images=args.invalid_images == "skip",
     )
     save_coco(args.output_root / "index.coco.json", result)
     sources = sum(len(image["sources"]) for image in result["images"])

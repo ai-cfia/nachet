@@ -93,7 +93,7 @@ def test_warn_mode_retains_conflicting_sources_and_logs(
 ):
     root, relatives, first_split = conflicting_collection
     output = tmp_path / "prepared"
-    caplog.set_level(logging.INFO)
+    caplog.set_level(logging.DEBUG, logger="prepare_images")
     result = prepare_images(
         root,
         output,
@@ -129,11 +129,16 @@ def test_warn_mode_retains_conflicting_sources_and_logs(
     ]:
         assert value in conflicts[0]
     assert "incoming_split=" in conflicts[0]
+    for number, relative in enumerate(relatives, 1):
+        assert any(
+            record.levelno == logging.DEBUG
+            and f"Processing image {number}/2" in record.message
+            and relative in record.message
+            for record in caplog.records
+        )
     assert any(
-        "1/2" in message and relatives[0] in message for message in caplog.messages
-    )
-    assert any(
-        "2/2" in message and relatives[1] in message for message in caplog.messages
+        record.levelno == logging.DEBUG and "Saved PNG" in record.message
+        for record in caplog.records
     )
     assert any(
         "sources=2 unique_pngs=1 duplicate_sources=1" in message
@@ -141,7 +146,7 @@ def test_warn_mode_retains_conflicting_sources_and_logs(
     )
 
 
-def test_cli_bypass_emits_progress_to_stderr(intake):
+def test_cli_bypass_emits_summary_and_warnings_to_stderr(intake):
     source, output = intake
     (source / "Zea mays/copy.png").write_bytes(
         (source / "Avena fatua/other/c.png").read_bytes()
@@ -166,7 +171,9 @@ def test_cli_bypass_emits_progress_to_stderr(intake):
     assert sum(len(image["sources"]) for image in result["images"]) == 5
     assert "Prepared 4 images from 5 sources" in completed.stdout
     assert "INFO" in completed.stderr
-    assert "1/5" in completed.stderr
+    assert "Processing image" not in completed.stderr
+    assert "Saved PNG" not in completed.stderr
+    assert "Reused PNG" not in completed.stderr
     assert "WARNING" in completed.stderr
     assert "Bypassing duplicate conflict" in completed.stderr
     assert "sources=5 unique_pngs=4 duplicate_sources=1" in completed.stderr
@@ -276,6 +283,51 @@ def test_corrupt_input_is_named_and_cannot_replace_working_coco(prepare, intake)
     save_coco(output / "index.json", {"annotations": ["human correction"]})
     with pytest.raises(ValueError, match="Refusing to replace"):
         save_coco(output / "index.json", {"annotations": []})
+
+
+def test_truncated_png_skip_is_opt_in_and_logged(intake, caplog):
+    source, output = intake
+    path = source / "Avena fatua/other/c.png"
+    path.write_bytes(path.read_bytes()[:41])
+    with pytest.raises(OSError, match="c.png: image file is truncated"):
+        prepare_images(source, output, code_revision="test")
+    caplog.set_level(logging.INFO)
+    result = prepare_images(
+        source, output, code_revision="test", skip_invalid_images=True
+    )
+    assert len(result["images"]) == 3
+    skipped = result["info"]["preparation"]["skipped_images"]
+    assert skipped[0]["original_path"] == "Avena fatua/other/c.png"
+    assert "image file is truncated" in skipped[0]["error"]
+    assert any(
+        record.levelno == logging.WARNING
+        and "Skipping invalid image" in record.message
+        and "Avena fatua/other/c.png" in record.message
+        and "image file is truncated" in record.message
+        for record in caplog.records
+    )
+    assert any("skipped_sources=1" in message for message in caplog.messages)
+    main(
+        [
+            str(source),
+            str(output),
+            "--code-revision",
+            "test",
+            "--invalid-images",
+            "skip",
+        ]
+    )
+    assert json.loads((output / "index.coco.json").read_text()) == result
+
+
+def test_skip_mode_rejects_an_entirely_invalid_collection(tmp_path):
+    root = tmp_path / "source"
+    (root / "A").mkdir(parents=True)
+    (root / "A/broken.png").write_bytes(b"not an image")
+    with pytest.raises(ValueError, match="No valid images"):
+        prepare_images(
+            root, tmp_path / "out", code_revision="test", skip_invalid_images=True
+        )
 
 
 @pytest.mark.parametrize("mode", ["YCbCr", "LAB"])

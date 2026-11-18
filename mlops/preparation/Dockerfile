@@ -28,7 +28,7 @@ FROM base AS cpu
 RUN uv sync --locked --no-dev --group storage --no-cache
 ENV PATH="/opt/preparation/.venv/bin:$PATH" \
     PYTHONPATH=/opt/preparation
-COPY --from=checks /opt/preparation/prepare_images.py /opt/preparation/prepare_s3.py /opt/preparation/s3_storage.py ./
+COPY --from=checks /opt/preparation/prepare_images.py /opt/preparation/prepare_s3.py /opt/preparation/s3_storage.py /opt/preparation/audit_s3.py ./
 USER 10001:10001
 ENTRYPOINT ["python"]
 
