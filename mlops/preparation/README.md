@@ -270,9 +270,10 @@ the storage Secret; registration receives the FiftyOne database Secret.
 
 Use the existing `nachet-training-workspace-pvc` in `argo-workflows`. Keep SAM3
 snapshots under `models/` on that claim. `model-folder` selects a subfolder
-(default `sam3`), mounted read-only at `/model`. Images stay in S3. Each run
-writes COCO files under `/workspace/<workflow-name>/`; remove only that run's
-directory after checking the result. A failed pre-labeling step restarts the batch.
+(default `sam3_hf_transformers`), mounted read-only at `/model`. Images stay in
+S3. Each run writes COCO files under `/workspace/<workflow-name>/`. Remove only
+that run's directory after checking the result. A failed pre-labeling step
+restarts the batch.
 
 Howard's `nachet-preparation-config` ConfigMap sets the cold Ceph endpoint,
 the `nachet-seed-image-dataset` bucket, the region and FiftyOne's media root.
@@ -288,18 +289,21 @@ Confirm the mount, available workspace capacity and model files before running.
 
 ```bash
 argo submit -n argo-workflows --from workflowtemplate/nachet-preparation \
-  -p code-revision="$CODE_REVISION" -p dataset-name=collection-01-review \
-  -p raw-prefix=raw/collection-01 \
-  -p model-folder=sam3 -p model-revision="$MODEL_REVISION"
+  -p raw-prefix=raw/collection-01
 ```
+
+In the Argo UI, fill in `raw-prefix` and submit. Open the new FiftyOne dataset
+using the workflow name shown in Argo. Each new submission gets its own default
+name. Set `dataset-name` to give it a specific name. FiftyOne registration
+refuses to replace an existing review dataset.
 
 The images default to the `main` tags, as in the training workflows, and the
 workspace defaults to `nachet-training-workspace-pvc`. Override the image
 references with digests to pin them. The supplied image uses `Sam3Predictor`.
 The preparation function already accepts an injected predictor; another
-architecture needs its own adapter and runtime dependencies. The code and model
-revisions are operator-supplied labels; they are not checked against the image
-or weights.
+architecture needs its own adapter and runtime dependencies. `model-folder`,
+`code-revision` and `model-revision` can still be supplied as overrides. Both
+revision labels default to `unrecorded`. Supplied labels are recorded as entered.
 
 The workflow ends at registration for human review. Reviewed export, release
 publication and training use their own components.

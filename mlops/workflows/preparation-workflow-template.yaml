@@ -12,6 +12,11 @@ spec:
   serviceAccountName: argo-workflow
   arguments:
     parameters:
+      - name: raw-prefix
+        description: One collection below raw/ in the dataset bucket. This is the only required input.
+      - name: dataset-name
+        description: Defaults to the Argo workflow name. Existing FiftyOne datasets are protected.
+        value: ""
       - name: cpu-image
         description: CPU preparation image. Defaults to the main build; use a digest to pin it.
         value: ghcr.io/ai-cfia/nachet-preparation-cpu:main
@@ -22,16 +27,14 @@ spec:
         description: FiftyOne registration image. Defaults to the main build; use a digest to pin it.
         value: ghcr.io/ai-cfia/nachet-preparation-registration:main
       - name: code-revision
-        description: Source revision label for these images. Required; not verified automatically.
-      - name: dataset-name
-        description: New FiftyOne review dataset; existing names are refused.
-      - name: raw-prefix
-        description: One collection below raw/ in the dataset bucket.
+        description: Optional operator label for the source revision. Defaults to unrecorded.
+        value: unrecorded
       - name: model-folder
-        description: Model folder below models/ on the workspace. Defaults to sam3; must match the runtime's predictor.
-        value: sam3
+        description: Model folder below models/ on the workspace. Defaults to sam3_hf_transformers.
+        value: sam3_hf_transformers
       - name: model-revision
-        description: Revision label for the selected model files. Required; not verified automatically.
+        description: Optional operator label for the model files. Defaults to unrecorded.
+        value: unrecorded
       - name: gpu-node
         description: GPU node for SAM3. Defaults to ai-lab-1.
         value: ai-lab-1
@@ -170,7 +173,7 @@ spec:
         image: "{{workflow.parameters.registration-image}}"
         command: [python, /opt/preparation/register_fiftyone.py]
         args:
-          - "{{workflow.parameters.dataset-name}}"
+          - "{{=sprig.default(workflow.name, workflow.parameters['dataset-name'])}}"
           - /workspace/{{workflow.name}}/prepared/draft.coco.json
           - --server-media-root
           - "$(PREPARATION_SERVER_MEDIA_ROOT)"
