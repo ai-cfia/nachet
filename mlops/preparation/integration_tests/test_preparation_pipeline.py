@@ -11,8 +11,10 @@ import pytest
 import yaml
 from blob.exceptions import BlobStorageError
 from PIL import Image
+from semver import Version
 
 import s3_storage
+from cleanup_checkpoints import cleanup_checkpoints
 from prelabel import Prediction
 
 
@@ -152,7 +154,18 @@ def test_workflow_checksum_audit_runs_before_prelabel(
         "audit-checksums",
         "prelabel",
         "register-for-review",
+        "approve-checkpoint-cleanup",
+        "cleanup-checkpoints",
     ]
+    _, prelabel_args = preparation_command(
+        tmp_path,
+        "new-run",
+        step="prelabel",
+        **{"model-revision": "test-model", "resume-run-id": "original-run"},
+    )
+    assert prelabel_args[prelabel_args.index("--checkpoint-dir") + 1] == str(
+        tmp_path / "original-run" / "prepared" / "prelabel-checkpoints"
+    )
     content = io.BytesIO()
     Image.new("RGB", (4, 3), "red").save(content, format="PNG")
     key = "raw/collection/A/seed.png"
@@ -182,6 +195,156 @@ def test_workflow_checksum_audit_runs_before_prelabel(
     report = json.loads(report_path.read_text())
     assert report["status"] == "failed"
     assert {issue["key"] for issue in report["issues"]} == {key, png_key}
+
+
+def test_workflow_compatible_resume_preserves_provenance_and_cleanup_isolation(
+    tmp_path, s3_provider, monkeypatch
+):
+    for number in range(2):
+        content = io.BytesIO()
+        Image.new("RGB", (4, 3), (number * 100, 10, 20)).save(content, format="PNG")
+        s3_provider.objects["datasets", f"raw/collection/A/{number}.png"] = (
+            content.getvalue()
+        )
+    prepare, first_prepare = preparation_command(
+        tmp_path, "first-run", **{"code-revision": "revision-a"}
+    )
+    audit, first_audit = preparation_command(
+        tmp_path, "first-run", step="audit-checksums"
+    )
+    prelabel, first_prelabel = preparation_command(
+        tmp_path,
+        "first-run",
+        step="prelabel",
+        **{"code-revision": "revision-a", "model-revision": "weights-a"},
+    )
+    storage = s3_provider.storage
+    reader = AsyncMock(wraps=storage.read_image)
+    monkeypatch.setattr(storage, "read_image", reader)
+    for module in (prepare, audit, s3_storage):
+        monkeypatch.setattr(module, "create_storage", lambda *a, **k: storage)
+    for module in (prepare, prelabel):
+        monkeypatch.setattr(module, "project_version", lambda: Version.parse("0.2.0"))
+
+    calls = []
+
+    def interrupt(image):
+        calls.append(image.size)
+        if len(calls) == 2:
+            raise RuntimeError("interrupted inference")
+        return Prediction([[1, 1, 3, 3]])
+
+    monkeypatch.setattr(prelabel, "Sam3Predictor", lambda *args: interrupt)
+    prepare.main(first_prepare)
+    audit.main(first_audit)
+    with pytest.raises(RuntimeError, match="interrupted inference"):
+        prelabel.main(first_prelabel)
+
+    options = {
+        "resume-run-id": "first-run",
+        "code-revision": "revision-b",
+        "model-revision": "weights-a",
+    }
+    for module in (prepare, prelabel):
+        monkeypatch.setattr(module, "project_version", lambda: Version.parse("0.2.1"))
+    calls.clear()
+    monkeypatch.setattr(
+        prelabel,
+        "Sam3Predictor",
+        lambda *args: (
+            lambda image: calls.append(image.size) or Prediction([[1, 1, 3, 3]])
+        ),
+    )
+    _, next_prepare = preparation_command(tmp_path, "second-run", **options)
+    _, next_audit = preparation_command(
+        tmp_path, "second-run", step="audit-checksums", **options
+    )
+    _, next_prelabel = preparation_command(
+        tmp_path, "second-run", step="prelabel", **options
+    )
+    reader.reset_mock()
+    s3_provider.client.put_object.reset_mock()
+    prepare.main(next_prepare)
+    reader.assert_not_awaited()
+    s3_provider.client.put_object.assert_not_called()
+    audit.main(next_audit)
+    assert reader.await_count == 4
+    reader.reset_mock()
+    prelabel.main(next_prelabel)
+    assert len(calls) == 1
+    assert reader.await_count == 1
+
+    prepared = tmp_path / "second-run" / "prepared"
+    result = json.loads((prepared / "draft.coco.json").read_text())
+    assert result["info"]["prelabel"]["model_identity"] == "sam3"
+    assert {
+        (image["prelabel_project_version"], image["prelabel_code_revision"])
+        for image in result["images"]
+    } == {("0.2.0", "revision-a"), ("0.2.1", "revision-b")}
+    assert all(
+        source["preparation"]
+        == {"project_version": "0.2.0", "code_revision": "revision-a"}
+        for image in result["images"]
+        for source in image["sources"]
+    )
+    assert json.loads((prepared / "checksum-audit.json").read_text())["status"] == (
+        "passed"
+    )
+    first_root = tmp_path / "first-run" / "prepared"
+    shared = {
+        path: path.read_bytes()
+        for name in ("preparation-checkpoints", "prelabel-checkpoints")
+        for path in (first_root / name).rglob("*")
+        if path.is_file()
+    }
+    objects = dict(s3_provider.objects)
+    assert len(shared) == 4
+    assert cleanup_checkpoints(tmp_path, "second-run") == 0
+    assert all(path.read_bytes() == data for path, data in shared.items())
+    assert cleanup_checkpoints(tmp_path, "first-run") == 4
+    assert all(not path.exists() for path in shared)
+    assert (first_root / "index.coco.json").is_file()
+    assert (first_root / "checksum-audit.json").is_file()
+    assert (prepared / "draft.coco.json").is_file()
+    assert s3_provider.objects == objects
+
+
+def test_cleanup_workflows_require_approval_and_target_only_the_selected_run():
+    workflows = Path(__file__).resolve().parents[2] / "workflows"
+    preparation = yaml.safe_load(
+        (workflows / "preparation-workflow-template.yaml").read_text()
+    )["spec"]
+    templates = {template["name"]: template for template in preparation["templates"]}
+    steps = templates["prepare-for-review"]["steps"]
+    assert [step[0]["template"] for step in steps[-3:]] == [
+        "register-for-review",
+        "approve-checkpoint-cleanup",
+        "cleanup-checkpoints",
+    ]
+    assert templates["approve-checkpoint-cleanup"]["suspend"] == {}
+    for step in steps[-2:]:
+        parameters = step[0]["arguments"]["parameters"]
+        assert parameters == [{"name": "run-name", "value": "{{workflow.name}}"}]
+    container = templates["cleanup-checkpoints"]["container"]
+    assert container["args"] == ["/workspace", "{{inputs.parameters.run-name}}"]
+    assert "envFrom" not in container
+    assert not next(
+        mount for mount in container["volumeMounts"] if mount["name"] == "workspace"
+    ).get("readOnly", False)
+
+    standalone = yaml.safe_load(
+        (workflows / "preparation-cleanup-workflow-template.yaml").read_text()
+    )["spec"]
+    cleanup_steps = standalone["templates"][0]["steps"]
+    assert [step[0]["templateRef"]["template"] for step in cleanup_steps] == [
+        "approve-checkpoint-cleanup",
+        "cleanup-checkpoints",
+    ]
+    for step in cleanup_steps:
+        assert step[0]["templateRef"]["name"] == "nachet-preparation"
+        assert step[0]["arguments"]["parameters"] == [
+            {"name": "run-name", "value": "{{workflow.parameters.run-name}}"}
+        ]
 
 
 def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
@@ -279,7 +442,7 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         module = importlib.import_module(Path(container["command"][1]).stem)
         module.main(args)
 
-    for step in templates["prepare-for-review"]["steps"]:
+    for step in templates["prepare-for-review"]["steps"][:4]:
         run_step(step[0]["template"])
     dataset = fiftyone.load_dataset(review_name)
     assert dataset.info["prelabel"]["model_revision"] == "synthetic-weights"
@@ -294,6 +457,11 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         png = s3_provider.objects["datasets", sample.object_key]
         assert sample.image_sha256 == hashlib.sha256(png).hexdigest()
         assert sample.filepath == "/fiftyone-preparation/" + sample.object_key
+        assert source["preparation"]["code_revision"] == "test-revision"
+        assert sample.prelabel_code_revision == "test-revision"
+        assert (
+            sample.prelabel_project_version == source["preparation"]["project_version"]
+        )
         assert len(sample.draft_boxes.detections) == 1
     before = dict(s3_provider.objects)
     for name in ("prepare-images", "prelabel"):
@@ -302,12 +470,22 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
     workspace_files = {
         p.name for p in (tmp_path / "workspace").rglob("*") if p.is_file()
     }
-    assert workspace_files == {
+    assert {
         "index.coco.json",
         "draft.coco.json",
         "checksum-audit.json",
         "preparation.sqlite3",
-    }
+    } <= workspace_files
+    assert (
+        len(
+            list(
+                (tmp_path / "workspace").rglob(
+                    "prelabel-checkpoints/releases/*/*/*.json"
+                )
+            )
+        )
+        == 3
+    )
     with pytest.raises(ValueError, match="already exists"):
         run_step("register-for-review")
     assert len(fiftyone.load_dataset(review_name)) == 3

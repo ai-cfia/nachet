@@ -48,6 +48,8 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
         dataset.add_sample_field("split", fo.StringField)
         dataset.add_sample_field("prelabel_reason", fo.StringField)
         dataset.add_sample_field("prelabel_prompt", fo.StringField)
+        dataset.add_sample_field("prelabel_project_version", fo.StringField)
+        dataset.add_sample_field("prelabel_code_revision", fo.StringField)
         for sample in dataset.iter_samples(autosave=True):
             record = records[sample.coco_id]
             sources = record["sources"]
@@ -59,6 +61,8 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
             sample["prelabel_status"] = record.get("prelabel_status", "unannotated")
             sample["prelabel_reason"] = record.get("prelabel_reason")
             sample["prelabel_prompt"] = record.get("prelabel_prompt")
+            sample["prelabel_project_version"] = record.get("prelabel_project_version")
+            sample["prelabel_code_revision"] = record.get("prelabel_code_revision")
         dataset.info.update(coco.get("info") or {})
         dataset.save()
         dataset.persistent = True

@@ -65,6 +65,29 @@ def test_s3_rgb16_png_is_flagged_without_lossy_inference(s3_media):
     predictor.assert_not_called()
 
 
+def test_s3_checkpoints_are_scoped_to_the_storage_identity(s3_media, tmp_path):
+    coco, _, provider = s3_media
+    calls = []
+    options = {
+        "checkpoint_dir": tmp_path / "checkpoints",
+        "predictor_identity": "model-a",
+        "code_revision": "test",
+        "storage_identity": "endpoint-a",
+    }
+    predict = lambda image: calls.append(image.size) or module.Prediction([])
+    module.prelabel_s3(coco, provider.storage, "datasets", predict, **options)
+    assert len(calls) == 3
+    calls.clear()
+    provider.client.get_object.reset_mock()
+    module.prelabel_s3(coco, provider.storage, "datasets", predict, **options)
+    assert calls == []
+    provider.client.get_object.assert_not_called()
+    options["storage_identity"] = "endpoint-b"
+    module.prelabel_s3(coco, provider.storage, "datasets", predict, **options)
+    assert len(calls) == 3
+    assert provider.client.get_object.call_count == len(coco["images"])
+
+
 @pytest.mark.parametrize("problem", ["key", "bytes", "missing", "dimensions"])
 def test_bad_s3_input_fails_before_inference(s3_media, problem):
     coco, _, provider = s3_media
