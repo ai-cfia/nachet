@@ -124,10 +124,16 @@ meaning is not inferred from folder names. With `--raw-prefix`, each source
 also gets `raw_key`, the expected S3 key under `raw/`. The command does not
 upload files or check whether those keys exist in S3.
 
-Identical PNGs share one image record and keep every source path. Identical
-PNGs with different species or different splits fail, which stops an exact
-duplicate from appearing in both training and validation. Different
-photographs of the same specimen are not detected.
+Preparation skips filenames containing `ColorChecker` as a standalone word,
+regardless of case. The workflow logs each skipped path and saves it under
+`info.preparation.skipped_colorchecker` in the COCO index.
+
+Identical PNGs with the same species and split share one image record and keep
+every source path. If the species or split differs, preparation excludes every
+copy from the index and continues with the remaining images. The workflow logs
+the affected paths and records the PNG hashes, sources and splits under
+`info.preparation.conflicting_duplicates`. A PNG uploaded before a conflict
+was found can remain in storage. The run fails if no usable images remain.
 
 Outputs can be regenerated: a rerun that produces the same bytes succeeds, and a
 run that would change an existing file fails. Use a new output directory when

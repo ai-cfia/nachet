@@ -5,6 +5,8 @@ import hashlib
 import io
 import json
 import os
+import re
+import sys
 import tempfile
 from pathlib import Path, PurePosixPath
 
@@ -23,6 +25,7 @@ SPLIT_FOLDERS = {
     "testing": "test",
 }
 IMAGE_SUFFIXES = {".tif", ".tiff", ".jpg", ".jpeg", ".png"}
+COLORCHECKER_STEM = re.compile(r"(?<![a-z0-9])colorchecker(?![a-z0-9])", re.IGNORECASE)
 TIFF_BITS_PER_SAMPLE = 258
 
 
@@ -167,16 +170,25 @@ def to_png(raw_bytes: bytes, relative: Path) -> tuple[bytes, int, int]:
     return encoded.tobytes(), width, height
 
 
+def skip_colorchecker(relative: Path, source_path: str, skipped: list[str]) -> bool:
+    if not COLORCHECKER_STEM.search(relative.stem):
+        return False
+    skipped.append(source_path)
+    print(f"Skipping ColorChecker calibration photo: {source_path!r}", file=sys.stderr)
+    return True
+
+
 def add_image(
     images: dict,
+    conflicts: dict[str, list[dict]],
     raw_bytes: bytes,
     relative: Path,
     *,
     species: str,
     split: str | None,
     raw_prefix: PurePosixPath | None,
-) -> tuple[dict, bytes]:
-    """Convert one image, retain its source record and return the PNG bytes."""
+) -> tuple[dict | None, bytes]:
+    """Convert one image and exclude its entire hash group if sources disagree."""
     png_bytes, width, height = to_png(raw_bytes, relative)
     image_sha256 = hashlib.sha256(png_bytes).hexdigest()
     key = f"png/detection/{image_sha256}.png"
@@ -188,6 +200,27 @@ def add_image(
     }
     if raw_prefix is not None:
         source["raw_key"] = str(raw_prefix / relative.as_posix())
+
+    excluded = []
+    prior = images.get(key)
+    if prior is not None and (
+        prior["sources"][0]["species"] != species or prior["split"] != split
+    ):
+        excluded = [{**record, "split": prior["split"]} for record in prior["sources"]]
+        conflicts[image_sha256] = []
+        del images[key]
+    if image_sha256 in conflicts:
+        excluded.append({**source, "split": split})
+        conflicts[image_sha256].extend(excluded)
+        for record in excluded:
+            path = record.get("raw_key", record["original_path"])
+            print(
+                f"Skipping conflicting PNG {image_sha256}: {path!r} "
+                f"(species={record['species']!r}, split={record['split']!r})",
+                file=sys.stderr,
+            )
+        return None, png_bytes
+
     image = images.setdefault(
         key,
         {
@@ -199,18 +232,38 @@ def add_image(
             "sources": [],
         },
     )
-    if image["sources"] and (
-        image["sources"][0]["species"] != species or image["split"] != split
-    ):
-        raise ValueError(f"Identical PNG has conflicting species or splits: {relative}")
     image["sources"].append(source)
     return image, png_bytes
 
 
-def coco_index(images: dict, species_names: list[str], code_revision: str) -> dict:
+def coco_index(
+    images: dict,
+    species_names: list[str],
+    code_revision: str,
+    *,
+    skipped_colorchecker: list[str],
+    conflicts: dict[str, list[dict]],
+) -> dict:
     """Assign stable image/category IDs after the complete collection is known."""
+    preparation = {"code_revision": code_revision}
+    if skipped_colorchecker:
+        print(
+            f"Skipped {len(skipped_colorchecker)} ColorChecker calibration photos",
+            file=sys.stderr,
+        )
+        preparation["skipped_colorchecker"] = skipped_colorchecker
+    if conflicts:
+        preparation["conflicting_duplicates"] = [
+            {"image_sha256": digest, "sources": conflicts[digest]}
+            for digest in sorted(conflicts)
+        ]
+    if not images:
+        raise ValueError(
+            "No usable seed images remain after excluding ColorChecker photos "
+            "and conflicting duplicates"
+        )
     return {
-        "info": {"preparation": {"code_revision": code_revision}},
+        "info": {"preparation": preparation},
         "images": [
             {"id": index, **images[key]}
             for index, key in enumerate(sorted(images), start=1)
@@ -248,21 +301,34 @@ def prepare_images(
         raise ValueError(f"No images found in species folders: {collection}")
 
     images = {}
+    skipped_colorchecker = []
+    conflicts = {}
     for path, species, image_split in found:
         relative = path.relative_to(collection)
         path = path.resolve(strict=True)
         if not path.is_relative_to(collection):
             raise ValueError(f"Image escapes the collection: {relative}")
+        source_path = (prefix / relative if prefix is not None else relative).as_posix()
+        if skip_colorchecker(relative, source_path, skipped_colorchecker):
+            continue
         image, png_bytes = add_image(
             images,
+            conflicts,
             path.read_bytes(),
             relative,
             species=species,
             split=image_split,
             raw_prefix=prefix,
         )
-        write_new(output_root / image["file_name"], png_bytes)
-    return coco_index(images, species_names, code_revision)
+        if image is not None:
+            write_new(output_root / image["file_name"], png_bytes)
+    return coco_index(
+        images,
+        species_names,
+        code_revision,
+        skipped_colorchecker=skipped_colorchecker,
+        conflicts=conflicts,
+    )
 
 
 def main(argv: list[str] | None = None) -> None:

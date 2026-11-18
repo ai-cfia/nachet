@@ -26,6 +26,17 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         path = original / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         Image.new("RGB", (12, 10), (index * 60, 20, 30)).save(path)
+
+    calibration = "Training/Avena fatua/tray_COLORCHECKER_1.tiff"
+    conflicting = [
+        "Training/Avena fatua/repeated.tiff",
+        "Validation/Zea mays/repeated.tiff",
+    ]
+    for relative in [calibration, *conflicting]:
+        path = original / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (12, 10), "green").save(path)
+
     cold_endpoint = "http://cold-storage.example.test"
 
     def s3_client(service, *, endpoint_url, region_name, **kwargs):
@@ -103,6 +114,11 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         run_step(step[0]["template"])
     dataset = fiftyone.load_dataset(review_name)
     assert dataset.info["prelabel"]["model_revision"] == "synthetic-weights"
+    report = dataset.info["preparation"]
+    assert report["skipped_colorchecker"] == ["raw/collection/" + calibration]
+    [conflict] = report["conflicting_duplicates"]
+    assert [source["original_path"] for source in conflict["sources"]] == conflicting
+    assert conflict["image_sha256"] not in dataset.values("image_sha256")
     assert len(dataset) == 3
     assert set(dataset.values("split")) == {"train", "validation", None}
     for sample in dataset:

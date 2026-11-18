@@ -132,6 +132,41 @@ def test_explicit_split_matches_local_input(intake, tmp_path):
     assert actual == expected
 
 
+def test_preparation_skips_and_reports_colorchecker_calibration(
+    intake, tmp_path, monkeypatch, capsys
+):
+    root, output = intake
+    calibration = root / "Avena fatua/ColorChecker - calibration.tiff"
+    repeated = root / "Zea mays/tray_COLORCHECKER_1.tiff"
+    Image.new("RGB", (3, 2), "green").save(calibration)
+    repeated.write_bytes(calibration.read_bytes())
+    seed = root / "Avena fatua/batch-01/tray-a/a.tiff"
+    seed.rename(seed.with_name("seed-ColorCheckerboard.tiff"))
+
+    storage = collection_storage(root)
+    monkeypatch.setattr(module, "create_storage", Mock(return_value=storage))
+    module.main(cli_args(output))
+    actual = json.loads((output / "index.coco.json").read_text())
+    skips = [
+        f"raw/collection/{p.relative_to(root).as_posix()}"
+        for p in (calibration, repeated)
+    ]
+    assert actual["info"]["preparation"]["skipped_colorchecker"] == skips
+    logged = capsys.readouterr().err
+    assert "Skipped 2 ColorChecker calibration photos" in logged
+    assert all(key in logged for key in skips)
+    assert skips[0] in storage.objects and skips[1] in storage.objects
+    downloaded = {call.args[1] for call in storage.read_image.call_args_list}
+    assert not downloaded.intersection(skips)
+    assert any(key.endswith("/seed-ColorCheckerboard.tiff") for key in downloaded)
+    assert len(actual["images"]) == storage.upload_png.call_count == 4
+
+    local = prepare_images(
+        root, tmp_path / "local", code_revision="test", raw_prefix="raw/collection"
+    )
+    assert local == actual
+
+
 def test_explicit_split_cannot_override_s3_split_folders(automatic_collection):
     storage = collection_storage(automatic_collection[0])
     with pytest.raises(ValueError, match="Cannot set a split"):
@@ -200,20 +235,50 @@ def test_invalid_layout_fails_before_reading_images(keys, message):
     storage.read_image.assert_not_called()
 
 
-def test_duplicate_png_in_different_splits_is_rejected(automatic_collection):
-    root, _ = automatic_collection
-    (root / "Validation/C/seed.tiff").write_bytes(
-        (root / "Training/C/seed.tiff").read_bytes()
+def test_workflow_excludes_every_copy_of_a_cross_split_duplicate(
+    automatic_collection, tmp_path, monkeypatch, capsys
+):
+    root, output = automatic_collection
+    copies = [
+        "Training/C/seed.tiff",
+        "Training/C/zz.tiff",
+        "Validation/C/seed.tiff",
+        "Validation/C/zz.tiff",
+    ]
+    raw = (root / copies[0]).read_bytes()
+    for path in copies[1:]:
+        (root / path).write_bytes(raw)
+
+    storage = collection_storage(root)
+    monkeypatch.setattr(module, "create_storage", Mock(return_value=storage))
+    module.main(cli_args(output))
+    actual = json.loads((output / "index.coco.json").read_text())
+    assert len(actual["images"]) == 4
+    [conflict] = actual["info"]["preparation"]["conflicting_duplicates"]
+    sources = conflict["sources"]
+    assert [s["original_path"] for s in sources] == copies
+    assert [s["split"] for s in sources] == [
+        "train",
+        "train",
+        "validation",
+        "validation",
+    ]
+    assert all(s["species"] == "C" for s in sources)
+    assert all(s["raw_key"] == "raw/collection/" + p for s, p in zip(sources, copies))
+    digest = conflict["image_sha256"]
+    assert (
+        digest
+        == hashlib.sha256(storage.objects[f"png/detection/{digest}.png"]).hexdigest()
     )
-    with pytest.raises(ValueError, match="conflicting species or splits"):
-        asyncio.run(
-            module.prepare_s3(
-                collection_storage(root),
-                "datasets",
-                "raw/collection",
-                code_revision="test",
-            )
-        )
+    assert all(image["image_sha256"] != digest for image in actual["images"])
+    assert all(storage.objects["raw/collection/" + p] == raw for p in copies)
+    logged = capsys.readouterr().err
+    assert digest in logged and all(path in logged for path in copies)
+
+    local = prepare_images(
+        root, tmp_path / "local", code_revision="test", raw_prefix="raw/collection"
+    )
+    assert local == actual
 
 
 @pytest.mark.parametrize("filename", ["seed.tiff", "seed; (1), #50%+&résumé%2F.tiff"])

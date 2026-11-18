@@ -75,13 +75,24 @@ def test_identical_pngs_share_bytes_but_keep_both_source_paths(prepare, intake):
     }
 
 
-def test_duplicate_png_cannot_have_different_species(prepare, intake):
+def test_duplicate_png_with_different_species_excludes_both_sources(prepare, intake):
     source, _ = intake
-    (source / "Zea mays/copy.png").write_bytes(
-        (source / "Avena fatua/other/c.png").read_bytes()
-    )
-    with pytest.raises(ValueError, match="conflicting species or splits"):
-        prepare()
+    original = "Avena fatua/other/c.png"
+    copy = "Zea mays/copy.png"
+    data = (source / original).read_bytes()
+    (source / copy).write_bytes(data)
+    result = prepare()
+    assert len(result["images"]) == 3
+    [conflict] = result["info"]["preparation"]["conflicting_duplicates"]
+    assert conflict["image_sha256"] == hashlib.sha256(data).hexdigest()
+    assert conflict["image_sha256"] not in {
+        image["image_sha256"] for image in result["images"]
+    }
+    assert [(s["original_path"], s["species"]) for s in conflict["sources"]] == [
+        (original, "Avena fatua"),
+        (copy, "Zea mays"),
+    ]
+    assert (source / original).read_bytes() == (source / copy).read_bytes() == data
 
 
 def test_unknown_split_stays_unset_and_s3_is_optional(intake):
@@ -426,18 +437,21 @@ def test_collection_cli_needs_no_split_mapping(automatic_collection, layout):
     )
 
 
-def test_automatic_layout_rejects_an_image_in_training_and_validation(
-    automatic_collection,
-):
-    root, output = automatic_collection
-    (root / "Validation/C/seed.tiff").write_bytes(
-        (root / "Training/C/seed.tiff").read_bytes()
-    )
-    with pytest.raises(
-        ValueError, match="conflicting species or splits: Validation/C/seed.tiff"
-    ):
+def test_cli_does_not_write_an_index_when_every_image_is_excluded(tmp_path, capsys):
+    root, output = tmp_path / "raw", tmp_path / "output"
+    paths = [
+        root / "Training/C/seed.png",
+        root / "Validation/C/seed.png",
+        root / "Training/C/ColorChecker.png",
+    ]
+    for path in paths:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (6, 5)).save(path)
+    with pytest.raises(ValueError, match="No usable seed images remain"):
         main([str(root), str(output), "--code-revision", "test"])
     assert not (output / "index.coco.json").exists()
+    logged = capsys.readouterr().err
+    assert all(path.relative_to(root).as_posix() in logged for path in paths)
 
 
 def test_global_split_cannot_override_discovered_split_folders(automatic_collection):

@@ -11,6 +11,7 @@ from prepare_images import (
     add_image,
     coco_index,
     save_coco,
+    skip_colorchecker,
 )
 from s3_storage import create_storage
 
@@ -106,19 +107,31 @@ async def prepare_s3(
     if not found:
         raise ValueError(f"No images found in species folders: s3://{bucket}/{prefix}")
     images = {}
+    skipped_colorchecker = []
+    conflicts = {}
     for relative, species, image_split in found:
-        data = await storage.read_image(bucket, prefix + relative.as_posix())
+        key = prefix + relative.as_posix()
+        if skip_colorchecker(relative, key, skipped_colorchecker):
+            continue
+        data = await storage.read_image(bucket, key)
         image, png_bytes = add_image(
             images,
+            conflicts,
             data,
             relative,
             species=species,
             split=image_split,
             raw_prefix=PurePosixPath(prefix),
         )
-        if len(image["sources"]) == 1:
+        if image is not None and len(image["sources"]) == 1:
             await storage.upload_png(bucket, image["file_name"], png_bytes)
-    return coco_index(images, species_names, code_revision)
+    return coco_index(
+        images,
+        species_names,
+        code_revision,
+        skipped_colorchecker=skipped_colorchecker,
+        conflicts=conflicts,
+    )
 
 
 def main(argv: list[str] | None = None) -> None:
