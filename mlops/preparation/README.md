@@ -480,6 +480,52 @@ and deploy the updated WorkflowTemplates before using these parameters. The
 updated registration image preserves the checkpoint producer fields in
 FiftyOne.
 
+To start only pre-labeling from an earlier run, set `PREVIOUS_RUN` to that
+workflow's name and select the `prelabel` entrypoint:
+
+```bash
+argo submit -n argo-workflows --from workflowtemplate/nachet-preparation \
+  --entrypoint prelabel -p resume-run-id="$PREVIOUS_RUN" \
+  -p code-revision="$CODE_REVISION" -p model-revision="$MODEL_REVISION" \
+  -p raw-prefix=raw/collection-01 -p dataset-name=collection-01-review
+```
+
+The index is read from
+`/workspace/<previous-workflow-name>/prepared/index.coco.json`; the draft is
+written under the new workflow's directory. No audit, registration or cleanup
+step runs with this entrypoint. First verify that the previous audit passed for
+that exact index and bucket, and that the index, originals and prepared PNGs
+have not changed since. The report does not bind itself to the index hash, and
+the pre-label step does not verify the report.
+
+By default, the index and pre-label checkpoints both come from `resume-run-id`.
+Use the same model folder and revision to reuse its checkpoints. If the index
+is in a different run from the shared checkpoints, set `INDEX_RUN` to that
+workflow's name and pass `-p index-run-id="$INDEX_RUN"` as well. In the full
+workflow, pre-labeling always uses the current run's freshly audited index
+regardless of this input.
+
+To start only registration from an existing draft, set `DRAFT_RUN` to the name
+of the workflow that wrote it and select the `register-for-review` entrypoint:
+
+```bash
+argo submit -n argo-workflows --from workflowtemplate/nachet-preparation \
+  --entrypoint register-for-review -p draft-run-id="$DRAFT_RUN" \
+  -p dataset-name=collection-01-review -p raw-prefix=raw/collection-01 \
+  -p code-revision="$CODE_REVISION" -p model-revision="$MODEL_REVISION"
+```
+
+The draft is read from
+`/workspace/<draft-workflow-name>/prepared/draft.coco.json`. For a direct
+pre-labeling run, use that new workflow's name, not necessarily the earlier
+checkpoint or index workflow. `draft-run-id` defaults to `resume-run-id`. The
+full workflow always registers its own draft regardless of this input.
+
+This entrypoint does not run preparation, audit, pre-labeling or cleanup.
+Registration starts a new import rather than resuming individual samples and
+still refuses an existing dataset name. A killed import can leave a temporary
+dataset, as described above under "Register for review".
+
 After registration, the workflow suspends before checkpoint cleanup. Resuming
 the approval step authorizes irreversible cleanup of **only the current
 workflow's** checkpoints; it does not delete COCO files, audit reports, models,

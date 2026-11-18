@@ -36,8 +36,14 @@ spec:
         value: error
         enum: [error, skip]
       - name: resume-run-id
-        description: Workflow whose preparation and pre-label checkpoints to extend. Defaults to this run; originals must remain unchanged.
+        description: Workflow whose checkpoints to extend and whose index or draft to use in direct steps. Defaults to this run; originals must remain unchanged.
         value: "{{workflow.name}}"
+      - name: index-run-id
+        description: Workflow containing the prepared index when pre-labeling directly. Defaults to resume-run-id.
+        value: "{{workflow.parameters.resume-run-id}}"
+      - name: draft-run-id
+        description: Workflow containing the draft when registering directly. Defaults to resume-run-id.
+        value: "{{workflow.parameters.resume-run-id}}"
       - name: model-folder
         description: Model folder below models/ on the workspace. Defaults to sam3; must match the runtime's predictor.
         value: sam3
@@ -72,8 +78,16 @@ spec:
             template: audit-checksums
         - - name: prelabel
             template: prelabel
+            arguments:
+              parameters:
+                - name: index-run-id
+                  value: "{{workflow.name}}"
         - - name: register-for-review
             template: register-for-review
+            arguments:
+              parameters:
+                - name: draft-run-id
+                  value: "{{workflow.name}}"
         - - name: approve-current-checkpoint-cleanup
             template: approve-checkpoint-cleanup
             arguments:
@@ -216,6 +230,10 @@ spec:
             mountPath: /tmp
 
     - name: prelabel
+      inputs:
+        parameters:
+          - name: index-run-id
+            description: Workflow containing the prepared index; defaults to resume-run-id for direct pre-labeling.
       retryStrategy:
         limit: "2"
         retryPolicy: OnFailure
@@ -228,7 +246,7 @@ spec:
         image: "{{workflow.parameters.sam3-image}}"
         command: [python, /opt/preparation/prelabel.py]
         args:
-          - /workspace/{{workflow.name}}/prepared/index.coco.json
+          - /workspace/{{inputs.parameters.index-run-id}}/prepared/index.coco.json
           - "s3://$(PREPARATION_BUCKET)"
           - /workspace/{{workflow.name}}/prepared/draft.coco.json
           - --endpoint-url
@@ -280,12 +298,16 @@ spec:
             mountPath: /tmp
 
     - name: register-for-review
+      inputs:
+        parameters:
+          - name: draft-run-id
+            description: Workflow containing the draft; defaults to resume-run-id for direct registration.
       container:
         image: "{{workflow.parameters.registration-image}}"
         command: [python, /opt/preparation/register_fiftyone.py]
         args:
           - "{{workflow.parameters.dataset-name}}"
-          - /workspace/{{workflow.name}}/prepared/draft.coco.json
+          - /workspace/{{inputs.parameters.draft-run-id}}/prepared/draft.coco.json
           - --server-media-root
           - "$(PREPARATION_SERVER_MEDIA_ROOT)"
         env:
