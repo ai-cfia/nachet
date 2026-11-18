@@ -1,4 +1,4 @@
-"""Explicit registry configuration for the standalone MLOps runtime."""
+"""Registry and smoke storage configuration for the standalone MLOps runtime."""
 
 import os
 import re
@@ -8,6 +8,26 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 
 from .errors import ConfigurationError
+
+
+def smoke_bucket_from_environment() -> str | None:
+    """Read the bucket from the Vault-backed smoke root setting."""
+    root = os.environ.get("DATASET_SMOKE_ROOT")
+    if root is None:
+        return None
+    bucket, _, prefix = root.partition("/")
+    if prefix != "smoke" or not re.fullmatch(
+        r"[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]", bucket
+    ):
+        raise ConfigurationError("DATASET_SMOKE_ROOT must be <bucket>/smoke")
+    return bucket
+
+
+def is_dedicated_smoke_bucket(bucket: str) -> bool:
+    """Recognize the supported standalone smoke bucket names."""
+    return bucket == "nachet-dataset-smoke" or bucket.startswith(
+        "nachet-dataset-smoke-"
+    )
 
 
 @dataclass(frozen=True)

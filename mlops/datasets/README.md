@@ -432,10 +432,12 @@ above. Provide a Kubernetes Secret named `nachet-dataset-release` containing:
 
 Create a **separate** `nachet-dataset-release-smoke` Secret with
 `DATASET_DATABASE_URL` targeting a PostgreSQL test database and storage settings
-for the existing `nachet-seed-image-dataset` Ceph bucket. The storage credentials
-need object read, write, overwrite, and delete permissions under `smoke/`. Dedicated
-buckets named `nachet-dataset-smoke` or `nachet-dataset-smoke-<suffix>` can also be
-selected. The PostgreSQL role needs permission to create schemas in the test
+for the shared smoke bucket. The `DATASET_SMOKE_ROOT` setting uses
+`<bucket>/smoke`. Howard syncs it from `TEST_ROOT_DIR` in the Vault smoke entry.
+The storage credentials need object read, write, overwrite, and delete
+permissions under `smoke/`. Leave `container` blank to use the configured bucket,
+or set it to `nachet-dataset-smoke` or `nachet-dataset-smoke-<suffix>` for a
+dedicated bucket. The PostgreSQL role needs permission to create schemas in the test
 database. The workflow derives its PostgreSQL schema
 from its UUID and runs migrations before seeding.
 
@@ -452,19 +454,18 @@ argo submit --namespace argo-workflows \
 
 argo submit --namespace argo-workflows \
   --from workflowtemplate/nachet-dataset-release-smoke \
-  --parameter 'image=ghcr.io/ai-cfia/nachet-dataset-release:<PR-number>' \
-  --parameter container=nachet-seed-image-dataset
+  --parameter 'image=ghcr.io/ai-cfia/nachet-dataset-release:<PR-number>'
 ```
 
 `credentials-secret` can select another provisioned Secret. Keep smoke credentials
 restricted to the test registry and the smoke storage location. Check the verify
 report and cleanup pod after publication. Stopping a run allows its exit
 handler to run; terminating it skips exit handlers. If cleanup cannot complete,
-use the **same image, Secret environment, container and workflow UUID** to retry:
+use the **same image, Secret environment, and workflow UUID** to retry. If
+the original run used a dedicated bucket, pass the same `--container` value.
 
 ```bash
 python /opt/workflows/scripts/dataset_release_smoke.py \
-  --container nachet-seed-image-dataset \
   --name dataset-smoke-<workflow-UUID> cleanup
 ```
 

@@ -41,9 +41,17 @@ class DatasetReleaseWorkflowTests(unittest.TestCase):
         self.assertEqual(
             set(parameters), {item["name"] for item in release["inputs"]["parameters"]}
         )
-        pin = steps[2]["arguments"]["parameters"][0]
         self.assertEqual(
-            pin["value"], "{{steps.release.outputs.parameters.manifest-sha256}}"
+            parameters["container"],
+            "{{=jsonpath(steps.seed.outputs.result, '$.container')}}",
+        )
+        verify_parameters = {
+            item["name"]: item["value"] for item in steps[2]["arguments"]["parameters"]
+        }
+        self.assertEqual(verify_parameters["container"], parameters["container"])
+        self.assertEqual(
+            verify_parameters["manifest-sha256"],
+            "{{steps.release.outputs.parameters.manifest-sha256}}",
         )
         self.assertIn(
             "--expected-manifest-sha256", templates["verify"]["container"]["args"]
@@ -112,7 +120,7 @@ class DatasetReleaseWorkflowTests(unittest.TestCase):
             for item in self.smoke["arguments"]["parameters"]
         }
         self.assertEqual(defaults["credentials-secret"], "nachet-dataset-release-smoke")
-        self.assertEqual(defaults["container"], "nachet-seed-image-dataset")
+        self.assertEqual(defaults["container"], "")
 
     def test_referenced_templates_have_the_required_volumes_and_nonroot_runtime(self):
         for spec in (self.release, self.smoke):

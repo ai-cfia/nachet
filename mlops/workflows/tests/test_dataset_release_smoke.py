@@ -117,7 +117,8 @@ async def test_shared_bucket_smoke_leaves_production_and_other_runs_untouched(
     smoke_env, monkeypatch
 ):
     controller, objects, sessions = smoke_env
-    bucket = "nachet-seed-image-dataset"
+    bucket = "vault-smoke-fixtures"
+    monkeypatch.setenv("DATASET_SMOKE_ROOT", f"{bucket}/smoke")
     workflow_uid = uuid4()
     name = f"dataset-smoke-{workflow_uid}"
     monkeypatch.setenv("DATASET_DATABASE_URL", str(sessions.kw["bind"].url))
@@ -135,9 +136,10 @@ async def test_shared_bucket_smoke_leaves_production_and_other_runs_untouched(
     }
     objects.update(unrelated)
 
-    await smoke.run_command(Namespace(container=bucket, name=name, action="seed"))
+    seeded = await smoke.run_command(Namespace(container="", name=name, action="seed"))
+    assert seeded["container"] == bucket
     release_storage = BlobStorageAdapter.from_environment()
-    release = DatasetController(release_storage, sessions, bucket)
+    release = DatasetController(release_storage, sessions, seeded["container"])
     try:
         published = await release.publish_release(name, smoke.VERSION)
     finally:
@@ -159,22 +161,30 @@ async def test_shared_bucket_smoke_leaves_production_and_other_runs_untouched(
     assert all(objects[key] == data for key, data in unrelated.items())
 
     monkeypatch.delenv("DATASET_SMOKE_RUN_ID")
-    await smoke.run_command(Namespace(container=bucket, name=name, action="cleanup"))
-    await smoke.run_command(Namespace(container=bucket, name=name, action="cleanup"))
+    await smoke.run_command(Namespace(container="", name=name, action="cleanup"))
+    await smoke.run_command(Namespace(container="", name=name, action="cleanup"))
     assert objects == unrelated
 
 
 @pytest.mark.asyncio
 async def test_shared_bucket_seed_rejects_a_template_without_the_run_id(monkeypatch):
     monkeypatch.delenv("DATASET_SMOKE_RUN_ID", raising=False)
+    monkeypatch.setenv("DATASET_SMOKE_ROOT", "vault-smoke-fixtures/smoke")
     with pytest.raises(RuntimeError, match="updated workflow template"):
         await smoke.run_command(
             Namespace(
-                container="nachet-seed-image-dataset",
+                container="",
                 name=f"dataset-smoke-{uuid4()}",
                 action="seed",
             )
         )
+
+
+@pytest.mark.parametrize("root", ["", "vault-fixtures", "vault-fixtures/production"])
+def test_smoke_requires_the_smoke_root_prefix(monkeypatch, root):
+    monkeypatch.setenv("DATASET_SMOKE_ROOT", root)
+    with pytest.raises(ValueError, match="<bucket>/smoke"):
+        smoke.validate_target(f"dataset-smoke-{uuid4()}", "")
 
 
 @pytest.mark.asyncio

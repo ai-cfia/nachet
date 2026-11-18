@@ -9,8 +9,7 @@ from uuid import UUID
 
 from .errors import ConfigurationError
 from .providers import create_dataset_blob_storage_client
-
-SHARED_SMOKE_BUCKET = "nachet-seed-image-dataset"
+from .settings import is_dedicated_smoke_bucket, smoke_bucket_from_environment
 
 
 class BlobStorage(Protocol):
@@ -94,11 +93,16 @@ class BlobStorageAdapter:
     """
 
     def __init__(
-        self, provider: DatasetBlobProvider, *, smoke_run_id: UUID | None = None
+        self,
+        provider: DatasetBlobProvider,
+        *,
+        smoke_run_id: UUID | None = None,
+        smoke_bucket: str | None = None,
     ):
         """Wrap an existing provider for use by the async dataset controller."""
         self.provider = provider
         self._smoke_run_id = smoke_run_id
+        self._smoke_bucket = smoke_bucket
 
     @classmethod
     def from_environment(
@@ -117,6 +121,9 @@ class BlobStorageAdapter:
                 raise ConfigurationError(
                     "DATASET_SMOKE_RUN_ID must be a UUID"
                 ) from None
+        smoke_bucket = (
+            smoke_bucket_from_environment() if smoke_run_id is not None else None
+        )
         provider = os.environ.get("DATASET_BLOB_PROVIDER", "s3").strip().lower()
         if provider == "s3":
             config = s3_configuration()
@@ -132,12 +139,19 @@ class BlobStorageAdapter:
         return cls(
             create_dataset_blob_storage_client(provider, config),
             smoke_run_id=smoke_run_id,
+            smoke_bucket=smoke_bucket,
         )
 
     def _storage_key(self, container: str, name: str) -> str:
         """Confine shared-bucket smoke objects to the current workflow's prefix."""
-        if self._smoke_run_id is None or container != SHARED_SMOKE_BUCKET:
+        if self._smoke_run_id is None:
             return name
+        if container != self._smoke_bucket:
+            if is_dedicated_smoke_bucket(container):
+                return name
+            raise ConfigurationError(
+                "Container does not match the configured smoke bucket"
+            )
         if "\\" in name or any(part in ("", ".", "..") for part in name.split("/")):
             raise ConfigurationError("Smoke object names must be relative object keys")
         return f"smoke/{self._smoke_run_id}/{name}"

@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 from sqlalchemy.schema import CreateSchema, DropSchema
 
 from dataset_release.contract import ImageMembership, ReleaseDefinition, sha256
-from dataset_release.errors import ReleaseConflict, ReleaseNotReady
+from dataset_release.errors import ConfigurationError, ReleaseConflict, ReleaseNotReady
 from dataset_release.reader import ReleasedDataset
 from dataset_release.registry import (
     DatasetCrop,
@@ -29,8 +29,12 @@ from dataset_release.registry import (
     registry_engine,
 )
 from dataset_release.release import DatasetController
-from dataset_release.settings import Settings
-from dataset_release.storage import SHARED_SMOKE_BUCKET, BlobStorageAdapter
+from dataset_release.settings import (
+    Settings,
+    is_dedicated_smoke_bucket,
+    smoke_bucket_from_environment,
+)
+from dataset_release.storage import BlobStorageAdapter
 from utility.crop import crop_image, decode_png
 
 VERSION = "v1"
@@ -49,18 +53,22 @@ def check(condition: bool, message: str) -> None:
         raise SmokeCheckError(message)
 
 
-def validate_target(name: str, container: str) -> None:
-    """Limit fixture writes and cleanup to workflow UUIDs and smoke containers."""
+def validate_target(name: str, container: str) -> str:
+    """Resolve a smoke bucket and limit fixture operations to workflow UUIDs."""
     workflow_uid = name.removeprefix(NAME_PREFIX)
     if not name.startswith(NAME_PREFIX) or str(UUID(workflow_uid)) != workflow_uid:
         raise ValueError("Smoke name must be dataset-smoke-<canonical workflow UUID>")
-    if container not in (
-        SHARED_SMOKE_BUCKET,
-        "nachet-dataset-smoke",
-    ) and not container.startswith("nachet-dataset-smoke-"):
-        raise ValueError(
-            f"Use {SHARED_SMOKE_BUCKET} or a dedicated nachet-dataset-smoke bucket"
+    shared_bucket = smoke_bucket_from_environment()
+    target = container or shared_bucket
+    if target is None:
+        raise ConfigurationError(
+            "Set DATASET_SMOKE_ROOT or select a dedicated smoke bucket"
         )
+    if target != shared_bucket and not is_dedicated_smoke_bucket(target):
+        raise ConfigurationError(
+            "Select the configured smoke bucket or a dedicated nachet-dataset-smoke bucket"
+        )
+    return target
 
 
 def build_fixture(name: str) -> tuple[dict, list[ImageMembership], dict[str, bytes]]:
@@ -173,7 +181,13 @@ async def seed_fixture(controller: DatasetController, name: str) -> dict:
         await controller.storage.upload_blob(
             controller.container, missing, blobs[missing], overwrite=False
         )
-    return {"name": name, "version": VERSION, "status": "staging", "images": 4}
+    return {
+        "name": name,
+        "version": VERSION,
+        "container": controller.container,
+        "status": "staging",
+        "images": 4,
+    }
 
 
 async def verify_fixture(
@@ -344,10 +358,10 @@ async def create_smoke_registry(engine: AsyncEngine, schema: str) -> None:
 
 async def run_command(args: argparse.Namespace) -> dict:
     """Use the same environment and real providers as the normal release CLI."""
-    validate_target(args.name, args.container)
+    container = validate_target(args.name, args.container)
     workflow_uid = UUID(args.name.removeprefix(NAME_PREFIX))
     if (
-        args.container == SHARED_SMOKE_BUCKET
+        container == smoke_bucket_from_environment()
         and args.action != "cleanup"
         and os.environ.get("DATASET_SMOKE_RUN_ID") != str(workflow_uid)
     ):
@@ -373,9 +387,7 @@ async def run_command(args: argparse.Namespace) -> dict:
         storage = await asyncio.to_thread(
             BlobStorageAdapter.from_environment, smoke_run_id=workflow_uid
         )
-        controller = DatasetController(
-            storage, async_sessionmaker(engine), args.container
-        )
+        controller = DatasetController(storage, async_sessionmaker(engine), container)
         if args.action == "seed":
             return await seed_fixture(controller, args.name)
         if args.action == "verify":
@@ -395,7 +407,9 @@ async def run_command(args: argparse.Namespace) -> dict:
 def main() -> None:
     """Run a smoke stage without logging credentials or connection strings."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--container", required=True)
+    parser.add_argument(
+        "--container", default="", help="Override the Vault smoke bucket"
+    )
     parser.add_argument("--name", required=True)
     commands = parser.add_subparsers(dest="action", required=True)
     commands.add_parser("seed")
@@ -405,7 +419,7 @@ def main() -> None:
     args = parser.parse_args()
     try:
         result = asyncio.run(run_command(args))
-    except SmokeCheckError as error:
+    except (ConfigurationError, SmokeCheckError) as error:
         raise SystemExit(f"Dataset smoke failed: {error}") from None
     except Exception as error:  # noqa: BLE001 - redact unexpected SDK/SQL errors
         raise SystemExit(f"Dataset smoke failed: {type(error).__name__}") from None
