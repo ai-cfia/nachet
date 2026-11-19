@@ -13,6 +13,7 @@ from typing import Literal, TypedDict
 
 from blob.exceptions import BlobNotFoundError, BlobStorageError
 
+from progress_logging import log_progress
 from s3_storage import create_storage
 
 logger = logging.getLogger(__name__)
@@ -178,7 +179,9 @@ async def audit_s3(storage, bucket: str, index: object) -> AuditReport:
                 and isinstance(raw_digest, str)
             ):
                 checks.append(("source", source_location, raw_key, raw_digest))
-    for kind, location, key, expected in checks:
+    for kind, location, key, expected in log_progress(
+        checks, logger, stage="S3 checksum audit", total=len(checks)
+    ):
         try:
             data = await storage.read_image(bucket, key)
         except BlobStorageError as error:

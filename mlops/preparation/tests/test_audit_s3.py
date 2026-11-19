@@ -8,6 +8,7 @@ import pytest
 from blob.exceptions import BlobStorageError
 
 import audit_s3
+import progress_logging
 
 
 @pytest.fixture
@@ -71,6 +72,23 @@ def test_missing_object_is_reported(indexed_objects, s3_provider):
         asyncio.run(audit_s3.audit_s3(s3_provider.storage, "datasets", indexed_objects))
     assert error.value.report["issues"][0]["code"] == "missing_object"
     assert error.value.report["issues"][0]["key"] == key
+
+
+def test_failed_read_advances_progress(
+    indexed_objects, s3_provider, monkeypatch, caplog
+):
+    key = indexed_objects["images"][0]["file_name"]
+    del s3_provider.objects["datasets", key]
+    times = iter([0, 300, 301])
+    monkeypatch.setattr(progress_logging, "monotonic", times.__next__)
+    caplog.set_level(logging.INFO, logger=audit_s3.__name__)
+
+    with pytest.raises(audit_s3.AuditFailure) as error:
+        asyncio.run(audit_s3.audit_s3(s3_provider.storage, "datasets", indexed_objects))
+
+    assert "S3 checksum audit progress: 1/3" in caplog.messages
+    assert error.value.report["checked_pngs"] == 0
+    assert error.value.report["checked_sources"] == 2
 
 
 @pytest.mark.parametrize(

@@ -2,9 +2,14 @@
 
 import argparse
 import json
+import logging
 import os
 from pathlib import Path, PurePosixPath
 from uuid import uuid4
+
+from progress_logging import log_progress
+
+logger = logging.getLogger(__name__)
 
 
 def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
@@ -19,6 +24,7 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
     if not server_root.is_absolute():
         raise ValueError("server_media_root must be an absolute server-visible path")
     coco = json.loads(labels.read_text())
+    image_count = len(coco["images"])
     records, paths = {}, {}
     for record in coco["images"]:
         key = PurePosixPath(record["file_name"])
@@ -32,6 +38,7 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
     # A killed import must not reserve the requested review-dataset name.
     dataset = fo.Dataset(name="preparation-import-" + uuid4().hex, persistent=False)
     try:
+        logger.info("Importing %d COCO images into FiftyOne for %s", image_count, name)
         dataset.add_dir(
             dataset_type=fo.types.COCODetectionDataset,
             data_path=paths,
@@ -40,7 +47,7 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
             include_id=True,
             include_annotation_id=True,
         )
-        if len(dataset) != len(coco["images"]):
+        if len(dataset) != image_count:
             raise ValueError("FiftyOne did not import every COCO image")
         dataset.add_sample_field("image_sha256", fo.StringField)
         # Declare nullable fields even when the first sample has no value.
@@ -50,7 +57,12 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
         dataset.add_sample_field("prelabel_prompt", fo.StringField)
         dataset.add_sample_field("prelabel_project_version", fo.StringField)
         dataset.add_sample_field("prelabel_code_revision", fo.StringField)
-        for sample in dataset.iter_samples(autosave=True):
+        for sample in log_progress(
+            dataset.iter_samples(autosave=True),
+            logger,
+            stage="FiftyOne sample metadata",
+            total=image_count,
+        ):
             record = records[sample.coco_id]
             sources = record["sources"]
             sample["sources"] = sources
@@ -83,6 +95,10 @@ def main(argv: list[str] | None = None) -> None:
         raise ValueError(
             "FIFTYONE_DATABASE_URI is required; refusing an implicit local database"
         )
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
     register_fiftyone(args.name, args.labels, args.server_media_root)
     print(f"Registered new persistent FiftyOne dataset: {args.name}")
 
