@@ -10,6 +10,8 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+from blob.exceptions import PermissionError as BlobPermissionError
+from botocore.exceptions import ClientError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.schema import CreateSchema, DropSchema
@@ -114,7 +116,7 @@ async def test_smoke_recovers_reads_rejects_bad_data_and_cleans_only_its_fixture
 
 @pytest.mark.asyncio
 async def test_shared_bucket_smoke_leaves_production_and_other_runs_untouched(
-    smoke_env, monkeypatch
+    smoke_env, blob_provider, monkeypatch
 ):
     controller, objects, sessions = smoke_env
     bucket = "vault-smoke-fixtures"
@@ -135,6 +137,24 @@ async def test_shared_bucket_smoke_leaves_production_and_other_runs_untouched(
         (bucket, f"smoke/{uuid4()}/fixture.png"): b"other run",
     }
     objects.update(unrelated)
+    if blob_provider.kind == "s3":
+        client = blob_provider.client
+        get_object = client.get_object.side_effect
+
+        def denied_missing_read(*, Bucket, Key):
+            if (Bucket, Key) not in objects:
+                raise ClientError({"Error": {"Code": "AccessDenied"}}, "GetObject")
+            return get_object(Bucket=Bucket, Key=Key)
+
+        def list_objects(*, Bucket, Prefix, MaxKeys):
+            matches = sum(
+                container == Bucket and key.startswith(Prefix)
+                for container, key in objects
+            )
+            return {"KeyCount": min(MaxKeys, matches)}
+
+        client.get_object.side_effect = denied_missing_read
+        client.list_objects_v2.side_effect = list_objects
 
     seeded = await smoke.run_command(Namespace(container="", name=name, action="seed"))
     assert seeded["container"] == bucket
@@ -164,6 +184,27 @@ async def test_shared_bucket_smoke_leaves_production_and_other_runs_untouched(
     await smoke.run_command(Namespace(container="", name=name, action="cleanup"))
     await smoke.run_command(Namespace(container="", name=name, action="cleanup"))
     assert objects == unrelated
+    if blob_provider.kind == "s3":
+        missing = next(reversed(smoke.build_fixture(name)[2]))
+        client.list_objects_v2.assert_called_once_with(
+            Bucket=bucket, Prefix=f"smoke/{workflow_uid}/{missing}", MaxKeys=1
+        )
+        client.head_bucket.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("blob_provider", ["s3"], indirect=True)
+async def test_seed_propagates_read_denial_for_a_different_fixture(
+    smoke_env, blob_provider
+):
+    controller, _, _ = smoke_env
+    client = blob_provider.client
+    client.get_object.side_effect = ClientError(
+        {"Error": {"Code": "AccessDenied"}}, "GetObject"
+    )
+    with pytest.raises(BlobPermissionError):
+        await smoke.seed_fixture(controller, f"dataset-smoke-{uuid4()}")
+    client.list_objects_v2.assert_not_called()
 
 
 @pytest.mark.asyncio

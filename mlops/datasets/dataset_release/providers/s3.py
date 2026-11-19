@@ -9,6 +9,7 @@ from blob.exceptions import (
     BlobNotFoundError,
     InvalidConfigurationError,
 )
+from blob.exceptions import PermissionError as BlobPermissionError
 from blob.models import UploadResult
 from blob.s3.client import S3ConfigurationError
 from blob.s3.operations.blob_operations import BlobOperations
@@ -263,8 +264,15 @@ class DatasetBlobOperations(BlobOperations):
         try:
             response = self._client.get_object(**get_params)  # type: ignore[arg-type]
         except ClientError as error:
-            if error.response.get("Error", {}).get("Code") == "404":
+            code = error.response.get("Error", {}).get("Code")
+            if code == "404":
                 raise BlobNotFoundError(container, name) from error
+            if code in ("AccessDenied", "403"):
+                raise BlobPermissionError(
+                    "download blob",
+                    "S3 resource",
+                    details={"container": container, "key": name},
+                ) from error
             raise
 
         # Read all data from the StreamingBody
@@ -308,6 +316,22 @@ class DatasetS3BlobStorage(S3BlobStorage):
         """Reuse all common operations except dataset upload and download."""
         super()._initialize_operations()
         self._blob_ops = DatasetBlobOperations(self._s3_client)
+
+    @ErrorHandler.handle_service_errors("delete fixture")
+    async def delete_fixture(self, container: str, key: str) -> bool:
+        """Delete the exact fixture key, including on cleanup retries."""
+        ValidationHelper.validate_container_name(container)
+        ValidationHelper.validate_blob_name(key)
+        self._s3_client.delete_object(Bucket=container, Key=key)
+        return True
+
+    @ErrorHandler.handle_service_errors("list fixture key")
+    async def fixture_is_absent(self, container: str, key: str) -> bool:
+        """Confirm absence with a list request scoped to the fixture key."""
+        result = self._s3_client.list_objects_v2(
+            Bucket=container, Prefix=key, MaxKeys=1
+        )
+        return result.get("KeyCount") == 0 and not result.get("IsTruncated")
 
     def close(self) -> None:
         """Release the dataset provider's SDK connection pool."""
