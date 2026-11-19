@@ -44,9 +44,6 @@ spec:
       - name: draft-run-id
         description: Workflow containing the draft when registering directly. Defaults to resume-run-id.
         value: "{{workflow.parameters.resume-run-id}}"
-      - name: model-folder
-        description: Model folder below models/ on the workspace. Defaults to sam3; must match the runtime's predictor.
-        value: sam3
       - name: model-revision
         description: Revision label for the selected model files. Required; not verified automatically.
       - name: gpu-node
@@ -54,7 +51,7 @@ spec:
         value: ai-lab-1
         enum: [ai-lab-1, ai-lab-2, ai-lab-3]
       - name: workspace-pvc
-        description: RWX workspace for COCO files and model folders. Defaults to nachet-training-workspace-pvc.
+        description: RWX workspace for COCO files and checkpoints. Defaults to nachet-training-workspace-pvc.
         value: nachet-training-workspace-pvc
   securityContext:
     runAsNonRoot: true
@@ -265,11 +262,11 @@ spec:
           - --region
           - "$(PREPARATION_REGION)"
           - --model-path
-          - /model
+          - /workspace/{{workflow.name}}/models/sam3_hf_transformers
+          - --model-source
+          - "s3://$(MODEL_BUCKET)/base/sam3_hf_transformers"
           - --model-revision
           - "{{workflow.parameters.model-revision}}"
-          - --model-identity
-          - "{{workflow.parameters.model-folder}}"
           - --code-revision
           - "{{workflow.parameters.code-revision}}"
           - --device
@@ -277,6 +274,9 @@ spec:
           - --checkpoint-dir
           - /workspace/{{workflow.parameters.resume-run-id}}/prepared/prelabel-checkpoints
         env:
+          - name: MODEL_BUCKET
+            valueFrom:
+              configMapKeyRef: {name: nachet-preparation-config, key: model-bucket}
           - name: PREPARATION_BUCKET
             valueFrom:
               configMapKeyRef: {name: nachet-preparation-config, key: bucket}
@@ -300,10 +300,6 @@ spec:
         volumeMounts:
           - name: workspace
             mountPath: /workspace
-          - name: workspace
-            mountPath: /model
-            subPath: "models/{{workflow.parameters.model-folder}}"
-            readOnly: true
           - name: tmp
             mountPath: /tmp
 

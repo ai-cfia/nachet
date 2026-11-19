@@ -11,6 +11,7 @@ import math
 import os
 import re
 import tempfile
+from contextlib import ExitStack
 from pathlib import Path
 from typing import NamedTuple
 from urllib.parse import urlsplit
@@ -480,11 +481,17 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("index", type=Path)
     parser.add_argument("media_root", help="Local media directory or s3://<bucket>")
     parser.add_argument("output", type=Path)
-    parser.add_argument("--model-path", required=True, type=Path)
+    parser.add_argument(
+        "--model-path", required=True, type=Path, help="Local model directory"
+    )
+    parser.add_argument(
+        "--model-source",
+        help="S3 snapshot URI (s3://<bucket>/<prefix>) to download into --model-path",
+    )
     parser.add_argument(
         "--model-revision",
         required=True,
-        help="Operator-provided revision label for the local weights",
+        help="Operator-provided revision label for the model weights",
     )
     parser.add_argument(
         "--model-identity",
@@ -518,40 +525,70 @@ def main(argv: list[str] | None = None) -> None:
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
     source = urlsplit(args.media_root)
-    storage = None
-    if source.scheme == "s3":
-        if (
-            not source.netloc
-            or source.path not in ("", "/")
-            or source.query
-            or source.fragment
-        ):
-            parser.error("S3 media root must be s3://<bucket> without a key prefix")
+    model_source = (
+        urlsplit(args.model_source) if args.model_source is not None else None
+    )
+    if model_source is not None and (
+        model_source.scheme != "s3"
+        or not model_source.netloc
+        or not model_source.path.strip("/")
+        or model_source.query
+        or model_source.fragment
+    ):
+        parser.error("--model-source must be s3://<bucket>/<prefix>")
+    if source.scheme == "s3" and (
+        not source.netloc
+        or source.path not in ("", "/")
+        or source.query
+        or source.fragment
+    ):
+        parser.error("S3 media root must be s3://<bucket> without a key prefix")
+    uses_s3 = source.scheme == "s3" or model_source is not None
+    if uses_s3:
         if not args.endpoint_url or not args.region:
             parser.error("S3 input requires --endpoint-url and --region")
-        from s3_storage import create_storage
-
-        try:
-            storage = create_storage(
-                args.endpoint_url, args.region, allow_http=args.allow_http
-            )
-        except ValueError as error:
-            parser.error(str(error))
     elif args.endpoint_url or args.region or args.allow_http:
-        parser.error("S3 options require an s3://<bucket> media root")
-    try:
-        predictor = Sam3Predictor(args.model_path, args.device)
+        parser.error("S3 options require an S3 media root or --model-source")
+
+    with ExitStack() as resources:
+        storage = None
+        if uses_s3:
+            from s3_storage import create_storage
+
+            try:
+                storage = create_storage(
+                    args.endpoint_url, args.region, allow_http=args.allow_http
+                )
+            except ValueError as error:
+                parser.error(str(error))
+            resources.callback(storage.close)
+
         coco = json.loads(args.index.read_text())
-        predictor_identity = json.dumps(
-            {
-                "model_path": str(args.model_path),
-                "model_identity": args.model_identity or str(args.model_path),
-                "model_revision": args.model_revision,
-                "device": args.device,
-            },
-            sort_keys=True,
-        )
-        if storage is not None:
+        model_identity = args.model_source or str(args.model_path)
+        identity = {
+            "model_path": model_identity,
+            "model_identity": args.model_identity or model_identity,
+            "model_revision": args.model_revision,
+            "device": args.device,
+        }
+        storage_config = {"endpoint": args.endpoint_url, "region": args.region}
+        if model_source is not None:
+            prefix = model_source.path.strip("/") + "/"
+            snapshot_identity = json.dumps(
+                {
+                    **storage_config,
+                    "source": args.model_source,
+                    "revision": args.model_revision,
+                },
+                sort_keys=True,
+            )
+            storage.stage_model(
+                model_source.netloc, prefix, args.model_path, snapshot_identity
+            )
+            identity["model_storage"] = storage_config
+        predictor = Sam3Predictor(args.model_path, args.device)
+        predictor_identity = json.dumps(identity, sort_keys=True)
+        if source.scheme == "s3":
             result = prelabel_s3(
                 coco,
                 storage,
@@ -561,10 +598,7 @@ def main(argv: list[str] | None = None) -> None:
                 checkpoint_dir=args.checkpoint_dir,
                 predictor_identity=predictor_identity,
                 code_revision=args.code_revision,
-                storage_identity=json.dumps(
-                    {"endpoint": args.endpoint_url, "region": args.region},
-                    sort_keys=True,
-                ),
+                storage_identity=json.dumps(storage_config, sort_keys=True),
             )
         else:
             result = prelabel(
@@ -576,9 +610,6 @@ def main(argv: list[str] | None = None) -> None:
                 predictor_identity=predictor_identity,
                 code_revision=args.code_revision,
             )
-    finally:
-        if storage is not None:
-            storage.close()
     result["info"]["prelabel"] = {
         "model_path": str(args.model_path),
         "model_revision": args.model_revision,
@@ -586,6 +617,8 @@ def main(argv: list[str] | None = None) -> None:
         "device": args.device,
         "precision": "bf16" if args.device == "cuda" else "fp32",
     }
+    if args.model_source is not None:
+        result["info"]["prelabel"]["model_source"] = args.model_source
     if args.model_identity is not None:
         result["info"]["prelabel"]["model_identity"] = args.model_identity
     save_coco(args.output, result)
