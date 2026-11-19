@@ -330,3 +330,23 @@ def test_report_cannot_overwrite_input_index(tmp_path):
             ]
         )
     assert index.read_text() == '{"images": []}'
+
+
+def test_explicit_report_cannot_overwrite_input_index(tmp_path):
+    index = tmp_path / "index.coco.json"
+    index.write_text('{"images": []}')
+    with pytest.raises(SystemExit):
+        audit_s3.main(
+            [
+                str(index),
+                "--report-path",
+                str(index),
+                "--bucket",
+                "datasets",
+                "--endpoint-url",
+                "https://storage.example.test",
+                "--region",
+                "test",
+            ]
+        )
+    assert index.read_text() == '{"images": []}'

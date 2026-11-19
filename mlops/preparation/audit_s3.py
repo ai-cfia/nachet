@@ -226,12 +226,17 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--endpoint-url", required=True)
     parser.add_argument("--region", required=True)
     parser.add_argument("--allow-http", action="store_true")
+    parser.add_argument(
+        "--report-path",
+        type=Path,
+        help="Audit report location (defaults to checksum-audit.json beside the index)",
+    )
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
-    report_path = args.index.with_name("checksum-audit.json")
+    report_path = args.report_path or args.index.with_name("checksum-audit.json")
     if report_path.resolve() == args.index.resolve():
         parser.error("Index and checksum audit report must be different files")
     report = new_report(args.bucket)

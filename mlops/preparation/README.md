@@ -107,8 +107,9 @@ Only indexed images are checked; invalid images skipped during preparation are
 not audited. This is a point-in-time check, so originals and PNGs must remain
 unchanged afterward. It rereads every indexed object and adds S3 traffic.
 
-The audit atomically writes `checksum-audit.json` beside the input index, even
-when validation finds issues. In Argo this is
+By default, the audit atomically writes `checksum-audit.json` beside the input
+index, even when validation finds issues. `--report-path` selects another
+location. In Argo the report always belongs to the current run:
 `/workspace/<workflow-name>/prepared/checksum-audit.json`. The report contains
 the bucket, `checked_pngs` and `checked_sources` (objects successfully read
 and hashed, including mismatches), and an `issues` list. Each issue includes
@@ -479,6 +480,15 @@ workflow name. Rebuild/select the updated CPU, SAM3 and registration images
 and deploy the updated WorkflowTemplates before using these parameters. The
 updated registration image preserves the checkpoint producer fields in
 FiftyOne.
+
+To audit an earlier prepared index without running preparation again, select
+`audit-checksums` as the entrypoint and set `resume-run-id` to the workflow
+that wrote `index.coco.json`. `index-run-id` can select a different index run.
+The report is written under the new workflow's directory and does not replace
+the earlier report. The index must already exist: preparation writes it only
+after all non-skipped images have completed. A direct audit runs no later
+steps. Rebuild and select the updated CPU image and apply the updated
+WorkflowTemplate; older images do not support `--report-path`.
 
 To start only pre-labeling from an earlier run, set `PREVIOUS_RUN` to that
 workflow's name and select the `prelabel` entrypoint:
