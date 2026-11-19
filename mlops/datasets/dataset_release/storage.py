@@ -7,8 +7,11 @@ import os
 from typing import Any, Protocol
 from uuid import UUID
 
+from blob.exceptions import PermissionError as BlobPermissionError
+
 from .errors import ConfigurationError
 from .providers import create_dataset_blob_storage_client
+from .providers.s3 import DatasetS3BlobStorage
 from .settings import is_dedicated_smoke_bucket, smoke_bucket_from_environment
 
 
@@ -183,8 +186,28 @@ class BlobStorageAdapter:
     async def delete_blob(self, container: str, name: str) -> bool:
         """Delete one smoke object within the same namespace used for uploads."""
         key = self._storage_key(container, name)
+        if isinstance(self.provider, DatasetS3BlobStorage):
+            return await asyncio.to_thread(
+                lambda: asyncio.run(self.provider.delete_fixture(container, key))
+            )
         return await asyncio.to_thread(
             lambda: asyncio.run(self.provider.delete_blob(container, key))
+        )
+
+    async def confirms_missing_fixture(
+        self, container: str, name: str, error: BlobPermissionError
+    ) -> bool:
+        """Confirm a denied S3 read was for the exact, absent smoke fixture."""
+        key = self._storage_key(container, name)
+        if (
+            not isinstance(self.provider, DatasetS3BlobStorage)
+            or error.operation != "download blob"
+            or error.details.get("container") != container
+            or error.details.get("key") != key
+        ):
+            return False
+        return await asyncio.to_thread(
+            lambda: asyncio.run(self.provider.fixture_is_absent(container, key))
         )
 
     def close(self) -> None:

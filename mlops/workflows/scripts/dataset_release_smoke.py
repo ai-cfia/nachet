@@ -13,6 +13,7 @@ from uuid import UUID
 from alembic import command
 from alembic.config import Config
 from blob.exceptions import BlobNotFoundError
+from blob.exceptions import PermissionError as BlobPermissionError
 from PIL import Image
 from sqlalchemy import delete, select
 from sqlalchemy.engine import Connection
@@ -167,6 +168,12 @@ async def seed_fixture(controller: DatasetController, name: str) -> dict:
             await controller.publish_release(name, VERSION)
         except BlobNotFoundError:
             pass
+        except BlobPermissionError as error:
+            # Ceph can return 403 for an absent object under a prefix-only policy.
+            if not await controller.storage.confirms_missing_fixture(
+                controller.container, missing, error
+            ):
+                raise
         else:
             raise SmokeCheckError("Publication succeeded with a missing image")
         registration = await controller.get_release_registration(name, VERSION)
