@@ -17,6 +17,19 @@ import s3_storage
 from cleanup_checkpoints import cleanup_checkpoints
 from prelabel import Prediction
 
+MODEL_BUCKET = "model-test"
+MODEL_PREFIX = "base/sam3_hf_transformers"
+MODEL_URI = f"s3://{MODEL_BUCKET}/{MODEL_PREFIX}"
+
+
+@pytest.fixture
+def model_snapshot(s3_provider):
+    s3_provider.objects[MODEL_BUCKET, f"{MODEL_PREFIX}/config.json"] = b"{}"
+    s3_provider.objects[MODEL_BUCKET, f"{MODEL_PREFIX}/tokenizer/vocab.json"] = b"{}"
+    s3_provider.objects[MODEL_BUCKET, f"{MODEL_PREFIX}-other/config.json"] = (
+        b"outside prefix"
+    )
+
 
 def preparation_command(
     tmp_path,
@@ -39,6 +52,9 @@ def preparation_command(
     }
     values.update({"raw-prefix": "raw/collection", "code-revision": "test"})
     values.update(parameters)
+    workflow_replacements = {
+        "{{workflow.parameters." + key + "}}": value for key, value in values.items()
+    }
     templates = {template["name"]: template for template in spec["templates"]}
     template = templates[step]
     container = template["container"]
@@ -65,7 +81,9 @@ def preparation_command(
         )
         inputs.update(
             {
-                parameter["name"]: parameter["value"]
+                parameter["name"]: workflow_replacements.get(
+                    parameter["value"], parameter["value"]
+                )
                 for parameter in workflow_step.get("arguments", {}).get(
                     "parameters", []
                 )
@@ -74,13 +92,12 @@ def preparation_command(
     replacements = {
         "{{inputs.parameters." + key + "}}": value for key, value in inputs.items()
     }
-    replacements.update(
-        {"{{workflow.parameters." + key + "}}": value for key, value in values.items()}
-    )
+    replacements.update(workflow_replacements)
     replacements.update(
         {
             "{{workflow.name}}": workflow_name,
             "/workspace": str(tmp_path),
+            "$(MODEL_BUCKET)": MODEL_BUCKET,
             "$(PREPARATION_BUCKET)": "datasets",
             "$(PREPARATION_S3_ENDPOINT_URL)": "http://cold-storage.example.test",
             "$(PREPARATION_REGION)": "test",
@@ -296,8 +313,48 @@ def test_workflow_checksum_audit_runs_before_prelabel(
     assert {issue["key"] for issue in report["issues"]} == {key, png_key}
 
 
+@pytest.mark.parametrize("index_run", [None, "index-run"])
+def test_audit_and_prelabel_use_the_same_existing_index(tmp_path, index_run):
+    spec = yaml.safe_load(
+        (
+            Path(__file__).resolve().parents[2]
+            / "workflows/preparation-workflow-template.yaml"
+        ).read_text()
+    )["spec"]
+    entrypoint = "audit-and-prelabel"
+    steps = next(t for t in spec["templates"] if t["name"] == entrypoint)["steps"]
+    assert [[step["template"] for step in group] for group in steps] == [
+        ["audit-checksums"],
+        ["prelabel"],
+    ]
+    assert "continueOn" not in steps[0][0]
+
+    parameters = {"resume-run-id": "checkpoint-run", "model-revision": "test-model"}
+    if index_run is not None:
+        parameters["index-run-id"] = index_run
+    _, audit_args = preparation_command(
+        tmp_path, "new-run", step="audit-checksums", entrypoint=entrypoint, **parameters
+    )
+    _, prelabel_args = preparation_command(
+        tmp_path, "new-run", step="prelabel", entrypoint=entrypoint, **parameters
+    )
+    assert (
+        audit_args[0]
+        == prelabel_args[0]
+        == str(tmp_path / (index_run or "checkpoint-run") / "prepared/index.coco.json")
+    )
+    assert audit_args[audit_args.index("--report-path") + 1] == str(
+        tmp_path / "new-run/prepared/checksum-audit.json"
+    )
+    assert prelabel_args[2] == str(tmp_path / "new-run/prepared/draft.coco.json")
+    assert prelabel_args[prelabel_args.index("--model-source") + 1] == MODEL_URI
+    assert prelabel_args[prelabel_args.index("--checkpoint-dir") + 1] == str(
+        tmp_path / "checkpoint-run/prepared/prelabel-checkpoints"
+    )
+
+
 def test_prelabel_entrypoint_uses_the_previous_run_index(
-    tmp_path, s3_provider, monkeypatch
+    tmp_path, s3_provider, model_snapshot, monkeypatch
 ):
     content = io.BytesIO()
     Image.new("RGB", (4, 3), "red").save(content, format="PNG")
@@ -325,14 +382,17 @@ def test_prelabel_entrypoint_uses_the_previous_run_index(
         entrypoint="prelabel",
         **{"resume-run-id": "audited-run", "model-revision": "test-model"},
     )
-    monkeypatch.setattr(
-        prelabel,
-        "Sam3Predictor",
-        lambda *args: (
-            lambda image: calls.append(image.size) or Prediction([[1, 1, 3, 3]])
-        ),
-    )
+    expected_model = tmp_path / "prelabel-run/models/sam3_hf_transformers"
+
+    def predictor(model_path, _device):
+        assert (model_path / "config.json").read_bytes() == b"{}"
+        assert (model_path / "tokenizer/vocab.json").read_bytes() == b"{}"
+        return lambda image: calls.append(image.size) or Prediction([[1, 1, 3, 3]])
+
+    monkeypatch.setattr(prelabel, "Sam3Predictor", predictor)
     prelabel.main(args)
+    assert args[args.index("--model-path") + 1] == str(expected_model)
+    assert (expected_model / "config.json").is_file()
     assert args[0] == str(previous / "index.coco.json")
     assert args[args.index("--checkpoint-dir") + 1] == str(
         previous / "prelabel-checkpoints"
@@ -345,6 +405,11 @@ def test_prelabel_entrypoint_uses_the_previous_run_index(
     assert len(json.loads((output / "draft.coco.json").read_text())["annotations"]) == 1
 
     calls.clear()
+    s3_provider.client.get_object.reset_mock()
+    prelabel.main(args)
+    assert not calls
+    s3_provider.client.get_object.assert_not_called()
+
     prelabel, args = preparation_command(
         tmp_path,
         "second-prelabel-run",
@@ -493,7 +558,7 @@ def test_registration_entrypoint_imports_previous_draft(
 
 
 def test_workflow_compatible_resume_preserves_provenance_and_cleanup_isolation(
-    tmp_path, s3_provider, monkeypatch
+    tmp_path, s3_provider, model_snapshot, monkeypatch
 ):
     for number in range(2):
         content = io.BytesIO()
@@ -576,7 +641,7 @@ def test_workflow_compatible_resume_preserves_provenance_and_cleanup_isolation(
     prepared = tmp_path / "second-run" / "prepared"
     result = json.loads((prepared / "draft.coco.json").read_text())
     assert result["info"]["preparation"]["code_revision"] == "revision-b"
-    assert result["info"]["prelabel"]["model_identity"] == "sam3"
+    assert result["info"]["prelabel"]["model_source"] == MODEL_URI
     assert {
         (image["prelabel_project_version"], image["prelabel_code_revision"])
         for image in result["images"]
@@ -648,7 +713,7 @@ def test_cleanup_workflows_require_approval_and_target_only_the_selected_run():
 
 
 def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
-    tmp_path, fiftyone, review_name, s3_provider, monkeypatch
+    tmp_path, fiftyone, review_name, s3_provider, model_snapshot, monkeypatch
 ):
     original = tmp_path / "collection"
     for index, relative in enumerate(
@@ -706,6 +771,7 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
     )
     config_maps = {
         "nachet-preparation-config": {
+            "model-bucket": MODEL_BUCKET,
             "bucket": "datasets",
             "endpoint-url": cold_endpoint,
             "region": "test",

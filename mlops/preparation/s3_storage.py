@@ -1,7 +1,11 @@
 """S3 operations used by dataset preparation."""
 
+import logging
 import os
 from contextlib import closing
+from pathlib import Path
+from shutil import copyfileobj
+from tempfile import TemporaryDirectory
 from urllib.parse import urlsplit
 
 import boto3
@@ -15,12 +19,72 @@ from blob.validation import (
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
+logger = logging.getLogger(__name__)
+MODEL_RECEIPT = ".nachet-model-source.json"
+
 
 class PreparationStorage:
-    """Use one bucket-scoped S3 client for preparation."""
+    """Use one S3 client for preparation."""
 
     def __init__(self, client):
         self._client = client
+
+    def stage_model(
+        self, bucket: str, prefix: str, directory: Path, identity: str
+    ) -> None:
+        """Publish a complete snapshot on the workspace and reuse it on retries."""
+        receipt = directory / MODEL_RECEIPT
+        if not directory.exists():
+            directory.parent.mkdir(parents=True, exist_ok=True)
+            logger.info(
+                "Downloading SAM3 model from s3://%s/%s to %s",
+                bucket,
+                prefix,
+                directory,
+            )
+            with TemporaryDirectory(prefix=".sam3-", dir=directory.parent) as temp:
+                snapshot = Path(temp) / "snapshot"
+                self._download_model(bucket, prefix, snapshot)
+                (snapshot / MODEL_RECEIPT).write_text(identity, encoding="utf-8")
+                try:
+                    snapshot.rename(directory)
+                except OSError:
+                    if not receipt.exists():
+                        raise
+        if not receipt.is_file() or receipt.read_text(encoding="utf-8") != identity:
+            raise FileExistsError(
+                f"Model directory has a different or untracked snapshot: {directory}"
+            )
+
+    def _download_model(self, bucket: str, prefix: str, directory: Path) -> None:
+        """Copy an S3 model snapshot into a fresh local directory."""
+        validate_container_name(bucket)
+        pages = self._client.get_paginator("list_objects_v2").paginate(
+            Bucket=bucket, Prefix=prefix
+        )
+        downloaded = False
+        for page in pages:
+            for item in page.get("Contents", []):
+                key = item["Key"]
+                if key.endswith("/"):
+                    continue
+                name = key.removeprefix(prefix)
+                parts = name.split("/")
+                if (
+                    CONTROL_CHARS.intersection(name)
+                    or "\\" in name
+                    or parts[0] == MODEL_RECEIPT
+                    or any(part in {"", ".", ".."} for part in parts)
+                ):
+                    raise BlobStorageError(f"Invalid S3 model key: {key!r}")
+                target = directory.joinpath(*parts)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                response = self._client.get_object(Bucket=bucket, Key=key)
+                with closing(response["Body"]) as body, target.open("wb") as output:
+                    copyfileobj(body, output)
+                downloaded = True
+        if not downloaded:
+            raise BlobStorageError(f"No model files found under s3://{bucket}/{prefix}")
 
     @ErrorHandler.handle_service_errors("list collection")
     async def list_collection_keys(self, bucket: str, prefix: str) -> list[str]:

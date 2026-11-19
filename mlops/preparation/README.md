@@ -280,9 +280,8 @@ the collection or settings change.
 ## Pre-label with SAM3
 
 `prelabel.py` adds draft boxes to the COCO index for review in FiftyOne.
-Install the `sam3` group and provide a local directory containing the SAM3
-weights. Set `MODEL_REVISION` to their revision label; it is recorded in the
-COCO file. The command does not download weights.
+Install the `sam3` group and provide the local SAM3 Transformers snapshot
+directory. Set `MODEL_REVISION` to the snapshot's revision label.
 
 ```bash
 uv sync --project mlops/preparation --locked --group sam3
@@ -301,8 +300,15 @@ uv run --project mlops/preparation --no-sync python \
   mlops/preparation/prelabel.py /work/prepared/index.coco.json \
   s3://training-datasets /work/draft.coco.json \
   --endpoint-url https://s3.example.test --region us-east-1 \
-  --model-path /models/sam3 --model-revision "$MODEL_REVISION" --device cuda
+  --model-source "s3://${MODEL_BUCKET}/base/sam3_hf_transformers" \
+  --model-path /work/models/sam3_hf_transformers \
+  --model-revision "$MODEL_REVISION" --device cuda
 ```
+
+Set `MODEL_BUCKET` to the bucket containing the snapshot. With `--model-source`,
+pre-labeling downloads the snapshot into `--model-path` using the supplied
+endpoint, region and S3 credentials. The completed snapshot stays in that
+directory and is reused for the same source and revision.
 
 S3 input reads one PNG into memory and checks its key and SHA-256 before
 decoding. A missing object, hash mismatch or dimension mismatch stops the run.
@@ -322,7 +328,7 @@ its prompts internally; other predictors can leave `prompt` unset. The CLI
 currently loads SAM3.
 
 CUDA uses BF16 autocast and TF32; CPU uses FP32. `--model-revision` is a label
-you choose for the local weights, recorded in `info.prelabel`.
+you choose for the weights, recorded in `info.prelabel`.
 
 To resume pre-labeling, append
 `--checkpoint-dir /work/prelabel-checkpoints --code-revision "$CODE_REVISION"`.
@@ -330,9 +336,8 @@ Completed images are committed individually and reused on retry; an interrupted
 image is processed again. The final draft is written only after all images
 finish. Checkpoints are scoped to the index, media location, model identity and
 revision, device, padding and inference policy. When the same model path can
-refer to different models, also set a distinct `--model-identity`; the Argo
-workflow uses `model-folder`. When supplied, it is recorded in
-`info.prelabel.model_identity`. Checkpointed Python callers must supply
+refer to different models, also set a distinct `--model-identity`. When supplied,
+it is recorded in `info.prelabel.model_identity`. Checkpointed Python callers must supply
 `predictor_identity` and `code_revision`; S3 callers must also supply a stable
 `storage_identity` for the endpoint and region.
 
@@ -436,30 +441,37 @@ failed attempts using completed image checkpoints.
 Conversion, audit and pre-labeling receive the storage Secret; registration
 receives the FiftyOne database Secret.
 
-Use the existing `nachet-training-workspace-pvc` in `argo-workflows`. Keep SAM3
-snapshots under `models/` on that claim. `model-folder` selects a subfolder
-(default `sam3`), mounted read-only at `/model`. Images stay in S3. Each run
-writes COCO files under `/workspace/<workflow-name>/`; remove only that run's
-directory after checking the result. Conversion and pre-labeling checkpoint
-onto this PVC, so automatic retries reuse completed work.
+Use the existing `nachet-training-workspace-pvc` in `argo-workflows`. Each run
+writes COCO files under `/workspace/<workflow-name>/` and downloads the model to
+`/workspace/<workflow-name>/models/sam3_hf_transformers`. Automatic retries
+reuse that run's completed model download and compatible image checkpoints.
+Pre-label checkpoints from the previous PVC-mounted model use a different model
+identity and are regenerated. Checkpoint cleanup leaves the downloaded model
+in the run directory.
 
 Howard's `nachet-preparation-config` ConfigMap sets the cold Ceph endpoint,
 the `nachet-seed-image-dataset` bucket, the region and FiftyOne's media root.
+The `model-bucket` key supplies `MODEL_BUCKET` for
+`s3://${MODEL_BUCKET}/base/sam3_hf_transformers`.
 The `nachet-preparation-cold-s3` Secret provides `AWS_ACCESS_KEY_ID` and
 `AWS_SECRET_ACCESS_KEY`, with `AWS_SESSION_TOKEN` for temporary credentials.
+The credentials need `s3:ListBucket` for the model prefix and `s3:GetObject`
+for the snapshot files.
 The workflow explicitly passes `--allow-http` for Howard's internal Ceph
 connection. HTTPS connections still verify certificates and use `AWS_CA_BUNDLE`
 when configured.
 
 Howard also supplies `nachet-preparation-fiftyone` with `FIFTYONE_DATABASE_URI`.
 The server media root must map the COCO image keys to paths FiftyOne can read.
-Confirm the mount, available workspace capacity and model files before running.
+Confirm the mount, available workspace capacity and model-bucket access before
+running. Apply the updated WorkflowTemplate and select a SAM3 image built from
+the same revision before submitting.
 
 ```bash
 argo submit -n argo-workflows --from workflowtemplate/nachet-preparation \
   -p code-revision="$CODE_REVISION" -p dataset-name=collection-01-review \
   -p raw-prefix=raw/collection-01 \
-  -p model-folder=sam3 -p model-revision="$MODEL_REVISION"
+  -p model-revision="$MODEL_REVISION"
 ```
 
 For the temporary duplicate-conflict bypass, append

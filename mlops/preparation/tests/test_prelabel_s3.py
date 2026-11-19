@@ -188,3 +188,31 @@ def test_invalid_s3_configuration_fails_before_loading_the_model(
         )
     assert error.value.code == 2
     model.assert_not_called()
+
+
+def test_failed_s3_model_download_leaves_no_snapshot_and_can_retry(
+    tmp_path, s3_provider, monkeypatch
+):
+    provider = s3_provider
+    prefix = "base/model/"
+    provider.objects["models", f"{prefix}config.json"] = b"{}"
+    provider.objects["models", f"{prefix}model.safetensors"] = b"weights"
+    path = tmp_path / "model"
+    get_object = provider.client.get_object.side_effect
+
+    def fail_weights(**kwargs):
+        if kwargs["Key"].endswith(".safetensors"):
+            raise RuntimeError("interrupted download")
+        return get_object(**kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(provider.client.get_object, "side_effect", fail_weights)
+        with pytest.raises(RuntimeError, match="interrupted download"):
+            provider.storage.stage_model("models", prefix, path, "revision")
+    assert not list(tmp_path.iterdir())
+
+    provider.storage.stage_model("models", prefix, path, "revision")
+    assert (path / "config.json").read_bytes() == b"{}"
+    assert (path / "model.safetensors").read_bytes() == b"weights"
+    with pytest.raises(FileExistsError, match="different or untracked snapshot"):
+        provider.storage.stage_model("models", prefix, path, "different-revision")
