@@ -13,6 +13,8 @@ import cv2
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 
+from progress_logging import log_progress
+
 logger = logging.getLogger(__name__)
 
 SPLITS = {"train", "validation", "test"}
@@ -331,7 +333,8 @@ def prepare_images(
         found.sort(key=lambda item: item[0].relative_to(collection).as_posix())
 
     images, skipped = {}, []
-    for number, (path, species, image_split) in enumerate(found, start=1):
+    sources = log_progress(found, logger, stage="Local conversion", total=len(found))
+    for number, (path, species, image_split) in enumerate(sources, start=1):
         relative = path.relative_to(collection)
         logger.debug("Processing image %d/%d: %s", number, len(found), relative)
         path = path.resolve(strict=True)

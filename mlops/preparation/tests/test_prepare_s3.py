@@ -4,6 +4,7 @@ import json
 import logging
 import sqlite3
 import tomllib
+from itertools import count
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
@@ -20,6 +21,7 @@ from PIL import Image
 from semver import Version
 
 import prepare_s3 as module
+import progress_logging
 from prepare_images import prepare_images
 
 
@@ -382,6 +384,8 @@ def test_resume_relogs_skips_and_never_treats_them_as_completed(
     storage.read_image.reset_mock()
     storage.upload_png.reset_mock()
     caplog.clear()
+    caplog.set_level(logging.INFO, logger=module.__name__)
+    monkeypatch.setattr(progress_logging, "monotonic", count(step=300).__next__)
     module.main(args)
     storage.read_image.assert_awaited_once_with("datasets", key)
     storage.upload_png.assert_not_called()
@@ -390,6 +394,15 @@ def test_resume_relogs_skips_and_never_treats_them_as_completed(
         "Skipping invalid image" in message and key in message
         for message in caplog.messages
     )
+    assert [
+        message
+        for message in caplog.messages
+        if message.startswith("S3 conversion progress")
+    ] == [
+        "S3 conversion progress: 1/4",
+        "S3 conversion progress: 2/4",
+        "S3 conversion progress: 3/4",
+    ]
     with pytest.raises(OSError, match="c.png"):
         module.main(cli_args(tmp_path / "strict") + ["--checkpoint-dir", str(output)])
     assert not (tmp_path / "strict/index.coco.json").exists()

@@ -28,6 +28,7 @@ from prepare_images import (
     save_coco,
     skip_image,
 )
+from progress_logging import log_progress
 from s3_storage import create_storage
 
 logger = logging.getLogger(__name__)
@@ -275,7 +276,8 @@ async def prepare_s3(
         )
         found.sort(key=lambda item: item[0].as_posix())
     images, skipped = {}, []
-    for number, (relative, species, image_split) in enumerate(found, start=1):
+    sources = log_progress(found, logger, stage="S3 conversion", total=len(found))
+    for number, (relative, species, image_split) in enumerate(sources, start=1):
         source_key = prefix + relative.as_posix()
         logger.debug(
             "Processing image %d/%d: s3://%s/%s",

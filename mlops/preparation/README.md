@@ -5,6 +5,9 @@ for pre-labeling and review. Use `prepare_s3.py` for originals in S3, or
 `prepare_images.py` for a local collection. Run these Python 3.12 commands from
 the repository root.
 
+Conversion, pre-labeling, checksum auditing, and FiftyOne sample metadata updates
+log progress at the next item boundary after each five-minute interval.
+
 ```bash
 uv sync --project mlops/preparation --locked
 ```

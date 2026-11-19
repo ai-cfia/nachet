@@ -25,6 +25,7 @@ from checkpoint_version import (
     project_version,
 )
 from prepare_images import save_coco
+from progress_logging import log_progress
 
 logger = logging.getLogger(__name__)
 PROMPTS = ("foreground object", "thick long seed", "insect")
@@ -419,7 +420,10 @@ def _prelabel(
         target_dir = root / str(version)
         logger.info("Using pre-label checkpoint %s", target_dir)
     resumed = 0
-    for image_number, record in enumerate(result["images"]):
+    images = log_progress(
+        result["images"], logger, stage="SAM3 pre-labeling", total=len(result["images"])
+    )
+    for image_number, record in enumerate(images):
         category_id = categories[record["sources"][0]["species"]]
         outcome = None
         filename = f"{image_number:08d}.json"
