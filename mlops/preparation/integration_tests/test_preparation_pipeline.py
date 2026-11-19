@@ -175,6 +175,60 @@ def test_workflow_skip_retry_and_resume_in_a_new_submission(
     assert any(keys[1] in message for message in caplog.messages)
 
 
+def test_direct_audit_uses_previous_index_and_keeps_its_report(
+    tmp_path, s3_provider, monkeypatch
+):
+    content = io.BytesIO()
+    Image.new("RGB", (4, 3), "red").save(content, format="PNG")
+    s3_provider.objects["datasets", "raw/collection/A/seed.png"] = content.getvalue()
+    prepare, args = preparation_command(tmp_path, "previous-run")
+    monkeypatch.setattr(prepare, "create_storage", lambda *a, **k: s3_provider.storage)
+    prepare.main(args)
+    previous = tmp_path / "previous-run" / "prepared"
+    old_report = previous / "checksum-audit.json"
+    old_report.write_text("existing report")
+    audit, args = preparation_command(
+        tmp_path,
+        "audit-run",
+        step="audit-checksums",
+        entrypoint="audit-checksums",
+        **{"resume-run-id": "previous-run"},
+    )
+    monkeypatch.setattr(audit, "create_storage", lambda *a, **k: s3_provider.storage)
+    audit.main(args)
+    assert args[0] == str(previous / "index.coco.json")
+    assert old_report.read_text() == "existing report"
+    report = tmp_path / "audit-run" / "prepared" / "checksum-audit.json"
+    assert json.loads(report.read_text())["status"] == "passed"
+    _, overridden = preparation_command(
+        tmp_path,
+        "another-audit",
+        step="audit-checksums",
+        entrypoint="audit-checksums",
+        **{"resume-run-id": "different-run", "index-run-id": "previous-run"},
+    )
+    assert overridden[0] == str(previous / "index.coco.json")
+    _, full = preparation_command(
+        tmp_path,
+        "full-run",
+        step="audit-checksums",
+        **{"resume-run-id": "previous-run", "index-run-id": "previous-run"},
+    )
+    assert full[0] == str(tmp_path / "full-run/prepared/index.coco.json")
+    _, missing = preparation_command(
+        tmp_path,
+        "missing-audit",
+        step="audit-checksums",
+        entrypoint="audit-checksums",
+        **{"resume-run-id": "missing-run"},
+    )
+    with pytest.raises(audit.AuditFailure):
+        audit.main(missing)
+    failed_report = tmp_path / "missing-audit/prepared/checksum-audit.json"
+    assert json.loads(failed_report.read_text())["status"] == "failed"
+    assert old_report.read_text() == "existing report"
+
+
 def test_workflow_checksum_audit_runs_before_prelabel(
     tmp_path, s3_provider, monkeypatch
 ):

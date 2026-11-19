@@ -39,7 +39,7 @@ spec:
         description: Workflow whose checkpoints to extend and whose index or draft to use in direct steps. Defaults to this run; originals must remain unchanged.
         value: "{{workflow.name}}"
       - name: index-run-id
-        description: Workflow containing the prepared index when pre-labeling directly. Defaults to resume-run-id.
+        description: Workflow containing the prepared index for direct audit or pre-labeling. Defaults to resume-run-id.
         value: "{{workflow.parameters.resume-run-id}}"
       - name: draft-run-id
         description: Workflow containing the draft when registering directly. Defaults to resume-run-id.
@@ -76,6 +76,10 @@ spec:
             template: prepare-images
         - - name: audit-checksums
             template: audit-checksums
+            arguments:
+              parameters:
+                - name: index-run-id
+                  value: "{{workflow.name}}"
         - - name: prelabel
             template: prelabel
             arguments:
@@ -187,6 +191,10 @@ spec:
             mountPath: /tmp
 
     - name: audit-checksums
+      inputs:
+        parameters:
+          - name: index-run-id
+            description: Workflow containing the prepared index; defaults to resume-run-id for direct audit.
       retryStrategy:
         limit: "2"
         retryPolicy: OnFailure
@@ -194,7 +202,9 @@ spec:
         image: "{{workflow.parameters.cpu-image}}"
         command: [python, /opt/preparation/audit_s3.py]
         args:
-          - /workspace/{{workflow.name}}/prepared/index.coco.json
+          - /workspace/{{inputs.parameters.index-run-id}}/prepared/index.coco.json
+          - --report-path
+          - /workspace/{{workflow.name}}/prepared/checksum-audit.json
           - --bucket
           - "$(PREPARATION_BUCKET)"
           - --endpoint-url
