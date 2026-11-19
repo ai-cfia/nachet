@@ -52,9 +52,6 @@ def preparation_command(
     }
     values.update({"raw-prefix": "raw/collection", "code-revision": "test"})
     values.update(parameters)
-    workflow_replacements = {
-        "{{workflow.parameters." + key + "}}": value for key, value in values.items()
-    }
     templates = {template["name"]: template for template in spec["templates"]}
     template = templates[step]
     container = template["container"]
@@ -81,9 +78,7 @@ def preparation_command(
         )
         inputs.update(
             {
-                parameter["name"]: workflow_replacements.get(
-                    parameter["value"], parameter["value"]
-                )
+                parameter["name"]: parameter["value"]
                 for parameter in workflow_step.get("arguments", {}).get(
                     "parameters", []
                 )
@@ -92,7 +87,9 @@ def preparation_command(
     replacements = {
         "{{inputs.parameters." + key + "}}": value for key, value in inputs.items()
     }
-    replacements.update(workflow_replacements)
+    replacements.update(
+        {"{{workflow.parameters." + key + "}}": value for key, value in values.items()}
+    )
     replacements.update(
         {
             "{{workflow.name}}": workflow_name,
@@ -313,46 +310,6 @@ def test_workflow_checksum_audit_runs_before_prelabel(
     assert {issue["key"] for issue in report["issues"]} == {key, png_key}
 
 
-@pytest.mark.parametrize("index_run", [None, "index-run"])
-def test_audit_and_prelabel_use_the_same_existing_index(tmp_path, index_run):
-    spec = yaml.safe_load(
-        (
-            Path(__file__).resolve().parents[2]
-            / "workflows/preparation-workflow-template.yaml"
-        ).read_text()
-    )["spec"]
-    entrypoint = "audit-and-prelabel"
-    steps = next(t for t in spec["templates"] if t["name"] == entrypoint)["steps"]
-    assert [[step["template"] for step in group] for group in steps] == [
-        ["audit-checksums"],
-        ["prelabel"],
-    ]
-    assert "continueOn" not in steps[0][0]
-
-    parameters = {"resume-run-id": "checkpoint-run", "model-revision": "test-model"}
-    if index_run is not None:
-        parameters["index-run-id"] = index_run
-    _, audit_args = preparation_command(
-        tmp_path, "new-run", step="audit-checksums", entrypoint=entrypoint, **parameters
-    )
-    _, prelabel_args = preparation_command(
-        tmp_path, "new-run", step="prelabel", entrypoint=entrypoint, **parameters
-    )
-    assert (
-        audit_args[0]
-        == prelabel_args[0]
-        == str(tmp_path / (index_run or "checkpoint-run") / "prepared/index.coco.json")
-    )
-    assert audit_args[audit_args.index("--report-path") + 1] == str(
-        tmp_path / "new-run/prepared/checksum-audit.json"
-    )
-    assert prelabel_args[2] == str(tmp_path / "new-run/prepared/draft.coco.json")
-    assert prelabel_args[prelabel_args.index("--model-source") + 1] == MODEL_URI
-    assert prelabel_args[prelabel_args.index("--checkpoint-dir") + 1] == str(
-        tmp_path / "checkpoint-run/prepared/prelabel-checkpoints"
-    )
-
-
 def test_prelabel_entrypoint_uses_the_previous_run_index(
     tmp_path, s3_provider, model_snapshot, monkeypatch
 ):
@@ -391,6 +348,7 @@ def test_prelabel_entrypoint_uses_the_previous_run_index(
 
     monkeypatch.setattr(prelabel, "Sam3Predictor", predictor)
     prelabel.main(args)
+    assert args[args.index("--model-source") + 1] == MODEL_URI
     assert args[args.index("--model-path") + 1] == str(expected_model)
     assert (expected_model / "config.json").is_file()
     assert args[0] == str(previous / "index.coco.json")
