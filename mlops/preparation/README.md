@@ -393,8 +393,12 @@ uv run --project mlops/preparation --no-sync python \
 Use the server's MongoDB URI and, if customized, `FIFTYONE_DATABASE_NAME`.
 The command requires `FIFTYONE_DATABASE_URI` and refuses an implicit local
 database. Every imported sample gets the `not-verified` tag. Draft boxes go in
-`draft_boxes`. Source records, split assignments and the pre-label fields
-described above stay on each sample. `source_species`
+`boxes_YYYYMMDD`, using the UTC registration date. Every imported label gets
+the `not-verified` tag. When the draft records the model snapshot and
+revision, each box also gets a `<model-name>-<model-revision>` label tag. The
+name is the final component of the S3 model source or local model directory.
+Source records, split assignments and the pre-label fields described above
+stay on each sample. `source_species`
 copies the first source's species for filtering, or stays `null` when it is
 unknown. It records the original species separately from reviewed box labels.
 `object_key` keeps the PNG key, and `image_sha256` copies its hash from the

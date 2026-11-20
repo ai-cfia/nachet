@@ -4,7 +4,9 @@ import argparse
 import json
 import logging
 import os
+from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 from progress_logging import log_progress
@@ -24,6 +26,8 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
     if not server_root.is_absolute():
         raise ValueError("server_media_root must be an absolute server-visible path")
     coco = json.loads(labels.read_text())
+    info = coco.get("info") or {}
+    boxes_field = datetime.now(UTC).strftime("boxes_%Y%m%d")
     image_count = len(coco["images"])
     records, paths = {}, {}
     for record in coco["images"]:
@@ -43,13 +47,28 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
             dataset_type=fo.types.COCODetectionDataset,
             data_path=paths,
             labels_path=str(labels),
-            label_field={"detections": "draft_boxes", "coco_id": "coco_id"},
+            label_field={"detections": boxes_field, "coco_id": "coco_id"},
             tags=["not-verified"],
             include_id=True,
             include_annotation_id=True,
         )
         if len(dataset) != image_count:
             raise ValueError("FiftyOne did not import every COCO image")
+        dataset.tag_labels("not-verified")
+        if coco.get("annotations"):
+            prelabel_info = info.get("prelabel") or {}
+            model_source = prelabel_info.get("model_source")
+            model_path = (
+                urlsplit(model_source).path
+                if model_source
+                else prelabel_info.get("model_path")
+            )
+            model_name = PurePosixPath(model_path or "").name
+            model_revision = prelabel_info.get("model_revision")
+            if model_name and model_revision:
+                dataset.tag_labels(
+                    f"{model_name}-{model_revision}", label_fields=boxes_field
+                )
         dataset.add_sample_field("image_sha256", fo.StringField)
         # Declare nullable fields even when the first sample has no value.
         dataset.add_sample_field("source_species", fo.StringField)
@@ -77,7 +96,7 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
             sample["prelabel_prompt"] = record.get("prelabel_prompt")
             sample["prelabel_project_version"] = record.get("prelabel_project_version")
             sample["prelabel_code_revision"] = record.get("prelabel_code_revision")
-        dataset.info.update(coco.get("info") or {})
+        dataset.info.update(info)
         dataset.save()
         dataset.persistent = True
         dataset.name = name

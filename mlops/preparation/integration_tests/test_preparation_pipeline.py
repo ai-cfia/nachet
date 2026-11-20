@@ -21,6 +21,16 @@ from transfer_checkpoints import cleanup_source
 MODEL_BUCKET = "model-test"
 MODEL_PREFIX = "base/sam3_hf_transformers"
 MODEL_URI = f"s3://{MODEL_BUCKET}/{MODEL_PREFIX}"
+COLD_ENDPOINT = "http://cold-storage.example.test"
+PREPARATION_SECRETS = {
+    "nachet-preparation-cold-s3": {
+        "MODEL_BUCKET": MODEL_BUCKET,
+        "PREPARATION_BUCKET": "datasets",
+        "PREPARATION_S3_ENDPOINT_URL": COLD_ENDPOINT,
+        "PREPARATION_REGION": "test",
+        "PREPARATION_SERVER_MEDIA_ROOT": "/fiftyone-preparation",
+    },
+}
 
 
 @pytest.fixture
@@ -100,17 +110,16 @@ def preparation_command(
         {
             "{{workflow.name}}": workflow_name,
             "/workspace": str(tmp_path),
-            "$(MODEL_BUCKET)": MODEL_BUCKET,
-            "$(PREPARATION_BUCKET)": "datasets",
-            "$(PREPARATION_S3_ENDPOINT_URL)": "http://cold-storage.example.test",
-            "$(PREPARATION_REGION)": "test",
-            "$(PREPARATION_SERVER_MEDIA_ROOT)": "/fiftyone-preparation",
         }
     )
+    for source in container.get("envFrom", []):
+        secret = PREPARATION_SECRETS[source["secretRef"]["name"]]
+        replacements.update({f"$({key})": value for key, value in secret.items()})
     args = list(container["args"])
     for source, replacement in replacements.items():
         args = [argument.replace(source, replacement) for argument in args]
     assert all("{{" not in argument and "$(" not in argument for argument in args)
+    assert container["command"][0] == "python"
     return importlib.import_module(Path(container["command"][1]).stem), args
 
 
@@ -703,11 +712,10 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         path = original / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         Image.new("RGB", (12, 10), (index * 60, 20, 30)).save(path)
-    cold_endpoint = "http://cold-storage.example.test"
 
     def s3_client(service, *, endpoint_url, region_name, **kwargs):
         assert service == "s3"
-        assert endpoint_url == cold_endpoint
+        assert endpoint_url == COLD_ENDPOINT
         assert region_name == "test"
         return s3_provider.client
 
@@ -731,72 +739,18 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         ).read_text()
     )["spec"]
     templates = {template["name"]: template for template in spec["templates"]}
-    values = {
-        parameter["name"]: parameter["value"]
-        for parameter in spec["arguments"]["parameters"]
-        if "value" in parameter
-    }
-    values.update(
-        {
-            "raw-prefix": "raw/collection",
-            "code-revision": "test-revision",
-            "dataset-name": review_name,
-            "draft-run-id": "different-run",
-            "model-revision": "synthetic-weights",
-            "duplicate-conflicts": "error",
-        }
-    )
-    config_maps = {
-        "nachet-preparation-config": {
-            "model-bucket": MODEL_BUCKET,
-            "bucket": "datasets",
-            "endpoint-url": cold_endpoint,
-            "region": "test",
-            "server-media-root": "/fiftyone-preparation",
-        },
-    }
-    secrets = {
-        "nachet-preparation-cold-s3": {},
-        # The fiftyone fixture supplies the isolated database connection.
-        "nachet-preparation-fiftyone": {},
+    parameters = {
+        "code-revision": "test-revision",
+        "dataset-name": review_name,
+        "draft-run-id": "different-run",
+        "model-revision": "synthetic-weights",
+        "duplicate-conflicts": "error",
     }
 
     def run_step(name):
-        template = templates[name]
-        container = template["container"]
-        workflow_step = next(
-            item
-            for group in templates["all-steps"]["steps"]
-            for item in group
-            if item.get("template") == name
+        module, args = preparation_command(
+            tmp_path / "workspace", "preparation-test-run", step=name, **parameters
         )
-        inputs = {
-            parameter["name"]: parameter["value"]
-            for parameter in workflow_step.get("arguments", {}).get("parameters", [])
-        }
-        environment = {}
-        for entry in container.get("env", []):
-            ref = entry["valueFrom"]["configMapKeyRef"]
-            environment[entry["name"]] = config_maps[ref["name"]][ref["key"]]
-        for source in container.get("envFrom", []):
-            environment.update(secrets[source["secretRef"]["name"]])
-        args = []
-        for value in container["args"]:
-            for key, replacement in inputs.items():
-                value = value.replace("{{inputs.parameters." + key + "}}", replacement)
-            for key, replacement in values.items():
-                value = value.replace(
-                    "{{workflow.parameters." + key + "}}", replacement
-                )
-            for key, replacement in environment.items():
-                value = value.replace("$(" + key + ")", replacement)
-            value = value.replace("{{workflow.name}}", "preparation-test-run")
-            value = value.replace("/workspace", str(tmp_path / "workspace"))
-            assert "{{" not in value
-            assert "$(" not in value
-            args.append(value)
-        assert container["command"][0] == "python"
-        module = importlib.import_module(Path(container["command"][1]).stem)
         module.main(args)
 
     for step in templates["all-steps"]["steps"][1:5]:
@@ -805,6 +759,11 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
     assert dataset.info["prelabel"]["model_revision"] == "synthetic-weights"
     assert len(dataset) == 3
     assert set(dataset.values("split")) == {"train", "validation", None}
+    (boxes_field,) = dataset.get_field_schema(embedded_doc_type=fiftyone.Detections)
+    assert dataset.count_label_tags(label_fields=boxes_field) == {
+        "not-verified": 3,
+        f"{Path(MODEL_PREFIX).name}-synthetic-weights": 3,
+    }
     for sample in dataset:
         source = sample.sources[0]
         raw = (original / source["original_path"]).read_bytes()
@@ -819,7 +778,7 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         assert (
             sample.prelabel_project_version == source["preparation"]["project_version"]
         )
-        assert len(sample.draft_boxes.detections) == 1
+        assert len(sample[boxes_field].detections) == 1
     before = dict(s3_provider.objects)
     for name in ("run-prepare-images", "run-prelabel"):
         run_step(name)

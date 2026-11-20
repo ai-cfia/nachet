@@ -1,10 +1,12 @@
 import json
 import sys
+from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 
+import register_fiftyone as registration
 from register_fiftyone import register_fiftyone
 
 
@@ -36,6 +38,10 @@ def test_registration_carries_per_source_and_prelabel_provenance(
         types=SimpleNamespace(COCODetectionDataset=object()),
     )
     monkeypatch.setitem(sys.modules, "fiftyone", fo)
+    fixed_date = datetime(2026, 11, 20, tzinfo=UTC)
+    monkeypatch.setattr(
+        registration, "datetime", SimpleNamespace(now=fixed_date.astimezone)
+    )
     source = {
         "species": "A",
         "preparation": {"project_version": "0.2.0", "code_revision": "old"},
@@ -44,6 +50,13 @@ def test_registration_carries_per_source_and_prelabel_provenance(
     labels.write_text(
         json.dumps(
             {
+                "info": {
+                    "prelabel": {
+                        "model_path": "/tmp/staged-model",
+                        "model_source": "s3://models/snapshots/sam3_hf_transformers/",
+                        "model_revision": "test-weights",
+                    }
+                },
                 "images": [
                     {
                         "id": 4,
@@ -55,12 +68,21 @@ def test_registration_carries_per_source_and_prelabel_provenance(
                         "prelabel_project_version": "0.2.1",
                         "prelabel_code_revision": "new",
                     }
-                ]
+                ],
+                "annotations": [{"id": 0, "image_id": 4, "bbox": [1, 1, 4, 4]}],
             }
         )
     )
     register_fiftyone("review", labels, "/server/media")
     assert dataset.add_dir.call_args.kwargs["tags"] == ["not-verified"]
+    assert dataset.add_dir.call_args.kwargs["label_field"] == {
+        "detections": "boxes_20261120",
+        "coco_id": "coco_id",
+    }
+    assert dataset.tag_labels.call_args_list == [
+        call("not-verified"),
+        call("sam3_hf_transformers-test-weights", label_fields="boxes_20261120"),
+    ]
     assert sample["sources"] == [source]
     assert sample["prelabel_status"] == expected_status
     dataset.add_sample_field.assert_any_call("prelabel_status", fo.StringField)
