@@ -10,6 +10,11 @@ from pathlib import Path
 training_root = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(training_root))
 from training_runtime import execute_training  # noqa: E402
+from training_release import (  # noqa: E402
+    ReleaseInput,
+    add_release_arguments,
+    check_training_release,
+)
 from training_options import (  # noqa: E402
     RunProfile,
     build_training_command,
@@ -48,7 +53,7 @@ RUN_PROFILES = {
 
 def build_command(
     trainer_path: Path,
-    dataset_config: Path,
+    dataset_config: Path | None,
     model_path: Path,
     output_path: Path,
     profile: RunProfile,
@@ -60,8 +65,6 @@ def build_command(
     )
     command.extend(
         [
-            "--dataset_config",
-            str(dataset_config),
             "--train_val_split",
             "0.15",
             "--image_square_size",
@@ -70,6 +73,8 @@ def build_command(
             "false",
         ]
     )
+    if dataset_config is not None:
+        command.extend(["--dataset_config", str(dataset_config)])
     return command
 
 
@@ -77,10 +82,10 @@ def parse_args() -> argparse.Namespace:
     parser = training_parser(
         __doc__, RUN_PROFILES, Path(__file__).with_name("train_detector.py")
     )
+    add_release_arguments(parser)
     parser.add_argument(
         "--dataset-config",
         type=Path,
-        required=True,
         help="dataset configuration path, relative to --dataset-root or absolute",
     )
     parser.add_argument("--image-size", type=profile_int, default=None)
@@ -89,13 +94,18 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    release = ReleaseInput.from_args(args)
     run_profile = effective_run_profile(RUN_PROFILES[args.run_profile], args)
-    dataset_config = input_path(args.dataset_root, args.dataset_config)
+    dataset_config = None
+    if release is None:
+        if args.dataset_config is None:
+            raise ValueError("--dataset-config is required for PVC input")
+        dataset_config = input_path(args.dataset_root, args.dataset_config)
     model_path = input_path(args.dataset_root, args.model_path)
 
     if not args.dataset_root.is_dir():
         raise FileNotFoundError(f"dataset root does not exist: {args.dataset_root}")
-    if not dataset_config.is_file():
+    if dataset_config is not None and not dataset_config.is_file():
         raise FileNotFoundError(
             f"dataset configuration does not exist: {dataset_config}"
         )
@@ -104,8 +114,17 @@ def main() -> int:
     if not args.trainer_path.is_file():
         raise FileNotFoundError(f"trainer does not exist: {args.trainer_path}")
 
+    release_reference = None
+    if release is not None:
+        release_reference = check_training_release(
+            release, "detector", verify_media=args.preflight_only or args.dry_run
+        )
+        if args.preflight_only:
+            print(f"Verified {release.name}/{release.version} at {release.manifest_sha256}")
+            return 0
+
     def command_for_resume(output_path: Path, checkpoint: Path | None) -> list[str]:
-        return build_command(
+        command = build_command(
             args.trainer_path,
             dataset_config,
             model_path,
@@ -114,8 +133,12 @@ def main() -> int:
             checkpoint,
             args.image_size,
         )
+        if release is not None:
+            command.extend(release.trainer_args())
+        return command
 
-    return execute_training(args, command_for_resume, (dataset_config,))
+    artifacts = (dataset_config,) if dataset_config is not None else ()
+    return execute_training(args, command_for_resume, artifacts, release_reference)
 
 
 if __name__ == "__main__":

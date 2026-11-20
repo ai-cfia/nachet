@@ -540,6 +540,35 @@ async def test_remapped_release_uses_database_and_reuses_existing_pngs(
 
 
 @pytest.mark.asyncio
+async def test_media_index_reads_only_requested_samples_and_checks_their_bytes(
+    release_env,
+):
+    controller, storage, _ = release_env
+    spec = specification(storage)
+    release = await controller.publish_release(spec)
+    train_image = spec.coco.images[0]
+    storage.objects["datasets", train_image.file_name] = b"corrupt"
+
+    with pytest.raises(ReleaseConflict, match="Object checksum/size mismatch"):
+        await ReleasedDataset.open(controller, spec.name, spec.version)
+
+    storage.reads.clear()
+    reader = await ReleasedDataset.open(
+        controller, spec.name, spec.version, release.manifest_sha256, verify_media=False
+    )
+    detector = list(reader.detector_index("train"))
+    classifier = list(reader.classifier_index("train"))
+    assert [row["image_id"] for row in detector] == [train_image.id]
+    assert [row["image_id"] for row in classifier] == [train_image.id]
+    assert detector[0]["objects"]["category"] == [0]
+    assert classifier[0]["label"] == 0
+    assert all(not key.startswith("png/") for key in storage.reads)
+    with pytest.raises(ReleaseConflict, match="Object checksum/size mismatch"):
+        await reader.read_media(detector[0]["image"])
+    assert await reader.read_media(classifier[0]["image"])
+
+
+@pytest.mark.asyncio
 async def test_duplicate_bytes_keep_separate_provenance(release_env):
     controller, storage, _ = release_env
     spec = specification(storage).model_dump(mode="json")

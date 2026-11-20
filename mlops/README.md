@@ -9,6 +9,37 @@ publish and validate a prepared release, or run a small integration smoke test
 against a separately provisioned test registry and object store. Their templates
 are included in `workflows/kustomization.yaml` alongside the training workflows.
 
+## Train from a reviewed release
+
+Prepare the FiftyOne COCO export against the existing PNGs, then publish a
+ready release. Enable crop generation before publishing a release for both
+trainers. Hand off the publication's dataset name, version, manifest SHA-256,
+and S3 bucket. [Reviewed-data handoff in #968](https://github.com/ai-cfia/nachet/issues/968)
+
+Submit `nachet-detector-training` and `nachet-classifier-training` with the same
+`dataset-name`, `dataset-version`, and `expected-manifest-sha256` parameters.
+Set `dataset-container` if the bucket differs from `DATASET_CONTAINER` in the
+release credentials Secret. Use the default `smoke` profile for a small release.
+
+Both workflows use the `nachet-training-dataset-release` Secret by default.
+Set `dataset-credentials-secret` to use another Secret. The Secret needs
+`DATASET_DATABASE_URL`, `DATASET_REGISTRY_SCHEMA` for a non-default PostgreSQL
+schema, and S3 read credentials. For Ceph, use the dataset-specific
+`S3_ENDPOINT_URL`, `S3_ACCESS_KEY`, and `S3_SECRET_KEY` settings. Grant read
+access to the release registry and the bucket's release objects. Training uses
+its existing PVC for base model weights, checkpoints, and optional external
+evaluation inputs.
+
+A CPU pod verifies the ready release, manifest pin, and object checksums before
+the workflow schedules a GPU pod. RT-DETR reads the reviewed detection PNGs and
+boxes. Swin reads the published crops and their labels. Both use the declared
+train and validation splits, reserve the test split, and assign class indices
+by sorted reviewed COCO category ID. Training streams verified media by batch
+from S3 without a local image cache. The parent MLflow runs and training attempts
+record `dataset_name`, `dataset_version`, and `dataset_manifest_sha256`.
+
+Leave the release parameters empty to use the existing PVC dataset inputs.
+
 ## Example approval workflow
 
 `workflows/example-workflow-template.yaml` is a small control-flow example used

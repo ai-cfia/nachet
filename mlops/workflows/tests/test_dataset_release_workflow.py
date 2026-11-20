@@ -17,6 +17,37 @@ class DatasetReleaseWorkflowTests(unittest.TestCase):
             (WORKFLOWS / "dataset-release-smoke-workflow-template.yaml").read_text(),
         )["spec"]
 
+    def test_training_release_preflight_precedes_gpu_and_checks_the_same_input(self):
+        identity = ("dataset-name", "dataset-version", "expected-manifest-sha256")
+        for kind in ("detector", "classifier"):
+            with self.subTest(kind=kind):
+                path = WORKFLOWS / f"{kind}-training-workflow-template.yaml"
+                spec = yaml.safe_load(path.read_text())["spec"]
+                templates = {item["name"]: item for item in spec["templates"]}
+                steps = templates[spec["entrypoint"]]["steps"]
+                self.assertEqual(steps[0][0]["template"], "verify-dataset-release")
+                self.assertEqual(steps[1][0]["template"], "train")
+                self.assertNotIn("continueOn", steps[0][0])
+                preflight = templates["verify-dataset-release"]["container"]
+                train = templates["train"]["container"]
+                self.assertEqual(preflight["image"], train["image"])
+                self.assertIn("--preflight-only", preflight["args"])
+                self.assertNotIn("nvidia.com/gpu", str(preflight.get("resources", {})))
+                self.assertEqual(train["resources"]["requests"]["nvidia.com/gpu"], "1")
+                defaults = {
+                    parameter["name"]: parameter["value"]
+                    for parameter in spec["arguments"]["parameters"]
+                }
+                for name in (*identity, "dataset-container"):
+                    self.assertEqual(defaults[name], "")
+                    self.assertIn(f"['{name}'] != ''", steps[0][0]["when"])
+                    for container in (preflight, train):
+                        args = container["args"]
+                        self.assertEqual(
+                            args[args.index(f"--{name}") + 1],
+                            "{{workflow.parameters." + name + "}}",
+                        )
+
     def test_smoke_calls_the_normal_release_and_passes_its_manifest_pin(self):
         templates = {item["name"]: item for item in self.smoke["templates"]}
         steps = [group[0] for group in templates["smoke"]["steps"]]
