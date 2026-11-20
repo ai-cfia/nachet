@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/name: nachet-preparation
     app.kubernetes.io/part-of: nachet
 spec:
-  entrypoint: prepare-for-review
+  entrypoint: all-steps
   serviceAccountName: argo-workflow
   arguments:
     parameters:
@@ -36,13 +36,17 @@ spec:
         value: error
         enum: [error, skip]
       - name: resume-run-id
-        description: Workflow whose checkpoints to extend and whose index or draft to use in direct steps. Defaults to this run; originals must remain unchanged.
+        description: >-
+          Argo workflow name from the submission that owns the checkpoints.
+          prepare-images resumes image preparation and prelabel resumes SAM3
+          predictions from that run. Defaults to the current workflow name.
+          Also supplies the default index-run-id and draft-run-id for direct
+          steps. Keep source originals unchanged when reusing checkpoints.
         value: "{{workflow.name}}"
-      - name: index-run-id
-        description: Workflow containing the prepared index for direct audit or pre-labeling. Defaults to resume-run-id.
-        value: "{{workflow.parameters.resume-run-id}}"
       - name: draft-run-id
-        description: Workflow containing the draft when registering directly. Defaults to resume-run-id.
+        description: >-
+          Argo workflow name of the run where prelabel wrote draft.coco.json.
+          Direct register-for-review imports that draft. Defaults to resume-run-id.
         value: "{{workflow.parameters.resume-run-id}}"
       - name: model-revision
         description: Revision label for the selected model files. Required; not verified automatically.
@@ -67,7 +71,7 @@ spec:
     - name: tmp
       emptyDir: {}
   templates:
-    - name: prepare-for-review
+    - name: all-steps
       steps:
         - - name: prepare-images
             template: prepare-images
@@ -191,7 +195,11 @@ spec:
       inputs:
         parameters:
           - name: index-run-id
-            description: Workflow containing the prepared index; defaults to resume-run-id for direct audit.
+            description: >-
+              Argo workflow name of the run where prepare-images wrote
+              index.coco.json. Direct audit-checksums reads that index.
+              Defaults to resume-run-id.
+            default: "{{workflow.parameters.resume-run-id}}"
       retryStrategy:
         limit: "2"
         retryPolicy: OnFailure
@@ -240,7 +248,11 @@ spec:
       inputs:
         parameters:
           - name: index-run-id
-            description: Workflow containing the prepared index; defaults to resume-run-id for direct pre-labeling.
+            description: >-
+              Argo workflow name of the run where prepare-images wrote
+              index.coco.json. Direct prelabel reads that index and writes
+              draft.coco.json under its own workflow name. Defaults to resume-run-id.
+            default: "{{workflow.parameters.resume-run-id}}"
       retryStrategy:
         limit: "2"
         retryPolicy: OnFailure
@@ -307,7 +319,9 @@ spec:
       inputs:
         parameters:
           - name: draft-run-id
-            description: Workflow containing the draft; defaults to resume-run-id for direct registration.
+            description: >-
+              Argo workflow name of the run where prelabel wrote draft.coco.json.
+              Direct register-for-review imports that draft. Defaults to resume-run-id.
       container:
         image: "{{workflow.parameters.registration-image}}"
         command: [python, /opt/preparation/register_fiftyone.py]

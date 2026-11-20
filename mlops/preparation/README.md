@@ -484,12 +484,18 @@ automatically.
 
 To skip invalid images with warnings and index records, append
 `-p invalid-images=skip`; the workflow defaults to strict `error`.
-To reuse a previous workflow's preparation and pre-label checkpoints in a new submission,
-append `-p resume-run-id=<previous-workflow-name>`. The default is the current
-workflow name. The new workflow writes its COCO outputs into its own directory
-but reads and extends the selected run's checkpoints. The checksum audit still
-runs again. Keep the same conversion and model settings and immutable collection,
-and do not run both workflows concurrently.
+Argo assigns the workflow name at submission. Copy it from the `Name` shown by
+`argo submit` or from the workflow list in the Argo UI. The preparation steps
+use that name to locate checkpoints and COCO files on the workspace.
+
+To reuse checkpoints in a new submission, pass
+`-p resume-run-id=<previous-workflow-name>` with the name of the run that owns
+the checkpoints. `prepare-images` reads and extends its image preparation
+checkpoints, and `prelabel` reads and extends its prediction checkpoints.
+The default is the current workflow name. The new workflow writes its COCO
+outputs into its own directory and runs the checksum audit again. Keep the same
+conversion and model settings and immutable collection, and do not run both
+workflows concurrently.
 For a chain of resumed submissions, keep selecting the original checkpoint's
 workflow name. Rebuild/select the updated CPU, SAM3 and registration images
 and deploy the updated WorkflowTemplates before using these parameters. The
@@ -498,7 +504,8 @@ FiftyOne.
 
 To audit an earlier prepared index without running preparation again, select
 `audit-checksums` as the entrypoint and set `resume-run-id` to the workflow
-that wrote `index.coco.json`. `index-run-id` can select a different index run.
+that wrote `index.coco.json`. The `index-run-id` field appears when you select
+the direct audit or pre-label entrypoint. Use it to select a different index run.
 The report is written under the new workflow's directory and does not replace
 the earlier report. The index must already exist: preparation writes it only
 after all non-skipped images have completed. A direct audit runs no later
