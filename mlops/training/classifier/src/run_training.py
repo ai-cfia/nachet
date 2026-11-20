@@ -68,7 +68,7 @@ def build_command(
     return command
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args() -> tuple[argparse.Namespace, ReleaseInput | None]:
     parser = training_parser(
         __doc__, RUN_PROFILES, Path(__file__).with_name("train_classifier.py")
     )
@@ -83,20 +83,25 @@ def parse_args() -> argparse.Namespace:
         default="none",
         help="optional held-out directory, or none to split training data",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    try:
+        release = ReleaseInput.from_args(args)
+    except ValueError as error:
+        parser.error(str(error))
+    if release is None:
+        if args.train_dir is None:
+            parser.error("--train-dir is required for PVC input")
+        if not args.validation_dir.strip():
+            parser.error("--validation-dir must be a directory or none")
+    return args, release
 
 
 def main() -> int:
-    args = parse_args()
-    release = ReleaseInput.from_args(args)
+    args, release = parse_args()
     run_profile = effective_run_profile(RUN_PROFILES[args.run_profile], args)
     train_dir = validation_dir = None
     if release is None:
-        if args.train_dir is None:
-            raise ValueError("--train-dir is required for PVC input")
         train_dir = input_path(args.dataset_root, args.train_dir)
-        if not args.validation_dir.strip():
-            raise ValueError("--validation-dir must be a directory or none")
         if args.validation_dir != "none":
             validation_dir = input_path(args.dataset_root, Path(args.validation_dir))
     model_path = input_path(args.dataset_root, args.model_path)

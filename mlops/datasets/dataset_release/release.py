@@ -551,7 +551,11 @@ class DatasetController:
         return registration, manifest, coco
 
     async def _validate(
-        self, manifest: ReleaseManifest, coco: ReviewedCoco, *, verify_media: bool = True
+        self,
+        manifest: ReleaseManifest,
+        coco: ReviewedCoco,
+        *,
+        verify_media: bool = True,
     ) -> None:
         """Verify snapshot statistics, image membership, crop lineage, and file bytes."""
         for field, expected in ReleaseMetadata.statistics(coco).items():

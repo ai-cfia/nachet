@@ -44,7 +44,9 @@ class ReleasedDataset:
         )
         reader.images = {image.id: image for image in reader.coco.images}
         reader.files = {file.key: file for file in reader.manifest.images}
-        reader.files.update({crop.file.key: crop.file for crop in reader.manifest.crops})
+        reader.files.update(
+            {crop.file.key: crop.file for crop in reader.manifest.crops}
+        )
         reader.annotations = defaultdict(list)
         for annotation in reader.coco.annotations:
             reader.annotations[annotation.image_id].append(annotation)
