@@ -60,6 +60,7 @@ import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from functools import partial
+from pathlib import Path
 from typing import Any, Optional, Union
 
 import albumentations as A
@@ -88,6 +89,9 @@ from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
 
 import mlflow
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from training_release import load_training_release, stream_media  # noqa: E402
 
 
 
@@ -435,6 +439,9 @@ class DataTrainingArguments:
     them on the command line.
     """
 
+    dataset_release: Optional[str] = field(
+        default=None, metadata={"help": "Pinned release input from the training launcher."}
+    )
     dataset_name: str = field(
         default="cppe-5",
         metadata={
@@ -666,6 +673,7 @@ def train_detector(
     # ------------------------------------------------------------------------------------------------
 
     dataset_categories: Optional[list[str]] = None
+    released_data = None
 
     # Parse include_classes from file or comma-separated string
     include_classes = parse_include_classes(
@@ -674,7 +682,10 @@ def train_detector(
     )
 
     # Check for dataset_config (new unified config file)
-    if data_args.dataset_config:
+    if data_args.dataset_release:
+        dataset, released_data = load_training_release(data_args.dataset_release, "detector")
+        dataset_categories = list(released_data.categories.values())
+    elif data_args.dataset_config:
         config = load_dataset_config(data_args.dataset_config)
 
         # Override include_classes from config if specified there
@@ -851,9 +862,8 @@ def train_detector(
                 "Could not infer dataset categories. Provide COCO metadata or ensure ClassLabel features are present."
             ) from exc
 
-    # Ensure we always have a test split (fall back to validation when absent)
-    # Ensure we always have a test split (fall back to validation when absent)
-    if "test" not in dataset:
+    # Released test images are held back from training and checkpoint evaluation.
+    if released_data is None and "test" not in dataset:
         dataset["test"] = dataset["validation"]
 
     if data_args.max_train_samples is not None:
@@ -864,8 +874,9 @@ def train_detector(
     if data_args.max_eval_samples is not None:
         max_eval = min(len(dataset["validation"]), data_args.max_eval_samples)
         dataset["validation"] = dataset["validation"].select(range(max_eval))
-        dataset["test"] = dataset["test"].select(range(max_eval))
-        logger.info(f"Truncated validation/test splits to {max_eval} examples for quick testing.")
+        if "test" in dataset:
+            dataset["test"] = dataset["test"].select(range(min(len(dataset["test"]), max_eval)))
+        logger.info(f"Truncated validation split to {max_eval} examples for quick testing.")
 
     id2label = dict(enumerate(dataset_categories))
     label2id = {v: k for k, v in id2label.items()}
@@ -926,11 +937,15 @@ def train_detector(
         image_processor=image_processor,
     )
 
+    if released_data is not None:
+        train_transform_batch = stream_media(released_data, train_transform_batch)
+        validation_transform_batch = stream_media(released_data, validation_transform_batch)
     dataset["train"] = dataset["train"].with_transform(train_transform_batch)
     dataset["validation"] = dataset["validation"].with_transform(
         validation_transform_batch
     )
-    dataset["test"] = dataset["test"].with_transform(validation_transform_batch)
+    if "test" in dataset:
+        dataset["test"] = dataset["test"].with_transform(validation_transform_batch)
 
     # ------------------------------------------------------------------------------------------------
     # Model training and evaluation with Trainer API
@@ -945,6 +960,8 @@ def train_detector(
     mlflow.autolog()
     # MLflow parameters cannot change within a run; give each attempt a child run.
     with mlflow.start_run(), mlflow.start_run(nested=True):
+        if released_data is not None:
+            mlflow.log_params(released_data.registration.training_reference())
 
         trainer = DetectionEvaluationTrainer(
             model=model,
@@ -968,11 +985,13 @@ def train_detector(
 
         # Final evaluation
         if training_args.do_eval:
+            split = "validation" if released_data is not None else "test"
+            prefix = "eval" if released_data is not None else "test"
             metrics = trainer.evaluate(
-                eval_dataset=dataset["test"], metric_key_prefix="test"
+                eval_dataset=dataset[split], metric_key_prefix=prefix
             )
-            trainer.log_metrics("test", metrics)
-            trainer.save_metrics("test", metrics)
+            trainer.log_metrics(prefix, metrics)
+            trainer.save_metrics(prefix, metrics)
 
         # --- MLflow: log traceability artifacts + params (added) ---
         if mlflow.active_run() is not None and trainer.is_world_process_zero():
@@ -988,7 +1007,9 @@ def train_detector(
         # Write model card and (optionally) push to hub
         kwargs = {
             "finetuned_from": model_args.model_name_or_path,
-            "dataset": data_args.dataset_name,
+            "dataset": (
+                released_data.registration.name if released_data else data_args.dataset_name
+            ),
             "tags": ["object-detection", "vision"],
         }
         if training_args.push_to_hub:

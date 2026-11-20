@@ -9,6 +9,11 @@ from pathlib import Path
 # Resolve shared training code both in the checkout and in the image.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from training_runtime import execute_training  # noqa: E402
+from training_release import (  # noqa: E402
+    ReleaseInput,
+    add_release_arguments,
+    check_training_release,
+)
 from training_options import (  # noqa: E402
     RunProfile,
     build_training_command,
@@ -46,7 +51,7 @@ RUN_PROFILES = {
 
 def build_command(
     trainer_path: Path,
-    train_dir: Path,
+    train_dir: Path | None,
     model_path: Path,
     output_path: Path,
     profile: RunProfile,
@@ -56,7 +61,8 @@ def build_command(
     command = build_training_command(
         trainer_path, model_path, output_path, profile, resume_checkpoint
     )
-    command.extend(["--train_dir", str(train_dir), "--train_val_split", "0.15"])
+    if train_dir is not None:
+        command.extend(["--train_dir", str(train_dir), "--train_val_split", "0.15"])
     if validation_dir is not None:
         command.extend(["--validation_dir", str(validation_dir)])
     return command
@@ -66,10 +72,10 @@ def parse_args() -> argparse.Namespace:
     parser = training_parser(
         __doc__, RUN_PROFILES, Path(__file__).with_name("train_classifier.py")
     )
+    add_release_arguments(parser)
     parser.add_argument(
         "--train-dir",
         type=Path,
-        required=True,
         help="species-labelled image directory, relative to --dataset-root or absolute",
     )
     parser.add_argument(
@@ -77,27 +83,27 @@ def parse_args() -> argparse.Namespace:
         default="none",
         help="optional held-out directory, or none to split training data",
     )
-    args = parser.parse_args()
-    # An empty Path means the dataset root, not an omitted validation directory.
-    if not args.validation_dir.strip():
-        parser.error("--validation-dir must be a directory or none")
-    return args
+    return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    release = ReleaseInput.from_args(args)
     run_profile = effective_run_profile(RUN_PROFILES[args.run_profile], args)
-    train_dir = input_path(args.dataset_root, args.train_dir)
-    validation_dir = (
-        None
-        if args.validation_dir == "none"
-        else input_path(args.dataset_root, Path(args.validation_dir))
-    )
+    train_dir = validation_dir = None
+    if release is None:
+        if args.train_dir is None:
+            raise ValueError("--train-dir is required for PVC input")
+        train_dir = input_path(args.dataset_root, args.train_dir)
+        if not args.validation_dir.strip():
+            raise ValueError("--validation-dir must be a directory or none")
+        if args.validation_dir != "none":
+            validation_dir = input_path(args.dataset_root, Path(args.validation_dir))
     model_path = input_path(args.dataset_root, args.model_path)
 
     if not args.dataset_root.is_dir():
         raise FileNotFoundError(f"dataset root does not exist: {args.dataset_root}")
-    if not train_dir.is_dir():
+    if train_dir is not None and not train_dir.is_dir():
         raise FileNotFoundError(f"training directory does not exist: {train_dir}")
     if validation_dir is not None and not validation_dir.is_dir():
         raise FileNotFoundError(
@@ -108,8 +114,17 @@ def main() -> int:
     if not args.trainer_path.is_file():
         raise FileNotFoundError(f"trainer does not exist: {args.trainer_path}")
 
+    release_reference = None
+    if release is not None:
+        release_reference = check_training_release(
+            release, "classifier", verify_media=args.preflight_only or args.dry_run
+        )
+        if args.preflight_only:
+            print(f"Verified {release.name}/{release.version} at {release.manifest_sha256}")
+            return 0
+
     def command_for_resume(output_path: Path, checkpoint: Path | None) -> list[str]:
-        return build_command(
+        command = build_command(
             args.trainer_path,
             train_dir,
             model_path,
@@ -118,8 +133,11 @@ def main() -> int:
             checkpoint,
             validation_dir,
         )
+        if release is not None:
+            command.extend(release.trainer_args())
+        return command
 
-    return execute_training(args, command_for_resume)
+    return execute_training(args, command_for_resume, release_reference=release_reference)
 
 
 if __name__ == "__main__":

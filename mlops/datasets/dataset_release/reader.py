@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
 from .contract import Split, canonical_json
@@ -25,6 +25,8 @@ class ReleasedDataset:
         name: str,
         version: str,
         expected_manifest_sha256: str | None = None,
+        *,
+        verify_media: bool = True,
     ) -> ReleasedDataset:
         """Verify a ready release and index its files, annotations, and categories.
 
@@ -38,10 +40,11 @@ class ReleasedDataset:
             reader.manifest,
             reader.coco,
         ) = await controller.load_verified_release(
-            name, version, expected_manifest_sha256
+            name, version, expected_manifest_sha256, verify_media=verify_media
         )
         reader.images = {image.id: image for image in reader.coco.images}
         reader.files = {file.key: file for file in reader.manifest.images}
+        reader.files.update({crop.file.key: crop.file for crop in reader.manifest.crops})
         reader.annotations = defaultdict(list)
         for annotation in reader.coco.annotations:
             reader.annotations[annotation.image_id].append(annotation)
@@ -69,25 +72,19 @@ class ReleasedDataset:
         )
         return reference
 
-    async def detector_records(self, split: Split) -> AsyncIterator[dict[str, Any]]:
-        """Yield the record shape used by HFTrainer_detector_2026012601_js.py.
+    async def read_media(self, key: str) -> bytes:
+        """Read one sample's PNG, checking its size and hash against the manifest."""
+        return await self.controller.read_file(self.files[key])
 
-        The image field uses HuggingFace Image's bytes representation. Cast that
-        column to datasets.Image in the training adapter to decode PIL images.
-        COCO category IDs are mapped to zero-based IDs in sorted-ID order.
-        """
+    def detector_index(self, split: Split) -> Iterator[dict[str, Any]]:
+        """Yield detector records with image keys for on-demand media reads."""
         for image in self.coco.images:
             if image.split != split:
                 continue
             annotations = self.annotations[image.id]
             yield {
                 "image_id": image.id,
-                "image": {
-                    "path": image.file_name,
-                    "bytes": await self.controller.read_file(
-                        self.files[image.file_name]
-                    ),
-                },
+                "image": image.file_name,
                 "width": image.width,
                 "height": image.height,
                 "objects": {
@@ -104,23 +101,35 @@ class ReleasedDataset:
                 },
             }
 
-    async def classifier_records(self, split: Split) -> AsyncIterator[dict[str, Any]]:
-        """Yield verified crop bytes and zero-based labels for the requested split.
-
-        Raise ReleaseNotReady when the release has no crop generation recipe.
-        """
+    def classifier_index(self, split: Split) -> Iterator[dict[str, Any]]:
+        """Yield released crop keys and zero-based labels for the requested split."""
         if self.manifest.crop_recipe is None:
             raise ReleaseNotReady("This release is not classifier-ready")
         for crop in self.manifest.crops:
             if crop.split != split:
                 continue
             yield {
-                "image": {
-                    "path": crop.file.key,
-                    "bytes": await self.controller.read_file(crop.file),
-                },
+                "image": crop.file.key,
                 "label": self.category_indices[crop.category_id],
                 "image_id": crop.image_id,
                 "annotation_id": crop.annotation_id,
                 "dataset_release_id": str(self.registration.id),
             }
+
+    async def detector_records(self, split: Split) -> AsyncIterator[dict[str, Any]]:
+        """Yield detector records with verified Hugging Face image bytes."""
+        async for record in self._records(self.detector_index(split)):
+            yield record
+
+    async def classifier_records(self, split: Split) -> AsyncIterator[dict[str, Any]]:
+        """Yield classifier records with verified Hugging Face crop bytes."""
+        async for record in self._records(self.classifier_index(split)):
+            yield record
+
+    async def _records(
+        self, index: Iterator[dict[str, Any]]
+    ) -> AsyncIterator[dict[str, Any]]:
+        for record in index:
+            key = record["image"]
+            record["image"] = {"path": key, "bytes": await self.read_media(key)}
+            yield record

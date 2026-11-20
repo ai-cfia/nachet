@@ -12,6 +12,21 @@ spec:
   serviceAccountName: argo-workflow
   arguments:
     parameters:
+      - name: dataset-name
+        description: Reviewed dataset release name. Leave release parameters empty for PVC input.
+        value: ""
+      - name: dataset-version
+        description: Version of the reviewed dataset release.
+        value: ""
+      - name: expected-manifest-sha256
+        description: SHA-256 returned by publication of the ready dataset release.
+        value: ""
+      - name: dataset-container
+        description: S3 bucket for the release. Defaults to DATASET_CONTAINER in the release Secret.
+        value: ""
+      - name: dataset-credentials-secret
+        description: Secret with read-only release registry and S3 access.
+        value: nachet-training-dataset-release
       - name: external-validation-config
         description: >-
           External validation COCO configuration below inputs, evaluated after
@@ -91,6 +106,13 @@ spec:
   templates:
     - name: detector-training
       steps:
+        - - name: verify-dataset-release
+            template: verify-dataset-release
+            when: >-
+              {{=workflow.parameters['dataset-name'] != '' ||
+              workflow.parameters['dataset-version'] != '' ||
+              workflow.parameters['expected-manifest-sha256'] != '' ||
+              workflow.parameters['dataset-container'] != ''}}
         - - name: train
             template: train
             arguments:
@@ -175,6 +197,46 @@ spec:
               parameter: >-
                 {{steps.check-checkpoint-selections.outputs.parameters.selected-checkpoints}}
 
+    - name: verify-dataset-release
+      container:
+        image: ghcr.io/ai-cfia/nachet-detector-trainer:main
+        imagePullPolicy: Always
+        args:
+          - --preflight-only
+          - --dataset-name
+          - "{{workflow.parameters.dataset-name}}"
+          - --dataset-version
+          - "{{workflow.parameters.dataset-version}}"
+          - --expected-manifest-sha256
+          - "{{workflow.parameters.expected-manifest-sha256}}"
+          - --dataset-container
+          - "{{workflow.parameters.dataset-container}}"
+          - --dataset-root
+          - /inputs
+          - --model-path
+          - "{{workflow.parameters.model-path}}"
+          - --run-profile
+          - "{{workflow.parameters.run-profile}}"
+          - --run-id
+          - "{{workflow.name}}"
+        envFrom:
+          - secretRef:
+              name: "{{workflow.parameters.dataset-credentials-secret}}"
+              optional: true
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+          - name: training-storage
+            mountPath: /inputs
+            subPath: nachet/detector-training/inputs
+            readOnly: true
+          - name: tmp
+            mountPath: /tmp
+
     - name: train
       inputs:
         parameters:
@@ -201,6 +263,14 @@ spec:
         image: ghcr.io/ai-cfia/nachet-detector-trainer:main
         imagePullPolicy: Always
         args:
+          - --dataset-name
+          - "{{workflow.parameters.dataset-name}}"
+          - --dataset-version
+          - "{{workflow.parameters.dataset-version}}"
+          - --expected-manifest-sha256
+          - "{{workflow.parameters.expected-manifest-sha256}}"
+          - --dataset-container
+          - "{{workflow.parameters.dataset-container}}"
           - --dataset-root
           - /inputs
           - --dataset-config
@@ -236,6 +306,9 @@ spec:
         envFrom:
           - secretRef:
               name: nachet-training-s3
+          - secretRef:
+              name: "{{workflow.parameters.dataset-credentials-secret}}"
+              optional: true
         env:
           - name: MLFLOW_TRACKING_URI
             value: http://mlflow.mlflow.svc.cluster.local:5000

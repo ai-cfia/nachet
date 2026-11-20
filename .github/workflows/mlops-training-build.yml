@@ -9,6 +9,11 @@ on:
       - synchronize
     paths:
       - "mlops/training/**"
+      - "mlops/datasets/dataset_release/**"
+      - "mlops/datasets/utility/**"
+      - "mlops/datasets/pyproject.toml"
+      - "mlops/blob/**"
+      - "mlops/.dockerignore"
       - ".github/workflows/mlops-training-build.yml"
       - ".github/workflows/reusable-sign-container-images.yml"
 
@@ -89,7 +94,7 @@ jobs:
         if: github.event.pull_request.merged == false
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
         with:
-          context: mlops/training
+          context: mlops
           file: mlops/training/${{ matrix.trainer }}/Dockerfile
           push: true
           platforms: linux/amd64
@@ -107,7 +112,7 @@ jobs:
         if: github.event.pull_request.merged == true
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7
         with:
-          context: mlops/training
+          context: mlops
           file: mlops/training/${{ matrix.trainer }}/Dockerfile
           push: true
           platforms: linux/amd64

@@ -505,11 +505,14 @@ class DatasetController:
         name: str,
         version: str,
         expected_manifest_sha256: str | None = None,
+        *,
+        verify_media: bool = True,
     ) -> tuple[ReleaseRegistration, ReleaseManifest, ReviewedCoco]:
         """Load a ready release and verify its identity, manifest, and files.
 
         An expected manifest digest pins the selection. Incomplete releases raise
         ReleaseNotReady; conflicting identities or checksums raise ReleaseConflict.
+        Set verify_media=False for readers that verify each media object on access.
         """
         registration = await self.get_release_registration(name, version)
         if registration.status != "ready" or registration.manifest_sha256 is None:
@@ -544,10 +547,12 @@ class DatasetController:
         ):
             raise ReleaseConflict("Manifest identity does not match its registration")
         coco = ReviewedCoco.model_validate_json(await self.read_file(manifest.coco))
-        await self._validate(manifest, coco)
+        await self._validate(manifest, coco, verify_media=verify_media)
         return registration, manifest, coco
 
-    async def _validate(self, manifest: ReleaseManifest, coco: ReviewedCoco) -> None:
+    async def _validate(
+        self, manifest: ReleaseManifest, coco: ReviewedCoco, *, verify_media: bool = True
+    ) -> None:
         """Verify snapshot statistics, image membership, crop lineage, and file bytes."""
         for field, expected in ReleaseMetadata.statistics(coco).items():
             recorded = getattr(manifest, field)
@@ -561,7 +566,8 @@ class DatasetController:
         for reference in files.values():
             if reference.key != f"png/detection/{reference.sha256}.png":
                 raise ValueError("Manifest image hash differs from its key")
-            await self.read_file(reference)
+            if verify_media:
+                await self.read_file(reference)
         parents = {image.id: image for image in coco.images}
         annotations = {annotation.id: annotation for annotation in coco.annotations}
         crop_ids = [crop.annotation_id for crop in manifest.crops]
@@ -581,4 +587,5 @@ class DatasetController:
                 or crop.file.key != f"png/classification/{crop.file.sha256}.png"
             ):
                 raise ValueError("Crop mapping does not match its reviewed annotation")
-            await self.read_file(crop.file)
+            if verify_media:
+                await self.read_file(crop.file)
