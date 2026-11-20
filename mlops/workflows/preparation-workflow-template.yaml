@@ -37,11 +37,10 @@ spec:
         enum: [error, skip]
       - name: resume-run-id
         description: >-
-          Argo workflow name from the submission that owns the checkpoints.
-          prepare-images resumes image preparation and prelabel resumes SAM3
-          predictions from that run. Defaults to the current workflow name.
-          Also supplies the default index-run-id and draft-run-id for direct
-          steps. Keep source originals unchanged when reusing checkpoints.
+          Argo workflow name of the previous attempt that owns the checkpoints.
+          The new run copies and verifies them before asking to clean up the
+          previous run's checkpoints. Defaults to the current workflow name.
+          Also supplies the default index-run-id and draft-run-id for direct steps.
         value: "{{workflow.name}}"
       - name: draft-run-id
         description: >-
@@ -73,8 +72,11 @@ spec:
   templates:
     - name: all-steps
       steps:
+        - - name: resume-checkpoints
+            template: resume-checkpoints
+            when: "{{=workflow.parameters['resume-run-id'] != workflow.name}}"
         - - name: prepare-images
-            template: prepare-images
+            template: run-prepare-images
         - - name: audit-checksums
             template: audit-checksums
             arguments:
@@ -82,7 +84,7 @@ spec:
                 - name: index-run-id
                   value: "{{workflow.name}}"
         - - name: prelabel
-            template: prelabel
+            template: run-prelabel
             arguments:
               parameters:
                 - name: index-run-id
@@ -105,6 +107,56 @@ spec:
               parameters:
                 - name: run-name
                   value: "{{workflow.name}}"
+
+    - name: resume-checkpoints
+      steps:
+        - - name: copy-checkpoints
+            template: transfer-checkpoints
+            arguments:
+              parameters:
+                - name: action
+                  value: copy
+        - - name: approve-previous-checkpoint-cleanup
+            template: approve-checkpoint-cleanup
+            when: "{{=steps['copy-checkpoints'].outputs.result == 'true'}}"
+            arguments:
+              parameters:
+                - name: run-name
+                  value: "{{workflow.parameters.resume-run-id}}"
+        - - name: cleanup-previous-checkpoints
+            template: transfer-checkpoints
+            when: "{{=steps['copy-checkpoints'].outputs.result == 'true'}}"
+            arguments:
+              parameters:
+                - name: action
+                  value: cleanup
+
+    - name: transfer-checkpoints
+      inputs:
+        parameters:
+          - name: action
+      retryStrategy:
+        limit: "2"
+        retryPolicy: OnFailure
+      container:
+        image: "{{workflow.parameters.cpu-image}}"
+        command: [python, /opt/preparation/transfer_checkpoints.py]
+        args:
+          - "{{inputs.parameters.action}}"
+          - /workspace
+          - "{{workflow.parameters.resume-run-id}}"
+          - "{{workflow.name}}"
+        resources:
+          requests: {cpu: 250m, memory: 256Mi}
+          limits: {cpu: "1", memory: 1Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
 
     - name: approve-checkpoint-cleanup
       inputs:
@@ -138,6 +190,14 @@ spec:
             mountPath: /tmp
 
     - name: prepare-images
+      steps:
+        - - name: resume-checkpoints
+            template: resume-checkpoints
+            when: "{{=workflow.parameters['resume-run-id'] != workflow.name}}"
+        - - name: prepare-images
+            template: run-prepare-images
+
+    - name: run-prepare-images
       retryStrategy:
         limit: "2"
         retryPolicy: OnFailure
@@ -163,7 +223,7 @@ spec:
           - --invalid-images
           - "{{workflow.parameters.invalid-images}}"
           - --checkpoint-dir
-          - /workspace/{{workflow.parameters.resume-run-id}}/prepared
+          - /workspace/{{workflow.name}}/prepared
         env:
           - name: PREPARATION_BUCKET
             valueFrom:
@@ -196,8 +256,8 @@ spec:
         parameters:
           - name: index-run-id
             description: >-
-              Argo workflow name of the run where prepare-images wrote
-              index.coco.json. Direct audit-checksums reads that index.
+              Argo workflow name of the run that completed prepare-images
+              and wrote index.coco.json. Direct audit-checksums reads that index.
               Defaults to resume-run-id.
             default: "{{workflow.parameters.resume-run-id}}"
       retryStrategy:
@@ -249,10 +309,25 @@ spec:
         parameters:
           - name: index-run-id
             description: >-
-              Argo workflow name of the run where prepare-images wrote
-              index.coco.json. Direct prelabel reads that index and writes
+              Argo workflow name of the run that completed prepare-images
+              and wrote index.coco.json. Direct prelabel reads that index and writes
               draft.coco.json under its own workflow name. Defaults to resume-run-id.
             default: "{{workflow.parameters.resume-run-id}}"
+      steps:
+        - - name: resume-checkpoints
+            template: resume-checkpoints
+            when: "{{=workflow.parameters['resume-run-id'] != workflow.name}}"
+        - - name: prelabel
+            template: run-prelabel
+            arguments:
+              parameters:
+                - name: index-run-id
+                  value: "{{inputs.parameters.index-run-id}}"
+
+    - name: run-prelabel
+      inputs:
+        parameters:
+          - name: index-run-id
       retryStrategy:
         limit: "2"
         retryPolicy: OnFailure
@@ -284,7 +359,7 @@ spec:
           - --device
           - cuda
           - --checkpoint-dir
-          - /workspace/{{workflow.parameters.resume-run-id}}/prepared/prelabel-checkpoints
+          - /workspace/{{workflow.name}}/prepared/prelabel-checkpoints
         env:
           - name: MODEL_BUCKET
             valueFrom:
