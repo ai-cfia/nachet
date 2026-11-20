@@ -290,7 +290,7 @@ services:
 
   loki:
     container_name: nachet-loki
-    image: grafana/loki:3.7.9
+    image: grafana/loki:3.7.10
     ports:
       - "12310:3100"
     command: -config.file=/etc/loki/local-config.yaml
@@ -301,7 +301,7 @@ services:
 
   alloy:
     container_name: nachet-alloy
-    image: grafana/alloy:v1.21.3
+    image: grafana/alloy:v1.22.0
     ports:
       - "12317:4317" # OTLP gRPC receiver
       - "12318:4318" # OTLP HTTP receiver
