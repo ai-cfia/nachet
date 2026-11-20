@@ -37,6 +37,7 @@ def test_image_only_predictor_builds_coco_without_prompts(coco, intake):
     coco["images"][0]["prelabel_project_version"] = "old version"
     coco["images"][0]["prelabel_code_revision"] = "old revision"
     result = prelabel(coco, intake[1], predict)
+    assert all(image["prelabel_status"] is None for image in result["images"])
     assert all(image["prelabel_reason"] is None for image in result["images"])
     assert all(image["prelabel_prompt"] is None for image in result["images"])
     assert all("prelabel_project_version" not in image for image in result["images"])
@@ -98,14 +99,15 @@ def test_sam3_stops_after_the_first_accepted_prompt(
     def predict(image, prompt):
         calls.append(prompt)
         if prompt == prompts[accepted]:
-            return Prediction([[1, 1, 3, 3]] * count, prompt, [0.8] * count)
+            boxes = [[x, 1, x + 2, 3] for x in range(1, 12 * count, 12)]
+            return Prediction(boxes, prompt, [0.8] * count)
         return Prediction([], prompt, [])
 
     predictor = Sam3Predictor.__new__(Sam3Predictor)
     monkeypatch.setattr(predictor, "_predict_prompt", predict)
     result = prelabel(coco, intake[1], predictor)
     assert calls == list(prompts[: accepted + 1]) * len(coco["images"])
-    assert all(image["prelabel_status"] == "draft" for image in result["images"])
+    assert all(image["prelabel_status"] is None for image in result["images"])
     assert all(
         image["prelabel_prompt"] == prompts[accepted] for image in result["images"]
     )
@@ -118,11 +120,17 @@ def test_prelabel_cannot_replace_existing_labels(prepare, intake):
         prelabel(coco, intake[1], lambda image: Prediction([]))
 
 
-def test_prelabel_resumes_completed_images(coco, intake, tmp_path):
+def test_prelabel_resumes_completed_images(coco, intake, tmp_path, monkeypatch):
     checkpoint_dir = tmp_path / "prelabel-checkpoints"
+    snapshot_path = tmp_path / "unannotated.coco.json"
     calls = []
 
     def interrupted_predict(image):
+        snapshot = json.loads(snapshot_path.read_text())
+        assert snapshot["annotations"] == []
+        assert {record["prelabel_status"] for record in snapshot["images"]} == {
+            "unannotated"
+        }
         calls.append(image.size)
         if len(calls) == 2:
             raise RuntimeError("interrupted inference")
@@ -136,9 +144,14 @@ def test_prelabel_resumes_completed_images(coco, intake, tmp_path):
             checkpoint_dir=checkpoint_dir,
             predictor_identity="synthetic",
             code_revision="test-revision",
+            initial_index_path=snapshot_path,
         )
     assert len(list(checkpoint_dir.rglob("*.json"))) == 1
 
+    def unexpected_snapshot(*args):
+        pytest.fail("resuming must skip the unannotated snapshot")
+
+    monkeypatch.setattr(module, "save_coco", unexpected_snapshot)
     resumed_calls = []
     resumed = prelabel(
         coco,
@@ -147,6 +160,7 @@ def test_prelabel_resumes_completed_images(coco, intake, tmp_path):
         checkpoint_dir=checkpoint_dir,
         predictor_identity="synthetic",
         code_revision="test-revision",
+        initial_index_path=snapshot_path,
     )
     expected = prelabel(coco, intake[1], lambda image: Prediction([[1, 1, 3, 3]]))
     for image in expected["images"]:
@@ -173,9 +187,13 @@ def test_compatible_upgrade_resumes_across_interruption_and_tracks_provenance(
         "checkpoint_dir": checkpoint_dir,
         "predictor_identity": "model-a",
         "code_revision": "revision-a",
+        "initial_index_path": tmp_path / "first.unannotated.json",
     }
     with pytest.raises(RuntimeError, match="interrupted inference"):
         prelabel(coco, intake[1], interrupt_after_one, **options)
+
+    old_checkpoint = next(checkpoint_dir.rglob("*.json"))
+    old_content = old_checkpoint.read_bytes()
 
     updated = copy.deepcopy(coco)
     updated["info"]["preparation"]["code_revision"] = "revision-b"
@@ -187,6 +205,7 @@ def test_compatible_upgrade_resumes_across_interruption_and_tracks_provenance(
             }
     monkeypatch.setattr(module, "project_version", lambda: Version.parse("0.2.1"))
     options["code_revision"] = "revision-b"
+    options["initial_index_path"] = tmp_path / "second.unannotated.json"
     calls.clear()
     with pytest.raises(RuntimeError, match="interrupted inference"):
         prelabel(updated, intake[1], interrupt_after_one, **options)
@@ -205,8 +224,12 @@ def test_compatible_upgrade_resumes_across_interruption_and_tracks_provenance(
         (image["prelabel_project_version"], image["prelabel_code_revision"])
         for image in result["images"]
     ] == [("0.2.0", "revision-a"), ("0.2.1", "revision-b"), ("0.2.1", "revision-b")]
+    assert result["images"][0]["prelabel_prompt"] == "synthetic"
+    assert all(image["prelabel_status"] is None for image in result["images"])
     assert [annotation["id"] for annotation in result["annotations"]] == [0, 1, 2]
     assert {annotation["score"] for annotation in result["annotations"]} == {0.8}
+    assert old_checkpoint.read_bytes() == old_content
+    assert not options["initial_index_path"].exists()
     versions = {path.parent.name for path in checkpoint_dir.rglob("*.json")}
     assert versions == {"0.2.0", "0.2.1"}
 
@@ -288,7 +311,7 @@ def test_legacy_prelabel_checkpoint_is_not_reused_or_removed(
     assert "Ignoring legacy integer-version pre-label checkpoints" in caplog.text
 
 
-@pytest.mark.parametrize("problem", ["version", "box"])
+@pytest.mark.parametrize("problem", ["version", "box", "legacy_draft"])
 def test_corrupt_prelabel_checkpoint_fails_before_inference(
     coco, intake, tmp_path, problem
 ):
@@ -300,14 +323,19 @@ def test_corrupt_prelabel_checkpoint_fails_before_inference(
     prelabel(coco, intake[1], lambda image: Prediction([[1, 1, 3, 3]]), **options)
     path = next(options["checkpoint_dir"].rglob("00000000.json"))
     checkpoint = json.loads(path.read_text())
+    message = None
     if problem == "version":
         checkpoint["version"] = 1
         error = TypeError
+    elif problem == "legacy_draft":
+        checkpoint["prelabel_status"] = "draft"
+        error = ValueError
+        message = "Restart with a fresh checkpoint directory"
     else:
         checkpoint["annotations"][0]["bbox"] = [1]
         error = ValueError
     path.write_text(json.dumps(checkpoint))
-    with pytest.raises(error):
+    with pytest.raises(error, match=message):
         prelabel(
             coco,
             intake[1],
@@ -410,7 +438,7 @@ def test_colour_png_depth_is_checked_before_prediction(
         assert len(calls) == 3
         assert record["id"] not in {a["image_id"] for a in result["annotations"]}
     else:
-        assert record["prelabel_status"] == "draft"
+        assert record["prelabel_status"] is None
         assert record["prelabel_reason"] is None
         assert calls == ["RGB"] * 4
     assert record["prelabel_prompt"] is None
@@ -463,21 +491,70 @@ def test_edge_predictions_are_clipped(box, expected):
     assert coco_box(box, 100, 80, 3) == expected
 
 
-def test_nested_drafts_retain_the_notebook_warning(coco, intake):
+@pytest.mark.parametrize(
+    "second_box, reason",
+    [
+        pytest.param([15, 15, 20, 20], "nested_boxes", id="contained"),
+        pytest.param([25, 20, 45, 40], "overlapping_boxes", id="partial-overlap"),
+        pytest.param([35, 10, 55, 30], "overlapping_boxes", id="overlap-after-padding"),
+        pytest.param([39, 10, 59, 30], None, id="touching-edges"),
+        pytest.param([44, 10, 64, 30], None, id="separate"),
+    ],
+)
+def test_overlapping_boxes_keep_detections_and_flag_review(
+    coco, intake, second_box, reason
+):
     result = prelabel(
         coco,
         intake[1],
-        lambda image: Prediction([[0, 0, 50, 60], [10, 10, 30, 30]]),
+        lambda image: Prediction([[10, 10, 30, 30], second_box]),
     )
-    assert all(image["prelabel_status"] == "draft" for image in result["images"])
-    assert all(image["prelabel_reason"] == "nested_boxes" for image in result["images"])
+    status = "needs_review" if reason else None
+    assert all(image["prelabel_status"] == status for image in result["images"])
+    assert all(image["prelabel_reason"] == reason for image in result["images"])
     assert len(result["annotations"]) == 6
+
+
+def test_resume_checks_saved_boxes_for_overlap(coco, intake, tmp_path):
+    checkpoint_dir = tmp_path / "checkpoints"
+    options = {
+        "checkpoint_dir": checkpoint_dir,
+        "predictor_identity": "model-a",
+        "code_revision": "test",
+    }
+    expected = prelabel(
+        coco,
+        intake[1],
+        lambda image: Prediction([[10, 10, 30, 30], [25, 20, 45, 40]]),
+        **options,
+    )
+    path = next(checkpoint_dir.rglob("00000000.json"))
+    checkpoint = json.loads(path.read_text())
+    checkpoint.update(prelabel_status=None, prelabel_reason=None)
+    path.write_text(json.dumps(checkpoint))
+
+    resumed = prelabel(
+        coco,
+        intake[1],
+        lambda image: pytest.fail("saved boxes should not require new inference"),
+        **options,
+    )
+    assert resumed == expected
+    assert json.loads(path.read_text()) == checkpoint
 
 
 def test_prelabel_cli_records_run_options_once(coco, intake, tmp_path, monkeypatch):
     import prelabel as command
 
     source = tmp_path / "index.json"
+    coco["images"][0].update(
+        prelabel_status="needs_review",
+        prelabel_reason="old warning",
+        prelabel_prompt="old prompt",
+        prelabel_project_version="old version",
+        prelabel_code_revision="old revision",
+    )
+    coco["info"]["prelabel"] = {"model_revision": "old model"}
     save_coco(source, coco)
     output = tmp_path / "draft.json"
     checkpoint_dir = tmp_path / "checkpoints"
@@ -506,6 +583,17 @@ def test_prelabel_cli_records_run_options_once(coco, intake, tmp_path, monkeypat
     ]
     command.main(args)
     result = json.loads(output.read_text())
+    snapshot = json.loads((tmp_path / "draft.unannotated.json").read_text())
+    assert snapshot["annotations"] == []
+    assert snapshot["info"] == {
+        key: value for key, value in coco["info"].items() if key != "prelabel"
+    }
+    assert all(
+        {key: value for key, value in image.items() if key.startswith("prelabel_")}
+        == {"prelabel_status": "unannotated"}
+        for image in snapshot["images"]
+    )
+    assert json.loads(source.read_text()) == coco
     with Path(command.__file__).with_name("pyproject.toml").open("rb") as stream:
         project_version = tomllib.load(stream)["project"]["version"]
     assert {

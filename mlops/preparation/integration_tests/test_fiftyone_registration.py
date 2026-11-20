@@ -40,9 +40,11 @@ def test_registration_keeps_fields_and_refuses_to_replace_review_work(
     assert dataset.persistent
     assert len(dataset) == 3
     assert isinstance(dataset.get_field("image_sha256"), fiftyone.StringField)
+    assert isinstance(dataset.get_field("prelabel_status"), fiftyone.StringField)
     samples = {sample.coco_id: sample for sample in dataset}
     for record in draft_coco["images"]:
         sample = samples[record["id"]]
+        assert sample.tags == ["not-verified"]
         assert sample.filepath == str(server_root / record["file_name"])
         assert not Path(sample.filepath).exists()
         assert (sample.metadata.width, sample.metadata.height) == (100, 80)
@@ -248,10 +250,11 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
             assert sample["prelabel_reason"] == "high_bit_depth"
             assert not sample.draft_boxes or not sample.draft_boxes.detections
         elif sample["split"] is None:
+            assert sample["prelabel_status"] == "needs_review"
             assert sample["prelabel_reason"] == "no_detections"
             assert not sample.draft_boxes or not sample.draft_boxes.detections
         else:
-            assert sample["prelabel_status"] == "draft"
+            assert sample["prelabel_status"] is None
             assert len(sample.draft_boxes.detections) == 1
             detection = sample.draft_boxes.detections[0]
             assert detection.label == expected_assignments[relative][0]

@@ -3,10 +3,22 @@ import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
+
 from register_fiftyone import register_fiftyone
 
 
-def test_registration_carries_per_source_and_prelabel_provenance(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    "status_field, expected_status",
+    [
+        ({}, "unannotated"),
+        ({"prelabel_status": None}, None),
+        ({"prelabel_status": "needs_review"}, "needs_review"),
+    ],
+)
+def test_registration_carries_per_source_and_prelabel_provenance(
+    tmp_path, monkeypatch, status_field, expected_status
+):
     class Sample(dict):
         def __init__(self, coco_id):
             super().__init__()
@@ -39,6 +51,7 @@ def test_registration_carries_per_source_and_prelabel_provenance(tmp_path, monke
                         "image_sha256": "test",
                         "split": None,
                         "sources": [source],
+                        **status_field,
                         "prelabel_project_version": "0.2.1",
                         "prelabel_code_revision": "new",
                     }
@@ -47,7 +60,10 @@ def test_registration_carries_per_source_and_prelabel_provenance(tmp_path, monke
         )
     )
     register_fiftyone("review", labels, "/server/media")
+    assert dataset.add_dir.call_args.kwargs["tags"] == ["not-verified"]
     assert sample["sources"] == [source]
+    assert sample["prelabel_status"] == expected_status
+    dataset.add_sample_field.assert_any_call("prelabel_status", fo.StringField)
     assert sample["prelabel_project_version"] == "0.2.1"
     assert sample["prelabel_code_revision"] == "new"
     assert dataset.persistent is True

@@ -44,6 +44,7 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
             data_path=paths,
             labels_path=str(labels),
             label_field={"detections": "draft_boxes", "coco_id": "coco_id"},
+            tags=["not-verified"],
             include_id=True,
             include_annotation_id=True,
         )
@@ -53,6 +54,7 @@ def register_fiftyone(name: str, labels: Path, server_media_root: str) -> None:
         # Declare nullable fields even when the first sample has no value.
         dataset.add_sample_field("source_species", fo.StringField)
         dataset.add_sample_field("split", fo.StringField)
+        dataset.add_sample_field("prelabel_status", fo.StringField)
         dataset.add_sample_field("prelabel_reason", fo.StringField)
         dataset.add_sample_field("prelabel_prompt", fo.StringField)
         dataset.add_sample_field("prelabel_project_version", fo.StringField)

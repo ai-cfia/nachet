@@ -224,16 +224,6 @@ spec:
           - "{{workflow.parameters.invalid-images}}"
           - --checkpoint-dir
           - /workspace/{{workflow.name}}/prepared
-        env:
-          - name: PREPARATION_BUCKET
-            valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: bucket}
-          - name: PREPARATION_S3_ENDPOINT_URL
-            valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: endpoint-url}
-          - name: PREPARATION_REGION
-            valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: region}
         envFrom:
           - secretRef:
               name: nachet-preparation-cold-s3
@@ -277,16 +267,6 @@ spec:
           - --allow-http
           - --region
           - "$(PREPARATION_REGION)"
-        env:
-          - name: PREPARATION_BUCKET
-            valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: bucket}
-          - name: PREPARATION_S3_ENDPOINT_URL
-            valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: endpoint-url}
-          - name: PREPARATION_REGION
-            valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: region}
         envFrom:
           - secretRef:
               name: nachet-preparation-cold-s3
@@ -360,19 +340,6 @@ spec:
           - cuda
           - --checkpoint-dir
           - /workspace/{{workflow.name}}/prepared/prelabel-checkpoints
-        env:
-          - name: MODEL_BUCKET
-            valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: model-bucket}
-          - name: PREPARATION_BUCKET
-            valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: bucket}
-          - name: PREPARATION_S3_ENDPOINT_URL
-            valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: endpoint-url}
-          - name: PREPARATION_REGION
-            valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: region}
         envFrom:
           - secretRef:
               name: nachet-preparation-cold-s3
@@ -405,13 +372,9 @@ spec:
           - /workspace/{{inputs.parameters.draft-run-id}}/prepared/draft.coco.json
           - --server-media-root
           - "$(PREPARATION_SERVER_MEDIA_ROOT)"
-        env:
-          - name: PREPARATION_SERVER_MEDIA_ROOT
-            valueFrom:
-              configMapKeyRef: {name: nachet-preparation-config, key: server-media-root}
         envFrom:
           - secretRef:
-              name: nachet-preparation-fiftyone
+              name: nachet-preparation-cold-s3
         resources:
           requests: {cpu: 250m, memory: 1Gi}
           limits: {cpu: "1", memory: 4Gi}
