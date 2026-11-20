@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/name: nachet-preparation
     app.kubernetes.io/part-of: nachet
 spec:
-  entrypoint: prepare-for-review
+  entrypoint: all-steps
   serviceAccountName: argo-workflow
   arguments:
     parameters:
@@ -36,13 +36,16 @@ spec:
         value: error
         enum: [error, skip]
       - name: resume-run-id
-        description: Workflow whose checkpoints to extend and whose index or draft to use in direct steps. Defaults to this run; originals must remain unchanged.
+        description: >-
+          Argo workflow name of the previous attempt that owns the checkpoints.
+          The new run copies and verifies them before asking to clean up the
+          previous run's checkpoints. Defaults to the current workflow name.
+          Also supplies the default index-run-id and draft-run-id for direct steps.
         value: "{{workflow.name}}"
-      - name: index-run-id
-        description: Workflow containing the prepared index for direct audit or pre-labeling. Defaults to resume-run-id.
-        value: "{{workflow.parameters.resume-run-id}}"
       - name: draft-run-id
-        description: Workflow containing the draft when registering directly. Defaults to resume-run-id.
+        description: >-
+          Argo workflow name of the run where prelabel wrote draft.coco.json.
+          Direct register-for-review imports that draft. Defaults to resume-run-id.
         value: "{{workflow.parameters.resume-run-id}}"
       - name: model-revision
         description: Revision label for the selected model files. Required; not verified automatically.
@@ -67,10 +70,13 @@ spec:
     - name: tmp
       emptyDir: {}
   templates:
-    - name: prepare-for-review
+    - name: all-steps
       steps:
+        - - name: resume-checkpoints
+            template: resume-checkpoints
+            when: "{{=workflow.parameters['resume-run-id'] != workflow.name}}"
         - - name: prepare-images
-            template: prepare-images
+            template: run-prepare-images
         - - name: audit-checksums
             template: audit-checksums
             arguments:
@@ -78,7 +84,7 @@ spec:
                 - name: index-run-id
                   value: "{{workflow.name}}"
         - - name: prelabel
-            template: prelabel
+            template: run-prelabel
             arguments:
               parameters:
                 - name: index-run-id
@@ -101,6 +107,56 @@ spec:
               parameters:
                 - name: run-name
                   value: "{{workflow.name}}"
+
+    - name: resume-checkpoints
+      steps:
+        - - name: copy-checkpoints
+            template: transfer-checkpoints
+            arguments:
+              parameters:
+                - name: action
+                  value: copy
+        - - name: approve-previous-checkpoint-cleanup
+            template: approve-checkpoint-cleanup
+            when: "{{=steps['copy-checkpoints'].outputs.result == 'true'}}"
+            arguments:
+              parameters:
+                - name: run-name
+                  value: "{{workflow.parameters.resume-run-id}}"
+        - - name: cleanup-previous-checkpoints
+            template: transfer-checkpoints
+            when: "{{=steps['copy-checkpoints'].outputs.result == 'true'}}"
+            arguments:
+              parameters:
+                - name: action
+                  value: cleanup
+
+    - name: transfer-checkpoints
+      inputs:
+        parameters:
+          - name: action
+      retryStrategy:
+        limit: "2"
+        retryPolicy: OnFailure
+      container:
+        image: "{{workflow.parameters.cpu-image}}"
+        command: [python, /opt/preparation/transfer_checkpoints.py]
+        args:
+          - "{{inputs.parameters.action}}"
+          - /workspace
+          - "{{workflow.parameters.resume-run-id}}"
+          - "{{workflow.name}}"
+        resources:
+          requests: {cpu: 250m, memory: 256Mi}
+          limits: {cpu: "1", memory: 1Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
 
     - name: approve-checkpoint-cleanup
       inputs:
@@ -134,6 +190,14 @@ spec:
             mountPath: /tmp
 
     - name: prepare-images
+      steps:
+        - - name: resume-checkpoints
+            template: resume-checkpoints
+            when: "{{=workflow.parameters['resume-run-id'] != workflow.name}}"
+        - - name: prepare-images
+            template: run-prepare-images
+
+    - name: run-prepare-images
       retryStrategy:
         limit: "2"
         retryPolicy: OnFailure
@@ -159,7 +223,7 @@ spec:
           - --invalid-images
           - "{{workflow.parameters.invalid-images}}"
           - --checkpoint-dir
-          - /workspace/{{workflow.parameters.resume-run-id}}/prepared
+          - /workspace/{{workflow.name}}/prepared
         env:
           - name: PREPARATION_BUCKET
             valueFrom:
@@ -191,7 +255,11 @@ spec:
       inputs:
         parameters:
           - name: index-run-id
-            description: Workflow containing the prepared index; defaults to resume-run-id for direct audit.
+            description: >-
+              Argo workflow name of the run that completed prepare-images
+              and wrote index.coco.json. Direct audit-checksums reads that index.
+              Defaults to resume-run-id.
+            default: "{{workflow.parameters.resume-run-id}}"
       retryStrategy:
         limit: "2"
         retryPolicy: OnFailure
@@ -240,7 +308,26 @@ spec:
       inputs:
         parameters:
           - name: index-run-id
-            description: Workflow containing the prepared index; defaults to resume-run-id for direct pre-labeling.
+            description: >-
+              Argo workflow name of the run that completed prepare-images
+              and wrote index.coco.json. Direct prelabel reads that index and writes
+              draft.coco.json under its own workflow name. Defaults to resume-run-id.
+            default: "{{workflow.parameters.resume-run-id}}"
+      steps:
+        - - name: resume-checkpoints
+            template: resume-checkpoints
+            when: "{{=workflow.parameters['resume-run-id'] != workflow.name}}"
+        - - name: prelabel
+            template: run-prelabel
+            arguments:
+              parameters:
+                - name: index-run-id
+                  value: "{{inputs.parameters.index-run-id}}"
+
+    - name: run-prelabel
+      inputs:
+        parameters:
+          - name: index-run-id
       retryStrategy:
         limit: "2"
         retryPolicy: OnFailure
@@ -272,7 +359,7 @@ spec:
           - --device
           - cuda
           - --checkpoint-dir
-          - /workspace/{{workflow.parameters.resume-run-id}}/prepared/prelabel-checkpoints
+          - /workspace/{{workflow.name}}/prepared/prelabel-checkpoints
         env:
           - name: MODEL_BUCKET
             valueFrom:
@@ -307,7 +394,9 @@ spec:
       inputs:
         parameters:
           - name: draft-run-id
-            description: Workflow containing the draft; defaults to resume-run-id for direct registration.
+            description: >-
+              Argo workflow name of the run where prelabel wrote draft.coco.json.
+              Direct register-for-review imports that draft. Defaults to resume-run-id.
       container:
         image: "{{workflow.parameters.registration-image}}"
         command: [python, /opt/preparation/register_fiftyone.py]

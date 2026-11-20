@@ -16,6 +16,7 @@ from semver import Version
 import s3_storage
 from cleanup_checkpoints import cleanup_checkpoints
 from prelabel import Prediction
+from transfer_checkpoints import cleanup_source
 
 MODEL_BUCKET = "model-test"
 MODEL_PREFIX = "base/sam3_hf_transformers"
@@ -36,7 +37,7 @@ def preparation_command(
     workflow_name,
     *,
     step="prepare-images",
-    entrypoint="prepare-for-review",
+    entrypoint="all-steps",
     **parameters,
 ):
     spec = yaml.safe_load(
@@ -53,9 +54,20 @@ def preparation_command(
     values.update({"raw-prefix": "raw/collection", "code-revision": "test"})
     values.update(parameters)
     templates = {template["name"]: template for template in spec["templates"]}
-    template = templates[step]
+    wrapper = templates.get(step, {})
+    if entrypoint != step or "steps" in wrapper:
+        workflow_step = next(
+            item
+            for group in templates[entrypoint]["steps"]
+            for item in group
+            if item["name"] == step or item.get("template") == step
+        )
+        template = templates[workflow_step["template"]]
+    else:
+        template = wrapper
     container = template["container"]
-    input_parameters = template.get("inputs", {}).get("parameters", [])
+    parameter_template = wrapper if entrypoint == step else template
+    input_parameters = parameter_template.get("inputs", {}).get("parameters", [])
     inputs = {
         parameter["name"]: parameter["default"]
         for parameter in input_parameters
@@ -70,12 +82,6 @@ def preparation_command(
             }
         )
     else:
-        workflow_step = next(
-            item
-            for group in templates[entrypoint]["steps"]
-            for item in group
-            if item.get("template") == step
-        )
         inputs.update(
             {
                 parameter["name"]: parameter["value"]
@@ -106,6 +112,18 @@ def preparation_command(
         args = [argument.replace(source, replacement) for argument in args]
     assert all("{{" not in argument and "$(" not in argument for argument in args)
     return importlib.import_module(Path(container["command"][1]).stem), args
+
+
+def transfer_run(tmp_path, source, target):
+    transfer, args = preparation_command(
+        tmp_path,
+        target,
+        step="copy-checkpoints",
+        entrypoint="resume-checkpoints",
+        **{"resume-run-id": source},
+    )
+    transfer.main(args)
+    return cleanup_source(tmp_path, source, target)
 
 
 @pytest.mark.parametrize("policy", [None, "warn"], ids=["default-strict", "warn"])
@@ -181,6 +199,7 @@ def test_workflow_skip_retry_and_resume_in_a_new_submission(
         "new-run",
         **{"invalid-images": "skip", "resume-run-id": "first-run"},
     )
+    assert transfer_run(tmp_path, "first-run", "new-run") > 0
     module.main(args)
     reader.assert_awaited_once_with("datasets", keys[1])
     s3_provider.client.put_object.assert_not_called()
@@ -252,13 +271,12 @@ def test_workflow_checksum_audit_runs_before_prelabel(
             / "workflows/preparation-workflow-template.yaml"
         ).read_text()
     )["spec"]
-    steps = next(t for t in spec["templates"] if t["name"] == "prepare-for-review")[
-        "steps"
-    ]
+    steps = next(t for t in spec["templates"] if t["name"] == "all-steps")["steps"]
     assert [step[0]["template"] for step in steps] == [
-        "prepare-images",
+        "resume-checkpoints",
+        "run-prepare-images",
         "audit-checksums",
-        "prelabel",
+        "run-prelabel",
         "register-for-review",
         "approve-checkpoint-cleanup",
         "cleanup-checkpoints",
@@ -274,7 +292,7 @@ def test_workflow_checksum_audit_runs_before_prelabel(
         },
     )
     assert prelabel_args[prelabel_args.index("--checkpoint-dir") + 1] == str(
-        tmp_path / "original-run" / "prepared" / "prelabel-checkpoints"
+        tmp_path / "new-run" / "prepared" / "prelabel-checkpoints"
     )
     assert prelabel_args[0] == str(
         tmp_path / "new-run" / "prepared" / "index.coco.json"
@@ -337,7 +355,7 @@ def test_prelabel_entrypoint_uses_the_previous_run_index(
         "prelabel-run",
         step="prelabel",
         entrypoint="prelabel",
-        **{"resume-run-id": "audited-run", "model-revision": "test-model"},
+        **{"index-run-id": "audited-run", "model-revision": "test-model"},
     )
     expected_model = tmp_path / "prelabel-run/models/sam3_hf_transformers"
 
@@ -353,7 +371,7 @@ def test_prelabel_entrypoint_uses_the_previous_run_index(
     assert (expected_model / "config.json").is_file()
     assert args[0] == str(previous / "index.coco.json")
     assert args[args.index("--checkpoint-dir") + 1] == str(
-        previous / "prelabel-checkpoints"
+        tmp_path / "prelabel-run/prepared/prelabel-checkpoints"
     )
     assert calls == [(4, 3)]
     assert (previous / "index.coco.json").read_bytes() == index
@@ -373,8 +391,13 @@ def test_prelabel_entrypoint_uses_the_previous_run_index(
         "second-prelabel-run",
         step="prelabel",
         entrypoint="prelabel",
-        **{"resume-run-id": "audited-run", "model-revision": "test-model"},
+        **{
+            "resume-run-id": "prelabel-run",
+            "index-run-id": "audited-run",
+            "model-revision": "test-model",
+        },
     )
+    assert transfer_run(tmp_path, "prelabel-run", "second-prelabel-run") == 1
     prelabel.main(args)
     assert not calls
     assert (tmp_path / "second-prelabel-run/prepared/draft.coco.json").exists()
@@ -385,14 +408,13 @@ def test_prelabel_entrypoint_uses_the_previous_run_index(
         step="prelabel",
         entrypoint="prelabel",
         **{
-            "resume-run-id": "checkpoint-run",
             "index-run-id": "audited-run",
             "model-revision": "test-model",
         },
     )
     assert args[0] == str(previous / "index.coco.json")
     assert args[args.index("--checkpoint-dir") + 1] == str(
-        tmp_path / "checkpoint-run" / "prepared" / "prelabel-checkpoints"
+        tmp_path / "other-run" / "prepared" / "prelabel-checkpoints"
     )
     prelabel.main(args)
     assert calls == [(4, 3)]
@@ -412,7 +434,7 @@ def test_prelabel_entrypoint_uses_the_previous_run_index(
         "missing-index-run",
         step="prelabel",
         entrypoint="prelabel",
-        **{"resume-run-id": "unknown-run", "model-revision": "test-model"},
+        **{"index-run-id": "unknown-run", "model-revision": "test-model"},
     )
     with pytest.raises(FileNotFoundError, match="unknown-run"):
         prelabel.main(missing_args)
@@ -586,6 +608,8 @@ def test_workflow_compatible_resume_preserves_provenance_and_cleanup_isolation(
     )
     reader.reset_mock()
     s3_provider.client.put_object.reset_mock()
+    first_root = tmp_path / "first-run" / "prepared"
+    assert transfer_run(tmp_path, "first-run", "second-run") == 2
     prepare.main(next_prepare)
     reader.assert_not_awaited()
     s3_provider.client.put_object.assert_not_called()
@@ -613,19 +637,9 @@ def test_workflow_compatible_resume_preserves_provenance_and_cleanup_isolation(
     assert json.loads((prepared / "checksum-audit.json").read_text())["status"] == (
         "passed"
     )
-    first_root = tmp_path / "first-run" / "prepared"
-    shared = {
-        path: path.read_bytes()
-        for name in ("preparation-checkpoints", "prelabel-checkpoints")
-        for path in (first_root / name).rglob("*")
-        if path.is_file()
-    }
     objects = dict(s3_provider.objects)
-    assert len(shared) == 4
-    assert cleanup_checkpoints(tmp_path, "second-run") == 0
-    assert all(path.read_bytes() == data for path, data in shared.items())
-    assert cleanup_checkpoints(tmp_path, "first-run") == 4
-    assert all(not path.exists() for path in shared)
+    assert cleanup_checkpoints(tmp_path, "first-run") == 0
+    assert cleanup_checkpoints(tmp_path, "second-run") == 4
     assert (first_root / "index.coco.json").is_file()
     assert (first_root / "checksum-audit.json").is_file()
     assert (prepared / "draft.coco.json").is_file()
@@ -638,7 +652,12 @@ def test_cleanup_workflows_require_approval_and_target_only_the_selected_run():
         (workflows / "preparation-workflow-template.yaml").read_text()
     )["spec"]
     templates = {template["name"]: template for template in preparation["templates"]}
-    steps = templates["prepare-for-review"]["steps"]
+    steps = templates["all-steps"]["steps"]
+    assert [step[0]["name"] for step in templates["resume-checkpoints"]["steps"]] == [
+        "copy-checkpoints",
+        "approve-previous-checkpoint-cleanup",
+        "cleanup-previous-checkpoints",
+    ]
     assert [step[0]["template"] for step in steps[-3:]] == [
         "register-for-review",
         "approve-checkpoint-cleanup",
@@ -747,7 +766,7 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         container = template["container"]
         workflow_step = next(
             item
-            for group in templates["prepare-for-review"]["steps"]
+            for group in templates["all-steps"]["steps"]
             for item in group
             if item.get("template") == name
         )
@@ -780,7 +799,7 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         module = importlib.import_module(Path(container["command"][1]).stem)
         module.main(args)
 
-    for step in templates["prepare-for-review"]["steps"][:4]:
+    for step in templates["all-steps"]["steps"][1:5]:
         run_step(step[0]["template"])
     dataset = fiftyone.load_dataset(review_name)
     assert dataset.info["prelabel"]["model_revision"] == "synthetic-weights"
@@ -802,7 +821,7 @@ def test_workflow_commands_reach_fiftyone_without_losing_source_identity(
         )
         assert len(sample.draft_boxes.detections) == 1
     before = dict(s3_provider.objects)
-    for name in ("prepare-images", "prelabel"):
+    for name in ("run-prepare-images", "run-prelabel"):
         run_step(name)
     assert s3_provider.objects == before
     workspace_files = {

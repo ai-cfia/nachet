@@ -484,51 +484,66 @@ automatically.
 
 To skip invalid images with warnings and index records, append
 `-p invalid-images=skip`; the workflow defaults to strict `error`.
-To reuse a previous workflow's preparation and pre-label checkpoints in a new submission,
-append `-p resume-run-id=<previous-workflow-name>`. The default is the current
-workflow name. The new workflow writes its COCO outputs into its own directory
-but reads and extends the selected run's checkpoints. The checksum audit still
-runs again. Keep the same conversion and model settings and immutable collection,
-and do not run both workflows concurrently.
-For a chain of resumed submissions, keep selecting the original checkpoint's
-workflow name. Rebuild/select the updated CPU, SAM3 and registration images
-and deploy the updated WorkflowTemplates before using these parameters. The
-updated registration image preserves the checkpoint producer fields in
-FiftyOne.
+Argo assigns the workflow name at submission. Copy it from the `Name` shown by
+`argo submit` or from the workflow list in the Argo UI. The preparation steps
+use that name to locate checkpoints and COCO files on the workspace.
 
-To audit an earlier prepared index without running preparation again, select
-`audit-checksums` as the entrypoint and set `resume-run-id` to the workflow
-that wrote `index.coco.json`. `index-run-id` can select a different index run.
+To reuse checkpoints in a new submission, pass
+`-p resume-run-id=<previous-workflow-name>` with the name of the latest attempt
+that owns the checkpoints. The source run must be idle during the handoff.
+The new run copies the checkpoints to staging, verifies their SHA-256
+checksums, and publishes the verified copy under its own workflow name.
+If there are checkpoint files to remove, Argo pauses at
+`approve-previous-checkpoint-cleanup`. Once other users of the source
+checkpoints have finished, resume that step to clean up the source checkpoints
+and continue. Cleanup rechecks both copies before deleting source files. Allow
+enough free workspace storage for both copies until the handoff completes.
+
+`prepare-images` and `prelabel` update the new run's local checkpoints. If that
+run is interrupted after the handoff, use its workflow name for the next
+resume. The default `resume-run-id` is the current workflow name for a fresh
+run. Keep the same conversion and model settings and immutable collection.
+The full workflow still runs the prepared-image checksum audit. Build and
+select the updated CPU image and deploy the WorkflowTemplate before using the
+handoff.
+
+To audit an earlier prepared index, select `audit-checksums` as the entrypoint
+and set `index-run-id` to the workflow that completed `prepare-images` and
+wrote `index.coco.json`. The `index-run-id` field appears for direct audit and
+pre-label entrypoints and defaults to `resume-run-id`.
+For example, if run B resumed from A and then finished `prepare-images`,
+both the completed index and the latest checkpoints are under B.
 The report is written under the new workflow's directory and does not replace
 the earlier report. The index must already exist: preparation writes it only
 after all non-skipped images have completed. A direct audit runs no later
 steps. Rebuild and select the updated CPU image and apply the updated
 WorkflowTemplate; older images do not support `--report-path`.
 
-To start only pre-labeling from an earlier run, set `PREVIOUS_RUN` to that
-workflow's name and select the `prelabel` entrypoint:
+To resume only pre-labeling, set `CHECKPOINT_RUN` to the workflow that owns the
+prediction checkpoints and `INDEX_RUN` to the workflow that completed
+`prepare-images`. Select the `prelabel` entrypoint:
 
 ```bash
 argo submit -n argo-workflows --from workflowtemplate/nachet-preparation \
-  --entrypoint prelabel -p resume-run-id="$PREVIOUS_RUN" \
+  --entrypoint prelabel -p resume-run-id="$CHECKPOINT_RUN" -p index-run-id="$INDEX_RUN" \
   -p code-revision="$CODE_REVISION" -p model-revision="$MODEL_REVISION" \
   -p raw-prefix=raw/collection-01 -p dataset-name=collection-01-review
 ```
 
 The index is read from
-`/workspace/<previous-workflow-name>/prepared/index.coco.json`; the draft is
-written under the new workflow's directory. No audit, registration or cleanup
-step runs with this entrypoint. First verify that the previous audit passed for
+`/workspace/<index-workflow-name>/prepared/index.coco.json`; the draft is
+written under the new workflow's directory. To start fresh predictions against
+an existing index, pass only `index-run-id` and leave `resume-run-id` at its
+default. A resume with prediction checkpoints uses the same copy and
+approval flow as the full workflow. First verify that the previous audit passed for
 that exact index and bucket, and that the index, originals and prepared PNGs
 have not changed since. The report does not bind itself to the index hash, and
 the pre-label step does not verify the report.
 
-By default, the index and pre-label checkpoints both come from `resume-run-id`.
-Use the same model folder and revision to reuse its checkpoints. If the index
-is in a different run from the shared checkpoints, set `INDEX_RUN` to that
-workflow's name and pass `-p index-run-id="$INDEX_RUN"` as well. In the full
-workflow, pre-labeling always uses the current run's freshly audited index
-regardless of this input.
+If the index and prediction checkpoints are in the same run, omit
+`index-run-id` to use its default. Use the same model folder and revision to
+reuse prediction checkpoints. In the full workflow, pre-labeling always uses
+the current run's freshly audited index.
 
 To start only registration from an existing draft, set `DRAFT_RUN` to the name
 of the workflow that wrote it and select the `register-for-review` entrypoint:
@@ -551,13 +566,10 @@ Registration starts a new import rather than resuming individual samples and
 still refuses an existing dataset name. A killed import can leave a temporary
 dataset, as described above under "Register for review".
 
-After registration, the workflow suspends before checkpoint cleanup. Resuming
-the approval step authorizes irreversible cleanup of **only the current
-workflow's** checkpoints; it does not delete COCO files, audit reports, models,
-S3 objects, or FiftyOne datasets. A failed workflow never reaches this step.
-If `resume-run-id` names another workflow, its shared checkpoints remain.
-Before approving any cleanup, confirm that no other workflow still uses or
-extends the selected run.
+After registration, the full workflow separately suspends at
+`approve-current-checkpoint-cleanup` to authorize cleanup of its own
+checkpoints. Both approvals apply only to checkpoint files in the selected
+run. COCO files and audit reports remain available for direct steps.
 
 To clean an earlier run, including a failed run, submit the separate cleanup
 workflow and resume its approval step only when all dependent runs are finished:
@@ -567,7 +579,7 @@ argo submit -n argo-workflows --from workflowtemplate/nachet-preparation-cleanup
   -p run-name=<earlier-workflow-name>
 ```
 
-Both cleanup paths remove recognized legacy and versioned checkpoint files
+Cleanup removes recognized legacy and versioned checkpoint files
 only. Unexpected files or symlinks cause cleanup to fail rather than removing
 unrecognized data.
 
