@@ -127,6 +127,7 @@ def open_run(workspace: Path, run_name: str, *, create: bool = False) -> Iterato
             try:
                 os.mkdir(run_name, dir_fd=workspace_fd)
             except FileExistsError:
+                # Retries may find an existing run directory. Validate it when opening it.
                 pass
         run_fd = open_directory(workspace_fd, run_name, workspace / run_name)
         try:

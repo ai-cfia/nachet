@@ -81,6 +81,7 @@ def copy_checkpoints(workspace: Path, source: str, target: str) -> int:
         try:
             os.stat("prepared", dir_fd=target_fd, follow_symlinks=False)
         except FileNotFoundError:
+            # The first attempt has no prepared directory until the verified copy is published.
             pass
         else:
             # A retry after successful publication must preserve any local progress.
