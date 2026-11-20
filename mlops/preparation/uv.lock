@@ -1125,7 +1125,7 @@ dev = [
 
 [[package]]
 name = "nachet-preparation"
-version = "0.3.3"
+version = "1.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "numpy" },
