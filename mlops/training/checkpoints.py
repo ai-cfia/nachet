@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import tempfile
 from pathlib import Path
 
 CHECKPOINT_PATTERN = re.compile(r"^checkpoint-([1-9][0-9]*)$")
@@ -51,10 +52,106 @@ def resolve_trainer_output(runs_root: Path, run_id: str) -> Path:
 
 
 def list_checkpoints(trainer_output: Path) -> list[str]:
-    checkpoints = list_complete_checkpoints(trainer_output)
-    if not checkpoints:
+    names = {path.name for path in list_complete_checkpoints(trainer_output)}
+    names.update(archived_checkpoints(trainer_output.parent))
+    if not names:
         raise FileNotFoundError("training completed without a checkpoint directory")
-    return [path.name for path in checkpoints]
+    return sorted(names, key=lambda name: int(name.split("-")[1]))
+
+
+def archived_checkpoints(run_root: Path) -> dict[str, str]:
+    """Find native MLflow checkpoint models from this workflow's attempts."""
+    run_id_file = run_root / "mlflow-run-id"
+    if not run_id_file.is_file():
+        return {}
+
+    from mlflow import MlflowClient
+    from mlflow.entities import LoggedModelStatus
+
+    client = MlflowClient()
+    parent = client.get_run(run_id_file.read_text().strip())
+    runs = [parent]
+    token = None
+    while True:
+        page = client.search_runs(
+            [parent.info.experiment_id],
+            filter_string=f"tags.`mlflow.parentRunId` = '{parent.info.run_id}'",
+            page_token=token,
+        )
+        runs.extend(page)
+        token = page.token
+        if not token:
+            break
+
+    # A continuation shares its parent MLflow run with the source workflow.
+    # Scope archives to this workflow, allowing the PVC to have another mount root.
+    sources = [
+        run.info.run_id for run in runs
+        if Path(run.data.params.get("output_dir", "")).parts[-2:]
+        == (run_root.name, "trainer-output")
+    ]
+    if not sources:
+        return {}
+    source_ids = ", ".join(f"'{run_id}'" for run_id in sources)
+    models = {}
+    token = None
+    while True:
+        page = client.search_logged_models(
+            [parent.info.experiment_id],
+            filter_string=f"source_run_id IN ({source_ids})",
+            page_token=token,
+        )
+        for model in page:
+            if (
+                model.status == LoggedModelStatus.READY
+                and CHECKPOINT_PATTERN.fullmatch(model.name)
+                and (
+                    model.name not in models
+                    or model.creation_timestamp > models[model.name].creation_timestamp
+                )
+            ):
+                models[model.name] = model
+        token = page.token
+        if not token:
+            break
+    return {name: model.model_id for name, model in models.items()}
+
+
+def resolve_checkpoint(
+    trainer_output: Path,
+    name: str,
+    *,
+    archives: dict[str, str] | None = None,
+    download: bool = True,
+) -> Path:
+    """Use a local checkpoint or restore its complete MLflow archive."""
+    if CHECKPOINT_PATTERN.fullmatch(name) is None:
+        raise ValueError(f"invalid checkpoint name: {name}")
+    checkpoint = trainer_output / name
+    if checkpoint_is_complete(checkpoint):
+        return checkpoint
+    if checkpoint.exists():
+        raise ValueError(f"checkpoint is incomplete: {name}")
+    if archives is None:
+        archives = archived_checkpoints(trainer_output.parent)
+    if name not in archives:
+        raise FileNotFoundError(f"checkpoint is unavailable locally or in MLflow: {name}")
+    if not download:
+        return checkpoint
+
+    from mlflow.artifacts import download_artifacts
+
+    # A failed download must not leave a selectable checkpoint directory behind.
+    trainer_output.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".restore-", dir=trainer_output) as temporary:
+        model = Path(download_artifacts(
+            artifact_uri=f"models:/{archives[name]}", dst_path=temporary,
+        ))
+        restored = model / "artifacts" / name
+        if not checkpoint_is_complete(restored):
+            raise ValueError(f"MLflow archive is incomplete: {name}")
+        restored.rename(checkpoint)
+    return checkpoint
 
 
 def parse_checkpoint_options(value: str) -> list[str]:
@@ -104,16 +201,29 @@ def validate_selection(args: argparse.Namespace) -> int:
             f"select one to {MAX_CHECKPOINT_SELECTIONS} distinct checkpoints"
         )
 
-    # Recheck after the pause in case the checkpoint changed.
+    # Recheck after the pause and restore only the selected archived checkpoints.
     trainer_output = resolve_trainer_output(args.runs_root, args.run_id)
     for name in selected:
         if name not in available:
             raise ValueError(f"unknown checkpoint selection: {name}")
-        if not checkpoint_is_complete(trainer_output / name):
-            raise ValueError(f"checkpoint is no longer complete: {name}")
+    archives = (
+        archived_checkpoints(trainer_output.parent)
+        if any(not checkpoint_is_complete(trainer_output / name) for name in selected)
+        else {}
+    )
+    for name in selected:
+        resolve_checkpoint(trainer_output, name, archives=archives)
 
     args.output.write_text(json.dumps(selected) + "\n", encoding="utf-8")
     print(json.dumps({"selected_checkpoints": selected}))
+    return 0
+
+
+def restore(args: argparse.Namespace) -> int:
+    trainer_output = resolve_trainer_output(args.runs_root, args.run_id)
+    # Existing model-only export inputs do not need optimizer or resume state.
+    if not (trainer_output / args.checkpoint).is_dir():
+        resolve_checkpoint(trainer_output, args.checkpoint)
     return 0
 
 
@@ -133,6 +243,10 @@ def parse_args() -> argparse.Namespace:
     validate_parser.add_argument("--selected-checkpoint", required=True, nargs="+")
     validate_parser.add_argument("--output", type=Path, required=True)
     validate_parser.set_defaults(handler=validate_selection)
+
+    restore_parser = subparsers.add_parser("restore")
+    restore_parser.add_argument("--checkpoint", required=True)
+    restore_parser.set_defaults(handler=restore)
     return parser.parse_args()
 
 

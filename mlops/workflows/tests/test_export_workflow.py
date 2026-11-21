@@ -30,7 +30,7 @@ class ExportWorkflowTest(unittest.TestCase):
         torch.set_num_threads(1)
         torch.manual_seed(42)
 
-    def run_step(self, name, quantize):
+    def run_step(self, name, quantize, kind=None):
         container = self.templates[name]["container"]
         command = [*container["command"], *container["args"]]
         replacements = {
@@ -43,7 +43,13 @@ class ExportWorkflowTest(unittest.TestCase):
         }
         for old, new in replacements.items():
             command = [argument.replace(old, new) for argument in command]
+        command = [
+            str(self.root / "runs") if arg == "/runs" else arg for arg in command
+        ]
         env = dict(os.environ, HF_HUB_OFFLINE="1")
+        if name == "restore-checkpoint":
+            command[0] = os.environ.get(f"NACHET_{kind.upper()}_PYTHON", sys.executable)
+            env["PYTHONPATH"] = str(MLOPS / "training")
         env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + os.environ["PATH"]
         process = subprocess.run(
             command,
@@ -55,10 +61,11 @@ class ExportWorkflowTest(unittest.TestCase):
         )
         self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
 
-    def check_export(self, model, pixels, quantize):
+    def check_export(self, model, pixels, quantize, kind):
         original = hashlib.sha256(
             (self.checkpoint / "model.safetensors").read_bytes()
         ).digest()
+        self.run_step("restore-checkpoint", quantize, kind)
         self.run_step("export", quantize)
         output = self.root / "exports" / ("export-int8" if quantize else "export-fp32")
         session = ort.InferenceSession(
@@ -94,13 +101,20 @@ class ExportWorkflowTest(unittest.TestCase):
     ):
         model = save_tiny_swin(self.checkpoint)
         pixels = torch.rand(1, 3, 32, 32)
-        step = self.templates["export-model"]["steps"][1][0]
+        steps = self.templates["export-model"]["steps"]
+        self.assertEqual(steps[0][0]["template"], "restore-checkpoint")
+        step = next(
+            step
+            for group in steps
+            for step in group
+            if step["name"] == "prepare-browser"
+        )
         self.assertEqual(
             step["when"], "{{=inputs.parameters['model-kind'] == 'classifier'}}"
         )
         for quantize in (False, True):
             with self.subTest(quantize=quantize):
-                output = self.check_export(model, pixels, quantize)
+                output = self.check_export(model, pixels, quantize, "classifier")
                 self.run_step("prepare-browser", quantize)
                 session = ort.InferenceSession(
                     str(output / "browser/model_browser.fp16.onnx"),
@@ -123,7 +137,7 @@ class ExportWorkflowTest(unittest.TestCase):
         pixels = torch.rand(1, 3, 64, 64)
         for quantize in (False, True):
             with self.subTest(quantize=quantize):
-                output = self.check_export(model, pixels, quantize)
+                output = self.check_export(model, pixels, quantize, "detector")
                 self.assertFalse((output / "browser").exists())
 
 

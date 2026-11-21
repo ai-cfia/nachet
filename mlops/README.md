@@ -9,6 +9,35 @@ publish and validate a prepared release, or run a small integration smoke test
 against a separately provisioned test registry and object store. Their templates
 are included in `workflows/kustomization.yaml` alongside the training workflows.
 
+## Training checkpoints
+
+Both trainers save full resume checkpoints to the shared training PVC each
+epoch and upload them through the existing MLflow integration. The full
+profile keeps the two most recent checkpoints locally; the smoke profile keeps
+one. `checkpoint-retention` can override this count.
+
+The review dropdown includes successfully archived checkpoints from that
+workflow's MLflow attempts, even after local rotation removes them. Selecting
+an older checkpoint downloads it before evaluation. Resume and standalone
+export can restore missing checkpoints too. Keep the run's `mlflow-run-id`
+file so those operations can find its archives. Failed uploads are excluded
+from the archive list, and failed downloads do not create selectable local
+checkpoint directories. Existing local checkpoints remain usable.
+
+To restore one checkpoint explicitly with the trainer runtime:
+
+```bash
+python -m checkpoints --runs-root /runs --run-id <training-workflow> \
+  restore --checkpoint checkpoint-<step>
+```
+
+Saving stays enabled because training needs model weights, optimizer,
+scheduler and RNG state to resume. RAM-backed storage would lose its contents
+with the pod. Leave room for another checkpoint while it is being saved and
+for any older checkpoints selected for review. This retention limit applies
+to each training run, not the entire PVC: retained runs, restored candidates,
+dataset inputs, base models and exports still need a storage budget.
+
 ## Example approval workflow
 
 `workflows/example-workflow-template.yaml` is a small control-flow example used

@@ -107,6 +107,7 @@ class ClassifierCommandTest(unittest.TestCase):
                 "--train_dir": str(root / "Training"),
                 "--validation_dir": str(root / "Validation"),
                 "--num_train_epochs": "1",
+                "--save_total_limit": "1",
                 "--per_device_train_batch_size": "3",
                 "--resume_from_checkpoint": str(checkpoint),
             }.items():
@@ -123,6 +124,12 @@ class ClassifierCommandTest(unittest.TestCase):
             command = shlex.split(result.stdout)
             self.assertNotIn("--validation_dir", command)
             self.assertEqual(command[command.index("--train_val_split") + 1], "0.15")
+
+            arguments[arguments.index("--run-profile") + 1] = "full"
+            result = subprocess.run(arguments, text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            command = shlex.split(result.stdout)
+            self.assertEqual(command[command.index("--save_total_limit") + 1], "2")
 
 
 if __name__ == "__main__":
