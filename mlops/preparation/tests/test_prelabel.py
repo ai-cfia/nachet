@@ -515,6 +515,105 @@ def test_overlapping_boxes_keep_detections_and_flag_review(
     assert len(result["annotations"]) == 6
 
 
+@pytest.mark.parametrize(
+    "second_box, has_overlapping_masks, reason",
+    [
+        pytest.param([25, 20, 45, 40], True, "overlapping_masks", id="nearly-nested-masks"),
+        pytest.param([25, 20, 45, 40], False, None, id="overlapping-boxes-disjoint-masks"),
+        pytest.param([15, 15, 20, 20], False, "nested_boxes", id="strict-nested-still-flags"),
+    ],
+)
+def test_mask_overlap_overrides_box_overlap_and_keeps_detections(
+    coco, intake, second_box, has_overlapping_masks, reason
+):
+    result = prelabel(
+        coco,
+        intake[1],
+        lambda image: Prediction(
+            [[10, 10, 30, 30], second_box],
+            has_overlapping_masks=has_overlapping_masks,
+        ),
+    )
+    status = "needs_review" if reason else None
+    assert all(image["prelabel_status"] == status for image in result["images"])
+    assert all(image["prelabel_reason"] == reason for image in result["images"])
+    assert len(result["annotations"]) == 6
+
+
+def test_has_overlapping_masks_matrix_logic():
+    class _FakeTensor:
+        def __init__(self, arr):
+            self.arr = np.asarray(arr)
+
+        def __len__(self):
+            return len(self.arr)
+
+        def flatten(self, start_dim=0):
+            return _FakeTensor(self.arr.reshape(self.arr.shape[0], -1))
+
+        def float(self):
+            return _FakeTensor(self.arr.astype(np.float32))
+
+        def sum(self, dim=None):
+            return _FakeTensor(self.arr.sum(axis=dim))
+
+        def unsqueeze(self, dim):
+            return _FakeTensor(np.expand_dims(self.arr, axis=dim))
+
+        def minimum(self, other):
+            return _FakeTensor(np.minimum(self.arr, other.arr))
+
+        @property
+        def T(self):
+            return _FakeTensor(self.arr.T)
+
+        def __matmul__(self, other):
+            return _FakeTensor(self.arr @ other.arr)
+
+        def fill_diagonal_(self, val):
+            np.fill_diagonal(self.arr, val)
+
+        def __rmul__(self, scalar):
+            return _FakeTensor(scalar * self.arr)
+
+        def __ge__(self, other):
+            return _FakeTensor(self.arr >= other.arr)
+
+        def __gt__(self, scalar):
+            return _FakeTensor(self.arr > scalar)
+
+        def __and__(self, other):
+            return _FakeTensor(self.arr & other.arr)
+
+        def any(self):
+            return _FakeTensor(np.array(self.arr.any()))
+
+        def item(self):
+            return self.arr.item()
+
+    # Single mask or empty -> False
+    assert not module._has_overlapping_masks(_FakeTensor(np.ones((1, 4, 4), dtype=bool)))
+    assert not module._has_overlapping_masks(_FakeTensor(np.zeros((0, 4, 4), dtype=bool)))
+
+    # Two disjoint masks -> False
+    disjoint = np.zeros((2, 4, 4), dtype=bool)
+    disjoint[0, :2, :2] = True
+    disjoint[1, 2:, 2:] = True
+    assert not module._has_overlapping_masks(_FakeTensor(disjoint))
+
+    # Partial overlap < 50% of smaller mask (1 of 4 pixels = 25%) -> False
+    slight = np.zeros((2, 4, 4), dtype=bool)
+    slight[0, :2, :2] = True
+    slight[1, 1:3, 1:3] = True
+    assert not module._has_overlapping_masks(_FakeTensor(slight))
+
+    # Nearly nested: smaller mask (4 px) shares 3 px (75% >= 50%) with larger mask -> True
+    nested = np.zeros((2, 4, 4), dtype=bool)
+    nested[0, :3, :3] = True
+    nested[1, 1:3, 2:4] = True  # 2x2=4 px, 2 px inside [0:3, 0:3] => 50%
+    assert module._has_overlapping_masks(_FakeTensor(nested))
+
+
 def test_resume_checks_saved_boxes_for_overlap(coco, intake, tmp_path):
     checkpoint_dir = tmp_path / "checkpoints"
     options = {
