@@ -350,8 +350,9 @@ Reused images are not read again by pre-labeling. Keep their media unchanged;
 the Argo checksum audit rechecks the indexed S3 objects before pre-labeling.
 Checkpointed image records include `prelabel_project_version` and
 `prelabel_code_revision` for the original producer, even when a later
-compatible release assembles the draft. On resume, saved boxes with an empty
-status are checked for overlap.
+compatible release assembles the draft. On resume, saved mask overlap decisions
+are preserved; legacy checkpoints without a mask decision and with an empty
+status are checked for box overlap.
 
 Each image records its `prelabel_status`, `prelabel_prompt` and
 `prelabel_reason`. The prompt is the last one attempted, or `null` if
@@ -360,9 +361,10 @@ the predictor does not use prompts or inference was skipped.
 | Status | Reason | Meaning |
 | --- | --- | --- |
 | `unannotated` | `null` | Initial snapshot before inference. |
-| `null` | `null` | A prompt returned 1 to 9 valid boxes with no shared area. |
+| `null` | `null` | A prompt returned 1 to 9 valid boxes with disjoint masks (or no shared box area when masks are unavailable). |
 | `needs_review` | `nested_boxes` | One padded box lies inside another. |
-| `needs_review` | `overlapping_boxes` | Padded boxes share area without containment. |
+| `needs_review` | `overlapping_masks` | Native-grid SAM3 masks share at least 50% of the smaller mask. |
+| `needs_review` | `overlapping_boxes` | Padded boxes share area without containment (fallback when masks are unavailable). |
 | `needs_review` | `no_detections` | All prompts failed the count check; the last returned no boxes. |
 | `needs_review` | `too_many_detections` | All prompts failed the count check; the last returned at least 10 boxes. |
 | `needs_review` | `invalid_boxes` | A prompt returned 1 to 9 boxes, but invalid geometry was dropped. |

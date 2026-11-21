@@ -155,7 +155,9 @@ def _has_overlapping_masks(masks) -> bool:
     min_areas = areas.unsqueeze(0).minimum(areas.unsqueeze(1))
     overlap = flat @ flat.T
     overlap.fill_diagonal_(0)
-    return bool(((overlap >= MASK_OVERLAP_THRESHOLD * min_areas) & (min_areas > 0)).any().item())
+    return bool(
+        ((overlap >= MASK_OVERLAP_THRESHOLD * min_areas) & (min_areas > 0)).any().item()
+    )
 
 
 def review_outcome(
@@ -315,8 +317,18 @@ def _load_checkpoint(
         for annotation in checkpoint["annotations"]
     ):
         raise ValueError(f"Invalid annotations in pre-label checkpoint: {path}")
-    if checkpoint["prelabel_status"] is None and _has_overlapping_boxes(
-        [annotation["bbox"] for annotation in checkpoint["annotations"]]
+    if (
+        "has_overlapping_masks" in checkpoint
+        and checkpoint["has_overlapping_masks"] is not None
+        and not isinstance(checkpoint["has_overlapping_masks"], bool)
+    ):
+        raise ValueError(f"Invalid mask overlap flag in pre-label checkpoint: {path}")
+    if (
+        checkpoint["prelabel_status"] is None
+        and checkpoint.get("has_overlapping_masks") is None
+        and _has_overlapping_boxes(
+            [annotation["bbox"] for annotation in checkpoint["annotations"]]
+        )
     ):
         checkpoint.update(
             prelabel_status="needs_review", prelabel_reason="overlapping_boxes"
@@ -398,12 +410,15 @@ def _label_image(
     status, reason = review_outcome(
         boxes, padded, has_overlapping_masks=prediction.has_overlapping_masks
     )
-    return {
+    outcome = {
         "prelabel_status": status,
         "prelabel_prompt": prediction.prompt,
         "prelabel_reason": reason,
         "annotations": annotations,
     }
+    if prediction.has_overlapping_masks is not None:
+        outcome["has_overlapping_masks"] = prediction.has_overlapping_masks
+    return outcome
 
 
 def _checkpoint_namespace(

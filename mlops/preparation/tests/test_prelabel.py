@@ -518,9 +518,15 @@ def test_overlapping_boxes_keep_detections_and_flag_review(
 @pytest.mark.parametrize(
     "second_box, has_overlapping_masks, reason",
     [
-        pytest.param([25, 20, 45, 40], True, "overlapping_masks", id="nearly-nested-masks"),
-        pytest.param([25, 20, 45, 40], False, None, id="overlapping-boxes-disjoint-masks"),
-        pytest.param([15, 15, 20, 20], False, "nested_boxes", id="strict-nested-still-flags"),
+        pytest.param(
+            [25, 20, 45, 40], True, "overlapping_masks", id="nearly-nested-masks"
+        ),
+        pytest.param(
+            [25, 20, 45, 40], False, None, id="overlapping-boxes-disjoint-masks"
+        ),
+        pytest.param(
+            [15, 15, 20, 20], False, "nested_boxes", id="strict-nested-still-flags"
+        ),
     ],
 )
 def test_mask_overlap_overrides_box_overlap_and_keeps_detections(
@@ -592,8 +598,12 @@ def test_has_overlapping_masks_matrix_logic():
             return self.arr.item()
 
     # Single mask or empty -> False
-    assert not module._has_overlapping_masks(_FakeTensor(np.ones((1, 4, 4), dtype=bool)))
-    assert not module._has_overlapping_masks(_FakeTensor(np.zeros((0, 4, 4), dtype=bool)))
+    assert not module._has_overlapping_masks(
+        _FakeTensor(np.ones((1, 4, 4), dtype=bool))
+    )
+    assert not module._has_overlapping_masks(
+        _FakeTensor(np.zeros((0, 4, 4), dtype=bool))
+    )
 
     # Two disjoint masks -> False
     disjoint = np.zeros((2, 4, 4), dtype=bool)
@@ -640,6 +650,38 @@ def test_resume_checks_saved_boxes_for_overlap(coco, intake, tmp_path):
     )
     assert resumed == expected
     assert json.loads(path.read_text()) == checkpoint
+
+
+def test_resume_preserves_disjoint_mask_decision_with_overlapping_boxes(
+    coco, intake, tmp_path
+):
+    checkpoint_dir = tmp_path / "checkpoints"
+    options = {
+        "checkpoint_dir": checkpoint_dir,
+        "predictor_identity": "model-a",
+        "code_revision": "test",
+    }
+    fresh = prelabel(
+        coco,
+        intake[1],
+        lambda image: Prediction(
+            [[10, 10, 30, 30], [25, 20, 45, 40]],
+            has_overlapping_masks=False,
+        ),
+        **options,
+    )
+    assert all(image["prelabel_status"] is None for image in fresh["images"])
+    assert all(image["prelabel_reason"] is None for image in fresh["images"])
+
+    resumed = prelabel(
+        coco,
+        intake[1],
+        lambda image: pytest.fail(
+            "saved masks decision should not require new inference"
+        ),
+        **options,
+    )
+    assert resumed == fresh
 
 
 def test_prelabel_cli_records_run_options_once(coco, intake, tmp_path, monkeypatch):
