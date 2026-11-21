@@ -40,18 +40,37 @@ def export_model(checkpoint, output, quantize=False):
             config["tie_encoder_decoder"] = False
             (model_path / "config.json").write_text(json.dumps(config))
 
-        subprocess.run(
-            [
-                "optimum-cli", "export", "onnx",
-                "--model", str(model_path),
-                "--task", TASKS[model_type],
-                "--opset", OPSET,
-                "--library-name", "transformers",
-                str(output / "onnx-fp32"),
-            ],
-            check=True,
-            env=env,
-        )
+        if model_type == "rt_detr_v2":
+            from optimum.exporters.onnx import main_export
+
+            from detector_parity import validate_detector_export
+
+            main_export(
+                model_name_or_path=str(model_path),
+                output=output / "onnx-fp32",
+                task=TASKS[model_type],
+                opset=int(OPSET),
+                library_name="transformers",
+                local_files_only=True,
+                do_validation=False,
+            )
+            validate_detector_export(
+                model_path, output / "onnx-fp32/model.onnx",
+                output / "detector-parity.json",
+            )
+        else:
+            subprocess.run(
+                [
+                    "optimum-cli", "export", "onnx",
+                    "--model", str(model_path),
+                    "--task", TASKS[model_type],
+                    "--opset", OPSET,
+                    "--library-name", "transformers",
+                    str(output / "onnx-fp32"),
+                ],
+                check=True,
+                env=env,
+            )
     if quantize:
         subprocess.run(
             [
