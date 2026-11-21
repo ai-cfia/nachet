@@ -34,6 +34,9 @@ PROMPTS = ("foreground object", "thick long seed", "insect")
 SCORE_THRESHOLD = 0.5
 MASK_THRESHOLD = 0.5
 MASK_OVERLAP_THRESHOLD = 0.5
+SEED_CHECK_PROMPT = "seed"
+SEED_CHECK_SCORE_THRESHOLD = 0.45
+SEED_CHECK_IOU_THRESHOLD = 0.4
 # Notebook 1.02 accepts a prompt's result when it has 1 to 9 boxes.
 MAX_BOXES = 9
 HIGH_BIT_MODES = {"I", "F", "I;16", "I;16B", "I;16L"}
@@ -44,6 +47,7 @@ class Prediction(NamedTuple):
     prompt: str | None = None
     scores: list[float] | None = None
     has_overlapping_masks: bool | None = None
+    has_low_seed_confidence: bool | None = None
 
 
 class Sam3Predictor:
@@ -66,32 +70,98 @@ class Sam3Predictor:
             model_path, local_files_only=True
         )
 
-    def __call__(self, image: Image.Image) -> Prediction:
-        """Use the first prompt with 1 to 9 boxes, or the last result for review."""
-        for prompt in PROMPTS[:-1]:
-            prediction = self._predict_prompt(image, prompt)
-            if 0 < len(prediction.boxes) <= MAX_BOXES:
-                return prediction
-        return self._predict_prompt(image, PROMPTS[-1])
-
-    def _predict_prompt(self, image: Image.Image, prompt: str) -> Prediction:
-        inputs = self.processor(images=image, text=prompt, return_tensors="pt").to(
-            self.device
-        )
+    def _encode_image(self, image: Image.Image):
+        inputs = self.processor(images=image, return_tensors="pt").to(self.device)
         with (
             self.torch.inference_mode(),
             self.torch.autocast(
                 self.device, dtype=self.torch.bfloat16, enabled=self.device == "cuda"
             ),
         ):
-            outputs = self.model(**inputs)
+            vision_embeds = self.model.get_vision_features(
+                pixel_values=inputs["pixel_values"]
+            )
+        height, width = inputs["original_sizes"][0].tolist()
+        return vision_embeds, (height, width)
+
+    def __call__(self, image: Image.Image) -> Prediction:
+        """Use the first prompt with 1 to 9 boxes, or the last result for review."""
+        if not hasattr(self, "model"):
+            for prompt in PROMPTS[:-1]:
+                prediction = self._predict_prompt(image, prompt)
+                if 0 < len(prediction.boxes) <= MAX_BOXES:
+                    return prediction
+            return self._predict_prompt(image, PROMPTS[-1])
+
+        vision_embeds, original_size = self._encode_image(image)
+        for prompt in PROMPTS[:-1]:
+            prediction = self._predict_prompt(
+                image,
+                prompt,
+                vision_embeds=vision_embeds,
+                original_size=original_size,
+            )
+            if 0 < len(prediction.boxes) <= MAX_BOXES:
+                if prompt == PROMPTS[0]:
+                    seed_prediction = self._predict_prompt(
+                        image,
+                        SEED_CHECK_PROMPT,
+                        vision_embeds=vision_embeds,
+                        original_size=original_size,
+                        score_threshold=SEED_CHECK_SCORE_THRESHOLD,
+                    )
+                    low_seed = _has_low_seed_confidence(
+                        prediction.boxes,
+                        seed_prediction.boxes,
+                        seed_prediction.scores or [],
+                    )
+                    return prediction._replace(has_low_seed_confidence=low_seed)
+                return prediction
+        return self._predict_prompt(
+            image,
+            PROMPTS[-1],
+            vision_embeds=vision_embeds,
+            original_size=original_size,
+        )
+
+    def _predict_prompt(
+        self,
+        image: Image.Image,
+        prompt: str,
+        *,
+        vision_embeds=None,
+        original_size: tuple[int, int] | None = None,
+        score_threshold: float = SCORE_THRESHOLD,
+    ) -> Prediction:
+        if vision_embeds is None:
+            inputs = self.processor(images=image, text=prompt, return_tensors="pt").to(
+                self.device
+            )
+            height, width = inputs["original_sizes"][0].tolist()
+            model_kwargs = inputs
+        else:
+            text_inputs = self.processor(text=prompt, return_tensors="pt").to(
+                self.device
+            )
+            height, width = original_size
+            model_kwargs = {
+                "vision_embeds": vision_embeds,
+                "input_ids": text_inputs["input_ids"],
+                "attention_mask": text_inputs.get("attention_mask"),
+            }
+        with (
+            self.torch.inference_mode(),
+            self.torch.autocast(
+                self.device, dtype=self.torch.bfloat16, enabled=self.device == "cuda"
+            ),
+        ):
+            outputs = self.model(**model_kwargs)
         result = self.processor.post_process_instance_segmentation(
             outputs,
-            threshold=SCORE_THRESHOLD,
+            threshold=score_threshold,
             mask_threshold=MASK_THRESHOLD,
             target_sizes=None,
         )[0]
-        height, width = inputs["original_sizes"][0].tolist()
         scale = result["boxes"].new_tensor([width, height, width, height])
         boxes = (result["boxes"] * scale).detach().cpu().tolist()
         scores = result["scores"].detach().cpu().tolist()
@@ -160,8 +230,45 @@ def _has_overlapping_masks(masks) -> bool:
     )
 
 
+def _box_iou_xyxy(first: list[float], second: list[float]) -> float:
+    """Intersection over union for two pixel XYXY boxes."""
+    inter_w = max(0.0, min(first[2], second[2]) - max(first[0], second[0]))
+    inter_h = max(0.0, min(first[3], second[3]) - max(first[1], second[1]))
+    inter = inter_w * inter_h
+    if inter <= 0.0:
+        return 0.0
+    area_a = max(0.0, first[2] - first[0]) * max(0.0, first[3] - first[1])
+    area_b = max(0.0, second[2] - second[0]) * max(0.0, second[3] - second[1])
+    union = area_a + area_b - inter
+    return inter / union if union > 0.0 else 0.0
+
+
+def _has_low_seed_confidence(
+    boxes: list[list[float]],
+    seed_boxes: list[list[float]],
+    seed_scores: list[float],
+) -> bool:
+    """Whether any accepted box lacks a matching 'seed' detection above threshold."""
+    for box in boxes:
+        best_score = max(
+            (
+                score
+                for seed_box, score in zip(seed_boxes, seed_scores, strict=True)
+                if _box_iou_xyxy(box, seed_box) >= SEED_CHECK_IOU_THRESHOLD
+            ),
+            default=0.0,
+        )
+        if best_score < SEED_CHECK_SCORE_THRESHOLD:
+            return True
+    return False
+
+
 def review_outcome(
-    boxes: list, padded: list, *, has_overlapping_masks: bool | None = None
+    boxes: list,
+    padded: list,
+    *,
+    has_overlapping_masks: bool | None = None,
+    has_low_seed_confidence: bool | None = None,
 ) -> tuple[str | None, str | None]:
     """Return (prelabel_status, prelabel_reason) for one image's detections."""
     if not boxes:
@@ -181,6 +288,8 @@ def review_outcome(
         return "needs_review", "overlapping_masks"
     if has_overlapping_masks is None and _has_overlapping_boxes(padded):
         return "needs_review", "overlapping_boxes"
+    if has_low_seed_confidence is True:
+        return "needs_review", "low_seed_confidence"
     return None, None
 
 
@@ -408,7 +517,10 @@ def _label_image(
             annotation["score"] = score
         annotations.append(annotation)
     status, reason = review_outcome(
-        boxes, padded, has_overlapping_masks=prediction.has_overlapping_masks
+        boxes,
+        padded,
+        has_overlapping_masks=prediction.has_overlapping_masks,
+        has_low_seed_confidence=prediction.has_low_seed_confidence,
     )
     outcome = {
         "prelabel_status": status,
@@ -440,6 +552,9 @@ def _checkpoint_namespace(
         "score_threshold": SCORE_THRESHOLD,
         "mask_threshold": MASK_THRESHOLD,
         "mask_overlap_threshold": MASK_OVERLAP_THRESHOLD,
+        "seed_check_prompt": SEED_CHECK_PROMPT,
+        "seed_check_score_threshold": SEED_CHECK_SCORE_THRESHOLD,
+        "seed_check_iou_threshold": SEED_CHECK_IOU_THRESHOLD,
         "max_boxes": MAX_BOXES,
     }
     serialized = json.dumps(

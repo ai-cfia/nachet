@@ -684,6 +684,129 @@ def test_resume_preserves_disjoint_mask_decision_with_overlapping_boxes(
     assert resumed == fresh
 
 
+def test_has_low_seed_confidence_logic():
+    boxes = [[10.0, 10.0, 30.0, 30.0], [50.0, 10.0, 70.0, 30.0]]
+    # Both boxes matched with IoU >= 0.4 and score >= 0.45 -> False
+    assert not module._has_low_seed_confidence(
+        boxes,
+        [[11.0, 11.0, 30.0, 30.0], [50.0, 10.0, 69.0, 30.0]],
+        [0.85, 0.45],
+    )
+    # Second box only matches at score 0.44 (< 0.45) -> True
+    assert module._has_low_seed_confidence(
+        boxes,
+        [[10.0, 10.0, 30.0, 30.0], [50.0, 10.0, 70.0, 30.0]],
+        [0.90, 0.44],
+    )
+    # Second box has no overlapping seed box -> True
+    assert module._has_low_seed_confidence(
+        boxes,
+        [[10.0, 10.0, 30.0, 30.0]],
+        [0.95],
+    )
+
+
+@pytest.mark.parametrize(
+    "seed_boxes, seed_scores, expected_reason",
+    [
+        pytest.param([[10, 10, 30, 30]], [0.9], None, id="confirmed-seed"),
+        pytest.param([], [], "low_seed_confidence", id="unconfirmed-non-seed"),
+    ],
+)
+def test_sam3_caches_vision_embeds_and_runs_seed_cross_check(
+    coco, intake, monkeypatch, seed_boxes, seed_scores, expected_reason
+):
+    encode_calls = []
+    prompt_calls = []
+
+    def encode(image):
+        encode_calls.append(image.size)
+        return "cached-embeds", (image.height, image.width)
+
+    def predict(
+        image,
+        prompt,
+        *,
+        vision_embeds=None,
+        original_size=None,
+        score_threshold=module.SCORE_THRESHOLD,
+    ):
+        assert vision_embeds == "cached-embeds"
+        assert original_size == (80, 100)
+        prompt_calls.append((prompt, score_threshold))
+        if prompt == "foreground object":
+            return Prediction(
+                [[10, 10, 30, 30]],
+                prompt,
+                [0.92],
+                has_overlapping_masks=False,
+            )
+        if prompt == "seed":
+            return Prediction(
+                seed_boxes,
+                prompt,
+                seed_scores,
+                has_overlapping_masks=False,
+            )
+        return Prediction([], prompt, [], has_overlapping_masks=False)
+
+    predictor = Sam3Predictor.__new__(Sam3Predictor)
+    predictor.model = object()
+    monkeypatch.setattr(predictor, "_encode_image", encode)
+    monkeypatch.setattr(predictor, "_predict_prompt", predict)
+
+    result = prelabel(coco, intake[1], predictor)
+    assert len(encode_calls) == len(coco["images"])
+    assert prompt_calls == [
+        ("foreground object", module.SCORE_THRESHOLD),
+        ("seed", module.SEED_CHECK_SCORE_THRESHOLD),
+    ] * len(coco["images"])
+    status = "needs_review" if expected_reason else None
+    assert all(image["prelabel_status"] == status for image in result["images"])
+    assert all(
+        image["prelabel_reason"] == expected_reason for image in result["images"]
+    )
+    assert len(result["annotations"]) == len(coco["images"])
+
+
+def test_sam3_reuses_vision_embeds_across_fallback_prompts(coco, intake, monkeypatch):
+    encode_calls = []
+    prompt_calls = []
+
+    def encode(image):
+        encode_calls.append(image.size)
+        return "cached-embeds", (image.height, image.width)
+
+    def predict(
+        image,
+        prompt,
+        *,
+        vision_embeds=None,
+        original_size=None,
+        score_threshold=module.SCORE_THRESHOLD,
+    ):
+        assert vision_embeds == "cached-embeds"
+        prompt_calls.append(prompt)
+        if prompt == "thick long seed":
+            return Prediction([[10, 10, 30, 30]], prompt, [0.8], False)
+        return Prediction([], prompt, [], False)
+
+    predictor = Sam3Predictor.__new__(Sam3Predictor)
+    predictor.model = object()
+    monkeypatch.setattr(predictor, "_encode_image", encode)
+    monkeypatch.setattr(predictor, "_predict_prompt", predict)
+
+    result = prelabel(coco, intake[1], predictor)
+    assert len(encode_calls) == len(coco["images"])
+    assert prompt_calls == ["foreground object", "thick long seed"] * len(
+        coco["images"]
+    )
+    assert all(image["prelabel_status"] is None for image in result["images"])
+    assert all(
+        image["prelabel_prompt"] == "thick long seed" for image in result["images"]
+    )
+
+
 def test_prelabel_cli_records_run_options_once(coco, intake, tmp_path, monkeypatch):
     import prelabel as command
 

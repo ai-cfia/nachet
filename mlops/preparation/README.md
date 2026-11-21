@@ -365,6 +365,7 @@ the predictor does not use prompts or inference was skipped.
 | `needs_review` | `nested_boxes` | One padded box lies inside another. |
 | `needs_review` | `overlapping_masks` | Native-grid SAM3 masks share at least 50% of the smaller mask. |
 | `needs_review` | `overlapping_boxes` | Padded boxes share area without containment (fallback when masks are unavailable). |
+| `needs_review` | `low_seed_confidence` | An accepted `"foreground object"` box lacked a matching `"seed"` detection (`IoU >= 0.4`, score `>= 0.45`). |
 | `needs_review` | `no_detections` | All prompts failed the count check; the last returned no boxes. |
 | `needs_review` | `too_many_detections` | All prompts failed the count check; the last returned at least 10 boxes. |
 | `needs_review` | `invalid_boxes` | A prompt returned 1 to 9 boxes, but invalid geometry was dropped. |
