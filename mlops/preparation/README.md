@@ -367,6 +367,7 @@ not use prompts or inference was skipped.
 | `needs_review` | `overlapping_masks` | Native-grid SAM3 masks share at least 50% of the smaller mask. |
 | `needs_review` | `overlapping_boxes` | Padded boxes share area without containment (fallback when masks are unavailable). |
 | `needs_review` | `unconfirmed_seed_boxes` | An accepted non-seed prompt box lacked a distinct matching `"seed"` detection (`IoU >= 0.4`, `score > 0.45`). |
+| `needs_review` | `detector_disagreement` | Optional RT-DETR cross-check found an unmatched seed detection or an unmatched low-confidence SAM3 box (`score < 0.90`). |
 | `needs_review` | `no_detections` | All prompts failed the count check; the last returned no boxes. |
 | `needs_review` | `too_many_detections` | All prompts failed the count check; the last returned at least 10 boxes. |
 | `needs_review` | `invalid_boxes` | A prompt returned 1 to 9 boxes, but invalid geometry was dropped. |
