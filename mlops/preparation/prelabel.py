@@ -47,7 +47,7 @@ class Prediction(NamedTuple):
     prompt: str | None = None
     scores: list[float] | None = None
     has_overlapping_masks: bool | None = None
-    has_low_seed_confidence: bool | None = None
+    has_unconfirmed_boxes: bool | None = None
 
 
 class Sam3Predictor:
@@ -103,26 +103,43 @@ class Sam3Predictor:
             )
             if 0 < len(prediction.boxes) <= MAX_BOXES:
                 if prompt == PROMPTS[0]:
-                    seed_prediction = self._predict_prompt(
-                        image,
-                        SEED_CHECK_PROMPT,
-                        vision_embeds=vision_embeds,
-                        original_size=original_size,
-                        score_threshold=SEED_CHECK_SCORE_THRESHOLD,
+                    return self._verify_with_seed_prompt(
+                        image, prediction, vision_embeds, original_size
                     )
-                    low_seed = _has_low_seed_confidence(
-                        prediction.boxes,
-                        seed_prediction.boxes,
-                        seed_prediction.scores or [],
-                    )
-                    return prediction._replace(has_low_seed_confidence=low_seed)
                 return prediction
-        return self._predict_prompt(
+        prediction = self._predict_prompt(
             image,
             PROMPTS[-1],
             vision_embeds=vision_embeds,
             original_size=original_size,
         )
+        if 0 < len(prediction.boxes) <= MAX_BOXES:
+            return self._verify_with_seed_prompt(
+                image, prediction, vision_embeds, original_size
+            )
+        return prediction
+
+    def _verify_with_seed_prompt(
+        self,
+        image: Image.Image,
+        prediction: Prediction,
+        vision_embeds,
+        original_size: tuple[int, int],
+    ) -> Prediction:
+        seed_prediction = self._predict_prompt(
+            image,
+            SEED_CHECK_PROMPT,
+            vision_embeds=vision_embeds,
+            original_size=original_size,
+            score_threshold=SEED_CHECK_SCORE_THRESHOLD,
+            include_masks=False,
+        )
+        unconfirmed = _has_unconfirmed_boxes(
+            prediction.boxes,
+            seed_prediction.boxes,
+            seed_prediction.scores or [],
+        )
+        return prediction._replace(has_unconfirmed_boxes=unconfirmed)
 
     def _predict_prompt(
         self,
@@ -132,6 +149,7 @@ class Sam3Predictor:
         vision_embeds=None,
         original_size: tuple[int, int] | None = None,
         score_threshold: float = SCORE_THRESHOLD,
+        include_masks: bool = True,
     ) -> Prediction:
         if vision_embeds is None:
             inputs = self.processor(images=image, text=prompt, return_tensors="pt").to(
@@ -156,16 +174,24 @@ class Sam3Predictor:
             ),
         ):
             outputs = self.model(**model_kwargs)
-        result = self.processor.post_process_instance_segmentation(
-            outputs,
-            threshold=score_threshold,
-            mask_threshold=MASK_THRESHOLD,
-            target_sizes=None,
-        )[0]
+        if include_masks:
+            result = self.processor.post_process_instance_segmentation(
+                outputs,
+                threshold=score_threshold,
+                mask_threshold=MASK_THRESHOLD,
+                target_sizes=None,
+            )[0]
+            has_overlapping_masks = _has_overlapping_masks(result["masks"])
+        else:
+            result = self.processor.post_process_object_detection(
+                outputs,
+                threshold=score_threshold,
+                target_sizes=None,
+            )[0]
+            has_overlapping_masks = None
         scale = result["boxes"].new_tensor([width, height, width, height])
         boxes = (result["boxes"] * scale).detach().cpu().tolist()
         scores = result["scores"].detach().cpu().tolist()
-        has_overlapping_masks = _has_overlapping_masks(result["masks"])
         return Prediction(
             boxes=boxes,
             prompt=prompt,
@@ -243,24 +269,33 @@ def _box_iou_xyxy(first: list[float], second: list[float]) -> float:
     return inter / union if union > 0.0 else 0.0
 
 
-def _has_low_seed_confidence(
+def _has_unconfirmed_boxes(
     boxes: list[list[float]],
     seed_boxes: list[list[float]],
     seed_scores: list[float],
 ) -> bool:
-    """Whether any accepted box lacks a matching 'seed' detection above threshold."""
-    for box in boxes:
-        best_score = max(
-            (
-                score
-                for seed_box, score in zip(seed_boxes, seed_scores, strict=True)
-                if _box_iou_xyxy(box, seed_box) >= SEED_CHECK_IOU_THRESHOLD
-            ),
-            default=0.0,
-        )
-        if best_score < SEED_CHECK_SCORE_THRESHOLD:
-            return True
-    return False
+    """Whether any accepted box lacks a distinct matching 'seed' detection above threshold."""
+    qualifying = [
+        seed_box
+        for seed_box, score in zip(seed_boxes, seed_scores, strict=True)
+        if score > SEED_CHECK_SCORE_THRESHOLD
+    ]
+    pairs = [
+        (_box_iou_xyxy(box, seed_box), box_idx, seed_idx)
+        for box_idx, box in enumerate(boxes)
+        for seed_idx, seed_box in enumerate(qualifying)
+    ]
+    pairs.sort(key=lambda item: item[0], reverse=True)
+    matched_boxes: set[int] = set()
+    matched_seeds: set[int] = set()
+    for overlap, box_idx, seed_idx in pairs:
+        if overlap < SEED_CHECK_IOU_THRESHOLD:
+            break
+        if box_idx in matched_boxes or seed_idx in matched_seeds:
+            continue
+        matched_boxes.add(box_idx)
+        matched_seeds.add(seed_idx)
+    return len(matched_boxes) < len(boxes)
 
 
 def review_outcome(
@@ -268,7 +303,7 @@ def review_outcome(
     padded: list,
     *,
     has_overlapping_masks: bool | None = None,
-    has_low_seed_confidence: bool | None = None,
+    has_unconfirmed_boxes: bool | None = None,
 ) -> tuple[str | None, str | None]:
     """Return (prelabel_status, prelabel_reason) for one image's detections."""
     if not boxes:
@@ -288,8 +323,8 @@ def review_outcome(
         return "needs_review", "overlapping_masks"
     if has_overlapping_masks is None and _has_overlapping_boxes(padded):
         return "needs_review", "overlapping_boxes"
-    if has_low_seed_confidence is True:
-        return "needs_review", "low_seed_confidence"
+    if has_unconfirmed_boxes is True:
+        return "needs_review", "unconfirmed_seed_boxes"
     return None, None
 
 
@@ -520,7 +555,7 @@ def _label_image(
         boxes,
         padded,
         has_overlapping_masks=prediction.has_overlapping_masks,
-        has_low_seed_confidence=prediction.has_low_seed_confidence,
+        has_unconfirmed_boxes=prediction.has_unconfirmed_boxes,
     )
     outcome = {
         "prelabel_status": status,

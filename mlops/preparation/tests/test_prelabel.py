@@ -684,24 +684,31 @@ def test_resume_preserves_disjoint_mask_decision_with_overlapping_boxes(
     assert resumed == fresh
 
 
-def test_has_low_seed_confidence_logic():
+def test_has_unconfirmed_boxes_logic():
     boxes = [[10.0, 10.0, 30.0, 30.0], [50.0, 10.0, 70.0, 30.0]]
-    # Both boxes matched with IoU >= 0.4 and score >= 0.45 -> False
-    assert not module._has_low_seed_confidence(
+    # Both boxes matched with distinct seed boxes (IoU >= 0.4, score > 0.45) -> False
+    assert not module._has_unconfirmed_boxes(
         boxes,
         [[11.0, 11.0, 30.0, 30.0], [50.0, 10.0, 69.0, 30.0]],
-        [0.85, 0.45],
+        [0.85, 0.46],
     )
-    # Second box only matches at score 0.44 (< 0.45) -> True
-    assert module._has_low_seed_confidence(
+    # Score equal to 0.45 does not pass strict > 0.45 boundary -> True
+    assert module._has_unconfirmed_boxes(
         boxes,
         [[10.0, 10.0, 30.0, 30.0], [50.0, 10.0, 70.0, 30.0]],
-        [0.90, 0.44],
+        [0.90, 0.45],
     )
     # Second box has no overlapping seed box -> True
-    assert module._has_low_seed_confidence(
+    assert module._has_unconfirmed_boxes(
         boxes,
         [[10.0, 10.0, 30.0, 30.0]],
+        [0.95],
+    )
+    # Single spanning seed box cannot confirm two adjacent split boxes -> True
+    split_boxes = [[10.0, 10.0, 30.0, 30.0], [30.0, 10.0, 50.0, 30.0]]
+    assert module._has_unconfirmed_boxes(
+        split_boxes,
+        [[10.0, 10.0, 50.0, 30.0]],
         [0.95],
     )
 
@@ -710,7 +717,7 @@ def test_has_low_seed_confidence_logic():
     "seed_boxes, seed_scores, expected_reason",
     [
         pytest.param([[10, 10, 30, 30]], [0.9], None, id="confirmed-seed"),
-        pytest.param([], [], "low_seed_confidence", id="unconfirmed-non-seed"),
+        pytest.param([], [], "unconfirmed_seed_boxes", id="unconfirmed-non-seed"),
     ],
 )
 def test_sam3_caches_vision_embeds_and_runs_seed_cross_check(
@@ -730,10 +737,11 @@ def test_sam3_caches_vision_embeds_and_runs_seed_cross_check(
         vision_embeds=None,
         original_size=None,
         score_threshold=module.SCORE_THRESHOLD,
+        include_masks=True,
     ):
         assert vision_embeds == "cached-embeds"
         assert original_size == (80, 100)
-        prompt_calls.append((prompt, score_threshold))
+        prompt_calls.append((prompt, score_threshold, include_masks))
         if prompt == "foreground object":
             return Prediction(
                 [[10, 10, 30, 30]],
@@ -746,7 +754,7 @@ def test_sam3_caches_vision_embeds_and_runs_seed_cross_check(
                 seed_boxes,
                 prompt,
                 seed_scores,
-                has_overlapping_masks=False,
+                has_overlapping_masks=None,
             )
         return Prediction([], prompt, [], has_overlapping_masks=False)
 
@@ -758,8 +766,8 @@ def test_sam3_caches_vision_embeds_and_runs_seed_cross_check(
     result = prelabel(coco, intake[1], predictor)
     assert len(encode_calls) == len(coco["images"])
     assert prompt_calls == [
-        ("foreground object", module.SCORE_THRESHOLD),
-        ("seed", module.SEED_CHECK_SCORE_THRESHOLD),
+        ("foreground object", module.SCORE_THRESHOLD, True),
+        ("seed", module.SEED_CHECK_SCORE_THRESHOLD, False),
     ] * len(coco["images"])
     status = "needs_review" if expected_reason else None
     assert all(image["prelabel_status"] == status for image in result["images"])
@@ -767,6 +775,46 @@ def test_sam3_caches_vision_embeds_and_runs_seed_cross_check(
         image["prelabel_reason"] == expected_reason for image in result["images"]
     )
     assert len(result["annotations"]) == len(coco["images"])
+
+
+def test_sam3_verifies_insect_fallback_boxes(coco, intake, monkeypatch):
+    prompt_calls = []
+
+    def encode(image):
+        return "cached-embeds", (image.height, image.width)
+
+    def predict(
+        image,
+        prompt,
+        *,
+        vision_embeds=None,
+        original_size=None,
+        score_threshold=module.SCORE_THRESHOLD,
+        include_masks=True,
+    ):
+        prompt_calls.append((prompt, include_masks))
+        if prompt == "insect":
+            return Prediction([[10, 10, 30, 30]], prompt, [0.85], False)
+        return Prediction([], prompt, [], None if not include_masks else False)
+
+    predictor = Sam3Predictor.__new__(Sam3Predictor)
+    predictor.model = object()
+    monkeypatch.setattr(predictor, "_encode_image", encode)
+    monkeypatch.setattr(predictor, "_predict_prompt", predict)
+
+    result = prelabel(coco, intake[1], predictor)
+    assert prompt_calls == [
+        ("foreground object", True),
+        ("thick long seed", True),
+        ("insect", True),
+        ("seed", False),
+    ] * len(coco["images"])
+    assert all(image["prelabel_status"] == "needs_review" for image in result["images"])
+    assert all(
+        image["prelabel_reason"] == "unconfirmed_seed_boxes"
+        for image in result["images"]
+    )
+    assert all(image["prelabel_prompt"] == "insect" for image in result["images"])
 
 
 def test_sam3_reuses_vision_embeds_across_fallback_prompts(coco, intake, monkeypatch):
@@ -784,6 +832,7 @@ def test_sam3_reuses_vision_embeds_across_fallback_prompts(coco, intake, monkeyp
         vision_embeds=None,
         original_size=None,
         score_threshold=module.SCORE_THRESHOLD,
+        include_masks=True,
     ):
         assert vision_embeds == "cached-embeds"
         prompt_calls.append(prompt)
