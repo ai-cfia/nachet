@@ -61,6 +61,22 @@ class DetectionParityTest(unittest.TestCase):
         self.assertTrue(report["passed"])
         self.assertEqual(report["matches"], [[0, 1], [1, 0]])
 
+    def test_top_k_cutoff_swap_passes_only_for_the_lowest_scores(self):
+        reference = detections([[0.1, 0.1, 0.4, 0.5], [0.6, 0.2, 0.8, 0.6]],
+                               [0.9, 0.01001], [0, 1])
+        # The last top-k slot holds a different, near-tied proposal.
+        swapped = detections([[0.1, 0.1, 0.4, 0.5], [0.2, 0.6, 0.3, 0.9]],
+                             [0.9, 0.01000], [0, 2])
+        self.assertFalse(compare_detections(reference, swapped)["passed"])
+        report = compare_detections(reference, swapped, top_k=True)
+        self.assertTrue(report["passed"])
+        self.assertEqual(report["unmatched_at_top_k_cutoff"], [[1], [1]])
+
+        swapped["labels"][0] = 1
+        report = compare_detections(reference, swapped, top_k=True)
+        self.assertFalse(report["passed"])
+        self.assertEqual(report["unmatched_reference"], [0])
+
     def test_empty_lists_agree_but_cannot_absorb_a_detection(self):
         empty = detections([], [], [])
         self.assertTrue(compare_detections(empty, empty)["passed"])

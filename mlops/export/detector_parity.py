@@ -17,8 +17,13 @@ ATOL = 1e-4
 MIN_IOU = 0.99
 
 
-def compare_detections(reference, converted, *, atol=ATOL, min_iou=MIN_IOU):
-    """Find one-to-one matches within class, overlap, score and coordinate tolerances."""
+def compare_detections(reference, converted, *, atol=ATOL, min_iou=MIN_IOU, top_k=False):
+    """Find one-to-one matches within class, overlap, score and coordinate tolerances.
+
+    With top_k, both lists are a fixed-size top-k selection. A detection at the
+    cutoff can then be swapped for a near-tied one, so unmatched detections
+    scoring within atol of the lowest kept score are reported, not failed.
+    """
     ref = {name: np.asarray(value) for name, value in reference.items()}
     actual = {name: np.asarray(value) for name, value in converted.items()}
     for detections in (ref, actual):
@@ -46,6 +51,13 @@ def compare_detections(reference, converted, *, atol=ATOL, min_iou=MIN_IOU):
 
     missing = sorted(set(range(len(ref["boxes"]))) - set(rows.tolist()))
     extra = sorted(set(range(len(actual["boxes"]))) - set(columns.tolist()))
+    at_cutoff = []
+    if top_k and len(ref["scores"]) == len(actual["scores"]) and (missing or extra):
+        floor = min(ref["scores"].min(), actual["scores"].min()) + atol
+        at_cutoff = [[int(i) for i in missing if ref["scores"][i] <= floor],
+                     [int(j) for j in extra if actual["scores"][j] <= floor]]
+        missing = [i for i in missing if i not in at_cutoff[0]]
+        extra = [j for j in extra if j not in at_cutoff[1]]
     return {
         "passed": not missing and not extra,
         "reference_count": len(ref["boxes"]),
@@ -53,6 +65,7 @@ def compare_detections(reference, converted, *, atol=ATOL, min_iou=MIN_IOU):
         "matches": [[int(row), int(column)] for row, column in zip(rows, columns)],
         "unmatched_reference": missing,
         "unmatched_onnx": extra,
+        "unmatched_at_top_k_cutoff": at_cutoff,
         "matched_max_score_difference": float(score_delta[rows, columns].max()) if len(rows) else 0.0,
         "matched_max_coordinate_difference": float(box_delta[rows, columns].max()) if len(rows) else 0.0,
         "matched_min_iou": float(overlap[rows, columns].min()) if len(rows) else None,
@@ -108,7 +121,7 @@ def validate_detector_export(checkpoint, onnx_path, report_path, *, images=None)
             "pixel_values_sha256": hashlib.sha256(feed["pixel_values"].numpy().tobytes()).hexdigest(),
             "rowwise_max_logit_difference": float((expected.logits - actual.logits).abs().max()),
             "rowwise_max_box_difference": float((expected.pred_boxes - actual.pred_boxes).abs().max()),
-            **compare_detections(before, after),
+            **compare_detections(before, after, top_k=model.config.use_focal_loss),
         })
     report = {
         "passed": all(item["passed"] for item in comparisons),
