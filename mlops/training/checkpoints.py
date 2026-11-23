@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 from contextlib import nullcontext
-from enum import Enum
 import json
 import re
 import shutil
@@ -31,30 +30,15 @@ class UnarchivedIncompleteCheckpoint(ValueError):
     """A partial local checkpoint has no MLflow archive to restore from."""
 
 
-class LocalCheckpointState(Enum):
-    MISSING = "missing"
-    INCOMPLETE = "incomplete"
-    COMPLETE = "complete"
-
-
-def checkpoint_state(path: Path) -> LocalCheckpointState:
-    """Derive local state from files; MLflow owns the separate archive state."""
-    if not path.exists():
-        return LocalCheckpointState.MISSING
-    if not path.is_dir():
-        return LocalCheckpointState.INCOMPLETE
-
-    if any(not (path / name).is_file() for name in REQUIRED_CHECKPOINT_FILES):
-        return LocalCheckpointState.INCOMPLETE
-
-    if any((path / name).is_file() for name in MODEL_WEIGHT_FILES):
-        return LocalCheckpointState.COMPLETE
-    return LocalCheckpointState.INCOMPLETE
-
-
 def checkpoint_is_complete(path: Path) -> bool:
     """Return whether the expected resume files are present."""
-    return checkpoint_state(path) is LocalCheckpointState.COMPLETE
+    if not path.is_dir():
+        return False
+
+    if any(not (path / name).is_file() for name in REQUIRED_CHECKPOINT_FILES):
+        return False
+
+    return any((path / name).is_file() for name in MODEL_WEIGHT_FILES)
 
 
 def list_complete_checkpoints(trainer_output: Path) -> list[Path]:
@@ -162,13 +146,12 @@ def resolve_checkpoint(
     with lock:
         if download:
             shutil.rmtree(staging, ignore_errors=True)
-        state = checkpoint_state(checkpoint)
-        if state is LocalCheckpointState.COMPLETE:
+        if checkpoint_is_complete(checkpoint):
             return checkpoint
         if archives is None:
             archives = archived_checkpoints(trainer_output.parent)
         if name not in archives:
-            if state is LocalCheckpointState.INCOMPLETE:
+            if checkpoint.exists():
                 raise UnarchivedIncompleteCheckpoint(f"checkpoint is incomplete: {name}")
             raise FileNotFoundError(f"checkpoint is unavailable locally or in MLflow: {name}")
         if not download:
@@ -182,10 +165,10 @@ def resolve_checkpoint(
                 artifact_uri=f"models:/{archives[name]}", dst_path=str(staging),
             ))
             restored = model / "artifacts" / name
-            if checkpoint_state(restored) is not LocalCheckpointState.COMPLETE:
+            if not checkpoint_is_complete(restored):
                 raise ValueError(f"MLflow archive is incomplete: {name}")
             # The verified archive replaces an incomplete local copy only.
-            if checkpoint.is_dir() and not checkpoint_is_complete(checkpoint):
+            if checkpoint.is_dir():
                 shutil.rmtree(checkpoint)
             restored.rename(checkpoint)
         finally:
