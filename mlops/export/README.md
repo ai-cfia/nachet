@@ -67,12 +67,11 @@ detections. Swin keeps Optimum's existing validation.
 The check writes `detector-parity.json` beside `onnx-fp32/`. It records the
 ONNX and input-tensor hashes, raw row-wise differences, matched differences and
 unmatched indices. The absolute tolerance is `1e-4` for scores and normalized
-box coordinates, with a minimum IoU of `0.99`. All post-processed top-k proposals
-are included, even at low scores, so two empty thresholded lists cannot hide
-a difference. Near-tied proposals can trade the last top-k slots, so an
-unmatched detection scoring within `1e-4` of the lowest kept score is listed
-under `unmatched_at_top_k_cutoff` instead of failing. A failed comparison stops
-export before optional quantization.
+box coordinates, with a minimum IoU of `0.99`. Like the release evaluator,
+the check takes the best class per query. It retains every query, including
+low-scoring ones, so thresholding cannot hide a difference. Every detection
+must match; a low score does not excuse a missing or changed box.
+A failed comparison stops export before optional quantization.
 
 The command's default probe is one deterministic synthetic RGB image. It checks
 numerical consistency, not detector accuracy. For additional local checks, the

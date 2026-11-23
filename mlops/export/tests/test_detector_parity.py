@@ -1,13 +1,18 @@
 """Detection equivalence, including permutations that defeat row-wise comparison."""
 
+import json
 from pathlib import Path
 import sys
+import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest.mock import Mock, patch
 
 import numpy as np
+import torch
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
-from detector_parity import compare_detections  # noqa: E402
+from detector_parity import _detections, compare_detections, validate_detector_export  # noqa: E402
 
 
 def detections(boxes, scores, labels):
@@ -61,21 +66,50 @@ class DetectionParityTest(unittest.TestCase):
         self.assertTrue(report["passed"])
         self.assertEqual(report["matches"], [[0, 1], [1, 0]])
 
-    def test_top_k_cutoff_swap_passes_only_for_the_lowest_scores(self):
-        reference = detections([[0.1, 0.1, 0.4, 0.5], [0.6, 0.2, 0.8, 0.6]],
-                               [0.9, 0.01001], [0, 1])
-        # The last top-k slot holds a different, near-tied proposal.
-        swapped = detections([[0.1, 0.1, 0.4, 0.5], [0.2, 0.6, 0.3, 0.9]],
-                             [0.9, 0.01000], [0, 2])
-        self.assertFalse(compare_detections(reference, swapped)["passed"])
-        report = compare_detections(reference, swapped, top_k=True)
-        self.assertTrue(report["passed"])
-        self.assertEqual(report["unmatched_at_top_k_cutoff"], [[1], [1]])
-
-        swapped["labels"][0] = 1
-        report = compare_detections(reference, swapped, top_k=True)
+    def test_multiclass_check_retains_each_query_used_by_evaluation(self):
+        reference = SimpleNamespace(
+            logits=torch.logit(torch.tensor([[[0.95, 0.94], [0.90, 0.10]]])),
+            pred_boxes=torch.tensor([[[0.2, 0.2, 0.1, 0.1], [0.4, 0.4, 0.1, 0.1]]]),
+        )
+        changed = SimpleNamespace(
+            logits=torch.logit(torch.tensor([[[0.95, 0.94], [0.70, 0.10]]])),
+            pred_boxes=torch.tensor([[[0.2, 0.2, 0.1, 0.1], [0.8, 0.8, 0.1, 0.1]]]),
+        )
+        # Global top-2 query/class selection would take both classes from query 0.
+        before, after = _detections(reference), _detections(changed)
+        np.testing.assert_allclose(before["scores"], [0.95, 0.90])
+        report = compare_detections(before, after)
         self.assertFalse(report["passed"])
-        self.assertEqual(report["unmatched_reference"], [0])
+        self.assertEqual(report["unmatched_reference"], [1])
+
+    def test_validation_rejects_a_moved_lowest_scoring_query(self):
+        reference = SimpleNamespace(
+            logits=torch.logit(torch.tensor([[[0.9], [0.01]]])),
+            pred_boxes=torch.tensor([[[0.2, 0.2, 0.1, 0.1], [0.4, 0.4, 0.1, 0.1]]]),
+        )
+        moved = reference.pred_boxes.clone()
+        moved[0, 1, 0] += 0.25
+        model = Mock(return_value=reference)
+        model.eval.return_value = model
+        model.config.use_focal_loss = True
+        session = Mock()
+        session.get_inputs.return_value = [SimpleNamespace(name="pixel_values")]
+        session.get_outputs.return_value = [SimpleNamespace(name=name)
+                                           for name in ("logits", "pred_boxes")]
+        session.run.return_value = [reference.logits.numpy(), moved.numpy()]
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch("detector_parity.RTDetrV2ForObjectDetection.from_pretrained", return_value=model),
+            patch("detector_parity.ort.InferenceSession", return_value=session),
+        ):
+            onnx_path = Path(tmp) / "model.onnx"
+            onnx_path.write_bytes(b"inference session is supplied by the test")
+            report_path = Path(tmp) / "detector-parity.json"
+            with self.assertRaisesRegex(ValueError, "export detections differ"):
+                validate_detector_export(Path(tmp), onnx_path, report_path)
+            report = json.loads(report_path.read_text())
+            self.assertFalse(report["passed"])
+            self.assertEqual(report["comparisons"][0]["unmatched_reference"], [1])
 
     def test_empty_lists_agree_but_cannot_absorb_a_detection(self):
         empty = detections([], [], [])

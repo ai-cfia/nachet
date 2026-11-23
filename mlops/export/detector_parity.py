@@ -10,20 +10,15 @@ import onnxruntime as ort
 from PIL import Image
 from scipy.optimize import linear_sum_assignment
 import torch
-from torchvision.ops import box_iou
+from torchvision.ops import box_convert, box_iou
 from transformers import RTDetrImageProcessor, RTDetrV2ForObjectDetection
 
 ATOL = 1e-4
 MIN_IOU = 0.99
 
 
-def compare_detections(reference, converted, *, atol=ATOL, min_iou=MIN_IOU, top_k=False):
-    """Find one-to-one matches within class, overlap, score and coordinate tolerances.
-
-    With top_k, both lists are a fixed-size top-k selection. A detection at the
-    cutoff can then be swapped for a near-tied one, so unmatched detections
-    scoring within atol of the lowest kept score are reported, not failed.
-    """
+def compare_detections(reference, converted, *, atol=ATOL, min_iou=MIN_IOU):
+    """Pass only when every detection has a one-to-one match within tolerance."""
     ref = {name: np.asarray(value) for name, value in reference.items()}
     actual = {name: np.asarray(value) for name, value in converted.items()}
     for detections in (ref, actual):
@@ -51,13 +46,6 @@ def compare_detections(reference, converted, *, atol=ATOL, min_iou=MIN_IOU, top_
 
     missing = sorted(set(range(len(ref["boxes"]))) - set(rows.tolist()))
     extra = sorted(set(range(len(actual["boxes"]))) - set(columns.tolist()))
-    at_cutoff = []
-    if top_k and len(ref["scores"]) == len(actual["scores"]) and (missing or extra):
-        floor = min(ref["scores"].min(), actual["scores"].min()) + atol
-        at_cutoff = [[int(i) for i in missing if ref["scores"][i] <= floor],
-                     [int(j) for j in extra if actual["scores"][j] <= floor]]
-        missing = [i for i in missing if i not in at_cutoff[0]]
-        extra = [j for j in extra if j not in at_cutoff[1]]
     return {
         "passed": not missing and not extra,
         "reference_count": len(ref["boxes"]),
@@ -65,16 +53,27 @@ def compare_detections(reference, converted, *, atol=ATOL, min_iou=MIN_IOU, top_
         "matches": [[int(row), int(column)] for row, column in zip(rows, columns)],
         "unmatched_reference": missing,
         "unmatched_onnx": extra,
-        "unmatched_at_top_k_cutoff": at_cutoff,
         "matched_max_score_difference": float(score_delta[rows, columns].max()) if len(rows) else 0.0,
         "matched_max_coordinate_difference": float(box_delta[rows, columns].max()) if len(rows) else 0.0,
         "matched_min_iou": float(overlap[rows, columns].min()) if len(rows) else None,
     }
 
 
+def _detections(output):
+    """Use the release evaluator's best class per query, retaining every query."""
+    scores, labels = output.logits[0].sigmoid().max(dim=-1)
+    return {
+        "boxes": box_convert(output.pred_boxes[0], in_fmt="cxcywh", out_fmt="xyxy"),
+        "scores": scores,
+        "labels": labels,
+    }
+
+
 def validate_detector_export(checkpoint, onnx_path, report_path, *, images=None):
     """Run identical pixels and post-processing through PyTorch and ONNX Runtime.
 
+    EXPORTED -> CHECKING -> PASSED or FAILED. Only PASSED returns to export;
+    a detection mismatch writes a failed report and raises before quantization.
     The export command uses a deterministic synthetic image. Callers can supply
     representative PIL images for an additional local parity check.
     """
@@ -99,7 +98,7 @@ def validate_detector_export(checkpoint, onnx_path, report_path, *, images=None)
         inputs = processor(images=image.convert("RGB"), return_tensors="pt")
         feed = {item.name: inputs[item.name] for item in session.get_inputs()}
         with torch.inference_mode():
-            expected = model(**feed)
+            expected = model(**feed, return_dict=True)
             actual = SimpleNamespace(**{
                 name: torch.from_numpy(value)
                 for name, value in zip(
@@ -110,18 +109,13 @@ def validate_detector_export(checkpoint, onnx_path, report_path, *, images=None)
             for result in (expected, actual):
                 if not torch.isfinite(result.logits).all() or not torch.isfinite(result.pred_boxes).all():
                     raise ValueError("Detector outputs contain non-finite values")
-            # Include all top-k proposals, so low-scoring models cannot pass via
-            # two empty detection lists. Boxes remain in normalized coordinates.
-            before, after = (
-                processor.post_process_object_detection(result, threshold=0.0,
-                                                        use_focal_loss=model.config.use_focal_loss)[0]
-                for result in (expected, actual)
-            )
+            # Keep every query: a low score cannot excuse a moved or missing box.
+            before, after = (_detections(result) for result in (expected, actual))
         comparisons.append({
             "pixel_values_sha256": hashlib.sha256(feed["pixel_values"].numpy().tobytes()).hexdigest(),
             "rowwise_max_logit_difference": float((expected.logits - actual.logits).abs().max()),
             "rowwise_max_box_difference": float((expected.pred_boxes - actual.pred_boxes).abs().max()),
-            **compare_detections(before, after, top_k=model.config.use_focal_loss),
+            **compare_detections(before, after),
         })
     report = {
         "passed": all(item["passed"] for item in comparisons),

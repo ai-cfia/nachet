@@ -129,9 +129,9 @@ class SwinExportTest(unittest.TestCase):
 
 class DetectorExportTest(unittest.TestCase):
     def test_logits_and_boxes_match_pytorch(self):
-        for tie_encoder_decoder in (False, True):
+        for tie_encoder_decoder, return_dict in ((False, True), (True, True), (False, False)):
             with (
-                self.subTest(tie_encoder_decoder=tie_encoder_decoder),
+                self.subTest(tie_encoder_decoder=tie_encoder_decoder, return_dict=return_dict),
                 tempfile.TemporaryDirectory() as tmp,
             ):
                 checkpoint = Path(tmp) / "checkpoint"
@@ -139,6 +139,7 @@ class DetectorExportTest(unittest.TestCase):
                 config_path = checkpoint / "config.json"
                 config = json.loads(config_path.read_text())
                 config["tie_encoder_decoder"] = tie_encoder_decoder
+                config["return_dict"] = return_dict
                 config_path.write_text(json.dumps(config))
                 original = {path.name: path.read_bytes() for path in checkpoint.iterdir()}
                 for path in checkpoint.iterdir():
