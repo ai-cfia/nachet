@@ -75,22 +75,6 @@ READY archive only when no complete local checkpoint is present. If newer
 local checkpoints are gone and an older one was restored, name the
 checkpoint to resume from instead of using `latest`.
 
-Before a retry starts training, `RecoverCheckpointArchives` uploads complete
-local saves that have no READY archive. If recovery fails, the attempt stops
-before Trainer can save or rotate again. New saves still use the native
-MLflow callback and Trainer's normal retention.
-
-`LocalCheckpointState` derives MISSING, INCOMPLETE or COMPLETE from local
-files. MLflow's READY status identifies available archives; there is no second
-persisted status file. Each checkpoint restore has one lock owner, downloads
-into staging and publishes the complete folder with an atomic rename. A retry
-clears staging left by a killed owner before downloading again.
-
-Run standalone export after source training stops: the restore lock does not
-protect files from an active Trainer's retention. The existing `latest`
-selection prefers a complete local checkpoint; it searches for the newest
-READY archive only when no complete local checkpoint is present.
-
 To restore one checkpoint explicitly with the trainer runtime:
 
 ```bash

@@ -27,6 +27,10 @@ MODEL_WEIGHT_FILES = (
 )
 
 
+class UnarchivedIncompleteCheckpoint(ValueError):
+    """A partial local checkpoint has no MLflow archive to restore from."""
+
+
 class LocalCheckpointState(Enum):
     MISSING = "missing"
     INCOMPLETE = "incomplete"
@@ -161,11 +165,11 @@ def resolve_checkpoint(
         state = checkpoint_state(checkpoint)
         if state is LocalCheckpointState.COMPLETE:
             return checkpoint
-        if state is LocalCheckpointState.INCOMPLETE:
-            raise ValueError(f"checkpoint is incomplete: {name}")
         if archives is None:
             archives = archived_checkpoints(trainer_output.parent)
         if name not in archives:
+            if state is LocalCheckpointState.INCOMPLETE:
+                raise UnarchivedIncompleteCheckpoint(f"checkpoint is incomplete: {name}")
             raise FileNotFoundError(f"checkpoint is unavailable locally or in MLflow: {name}")
         if not download:
             return checkpoint
@@ -180,6 +184,9 @@ def resolve_checkpoint(
             restored = model / "artifacts" / name
             if checkpoint_state(restored) is not LocalCheckpointState.COMPLETE:
                 raise ValueError(f"MLflow archive is incomplete: {name}")
+            # The verified archive replaces an incomplete local copy only.
+            if checkpoint.is_dir() and not checkpoint_is_complete(checkpoint):
+                shutil.rmtree(checkpoint)
             restored.rename(checkpoint)
         finally:
             shutil.rmtree(staging)
@@ -304,10 +311,13 @@ def validate_selection(args: argparse.Namespace) -> int:
 
 def restore(args: argparse.Namespace) -> int:
     trainer_output = resolve_trainer_output(args.runs_root, args.run_id)
-    # Existing model-only export inputs do not need optimizer or resume state.
-    checkpoint = trainer_output / args.checkpoint
-    if not checkpoint.is_dir() or checkpoint_is_complete(checkpoint):
+    try:
         resolve_checkpoint(trainer_output, args.checkpoint)
+    except UnarchivedIncompleteCheckpoint:
+        # Existing model-only export inputs have no archive and need no
+        # optimizer or resume state.
+        if not (trainer_output / args.checkpoint / "config.json").is_file():
+            raise
     return 0
 
 
