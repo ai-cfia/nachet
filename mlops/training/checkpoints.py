@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
+from enum import Enum
 import json
 import re
-import tempfile
+import shutil
 from pathlib import Path
+
+from filelock import FileLock
 
 CHECKPOINT_PATTERN = re.compile(r"^checkpoint-([1-9][0-9]*)$")
 MAX_CHECKPOINT_SELECTIONS = 3
@@ -23,15 +27,30 @@ MODEL_WEIGHT_FILES = (
 )
 
 
-def checkpoint_is_complete(path: Path) -> bool:
-    """Return whether the expected resume files are present."""
+class LocalCheckpointState(Enum):
+    MISSING = "missing"
+    INCOMPLETE = "incomplete"
+    COMPLETE = "complete"
+
+
+def checkpoint_state(path: Path) -> LocalCheckpointState:
+    """Derive local state from files; MLflow owns the separate archive state."""
+    if not path.exists():
+        return LocalCheckpointState.MISSING
     if not path.is_dir():
-        return False
+        return LocalCheckpointState.INCOMPLETE
 
     if any(not (path / name).is_file() for name in REQUIRED_CHECKPOINT_FILES):
-        return False
+        return LocalCheckpointState.INCOMPLETE
 
-    return any((path / name).is_file() for name in MODEL_WEIGHT_FILES)
+    if any((path / name).is_file() for name in MODEL_WEIGHT_FILES):
+        return LocalCheckpointState.COMPLETE
+    return LocalCheckpointState.INCOMPLETE
+
+
+def checkpoint_is_complete(path: Path) -> bool:
+    """Return whether the expected resume files are present."""
+    return checkpoint_state(path) is LocalCheckpointState.COMPLETE
 
 
 def list_complete_checkpoints(trainer_output: Path) -> list[Path]:
@@ -128,29 +147,42 @@ def resolve_checkpoint(
     if CHECKPOINT_PATTERN.fullmatch(name) is None:
         raise ValueError(f"invalid checkpoint name: {name}")
     checkpoint = trainer_output / name
-    if checkpoint_is_complete(checkpoint):
+    staging = trainer_output / f".restore-{name}"
+    if checkpoint_is_complete(checkpoint) and not staging.exists():
         return checkpoint
-    if checkpoint.exists():
-        raise ValueError(f"checkpoint is incomplete: {name}")
-    if archives is None:
-        archives = archived_checkpoints(trainer_output.parent)
-    if name not in archives:
-        raise FileNotFoundError(f"checkpoint is unavailable locally or in MLflow: {name}")
-    if not download:
-        return checkpoint
+    # One owner restores this checkpoint. After a killed owner, the next owner
+    # clears its staging directory; lock files stay in place to avoid inode races.
+    if download:
+        trainer_output.mkdir(exist_ok=True)
+    lock = FileLock(str(trainer_output / f".{name}.lock")) if download else nullcontext()
+    with lock:
+        if download:
+            shutil.rmtree(staging, ignore_errors=True)
+        state = checkpoint_state(checkpoint)
+        if state is LocalCheckpointState.COMPLETE:
+            return checkpoint
+        if state is LocalCheckpointState.INCOMPLETE:
+            raise ValueError(f"checkpoint is incomplete: {name}")
+        if archives is None:
+            archives = archived_checkpoints(trainer_output.parent)
+        if name not in archives:
+            raise FileNotFoundError(f"checkpoint is unavailable locally or in MLflow: {name}")
+        if not download:
+            return checkpoint
 
-    from mlflow.artifacts import download_artifacts
+        from mlflow.artifacts import download_artifacts
 
-    # A failed download must not leave a selectable checkpoint directory behind.
-    trainer_output.mkdir(exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=".restore-", dir=trainer_output) as temporary:
-        model = Path(download_artifacts(
-            artifact_uri=f"models:/{archives[name]}", dst_path=temporary,
-        ))
-        restored = model / "artifacts" / name
-        if not checkpoint_is_complete(restored):
-            raise ValueError(f"MLflow archive is incomplete: {name}")
-        restored.rename(checkpoint)
+        staging.mkdir()
+        try:
+            model = Path(download_artifacts(
+                artifact_uri=f"models:/{archives[name]}", dst_path=str(staging),
+            ))
+            restored = model / "artifacts" / name
+            if checkpoint_state(restored) is not LocalCheckpointState.COMPLETE:
+                raise ValueError(f"MLflow archive is incomplete: {name}")
+            restored.rename(checkpoint)
+        finally:
+            shutil.rmtree(staging)
     return checkpoint
 
 
@@ -273,7 +305,8 @@ def validate_selection(args: argparse.Namespace) -> int:
 def restore(args: argparse.Namespace) -> int:
     trainer_output = resolve_trainer_output(args.runs_root, args.run_id)
     # Existing model-only export inputs do not need optimizer or resume state.
-    if not (trainer_output / args.checkpoint).is_dir():
+    checkpoint = trainer_output / args.checkpoint
+    if not checkpoint.is_dir() or checkpoint_is_complete(checkpoint):
         resolve_checkpoint(trainer_output, args.checkpoint)
     return 0
 

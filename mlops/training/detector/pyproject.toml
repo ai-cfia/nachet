@@ -8,6 +8,7 @@ dependencies = [
     "albumentationsx==2.0.13",
     "boto3==1.40.55",
     "datasets==4.4.1",
+    "filelock==3.32.5",
     "matplotlib==3.10.7",
     "mlflow-skinny==3.7.0",
     "nachet-dataset-release==0.1.1",
