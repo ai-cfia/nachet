@@ -58,19 +58,22 @@ are not copied or modified. The original checkpoint stays unchanged. The
 exporter retains its existing Transformers and Optimum versions.
 
 RT-DETRv2 export uses Optimum's Python API with its row-by-row validation
-disabled. It then runs PyTorch and ONNX Runtime on identical pixels and uses
-the same RT-DETR post-processing for both. Predictions are matched one to one
-by class, box overlap and score/coordinate tolerances. This accepts equivalent
-predictions in a different order while rejecting missing, extra or changed
-detections. Swin keeps Optimum's existing validation.
+disabled. It then runs PyTorch and ONNX Runtime on identical pixels and
+converts both outputs to boxes and sigmoid class scores. Predictions are
+matched one to one by box overlap and score/coordinate tolerances. This
+accepts equivalent predictions in a different order while rejecting missing,
+extra or changed detections. Swin keeps Optimum's existing validation.
 
 The check writes `detector-parity.json` beside `onnx-fp32/`. It records the
 ONNX and input-tensor hashes, raw row-wise differences, matched differences and
 unmatched indices. The absolute tolerance is `1e-4` for scores and normalized
-box coordinates, with a minimum IoU of `0.99`. Like the release evaluator,
-the check takes the best class per query. It retains every query, including
-low-scoring ones, so thresholding cannot hide a difference. Every detection
-must match; a low score does not excuse a missing or changed box.
+box coordinates, with a minimum IoU of `0.99`. The score of every class
+must agree for a matched query, and outputs with a different batch, query or
+class count fail the check. It retains every query, including low-scoring
+ones, so thresholding cannot hide a difference. Every detection must match;
+a low score does not excuse a missing or changed box. Scores are compared
+after sigmoid, as the release evaluator reads them; a consumer that applies
+softmax to a multi-class detector is not covered.
 A failed comparison stops export before optional quantization.
 
 The command's default probe is one deterministic synthetic RGB image. It checks

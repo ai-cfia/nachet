@@ -29,11 +29,11 @@ def compare_detections(reference, converted, *, atol=ATOL, min_iou=MIN_IOU):
     if len(ref["boxes"]) and len(actual["boxes"]):
         overlap = box_iou(torch.from_numpy(ref["boxes"]),
                           torch.from_numpy(actual["boxes"])).numpy()
-        score_delta = np.abs(ref["scores"][:, None] - actual["scores"])
+        # Every class score counts: consumers read more than the winning class.
+        score_delta = np.abs(ref["scores"][:, None] - actual["scores"]).max(axis=2)
         box_delta = np.abs(ref["boxes"][:, None] - actual["boxes"]).max(axis=2)
         equivalent = (
-            (ref["labels"][:, None] == actual["labels"])
-            & (overlap >= min_iou)
+            (overlap >= min_iou)
             & (score_delta <= atol)
             & (box_delta <= atol)
         )
@@ -60,17 +60,15 @@ def compare_detections(reference, converted, *, atol=ATOL, min_iou=MIN_IOU):
 
 
 def _detections(output):
-    """Use the release evaluator's best class per query, retaining every query."""
-    scores, labels = output.logits[0].sigmoid().max(dim=-1)
+    """Keep every query with its box and its score for each class."""
     return {
         "boxes": box_convert(output.pred_boxes[0], in_fmt="cxcywh", out_fmt="xyxy"),
-        "scores": scores,
-        "labels": labels,
+        "scores": output.logits[0].sigmoid(),
     }
 
 
 def validate_detector_export(checkpoint, onnx_path, report_path, *, images=None):
-    """Run identical pixels and post-processing through PyTorch and ONNX Runtime.
+    """Run identical pixels through PyTorch and ONNX Runtime and compare outputs.
 
     EXPORTED -> CHECKING -> PASSED or FAILED. Only PASSED returns to export;
     a detection mismatch writes a failed report and raises before quantization.
@@ -97,6 +95,7 @@ def validate_detector_export(checkpoint, onnx_path, report_path, *, images=None)
     for image in images:
         inputs = processor(images=image.convert("RGB"), return_tensors="pt")
         feed = {item.name: inputs[item.name] for item in session.get_inputs()}
+        digest = hashlib.sha256(feed["pixel_values"].numpy().tobytes()).hexdigest()
         with torch.inference_mode():
             expected = model(**feed, return_dict=True)
             actual = SimpleNamespace(**{
@@ -106,13 +105,23 @@ def validate_detector_export(checkpoint, onnx_path, report_path, *, images=None)
                     session.run(None, {name: value.numpy() for name, value in feed.items()}),
                 )
             })
+            shapes = {
+                name: [list(getattr(result, name).shape) for result in (expected, actual)]
+                for name in ("logits", "pred_boxes")
+            }
+            if any(reference != converted for reference, converted in shapes.values()):
+                # A different batch, query or class count is a different model.
+                comparisons.append({
+                    "pixel_values_sha256": digest, "passed": False, "output_shapes": shapes,
+                })
+                continue
             for result in (expected, actual):
                 if not torch.isfinite(result.logits).all() or not torch.isfinite(result.pred_boxes).all():
                     raise ValueError("Detector outputs contain non-finite values")
             # Keep every query: a low score cannot excuse a moved or missing box.
             before, after = (_detections(result) for result in (expected, actual))
         comparisons.append({
-            "pixel_values_sha256": hashlib.sha256(feed["pixel_values"].numpy().tobytes()).hexdigest(),
+            "pixel_values_sha256": digest,
             "rowwise_max_logit_difference": float((expected.logits - actual.logits).abs().max()),
             "rowwise_max_box_difference": float((expected.pred_boxes - actual.pred_boxes).abs().max()),
             **compare_detections(before, after),
