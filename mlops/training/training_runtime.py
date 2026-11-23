@@ -176,7 +176,6 @@ def get_or_create_mlflow_run(
         )
         run_id = run.info.run_id
     else:
-        client.get_run(existing_run_id)
         run_id = existing_run_id
     return client, run_id
 
@@ -199,6 +198,7 @@ def execute_training(
     args: argparse.Namespace,
     command_for_resume: Callable[[Path, Path | None], list[str]],
     input_artifacts: tuple[Path, ...] = (),
+    release_reference: dict[str, str] | None = None,
 ) -> int:
     run_root = args.runs_root / args.run_id
     output_path = run_root / "trainer-output"
@@ -251,14 +251,25 @@ def execute_training(
     mlflow_run_id = None
     try:
         validate_runtime()
+        client, run_id = get_or_create_mlflow_run(args.run_id, existing_mlflow_run_id)
+        run = client.get_run(run_id)
+        if existing_mlflow_run_id is not None:
+            params = run.data.params
+            expected = release_reference or {"dataset_release_id": None}
+            if any(params.get(key) != value for key, value in expected.items()):
+                raise ValueError("Training data release differs from the resumed MLflow run")
+        mlflow_client, mlflow_run_id = client, run_id
+        if release_reference is not None and existing_mlflow_run_id is None:
+            from mlflow.entities import Param
+
+            mlflow_client.log_batch(
+                mlflow_run_id,
+                params=[Param(key, value) for key, value in release_reference.items()],
+            )
         run_root.mkdir(parents=True, exist_ok=True)
         output_path.mkdir(exist_ok=True)
         remove_incomplete_checkpoints(output_path)
         (run_root / "exit-code").unlink(missing_ok=True)
-        mlflow_client, mlflow_run_id = get_or_create_mlflow_run(
-            args.run_id,
-            existing_mlflow_run_id,
-        )
         # Persist the MLflow identity before training so retries reuse the run.
         (run_root / "mlflow-run-id").write_text(
             f"{mlflow_run_id}\n",
@@ -268,9 +279,7 @@ def execute_training(
             mlflow_client.log_artifact(
                 mlflow_run_id, str(artifact), artifact_path="inputs"
             )
-        mlflow_experiment_id = str(
-            mlflow_client.get_run(mlflow_run_id).info.experiment_id
-        )
+        mlflow_experiment_id = str(run.info.experiment_id)
         mlflow_run_url = build_mlflow_run_url(
             mlflow_public_url,
             mlflow_experiment_id,

@@ -133,7 +133,9 @@ class cuda:
         (fake_modules / "mlflow.py").write_text(
             """
 import os
+import json
 from pathlib import Path
+from types import SimpleNamespace
 
 class _Experiment:
     experiment_id = "fake-experiment-id"
@@ -144,6 +146,7 @@ class _Info:
 
 class _Run:
     info = _Info()
+    data = SimpleNamespace(params=json.loads(os.environ.get("MLFLOW_PARAMS", "{}")))
 
 def set_experiment(_name):
     return _Experiment()
@@ -252,6 +255,19 @@ class MlflowClient:
             float(self.command_value(shlex.split(result.stdout), "--learning_rate")),
             1e-16,
         )
+
+    def test_pvc_training_cannot_resume_a_release_checkpoint(self) -> None:
+        previous_run = self.runs / "previous-run"
+        self.write_complete_checkpoint(previous_run / "trainer-output" / "checkpoint-40")
+        (previous_run / "mlflow-run-id").write_text("release-run\n", encoding="utf-8")
+        environment = self.runtime_environment(self.fake_runtime_modules())
+        environment["MLFLOW_PARAMS"] = '{"dataset_release_id": "reviewed-release"}'
+
+        result = self.run_runtime(environment, "--resume-run-id", "previous-run")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Training data release differs", result.stderr)
+        self.assertFalse((self.runs / "test-run").exists())
 
     def test_completed_run_returns_success_without_running_again(self) -> None:
         run_root = self.runs / "test-run"
