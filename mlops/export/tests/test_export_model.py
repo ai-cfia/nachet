@@ -148,7 +148,7 @@ class DetectorExportTest(unittest.TestCase):
                 export_model.export_model(checkpoint, Path(tmp) / "export")
                 report = json.loads((Path(tmp) / "export/detector-parity.json").read_text())
                 self.assertTrue(report["passed"])
-                self.assertGreater(report["comparisons"][0]["reference_count"], 0)
+                self.assertGreater(report["reference_count"], 0)
                 session = ort.InferenceSession(str(Path(tmp) / "export/onnx-fp32/model.onnx"),
                                                providers=["CPUExecutionProvider"])
                 pixels = torch.rand(2, 3, 64, 64)

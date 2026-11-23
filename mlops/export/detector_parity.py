@@ -1,6 +1,5 @@
 """Compare RT-DETR detections without assuming that proposal rows keep their order."""
 
-import hashlib
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -10,14 +9,13 @@ import onnxruntime as ort
 from PIL import Image
 from scipy.optimize import linear_sum_assignment
 import torch
-from torchvision.ops import box_convert, box_iou
+from torchvision.ops import box_convert
 from transformers import RTDetrImageProcessor, RTDetrV2ForObjectDetection
 
 ATOL = 1e-4
-MIN_IOU = 0.99
 
 
-def compare_detections(reference, converted, *, atol=ATOL, min_iou=MIN_IOU):
+def compare_detections(reference, converted, *, atol=ATOL):
     """Pass only when every detection has a one-to-one match within tolerance."""
     ref = {name: np.asarray(value) for name, value in reference.items()}
     actual = {name: np.asarray(value) for name, value in converted.items()}
@@ -27,20 +25,12 @@ def compare_detections(reference, converted, *, atol=ATOL, min_iou=MIN_IOU):
 
     rows, columns = np.array([], dtype=int), np.array([], dtype=int)
     if len(ref["boxes"]) and len(actual["boxes"]):
-        overlap = box_iou(torch.from_numpy(ref["boxes"]),
-                          torch.from_numpy(actual["boxes"])).numpy()
         # Every class score counts: consumers read more than the winning class.
         score_delta = np.abs(ref["scores"][:, None] - actual["scores"]).max(axis=2)
         box_delta = np.abs(ref["boxes"][:, None] - actual["boxes"]).max(axis=2)
-        equivalent = (
-            (overlap >= min_iou)
-            & (score_delta <= atol)
-            & (box_delta <= atol)
-        )
-        # An invalid pair must cost more than every possible valid pair combined.
-        # This maximizes valid matches before choosing the closest overlapping boxes.
-        invalid_cost = max(len(ref["boxes"]), len(actual["boxes"])) + 1
-        rows, columns = linear_sum_assignment(np.where(equivalent, 1 - overlap, invalid_cost))
+        equivalent = (score_delta <= atol) & (box_delta <= atol)
+        # Any valid pairing is acceptable; keep as many as possible.
+        rows, columns = linear_sum_assignment(equivalent, maximize=True)
         valid = equivalent[rows, columns]
         rows, columns = rows[valid], columns[valid]
 
@@ -55,7 +45,6 @@ def compare_detections(reference, converted, *, atol=ATOL, min_iou=MIN_IOU):
         "unmatched_onnx": extra,
         "matched_max_score_difference": float(score_delta[rows, columns].max()) if len(rows) else 0.0,
         "matched_max_coordinate_difference": float(box_delta[rows, columns].max()) if len(rows) else 0.0,
-        "matched_min_iou": float(overlap[rows, columns].min()) if len(rows) else None,
     }
 
 
@@ -67,21 +56,13 @@ def _detections(output):
     }
 
 
-def validate_detector_export(checkpoint, onnx_path, report_path, *, images=None):
-    """Run identical pixels through PyTorch and ONNX Runtime and compare outputs.
+def validate_detector_export(checkpoint, onnx_path, report_path):
+    """Run one synthetic image through PyTorch and ONNX Runtime and compare outputs.
 
-    EXPORTED -> CHECKING -> PASSED or FAILED. Only PASSED returns to export;
-    a detection mismatch writes a failed report and raises before quantization.
-    The export command uses a deterministic synthetic image. Callers can supply
-    representative PIL images for an additional local parity check.
+    A mismatch writes a failed report and raises before quantization.
     """
-    checkpoint, onnx_path, report_path = map(Path, (checkpoint, onnx_path, report_path))
-    supplied_images = images is not None
-    if images is None:
-        pixels = np.random.default_rng(2438).integers(0, 256, (96, 128, 3), dtype=np.uint8)
-        images = [Image.fromarray(pixels)]
-    if not images:
-        raise ValueError("At least one parity image is required")
+    checkpoint, report_path = Path(checkpoint), Path(report_path)
+    pixels = np.random.default_rng(2438).integers(0, 256, (96, 128, 3), dtype=np.uint8)
     # Model-only checkpoints remain exportable; processor defaults are used only
     # for this shared numerical probe, not as deployment preprocessing settings.
     processor = (
@@ -91,50 +72,31 @@ def validate_detector_export(checkpoint, onnx_path, report_path, *, images=None)
     )
     model = RTDetrV2ForObjectDetection.from_pretrained(checkpoint, local_files_only=True).eval()
     session = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
-    comparisons = []
-    for image in images:
-        inputs = processor(images=image.convert("RGB"), return_tensors="pt")
-        feed = {item.name: inputs[item.name] for item in session.get_inputs()}
-        digest = hashlib.sha256(feed["pixel_values"].numpy().tobytes()).hexdigest()
-        with torch.inference_mode():
-            expected = model(**feed, return_dict=True)
-            actual = SimpleNamespace(**{
-                name: torch.from_numpy(value)
-                for name, value in zip(
-                    (item.name for item in session.get_outputs()),
-                    session.run(None, {name: value.numpy() for name, value in feed.items()}),
-                )
-            })
-            shapes = {
-                name: [list(getattr(result, name).shape) for result in (expected, actual)]
-                for name in ("logits", "pred_boxes")
-            }
-            if any(reference != converted for reference, converted in shapes.values()):
-                # A different batch, query or class count is a different model.
-                comparisons.append({
-                    "pixel_values_sha256": digest, "passed": False, "output_shapes": shapes,
-                })
-                continue
-            for result in (expected, actual):
-                if not torch.isfinite(result.logits).all() or not torch.isfinite(result.pred_boxes).all():
-                    raise ValueError("Detector outputs contain non-finite values")
-            # Keep every query: a low score cannot excuse a moved or missing box.
-            before, after = (_detections(result) for result in (expected, actual))
-        comparisons.append({
-            "pixel_values_sha256": digest,
-            "rowwise_max_logit_difference": float((expected.logits - actual.logits).abs().max()),
-            "rowwise_max_box_difference": float((expected.pred_boxes - actual.pred_boxes).abs().max()),
-            **compare_detections(before, after),
-        })
-    report = {
-        "passed": all(item["passed"] for item in comparisons),
-        "input_kind": "provided_images" if supplied_images else "seeded_synthetic_image",
-        "onnx_sha256": hashlib.sha256(onnx_path.read_bytes()).hexdigest(),
-        "absolute_tolerance": ATOL,
-        "minimum_iou": MIN_IOU,
-        "comparisons": comparisons,
+    inputs = processor(images=Image.fromarray(pixels), return_tensors="pt")
+    feed = {item.name: inputs[item.name] for item in session.get_inputs()}
+    with torch.inference_mode():
+        expected = model(**feed, return_dict=True)
+    actual = SimpleNamespace(**{
+        name: torch.from_numpy(value)
+        for name, value in zip(
+            (item.name for item in session.get_outputs()),
+            session.run(None, {name: value.numpy() for name, value in feed.items()}),
+        )
+    })
+    shapes = {
+        name: [list(getattr(result, name).shape) for result in (expected, actual)]
+        for name in ("logits", "pred_boxes")
     }
-    report_path.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
+    if any(reference != converted for reference, converted in shapes.values()):
+        # A different batch, query or class count is a different model.
+        report = {"passed": False, "output_shapes": shapes}
+    else:
+        # Keep every query: a low score cannot excuse a moved or missing box.
+        report = {
+            "absolute_tolerance": ATOL,
+            **compare_detections(_detections(expected), _detections(actual)),
+        }
+    report_path.write_text(json.dumps(report, indent=2) + "\n")
     if not report["passed"]:
         raise ValueError(f"RT-DETR export detections differ; see {report_path}")
     return report

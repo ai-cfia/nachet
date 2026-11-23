@@ -79,7 +79,7 @@ class DetectionParityTest(unittest.TestCase):
                     actual = {name: np.concatenate([values, values[:1]])
                               for name, values in actual.items()}
                 elif change == "shifted":
-                    # Still high overlap, but outside the coordinate tolerance.
+                    # A small shift outside the coordinate tolerance.
                     actual["boxes"][0] += 0.001
                 elif change == "label":
                     actual["scores"][0] = actual["scores"][0, ::-1].copy()
@@ -126,7 +126,7 @@ class DetectionParityTest(unittest.TestCase):
         moved[0, 1, 0] += 0.25
         report = validate(reference, SimpleNamespace(logits=reference.logits, pred_boxes=moved))
         self.assertFalse(report["passed"])
-        self.assertEqual(report["comparisons"][0]["unmatched_reference"], [1])
+        self.assertEqual(report["unmatched_reference"], [1])
 
     def test_validation_reports_a_different_output_shape(self):
         reference = SimpleNamespace(
@@ -145,7 +145,7 @@ class DetectionParityTest(unittest.TestCase):
             with self.subTest(change=change):
                 report = validate(reference, actual)
                 self.assertFalse(report["passed"])
-                self.assertIn("output_shapes", report["comparisons"][0])
+                self.assertIn("output_shapes", report)
 
     def test_empty_lists_agree_but_cannot_absorb_a_detection(self):
         empty = detections([], [], [])
