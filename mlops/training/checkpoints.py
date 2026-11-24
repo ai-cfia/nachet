@@ -7,6 +7,8 @@ import json
 import re
 from pathlib import Path
 
+import mlflow
+
 CHECKPOINT_PATTERN = re.compile(r"^checkpoint-([1-9][0-9]*)$")
 MAX_CHECKPOINT_SELECTIONS = 3
 REQUIRED_CHECKPOINT_FILES = (
@@ -63,10 +65,7 @@ def archived_checkpoints(run_root: Path) -> dict[str, str]:
     if not run_id_file.is_file():
         return {}
 
-    from mlflow import MlflowClient
-    from mlflow.entities import LoggedModelStatus
-
-    client = MlflowClient()
+    client = mlflow.MlflowClient()
     parent = client.get_run(run_id_file.read_text().strip())
     # One child run per attempt: a workflow's retries fit in the default page.
     runs = [parent, *client.search_runs(
@@ -94,7 +93,7 @@ def archived_checkpoints(run_root: Path) -> dict[str, str]:
         )
         for model in page:
             if (
-                model.status == LoggedModelStatus.READY
+                model.status == mlflow.entities.LoggedModelStatus.READY
                 and CHECKPOINT_PATTERN.fullmatch(model.name)
                 and (
                     model.name not in models
