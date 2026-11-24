@@ -89,11 +89,14 @@ from transformers import (
     set_seed,
 )
 from transformers.trainer_utils import get_last_checkpoint
+
 from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
 import mlflow
 
+# Shared modules live under training/ in a checkout and /opt/ in the image.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from checkpoint_archives import RecoverCheckpointArchives  # noqa: E402
 from training_release import load_training_release, stream_media  # noqa: E402
 
 """ Fine-tuning a 🤗 Transformers model for image classification"""
@@ -596,6 +599,7 @@ def train_classifier(transform_factory):
             processing_class=image_processor,
             data_collator=collate_fn,
             sample_weights=sample_weights,
+            callbacks=[RecoverCheckpointArchives()],
         )
 
         logger.info("[stage] Starting training...")

@@ -57,6 +57,57 @@ def list_checkpoints(trainer_output: Path) -> list[str]:
     return [path.name for path in checkpoints]
 
 
+def archived_checkpoints(run_root: Path) -> dict[str, str]:
+    """Find native MLflow checkpoint models from this workflow's attempts."""
+    run_id_file = run_root / "mlflow-run-id"
+    if not run_id_file.is_file():
+        return {}
+
+    from mlflow import MlflowClient
+    from mlflow.entities import LoggedModelStatus
+
+    client = MlflowClient()
+    parent = client.get_run(run_id_file.read_text().strip())
+    # One child run per attempt: a workflow's retries fit in the default page.
+    runs = [parent, *client.search_runs(
+        [parent.info.experiment_id],
+        filter_string=f"tags.`mlflow.parentRunId` = '{parent.info.run_id}'",
+    )]
+
+    # A continuation shares its parent MLflow run with the source workflow.
+    # Scope archives to this workflow, allowing the PVC to have another mount root.
+    sources = [
+        run.info.run_id for run in runs
+        if Path(run.data.params.get("output_dir", "")).parts[-2:]
+        == (run_root.name, "trainer-output")
+    ]
+    if not sources:
+        return {}
+    source_ids = ", ".join(f"'{run_id}'" for run_id in sources)
+    models = {}
+    token = None
+    while True:
+        page = client.search_logged_models(
+            [parent.info.experiment_id],
+            filter_string=f"source_run_id IN ({source_ids})",
+            page_token=token,
+        )
+        for model in page:
+            if (
+                model.status == LoggedModelStatus.READY
+                and CHECKPOINT_PATTERN.fullmatch(model.name)
+                and (
+                    model.name not in models
+                    or model.creation_timestamp > models[model.name].creation_timestamp
+                )
+            ):
+                models[model.name] = model
+        token = page.token
+        if not token:
+            break
+    return {name: model.model_id for name, model in models.items()}
+
+
 def parse_checkpoint_options(value: str) -> list[str]:
     try:
         options = json.loads(value)
