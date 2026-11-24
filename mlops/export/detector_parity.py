@@ -14,7 +14,8 @@ from transformers import RTDetrImageProcessor, RTDetrV2ForObjectDetection
 
 # IoU scales with box size; a coordinate tolerance would not.
 MIN_BOX_IOU = 0.99
-SCORE_ATOL = 1e-4
+# Absolute difference on sigmoid class confidences (0–1), not raw logits.
+MAX_CONFIDENCE_DIFFERENCE = 1e-4
 
 
 def compare_detections(reference, converted):
@@ -30,7 +31,7 @@ def compare_detections(reference, converted):
         # Every class score counts: consumers read more than the winning class.
         score_delta = np.abs(ref["scores"][:, None] - actual["scores"]).max(axis=2)
         iou = box_iou(torch.as_tensor(ref["boxes"]), torch.as_tensor(actual["boxes"])).numpy()
-        equivalent = (score_delta <= SCORE_ATOL) & (iou >= MIN_BOX_IOU)
+        equivalent = (score_delta <= MAX_CONFIDENCE_DIFFERENCE) & (iou >= MIN_BOX_IOU)
         # Any valid pairing is acceptable; keep as many as possible.
         rows, columns = linear_sum_assignment(equivalent, maximize=True)
         valid = equivalent[rows, columns]
@@ -99,7 +100,7 @@ def validate_detector_export(checkpoint, onnx_path, report_path):
         # Keep every query: a low score cannot excuse a moved or missing box.
         report = {
             "minimum_box_iou": MIN_BOX_IOU,
-            "score_absolute_tolerance": SCORE_ATOL,
+            "score_absolute_tolerance": MAX_CONFIDENCE_DIFFERENCE,
             **compare_detections(_detections(expected), _detections(actual)),
         }
     report_path.write_text(json.dumps(report, indent=2) + "\n")

@@ -57,29 +57,43 @@ Other checkpoint files are linked into the temporary directory, so weights
 are not copied or modified. The original checkpoint stays unchanged. The
 exporter retains its existing Transformers and Optimum versions.
 
-RT-DETRv2 export uses Optimum's Python API with its row-by-row validation
-disabled. It then runs PyTorch and ONNX Runtime on identical pixels and
-converts both outputs to boxes and sigmoid class scores. Predictions are
-matched one to one by box overlap and class scores. This
-accepts equivalent predictions in a different order while rejecting missing,
-extra or changed detections. Swin keeps Optimum's existing validation.
+Optimum provides numerical validation through both its [Python API][optimum-export]
+and CLI. The [original CCDS release script][ccds-export] calls `optimum-cli`
+without overriding `--atol`. In the pinned `optimum-onnx==0.1.0`, RT-DETRv2's
+raw-output absolute tolerance is `1e-5`. Its validator uses `numpy.allclose`
+with that tolerance and NumPy's default relative tolerance of `1e-5`.
+It compares raw logits and box coordinates row by row, so equivalent
+predictions in a different order can fail.
+
+RT-DETRv2 export calls `main_export(do_validation=False)` and then runs
+PyTorch and ONNX Runtime on identical pixels. It converts outputs to boxes
+and sigmoid class confidences and matches predictions one to one. This
+accepts reordered predictions while rejecting missing, extra or changed
+detections. Swin keeps Optimum's existing validation.
 
 The check writes `detector-parity.json` beside `onnx-fp32/`. It records the
-matches, their largest score difference and lowest box IoU, and unmatched
-indices. Matched boxes need an IoU of at least `0.99`, and their scores an
-absolute difference of at most `1e-4`. The score of every class
-must agree for a matched query, and outputs with a different batch, query or
-class count fail the check. It retains every query, including low-scoring
-ones, so thresholding cannot hide a difference. Every detection must match;
-a low score does not excuse a missing or changed box. Scores are compared
-after sigmoid, as the release evaluator reads them; a consumer that applies
-softmax to a multi-class detector is not covered.
-A failed comparison stops export before optional quantization.
+matches, their largest confidence difference and lowest box IoU, and unmatched
+indices. Matched boxes need an IoU of at least `0.99`.
+`MAX_CONFIDENCE_DIFFERENCE = 1e-4` is the maximum absolute difference in each
+matched sigmoid class confidence, which is on a 0–1 scale. It allows a change
+of at most 0.01 percentage point. This confidence tolerance is separate from
+Optimum's raw-logit tolerance; the two values are not directly comparable.
+
+Every class confidence must agree within that tolerance. Different batch,
+query or class counts fail the check. It retains every query, including
+low-scoring ones, so thresholding cannot hide a difference. A low score does
+not excuse a missing or changed box. Scores are compared after sigmoid, as
+the release evaluator reads them; a consumer that applies softmax to a
+multi-class detector is not covered. A failed comparison stops export before
+optional quantization.
 
 The probe is one deterministic synthetic RGB image. It checks numerical
 consistency, not detector accuracy. The report remains with the export;
 publication can include it through the existing `--evaluation` option after
 review.
+
+[optimum-export]: https://huggingface.co/docs/optimum-onnx/en/onnx/package_reference/export
+[ccds-export]: https://github.com/ai-cfia/nachet-model-ccds/blob/229a3d40d384a9db05eb83a6201005818104e202/exporter/ModelRelease.py#L103-L120
 
 ## Prepare classifier CAM files
 
