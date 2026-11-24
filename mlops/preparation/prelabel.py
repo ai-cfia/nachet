@@ -12,6 +12,7 @@ import os
 import re
 import tempfile
 from contextlib import ExitStack
+from itertools import combinations
 from pathlib import Path
 from typing import NamedTuple
 from urllib.parse import urlsplit
@@ -121,7 +122,23 @@ def contains(outer: list[float], inner: list[float]) -> bool:
     )
 
 
-def review_outcome(boxes: list, padded: list) -> tuple[str, str | None]:
+def _has_overlapping_boxes(boxes: list[list[float]]) -> bool:
+    """Whether two COCO boxes share positive area."""
+    for first, second in combinations(boxes, 2):
+        left, top, width, height = first
+        other_left, other_top, other_width, other_height = second
+        overlap_width = min(left + width, other_left + other_width) - max(
+            left, other_left
+        )
+        overlap_height = min(top + height, other_top + other_height) - max(
+            top, other_top
+        )
+        if overlap_width > 0 and overlap_height > 0:
+            return True
+    return False
+
+
+def review_outcome(boxes: list, padded: list) -> tuple[str | None, str | None]:
     """Return (prelabel_status, prelabel_reason) for one image's detections."""
     if not boxes:
         return "needs_review", "no_detections"
@@ -135,8 +152,10 @@ def review_outcome(boxes: list, padded: list) -> tuple[str, str | None]:
         for inner in padded
         if outer is not inner
     ):
-        return "draft", "nested_boxes"
-    return "draft", None
+        return "needs_review", "nested_boxes"
+    if _has_overlapping_boxes(padded):
+        return "needs_review", "overlapping_boxes"
+    return None, None
 
 
 def prelabel(
@@ -148,10 +167,12 @@ def prelabel(
     checkpoint_dir: Path | None = None,
     predictor_identity: str | None = None,
     code_revision: str | None = None,
+    initial_index_path: Path | None = None,
 ) -> dict:
     """Add draft boxes using an image-only callable returning a Prediction.
 
     Prediction boxes use pixel XYXY coordinates and may have one score per box.
+    Set initial_index_path to save the unannotated index before a fresh run.
     """
     media_root = media_root.resolve(strict=True)
     return _prelabel(
@@ -163,6 +184,7 @@ def prelabel(
         predictor_identity=predictor_identity,
         code_revision=code_revision,
         media_identity=str(media_root),
+        initial_index_path=initial_index_path,
     )
 
 
@@ -177,8 +199,9 @@ def prelabel_s3(
     predictor_identity: str | None = None,
     code_revision: str | None = None,
     storage_identity: str | None = None,
+    initial_index_path: Path | None = None,
 ) -> dict:
-    """Check each prepared PNG's hash before giving its pixels to the predictor."""
+    """Pre-label S3 images with the same options as prelabel, verifying each PNG hash."""
     with asyncio.Runner() as runner:
 
         def open_image(record):
@@ -201,6 +224,7 @@ def prelabel_s3(
             media_identity=f"s3://{bucket}|{storage_identity}"
             if storage_identity
             else None,
+            initial_index_path=initial_index_path,
         )
 
 
@@ -211,12 +235,17 @@ def _load_checkpoint(
         checkpoint = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise ValueError(f"Cannot read pre-label checkpoint {path}: {error}") from error
+    if isinstance(checkpoint, dict) and checkpoint.get("prelabel_status") == "draft":
+        raise ValueError(
+            f"Legacy draft checkpoint at {path}. Restart with a fresh checkpoint directory."
+        )
     if (
         not isinstance(checkpoint, dict)
         or checkpoint.get("image_id") != record["id"]
         or checkpoint.get("file_name") != record["file_name"]
         or checkpoint.get("image_sha256") != record["image_sha256"]
-        or checkpoint.get("prelabel_status") not in {"draft", "needs_review"}
+        or "prelabel_status" not in checkpoint
+        or checkpoint["prelabel_status"] not in (None, "needs_review")
         or not isinstance(checkpoint.get("annotations"), list)
         or "prelabel_prompt" not in checkpoint
         or "prelabel_reason" not in checkpoint
@@ -262,6 +291,12 @@ def _load_checkpoint(
         for annotation in checkpoint["annotations"]
     ):
         raise ValueError(f"Invalid annotations in pre-label checkpoint: {path}")
+    if checkpoint["prelabel_status"] is None and _has_overlapping_boxes(
+        [annotation["bbox"] for annotation in checkpoint["annotations"]]
+    ):
+        checkpoint.update(
+            prelabel_status="needs_review", prelabel_reason="overlapping_boxes"
+        )
     return checkpoint
 
 
@@ -371,6 +406,25 @@ def _checkpoint_namespace(
     return hashlib.sha256(serialized).hexdigest()
 
 
+def _write_unannotated_index(path: Path, coco: dict) -> None:
+    snapshot = {**coco, "images": []}
+    for record in coco["images"]:
+        image = {**record, "prelabel_status": "unannotated"}
+        for field in (
+            "prelabel_prompt",
+            "prelabel_reason",
+            "prelabel_project_version",
+            "prelabel_code_revision",
+        ):
+            image.pop(field, None)
+        snapshot["images"].append(image)
+    if "info" in snapshot:
+        snapshot["info"] = coco["info"].copy()
+        snapshot["info"].pop("prelabel", None)
+    save_coco(path, snapshot)
+    logger.info("Wrote initial unannotated COCO index %s", path)
+
+
 def _prelabel(
     coco: dict,
     open_image,
@@ -381,6 +435,7 @@ def _prelabel(
     predictor_identity: str | None,
     code_revision: str | None,
     media_identity: str | None,
+    initial_index_path: Path | None,
 ) -> dict:
     """Use the same decoding and annotation policy for local and S3 streams."""
     if coco["annotations"]:
@@ -420,6 +475,12 @@ def _prelabel(
         candidates = compatible_directories(root, version)
         target_dir = root / str(version)
         logger.info("Using pre-label checkpoint %s", target_dir)
+    if initial_index_path is not None and not any(
+        (candidate_dir / f"{image_number:08d}.json").exists()
+        for _, candidate_dir in candidates
+        for image_number in range(len(result["images"]))
+    ):
+        _write_unannotated_index(initial_index_path, result)
     resumed = 0
     images = log_progress(
         result["images"], logger, stage="SAM3 pre-labeling", total=len(result["images"])
@@ -588,6 +649,9 @@ def main(argv: list[str] | None = None) -> None:
             identity["model_storage"] = storage_config
         predictor = Sam3Predictor(args.model_path, args.device)
         predictor_identity = json.dumps(identity, sort_keys=True)
+        initial_index_path = args.output.with_name(
+            f"{args.output.stem}.unannotated{args.output.suffix}"
+        )
         if source.scheme == "s3":
             result = prelabel_s3(
                 coco,
@@ -599,6 +663,7 @@ def main(argv: list[str] | None = None) -> None:
                 predictor_identity=predictor_identity,
                 code_revision=args.code_revision,
                 storage_identity=json.dumps(storage_config, sort_keys=True),
+                initial_index_path=initial_index_path,
             )
         else:
             result = prelabel(
@@ -609,6 +674,7 @@ def main(argv: list[str] | None = None) -> None:
                 checkpoint_dir=args.checkpoint_dir,
                 predictor_identity=predictor_identity,
                 code_revision=args.code_revision,
+                initial_index_path=initial_index_path,
             )
     result["info"]["prelabel"] = {
         "model_path": str(args.model_path),

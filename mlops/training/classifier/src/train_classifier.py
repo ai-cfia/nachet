@@ -67,6 +67,7 @@ import os
 import sys
 from collections import Counter
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
@@ -91,6 +92,9 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
 import mlflow
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from training_release import load_training_release, stream_media  # noqa: E402
 
 """ Fine-tuning a 🤗 Transformers model for image classification"""
 
@@ -182,6 +186,9 @@ class DataTrainingArguments:
     them on the command line.
     """
 
+    dataset_release: Optional[str] = field(
+        default=None, metadata={"help": "Pinned release input from the training launcher."}
+    )
     dataset_name: Optional[str] = field(
         default=None,
         metadata={
@@ -235,7 +242,7 @@ class DataTrainingArguments:
     )
 
     def __post_init__(self):
-        if self.dataset_name is None and (
+        if self.dataset_release is None and self.dataset_name is None and (
             self.train_dir is None and self.validation_dir is None
         ):
             raise ValueError(
@@ -370,7 +377,10 @@ def train_classifier(transform_factory):
 
     # Initialize our dataset and prepare it for the 'image-classification' task.
     logger.info("[stage] Loading dataset...")
-    if data_args.dataset_name is not None:
+    released_data = None
+    if data_args.dataset_release:
+        dataset, released_data = load_training_release(data_args.dataset_release, "classifier")
+    elif data_args.dataset_name is not None:
         dataset = load_dataset(
             data_args.dataset_name,
             data_args.dataset_config_name,
@@ -532,6 +542,9 @@ def train_classifier(transform_factory):
         )
 
     # Now attach transforms for training/eval
+    if released_data is not None:
+        train_transforms = stream_media(released_data, train_transforms)
+        val_transforms = stream_media(released_data, val_transforms)
     if training_args.do_train:
         dataset["train"].set_transform(train_transforms)
         logger.info(
@@ -561,6 +574,8 @@ def train_classifier(transform_factory):
     mlflow.autolog()
     # MLflow parameters cannot change within a run; give each attempt a child run.
     with mlflow.start_run(), mlflow.start_run(nested=True):
+        if released_data is not None:
+            mlflow.log_params(released_data.registration.training_reference())
         # Trainer records model settings; record the image-folder inputs alongside them.
         mlflow.log_params(
             {
@@ -609,7 +624,9 @@ def train_classifier(transform_factory):
         kwargs = {
             "finetuned_from": model_args.model_name_or_path,
             "tasks": "image-classification",
-            "dataset": data_args.dataset_name,
+            "dataset": (
+                released_data.registration.name if released_data else data_args.dataset_name
+            ),
             "tags": ["image-classification", "vision"],
         }
         if training_args.push_to_hub:

@@ -333,19 +333,25 @@ you choose for the weights, recorded in `info.prelabel`.
 To resume pre-labeling, append
 `--checkpoint-dir /work/prelabel-checkpoints --code-revision "$CODE_REVISION"`.
 Completed images are committed individually and reused on retry; an interrupted
-image is processed again. The final draft is written only after all images
-finish. Checkpoints are scoped to the index, media location, model identity and
-revision, device, padding and inference policy. When the same model path can
-refer to different models, also set a distinct `--model-identity`. When supplied,
-it is recorded in `info.prelabel.model_identity`. Checkpointed Python callers must supply
-`predictor_identity` and `code_revision`; S3 callers must also supply a stable
-`storage_identity` for the endpoint and region.
+image is processed again. Before inference on a fresh run, the CLI saves an
+initial COCO snapshot with every image marked `unannotated` (for example,
+`draft.coco.unannotated.json` for `draft.coco.json`). A run with matching
+per-image checkpoints skips the snapshot. The final draft is written only
+after all images finish. Checkpoints are scoped to the index, media location,
+model identity and revision, device, padding and inference policy. When the same
+model path can refer to different models, also set a distinct `--model-identity`.
+When supplied, it is recorded in `info.prelabel.model_identity`. Checkpointed
+Python callers must supply `predictor_identity` and `code_revision`; S3 callers
+must also supply a stable `storage_identity` for the endpoint and region.
+If a checkpoint contains the legacy `draft` status, restart with a fresh
+checkpoint directory.
 
 Reused images are not read again by pre-labeling. Keep their media unchanged;
 the Argo checksum audit rechecks the indexed S3 objects before pre-labeling.
 Checkpointed image records include `prelabel_project_version` and
 `prelabel_code_revision` for the original producer, even when a later
-compatible release assembles the draft.
+compatible release assembles the draft. On resume, saved boxes with an empty
+status are checked for overlap.
 
 Each image records its `prelabel_status`, `prelabel_prompt` and
 `prelabel_reason`. The prompt is the last one attempted, or `null` if
@@ -353,16 +359,20 @@ the predictor does not use prompts or inference was skipped.
 
 | Status | Reason | Meaning |
 | --- | --- | --- |
-| `draft` | `null` | A prompt returned 1 to 9 valid boxes. |
-| `draft` | `nested_boxes` | One padded box lies inside another. |
+| `unannotated` | `null` | Initial snapshot before inference. |
+| `null` | `null` | A prompt returned 1 to 9 valid boxes with no shared area. |
+| `needs_review` | `nested_boxes` | One padded box lies inside another. |
+| `needs_review` | `overlapping_boxes` | Padded boxes share area without containment. |
 | `needs_review` | `no_detections` | All prompts failed the count check; the last returned no boxes. |
 | `needs_review` | `too_many_detections` | All prompts failed the count check; the last returned at least 10 boxes. |
 | `needs_review` | `invalid_boxes` | A prompt returned 1 to 9 boxes, but invalid geometry was dropped. |
 | `needs_review` | `high_bit_depth` | High-bit image; inference skipped pending a normalization policy. |
 
-Both statuses require human review. The command refuses an index that already
-has annotations. Without `--checkpoint-dir`, an interrupted run starts again
-from the beginning.
+Use `needs_review` to find images flagged during pre-labeling. The command
+refuses an index that already has annotations. Without `--checkpoint-dir`, an
+interrupted run starts again from the beginning. To assemble a new draft from
+checkpoints when an older completed draft already exists, choose a new output
+path.
 
 ## Register for review
 
@@ -382,15 +392,21 @@ uv run --project mlops/preparation --no-sync python \
 
 Use the server's MongoDB URI and, if customized, `FIFTYONE_DATABASE_NAME`.
 The command requires `FIFTYONE_DATABASE_URI` and refuses an implicit local
-database. Draft boxes go in `draft_boxes`. Source records, split assignments
-and the pre-label fields described above stay on each sample. `source_species`
+database. Every imported sample gets the `not-verified` tag. Draft boxes go in
+`boxes_YYYYMMDD`, using the UTC registration date. Every imported label gets
+the `not-verified` tag. When the draft records the model snapshot and
+revision, each box also gets a `<model-name>-<model-revision>` label tag. The
+name is the final component of the S3 model source or local model directory.
+Source records, split assignments and the pre-label fields described above
+stay on each sample. `source_species`
 copies the first source's species for filtering, or stays `null` when it is
 unknown. It records the original species separately from reviewed box labels.
 `object_key` keeps the PNG key, and `image_sha256` copies its hash from the
 COCO image record. Each input image must include this field; the import does
 not read image bytes to recalculate it. Raw-file hashes stay in `sources`.
 `dataset.info` keeps the COCO `info` block.
-Images imported before pre-labeling get `prelabel_status: "unannotated"`.
+Images imported from an older prepared index without `prelabel_status` get
+`unannotated`. An explicit `null` is kept as an empty status.
 
 Existing dataset names are refused so a rerun cannot overwrite review work.
 An import uses a temporary `preparation-import-*` name and renames the dataset

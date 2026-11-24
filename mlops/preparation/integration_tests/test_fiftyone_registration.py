@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -40,9 +41,17 @@ def test_registration_keeps_fields_and_refuses_to_replace_review_work(
     assert dataset.persistent
     assert len(dataset) == 3
     assert isinstance(dataset.get_field("image_sha256"), fiftyone.StringField)
+    assert isinstance(dataset.get_field("prelabel_status"), fiftyone.StringField)
+    (boxes_field,) = dataset.get_field_schema(embedded_doc_type=fiftyone.Detections)
+    assert re.fullmatch(r"boxes_[0-9]{8}", boxes_field)
+    assert dataset.count_label_tags(label_fields=boxes_field) == {
+        "not-verified": 2,
+        "sam3-local-weights": 2,
+    }
     samples = {sample.coco_id: sample for sample in dataset}
     for record in draft_coco["images"]:
         sample = samples[record["id"]]
+        assert sample.tags == ["not-verified"]
         assert sample.filepath == str(server_root / record["file_name"])
         assert not Path(sample.filepath).exists()
         assert (sample.metadata.width, sample.metadata.height) == (100, 80)
@@ -57,10 +66,10 @@ def test_registration_keeps_fields_and_refuses_to_replace_review_work(
         assert sample["prelabel_project_version"] == record["prelabel_project_version"]
         assert sample["prelabel_code_revision"] == record["prelabel_code_revision"]
     first = samples[11]
-    detection = first.draft_boxes.detections[0]
+    detection = first[boxes_field].detections[0]
     assert detection.label == "Avena fatua"
     assert detection.bounding_box == pytest.approx([0.1025, 0.25625, 0.4075, 0.378125])
-    assert not samples[25].draft_boxes or not samples[25].draft_boxes.detections
+    assert not samples[25][boxes_field] or not samples[25][boxes_field].detections
 
     detection.label = "Zea mays"
     detection.bounding_box = [0.1, 0.2, 0.3, 0.4]
@@ -69,8 +78,8 @@ def test_registration_keeps_fields_and_refuses_to_replace_review_work(
     assert retry.returncode != 0
     assert "already exists" in retry.stderr
     reviewed = fiftyone.load_dataset(review_name)[first.id]
-    assert reviewed.draft_boxes.detections[0].label == "Zea mays"
-    assert reviewed.draft_boxes.detections[0].bounding_box == [0.1, 0.2, 0.3, 0.4]
+    assert reviewed[boxes_field].detections[0].label == "Zea mays"
+    assert reviewed[boxes_field].detections[0].bounding_box == [0.1, 0.2, 0.3, 0.4]
     assert reviewed["source_species"] == "Avena fatua"
     assert reviewed["image_sha256"] == first["image_sha256"]
     assert dataset.info["preparation"] == draft_coco["info"]["preparation"]
@@ -212,6 +221,8 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
     assert dataset.persistent
     assert len(dataset) == 4
     assert isinstance(dataset.get_field("source_species"), fiftyone.StringField)
+    (boxes_field,) = dataset.get_field_schema(embedded_doc_type=fiftyone.Detections)
+    assert dataset.count_label_tags(label_fields=boxes_field) == {"not-verified": 2}
     samples = {sample.coco_id: sample for sample in dataset}
     expected_assignments = {
         scored_source: ("Avena fatua", "train"),
@@ -246,14 +257,15 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
         if relative == high_bit_relative:
             assert sample["prelabel_status"] == "needs_review"
             assert sample["prelabel_reason"] == "high_bit_depth"
-            assert not sample.draft_boxes or not sample.draft_boxes.detections
+            assert not sample[boxes_field] or not sample[boxes_field].detections
         elif sample["split"] is None:
+            assert sample["prelabel_status"] == "needs_review"
             assert sample["prelabel_reason"] == "no_detections"
-            assert not sample.draft_boxes or not sample.draft_boxes.detections
+            assert not sample[boxes_field] or not sample[boxes_field].detections
         else:
-            assert sample["prelabel_status"] == "draft"
-            assert len(sample.draft_boxes.detections) == 1
-            detection = sample.draft_boxes.detections[0]
+            assert sample["prelabel_status"] is None
+            assert len(sample[boxes_field].detections) == 1
+            detection = sample[boxes_field].detections[0]
             assert detection.label == expected_assignments[relative][0]
             expected_confidence = 0.875 if relative == scored_source else None
             assert detection.confidence == expected_confidence
@@ -261,7 +273,7 @@ def test_preparation_output_registers_with_boxes_sources_and_splits(
                 [0.1125, 0.21875, 0.35, 0.4375]
             )
     no_boxes = dataset.match(F("source_species") == "Avena fatua").match(
-        F("draft_boxes.detections").length() == 0
+        F(f"{boxes_field}.detections").length() == 0
     )
     assert len(no_boxes) == 2
     assert {sample["prelabel_reason"] for sample in no_boxes} == {
