@@ -1,6 +1,6 @@
 [project]
 name = "nachet-detector-trainer"
-version = "0.3.2"
+version = "0.3.3"
 description = "Nachet detector training runtime"
 requires-python = ">=3.12,<3.13"
 dependencies = [
@@ -11,7 +11,7 @@ dependencies = [
     "filelock==3.32.5",
     "matplotlib==3.10.7",
     "mlflow-skinny==3.7.0",
-    "nachet-dataset-release==0.1.1",
+    "nachet-dataset-release==0.1.2",
     "numpy==2.5.3",
     "onnxruntime-gpu==1.30.0; sys_platform == 'linux'",
     "onnxruntime==1.30.0; sys_platform != 'linux'",
