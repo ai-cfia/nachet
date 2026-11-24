@@ -230,9 +230,7 @@ def execute_training(
             archives = archived_checkpoints(run_root)
             if archives:
                 name = max(archives, key=lambda name: int(name.split("-")[1]))
-                resume_checkpoint = resolve_checkpoint(
-                    output_path, name, archives=archives, download=not args.dry_run,
-                )
+                resume_checkpoint = output_path / name
 
         # Prefer progress from this attempt. If it failed before saving a new
         # checkpoint, retry from the checkpoint the run originally received.
@@ -241,7 +239,7 @@ def execute_training(
                 args.resume_runs_root or args.runs_root,
                 requested_resume_run_id,
                 args.resume_checkpoint,
-                download=not args.dry_run,
+                download=False,
             )
             if (
                 existing_mlflow_run_id is not None
@@ -256,7 +254,7 @@ def execute_training(
             args.resume_runs_root or args.runs_root,
             requested_resume_run_id,
             args.resume_checkpoint,
-            download=not args.dry_run,
+            download=False,
         )
     command = command_for_resume(output_path, resume_checkpoint)
 
@@ -276,6 +274,12 @@ def execute_training(
             expected = release_reference or {"dataset_release_id": None}
             if any(params.get(key) != value for key, value in expected.items()):
                 raise ValueError("Training data release differs from the resumed MLflow run")
+        # A planned archived checkpoint must not write to its source run until
+        # the parent MLflow run's dataset identity has been accepted.
+        if resume_checkpoint is not None:
+            resume_checkpoint = resolve_checkpoint(
+                resume_checkpoint.parent, resume_checkpoint.name,
+            )
         mlflow_client, mlflow_run_id = client, run_id
         if release_reference is not None and existing_mlflow_run_id is None:
             from mlflow.entities import Param

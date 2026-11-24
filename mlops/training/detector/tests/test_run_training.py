@@ -1,3 +1,4 @@
+from argparse import Namespace
 import os
 import shlex
 import subprocess
@@ -5,9 +6,13 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from unittest.mock import Mock, patch
 
 
 SCRIPT = Path(__file__).parents[1] / "src" / "run_training.py"
+sys.path.insert(0, str(SCRIPT.parents[2]))
+from training_runtime import execute_training  # noqa: E402
 
 
 class RunTrainingTest(unittest.TestCase):
@@ -274,6 +279,71 @@ class MlflowClient:
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Training data release differs", result.stderr)
         self.assertFalse((self.runs / "test-run").exists())
+
+    def test_archive_restore_waits_for_release_identity_validation(self) -> None:
+        reference = {"dataset_release_id": "reviewed", "dataset_manifest_sha256": "a" * 64}
+        for retry in (False, True):
+            for outcome in ("mismatch", "matching", "dry-run"):
+                with self.subTest(retry=retry, outcome=outcome):
+                    run_id = f"restore-{retry}-{outcome}"
+                    source = self.runs / (run_id if retry else f"source-{run_id}")
+                    output = source / "trainer-output"
+                    output.mkdir(parents=True)
+                    (source / "mlflow-run-id").write_text("previous-mlflow-run\n")
+                    checkpoint = output / "checkpoint-40"
+                    args = Namespace(
+                        runs_root=self.runs, run_id=run_id, dataset_root=self.dataset,
+                        resume_run_id=None if retry else source.name,
+                        resume_runs_root=None, resume_checkpoint="checkpoint-40",
+                        dry_run=outcome == "dry-run",
+                    )
+                    params = dict(reference)
+                    if outcome == "mismatch":
+                        params["dataset_manifest_sha256"] = "b" * 64
+                    client = Mock()
+                    client.get_run.return_value = SimpleNamespace(
+                        data=SimpleNamespace(params=params),
+                        info=SimpleNamespace(experiment_id="experiment"),
+                    )
+
+                    def download(*, artifact_uri, dst_path):
+                        model = Path(dst_path) / "model"
+                        self.write_complete_checkpoint(model / "artifacts" / checkpoint.name)
+                        return str(model)
+
+                    artifacts = ModuleType("mlflow.artifacts")
+                    artifacts.download_artifacts = Mock(side_effect=download)
+                    trainer = Mock(return_value=0)
+                    archives = {checkpoint.name: "archived-model"}
+                    with (
+                        patch.dict(os.environ, {"MLFLOW_PUBLIC_URL": "https://mlflow.test"}),
+                        patch.dict(sys.modules, {"mlflow.artifacts": artifacts}),
+                        patch("training_runtime.archived_checkpoints", return_value=archives),
+                        patch("checkpoints.archived_checkpoints", return_value=archives),
+                        patch("training_runtime.validate_runtime"),
+                        patch("training_runtime.get_or_create_mlflow_run", return_value=(client, "previous-mlflow-run")),
+                        patch("training_runtime.run_and_tee", trainer),
+                    ):
+                        def command(_output, resume):
+                            return ["train", str(resume)]
+                        if outcome == "mismatch":
+                            with self.assertRaisesRegex(ValueError, "Training data release differs"):
+                                execute_training(args, command, release_reference=reference)
+                        else:
+                            self.assertEqual(execute_training(args, command, release_reference=reference), 0)
+                    if outcome == "matching":
+                        artifacts.download_artifacts.assert_called_once()
+                        self.assertTrue(checkpoint.is_dir())
+                        trainer.assert_called_once()
+                        self.assertEqual(trainer.call_args.args[0], ["train", str(checkpoint)])
+                    else:
+                        artifacts.download_artifacts.assert_not_called()
+                        trainer.assert_not_called()
+                        client.set_terminated.assert_not_called()
+                        self.assertEqual(list(output.iterdir()), [])
+                        self.assertEqual((source / "mlflow-run-id").read_text(), "previous-mlflow-run\n")
+                        if not retry:
+                            self.assertFalse((self.runs / run_id).exists())
 
     def test_completed_run_returns_success_without_running_again(self) -> None:
         run_root = self.runs / "test-run"

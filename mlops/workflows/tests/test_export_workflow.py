@@ -65,6 +65,15 @@ class ExportWorkflowTest(unittest.TestCase):
         original = hashlib.sha256(
             (self.checkpoint / "model.safetensors").read_bytes()
         ).digest()
+        # Trainer checkpoints carry resume state beside the model.
+        for name in (
+            "optimizer.pt",
+            "rng_state.pth",
+            "scheduler.pt",
+            "trainer_state.json",
+            "training_args.bin",
+        ):
+            (self.checkpoint / name).touch()
         self.run_step("restore-checkpoint", quantize, kind)
         self.run_step("export", quantize)
         output = self.root / "exports" / ("export-int8" if quantize else "export-fp32")
