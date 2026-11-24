@@ -13,10 +13,16 @@ TASKS = {"swin": "image-classification", "rt_detr_v2": "object-detection"}
 # LayerNorm as one LayerNormalization node, which renames the Swin feature
 # tensor that browser_cam.py exposes.
 OPSET = "16"
+# Match the release evaluator's default strict confidence gate.
+DEFAULT_CONFIDENCE_THRESHOLD = 0.5
 
 
-def export_model(checkpoint, output, quantize=False):
+def export_model(
+    checkpoint, output, quantize=False, *, confidence_threshold=DEFAULT_CONFIDENCE_THRESHOLD,
+):
     """Write output/onnx-fp32 and, with quantize, output/onnx-quant."""
+    if not 0 <= confidence_threshold <= 1:
+        raise ValueError("Confidence threshold must be between 0 and 1")
     checkpoint = Path(checkpoint)
     output = Path(output)
     config = json.loads((checkpoint / "config.json").read_text())
@@ -40,18 +46,38 @@ def export_model(checkpoint, output, quantize=False):
             config["tie_encoder_decoder"] = False
             (model_path / "config.json").write_text(json.dumps(config))
 
-        subprocess.run(
-            [
-                "optimum-cli", "export", "onnx",
-                "--model", str(model_path),
-                "--task", TASKS[model_type],
-                "--opset", OPSET,
-                "--library-name", "transformers",
-                str(output / "onnx-fp32"),
-            ],
-            check=True,
-            env=env,
-        )
+        if model_type == "rt_detr_v2":
+            from optimum.exporters.onnx import main_export
+
+            from detector_parity import validate_detector_export
+
+            main_export(
+                model_name_or_path=str(model_path),
+                output=output / "onnx-fp32",
+                task=TASKS[model_type],
+                opset=int(OPSET),
+                library_name="transformers",
+                local_files_only=True,
+                do_validation=False,
+            )
+            validate_detector_export(
+                model_path, output / "onnx-fp32/model.onnx",
+                output / "detector-parity.json",
+                confidence_threshold=confidence_threshold,
+            )
+        else:
+            subprocess.run(
+                [
+                    "optimum-cli", "export", "onnx",
+                    "--model", str(model_path),
+                    "--task", TASKS[model_type],
+                    "--opset", OPSET,
+                    "--library-name", "transformers",
+                    str(output / "onnx-fp32"),
+                ],
+                check=True,
+                env=env,
+            )
     if quantize:
         subprocess.run(
             [
@@ -70,8 +96,15 @@ def main():
     parser.add_argument("--checkpoint", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path, help="New directory for the ONNX files")
     parser.add_argument("--quantize", action="store_true", help="Also create the AVX512 INT8 model")
+    parser.add_argument(
+        "--confidence-threshold", type=float, default=DEFAULT_CONFIDENCE_THRESHOLD,
+        help="RT-DETR comparison cutoff; match the evaluation cutoff (default: 0.5)",
+    )
     args = parser.parse_args()
-    export_model(args.checkpoint, args.output, args.quantize)
+    export_model(
+        args.checkpoint, args.output, args.quantize,
+        confidence_threshold=args.confidence_threshold,
+    )
     print(f"ONNX files written to {args.output}")
 
 
