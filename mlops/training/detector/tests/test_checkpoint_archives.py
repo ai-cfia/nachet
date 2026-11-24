@@ -23,10 +23,10 @@ from transformers import Trainer, TrainerCallback, TrainingArguments
 TRAINING = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(TRAINING))
 from checkpoints import (  # noqa: E402
-    REQUIRED_CHECKPOINT_FILES, archived_checkpoints, resolve_checkpoint, restore,
+    REQUIRED_CHECKPOINT_FILES, RecoverCheckpointArchives, archived_checkpoints,
+    resolve_checkpoint, restore,
 )
 from training_runtime import resolve_resume_checkpoint  # noqa: E402
-from checkpoint_archives import RecoverCheckpointArchives  # noqa: E402
 
 
 class TinyModel(torch.nn.Module):
@@ -238,7 +238,7 @@ class CheckpointArchiveTest(unittest.TestCase):
                     model=TinyModel(), args=self.arguments(self.output),
                     train_dataset=dataset, callbacks=[RecoverCheckpointArchives()],
                 )
-                with patch("checkpoint_archives.mlflow.pyfunc.log_model", side_effect=OSError("still offline")):
+                with patch("checkpoints.mlflow.pyfunc.log_model", side_effect=OSError("still offline")):
                     with self.assertRaisesRegex(OSError, "still offline"):
                         retry.train(resume_from_checkpoint=str(self.output / "checkpoint-3"))
             self.assertTrue((self.output / "checkpoint-3").is_dir())

@@ -96,7 +96,7 @@ import mlflow
 
 # Shared modules live under training/ in a checkout and /opt/ in the image.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from checkpoint_archives import RecoverCheckpointArchives  # noqa: E402
+from checkpoints import RecoverCheckpointArchives  # noqa: E402
 from training_release import load_training_release, stream_media  # noqa: E402
 
 """ Fine-tuning a 🤗 Transformers model for image classification"""

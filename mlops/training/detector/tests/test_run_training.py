@@ -126,13 +126,9 @@ class RunTrainingTest(unittest.TestCase):
     def fake_runtime_modules(self) -> Path:
         fake_modules = self.root / "fake-modules"
         fake_modules.mkdir(exist_ok=True)
-        (fake_modules / "torch.py").write_text(
-            """
-class cuda:
-    @staticmethod
-    def is_available():
-        return True
-""".lstrip(),
+        # The launcher imports Transformers, so torch must be real; CI has no GPU.
+        (fake_modules / "sitecustomize.py").write_text(
+            "import torch\ntorch.cuda.is_available = lambda: True\n",
             encoding="utf-8",
         )
         (fake_modules / "mlflow.py").write_text(
