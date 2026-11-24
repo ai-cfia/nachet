@@ -94,13 +94,38 @@ class ExportCommandTest(unittest.TestCase):
         (self.checkpoint / "config.json").write_text(json.dumps({"model_type": "rt_detr_v2"}))
         with (
             patch("optimum.exporters.onnx.main_export") as export,
-            patch("detector_parity.validate_detector_export", side_effect=ValueError("detections differ")),
+            patch("detector_parity.validate_detector_export", side_effect=ValueError("detections differ")) as validate,
             patch.object(export_model.subprocess, "run") as quantize,
         ):
             with self.assertRaisesRegex(ValueError, "detections differ"):
-                export_model.export_model(self.checkpoint, self.output, quantize=True)
+                export_model.export_model(
+                    self.checkpoint, self.output, quantize=True, confidence_threshold=0.75,
+                )
+        self.assertEqual(validate.call_args.kwargs["confidence_threshold"], 0.75)
         self.assertFalse(export.call_args.kwargs["do_validation"])
         quantize.assert_not_called()
+
+    def test_cli_passes_the_configured_confidence_cutoff(self):
+        for options, threshold in (([], 0.5), (["--confidence-threshold", "0.75"], 0.75)):
+            with (
+                self.subTest(options=options),
+                patch.object(sys, "argv", [
+                    "export_model.py", "--checkpoint", str(self.checkpoint),
+                    "--output", str(self.output), *options,
+                ]),
+                patch.object(export_model, "export_model") as export,
+            ):
+                export_model.main()
+            self.assertEqual(export.call_args.kwargs["confidence_threshold"], threshold)
+
+    def test_invalid_confidence_cutoff_is_rejected_before_creating_output(self):
+        for threshold in (-0.1, 1.1, float("nan"), float("inf")):
+            with self.subTest(threshold=threshold):
+                with self.assertRaisesRegex(ValueError, "Confidence threshold"):
+                    export_model.export_model(
+                        self.checkpoint, self.output, confidence_threshold=threshold,
+                    )
+                self.assertFalse(self.output.exists())
 
 
 class SwinExportTest(unittest.TestCase):

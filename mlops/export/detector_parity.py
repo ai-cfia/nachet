@@ -14,12 +14,10 @@ from transformers import RTDetrImageProcessor, RTDetrV2ForObjectDetection
 
 # IoU scales with box size; a coordinate tolerance would not.
 MIN_BOX_IOU = 0.99
-# Absolute difference on sigmoid class confidences (0–1), not raw logits.
-MAX_CONFIDENCE_DIFFERENCE = 1e-4
 
 
-def compare_detections(reference, converted):
-    """Pass only when every detection has a one-to-one match in box and scores."""
+def compare_detections(reference, converted, *, confidence_threshold):
+    """Match every box one to one while preserving each class confidence gate."""
     ref = {name: np.asarray(value) for name, value in reference.items()}
     actual = {name: np.asarray(value) for name, value in converted.items()}
     for detections in (ref, actual):
@@ -28,10 +26,13 @@ def compare_detections(reference, converted):
 
     rows, columns = np.array([], dtype=int), np.array([], dtype=int)
     if len(ref["boxes"]) and len(actual["boxes"]):
-        # Every class score counts: consumers read more than the winning class.
-        score_delta = np.abs(ref["scores"][:, None] - actual["scores"]).max(axis=2)
         iou = box_iou(torch.as_tensor(ref["boxes"]), torch.as_tensor(actual["boxes"])).numpy()
-        equivalent = (score_delta <= MAX_CONFIDENCE_DIFFERENCE) & (iou >= MIN_BOX_IOU)
+        # Score differences matter only when they cross the confidence gate.
+        same_gate = (
+            (ref["scores"][:, None] > confidence_threshold)
+            == (actual["scores"] > confidence_threshold)
+        ).all(axis=2)
+        equivalent = same_gate & (iou >= MIN_BOX_IOU)
         # Any valid pairing is acceptable; keep as many as possible.
         rows, columns = linear_sum_assignment(equivalent, maximize=True)
         valid = equivalent[rows, columns]
@@ -46,7 +47,9 @@ def compare_detections(reference, converted):
         "matches": [[int(row), int(column)] for row, column in zip(rows, columns)],
         "unmatched_reference": missing,
         "unmatched_onnx": extra,
-        "matched_max_score_difference": float(score_delta[rows, columns].max()) if len(rows) else 0.0,
+        "matched_max_score_difference": float(
+            np.abs(ref["scores"][rows] - actual["scores"][columns]).max()
+        ) if len(rows) else 0.0,
         "matched_min_box_iou": float(iou[rows, columns].min()) if len(rows) else 1.0,
     }
 
@@ -62,7 +65,7 @@ def _detections(output):
     }
 
 
-def validate_detector_export(checkpoint, onnx_path, report_path):
+def validate_detector_export(checkpoint, onnx_path, report_path, *, confidence_threshold):
     """Run one synthetic image through PyTorch and ONNX Runtime and compare outputs.
 
     A mismatch writes a failed report and raises before quantization.
@@ -93,16 +96,19 @@ def validate_detector_export(checkpoint, onnx_path, report_path):
         name: [list(getattr(result, name).shape) for result in (expected, actual)]
         for name in ("logits", "pred_boxes")
     }
+    report = {
+        "minimum_box_iou": MIN_BOX_IOU,
+        "confidence_threshold": confidence_threshold,
+    }
     if any(reference != converted for reference, converted in shapes.values()):
         # A different batch, query or class count is a different model.
-        report = {"passed": False, "output_shapes": shapes}
+        report.update(passed=False, output_shapes=shapes)
     else:
         # Keep every query: a low score cannot excuse a moved or missing box.
-        report = {
-            "minimum_box_iou": MIN_BOX_IOU,
-            "score_absolute_tolerance": MAX_CONFIDENCE_DIFFERENCE,
-            **compare_detections(_detections(expected), _detections(actual)),
-        }
+        report.update(compare_detections(
+            _detections(expected), _detections(actual),
+            confidence_threshold=confidence_threshold,
+        ))
     report_path.write_text(json.dumps(report, indent=2) + "\n")
     if not report["passed"]:
         raise ValueError(f"RT-DETR export detections differ; see {report_path}")

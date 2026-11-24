@@ -74,18 +74,22 @@ detections. Swin keeps Optimum's existing validation.
 The check writes `detector-parity.json` beside `onnx-fp32/`. It records the
 matches, their largest confidence difference and lowest box IoU, and unmatched
 indices. Matched boxes need an IoU of at least `0.99`.
-`MAX_CONFIDENCE_DIFFERENCE = 1e-4` is the maximum absolute difference in each
-matched sigmoid class confidence, which is on a 0–1 scale. It allows a change
-of at most 0.01 percentage point. This confidence tolerance is separate from
-Optimum's raw-logit tolerance; the two values are not directly comparable.
+Each sigmoid class confidence must remain on the same side of the cutoff in
+both outputs. The default is `0.5`, with scores strictly greater than the
+cutoff passing the gate, as in the release evaluator. For example, `0.90`
+versus `0.89` passes; `0.501` versus `0.499` fails. Confidence differences
+are still reported but do not otherwise cause a failure.
 
-Every class confidence must agree within that tolerance. Different batch,
-query or class counts fail the check. It retains every query, including
-low-scoring ones, so thresholding cannot hide a difference. A low score does
-not excuse a missing or changed box. Scores are compared after sigmoid, as
-the release evaluator reads them; a consumer that applies softmax to a
-multi-class detector is not covered. A failed comparison stops export before
-optional quantization.
+Use `--confidence-threshold` to match a different evaluation cutoff. The Python
+`export_model()` API accepts the same `confidence_threshold` keyword. The Argo
+export workflow uses the default. The report records the effective cutoff.
+
+Different batch, query or class counts fail the check. It retains every query,
+including low-scoring ones; a low score does not excuse a missing or moved box.
+Per-class gate decisions are checked after sigmoid. Class rank changes that
+stay on the same side of the cutoff are not rejected, and consumers that apply
+softmax to a multi-class detector are not covered. A failed comparison stops
+export before optional quantization.
 
 The probe is one deterministic synthetic RGB image. It checks numerical
 consistency, not detector accuracy. The report remains with the export;
