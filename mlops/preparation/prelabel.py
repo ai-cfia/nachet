@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 PROMPTS = ("foreground object", "thick long seed", "insect")
 SCORE_THRESHOLD = 0.5
 MASK_THRESHOLD = 0.5
+MASK_OVERLAP_THRESHOLD = 0.5
 # Notebook 1.02 accepts a prompt's result when it has 1 to 9 boxes.
 MAX_BOXES = 9
 HIGH_BIT_MODES = {"I", "F", "I;16", "I;16B", "I;16L"}
@@ -42,6 +43,7 @@ class Prediction(NamedTuple):
     boxes: list[list[float]]
     prompt: str | None = None
     scores: list[float] | None = None
+    has_overlapping_masks: bool | None = None
 
 
 class Sam3Predictor:
@@ -87,12 +89,18 @@ class Sam3Predictor:
             outputs,
             threshold=SCORE_THRESHOLD,
             mask_threshold=MASK_THRESHOLD,
-            target_sizes=inputs.get("original_sizes").tolist(),
+            target_sizes=None,
         )[0]
+        height, width = inputs["original_sizes"][0].tolist()
+        scale = result["boxes"].new_tensor([width, height, width, height])
+        boxes = (result["boxes"] * scale).detach().cpu().tolist()
+        scores = result["scores"].detach().cpu().tolist()
+        has_overlapping_masks = _has_overlapping_masks(result["masks"])
         return Prediction(
-            boxes=result["boxes"].detach().cpu().tolist(),
+            boxes=boxes,
             prompt=prompt,
-            scores=result["scores"].detach().cpu().tolist(),
+            scores=scores,
+            has_overlapping_masks=has_overlapping_masks,
         )
 
 
@@ -138,7 +146,23 @@ def _has_overlapping_boxes(boxes: list[list[float]]) -> bool:
     return False
 
 
-def review_outcome(boxes: list, padded: list) -> tuple[str | None, str | None]:
+def _has_overlapping_masks(masks) -> bool:
+    """Whether two native-grid binary masks share >= MASK_OVERLAP_THRESHOLD of the smaller mask."""
+    if len(masks) < 2:
+        return False
+    flat = masks.flatten(1).float()
+    areas = flat.sum(dim=1)
+    min_areas = areas.unsqueeze(0).minimum(areas.unsqueeze(1))
+    overlap = flat @ flat.T
+    overlap.fill_diagonal_(0)
+    return bool(
+        ((overlap >= MASK_OVERLAP_THRESHOLD * min_areas) & (min_areas > 0)).any().item()
+    )
+
+
+def review_outcome(
+    boxes: list, padded: list, *, has_overlapping_masks: bool | None = None
+) -> tuple[str | None, str | None]:
     """Return (prelabel_status, prelabel_reason) for one image's detections."""
     if not boxes:
         return "needs_review", "no_detections"
@@ -153,7 +177,9 @@ def review_outcome(boxes: list, padded: list) -> tuple[str | None, str | None]:
         if outer is not inner
     ):
         return "needs_review", "nested_boxes"
-    if _has_overlapping_boxes(padded):
+    if has_overlapping_masks is True:
+        return "needs_review", "overlapping_masks"
+    if has_overlapping_masks is None and _has_overlapping_boxes(padded):
         return "needs_review", "overlapping_boxes"
     return None, None
 
@@ -291,8 +317,18 @@ def _load_checkpoint(
         for annotation in checkpoint["annotations"]
     ):
         raise ValueError(f"Invalid annotations in pre-label checkpoint: {path}")
-    if checkpoint["prelabel_status"] is None and _has_overlapping_boxes(
-        [annotation["bbox"] for annotation in checkpoint["annotations"]]
+    if (
+        "has_overlapping_masks" in checkpoint
+        and checkpoint["has_overlapping_masks"] is not None
+        and not isinstance(checkpoint["has_overlapping_masks"], bool)
+    ):
+        raise ValueError(f"Invalid mask overlap flag in pre-label checkpoint: {path}")
+    if (
+        checkpoint["prelabel_status"] is None
+        and checkpoint.get("has_overlapping_masks") is None
+        and _has_overlapping_boxes(
+            [annotation["bbox"] for annotation in checkpoint["annotations"]]
+        )
     ):
         checkpoint.update(
             prelabel_status="needs_review", prelabel_reason="overlapping_boxes"
@@ -371,13 +407,18 @@ def _label_image(
         if score is not None:
             annotation["score"] = score
         annotations.append(annotation)
-    status, reason = review_outcome(boxes, padded)
-    return {
+    status, reason = review_outcome(
+        boxes, padded, has_overlapping_masks=prediction.has_overlapping_masks
+    )
+    outcome = {
         "prelabel_status": status,
         "prelabel_prompt": prediction.prompt,
         "prelabel_reason": reason,
         "annotations": annotations,
     }
+    if prediction.has_overlapping_masks is not None:
+        outcome["has_overlapping_masks"] = prediction.has_overlapping_masks
+    return outcome
 
 
 def _checkpoint_namespace(
@@ -398,6 +439,7 @@ def _checkpoint_namespace(
         "prompts": PROMPTS,
         "score_threshold": SCORE_THRESHOLD,
         "mask_threshold": MASK_THRESHOLD,
+        "mask_overlap_threshold": MASK_OVERLAP_THRESHOLD,
         "max_boxes": MAX_BOXES,
     }
     serialized = json.dumps(
