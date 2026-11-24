@@ -2,13 +2,12 @@
 
 import hashlib
 import os
-from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
 
 import yaml
-
 
 WORKFLOWS = Path(__file__).resolve().parents[3] / ".github/workflows"
 MANIFEST = '{"schemaVersion":2}'
@@ -43,7 +42,9 @@ esac
         fake.chmod(0o755)
         for command in ("gh", "docker", "cosign"):
             (self.root / command).symlink_to(fake)
-        self.steps = workflow("reusable-sign-container-images.yml")["jobs"]["sign-images"]["steps"]
+        self.steps = workflow("reusable-sign-container-images.yml")["jobs"][
+            "sign-images"
+        ]["steps"]
 
     def run_step(self, name, **overrides):
         script = next(step["run"] for step in self.steps if step["name"] == name)
@@ -57,16 +58,29 @@ esac
         environment = {
             **os.environ,
             "PATH": str(self.root) + os.pathsep + os.environ["PATH"],
-            "CALLS": str(self.calls), "LATEST_RUN": "200", "GITHUB_RUN_ID": "200",
-            "GITHUB_EVENT_NAME": "push", "GITHUB_REPOSITORY": "ai-cfia/nachet",
-            "WORKFLOW_NAME": "MLOps export build and publish", "IMAGE": IMAGE,
-            "IMAGE_LABEL": "export runtime", "IMAGE_DIGEST": DIGEST,
-            "RELEASE_VERSION": "0.2.2", "PUBLISHED_MANIFEST": MANIFEST,
-            "GITHUB_HEAD_REF": "feature", "GITHUB_REF": "refs/heads/main",
+            "CALLS": str(self.calls),
+            "LATEST_RUN": "200",
+            "GITHUB_RUN_ID": "200",
+            "GITHUB_EVENT_NAME": "push",
+            "GITHUB_REPOSITORY": "ai-cfia/nachet",
+            "WORKFLOW_NAME": "MLOps export build and publish",
+            "IMAGE": IMAGE,
+            "IMAGE_LABEL": "export runtime",
+            "IMAGE_DIGEST": DIGEST,
+            "RELEASE_VERSION": "0.2.2",
+            "PUBLISHED_MANIFEST": MANIFEST,
+            "GITHUB_HEAD_REF": "feature",
+            "GITHUB_REF": "refs/heads/main",
             **overrides,
         }
-        return subprocess.run(["bash", "-e", "-c", script], env=environment,
-                              capture_output=True, text=True, check=False, timeout=10)
+        return subprocess.run(
+            ["bash", "-e", "-c", script],
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
 
     def test_builds_follow_main_updates_and_keep_review_tags(self):
         signer = workflow("reusable-sign-container-images.yml")["jobs"]["sign-images"]
@@ -75,33 +89,77 @@ esac
             with self.subTest(workflow=name):
                 config = workflow(name)
                 self.assertEqual(config["on"]["push"]["branches"], ["main"])
-                self.assertEqual(set(config["on"]["push"]["paths"]), set(config["on"]["pull_request"]["paths"]))
+                self.assertEqual(
+                    set(config["on"]["push"]["paths"]),
+                    set(config["on"]["pull_request"]["paths"]),
+                )
                 self.assertNotIn("closed", config["on"]["pull_request"]["types"])
-                builds = {step["id"]: step for job in config["jobs"].values()
-                          for step in job.get("steps", []) if "docker/build-push-action@" in step.get("uses", "")}
+                builds = {
+                    step["id"]: step
+                    for job in config["jobs"].values()
+                    for step in job.get("steps", [])
+                    if "docker/build-push-action@" in step.get("uses", "")
+                }
                 preview, deployment = builds["preview"], builds["deployment"]
                 self.assertIn("github.event.number", preview["with"]["tags"])
                 self.assertIn("outputs.name != 'main'", preview["with"]["tags"])
                 self.assertNotIn("base.ref", deployment["with"]["tags"])
                 self.assertNotIn(":main", deployment["with"]["tags"])
-                signer = next(job for job in config["jobs"].values() if "image-digest" in job.get("with", {}))
+                signer = next(
+                    job
+                    for job in config["jobs"].values()
+                    if "image-digest" in job.get("with", {})
+                )
                 self.assertEqual(signer["permissions"]["actions"], "read")
 
     def test_digest_signing_and_legacy_callers(self):
         for event, digest, merged, expected in (
             ("push", DIGEST, "false", [IMAGE + "@" + DIGEST]),
             ("pull_request", DIGEST, "false", [IMAGE + "@" + DIGEST]),
-            ("pull_request", "", "false", [IMAGE + ":build-commit", IMAGE + ":0.2.2", IMAGE + ":1103", IMAGE + ":feature"]),
-            ("pull_request", "", "true", [IMAGE + ":build-commit", IMAGE + ":0.2.2", IMAGE + ":main"]),
+            (
+                "pull_request",
+                "",
+                "false",
+                [
+                    IMAGE + ":build-commit",
+                    IMAGE + ":0.2.2",
+                    IMAGE + ":1103",
+                    IMAGE + ":feature",
+                ],
+            ),
+            (
+                "pull_request",
+                "",
+                "true",
+                [IMAGE + ":build-commit", IMAGE + ":0.2.2", IMAGE + ":main"],
+            ),
         ):
             with self.subTest(event=event, digest=digest, merged=merged):
                 self.calls.write_text("")
-                result = self.run_step("Sign and verify images", GITHUB_EVENT_NAME=event,
-                                       IMAGE_DIGEST=digest, merged=merged)
+                result = self.run_step(
+                    "Sign and verify images",
+                    GITHUB_EVENT_NAME=event,
+                    IMAGE_DIGEST=digest,
+                    merged=merged,
+                )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 calls = self.calls.read_text().splitlines()
-                self.assertEqual([line.split()[-1] for line in calls if line.startswith("cosign sign ")], expected)
-                self.assertEqual([line.split()[-1] for line in calls if line.startswith("cosign verify ")], expected)
+                self.assertEqual(
+                    [
+                        line.split()[-1]
+                        for line in calls
+                        if line.startswith("cosign sign ")
+                    ],
+                    expected,
+                )
+                self.assertEqual(
+                    [
+                        line.split()[-1]
+                        for line in calls
+                        if line.startswith("cosign verify ")
+                    ],
+                    expected,
+                )
 
     def test_older_build_finishing_last_cannot_move_main_backwards(self):
         current = self.run_step("Publish signed main image")
@@ -109,14 +167,20 @@ esac
         previous = self.run_step("Publish signed main image", GITHUB_RUN_ID="100")
         self.assertEqual(previous.returncode, 0, previous.stderr)
         calls = self.calls.read_text().splitlines()
-        promotions = [line for line in calls if line.startswith("docker buildx imagetools create")]
+        promotions = [
+            line for line in calls if line.startswith("docker buildx imagetools create")
+        ]
         self.assertEqual(len(promotions), 1)
         self.assertIn("--prefer-index=false", promotions[0].split())
         self.assertIn(f"--tag {IMAGE}:main", promotions[0])
         self.assertEqual(promotions[0].split()[-1], f"{IMAGE}@{DIGEST}")
 
     def test_failed_signing_and_missing_build_digest_stop(self):
-        for options in ({"COSIGN_FAIL": "sign"}, {"COSIGN_FAIL": "verify"}, {"IMAGE_DIGEST": ""}):
+        for options in (
+            {"COSIGN_FAIL": "sign"},
+            {"COSIGN_FAIL": "verify"},
+            {"IMAGE_DIGEST": ""},
+        ):
             with self.subTest(options=options):
                 result = self.run_step("Sign and verify images", **options)
                 self.assertNotEqual(result.returncode, 0)
@@ -128,7 +192,9 @@ esac
                 result = self.run_step("Publish signed main image", LATEST_RUN=latest)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertNotIn("docker", self.calls.read_text())
-        result = self.run_step("Publish signed main image", PUBLISHED_MANIFEST='{"schemaVersion":1}')
+        result = self.run_step(
+            "Publish signed main image", PUBLISHED_MANIFEST='{"schemaVersion":1}'
+        )
         self.assertNotEqual(result.returncode, 0)
 
 
