@@ -90,7 +90,10 @@ spec:
               name: nachet-training-s3
         env:
           - name: MLFLOW_TRACKING_URI
-            value: http://mlflow.mlflow.svc.cluster.local:5000
+            valueFrom:
+              secretKeyRef:
+                name: nachet-training-s3
+                key: MLFLOW_TRACKING_URI
         resources:
           requests: {cpu: "1", memory: 1Gi}
           limits: {cpu: "2", memory: 2Gi}

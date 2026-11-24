@@ -312,7 +312,10 @@ spec:
               optional: true
         env:
           - name: MLFLOW_TRACKING_URI
-            value: http://mlflow.mlflow.svc.cluster.local:5000
+            valueFrom:
+              secretKeyRef:
+                name: nachet-training-s3
+                key: MLFLOW_TRACKING_URI
           - name: MLFLOW_EXPERIMENT_NAME
             value: Swin-classifier-training
           - name: MLFLOW_PUBLIC_URL
@@ -385,7 +388,10 @@ spec:
               name: nachet-training-s3
         env:
           - name: MLFLOW_TRACKING_URI
-            value: http://mlflow.mlflow.svc.cluster.local:5000
+            valueFrom:
+              secretKeyRef:
+                name: nachet-training-s3
+                key: MLFLOW_TRACKING_URI
           - name: MLFLOW_EXPERIMENT_NAME
             value: Swin-classifier-training
           - name: MLFLOW_PUBLIC_URL
@@ -453,7 +459,10 @@ spec:
           - /tmp/optional-checkpoint-options
         env:
           - name: MLFLOW_TRACKING_URI
-            value: http://mlflow.mlflow.svc.cluster.local:5000
+            valueFrom:
+              secretKeyRef:
+                name: nachet-training-s3
+                key: MLFLOW_TRACKING_URI
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -532,7 +541,10 @@ spec:
               name: nachet-training-s3
         env:
           - name: MLFLOW_TRACKING_URI
-            value: http://mlflow.mlflow.svc.cluster.local:5000
+            valueFrom:
+              secretKeyRef:
+                name: nachet-training-s3
+                key: MLFLOW_TRACKING_URI
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
