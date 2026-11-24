@@ -50,6 +50,9 @@ def compare_detections(reference, converted, *, atol=ATOL):
 
 def _detections(output):
     """Keep every query with its box and its score for each class."""
+    # Sigmoid would turn an infinite logit into a valid-looking score.
+    if not torch.isfinite(output.logits).all():
+        raise ValueError("Detector outputs contain non-finite values")
     return {
         "boxes": box_convert(output.pred_boxes[0], in_fmt="cxcywh", out_fmt="xyxy"),
         "scores": output.logits[0].sigmoid(),

@@ -158,6 +158,10 @@ class DetectionParityTest(unittest.TestCase):
         actual["scores"][0] = np.nan
         with self.assertRaisesRegex(ValueError, "non-finite"):
             compare_detections(self.reference, actual)
+        infinite = SimpleNamespace(logits=torch.tensor([[[float("inf")]]]),
+                                   pred_boxes=torch.tensor([[[0.2, 0.2, 0.1, 0.1]]]))
+        with self.assertRaisesRegex(ValueError, "non-finite"):
+            _detections(infinite)
 
 
 if __name__ == "__main__":
