@@ -1,6 +1,6 @@
 [project]
 name = "nachet-classifier-trainer"
-version = "0.3.0"
+version = "0.3.1"
 description = "Nachet classifier training runtime"
 requires-python = ">=3.12,<3.13"
 dependencies = [
@@ -9,6 +9,7 @@ dependencies = [
     "datasets==4.4.1",
     "matplotlib==3.10.7",
     "mlflow-skinny==3.7.0",
+    "nachet-dataset-release==0.1.2",
     "numpy==2.5.3",
     "onnxruntime-gpu==1.30.0; sys_platform == 'linux'",
     "onnxruntime==1.30.0; sys_platform != 'linux'",
@@ -24,3 +25,7 @@ test = ["onnx==1.22.0"]
 [tool.uv]
 # Use the CUDA PyTorch and matching torchvision supplied by the NVIDIA image.
 exclude-dependencies = ["torch", "torchvision"]
+
+[tool.uv.sources]
+nachet-dataset-release = { path = "../../datasets" }
+nachet-blob = { path = "../../blob" }
