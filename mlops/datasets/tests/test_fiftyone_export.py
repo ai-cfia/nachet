@@ -209,7 +209,9 @@ def fiftyone_stub(monkeypatch, handoff):
     coco, members = handoff
     detection_type = object()
     fo = SimpleNamespace(
-        Detections=object(), types=SimpleNamespace(COCODetectionDataset=detection_type)
+        Detections=object(),
+        ViewField=Mock(),
+        types=SimpleNamespace(COCODetectionDataset=detection_type),
     )
     monkeypatch.setitem(sys.modules, "fiftyone", fo)
     samples = []
@@ -317,6 +319,92 @@ def export_args(*source):
             *source,
         ]
     )
+
+
+@pytest.mark.parametrize(
+    ("source", "message"),
+    [
+        (("--coco", "labels.json", "--label-tag", "verified"), "--coco cannot use"),
+        (
+            ("--dataset", "seeds", "--label-field", "boxes_sam3", "--label-tag", " "),
+            "--label-tag must be non-empty",
+        ),
+    ],
+)
+def test_label_tag_cli_rejects_invalid_arguments(source, message, capsys):
+    with pytest.raises(SystemExit) as error:
+        export_args(*source)
+    assert error.value.code == 2
+    assert message in capsys.readouterr().err
+
+
+@pytest.mark.asyncio
+async def test_dataset_command_saves_membership_and_boxes_from_filtered_view(
+    draft, fiftyone_stub, handoff
+):
+    fo, dataset = fiftyone_stub
+    coco, members = handoff
+    member = members[0]
+    coco["images"] = coco["images"][:1]
+    view = dataset.filter_labels.return_value
+    view.iter_samples.return_value = [
+        SimpleNamespace(
+            filepath=member.file_name,
+            id="verified-sample",
+            get_field={
+                **member.model_dump(),
+                "boxes_sam3": SimpleNamespace(detections=[object()]),
+            }.get,
+        )
+    ]
+    view.export.side_effect = dataset.export.side_effect
+
+    spec = await execute(
+        export_args(
+            "--dataset",
+            "seeds",
+            "--label-field",
+            "boxes_sam3",
+            "--label-tag",
+            "verified",
+        )
+    )
+
+    fo.ViewField.assert_called_once_with("tags")
+    fo.ViewField.literal.assert_called_once_with("verified")
+    fo.ViewField.return_value.contains.assert_called_once_with(
+        [fo.ViewField.literal.return_value]
+    )
+    dataset.filter_labels.assert_called_once_with(
+        "boxes_sam3", fo.ViewField.return_value.contains.return_value, only_matches=True
+    )
+    dataset.iter_samples.assert_not_called()
+    dataset.export.assert_not_called()
+    assert view.export.call_args.kwargs["label_field"] == "boxes_sam3"
+    assert spec.coco == remap_coco(coco, [member])
+    assert await draft.catalog.memberships("reviewed-seeds", "v1") == [member]
+
+
+@pytest.mark.asyncio
+async def test_empty_label_tag_selection_leaves_draft_unchanged(draft, fiftyone_stub):
+    _, dataset = fiftyone_stub
+    view = dataset.filter_labels.return_value
+    view.iter_samples.return_value = []
+
+    with pytest.raises(ValueError, match="No detections in 'boxes_sam3'.*'verified'"):
+        await execute(
+            export_args(
+                "--dataset",
+                "seeds",
+                "--label-field",
+                "boxes_sam3",
+                "--label-tag",
+                "verified",
+            )
+        )
+
+    view.export.assert_not_called()
+    assert await draft.catalog.memberships("reviewed-seeds", "v1") == []
 
 
 @pytest.mark.asyncio

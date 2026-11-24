@@ -117,6 +117,7 @@ def export_collection(
     collection: Any,
     label_field: str,
     *,
+    label_tag: str | None = None,
     sha256_field: str = "sha256",
     split_field: str = "split",
     sources_field: str = "sources",
@@ -124,9 +125,10 @@ def export_collection(
     """Export reviewed labels and memberships from a FiftyOne dataset or view.
 
     Use absolute paths and labels-only COCO, leaving media and documents unchanged.
-    Every sample needs Detections, empty for reviewed negatives; reject exports
-    that lose reviewed annotations. Return memberships in COCO image order with
-    the provenance retained by remapping, ready for database preparation.
+    With a label tag, keep matching detections and the images containing them.
+    Otherwise every sample needs Detections, empty for reviewed negatives.
+    Return memberships in COCO image order with the provenance retained by
+    remapping, ready for database preparation.
     """
     # FiftyOne belongs to the annotation environment, not the publisher's
     # dependency graph. Offline remapping and publishing never import it.
@@ -134,6 +136,11 @@ def export_collection(
 
     if collection.get_field(label_field, embedded_doc_type=fo.Detections) is None:
         raise ValueError("The reviewed label field must contain FiftyOne Detections")
+    if label_tag is not None:
+        tag = fo.ViewField.literal(label_tag)
+        collection = collection.filter_labels(
+            label_field, fo.ViewField("tags").contains([tag]), only_matches=True
+        )
     memberships = []
     annotation_count = 0
     for sample in collection.iter_samples():
@@ -157,6 +164,10 @@ def export_collection(
                 split=sample_field(sample, split_field),
                 sources=sources,
             )
+        )
+    if label_tag is not None and not annotation_count:
+        raise ValueError(
+            f"No detections in {label_field!r} have the label tag {label_tag!r}"
         )
     with TemporaryDirectory(prefix="nachet-coco-") as temporary:
         labels = Path(temporary) / "coco.json"
@@ -200,6 +211,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     source.add_argument("--coco", type=Path, help="Existing labels-only COCO JSON")
     parser.add_argument("--view", help="Saved reviewed FiftyOne view to export")
     parser.add_argument("--label-field", help="Field containing corrected detections")
+    parser.add_argument(
+        "--label-tag", help="Export only detections with this FiftyOne label tag"
+    )
     parser.add_argument("--sha256-field", default="sha256")
     parser.add_argument("--split-field", default="split")
     parser.add_argument("--sources-field", default="sources")
@@ -211,10 +225,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.dataset and not args.label_field:
         parser.error("--dataset requires --label-field")
-    if args.coco and (args.view or args.label_field):
-        parser.error(
-            "--coco cannot use --view/--label-field; membership comes from the database"
-        )
+    if args.coco and (args.view or args.label_field or args.label_tag is not None):
+        parser.error("--coco cannot use --view, --label-field or --label-tag")
+    if args.label_tag is not None and not args.label_tag.strip():
+        parser.error("--label-tag must be non-empty")
     return args
 
 
@@ -238,6 +252,7 @@ async def prepare(args: argparse.Namespace, controller) -> ReleaseSpec:
             export_collection,
             collection,
             args.label_field,
+            label_tag=args.label_tag,
             sha256_field=args.sha256_field,
             split_field=args.split_field,
             sources_field=args.sources_field,

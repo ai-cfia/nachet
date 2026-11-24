@@ -149,8 +149,8 @@ against `png/detection/<sha256>.png` in the selected container.
 ## Prepare reviewed labels
 
 Choose one input workflow for the draft release. Both save reviewed labels and
-membership atomically in the database. IDs, decimal boxes, negative images,
-extra annotation attributes and source provenance are preserved.
+membership atomically in the database. The release preserves COCO IDs, decimal
+boxes, extra attributes, and source provenance for the selected records.
 
 ### From FiftyOne
 
@@ -163,12 +163,18 @@ Install the two sibling packages using the annotation interpreter if needed:
 python -m pip install -e ../blob -e .
 python -m dataset_release.fiftyone_export \
   --container training-datasets --name reviewed-seeds --version v1 \
-  --dataset seeds --view reviewed --label-field corrected_detections
+  --dataset seeds --label-field boxes_sam3 --label-tag verified
 ```
 
-Omit `--view` to use the full dataset. Retain the split/hash/source fields in the
-saved view. Every selected sample needs an explicit `split` and reviewed
-`Detections`; use empty `Detections` for reviewed negatives. Optional `sha256`
+With `--label-tag verified`, the exporter keeps detections in `boxes_sam3`
+that carry the `verified` label tag. An image with mixed tags contributes only
+its verified boxes. Images with no matching boxes are excluded, and an empty
+selection fails before saving the draft.
+
+Use `--view` to start from a saved view and keep the split, hash and source fields
+in that view. Omit `--label-tag` to export every detection in the selected field
+and include empty `Detections` for reviewed negatives. Every selected sample
+needs an explicit `split` and a `Detections` field. Optional `sha256`
 identifies the stored PNG bytes. Otherwise a `<sha256>.png` filename supplies the
 hash, or the script hashes the exact local file bytes. Optional `sources` is a
 list of provenance records. If absent, the original path and FiftyOne sample ID
