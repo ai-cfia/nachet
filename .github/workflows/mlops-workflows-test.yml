@@ -11,6 +11,9 @@ on:
       - "mlops/datasets/**"
       - "mlops/blob/**"
       - ".github/workflows/mlops-workflows-test.yml"
+      - ".github/workflows/mlops-export-build.yml"
+      - ".github/workflows/mlops-training-build.yml"
+      - ".github/workflows/reusable-sign-container-images.yml"
   push:
     branches: [main]
     paths:
@@ -20,6 +23,9 @@ on:
       - "mlops/datasets/**"
       - "mlops/blob/**"
       - ".github/workflows/mlops-workflows-test.yml"
+      - ".github/workflows/mlops-export-build.yml"
+      - ".github/workflows/mlops-training-build.yml"
+      - ".github/workflows/reusable-sign-container-images.yml"
   workflow_dispatch:
 
 permissions:
@@ -88,6 +94,10 @@ jobs:
               --index-url https://download.pytorch.org/whl/cpu \
               'torch==2.9.0+cpu' 'torchvision==0.24.0+cpu'
           done
+
+      - name: Test image publishing workflows
+        run: |
+          "$NACHET_EXPORT_PYTHON" -m unittest mlops.workflows.tests.test_image_publishing -v
 
       - name: Test export workflow
         run: |
