@@ -126,6 +126,9 @@ spec:
           - "{{inputs.parameters.checkpoint}}"
           - --output
           - /tmp/release-selection
+        envFrom:
+          - secretRef:
+              name: nachet-training-s3
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -135,7 +138,6 @@ spec:
           - name: training-storage
             mountPath: /runs
             subPath: "nachet/{{inputs.parameters.model-kind}}-training/runs"
-            readOnly: true
           - name: tmp
             mountPath: /tmp
 
@@ -335,8 +337,6 @@ spec:
             value: "{{inputs.parameters.checkpoint}}"
           - name: RELEASE_EVALUATION_DIR
             value: "/exports/{{workflow.name}}/evaluation/{{inputs.parameters.variant}}"
-          - name: MLFLOW_TRACKING_URI
-            value: http://mlflow.mlflow.svc.cluster.local:5000
           - name: HF_HOME
             value: /scratch/huggingface
           - name: HF_HUB_OFFLINE
