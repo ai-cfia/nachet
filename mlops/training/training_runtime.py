@@ -277,9 +277,7 @@ def execute_training(
         # A planned archived checkpoint must not write to its source run until
         # the parent MLflow run's dataset identity has been accepted.
         if resume_checkpoint is not None:
-            resume_checkpoint = resolve_checkpoint(
-                resume_checkpoint.parent, resume_checkpoint.name,
-            )
+            resolve_checkpoint(resume_checkpoint.parent, resume_checkpoint.name)
         mlflow_client, mlflow_run_id = client, run_id
         if release_reference is not None and existing_mlflow_run_id is None:
             from mlflow.entities import Param

@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 
@@ -311,13 +311,12 @@ class MlflowClient:
                         self.write_complete_checkpoint(model / "artifacts" / checkpoint.name)
                         return str(model)
 
-                    artifacts = ModuleType("mlflow.artifacts")
-                    artifacts.download_artifacts = Mock(side_effect=download)
+                    downloads = Mock(side_effect=download)
                     trainer = Mock(return_value=0)
                     archives = {checkpoint.name: "archived-model"}
                     with (
                         patch.dict(os.environ, {"MLFLOW_PUBLIC_URL": "https://mlflow.test"}),
-                        patch.dict(sys.modules, {"mlflow.artifacts": artifacts}),
+                        patch("mlflow.artifacts.download_artifacts", downloads),
                         patch("training_runtime.archived_checkpoints", return_value=archives),
                         patch("checkpoints.archived_checkpoints", return_value=archives),
                         patch("training_runtime.validate_runtime"),
@@ -332,12 +331,12 @@ class MlflowClient:
                         else:
                             self.assertEqual(execute_training(args, command, release_reference=reference), 0)
                     if outcome == "matching":
-                        artifacts.download_artifacts.assert_called_once()
+                        downloads.assert_called_once()
                         self.assertTrue(checkpoint.is_dir())
                         trainer.assert_called_once()
                         self.assertEqual(trainer.call_args.args[0], ["train", str(checkpoint)])
                     else:
-                        artifacts.download_artifacts.assert_not_called()
+                        downloads.assert_not_called()
                         trainer.assert_not_called()
                         client.set_terminated.assert_not_called()
                         self.assertEqual(list(output.iterdir()), [])
