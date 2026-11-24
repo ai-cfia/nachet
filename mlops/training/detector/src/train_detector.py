@@ -90,9 +90,10 @@ from transformers.utils.versions import require_version
 
 import mlflow
 
+# Shared modules live under training/ in a checkout and /opt/ in the image.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from checkpoints import RecoverCheckpointArchives  # noqa: E402
 from training_release import load_training_release, stream_media  # noqa: E402
-
 
 
 logger = logging.getLogger(__name__)
@@ -971,6 +972,7 @@ def train_detector(
             processing_class=image_processor,
             data_collator=collate_fn,
             compute_metrics=eval_compute_metrics_fn,
+            callbacks=[RecoverCheckpointArchives()],
         )
 
         # Training

@@ -1,6 +1,6 @@
 [project]
 name = "nachet-classifier-trainer"
-version = "0.3.0"
+version = "0.3.1"
 description = "Nachet classifier training runtime"
 requires-python = ">=3.12,<3.13"
 dependencies = [

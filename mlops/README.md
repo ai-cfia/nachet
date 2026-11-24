@@ -40,6 +40,16 @@ record `dataset_name`, `dataset_version`, and `dataset_manifest_sha256`.
 
 Leave the release parameters empty to use the existing PVC dataset inputs.
 
+## Training checkpoints
+
+Both trainers save full resume checkpoints to the shared training PVC each
+epoch and upload them through the existing MLflow integration.
+
+Before a retry starts training, `RecoverCheckpointArchives` uploads complete
+local saves that have no READY archive. If recovery fails, the attempt stops
+before Trainer can save or rotate again. New saves still use the native
+MLflow callback and Trainer's normal retention.
+
 ## Example approval workflow
 
 `workflows/example-workflow-template.yaml` is a small control-flow example used
