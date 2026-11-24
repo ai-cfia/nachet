@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+from tempfile import TemporaryDirectory
 
 
 TASKS = {"swin": "image-classification", "rt_detr_v2": "object-detection"}
@@ -18,7 +19,8 @@ def export_model(checkpoint, output, quantize=False):
     """Write output/onnx-fp32 and, with quantize, output/onnx-quant."""
     checkpoint = Path(checkpoint)
     output = Path(output)
-    model_type = json.loads((checkpoint / "config.json").read_text()).get("model_type")
+    config = json.loads((checkpoint / "config.json").read_text())
+    model_type = config.get("model_type")
     if model_type not in TASKS:
         raise ValueError(f"Unsupported model type: {model_type!r}; expected {list(TASKS)}")
     # A new directory keeps files from an earlier export out of this one.
@@ -26,18 +28,30 @@ def export_model(checkpoint, output, quantize=False):
     # Use only the local checkpoint files; never download missing ones.
     env = {**os.environ, "HF_HUB_OFFLINE": "1"}
 
-    subprocess.run(
-        [
-            "optimum-cli", "export", "onnx",
-            "--model", str(checkpoint),
-            "--task", TASKS[model_type],
-            "--opset", OPSET,
-            "--library-name", "transformers",
-            str(output / "onnx-fp32"),
-        ],
-        check=True,
-        env=env,
-    )
+    with TemporaryDirectory(prefix="nachet-export-") as temporary:
+        model_path = checkpoint
+        if model_type == "rt_detr_v2" and config.get("tie_encoder_decoder"):
+            # Transformers 4.57.6 tries to tie encoder/decoder modules that
+            # this wrapper does not expose. Override only the export config.
+            model_path = Path(temporary)
+            for source in checkpoint.iterdir():
+                if source.name != "config.json":
+                    (model_path / source.name).symlink_to(source.resolve())
+            config["tie_encoder_decoder"] = False
+            (model_path / "config.json").write_text(json.dumps(config))
+
+        subprocess.run(
+            [
+                "optimum-cli", "export", "onnx",
+                "--model", str(model_path),
+                "--task", TASKS[model_type],
+                "--opset", OPSET,
+                "--library-name", "transformers",
+                str(output / "onnx-fp32"),
+            ],
+            check=True,
+            env=env,
+        )
     if quantize:
         subprocess.run(
             [
