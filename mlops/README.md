@@ -40,6 +40,56 @@ record `dataset_name`, `dataset_version`, and `dataset_manifest_sha256`.
 
 Leave the release parameters empty to use the existing PVC dataset inputs.
 
+## Training checkpoints
+
+Both trainers save full resume checkpoints to the shared training PVC each
+epoch and upload them through the existing MLflow integration. The full
+profile keeps the two most recent checkpoints locally; the smoke profile keeps
+one. `checkpoint-retention` can override this count.
+
+The review dropdown includes successfully archived checkpoints from that
+workflow's MLflow attempts, even after local rotation removes them. Selecting
+an older checkpoint downloads it before evaluation. Resume and standalone
+export can restore missing checkpoints too. Keep the run's `mlflow-run-id`
+file and its `trainer-output` directory, which may be empty, so those
+operations can find its archives. Failed uploads are excluded
+from the archive list, and failed downloads do not create selectable local
+checkpoint directories. Existing local checkpoints remain usable. A restore
+replaces an incomplete local checkpoint with its READY archive.
+
+Before a retry starts training, `RecoverCheckpointArchives` uploads complete
+local saves that have no READY archive. If recovery fails, the attempt stops
+before Trainer can save or rotate again. New saves still use the native
+MLflow callback and Trainer's normal retention.
+
+Local completeness is derived from the checkpoint's files. MLflow's READY
+status identifies available archives; there is no second persisted status
+file. Each checkpoint restore has one lock owner, downloads
+into staging and publishes the complete folder with an atomic rename. A retry
+clears staging left by a killed owner before downloading again.
+
+Run standalone export after source training stops: the restore lock does not
+protect files from an active Trainer's retention. The existing `latest`
+selection prefers a complete local checkpoint; it searches for the newest
+READY archive only when no complete local checkpoint is present. If newer
+local checkpoints are gone and an older one was restored, name the
+checkpoint to resume from instead of using `latest`.
+
+To restore one checkpoint explicitly with the trainer runtime:
+
+```bash
+python -m checkpoints --runs-root /runs --run-id <training-workflow> \
+  restore --checkpoint checkpoint-<step>
+```
+
+Saving stays enabled because training needs model weights, optimizer,
+scheduler and RNG state to resume. RAM-backed storage would lose its contents
+with the pod. Leave room for another checkpoint while it is being saved and
+for any older checkpoints selected for review. This retention limit applies
+to each training run, not the entire PVC: retained runs, restored candidates,
+dataset inputs, base models and exports still need a storage budget.
+
+
 ## Example approval workflow
 
 `workflows/example-workflow-template.yaml` is a small control-flow example used

@@ -3,9 +3,20 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 import json
+import logging
+import os
 import re
+import shutil
 from pathlib import Path
+
+from filelock import FileLock
+import mlflow
+from transformers import TrainerCallback
+from transformers.utils import ENV_VARS_TRUE_VALUES
+
+logger = logging.getLogger(__name__)
 
 CHECKPOINT_PATTERN = re.compile(r"^checkpoint-([1-9][0-9]*)$")
 MAX_CHECKPOINT_SELECTIONS = 3
@@ -51,10 +62,139 @@ def resolve_trainer_output(runs_root: Path, run_id: str) -> Path:
 
 
 def list_checkpoints(trainer_output: Path) -> list[str]:
-    checkpoints = list_complete_checkpoints(trainer_output)
-    if not checkpoints:
+    names = {path.name for path in list_complete_checkpoints(trainer_output)}
+    names.update(archived_checkpoints(trainer_output.parent))
+    if not names:
         raise FileNotFoundError("training completed without a checkpoint directory")
-    return [path.name for path in checkpoints]
+    return sorted(names, key=lambda name: int(name.split("-")[1]))
+
+
+def archived_checkpoints(run_root: Path) -> dict[str, str]:
+    """Find native MLflow checkpoint models from this workflow's attempts."""
+    run_id_file = run_root / "mlflow-run-id"
+    if not run_id_file.is_file():
+        return {}
+
+    client = mlflow.MlflowClient()
+    parent = client.get_run(run_id_file.read_text().strip())
+    # One child run per attempt: a workflow's retries fit in the default page.
+    runs = [parent, *client.search_runs(
+        [parent.info.experiment_id],
+        filter_string=f"tags.`mlflow.parentRunId` = '{parent.info.run_id}'",
+    )]
+
+    # A continuation shares its parent MLflow run with the source workflow.
+    # Scope archives to this workflow, allowing the PVC to have another mount root.
+    sources = [
+        run.info.run_id for run in runs
+        if Path(run.data.params.get("output_dir", "")).parts[-2:]
+        == (run_root.name, "trainer-output")
+    ]
+    if not sources:
+        return {}
+    source_ids = ", ".join(f"'{run_id}'" for run_id in sources)
+    models = {}
+    token = None
+    while True:
+        page = client.search_logged_models(
+            [parent.info.experiment_id],
+            filter_string=f"source_run_id IN ({source_ids})",
+            page_token=token,
+        )
+        for model in page:
+            if (
+                model.status == mlflow.entities.LoggedModelStatus.READY
+                and CHECKPOINT_PATTERN.fullmatch(model.name)
+                and (
+                    model.name not in models
+                    or model.creation_timestamp > models[model.name].creation_timestamp
+                )
+            ):
+                models[model.name] = model
+        token = page.token
+        if not token:
+            break
+    return {name: model.model_id for name, model in models.items()}
+
+
+def resolve_checkpoint(
+    trainer_output: Path,
+    name: str,
+    *,
+    archives: dict[str, str] | None = None,
+    download: bool = True,
+) -> Path:
+    """Use a local checkpoint or restore its complete MLflow archive."""
+    if CHECKPOINT_PATTERN.fullmatch(name) is None:
+        raise ValueError(f"invalid checkpoint name: {name}")
+    checkpoint = trainer_output / name
+    staging = trainer_output / f".restore-{name}"
+    if checkpoint_is_complete(checkpoint) and not staging.exists():
+        return checkpoint
+    # One owner restores this checkpoint. After a killed owner, the next owner
+    # clears its staging directory; lock files stay in place to avoid inode races.
+    if download:
+        trainer_output.mkdir(exist_ok=True)
+    lock = FileLock(str(trainer_output / f".{name}.lock")) if download else nullcontext()
+    with lock:
+        if download:
+            shutil.rmtree(staging, ignore_errors=True)
+        if checkpoint_is_complete(checkpoint):
+            return checkpoint
+        if archives is None:
+            archives = archived_checkpoints(trainer_output.parent)
+        if name not in archives:
+            if checkpoint.exists():
+                raise ValueError(f"checkpoint is incomplete: {name}")
+            raise FileNotFoundError(f"checkpoint is unavailable locally or in MLflow: {name}")
+        if not download:
+            return checkpoint
+
+        staging.mkdir()
+        try:
+            model = Path(mlflow.artifacts.download_artifacts(
+                artifact_uri=f"models:/{archives[name]}", dst_path=str(staging),
+            ))
+            restored = model / "artifacts" / name
+            if not checkpoint_is_complete(restored):
+                raise ValueError(f"MLflow archive is incomplete: {name}")
+            # The verified archive replaces an incomplete local copy only.
+            if checkpoint.is_dir():
+                shutil.rmtree(checkpoint)
+            restored.rename(checkpoint)
+        finally:
+            shutil.rmtree(staging)
+    return checkpoint
+
+
+class RecoverCheckpointArchives(TrainerCallback):
+    """LOCAL_ONLY -> MLflow READY -> eligible for Trainer's normal retention.
+
+    Native MLflow on_save owns new uploads. This callback runs after its setup
+    and recovers interrupted uploads before a retry can save or rotate again.
+    An upload error stops training, leaving the complete local checkpoint.
+    """
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        if (
+            not state.is_world_process_zero
+            or "mlflow" not in args.report_to
+            or os.getenv("HF_MLFLOW_LOG_ARTIFACTS", "").upper() not in ENV_VARS_TRUE_VALUES
+        ):
+            return
+        output = Path(args.output_dir)
+        checkpoints = list_complete_checkpoints(output) if output.is_dir() else []
+        if not checkpoints:
+            return
+        archives = archived_checkpoints(output.parent)
+        for checkpoint in checkpoints:
+            if checkpoint.name not in archives:
+                logger.info("Recovering checkpoint archive: %s", checkpoint.name)
+                mlflow.pyfunc.log_model(
+                    name=checkpoint.name,
+                    artifacts={"model_path": str(checkpoint)},
+                    python_model=mlflow.pyfunc.PythonModel(),
+                )
 
 
 def parse_checkpoint_options(value: str) -> list[str]:
@@ -104,16 +244,27 @@ def validate_selection(args: argparse.Namespace) -> int:
             f"select one to {MAX_CHECKPOINT_SELECTIONS} distinct checkpoints"
         )
 
-    # Recheck after the pause in case the checkpoint changed.
+    # Recheck after the pause and restore only the selected archived checkpoints.
     trainer_output = resolve_trainer_output(args.runs_root, args.run_id)
     for name in selected:
         if name not in available:
             raise ValueError(f"unknown checkpoint selection: {name}")
-        if not checkpoint_is_complete(trainer_output / name):
-            raise ValueError(f"checkpoint is no longer complete: {name}")
+    archives = (
+        archived_checkpoints(trainer_output.parent)
+        if any(not checkpoint_is_complete(trainer_output / name) for name in selected)
+        else {}
+    )
+    for name in selected:
+        resolve_checkpoint(trainer_output, name, archives=archives)
 
     args.output.write_text(json.dumps(selected) + "\n", encoding="utf-8")
     print(json.dumps({"selected_checkpoints": selected}))
+    return 0
+
+
+def restore(args: argparse.Namespace) -> int:
+    trainer_output = resolve_trainer_output(args.runs_root, args.run_id)
+    resolve_checkpoint(trainer_output, args.checkpoint)
     return 0
 
 
@@ -133,6 +284,10 @@ def parse_args() -> argparse.Namespace:
     validate_parser.add_argument("--selected-checkpoint", required=True, nargs="+")
     validate_parser.add_argument("--output", type=Path, required=True)
     validate_parser.set_defaults(handler=validate_selection)
+
+    restore_parser = subparsers.add_parser("restore")
+    restore_parser.add_argument("--checkpoint", required=True)
+    restore_parser.set_defaults(handler=restore)
     return parser.parse_args()
 
 

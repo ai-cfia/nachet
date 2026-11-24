@@ -3,6 +3,7 @@
 !pyproject.toml
 !uv.lock
 !export_model.py
+!detector_parity.py
 !browser_cam.py
 !ModelRelease.py
 !tests/

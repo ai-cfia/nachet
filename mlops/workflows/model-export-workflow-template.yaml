@@ -33,6 +33,16 @@ spec:
           - name: quantize
             default: "false"
       steps:
+        - - name: restore-checkpoint
+            template: restore-checkpoint
+            arguments:
+              parameters:
+                - name: model-kind
+                  value: "{{inputs.parameters.model-kind}}"
+                - name: training-run
+                  value: "{{inputs.parameters.training-run}}"
+                - name: checkpoint
+                  value: "{{inputs.parameters.checkpoint}}"
         - - name: export
             template: export
             arguments:
@@ -56,6 +66,42 @@ spec:
                   value: "{{inputs.parameters.training-run}}"
                 - name: checkpoint
                   value: "{{inputs.parameters.checkpoint}}"
+
+    - name: restore-checkpoint
+      inputs:
+        parameters:
+          - name: model-kind
+          - name: training-run
+          - name: checkpoint
+      container:
+        image: "ghcr.io/ai-cfia/nachet-{{inputs.parameters.model-kind}}-trainer:main"
+        imagePullPolicy: Always
+        command: [python, -m, checkpoints]
+        args:
+          - --runs-root
+          - /runs
+          - --run-id
+          - "{{inputs.parameters.training-run}}"
+          - restore
+          - --checkpoint
+          - "{{inputs.parameters.checkpoint}}"
+        envFrom:
+          - secretRef:
+              name: nachet-training-s3
+        resources:
+          requests: {cpu: "1", memory: 1Gi}
+          limits: {cpu: "2", memory: 2Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+          readOnlyRootFilesystem: true
+        volumeMounts:
+          - name: training-storage
+            mountPath: /runs
+            subPath: "nachet/{{inputs.parameters.model-kind}}-training/runs"
+          - name: tmp
+            mountPath: /tmp
 
     - name: export
       inputs:

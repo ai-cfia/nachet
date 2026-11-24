@@ -1,4 +1,6 @@
+import hashlib
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -198,6 +200,23 @@ train_classifier.main()
             self.assertTrue(checkpoints)
             self.assertTrue((checkpoints[-1] / "optimizer.pt").is_file())
             if new_output:
+                source_run = output.parent
+                (source_run / "mlflow-run-id").write_text(run_id)
+                expected_files = {
+                    path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+                    for path in checkpoints[-1].iterdir() if path.is_file()
+                }
+                shutil.rmtree(checkpoints[-1])
+                restored = subprocess.run([
+                    sys.executable, str(SCRIPT.parents[2] / "checkpoints.py"),
+                    "--runs-root", str(root / "runs"), "--run-id", source_run.name,
+                    "restore", "--checkpoint", checkpoints[-1].name,
+                ], env=environment, capture_output=True, text=True, timeout=60)
+                self.assertEqual(restored.returncode, 0, restored.stderr)
+                self.assertEqual({
+                    path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+                    for path in checkpoints[-1].iterdir() if path.is_file()
+                }, expected_files)
                 output = root / "runs" / "resumed-run" / "trainer-output"
                 command[command.index("--output_dir") + 1] = str(output)
             # The launcher passes an explicit checkpoint even for same-directory retries.

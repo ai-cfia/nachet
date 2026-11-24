@@ -69,7 +69,8 @@ spec:
         value: profile-default
       - name: checkpoint-retention
         description: >-
-          Checkpoints to keep: smoke=1, full=50.
+          Local checkpoints to keep: smoke=1, full=2.
+          Older checkpoints remain in MLflow.
           Enter a positive integer to override.
         value: profile-default
       - name: batch-size
@@ -310,8 +311,6 @@ spec:
               name: "{{workflow.parameters.dataset-credentials-secret}}"
               optional: true
         env:
-          - name: MLFLOW_TRACKING_URI
-            value: http://mlflow.mlflow.svc.cluster.local:5000
           - name: MLFLOW_EXPERIMENT_NAME
             value: Swin-classifier-training
           - name: MLFLOW_PUBLIC_URL
@@ -383,8 +382,6 @@ spec:
           - secretRef:
               name: nachet-training-s3
         env:
-          - name: MLFLOW_TRACKING_URI
-            value: http://mlflow.mlflow.svc.cluster.local:5000
           - name: MLFLOW_EXPERIMENT_NAME
             value: Swin-classifier-training
           - name: MLFLOW_PUBLIC_URL
@@ -450,6 +447,9 @@ spec:
           - /tmp/checkpoint-options
           - --optional-output
           - /tmp/optional-checkpoint-options
+        envFrom:
+          - secretRef:
+              name: nachet-training-s3
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -523,6 +523,9 @@ spec:
           - "{{inputs.parameters.selected-checkpoint-3}}"
           - --output
           - /tmp/selected-checkpoints
+        envFrom:
+          - secretRef:
+              name: nachet-training-s3
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -533,7 +536,6 @@ spec:
           - name: training-storage
             mountPath: /runs
             subPath: nachet/classifier-training/runs
-            readOnly: true
           - name: tmp
             mountPath: /tmp
   securityContext:

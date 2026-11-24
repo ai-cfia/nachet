@@ -51,6 +51,54 @@ docker run --rm --platform linux/amd64 --network none \
 This writes the FP32 model to `onnx-fp32/` using opset 16, like the published
 Nachet models. `--quantize` also writes the AVX512 INT8 model to `onnx-quant/`.
 
+For RT-DETRv2 checkpoints with `tie_encoder_decoder=true`, export uses a
+temporary config with that setting disabled for the Transformers 4.57.6 loader.
+Other checkpoint files are linked into the temporary directory, so weights
+are not copied or modified. The original checkpoint stays unchanged. The
+exporter retains its existing Transformers and Optimum versions.
+
+Optimum provides numerical validation through both its [Python API][optimum-export]
+and CLI. The [original CCDS release script][ccds-export] calls `optimum-cli`
+without overriding `--atol`. In the pinned `optimum-onnx==0.1.0`, RT-DETRv2's
+raw-output absolute tolerance is `1e-5`. Its validator uses `numpy.allclose`
+with that tolerance and NumPy's default relative tolerance of `1e-5`.
+It compares raw logits and box coordinates row by row, so equivalent
+predictions in a different order can fail.
+
+RT-DETRv2 export calls `main_export(do_validation=False)` and then runs
+PyTorch and ONNX Runtime on identical pixels. It converts outputs to boxes
+and sigmoid class confidences and matches predictions one to one. This
+accepts reordered predictions while rejecting missing, extra or changed
+detections. Swin keeps Optimum's existing validation.
+
+The check writes `detector-parity.json` beside `onnx-fp32/`. It records the
+matches, their largest confidence difference and lowest box IoU, and unmatched
+indices. Matched boxes need an IoU of at least `0.99`.
+Each sigmoid class confidence must remain on the same side of the cutoff in
+both outputs. The default is `0.5`, with scores strictly greater than the
+cutoff passing the gate, as in the release evaluator. For example, `0.90`
+versus `0.89` passes; `0.501` versus `0.499` fails. Confidence differences
+are still reported but do not otherwise cause a failure.
+
+Use `--confidence-threshold` to match a different evaluation cutoff. The Python
+`export_model()` API accepts the same `confidence_threshold` keyword. The Argo
+export workflow uses the default. The report records the effective cutoff.
+
+Different batch, query or class counts fail the check. It retains every query,
+including low-scoring ones; a low score does not excuse a missing or moved box.
+Per-class gate decisions are checked after sigmoid. Class rank changes that
+stay on the same side of the cutoff are not rejected, and consumers that apply
+softmax to a multi-class detector are not covered. A failed comparison stops
+export before optional quantization.
+
+The probe is one deterministic synthetic RGB image. It checks numerical
+consistency, not detector accuracy. The report remains with the export;
+publication can include it through the existing `--evaluation` option after
+review.
+
+[optimum-export]: https://huggingface.co/docs/optimum-onnx/en/onnx/package_reference/export
+[ccds-export]: https://github.com/ai-cfia/nachet-model-ccds/blob/229a3d40d384a9db05eb83a6201005818104e202/exporter/ModelRelease.py#L103-L120
+
 ## Prepare classifier CAM files
 
 Use the same checkpoint that produced the ONNX model:

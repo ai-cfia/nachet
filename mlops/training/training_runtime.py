@@ -16,8 +16,10 @@ from urllib.parse import quote
 
 from checkpoints import (
     CHECKPOINT_PATTERN,
+    archived_checkpoints,
     checkpoint_is_complete,
     list_complete_checkpoints,
+    resolve_checkpoint,
 )
 
 if TYPE_CHECKING:
@@ -36,6 +38,8 @@ def resolve_resume_checkpoint(
     runs_root: Path,
     resume_run_id: str | None,
     resume_checkpoint: str,
+    *,
+    download: bool = True,
 ) -> tuple[Path | None, str | None]:
     if resume_run_id is None:
         return None, None
@@ -45,20 +49,25 @@ def resolve_resume_checkpoint(
     if not trainer_output.is_dir():
         raise FileNotFoundError(f"training output does not exist: {trainer_output}")
 
+    archives = None
     if resume_checkpoint == "latest":
         checkpoints = list_complete_checkpoints(trainer_output)
         if not checkpoints:
-            raise FileNotFoundError(
-                f"no checkpoints are available in resumed run {resume_run_id}"
-            )
-        checkpoint_path = checkpoints[-1]
+            archives = archived_checkpoints(source_run)
+            if not archives:
+                raise FileNotFoundError(
+                    f"no checkpoints are available in resumed run {resume_run_id}"
+                )
+            name = max(archives, key=lambda name: int(name.split("-")[1]))
+        else:
+            name = checkpoints[-1].name
     else:
         if CHECKPOINT_PATTERN.fullmatch(resume_checkpoint) is None:
             raise ValueError("resume-checkpoint must be latest or checkpoint-<step>")
-        checkpoint_path = trainer_output / resume_checkpoint
-
-    if not checkpoint_is_complete(checkpoint_path):
-        raise ValueError(f"checkpoint is incomplete: {checkpoint_path.name}")
+        name = resume_checkpoint
+    checkpoint_path = resolve_checkpoint(
+        trainer_output, name, archives=archives, download=download,
+    )
 
     mlflow_run_id = read_mlflow_run_id(source_run)
     if mlflow_run_id is None:
@@ -217,6 +226,11 @@ def execute_training(
         )
         resume_checkpoint = checkpoints[-1] if checkpoints else None
         existing_mlflow_run_id = read_mlflow_run_id(run_root)
+        if resume_checkpoint is None and existing_mlflow_run_id is not None:
+            archives = archived_checkpoints(run_root)
+            if archives:
+                name = max(archives, key=lambda name: int(name.split("-")[1]))
+                resume_checkpoint = output_path / name
 
         # Prefer progress from this attempt. If it failed before saving a new
         # checkpoint, retry from the checkpoint the run originally received.
@@ -225,6 +239,7 @@ def execute_training(
                 args.resume_runs_root or args.runs_root,
                 requested_resume_run_id,
                 args.resume_checkpoint,
+                download=False,
             )
             if (
                 existing_mlflow_run_id is not None
@@ -239,6 +254,7 @@ def execute_training(
             args.resume_runs_root or args.runs_root,
             requested_resume_run_id,
             args.resume_checkpoint,
+            download=False,
         )
     command = command_for_resume(output_path, resume_checkpoint)
 
@@ -258,6 +274,10 @@ def execute_training(
             expected = release_reference or {"dataset_release_id": None}
             if any(params.get(key) != value for key, value in expected.items()):
                 raise ValueError("Training data release differs from the resumed MLflow run")
+        # A planned archived checkpoint must not write to its source run until
+        # the parent MLflow run's dataset identity has been accepted.
+        if resume_checkpoint is not None:
+            resolve_checkpoint(resume_checkpoint.parent, resume_checkpoint.name)
         mlflow_client, mlflow_run_id = client, run_id
         if release_reference is not None and existing_mlflow_run_id is None:
             from mlflow.entities import Param

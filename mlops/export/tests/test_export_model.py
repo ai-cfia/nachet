@@ -90,6 +90,43 @@ class ExportCommandTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unsupported model type: 'vit'"):
             export_model.export_model(self.checkpoint, self.output)
 
+    def test_detector_parity_failure_stops_before_quantization(self):
+        (self.checkpoint / "config.json").write_text(json.dumps({"model_type": "rt_detr_v2"}))
+        with (
+            patch("optimum.exporters.onnx.main_export") as export,
+            patch("detector_parity.validate_detector_export", side_effect=ValueError("detections differ")) as validate,
+            patch.object(export_model.subprocess, "run") as quantize,
+        ):
+            with self.assertRaisesRegex(ValueError, "detections differ"):
+                export_model.export_model(
+                    self.checkpoint, self.output, quantize=True, confidence_threshold=0.75,
+                )
+        self.assertEqual(validate.call_args.kwargs["confidence_threshold"], 0.75)
+        self.assertFalse(export.call_args.kwargs["do_validation"])
+        quantize.assert_not_called()
+
+    def test_cli_passes_the_configured_confidence_cutoff(self):
+        for options, threshold in (([], 0.5), (["--confidence-threshold", "0.75"], 0.75)):
+            with (
+                self.subTest(options=options),
+                patch.object(sys, "argv", [
+                    "export_model.py", "--checkpoint", str(self.checkpoint),
+                    "--output", str(self.output), *options,
+                ]),
+                patch.object(export_model, "export_model") as export,
+            ):
+                export_model.main()
+            self.assertEqual(export.call_args.kwargs["confidence_threshold"], threshold)
+
+    def test_invalid_confidence_cutoff_is_rejected_before_creating_output(self):
+        for threshold in (-0.1, 1.1, float("nan"), float("inf")):
+            with self.subTest(threshold=threshold):
+                with self.assertRaisesRegex(ValueError, "Confidence threshold"):
+                    export_model.export_model(
+                        self.checkpoint, self.output, confidence_threshold=threshold,
+                    )
+                self.assertFalse(self.output.exists())
+
 
 class SwinExportTest(unittest.TestCase):
     def test_fp32_matches_pytorch_and_int8_runs(self):
@@ -117,18 +154,37 @@ class SwinExportTest(unittest.TestCase):
 
 class DetectorExportTest(unittest.TestCase):
     def test_logits_and_boxes_match_pytorch(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            checkpoint = Path(tmp) / "checkpoint"
-            model = save_tiny_detector(checkpoint)
-            export_model.export_model(checkpoint, Path(tmp) / "export")
-            session = ort.InferenceSession(str(Path(tmp) / "export/onnx-fp32/model.onnx"),
-                                           providers=["CPUExecutionProvider"])
-            pixels = torch.rand(2, 3, 64, 64)
-            with torch.no_grad():
-                expected = model(pixel_values=pixels)
-            logits, boxes = session.run(["logits", "pred_boxes"], {"pixel_values": pixels.numpy()})
-            np.testing.assert_allclose(logits, expected.logits.numpy(), rtol=1e-4, atol=1e-5)
-            np.testing.assert_allclose(boxes, expected.pred_boxes.numpy(), rtol=1e-4, atol=1e-5)
+        for tie_encoder_decoder, return_dict in ((False, True), (True, True), (False, False)):
+            with (
+                self.subTest(tie_encoder_decoder=tie_encoder_decoder, return_dict=return_dict),
+                tempfile.TemporaryDirectory() as tmp,
+            ):
+                checkpoint = Path(tmp) / "checkpoint"
+                model = save_tiny_detector(checkpoint)
+                config_path = checkpoint / "config.json"
+                config = json.loads(config_path.read_text())
+                config["tie_encoder_decoder"] = tie_encoder_decoder
+                config["return_dict"] = return_dict
+                config_path.write_text(json.dumps(config))
+                original = {path.name: path.read_bytes() for path in checkpoint.iterdir()}
+                for path in checkpoint.iterdir():
+                    path.chmod(0o444)
+
+                export_model.export_model(checkpoint, Path(tmp) / "export")
+                report = json.loads((Path(tmp) / "export/detector-parity.json").read_text())
+                self.assertTrue(report["passed"])
+                self.assertGreater(report["reference_count"], 0)
+                session = ort.InferenceSession(str(Path(tmp) / "export/onnx-fp32/model.onnx"),
+                                               providers=["CPUExecutionProvider"])
+                pixels = torch.rand(2, 3, 64, 64)
+                with torch.no_grad():
+                    expected = model(pixel_values=pixels)
+                logits, boxes = session.run(["logits", "pred_boxes"], {"pixel_values": pixels.numpy()})
+                np.testing.assert_allclose(logits, expected.logits.numpy(), rtol=1e-4, atol=1e-5)
+                np.testing.assert_allclose(boxes, expected.pred_boxes.numpy(), rtol=1e-4, atol=1e-5)
+                self.assertEqual(
+                    {path.name: path.read_bytes() for path in checkpoint.iterdir()}, original,
+                )
 
 
 if __name__ == "__main__":

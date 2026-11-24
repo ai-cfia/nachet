@@ -1029,13 +1029,14 @@ dev = [
 
 [[package]]
 name = "nachet-detector-trainer"
-version = "0.3.1"
+version = "0.3.3"
 source = { virtual = "." }
 dependencies = [
     { name = "accelerate" },
     { name = "albumentationsx" },
     { name = "boto3" },
     { name = "datasets" },
+    { name = "filelock" },
     { name = "matplotlib" },
     { name = "mlflow-skinny" },
     { name = "nachet-dataset-release" },
@@ -1064,6 +1065,7 @@ requires-dist = [
     { name = "albumentationsx", specifier = "==2.0.13" },
     { name = "boto3", specifier = "==1.40.55" },
     { name = "datasets", specifier = "==4.4.1" },
+    { name = "filelock", specifier = "==3.32.5" },
     { name = "matplotlib", specifier = "==3.10.7" },
     { name = "mlflow-skinny", specifier = "==3.7.0" },
     { name = "nachet-dataset-release", directory = "../../datasets" },
