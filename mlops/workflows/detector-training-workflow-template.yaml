@@ -311,11 +311,6 @@ spec:
               name: "{{workflow.parameters.dataset-credentials-secret}}"
               optional: true
         env:
-          - name: MLFLOW_TRACKING_URI
-            valueFrom:
-              secretKeyRef:
-                name: nachet-training-s3
-                key: MLFLOW_TRACKING_URI
           - name: MLFLOW_EXPERIMENT_NAME
             value: RT-DETR-v2_101spp_object-detector
           - name: MLFLOW_PUBLIC_URL
@@ -387,11 +382,6 @@ spec:
           - secretRef:
               name: nachet-training-s3
         env:
-          - name: MLFLOW_TRACKING_URI
-            valueFrom:
-              secretKeyRef:
-                name: nachet-training-s3
-                key: MLFLOW_TRACKING_URI
           - name: MLFLOW_EXPERIMENT_NAME
             value: RT-DETR-v2_101spp_object-detector
           - name: MLFLOW_PUBLIC_URL
@@ -457,12 +447,9 @@ spec:
           - /tmp/checkpoint-options
           - --optional-output
           - /tmp/optional-checkpoint-options
-        env:
-          - name: MLFLOW_TRACKING_URI
-            valueFrom:
-              secretKeyRef:
-                name: nachet-training-s3
-                key: MLFLOW_TRACKING_URI
+        envFrom:
+          - secretRef:
+              name: nachet-training-s3
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -539,12 +526,6 @@ spec:
         envFrom:
           - secretRef:
               name: nachet-training-s3
-        env:
-          - name: MLFLOW_TRACKING_URI
-            valueFrom:
-              secretKeyRef:
-                name: nachet-training-s3
-                key: MLFLOW_TRACKING_URI
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

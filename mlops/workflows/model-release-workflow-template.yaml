@@ -129,12 +129,6 @@ spec:
         envFrom:
           - secretRef:
               name: nachet-training-s3
-        env:
-          - name: MLFLOW_TRACKING_URI
-            valueFrom:
-              secretKeyRef:
-                name: nachet-training-s3
-                key: MLFLOW_TRACKING_URI
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -343,11 +337,6 @@ spec:
             value: "{{inputs.parameters.checkpoint}}"
           - name: RELEASE_EVALUATION_DIR
             value: "/exports/{{workflow.name}}/evaluation/{{inputs.parameters.variant}}"
-          - name: MLFLOW_TRACKING_URI
-            valueFrom:
-              secretKeyRef:
-                name: nachet-training-s3
-                key: MLFLOW_TRACKING_URI
           - name: HF_HOME
             value: /scratch/huggingface
           - name: HF_HUB_OFFLINE
