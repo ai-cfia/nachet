@@ -187,6 +187,20 @@ class ReleaseWorkflowTest(unittest.TestCase):
             "validation-input": external,
             "mlflow-run-id": parent.info.run_id,
         }
+        trainer_python = Path(
+            os.environ.get(f"NACHET_{kind.upper()}_PYTHON", sys.executable)
+        )
+        trainer_env = {
+            "PATH": str(trainer_python.parent) + os.pathsep + os.environ["PATH"],
+            "PYTHONPATH": os.pathsep.join(
+                [
+                    str(MLOPS / "training" / kind / "src"),
+                    str(MLOPS / "training"),
+                ]
+            ),
+            "MLFLOW_TRACKING_URI": (self.root / "mlruns").as_uri(),
+        }
+
         export_python = Path(os.environ.get("NACHET_EXPORT_PYTHON", sys.executable))
         export_env = {
             "PATH": str(export_python.parent) + os.pathsep + os.environ["PATH"]
@@ -195,7 +209,7 @@ class ReleaseWorkflowTest(unittest.TestCase):
             self.templates["check-selection"],
             parameters,
             MLOPS / "training",
-            export_env,
+            trainer_env,
         )
         self.run_container(
             self.export_templates["export"], parameters, MLOPS / "export", export_env
@@ -208,19 +222,6 @@ class ReleaseWorkflowTest(unittest.TestCase):
                 export_env,
             )
 
-        evaluation_python = Path(
-            os.environ.get(f"NACHET_{kind.upper()}_PYTHON", sys.executable)
-        )
-        evaluation_env = {
-            "PATH": str(evaluation_python.parent) + os.pathsep + os.environ["PATH"],
-            "PYTHONPATH": os.pathsep.join(
-                [
-                    str(MLOPS / "training" / kind / "src"),
-                    str(MLOPS / "training"),
-                ]
-            ),
-            "MLFLOW_TRACKING_URI": (self.root / "mlruns").as_uri(),
-        }
         exports = self.root / "exports/release-smoke"
         flow = self.templates["release-model"]["steps"]
 
@@ -257,7 +258,7 @@ class ReleaseWorkflowTest(unittest.TestCase):
                     self.templates["evaluate-converted"],
                     values,
                     inputs,
-                    evaluation_env,
+                    trainer_env,
                 )
             )
             child = client.get_run(result["mlflow_run_id"])
