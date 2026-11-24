@@ -79,7 +79,7 @@ class DetectionParityTest(unittest.TestCase):
                     actual = {name: np.concatenate([values, values[:1]])
                               for name, values in actual.items()}
                 elif change == "shifted":
-                    # IoU 0.94 with the reference box.
+                    # IoU is approximately 0.891 with the reference box.
                     actual["boxes"][0] += 0.01
                 elif change == "label":
                     actual["scores"][0] = actual["scores"][0, ::-1].copy()
