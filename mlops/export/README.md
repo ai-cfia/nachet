@@ -60,14 +60,14 @@ exporter retains its existing Transformers and Optimum versions.
 RT-DETRv2 export uses Optimum's Python API with its row-by-row validation
 disabled. It then runs PyTorch and ONNX Runtime on identical pixels and
 converts both outputs to boxes and sigmoid class scores. Predictions are
-matched one to one within score and coordinate tolerances. This
+matched one to one by box overlap and class scores. This
 accepts equivalent predictions in a different order while rejecting missing,
 extra or changed detections. Swin keeps Optimum's existing validation.
 
 The check writes `detector-parity.json` beside `onnx-fp32/`. It records the
-matches, their largest score and coordinate differences, and unmatched
-indices. The absolute tolerance is `1e-4` for scores and normalized box
-coordinates. The score of every class
+matches, their largest score difference and lowest box IoU, and unmatched
+indices. Matched boxes need an IoU of at least `0.99`, and their scores an
+absolute difference of at most `1e-4`. The score of every class
 must agree for a matched query, and outputs with a different batch, query or
 class count fail the check. It retains every query, including low-scoring
 ones, so thresholding cannot hide a difference. Every detection must match;

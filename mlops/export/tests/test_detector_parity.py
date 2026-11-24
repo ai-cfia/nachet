@@ -67,7 +67,7 @@ class DetectionParityTest(unittest.TestCase):
         report = compare_detections(self.reference, reordered)
         self.assertTrue(report["passed"])
         self.assertEqual(report["matches"], [[0, 1], [1, 0]])
-        self.assertAlmostEqual(report["matched_max_coordinate_difference"], 0.00002)
+        self.assertGreater(report["matched_min_box_iou"], 0.99)
 
     def test_missing_extra_shifted_and_changed_predictions_fail(self):
         for change in ("missing", "extra", "shifted", "label", "score", "other class"):
@@ -79,8 +79,8 @@ class DetectionParityTest(unittest.TestCase):
                     actual = {name: np.concatenate([values, values[:1]])
                               for name, values in actual.items()}
                 elif change == "shifted":
-                    # A small shift outside the coordinate tolerance.
-                    actual["boxes"][0] += 0.001
+                    # IoU 0.94 with the reference box.
+                    actual["boxes"][0] += 0.01
                 elif change == "label":
                     actual["scores"][0] = actual["scores"][0, ::-1].copy()
                 elif change == "score":
@@ -91,6 +91,15 @@ class DetectionParityTest(unittest.TestCase):
                 report = compare_detections(self.reference, actual)
                 self.assertFalse(report["passed"])
                 self.assertTrue(report["unmatched_reference"] or report["unmatched_onnx"])
+
+    def test_small_box_shift_fails_where_a_large_box_shift_passes(self):
+        shift = 0.00009
+        for side, passed in ((0.3, True), (0.002, False)):
+            with self.subTest(side=side):
+                reference = detections([[0.1, 0.1, 0.1 + side, 0.1 + side]], [0.9], [0])
+                actual = {name: values.copy() for name, values in reference.items()}
+                actual["boxes"] += shift
+                self.assertEqual(compare_detections(reference, actual)["passed"], passed)
 
     def test_global_matching_handles_duplicate_boxes_and_ambiguous_scores(self):
         boxes = [[0.1, 0.1, 0.4, 0.5]] * 2

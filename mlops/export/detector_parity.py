@@ -9,14 +9,16 @@ import onnxruntime as ort
 from PIL import Image
 from scipy.optimize import linear_sum_assignment
 import torch
-from torchvision.ops import box_convert
+from torchvision.ops import box_convert, box_iou
 from transformers import RTDetrImageProcessor, RTDetrV2ForObjectDetection
 
-ATOL = 1e-4
+# IoU scales with box size; a coordinate tolerance would not.
+MIN_BOX_IOU = 0.99
+SCORE_ATOL = 1e-4
 
 
-def compare_detections(reference, converted, *, atol=ATOL):
-    """Pass only when every detection has a one-to-one match within tolerance."""
+def compare_detections(reference, converted):
+    """Pass only when every detection has a one-to-one match in box and scores."""
     ref = {name: np.asarray(value) for name, value in reference.items()}
     actual = {name: np.asarray(value) for name, value in converted.items()}
     for detections in (ref, actual):
@@ -27,8 +29,8 @@ def compare_detections(reference, converted, *, atol=ATOL):
     if len(ref["boxes"]) and len(actual["boxes"]):
         # Every class score counts: consumers read more than the winning class.
         score_delta = np.abs(ref["scores"][:, None] - actual["scores"]).max(axis=2)
-        box_delta = np.abs(ref["boxes"][:, None] - actual["boxes"]).max(axis=2)
-        equivalent = (score_delta <= atol) & (box_delta <= atol)
+        iou = box_iou(torch.as_tensor(ref["boxes"]), torch.as_tensor(actual["boxes"])).numpy()
+        equivalent = (score_delta <= SCORE_ATOL) & (iou >= MIN_BOX_IOU)
         # Any valid pairing is acceptable; keep as many as possible.
         rows, columns = linear_sum_assignment(equivalent, maximize=True)
         valid = equivalent[rows, columns]
@@ -44,7 +46,7 @@ def compare_detections(reference, converted, *, atol=ATOL):
         "unmatched_reference": missing,
         "unmatched_onnx": extra,
         "matched_max_score_difference": float(score_delta[rows, columns].max()) if len(rows) else 0.0,
-        "matched_max_coordinate_difference": float(box_delta[rows, columns].max()) if len(rows) else 0.0,
+        "matched_min_box_iou": float(iou[rows, columns].min()) if len(rows) else 1.0,
     }
 
 
@@ -96,7 +98,8 @@ def validate_detector_export(checkpoint, onnx_path, report_path):
     else:
         # Keep every query: a low score cannot excuse a moved or missing box.
         report = {
-            "absolute_tolerance": ATOL,
+            "minimum_box_iou": MIN_BOX_IOU,
+            "score_absolute_tolerance": SCORE_ATOL,
             **compare_detections(_detections(expected), _detections(actual)),
         }
     report_path.write_text(json.dumps(report, indent=2) + "\n")
