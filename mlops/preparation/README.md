@@ -355,8 +355,9 @@ are preserved; legacy checkpoints without a mask decision and with an empty
 status are checked for box overlap.
 
 Each image records its `prelabel_status`, `prelabel_prompt` and
-`prelabel_reason`. The prompt is the last one attempted, or `null` if
-the predictor does not use prompts or inference was skipped.
+`prelabel_reason`. The prompt is the one that produced the saved boxes (or the
+last prompt attempted when count checks fail), or `null` if the predictor does
+not use prompts or inference was skipped.
 
 | Status | Reason | Meaning |
 | --- | --- | --- |
@@ -365,6 +366,7 @@ the predictor does not use prompts or inference was skipped.
 | `needs_review` | `nested_boxes` | One padded box lies inside another. |
 | `needs_review` | `overlapping_masks` | Native-grid SAM3 masks share at least 50% of the smaller mask. |
 | `needs_review` | `overlapping_boxes` | Padded boxes share area without containment (fallback when masks are unavailable). |
+| `needs_review` | `unconfirmed_seed_boxes` | An accepted non-seed prompt box lacked a distinct matching `"seed"` detection (`IoU >= 0.4`, `score > 0.45`). |
 | `needs_review` | `no_detections` | All prompts failed the count check; the last returned no boxes. |
 | `needs_review` | `too_many_detections` | All prompts failed the count check; the last returned at least 10 boxes. |
 | `needs_review` | `invalid_boxes` | A prompt returned 1 to 9 boxes, but invalid geometry was dropped. |
