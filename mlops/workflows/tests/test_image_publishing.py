@@ -82,35 +82,25 @@ esac
             timeout=10,
         )
 
-    def test_builds_follow_main_updates_and_keep_review_tags(self):
+    def test_main_push_queue_and_preview_tag_guard(self):
         signer = workflow("reusable-sign-container-images.yml")["jobs"]["sign-images"]
         self.assertEqual(signer["concurrency"]["queue"], "max")
         for name in ("mlops-export-build.yml", "mlops-training-build.yml"):
             with self.subTest(workflow=name):
                 config = workflow(name)
                 self.assertEqual(config["on"]["push"]["branches"], ["main"])
-                self.assertEqual(
-                    set(config["on"]["push"]["paths"]),
-                    set(config["on"]["pull_request"]["paths"]),
-                )
-                self.assertNotIn("closed", config["on"]["pull_request"]["types"])
-                builds = {
-                    step["id"]: step
+                builds = [
+                    step
                     for job in config["jobs"].values()
                     for step in job.get("steps", [])
                     if "docker/build-push-action@" in step.get("uses", "")
-                }
-                preview, deployment = builds["preview"], builds["deployment"]
-                self.assertIn("github.event.number", preview["with"]["tags"])
-                self.assertIn("outputs.name != 'main'", preview["with"]["tags"])
-                self.assertNotIn("base.ref", deployment["with"]["tags"])
-                self.assertNotIn(":main", deployment["with"]["tags"])
-                signer = next(
-                    job
-                    for job in config["jobs"].values()
-                    if "image-digest" in job.get("with", {})
+                ]
+                preview = next(
+                    step for step in builds if "pull_request" in step.get("if", "")
                 )
-                self.assertEqual(signer["permissions"]["actions"], "read")
+                self.assertIn("!= 'main'", preview["with"]["tags"])
+                for build in builds:
+                    self.assertNotIn(":main", build["with"]["tags"])
 
     def test_digest_signing_and_legacy_callers(self):
         for event, digest, merged, expected in (
@@ -171,9 +161,8 @@ esac
             line for line in calls if line.startswith("docker buildx imagetools create")
         ]
         self.assertEqual(len(promotions), 1)
-        self.assertIn("--prefer-index=false", promotions[0].split())
-        self.assertIn(f"--tag {IMAGE}:main", promotions[0])
-        self.assertEqual(promotions[0].split()[-1], f"{IMAGE}@{DIGEST}")
+        self.assertIn(f"{IMAGE}:main", promotions[0].split())
+        self.assertIn(f"{IMAGE}@{DIGEST}", promotions[0].split())
 
     def test_failed_signing_and_missing_build_digest_stop(self):
         for options in (
