@@ -15,15 +15,21 @@ on:
         description: "Application version tag to sign"
         required: true
         type: string
+      image-digest:
+        description: "Build digest; callers without it retain tag-based signing"
+        required: false
+        type: string
+        default: ""
 
-permissions:
-  contents: read
-  packages: write
-  id-token: write
+# Each caller grants the permissions its publishing path needs.
 
 jobs:
   sign-images:
     runs-on: ubuntu-latest
+    concurrency:
+      group: sign-${{ inputs.image-name }}-${{ github.event_name == 'push' && 'main' || github.run_id }}
+      # An old retry must not displace a newer pending publication.
+      queue: max
 
     steps:
       - name: Install Cosign
@@ -43,23 +49,33 @@ jobs:
           IMAGE: ${{ inputs.image-name }}
           IMAGE_LABEL: ${{ inputs.image-label }}
           RELEASE_VERSION: ${{ inputs.release-version }}
+          IMAGE_DIGEST: ${{ inputs.image-digest }}
         run: |
           set -euo pipefail
 
-          tags=(
-            "${IMAGE}:${{ github.sha }}"
-            "${IMAGE}:${RELEASE_VERSION}"
-          )
+          if [[ "$GITHUB_EVENT_NAME" == push && -z "$IMAGE_DIGEST" ]]; then
+            echo "Main publishing requires the build digest." >&2
+            exit 1
+          fi
 
-          if [ "${{ github.event.pull_request.merged }}" = "true" ]; then
-            tags+=("${IMAGE}:${{ github.event.pull_request.base.ref }}")
+          if [[ -n "$IMAGE_DIGEST" ]]; then
+            tags=("${IMAGE}@${IMAGE_DIGEST}")
           else
-            branch_name="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
-            clean_branch_name="$(echo "$branch_name" | sed 's/[\/\\]/-/g')"
-            tags+=(
-              "${IMAGE}:${{ github.event.number }}"
-              "${IMAGE}:${clean_branch_name}"
+            tags=(
+              "${IMAGE}:${{ github.sha }}"
+              "${IMAGE}:${RELEASE_VERSION}"
             )
+
+            if [ "${{ github.event.pull_request.merged }}" = "true" ]; then
+              tags+=("${IMAGE}:${{ github.event.pull_request.base.ref }}")
+            else
+              branch_name="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+              clean_branch_name="$(echo "$branch_name" | sed 's/[\/\\]/-/g')"
+              tags+=(
+                "${IMAGE}:${{ github.event.number }}"
+                "${IMAGE}:${clean_branch_name}"
+              )
+            fi
           fi
 
           for tag in "${tags[@]}"; do
@@ -74,3 +90,31 @@ jobs:
               --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
               "$tag"
           done
+
+      - name: Publish signed main image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ${{ inputs.image-name }}
+          IMAGE_DIGEST: ${{ inputs.image-digest }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+        run: |
+          set -euo pipefail
+          # Unrelated main pushes are excluded by the caller's path filters.
+          latest_run="$(gh run list --repo "$GITHUB_REPOSITORY" \
+            --workflow "$WORKFLOW_NAME" --event push --branch main \
+            --limit 1 --json databaseId --jq '.[0].databaseId')"
+          if ! [[ "$latest_run" =~ ^[0-9]+$ ]]; then
+            echo "Could not identify the latest main build." >&2
+            exit 1
+          fi
+          if [[ "$latest_run" != "$GITHUB_RUN_ID" ]]; then
+            echo "Skipping superseded main build."
+            exit 0
+          fi
+
+          docker buildx imagetools create --prefer-index=false \
+            --tag "${IMAGE}:main" "${IMAGE}@${IMAGE_DIGEST}"
+          published="sha256:$(docker buildx imagetools inspect --raw "${IMAGE}:main" |
+            sha256sum | cut -d ' ' -f 1)"
+          test "$published" = "$IMAGE_DIGEST"
