@@ -42,8 +42,13 @@ spec:
         description: >-
           Training folder below inputs, with one subfolder per species.
         value: Training
+      - name: model-source
+        description: >-
+          S3 model snapshot URI. The dataset credentials must allow listing the
+          prefix and reading its objects. Leave blank to use model-path on the PVC.
+        value: ""
       - name: model-path
-        description: Base model directory below the prepared input directory.
+        description: Base model directory below inputs when model-source is blank.
         value: model
       - name: run-profile
         description: >-
@@ -107,6 +112,9 @@ spec:
   templates:
     - name: classifier-training
       steps:
+        - - name: download-base-model
+            template: download-base-model
+            when: "{{=workflow.parameters['model-source'] != ''}}"
         - - name: verify-dataset-release
             template: verify-dataset-release
             when: >-
@@ -198,6 +206,32 @@ spec:
               parameter: >-
                 {{steps.check-checkpoint-selections.outputs.parameters.selected-checkpoints}}
 
+    - name: download-base-model
+      container:
+        image: ghcr.io/ai-cfia/nachet-classifier-trainer:main
+        imagePullPolicy: Always
+        command: [python, /opt/stage_training_model.py]
+        args:
+          - --model-source
+          - "{{workflow.parameters.model-source}}"
+          - --destination
+          - "/runs/{{workflow.name}}/base-model"
+        envFrom:
+          - secretRef:
+              name: "{{workflow.parameters.dataset-credentials-secret}}"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+          - name: training-storage
+            mountPath: /runs
+            subPath: nachet/classifier-training/runs
+          - name: tmp
+            mountPath: /tmp
+
     - name: verify-dataset-release
       container:
         image: ghcr.io/ai-cfia/nachet-classifier-trainer:main
@@ -215,7 +249,9 @@ spec:
           - --dataset-root
           - /inputs
           - --model-path
-          - "{{workflow.parameters.model-path}}"
+          - >-
+            {{=workflow.parameters['model-source'] == '' ?
+            workflow.parameters['model-path'] : '/runs/' + workflow.name + '/base-model'}}
           - --run-profile
           - "{{workflow.parameters.run-profile}}"
           - --run-id
@@ -234,6 +270,10 @@ spec:
           - name: training-storage
             mountPath: /inputs
             subPath: nachet/classifier-training/inputs
+            readOnly: true
+          - name: training-storage
+            mountPath: /runs
+            subPath: nachet/classifier-training/runs
             readOnly: true
           - name: tmp
             mountPath: /tmp
@@ -279,7 +319,9 @@ spec:
           - --validation-dir
           - "{{workflow.parameters.validation-dir}}"
           - --model-path
-          - "{{workflow.parameters.model-path}}"
+          - >-
+            {{=workflow.parameters['model-source'] == '' ?
+            workflow.parameters['model-path'] : '/runs/' + workflow.name + '/base-model'}}
           - --run-profile
           - "{{workflow.parameters.run-profile}}"
           - --epochs

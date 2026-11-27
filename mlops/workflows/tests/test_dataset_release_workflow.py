@@ -25,9 +25,13 @@ class DatasetReleaseWorkflowTests(unittest.TestCase):
                 spec = yaml.safe_load(path.read_text())["spec"]
                 templates = {item["name"]: item for item in spec["templates"]}
                 steps = templates[spec["entrypoint"]]["steps"]
-                self.assertEqual(steps[0][0]["template"], "verify-dataset-release")
-                self.assertEqual(steps[1][0]["template"], "train")
-                self.assertNotIn("continueOn", steps[0][0])
+                download_step = steps[0][0]
+                self.assertEqual(download_step["template"], "download-base-model")
+                self.assertIn("['model-source'] != ''", download_step["when"])
+                self.assertNotIn("continueOn", download_step)
+                self.assertEqual(steps[1][0]["template"], "verify-dataset-release")
+                self.assertEqual(steps[2][0]["template"], "train")
+                self.assertNotIn("continueOn", steps[1][0])
                 preflight = templates["verify-dataset-release"]["container"]
                 train = templates["train"]["container"]
                 self.assertEqual(preflight["image"], train["image"])
@@ -38,9 +42,49 @@ class DatasetReleaseWorkflowTests(unittest.TestCase):
                     parameter["name"]: parameter["value"]
                     for parameter in spec["arguments"]["parameters"]
                 }
+                self.assertEqual(defaults["model-source"], "")
+                self.assertEqual(defaults["model-path"], "model")
+                download = templates["download-base-model"]["container"]
+                self.assertEqual(download["image"], preflight["image"])
+                self.assertEqual(
+                    download["envFrom"],
+                    [
+                        {
+                            "secretRef": {
+                                "name": "{{workflow.parameters.dataset-credentials-secret}}"
+                            }
+                        }
+                    ],
+                )
+                self.assertEqual(
+                    download["args"],
+                    [
+                        "--model-source",
+                        "{{workflow.parameters.model-source}}",
+                        "--destination",
+                        "/runs/{{workflow.name}}/base-model",
+                    ],
+                )
+                model_paths = []
+                for container in (preflight, train):
+                    args = container["args"]
+                    model_paths.append(args[args.index("--model-path") + 1])
+                    runs = next(
+                        mount
+                        for mount in container["volumeMounts"]
+                        if mount["mountPath"] == "/runs"
+                    )
+                    self.assertEqual(
+                        runs["subPath"], download["volumeMounts"][0]["subPath"]
+                    )
+                self.assertEqual(model_paths[0], model_paths[1])
+                self.assertIn("workflow.parameters['model-path']", model_paths[0])
+                self.assertIn(
+                    "'/runs/' + workflow.name + '/base-model'", model_paths[0]
+                )
                 for name in (*identity, "dataset-container"):
                     self.assertEqual(defaults[name], "")
-                    self.assertIn(f"['{name}'] != ''", steps[0][0]["when"])
+                    self.assertIn(f"['{name}'] != ''", steps[1][0]["when"])
                     for container in (preflight, train):
                         args = container["args"]
                         self.assertEqual(
