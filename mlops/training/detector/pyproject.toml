@@ -1,6 +1,6 @@
 [project]
 name = "nachet-detector-trainer"
-version = "0.3.3"
+version = "0.3.4"
 description = "Nachet detector training runtime"
 requires-python = ">=3.12,<3.13"
 dependencies = [
